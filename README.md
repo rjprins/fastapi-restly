@@ -141,3 +141,11 @@ Under the hood `fa` creates two more Pydantic schemas: A `creation_schema` that 
 
 
 [Tutorial](tutorial.md)
+
+
+## For Developers
+
+- `uv sync` to install
+- `pytest` to run tests
+- `ruff` for linting and formatting
+- `mkdocs serve` to render the documentation.
