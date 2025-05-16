@@ -1,0 +1,24 @@
+[tool.poetry]
+package-mode = false
+name = "Blog - FastAPI-Ding Example Project"
+packages = [
+    { include = "blog" },
+]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+fastapi-ding = { path = "../..", develop = true }
+alembic = "^1.14.1"
+aiosqlite = "^0.21.0"
+fastapi = {extras = ["standard"], version = "^0.115.8"}
+
+
+[tool.poetry.dev-dependencies]
+pytest = "^8.1.1"
+
+[tool.poetry.group.dev.dependencies]
+httpx = "^0.27.2"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
