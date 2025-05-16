@@ -1,9 +1,11 @@
 import fastapi_alchemy as fa
-from fastapi_alchemy import schemas, sqlbase, views
 from fastapi_alchemy import (
-    BaseSchema,
     AsyncAlchemyView,
+    BaseSchema,
     SQLBase,
     include_view,
+    schemas,
     settings,
+    sqlbase,
+    views,
 )

@@ -1,15 +1,14 @@
 import asyncio
 from logging.config import fileConfig
 
+# Import to register all models in SQLBase.metadata
+import shop.main
 from alembic import context
-from fastapi_alchemy import SQLBase, settings
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-# Import to register all models in SQLBase.metadata
-import shop.main
-
+from fastapi_alchemy import SQLBase, settings
 
 config = context.config
 

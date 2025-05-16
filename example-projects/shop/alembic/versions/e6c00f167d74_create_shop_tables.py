@@ -8,9 +8,8 @@ Create Date: 2025-02-11 20:10:44.289642
 
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "e6c00f167d74"
@@ -48,24 +47,15 @@ def upgrade() -> None:
             server_default=sa.text("(CURRENT_TIMESTAMP)"),
             nullable=False,
         ),
-        sa.ForeignKeyConstraint(
-            ["customer_id"],
-            ["customer.id"],
-        ),
+        sa.ForeignKeyConstraint(["customer_id"], ["customer.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
         "product_order",
         sa.Column("product_id", sa.Uuid(), nullable=True),
         sa.Column("order_id", sa.Integer(), nullable=True),
-        sa.ForeignKeyConstraint(
-            ["order_id"],
-            ["order.id"],
-        ),
-        sa.ForeignKeyConstraint(
-            ["product_id"],
-            ["product.id"],
-        ),
+        sa.ForeignKeyConstraint(["order_id"], ["order.id"]),
+        sa.ForeignKeyConstraint(["product_id"], ["product.id"]),
     )
 
 

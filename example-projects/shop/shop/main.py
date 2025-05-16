@@ -1,12 +1,13 @@
-from uuid import UUID, uuid4
 from typing import ClassVar
+from uuid import UUID, uuid4
 
-import fastapi_alchemy as fa
 import sqlalchemy as sa
 from fastapi import FastAPI
-from starlette.middleware.cors import CORSMiddleware
 from sqlalchemy import orm
 from sqlalchemy.dialects.postgresql import UUID as POSTGRES_UUID
+from starlette.middleware.cors import CORSMiddleware
+
+import fastapi_alchemy as fa
 
 settings.async_database_url = "sqlite+aiosqlite:///shop.db"
 

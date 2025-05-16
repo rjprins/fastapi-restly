@@ -5,7 +5,7 @@ import pytest
 from alembic import command
 from alembic.config import Config
 from fastapi_alchemy import settings
-from fastapi_alchemy.testing import 
+from fastapi_alchemy.testing import auto
 from fastapi.testclient import TestClient
 
 from shop.main import app

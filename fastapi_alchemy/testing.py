@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
 from ._globals import fa_globals
-from ._session import activate_savepoint_only_mode, deactivate_savepoint_only_mode
+from ._session import activate_savepoint_only_mode
 
 
 @pytest.fixture(autouse=True, scope="session")

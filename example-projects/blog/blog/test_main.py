@@ -8,7 +8,6 @@ from fastapi.testclient import TestClient
 
 from blog.main import app
 
-
 root = Path(__file__).parent.parent
 
 

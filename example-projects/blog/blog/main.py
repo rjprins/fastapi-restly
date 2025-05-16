@@ -2,7 +2,6 @@ import fastapi_alchmey as fa
 from fastapi import FastAPI
 from sqlalchemy.orm import Mapped
 
-
 fa.settings.async_database_url = "sqlite+aiosqlite:///blog.db"
 
 

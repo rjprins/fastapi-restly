@@ -35,9 +35,9 @@ from .query_modifiers import apply_query_modifiers, create_query_param_schema
 from .schemas import (
     NOT_SET,
     BaseSchema,
+    async_resolve_ids_to_sqlalchemy_objects,
     create_model_with_optional_fields,
     create_model_without_read_only_fields,
-    async_resolve_ids_to_sqlalchemy_objects,
 )
 from .sqlbase import SQLBase
 
