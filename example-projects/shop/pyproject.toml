@@ -1,7 +1,7 @@
 [project]
-name = "blog"
+name = "shop"
 version = "0.1.0"
-name = "A minimal FastAPI-Alchemy example"
+description = "A FastAPI-Alchemy example featuring customizations"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [

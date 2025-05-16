@@ -1,6 +1,9 @@
 # FastAPI-Alchemy
 ## A REST Framework for FastAPI
 
+> ⚠️ **Disclaimer**: This project is under active development and not yet available on [PyPI](https://pypi.org). Expect breaking changes and incomplete documentation.
+
+
 **FastAPI-Alchemy (`fa`)** is built on top of [FastAPI](https://fastapi.tiangolo.com) and [SQLAlchemy](https://www.sqlalchemy.org). 
 
 It provides the `AlchemyView` class which provides instant CRUD endpoints on SQLAlchemy models in a completely customizable and extendable way. Here's the smallest possible example:
@@ -39,7 +42,7 @@ This creates five endpoints:
 - `PUT /blogs/<id>` – update an existing item  
 - `DELETE /blogs/<id>` – delete an item by ID
 
-And produced [this OpenAPI specification](./example_projects/blog/openapi.json).
+And produced [this OpenAPI specification](https://redocly.github.io/redoc/?url=https%3A%2F%2Fgithub.com%2Frjprins%2Ffastapi-alchemy%2Fraw%2Frefs%2Fheads%2Fmain%2Fexample-projects%2Fblog%2Fopenapi.json#tag/BlogView/operation/blogview_index_blogs__get).
 
 `fa` aims to be **batteries-included**, providing tools and utilities commonly needed in FastAPI projects that get deployed into production.
 
