@@ -9,7 +9,7 @@ from starlette.middleware.cors import CORSMiddleware
 
 import fastapi_alchemy as fa
 
-settings.async_database_url = "sqlite+aiosqlite:///shop.db"
+fa.setup_async_database_connection(async_database_url="sqlite+aiosqlite:///shop.db")
 
 
 app = FastAPI()

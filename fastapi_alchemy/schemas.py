@@ -1,3 +1,4 @@
+import types
 from datetime import datetime
 from typing import ClassVar, Generic, Optional, TypeVar
 
@@ -49,6 +50,10 @@ class IDSchema(BaseSchema, Generic[SQLAlchemyModel]):
             return self.__pydantic_generic_metadata__["args"][0]
         except Exception:
             return None
+
+
+class IDStampsSchema(TimestampsSchemaMixin, IDSchema):
+    pass
 
 
 async def async_resolve_ids_to_sqlalchemy_objects(
@@ -136,31 +141,48 @@ def create_model_without_read_only_fields(
     Copy the given pydantic model class, but with fields with names in
     'read_only_fields' removed.
     """
-    bases: list[type] = []
     if hasattr(model_cls, "__orig_bases__"):
         orig_bases = model_cls.__orig_bases__
     else:
         orig_bases = model_cls.__bases__
+    bases: list[type[pydantic.BaseModel]] = []
     for base_cls in orig_bases:
         if hasattr(base_cls, "read_only_fields"):
             new_base_cls = create_model_without_read_only_fields(base_cls)
             bases.append(new_base_cls)
         else:
             bases.append(base_cls)
+    base = tuple(bases)
 
     new_model_name = "Create" + model_cls.__name__
     doc = model_cls.__doc__ or "" + "\nRead-only have been fields removed."
     writable_fields = _get_writable_field_definitions(model_cls)
 
+    if model_cls.model_config:
+        base = rebase_with_model_config(base, model_cls)
+
     # Ignore mypy because Pydantic typing on __base__ is too strict
     new_model_cls = pydantic.create_model(  # type: ignore
         new_model_name,
         __doc__=doc,
-        __base__=tuple(bases),
+        __base__=base,
         __module__=model_cls.__module__,
+        __validators__=getattr(model_cls, "__validators__", None),
+        __cls_kwargs__=getattr(model_cls, "__cls_kwargs__", None),
         **writable_fields,
     )
     return new_model_cls
+
+
+def rebase_with_model_config(
+    base: tuple[type, ...], model_cls: type[pydantic.BaseModel]
+) -> type[pydantic.BaseModel]:
+    def class_body(ns):
+        ns["model_config"] = model_cls.model_config.copy()
+
+    return types.new_class(
+        f"{model_cls.__name__}ModelConfig", base, exec_body=class_body
+    )
 
 
 # NOT_SET is used as a sentinel value for validating incoming data. It is the default
@@ -198,7 +220,9 @@ def create_model_with_optional_fields(model_cls: type[BaseSchema]) -> type[BaseS
     return new_model_cls
 
 
-def _get_writable_field_definitions(model_cls: type[BaseSchema]) -> dict[str, tuple]:
+def _get_writable_field_definitions(
+    model_cls: type[pydantic.BaseModel],
+) -> dict[str, tuple]:
     """
     Return fields from a Pydantic model that are not mentioned in `read_only_fields`.
     Field definitions are returned in the form suitable for `pydantic.create_model()`.

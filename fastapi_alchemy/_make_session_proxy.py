@@ -1,35 +1,53 @@
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession as SA_AsyncSession
+from sqlalchemy.ext.asyncio import async_sessionmaker
+from sqlalchemy.orm import Session as SA_Session
+from sqlalchemy.orm import sessionmaker
 
 from ._globals import fa_globals
-from ._session import async_setup_database_connection, setup_database_connection
+from ._session import setup_async_database_connection, setup_database_connection
 
 
-class AsyncMakeSessionProxy:
-    def _get_real_make_session(self) -> async_sessionmaker:
-        if not fa_globals.async_make_session:
+class AsyncSessionProxy:
+    """
+    Proxy for the global async_sessionmaker.
+    This enables consistent global imports, e.g.:
+        from fastapi_alchemy import AsyncSession
+
+        with AsyncSession() as async_session: ...
+    """
+
+    def _get_async_sessionmaker(self) -> async_sessionmaker[SA_AsyncSession]:
+        if fa_globals.async_make_session is None:
             if not fa_globals.async_database_url:
                 raise RuntimeError(
-                    "Sessionmaker 'async_make_session' is not initialized. "
-                    "Call async_setup_database_connection() first."
+                    "Sessionmaker 'AsyncSession' is not initialized. "
+                    "Call setup_async_database_connection() first."
                 )
             else:
-                async_setup_database_connection(fa_globals.async_database_url)
+                setup_async_database_connection(fa_globals.async_database_url)
         return fa_globals.async_make_session
 
-    def __call__(self) -> AsyncSession:
-        return self._get_real_make_session()()
+    def __call__(self) -> SA_AsyncSession:
+        return self._get_async_sessionmaker()()
 
-    def begin(self) -> AsyncSession:
-        return self._get_real_make_session().begin()
-
-
-async_make_session: async_sessionmaker[AsyncSession] = AsyncMakeSessionProxy()
+    def begin(self) -> SA_AsyncSession:
+        return self._get_async_sessionmaker().begin()
 
 
-class MakeSessionProxy:
-    def _get_real_make_session(self) -> sessionmaker:
-        if not fa_globals.make_session:
+AsyncSession = AsyncSessionProxy()
+
+
+class SessionProxy:
+    """
+    Proxy for the global sessionmaker.
+    This enables consistent global imports, e.g.:
+        from fastapi_alchemy import Session
+
+        with Session() as session: ...
+    """
+
+    def _get_sessionmaker(self) -> sessionmaker[SA_Session]:
+        if fa_globals.make_session is None:
             if not fa_globals.database_url:
                 raise RuntimeError(
                     "Sessionmaker 'make_session' is not initialized. "
@@ -39,11 +57,11 @@ class MakeSessionProxy:
                 setup_database_connection(fa_globals.database_url)
         return fa_globals.make_session
 
-    def __call__(self) -> Session:
-        return self._get_real_make_session()()
+    def __call__(self) -> SA_Session:
+        return self._get_sessionmaker()()
 
-    def begin(self) -> Session:
-        return self._get_real_make_session().begin()
+    def begin(self) -> SA_Session:
+        return self._get_sessionmaker().begin()
 
 
-make_session: sessionmaker[Session] = MakeSessionProxy()
+Session = SessionProxy()

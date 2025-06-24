@@ -11,23 +11,36 @@ Which functionality can I *skip*?
 
 What is go live?
 
-## 1. It is on GitHub
+## 1. It is on GitHub ✅
 If it is public on GitHub it is open source™
 Doesn't have to be functional yet, so we can do this today!
 
-
 ## 2. Package on PYPI
 Now it will for real. Minimal requirements for this:
+* *NO NEW FUNCTIONALITY NEEDED*
 * Tests have enough coverage
-* <NO NEW FUNCTIONALITY NEEDED>
 * Naming is sort-of stable
 * Minimal set of docs
 
+- [ ] Run test suite 
+- [ ] Run test suite on py 3.10 - 3.13
+
 Start with version 0.5
+
+
+### Things to test before publishing:
+
+* Async shop example fully functional?
+  * Test every endpoint
+* Sync shop example fully functional?
+  * Test every endpoint
+* Blog example fully functional?
+  * Test every endpoint
+  
+Do I want to support "No alembic/just create tables?"
 
 ## Future to-dos (after go-live)
 
-* Update the docs
 * Do multi python versions tests. From 3.10 upwards.
 * Go over naming - Did I get the naming of things spot on?
   - make_session? Maybe should be Session?

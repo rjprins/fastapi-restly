@@ -1,9 +1,11 @@
-from typing import Annotated, AsyncIterator, Iterator
+from typing import Annotated, Any, AsyncIterator, Iterator, cast
 
 from fastapi import Depends
-from sqlalchemy import create_engine
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy import Engine, create_engine
+from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession as SA_AsyncSession
+from sqlalchemy.orm import Session as SA_Session
+from sqlalchemy.orm import sessionmaker
 
 from ._globals import fa_globals
 
@@ -23,21 +25,24 @@ else:
     json_serializer = orjson_serializer
 
 
-def async_setup_database_connection(
+def setup_async_database_connection(
     async_database_url: str | None = None,
+    *,
+    async_engine: AsyncEngine | None = None,
     async_make_session: async_sessionmaker | None = None,
 ) -> async_sessionmaker:
     """Create and set an async session maker. Returns the session maker."""
     if not async_make_session:
-        if not async_database_url:
-            raise Exception(
-                "set_sessionmaker() requires either `async_make_session` or `async_database_url` as argument"
+        if not async_engine:
+            if not async_database_url:
+                raise Exception(
+                    "set_sessionmaker() requires either `async_database_url`, `async_engine`, or `async_make_session` as argument"
+                )
+            async_engine = create_async_engine(
+                async_database_url,
+                json_serializer=json_serializer,
+                json_deserializer=json_deserializer,
             )
-        async_engine = create_async_engine(
-            async_database_url,
-            json_serializer=json_serializer,
-            json_deserializer=json_deserializer,
-        )
         async_make_session = async_sessionmaker(
             bind=async_engine, autoflush=False, expire_on_commit=False
         )
@@ -48,20 +53,24 @@ def async_setup_database_connection(
 
 
 def setup_database_connection(
-    database_url: str | None = None, make_session: sessionmaker | None = None
+    database_url: str | None = None,
+    *,
+    engine: Engine | None = None,
+    make_session: sessionmaker | None = None,
 ) -> sessionmaker:
     """Create and set a sync session maker. Returns the session maker."""
     if make_session is None:
-        if not database_url:
-            raise Exception(
-                "setup_database_connection() requires either `make_session` or `database_url` as argument"
+        if engine is None:
+            if not database_url:
+                raise Exception(
+                    "setup_database_connection() requires either `database_url`, `engine`, or `make_session` as argument"
+                )
+            engine = create_engine(
+                database_url,
+                json_serializer=json_serializer,
+                json_deserializer=json_deserializer,
             )
-        sync_engine = create_engine(
-            database_url,
-            json_serializer=json_serializer,
-            json_deserializer=json_deserializer,
-        )
-        make_session = sessionmaker(bind=sync_engine, expire_on_commit=False)
+        make_session = sessionmaker(bind=engine, expire_on_commit=False)
 
     fa_globals.database_url = database_url
     fa_globals.make_session = make_session
@@ -77,14 +86,16 @@ def activate_savepoint_only_mode(
     engine.connect() that begins the transaction before the Session can use it.
     https://docs.sqlalchemy.org/en/20/orm/session_transaction.html#session-external-transaction
     """
-    engine = make_session.kw["bind"]
+    engine = _get_sync_engine(make_session)
     original_connect = engine.connect
-    engine._original_connect = original_connect
 
     def _begin_on_connect():
         connection = original_connect()
         connection.begin()
         return connection
+
+    # Using setattr to silence pyright
+    setattr(_begin_on_connect, "_original_connect", original_connect)
 
     engine.connect = _begin_on_connect
     make_session.configure(join_transaction_mode="create_savepoint")
@@ -97,15 +108,22 @@ def deactivate_savepoint_only_mode(
     Reverts the effect of `activate_savepoint_only_mode`.
     Restores the original engine.connect and disables savepoint-only mode.
     """
-    engine = make_session.kw["bind"]
-    if hasattr(engine, "_original_connect"):
-        engine.connect = engine._original_connect
-        del engine._original_connect
+    engine = _get_sync_engine(make_session)
+    _begin_on_connect = cast(Any, engine.connect)
+    if hasattr(_begin_on_connect, "_original_connect"):
+        engine.connect = _begin_on_connect._original_connect
 
     make_session.configure(join_transaction_mode=None)
 
 
-async def async_generate_session() -> AsyncIterator[AsyncSession]:
+def _get_sync_engine(make_session: async_sessionmaker | sessionmaker) -> Engine:
+    engine = make_session.kw["bind"]
+    if isinstance(engine, AsyncEngine):
+        return engine.sync_engine
+    return engine
+
+
+async def async_generate_session() -> AsyncIterator[SA_AsyncSession]:
     """FastAPI dependency for async database session."""
     # FastAPI does not support contextmanagers as dependency directly,
     # but it does support generators.
@@ -113,13 +131,13 @@ async def async_generate_session() -> AsyncIterator[AsyncSession]:
         yield session
 
 
-AsyncDBDependency = Annotated[AsyncSession, Depends(async_generate_session)]
+AsyncDBDependency = Annotated[SA_AsyncSession, Depends(async_generate_session)]
 
 
-def generate_session() -> Iterator[Session]:
+def generate_session() -> Iterator[SA_Session]:
     """FastAPI dependency for sync database session."""
     with fa_globals.make_session.begin() as session:
         yield session
 
 
-DBDependency = Annotated[Session, Depends(generate_session)]
+DBDependency = Annotated[SA_Session, Depends(generate_session)]

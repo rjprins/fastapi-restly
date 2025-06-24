@@ -16,3 +16,8 @@ test = [
 
 [tool.uv.sources]
 fastapi-alchemy = { path = "../../" }
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.5",
+]

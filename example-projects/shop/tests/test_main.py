@@ -5,7 +5,11 @@ import pytest
 from alembic import command
 from alembic.config import Config
 from fastapi_alchemy import settings
-from fastapi_alchemy.testing import auto
+from fastapi_alchemy.testing import (
+    async_session,
+    autouse_alembic_upgrade,
+    autouse_savepoint_only_mode_sessions,
+)
 from fastapi.testclient import TestClient
 
 from shop.main import app

@@ -1,0 +1,6 @@
+{
+  "extraPaths": ["fastapi_alchemy"],
+  "typeCheckingMode": "strict"
+}
+
+

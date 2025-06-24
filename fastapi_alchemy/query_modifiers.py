@@ -1,20 +1,22 @@
 import functools
 from collections import defaultdict
-from typing import Any, Callable, Optional, cast
+from types import UnionType
+from typing import Any, Callable, Iterator, Optional, cast, get_args, get_origin
 
 import pydantic
 import sqlalchemy
 from fastapi import HTTPException
+from pydantic.fields import FieldInfo
 from sqlalchemy import ColumnElement, Select
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.properties import ColumnProperty
 from starlette.datastructures import QueryParams
 
+SchemaType = type[pydantic.BaseModel]
 
-def create_query_param_schema(
-    schema_cls: type[pydantic.BaseModel],
-) -> type[pydantic.BaseModel]:
+
+def create_query_param_schema(schema_cls: SchemaType) -> SchemaType:
     """
     Create a pydantic model class that describes and validates all possible query parameters.
     """
@@ -23,22 +25,36 @@ def create_query_param_schema(
         "offset": (int | None, None),
         "sort": (str | None, None),
     }
-    for name, info in schema_cls.model_fields.items():
+    for name, field in _iter_fields_including_nested(schema_cls):
         filter = f"filter[{name}]"
-        match = f"match[{name}]"
-        fields[filter] = (Optional[info.annotation], None)
-        fields[match] = (Optional[info.annotation], None)
+        fields[filter] = (Optional[field.annotation], None)
+
+        # TODO: Implement matching as OR-filters
+        # match = f"match[{name}]"
+        # fields[match] = (Optional[field.annotation], None)
 
     schema_name = "QueryParam" + schema_cls.__name__
     query_param_schema = pydantic.create_model(schema_name, **fields)
     return query_param_schema
 
 
+def _iter_fields_including_nested(
+    schema_cls: SchemaType, prefix: str = ""
+) -> Iterator[tuple[str, FieldInfo]]:
+    for name, field in schema_cls.model_fields.items():
+        full_name = f"{prefix}.{name}" if prefix else name
+        nested = _get_nested_schema(field)
+        if nested:
+            yield from _iter_fields_including_nested(nested, full_name)
+        else:
+            yield full_name, field
+
+
 def apply_query_modifiers(
     query_params: QueryParams,
     select_query: Select,
     model: type[DeclarativeBase],
-    schema_cls: type[pydantic.BaseModel],
+    schema_cls: SchemaType,
 ) -> Select:
     """
     Apply pagination, sorting, and filtering through URL query parameters on a SQL query.
@@ -117,40 +133,75 @@ def apply_sorting(
         if column_name.startswith("-"):
             order = sqlalchemy.desc
             column_name = column_name[1:]
-        column = _get_sqlalchemy_column(model, column_name)
+        joins, column = _get_sqlalchemy_column(model, column_name)
+        for join in joins:
+            select_query = select_query.join(join)
         select_query = select_query.order_by(order(column))
     return select_query
 
 
 def _get_sqlalchemy_column(
-    model: type[DeclarativeBase], column_name: str
-) -> InstrumentedAttribute:
-    attribute = getattr(model, column_name, None)
-    is_column = (
-        attribute is not None
-        and isinstance(attribute, InstrumentedAttribute)
-        and isinstance(attribute.property, ColumnProperty)
+    model: type[DeclarativeBase], column_path: str
+) -> tuple[list[type[DeclarativeBase]], InstrumentedAttribute]:
+    *models, column = _resolve_sqlalchemy_column(model, column_path)
+    return cast(list[type[DeclarativeBase]], models), cast(
+        InstrumentedAttribute, column
     )
-    if is_column:
-        return cast(InstrumentedAttribute, attribute)
+
+
+def _resolve_sqlalchemy_column(
+    model: type[DeclarativeBase], column_name: str
+) -> Iterator[type[DeclarativeBase] | InstrumentedAttribute]:
+    """
+    Recursively resolve a dot-separated column path to its SQLAlchemy column.
+
+    Yields all intermediate related model classes encountered in the path,
+    followed by the final InstrumentedAttribute representing the column.
+
+    Example:
+        For column_name="upload.created_by.email", yields:
+            - Upload (model class)
+            - CreatedBy (model class)
+            - CreatedBy.email (InstrumentedAttribute)
+    """
+
+    if "." in column_name:
+        relation, _, column_part = column_name.partition(".")
+        rel = getattr(model, relation, None)
+        if not isinstance(rel, InstrumentedAttribute) or not hasattr(
+            rel.property, "mapper"
+        ):
+            # Fail if it is not a relation
+            raise HTTPException(400, f"Invalid attribute in URL query: {column_name}")
+        related_model = rel.property.mapper.class_
+        yield related_model
+        yield from _resolve_sqlalchemy_column(related_model, column_part)
+
     else:
-        raise HTTPException(
-            400, f"Invalid attribute in URL query parameters: {column_name}"
-        )
+        column = getattr(model, column_name, None)
+        if (
+            column is None
+            or not isinstance(column, InstrumentedAttribute)
+            or not isinstance(column.property, ColumnProperty)
+        ):
+            raise HTTPException(400, f"Invalid attribute in URL query: {column_name}")
+        yield cast(InstrumentedAttribute, column)
 
 
 def apply_filtering(
     query_params: QueryParams,
     select_query: Select,
     model: type[DeclarativeBase],
-    schema_cls: type[pydantic.BaseModel],
+    schema_cls: SchemaType,
 ) -> Select:
     filters: dict[InstrumentedAttribute, list[ColumnElement]] = defaultdict(list)
     for key, raw_value in query_params.multi_items():
         if not (key.startswith("filter[") and key.endswith("]")):
             continue
         column_name = key[7:-1]
-        column = _get_sqlalchemy_column(model, column_name)
+        joins, column = _get_sqlalchemy_column(model, column_name)
+        for join in joins:
+            select_query = select_query.join(join)
 
         # Create a parser/validator for the filter values. Which is user input after all.
         parser = functools.partial(_parse_value, schema_cls, column_name)
@@ -172,17 +223,44 @@ def apply_filtering(
     return select_query
 
 
-def _parse_value(
-    schema_cls: type[pydantic.BaseModel], column_name: str, value: str
-) -> Any:
+def _parse_value(schema_cls: SchemaType, column_name: str, value: str) -> Any:
     """Parse and validate a value on which will be filtered."""
-    # Hacky stuff to validate (pydantic slang for _parse_!) a single field.
+
+    # Support nested fields, e.g. "blog.user.name"
+    if "." in column_name:
+        relation, _, column_part = column_name.partition(".")
+        field = schema_cls.model_fields.get(relation)
+        schema = _get_nested_schema(field)
+        if not schema:
+            raise HTTPException(400, f"Invalid attribute in URL query: {column_name}")
+        return _parse_value(schema, column_part, value)
+
+    # Hacky stuff to validate (i.e. parse) a single field.
     # https://github.com/pydantic/pydantic/discussions/7367
-    # Been using it for a year now. Using v2 now. I still think pydantic is badly designed.
     obj = schema_cls.__pydantic_validator__.validate_assignment(
         schema_cls.model_construct(), column_name, value
     )
     return getattr(obj, column_name)
+
+
+def _get_nested_schema(field: FieldInfo | None) -> SchemaType | None:
+    if field is None:
+        return None
+
+    annotation = field.annotation
+
+    # Handle Optional[NestedModel] (i.e., Union[NestedModel, None])
+    origin = get_origin(annotation)
+    if origin is UnionType:
+        args = get_args(annotation)
+        non_none_args = [arg for arg in args if arg is not type(None)]
+        if len(non_none_args) == 1:
+            annotation = non_none_args[0]
+
+    if isinstance(annotation, type) and issubclass(annotation, pydantic.BaseModel):
+        return annotation
+
+    return None
 
 
 def _make_where_clause(

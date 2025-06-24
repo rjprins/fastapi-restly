@@ -31,7 +31,7 @@ class AlchemyView(AsyncAlchemyView):
     Where `Foo` is a SQLAlchemy model and `FooSchema` a Pydantic model.
     """
 
-    db: DBDependency = fastapi.Depends(generate_session)
+    db: DBDependency  # type: ignore[reportIncompatibleVariableOverride]
 
     @route("/")
     def index(self, query_params):

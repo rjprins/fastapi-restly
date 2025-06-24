@@ -5,6 +5,7 @@ description = "A REST Framework for FastAPI"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+    "alembic>=1.15.2",
     "fastapi>=0.115.12",
     "httpx>=0.28.1",
     "orjson>=3.10.18",
@@ -22,6 +23,9 @@ dev = [
     "pytest>=8.3.5",
     "ruff>=0.11.10",
 ]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
 
 [tool.ruff.format]
 skip-magic-trailing-comma = true

@@ -1,0 +1,6 @@
+{
+  "extraPaths": ["../.."],
+  "typeCheckingMode": "strict"
+}
+
+

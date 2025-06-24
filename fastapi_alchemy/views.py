@@ -22,15 +22,17 @@ from typing import (
     Callable,
     ClassVar,
     Sequence,
+    TypeVar,
     get_origin,
     get_type_hints,
+    overload,
 )
 
 import fastapi
 import pydantic
 import sqlalchemy
 
-from ._session import AsyncDBDependency, async_generate_session
+from ._session import AsyncDBDependency
 from .query_modifiers import apply_query_modifiers, create_query_param_schema
 from .schemas import (
     NOT_SET,
@@ -63,10 +65,22 @@ class View:
         _init_view_cls_and_add_to_router(cls, parent_router)
 
 
+V = TypeVar("V", bound=type[View])
+
+
+@overload
+def include_view(
+    parent_router: fastapi.APIRouter | fastapi.FastAPI, view_cls: V
+) -> V: ...
+@overload
 def include_view(
     parent_router: fastapi.APIRouter | fastapi.FastAPI,
-    view_cls: type[View] | None = None,
-) -> Callable:
+) -> Callable[[V], V]: ...
+
+
+def include_view(
+    parent_router: fastapi.APIRouter | fastapi.FastAPI, view_cls: V | None = None
+) -> V | Callable[[V], V]:
     """
     Add the routes of a View class to a FastAPI app or APIRouter.
     This function should be used for every View class.
@@ -79,11 +93,11 @@ def include_view(
     Or as a function:
     include_view(app, MyView)
     """
-    if view_cls:
+    if view_cls is not None:
         _init_view_cls_and_add_to_router(view_cls, parent_router)
         return view_cls
 
-    def class_decorator(view_cls: type[View]) -> type[View]:
+    def class_decorator(view_cls: V) -> V:
         _init_view_cls_and_add_to_router(view_cls, parent_router)
         return view_cls
 
@@ -128,7 +142,7 @@ class AsyncAlchemyView(View):
     exclude_routes: ClassVar[list[str]] = []
 
     request: fastapi.Request
-    db: AsyncDBDependency = fastapi.Depends(async_generate_session)
+    db: AsyncDBDependency
 
     @classmethod
     def before_include_view(cls):
@@ -308,13 +322,14 @@ def _init_view_cls_and_add_to_router(
 def _copy_all_parent_class_endpoints_into_this_subclass(view_cls: type[View]):
     """
     Override all methods with a @route decorator of the parent classes of view_cls
-    with a new copy on directly on view_cls . This allows us to change the
+    with a new copy directly on view_cls . This allows us to change the
     annotations on these endpoints without affecting the parent endpoints.
 
-    FooView.get() delegates to AsyncAlchemyView.get() if it is not overridden (this is
-    called implicit delegation through method resolution). And if we add the
-    annotation that FooView.get() returns FooSchema but do not make a copy then
-    AsyncAlchemyView.get() will get the FooSchema annotation.
+    For example, FooView.get() delegates to AsyncAlchemyView.get() if it is not
+    overridden (this is called implicit delegation through method resolution). And if
+    we add the annotation that FooView.get() returns FooSchema but do not make a copy
+    then AsyncAlchemyView.get() and all other subclasses will get the FooSchema
+    annotation as well.
     """
     for endpoint in _get_all_parent_endpoints(view_cls):
         # Use `cls.__dict__` to check what attributes are directly on the class.
@@ -463,17 +478,17 @@ def _init_class_based_view(view_cls: type[View]) -> None:
         not in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD)
     ]
     dependency_names: list[str] = []
-    for name, hint in get_type_hints(view_cls).items():
-        if get_origin(hint) is ClassVar:
+    for name, annotation in get_type_hints(view_cls, include_extras=True).items():
+        if get_origin(annotation) is ClassVar:
             continue
-        parameter_kwargs = {"default": getattr(view_cls, name, Ellipsis)}
         dependency_names.append(name)
+        default_value = getattr(view_cls, name, inspect.Parameter.empty)
         new_parameters.append(
             inspect.Parameter(
                 name=name,
                 kind=inspect.Parameter.KEYWORD_ONLY,
-                annotation=hint,
-                **parameter_kwargs,
+                default=default_value,
+                annotation=annotation,
             )
         )
     new_signature = old_signature.replace(parameters=new_parameters)
