@@ -29,7 +29,7 @@ from typing import (
 )
 
 import fastapi
-from .query_modifiers import create_query_param_schema
+from .query_modifiers_config import apply_query_modifiers, create_query_param_schema
 from .schemas import (
     BaseSchema,
     create_model_with_optional_fields,
