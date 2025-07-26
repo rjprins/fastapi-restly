@@ -112,7 +112,25 @@ Under the hood `fa` creates two more Pydantic schemas: A `creation_schema` that 
 
 ## For Developers
 
-- `uv sync` to install
+### Quick Start
+```bash
+# Install dependencies
+uv sync
+
+# Run all tests
+make test-all
+
+# Run specific tests
+make test-framework    # Framework only
+make test-examples     # Examples only
+make test-shop         # Shop example only
+make test-blog         # Blog example only
+```
+
+See [TESTING.md](TESTING.md) for detailed testing documentation.
+
+### Development Tools
+- `uv sync` to install dependencies
 - `pytest` to run tests
 - `ruff` for linting and formatting
-- `mkdocs serve` to render the documentation.
+- `mkdocs serve` to render the documentation
