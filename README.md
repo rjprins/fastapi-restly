@@ -1,137 +1,83 @@
 # FastAPI-Alchemy
-## A REST Framework for FastAPI
 
-> ⚠️ **Disclaimer**: This project is under active development and not yet available on [PyPI](https://pypi.org). Expect breaking changes and incomplete documentation.
+A framework that makes building CRUD APIs with FastAPI and SQLAlchemy incredibly simple.
 
-
-**FastAPI-Alchemy (`fa`)** is built on top of [FastAPI](https://fastapi.tiangolo.com) and [SQLAlchemy](https://www.sqlalchemy.org). 
-
-It provides the `AlchemyView` class which provides instant CRUD endpoints on SQLAlchemy models in a customizable and extendable way. Here's the smallest possible example:
+## Quick Start
 
 ```python
 import fastapi_alchemy as fa
 from fastapi import FastAPI
 from sqlalchemy.orm import Mapped
 
-
-fa.setup_async_database_connection(async_database_url="sqlite+aiosqlite:///blog.db")
-
-
-app = FastAPI()
-
-
-class Blog(fa.IDBase):
-    title: Mapped[str]
-
-
-class BlogSchema(fa.IDSchema[Blog]):
-    title: str
-
-
-@fa.include_view(app)
-class BlogView(fa.AsyncAlchemyView):
-    prefix = "/blogs"
-    model = Blog
-    schema = BlogSchema
-```
-
-This creates five endpoints:
-
-- `GET /blogs` – (TODO:  trailing slash??) list all items, with support for filtering and sorting  
-- `POST /blogs` – create a new item  
-- `GET /blogs/<id>` – retrieve a single item by ID  
-- `PUT /blogs/<id>` – update an existing item  
-- `DELETE /blogs/<id>` – delete an item by ID
-
-And produced [this OpenAPI specification](https://redocly.github.io/redoc/?url=https%3A%2F%2Fgithub.com%2Frjprins%2Ffastapi-alchemy%2Fraw%2Frefs%2Fheads%2Fmain%2Fexample-projects%2Fblog%2Fopenapi.json#tag/BlogView/operation/blogview_index_blogs__get).
-
-`fa` aims to be **batteries-included**, providing tools and utilities commonly needed in FastAPI projects that get deployed into production.
-
-### Installation
-
-```bash
-$ pip install fastapi-alchemy
-```
-
-
-## 
-Minimal examples look nice, but reality never turns out that way.
-Let's dive into the deep end where any serious project finds itself rather soon.
-Here is an example that includes relationships, nested models, custom routes, and class-level dependencies.
-
-```python
-from fastapi_alchemy import fa
-from fastapi import FastAPI
-from sqlalchemy import Mapped, mapped_column
+# Setup database
+fa.setup_async_database_connection("sqlite+aiosqlite:///app.db")
 
 app = FastAPI()
 
-class Product(fa.SQLBase, fa.TimestampMixin):
-    id: Mapped[UUID] = mapped_column(primary_key=True)
+# Define your models
+class User(fa.IDBase):
     name: Mapped[str]
-    addresses: relationship.. many-to-many
-    blog_posts: relationship.. 1 to many
+    email: Mapped[str]
 
-class Order(fa.IDStampsBase):
-    population: Mapped[int]
+class Post(fa.IDBase):
+    title: Mapped[str]
+    content: Mapped[str]
+    author_id: Mapped[int] = Mapped(foreign_key="user.id")
 
-class UserSchema(fa.BaseSchema):
-    id: UUID
-    blog_posts: list['CitySchema']
+# Define your schemas
+class UserSchema(fa.IDSchema[User]):
+    name: str
+    email: str
 
-class CitySchema(TimestampsSchemaMixin):
-    read_only_fields: ClassVar = ["population"]
-    population: int
+class PostSchema(fa.IDSchema[Post]):
+    title: str
+    content: str
+    author_id: int
+    # Field-level read-only using square brackets
+    internal_id: fa.ReadOnly[str]
+
+# Create instant CRUD endpoints
+@fa.include_view(app)
+class UserView(fa.AsyncAlchemyView):
+    prefix = "/users"
+    model = User
+    schema = UserSchema
 
 @fa.include_view(app)
-class WorldView(view.AlchemyView):
-    prefix = "world"
-    model = World
-    schema = WorldSchema
-
-    @fa.route("/ola")
-    async def
+class PostView(fa.AsyncAlchemyView):
+    prefix = "/posts"
+    model = Post
+    schema = PostSchema
 ```
 
-We are going to unpack what happens here, so you know what you can and cannot do with `fa`. Here is a list of things that might interest you:
+That's it! You now have a fully functional API with automatic CRUD operations, validation, and OpenAPI documentation.
 
-* [[fastapi-ding-docs/Custom endpoints]]
-* Custom FastAPI dependencies on views
-* REST views unrelated to SQLAlchemy or a database
-* Other types of primary keys, i.e. UUID id
-* Custom create and update schemas
-* Disable default endpoints
-* Nesting REST views
+## Features
 
+- **Instant CRUD**: Automatic endpoints for Create, Read, Update, Delete operations
+- **Type Safety**: Full type hints and validation with Pydantic
+- **Read-Only Fields**: Mark fields as read-only using `fa.ReadOnly[type]` or class-level `read_only_fields`
+- **Relationships**: Handle foreign keys and nested objects seamlessly
+- **Query Modifiers**: Built-in filtering, sorting, and pagination
+- **Async Support**: Full async/await support with SQLAlchemy 2.0
+- **OpenAPI**: Automatic API documentation
+- **Testing**: Easy testing with FastAPI's TestClient
 
-This includes an explicit Pydantic schema and an explicit `id` column.
-Under the hood `fa` creates two more Pydantic schemas: A `creation_schema` that excludes read-only fields (like `id`). The `creation_schema` is used on the `POST` endpoint. It also create an `update_schema`, where everything is optional. This `update_schema` enables (partial) `PUT` requests.
+## Installation
 
-
-[Tutorial](tutorial.md)
-
-
-## For Developers
-
-### Quick Start
 ```bash
-# Install dependencies
-uv sync
-
-# Run all tests
-make test-all
-
-# Run specific tests
-make test-framework    # Framework only
-make test-examples     # Examples only
-make test-shop         # Shop example only
-make test-blog         # Blog example only
+pip install fastapi-alchemy
 ```
 
-See [TESTING.md](TESTING.md) for detailed testing documentation.
+## Documentation
 
-### Development Tools
-- `uv sync` to install dependencies
-- `pytest` to run tests
-- `ruff` for linting and formatting
-- `mkdocs serve` to render the documentation
+- [Tutorial](docs/tutorial.md) - Get started with FastAPI-Alchemy
+- [Technical Details](docs/technical_details.md) - Learn how the framework works
+- [Examples](example-projects/) - See real-world examples
+
+## Examples
+
+Check out the [example projects](example-projects/) for complete applications:
+
+- **Shop**: E-commerce API with products, orders, and customers
+- **Blog**: Simple blog with posts and comments
