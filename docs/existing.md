@@ -25,7 +25,7 @@ with get_session() as session:
     session.execute(...)
 ```
 
-## Let fa use your DeclarativeBase class
+## Let fd use your DeclarativeBase class
 
 If you already have a DeclarativeBase class, you can make FastAPI-Ding use it:
 

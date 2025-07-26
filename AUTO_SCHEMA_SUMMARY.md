@@ -15,7 +15,7 @@ I have successfully implemented auto-generated schema functionality for FastAPI-
 - **Automatic Schema Generation**: When no schema is specified, one is automatically generated from the SQLAlchemy model
 - **Type Preservation**: All SQLAlchemy column types are properly mapped to Pydantic types
 - **Default Values**: SQLAlchemy default values are preserved in the generated schema
-- **Read-Only Fields**: Support for read-only fields using `fa.ReadOnly[type]`
+- **Read-Only Fields**: Support for read-only fields using `fd.ReadOnly[type]`
 - **Nested Objects**: Support for nested SQLAlchemy models
 
 ### Usage Example
@@ -30,11 +30,11 @@ UserSchema = create_schema_from_model(User)
 ### View Integration
 
 ```python
-import fastapi_ding as fa
+import fastapi_ding as fd
 
 # No schema specified - will be auto-generated
-@fa.include_view(app)
-class UserView(fa.AsyncAlchemyView):
+@fd.include_view(app)
+class UserView(fd.AsyncAlchemyView):
     prefix = "/users"
     model = User
     # schema = UserSchema  # Not needed - auto-generated!

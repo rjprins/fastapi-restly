@@ -13,44 +13,44 @@ pip install fastapi-ding
 Let's create a simple blog API with posts and comments.
 
 ```python
-import fastapi_ding as fa
+import fastapi_ding as fd
 from fastapi import FastAPI
 from sqlalchemy.orm import Mapped
 
 # Setup database
-fa.setup_async_database_connection("sqlite+aiosqlite:///blog.db")
+fd.setup_async_database_connection("sqlite+aiosqlite:///blog.db")
 
 app = FastAPI()
 
 # Define your SQLAlchemy models
-class Post(fa.IDBase):
+class Post(fd.IDBase):
     title: Mapped[str]
     content: Mapped[str]
     published: Mapped[bool] = Mapped(default=False)
 
-class Comment(fa.IDBase):
+class Comment(fd.IDBase):
     content: Mapped[str]
     post_id: Mapped[int] = Mapped(foreign_key="post.id")
 
 # Define your Pydantic schemas
-class PostSchema(fa.IDSchema[Post]):
+class PostSchema(fd.IDSchema[Post]):
     title: str
     content: str
     published: bool
 
-class CommentSchema(fa.IDSchema[Comment]):
+class CommentSchema(fd.IDSchema[Comment]):
     content: str
     post_id: int
 
 # Create views with instant CRUD
-@fa.include_view(app)
-class PostView(fa.AsyncAlchemyView):
+@fd.include_view(app)
+class PostView(fd.AsyncAlchemyView):
     prefix = "/posts"
     model = Post
     schema = PostSchema
 
-@fa.include_view(app)
-class CommentView(fa.AsyncAlchemyView):
+@fd.include_view(app)
+class CommentView(fd.AsyncAlchemyView):
     prefix = "/comments"
     model = Comment
     schema = CommentSchema
@@ -75,7 +75,7 @@ FastAPI-Ding supports two ways to mark fields as read-only:
 You can mark fields as read-only at the class level using the `read_only_fields` class variable:
 
 ```python
-class UserSchema(fa.IDSchema[User]):
+class UserSchema(fd.IDSchema[User]):
     read_only_fields: ClassVar = ["id", "created_at"]
     name: str
     email: str
@@ -88,11 +88,11 @@ class UserSchema(fa.IDSchema[User]):
 You can mark individual fields as read-only using the `ReadOnly` annotation:
 
 ```python
-class ProductSchema(fa.IDSchema[Product]):
+class ProductSchema(fd.IDSchema[Product]):
     name: str
     price: float
-    internal_id: fa.ReadOnly[str]  # This field is read-only
-    created_by: fa.ReadOnly[int]   # This field is also read-only
+    internal_id: fd.ReadOnly[str]  # This field is read-only
+    created_by: fd.ReadOnly[int]   # This field is also read-only
 ```
 
 Read-only fields are:
@@ -113,7 +113,7 @@ from fastapi_ding._globals import fa_globals
 async def create_tables():
     engine = fa_globals.async_make_session.kw["bind"]
     async with engine.begin() as conn:
-        await conn.run_sync(fa.SQLBase.metadata.create_all)
+        await conn.run_sync(fd.SQLBase.metadata.create_all)
 
 asyncio.run(create_tables())
 ```

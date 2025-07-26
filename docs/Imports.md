@@ -4,4 +4,4 @@ It can be nice to have short name import like `import pandas as pd` but at the s
 
 Or, `from fastapi_ding import schemas, sqlbase`
 
-Or, `from fastapi_ding import AsyncAlchemyView, IDBase, TimestampMixin, etc, etc.`
+Or, `from fastapi_ding import AsyncAlchemyView, IDBase, TimestampsMixin, etc, etc.`

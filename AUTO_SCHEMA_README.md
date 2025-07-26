@@ -9,21 +9,21 @@ When you create an `AsyncAlchemyView` or `AlchemyView` without specifying a `sch
 ## Basic Usage
 
 ```python
-import fastapi_ding as fa
+import fastapi_ding as fd
 from fastapi import FastAPI
 from sqlalchemy.orm import Mapped
 
 app = FastAPI()
 
 # Define your model
-class User(fa.IDBase):
+class User(fd.IDBase):
     name: Mapped[str]
     email: Mapped[str]
-    is_active: Mapped[bool] = fa.mapped_column(default=True)
+    is_active: Mapped[bool] = fd.mapped_column(default=True)
 
 # Create view WITHOUT specifying a schema - it will be auto-generated
-@fa.include_view(app)
-class UserView(fa.AsyncAlchemyView):
+@fd.include_view(app)
+class UserView(fd.AsyncAlchemyView):
     prefix = "/users"
     model = User
     # No schema needed - auto-generated!
@@ -55,10 +55,10 @@ CustomUserSchema = create_schema_from_model(
 Auto-generated schemas properly handle read-only fields:
 
 ```python
-class Product(fa.IDBase, fa.TimestampsMixin):
+class Product(fd.IDBase, fd.TimestampsMixin):
     name: Mapped[str]
     price: Mapped[float]
-    description: Mapped[str] = fa.mapped_column(default="")
+    description: Mapped[str] = fd.mapped_column(default="")
 
 # Auto-generated schema will have:
 # - id: read-only (from IDSchema)
@@ -69,13 +69,13 @@ class Product(fa.IDBase, fa.TimestampsMixin):
 
 ### Custom Field Types
 
-You can use `fa.ReadOnly` for custom read-only fields:
+You can use `fd.ReadOnly` for custom read-only fields:
 
 ```python
-class User(fa.IDBase):
+class User(fd.IDBase):
     name: Mapped[str]
     email: Mapped[str]
-    internal_id: fa.ReadOnly[str]  # This will be read-only in the schema
+    internal_id: fd.ReadOnly[str]  # This will be read-only in the schema
 ```
 
 ## Type Mapping
@@ -103,33 +103,33 @@ SQLAlchemy types are automatically mapped to Pydantic types:
 ## Complete Example
 
 ```python
-import fastapi_ding as fa
+import fastapi_ding as fd
 from fastapi import FastAPI
 from sqlalchemy.orm import Mapped
 
 # Setup
-fa.setup_async_database_connection("sqlite+aiosqlite:///app.db")
+fd.setup_async_database_connection("sqlite+aiosqlite:///app.db")
 app = FastAPI()
 
 # Models
-class User(fa.IDBase):
+class User(fd.IDBase):
     name: Mapped[str]
     email: Mapped[str]
-    is_active: Mapped[bool] = fa.mapped_column(default=True)
+    is_active: Mapped[bool] = fd.mapped_column(default=True)
 
-class Product(fa.IDBase, fa.TimestampsMixin):
+class Product(fd.IDBase, fd.TimestampsMixin):
     name: Mapped[str]
     price: Mapped[float]
-    description: Mapped[str] = fa.mapped_column(default="")
+    description: Mapped[str] = fd.mapped_column(default="")
 
 # Views with auto-generated schemas
-@fa.include_view(app)
-class UserView(fa.AsyncAlchemyView):
+@fd.include_view(app)
+class UserView(fd.AsyncAlchemyView):
     prefix = "/users"
     model = User
 
-@fa.include_view(app)
-class ProductView(fa.AsyncAlchemyView):
+@fd.include_view(app)
+class ProductView(fd.AsyncAlchemyView):
     prefix = "/products"
     model = Product
 

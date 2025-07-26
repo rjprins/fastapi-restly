@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 from httpx import AsyncClient
 from sqlalchemy.orm import Mapped
 
-import fastapi_ding as fa
+import fastapi_ding as fd
 from fastapi_ding._globals import fa_globals
 
 
@@ -15,25 +15,25 @@ def reset_metadata():
     """Reset SQLAlchemy metadata to prevent table redefinition conflicts."""
     if hasattr(fa_globals, 'metadata'):
         fa_globals.metadata.clear()
-    fa.SQLBase.metadata.clear()
+    fd.SQLBase.metadata.clear()
 
 
 def test_auto_generated_schema_in_view():
     """Test that schemas are auto-generated when not specified in views."""
     reset_metadata()
-    fa.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
+    fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
     
     app = FastAPI()
     
     # Define a simple model without manually creating a schema
-    class User(fa.IDBase):
+    class User(fd.IDBase):
         name: Mapped[str]
         email: Mapped[str]
-        is_active: Mapped[bool] = fa.mapped_column(default=True)
+        is_active: Mapped[bool] = fd.mapped_column(default=True)
     
     # Create view WITHOUT specifying a schema - it should be auto-generated
-    @fa.include_view(app)
-    class UserView(fa.AsyncAlchemyView):
+    @fd.include_view(app)
+    class UserView(fd.AsyncAlchemyView):
         prefix = "/users"
         model = User
         # No schema specified - should be auto-generated!
@@ -42,7 +42,7 @@ def test_auto_generated_schema_in_view():
     async def create_tables():
         engine = fa_globals.async_make_session.kw["bind"]
         async with engine.begin() as conn:
-            await conn.run_sync(fa.SQLBase.metadata.create_all)
+            await conn.run_sync(fd.SQLBase.metadata.create_all)
     
     asyncio.run(create_tables())
     
@@ -73,19 +73,19 @@ def test_auto_generated_schema_in_view():
 def test_auto_generated_schema_with_timestamps():
     """Test auto-generated schemas with timestamp fields."""
     reset_metadata()
-    fa.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
+    fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
     
     app = FastAPI()
     
     # Define a model with timestamps
-    class Product(fa.IDBase, fa.TimestampsMixin):
+    class Product(fd.IDBase, fd.TimestampsMixin):
         name: Mapped[str]
         price: Mapped[float]
-        description: Mapped[str] = fa.mapped_column(default="")
+        description: Mapped[str] = fd.mapped_column(default="")
     
     # Create view without schema
-    @fa.include_view(app)
-    class ProductView(fa.AsyncAlchemyView):
+    @fd.include_view(app)
+    class ProductView(fd.AsyncAlchemyView):
         prefix = "/products"
         model = Product
         # No schema specified - should be auto-generated!
@@ -94,7 +94,7 @@ def test_auto_generated_schema_with_timestamps():
     async def create_tables():
         engine = fa_globals.async_make_session.kw["bind"]
         async with engine.begin() as conn:
-            await conn.run_sync(fa.SQLBase.metadata.create_all)
+            await conn.run_sync(fd.SQLBase.metadata.create_all)
     
     asyncio.run(create_tables())
     
@@ -116,19 +116,19 @@ def test_auto_generated_schema_with_timestamps():
 def test_auto_generated_schema_with_defaults():
     """Test auto-generated schemas with field defaults."""
     reset_metadata()
-    fa.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
+    fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
     
     app = FastAPI()
     
     # Define a model with defaults
-    class Category(fa.IDBase):
+    class Category(fd.IDBase):
         name: Mapped[str]
-        description: Mapped[str] = fa.mapped_column(default="No description")
-        is_active: Mapped[bool] = fa.mapped_column(default=True)
+        description: Mapped[str] = fd.mapped_column(default="No description")
+        is_active: Mapped[bool] = fd.mapped_column(default=True)
     
     # Create view without schema
-    @fa.include_view(app)
-    class CategoryView(fa.AsyncAlchemyView):
+    @fd.include_view(app)
+    class CategoryView(fd.AsyncAlchemyView):
         prefix = "/categories"
         model = Category
         # No schema specified - should be auto-generated!
@@ -137,7 +137,7 @@ def test_auto_generated_schema_with_defaults():
     async def create_tables():
         engine = fa_globals.async_make_session.kw["bind"]
         async with engine.begin() as conn:
-            await conn.run_sync(fa.SQLBase.metadata.create_all)
+            await conn.run_sync(fd.SQLBase.metadata.create_all)
     
     asyncio.run(create_tables())
     
@@ -156,18 +156,18 @@ def test_auto_generated_schema_with_defaults():
 def test_auto_generated_schema_crud_operations():
     """Test full CRUD operations with auto-generated schemas."""
     reset_metadata()
-    fa.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
+    fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
     
     app = FastAPI()
     
     # Define a simple model
-    class Item(fa.IDBase):
+    class Item(fd.IDBase):
         name: Mapped[str]
         quantity: Mapped[int]
     
     # Create view without schema
-    @fa.include_view(app)
-    class ItemView(fa.AsyncAlchemyView):
+    @fd.include_view(app)
+    class ItemView(fd.AsyncAlchemyView):
         prefix = "/items"
         model = Item
         # No schema specified - should be auto-generated!
@@ -176,7 +176,7 @@ def test_auto_generated_schema_crud_operations():
     async def create_tables():
         engine = fa_globals.async_make_session.kw["bind"]
         async with engine.begin() as conn:
-            await conn.run_sync(fa.SQLBase.metadata.create_all)
+            await conn.run_sync(fd.SQLBase.metadata.create_all)
     
     asyncio.run(create_tables())
     
