@@ -9,12 +9,12 @@
 It provides the `AlchemyView` class which provides instant CRUD endpoints on SQLAlchemy models in a customizable and extendable way. Here's the smallest possible example:
 
 ```python
-import fastapi_alchmey as fa
+import fastapi_alchemy as fa
 from fastapi import FastAPI
 from sqlalchemy.orm import Mapped
 
 
-fa.settings.async_database_url = "sqlite+aiosqlite:///blog.db"
+fa.setup_async_database_connection(async_database_url="sqlite+aiosqlite:///blog.db")
 
 
 app = FastAPI()
@@ -34,6 +34,7 @@ class BlogView(fa.AsyncAlchemyView):
     model = Blog
     schema = BlogSchema
 ```
+
 This creates five endpoints:
 
 - `GET /blogs` – (TODO:  trailing slash??) list all items, with support for filtering and sorting  
@@ -88,7 +89,7 @@ class WorldView(view.AlchemyView):
     model = World
     schema = WorldSchema
 
-    @view.route("/ola")
+    @fa.route("/ola")
     async def
 ```
 
