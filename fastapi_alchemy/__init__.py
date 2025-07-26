@@ -15,11 +15,12 @@ from .schemas import (
 )
 from .sqlbase import IDBase, IDStampsBase, SQLBase, TimestampsMixin
 from .sync_view import AlchemyView
-from .views import AsyncAlchemyView, include_view, route
+from .views import AsyncAlchemyView, BaseAlchemyView, include_view, route
 
 __all__ = [
     "AlchemyView",
     "AsyncAlchemyView",
+    "BaseAlchemyView",
     "AsyncDBDependency",
     "AsyncSession",
     "BaseSchema",

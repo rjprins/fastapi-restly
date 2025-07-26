@@ -8,7 +8,7 @@ from ._session import DBDependency, generate_session
 from .query_modifiers import apply_query_modifiers
 from .schemas import NOT_SET, resolve_ids_to_sqlalchemy_objects
 from .sqlbase import SQLBase
-from .views import AsyncAlchemyView, route
+from .views import BaseAlchemyView, route
 
 
 def make_new_object(session, model_cls, schema_obj):
@@ -18,9 +18,9 @@ def make_new_object(session, model_cls, schema_obj):
     return obj
 
 
-class AlchemyView(AsyncAlchemyView):
+class AlchemyView(BaseAlchemyView):
     """
-    AsyncAlchemyView creates a CRUD/REST interface for database objects.
+    AlchemyView creates a CRUD/REST interface for database objects.
     Basic usage:
 
     class FooView:
@@ -112,17 +112,27 @@ class AlchemyView(AsyncAlchemyView):
 
     def delete_object(self, obj: SQLBase) -> None:
         """
-        Handle a DELETE request on "/{id}". This should delete an object from the
-        database. `process_get()` is called first to lookup the object.
+        Delete an object from the database.
         Feel free to override this method.
         """
         self.db.delete(obj)
         self.db.flush()
 
     def make_new_object(self, schema_obj):
-        return make_new_object(self.db, self.model, schema_obj)
+        """
+        Create a new object from a schema object.
+        Feel free to override this method.
+        """
+        resolve_ids_to_sqlalchemy_objects(schema_obj, self.db)
+        obj = self.model(**dict(schema_obj))
+        self.db.add(obj)
+        return obj
 
     def update_object(self, obj, schema_obj):
+        """
+        Update an existing object with data from a schema object.
+        Feel free to override this method.
+        """
         resolve_ids_to_sqlalchemy_objects(schema_obj, self.db)
         for field_name, value in schema_obj:
             if value is NOT_SET:
@@ -136,6 +146,10 @@ class AlchemyView(AsyncAlchemyView):
         return self.save_object(obj)
 
     def save_object(self, obj):
+        """
+        Save an object to the database.
+        Feel free to override this method.
+        """
         self.db.add(obj)
         self.db.flush()
         self.db.refresh(obj)

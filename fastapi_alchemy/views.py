@@ -120,17 +120,13 @@ def route(path: str, **api_route_kwargs) -> Callable:
     return store_args_decorator
 
 
-class AsyncAlchemyView(View):
+class BaseAlchemyView(View):
     """
-    AsyncAlchemyView creates a CRUD/REST interface for database objects.
-    Basic usage:
-
-    class FooView:
-        prefix = "/foo"
-        schema = FooSchema
-        model = Foo
-
-    Where `Foo` is a SQLAlchemy model and `FooSchema` a Pydantic model.
+    Base class for AlchemyView implementations.
+    
+    This class contains the common functionality shared between AsyncAlchemyView
+    and AlchemyView, including schema definitions, model configuration, and
+    common CRUD operation logic.
     """
 
     schema: ClassVar[type[BaseSchema]]
@@ -142,7 +138,6 @@ class AsyncAlchemyView(View):
     exclude_routes: ClassVar[list[str]] = []
 
     request: fastapi.Request
-    db: AsyncDBDependency
 
     @classmethod
     def before_include_view(cls):
@@ -162,17 +157,38 @@ class AsyncAlchemyView(View):
         if not hasattr(cls, "update_schema"):
             cls.update_schema = create_model_with_optional_fields(cls.schema)
 
-        _annotate(
-            cls.index,
-            return_annotation=Sequence[cls.schema],
-            query_params=Annotated[cls.index_param_schema, fastapi.Query()],
-        )
-        _annotate(cls.get, return_annotation=cls.schema)
-        _annotate(
-            cls.post, return_annotation=cls.schema, schema_obj=cls.creation_schema
-        )
-        _annotate(cls.put, return_annotation=cls.schema, schema_obj=cls.update_schema)
+        # Only annotate if the methods exist (they will be overridden in subclasses)
+        if hasattr(cls, "index"):
+            _annotate(
+                cls.index,
+                return_annotation=Sequence[cls.schema],
+                query_params=Annotated[cls.index_param_schema, fastapi.Query()],
+            )
+        if hasattr(cls, "get"):
+            _annotate(cls.get, return_annotation=cls.schema)
+        if hasattr(cls, "post"):
+            _annotate(
+                cls.post, return_annotation=cls.schema, schema_obj=cls.creation_schema
+            )
+        if hasattr(cls, "put"):
+            _annotate(cls.put, return_annotation=cls.schema, schema_obj=cls.update_schema)
         _exclude_routes(cls)
+
+
+class AsyncAlchemyView(BaseAlchemyView):
+    """
+    AsyncAlchemyView creates a CRUD/REST interface for database objects.
+    Basic usage:
+
+    class FooView:
+        prefix = "/foo"
+        schema = FooSchema
+        model = Foo
+
+    Where `Foo` is a SQLAlchemy model and `FooSchema` a Pydantic model.
+    """
+
+    db: AsyncDBDependency
 
     @route("/")
     async def index(self, query_params):
