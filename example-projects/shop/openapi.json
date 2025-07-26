@@ -804,6 +804,22 @@
               ],
               "title": "Filter[Products]"
             }
+          },
+          {
+            "name": "filter[internal_notes]",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Filter[Internal Notes]"
+            }
           }
         ],
         "responses": {
@@ -1018,6 +1034,17 @@
     "schemas": {
       "CreateCustomerSchema": {
         "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
           "email": {
             "type": "string",
             "title": "Email"
@@ -1028,10 +1055,55 @@
           "email"
         ],
         "title": "CreateCustomerSchema",
-        "description": "Read-only have been fields removed."
+        "description": "Read-only fields are optional and ignored."
       },
       "CreateOrderSchema": {
         "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "customer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CustomerSchema"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "customer_id": {
             "$ref": "#/components/schemas/IDSchema_Customer_"
           },
@@ -1041,6 +1113,17 @@
             },
             "type": "array",
             "title": "Products"
+          },
+          "internal_notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Internal Notes"
           }
         },
         "type": "object",
@@ -1049,10 +1132,21 @@
           "products"
         ],
         "title": "CreateOrderSchema",
-        "description": "Read-only have been fields removed."
+        "description": "Read-only fields are optional and ignored."
       },
       "CreateProductSchema": {
         "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
           "name": {
             "type": "string",
             "title": "Name"
@@ -1076,7 +1170,7 @@
           "price"
         ],
         "title": "CreateProductSchema",
-        "description": "Read-only have been fields removed."
+        "description": "Read-only fields are optional and ignored."
       },
       "CustomerSchema": {
         "properties": {
@@ -1176,6 +1270,10 @@
             },
             "type": "array",
             "title": "Products"
+          },
+          "internal_notes": {
+            "type": "string",
+            "title": "Internal Notes"
           }
         },
         "type": "object",
@@ -1185,7 +1283,8 @@
           "updated_at",
           "customer",
           "customer_id",
-          "products"
+          "products",
+          "internal_notes"
         ],
         "title": "OrderSchema"
       },
@@ -1223,25 +1322,24 @@
       "UpdateCustomerSchema": {
         "properties": {
           "id": {
-            "type": "integer",
-            "title": "Id"
-          },
-          "email": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "integer"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Email",
-            "default": "Partial PUT does not support default values"
+            "title": "Id"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
           }
         },
         "type": "object",
         "required": [
-          "id"
+          "email"
         ],
         "title": "UpdateCustomerSchema",
         "description": "Read-only have been fields removed and all fields are optional"
@@ -1249,62 +1347,61 @@
       "UpdateOrderSchema": {
         "properties": {
           "id": {
-            "type": "integer",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Id"
           },
           "created_at": {
-            "type": "string",
-            "format": "date-time",
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Created At"
           },
           "updated_at": {
-            "type": "string",
-            "format": "date-time",
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Updated At"
           },
-          "customer_id": {
+          "customer": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/IDSchema_Customer_"
+                "$ref": "#/components/schemas/CustomerSchema"
               },
               {
                 "type": "null"
               }
-            ],
-            "default": "Partial PUT does not support default values"
+            ]
+          },
+          "customer_id": {
+            "$ref": "#/components/schemas/IDSchema_Customer_"
           },
           "products": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/components/schemas/IDSchema_Product_"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Products",
-            "default": "Partial PUT does not support default values"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "created_at",
-          "updated_at"
-        ],
-        "title": "UpdateOrderSchema",
-        "description": "Read-only have been fields removed and all fields are optional"
-      },
-      "UpdateProductSchema": {
-        "properties": {
-          "id": {
-            "type": "integer",
-            "title": "Id"
+            "items": {
+              "$ref": "#/components/schemas/IDSchema_Product_"
+            },
+            "type": "array",
+            "title": "Products"
           },
-          "name": {
+          "internal_notes": {
             "anyOf": [
               {
                 "type": "string"
@@ -1313,40 +1410,51 @@
                 "type": "null"
               }
             ],
-            "title": "Name",
-            "default": "Partial PUT does not support default values"
-          },
-          "price": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Price",
-            "default": "Partial PUT does not support default values"
-          },
-          "orders": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/components/schemas/IDSchema_Order_"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Orders",
-            "default": "Partial PUT does not support default values"
+            "title": "Internal Notes"
           }
         },
         "type": "object",
         "required": [
-          "id"
+          "customer_id",
+          "products"
+        ],
+        "title": "UpdateOrderSchema",
+        "description": "Read-only have been fields removed and all fields are optional"
+      },
+      "UpdateProductSchema": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "price": {
+            "type": "number",
+            "title": "Price"
+          },
+          "orders": {
+            "items": {
+              "$ref": "#/components/schemas/IDSchema_Order_"
+            },
+            "type": "array",
+            "title": "Orders",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "price"
         ],
         "title": "UpdateProductSchema",
         "description": "Read-only have been fields removed and all fields are optional"

@@ -1,14 +1,21 @@
-"""Test basic functionality of the framework."""
+"""Test basic functionality of the FastAPI-Alchemy framework."""
 
+import asyncio
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import Mapped, mapped_column
 
 import fastapi_alchemy as fa
 
 
+def reset_metadata():
+    """Reset SQLAlchemy metadata to prevent table redefinition conflicts."""
+    fa.SQLBase.metadata.clear()
+
+
 def test_crud_endpoints_exist():
     """Test that all CRUD endpoints are created."""
+    reset_metadata()
     fa.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
     
     app = FastAPI()
@@ -18,73 +25,20 @@ def test_crud_endpoints_exist():
         name: Mapped[str]
         email: Mapped[str]
     
+    # Create a schema
     class UserSchema(fa.IDSchema[User]):
         name: str
         email: str
     
+    # Create a view
     @fa.include_view(app)
     class UserView(fa.AsyncAlchemyView):
         prefix = "/users"
         model = User
         schema = UserSchema
     
-    client = TestClient(app)
-    
-    response = client.get("/openapi.json")
-    assert response.status_code == 200
-    
-    spec = response.json()
-    paths = spec["paths"]
-    
-    # Check that all expected endpoints exist
-    assert "/users/" in paths
-    assert "/users/{id}" in paths
-    
-    # Check HTTP methods
-    user_paths = paths["/users/"]
-    user_detail_paths = paths["/users/{id}"]
-    
-    assert "get" in user_paths  # List
-    assert "post" in user_paths  # Create
-    assert "get" in user_detail_paths  # Retrieve
-    assert "put" in user_detail_paths  # Update
-    assert "delete" in user_detail_paths  # Delete
-
-
-def test_basic_crud_operations():
-    """Test basic CRUD operations."""
-    fa.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
-    
-    app = FastAPI()
-    
-    # Define a simple model
-    class Product(fa.IDBase):
-        name: Mapped[str]
-        price: Mapped[float]
-    
-    class ProductSchema(fa.IDSchema[Product]):
-        name: str
-        price: float
-    
-    @fa.include_view(app)
-    class ProductView(fa.AsyncAlchemyView):
-        prefix = "/products"
-        model = Product
-        schema = ProductSchema
-    
-    # Debug: Check what the update schema looks like
-    print(f"Update schema fields: {ProductView.update_schema.model_fields.keys()}")
-    print(f"Update schema required fields: {[name for name, field in ProductView.update_schema.model_fields.items() if field.is_required()]}")
-    
-    # Debug: Check what the creation schema looks like
-    print(f"Creation schema fields: {ProductView.creation_schema.model_fields.keys()}")
-    print(f"Creation schema required fields: {[name for name, field in ProductView.creation_schema.model_fields.items() if field.is_required()]}")
-    
-    # Create tables using the same engine as the framework
-    import asyncio
-    
+    # Create tables
     async def create_tables():
-        # Get the engine from the framework's session maker
         from fastapi_alchemy._globals import fa_globals
         engine = fa_globals.async_make_session.kw["bind"]
         async with engine.begin() as conn:
@@ -94,12 +48,66 @@ def test_basic_crud_operations():
     
     client = TestClient(app)
     
-    # Test creating a product
+    # Test that all CRUD endpoints exist
+    response = client.get("/users/")
+    assert response.status_code == 200
+    
+    response = client.post("/users/", json={"name": "Test User", "email": "test@example.com"})
+    assert response.status_code == 201
+    
+    created_user = response.json()
+    assert "id" in created_user
+    
+    user_id = created_user["id"]
+    
+    response = client.get(f"/users/{user_id}")
+    assert response.status_code == 200
+    
+    response = client.put(f"/users/{user_id}", json={"name": "Updated User", "email": "updated@example.com"})
+    assert response.status_code == 200
+    
+    response = client.delete(f"/users/{user_id}")
+    assert response.status_code == 204
+
+
+def test_basic_crud_operations():
+    """Test basic CRUD operations."""
+    reset_metadata()
+    fa.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
+    
+    app = FastAPI()
+    
+    # Define a simple model
+    class Product(fa.IDBase):
+        name: Mapped[str]
+        price: Mapped[float]
+    
+    # Create a schema
+    class ProductSchema(fa.IDSchema[Product]):
+        name: str
+        price: float
+    
+    # Create a view
+    @fa.include_view(app)
+    class ProductView(fa.AsyncAlchemyView):
+        prefix = "/products"
+        model = Product
+        schema = ProductSchema
+    
+    # Create tables
+    async def create_tables():
+        from fastapi_alchemy._globals import fa_globals
+        engine = fa_globals.async_make_session.kw["bind"]
+        async with engine.begin() as conn:
+            await conn.run_sync(fa.SQLBase.metadata.create_all)
+    
+    asyncio.run(create_tables())
+    
+    client = TestClient(app)
+    
+    # Test CREATE
     product_data = {"name": "Test Product", "price": 29.99}
     response = client.post("/products/", json=product_data)
-    if response.status_code != 201:
-        print(f"POST response: {response.status_code}")
-        print(f"POST response body: {response.text}")
     assert response.status_code == 201
     
     created_product = response.json()
@@ -107,37 +115,37 @@ def test_basic_crud_operations():
     assert created_product["price"] == 29.99
     assert "id" in created_product
     
-    # Test retrieving the product
     product_id = created_product["id"]
-    response = client.get(f"/products/{product_id}")
-    assert response.status_code == 200
     
-    retrieved_product = response.json()
-    assert retrieved_product["name"] == "Test Product"
-    assert retrieved_product["price"] == 29.99
-    
-    # Test listing products
+    # Test READ (get all)
     response = client.get("/products/")
     assert response.status_code == 200
     products = response.json()
-    assert len(products) >= 1
+    assert len(products) == 1
+    assert products[0]["id"] == product_id
     
-    # Test updating the product - this should now work without id in body
+    # Test READ (get by id)
+    response = client.get(f"/products/{product_id}")
+    assert response.status_code == 200
+    product = response.json()
+    assert product["id"] == product_id
+    assert product["name"] == "Test Product"
+    
+    # Test UPDATE
     update_data = {"name": "Updated Product", "price": 39.99}
     response = client.put(f"/products/{product_id}", json=update_data)
-    if response.status_code != 200:
-        print(f"PUT response: {response.status_code}")
-        print(f"PUT response body: {response.text}")
     assert response.status_code == 200
     
     updated_product = response.json()
     assert updated_product["name"] == "Updated Product"
     assert updated_product["price"] == 39.99
     
-    # Test deleting the product
+    # Test DELETE
     response = client.delete(f"/products/{product_id}")
     assert response.status_code == 204
     
-    # Verify product is deleted
-    response = client.get(f"/products/{product_id}")
-    assert response.status_code == 404 
+    # Verify deletion
+    response = client.get("/products/")
+    assert response.status_code == 200
+    products = response.json()
+    assert len(products) == 0 

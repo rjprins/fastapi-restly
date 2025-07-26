@@ -35,6 +35,7 @@ from .schemas import (
     create_model_with_optional_fields,
     create_model_without_read_only_fields,
 )
+from .schema_generator import auto_generate_schema_for_view
 from .sqlbase import SQLBase
 
 
@@ -179,8 +180,12 @@ class BaseAlchemyView(View):
         This function can be overridden to further tweak the endpoints before they
         are added to FastAPI.
         """
+        # Auto-generate schema if none is provided
         if not hasattr(cls, "schema"):
-            raise Exception(f"'{cls.__name__}.schema' must be specified")
+            if not hasattr(cls, "model"):
+                raise Exception(f"'{cls.__name__}.model' must be specified to auto-generate schema")
+            cls.schema = auto_generate_schema_for_view(cls, cls.model)
+        
         if not hasattr(cls, "index_param_schema"):
             cls.index_param_schema = create_query_param_schema(cls.schema)
         if not hasattr(cls, "creation_schema"):

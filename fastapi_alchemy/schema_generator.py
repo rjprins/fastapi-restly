@@ -86,10 +86,13 @@ def get_model_fields(model_cls: type[DeclarativeBase]) -> Dict[str, Any]:
     """
     fields: Dict[str, Any] = {}
     
-    # Get all annotations from the model class
-    annotations = getattr(model_cls, '__annotations__', {})
+    # Get all annotations from the model class and its base classes
+    all_annotations = {}
+    for cls in model_cls.mro():
+        if hasattr(cls, '__annotations__'):
+            all_annotations.update(cls.__annotations__)
     
-    for name, field_type in annotations.items():
+    for name, field_type in all_annotations.items():
         if name.startswith('_'):
             continue
             
@@ -129,6 +132,8 @@ def get_model_fields(model_cls: type[DeclarativeBase]) -> Dict[str, Any]:
             attr = getattr(model_cls, name)
             if hasattr(attr, 'default'):
                 field_info['default'] = attr.default
+                # If there's a SQLAlchemy default, make the field optional
+                field_info['is_optional'] = True
         
         fields[name] = field_info
     
@@ -219,8 +224,10 @@ def create_schema_from_model(
                 pydantic_type = target_schema
         
         # Add field to definitions - use proper Pydantic field format
-        if field_info['default'] is not None:
-            field_definitions[field_name] = (pydantic_type, field_info['default'])
+        # Don't include SQLAlchemy defaults as they're not JSON-serializable
+        if field_info['is_optional']:
+            from pydantic import Field
+            field_definitions[field_name] = (pydantic_type, Field(default=None))
         else:
             field_definitions[field_name] = (pydantic_type, ...)
     
@@ -280,6 +287,17 @@ def convert_sqlalchemy_type_to_pydantic(
     
     # Map to Pydantic type
     pydantic_type = type_mapping.get(type_name, str)
+    
+    # Handle datetime types specifically
+    if type_name in ['datetime', 'DateTime']:
+        from datetime import datetime
+        pydantic_type = datetime
+    elif type_name in ['date', 'Date']:
+        from datetime import date
+        pydantic_type = date
+    elif type_name in ['time', 'Time']:
+        from datetime import time
+        pydantic_type = time
     
     # Handle optional types
     if is_optional:
