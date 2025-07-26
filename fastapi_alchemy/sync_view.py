@@ -1,17 +1,19 @@
-from typing import Any, Sequence
+from typing import Any, Sequence, TypeVar
 
 import fastapi
-import pydantic
 import sqlalchemy
+from sqlalchemy.orm import Session
 
-from ._session import DBDependency, generate_session
+from ._session import DBDependency
 from .query_modifiers import apply_query_modifiers
-from .schemas import NOT_SET, resolve_ids_to_sqlalchemy_objects
+from .schemas import NOT_SET, resolve_ids_to_sqlalchemy_objects, BaseSchema
 from .sqlbase import SQLBase
 from .views import BaseAlchemyView, route
 
+T = TypeVar("T", bound=SQLBase)
 
-def make_new_object(session, model_cls, schema_obj):
+
+def make_new_object(session: Session, model_cls: type[T], schema_obj: BaseSchema) -> T:
     resolve_ids_to_sqlalchemy_objects(schema_obj, session)
     obj = model_cls(**dict(schema_obj))
     session.add(obj)
@@ -34,10 +36,10 @@ class AlchemyView(BaseAlchemyView):
     db: DBDependency  # type: ignore[reportIncompatibleVariableOverride]
 
     @route("/")
-    def index(self, query_params):
+    def index(self, query_params: Any) -> Sequence[Any]:
         return self.process_index()
 
-    def process_index(self, query: sqlalchemy.Select | None = None) -> Sequence[Any]:
+    def process_index(self, query: sqlalchemy.Select[Any] | None = None) -> Sequence[Any]:
         """
         Handle a GET request on "/". This should return a list of objects.
         Accepts a query argument that can be used for narrowing down the selection.
@@ -61,7 +63,7 @@ class AlchemyView(BaseAlchemyView):
         return scalar_result.all()
 
     @route("/{id}")
-    def get(self, id: int):
+    def get(self, id: int) -> Any:
         return self.process_get(id)
 
     def process_get(self, id: int) -> Any:
@@ -76,10 +78,10 @@ class AlchemyView(BaseAlchemyView):
         return obj
 
     @route("/", methods=["POST"], status_code=201)
-    def post(self, schema_obj):  # schema_obj type is set in before_include_view
+    def post(self, schema_obj: BaseSchema) -> Any:  # schema_obj type is set in before_include_view
         return self.process_post(schema_obj)
 
-    def process_post(self, schema_obj) -> Any:
+    def process_post(self, schema_obj: BaseSchema) -> Any:
         """
         Handle a POST request on "/". This should create a new object.
         Feel free to override this method.
@@ -89,10 +91,10 @@ class AlchemyView(BaseAlchemyView):
         return obj
 
     @route("/{id}", methods=["PUT"])
-    def put(self, id: int, schema_obj):
+    def put(self, id: int, schema_obj: BaseSchema) -> Any:
         return self.process_put(id, schema_obj)
 
-    def process_put(self, id, schema_obj) -> Any:
+    def process_put(self, id: int, schema_obj: BaseSchema) -> Any:
         """
         Handle a PUT request on "/{id}". This should (partially) update an existing
         object.
@@ -102,7 +104,7 @@ class AlchemyView(BaseAlchemyView):
         return self.update_object(obj, schema_obj)
 
     @route("/{id}", methods=["DELETE"], status_code=204)
-    def delete(self, id: int):
+    def delete(self, id: int) -> fastapi.Response:
         return self.process_delete(id)
 
     def process_delete(self, id: int) -> fastapi.Response:
@@ -118,7 +120,7 @@ class AlchemyView(BaseAlchemyView):
         self.db.delete(obj)
         self.db.flush()
 
-    def make_new_object(self, schema_obj):
+    def make_new_object(self, schema_obj: BaseSchema) -> SQLBase:
         """
         Create a new object from a schema object.
         Feel free to override this method.
@@ -128,7 +130,7 @@ class AlchemyView(BaseAlchemyView):
         self.db.add(obj)
         return obj
 
-    def update_object(self, obj, schema_obj):
+    def update_object(self, obj: SQLBase, schema_obj: BaseSchema) -> SQLBase:
         """
         Update an existing object with data from a schema object.
         Feel free to override this method.
@@ -145,7 +147,7 @@ class AlchemyView(BaseAlchemyView):
             setattr(obj, field_name, value)
         return self.save_object(obj)
 
-    def save_object(self, obj):
+    def save_object(self, obj: SQLBase) -> SQLBase:
         """
         Save an object to the database.
         Feel free to override this method.
