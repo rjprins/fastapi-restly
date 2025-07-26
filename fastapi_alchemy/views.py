@@ -191,11 +191,11 @@ class AsyncAlchemyView(BaseAlchemyView):
     db: AsyncDBDependency
 
     @route("/")
-    async def index(self, query_params):
+    async def index(self, query_params: Any) -> Sequence[Any]:
         return await self.process_index(query_params)
 
     async def process_index(
-        self, query_params: pydantic.BaseModel, query: sqlalchemy.Select | None = None
+        self, query_params: pydantic.BaseModel, query: sqlalchemy.Select[Any] | None = None
     ) -> Sequence[Any]:
         """
         Handle a GET request on "/". This should return a list of objects.
@@ -216,7 +216,7 @@ class AsyncAlchemyView(BaseAlchemyView):
         return scalar_result.all()
 
     @route("/{id}")
-    async def get(self, id: int):
+    async def get(self, id: int) -> Any:
         return await self.process_get(id)
 
     async def process_get(self, id: int) -> Any:
@@ -231,10 +231,10 @@ class AsyncAlchemyView(BaseAlchemyView):
         return obj
 
     @route("/", methods=["POST"], status_code=201)
-    async def post(self, schema_obj):  # schema_obj type is set in before_include_view
+    async def post(self, schema_obj: BaseSchema) -> Any:  # schema_obj type is set in before_include_view
         return await self.process_post(schema_obj)
 
-    async def process_post(self, schema_obj) -> Any:
+    async def process_post(self, schema_obj: BaseSchema) -> Any:
         """
         Handle a POST request on "/". This should create a new object.
         Feel free to override this method.
@@ -243,10 +243,10 @@ class AsyncAlchemyView(BaseAlchemyView):
         return await self.save_object(obj)
 
     @route("/{id}", methods=["PUT"])
-    async def put(self, id: int, schema_obj):
+    async def put(self, id: int, schema_obj: BaseSchema) -> Any:
         return await self.process_put(id, schema_obj)
 
-    async def process_put(self, id, schema_obj) -> Any:
+    async def process_put(self, id: int, schema_obj: BaseSchema) -> Any:
         """
         Handle a PUT request on "/{id}". This should (partially) update an existing
         object.
@@ -256,7 +256,7 @@ class AsyncAlchemyView(BaseAlchemyView):
         return await self.update_object(obj, schema_obj)
 
     @route("/{id}", methods=["DELETE"], status_code=204)
-    async def delete(self, id: int):
+    async def delete(self, id: int) -> fastapi.Response:
         return await self.process_delete(id)
 
     async def process_delete(self, id: int) -> fastapi.Response:
@@ -273,13 +273,21 @@ class AsyncAlchemyView(BaseAlchemyView):
         await self.db.delete(obj)
         await self.db.flush()
 
-    async def make_new_object(self, schema_obj):
+    async def make_new_object(self, schema_obj: BaseSchema) -> SQLBase:
+        """
+        Create a new object from a schema object.
+        Feel free to override this method.
+        """
         await async_resolve_ids_to_sqlalchemy_objects(schema_obj, self.db)
         obj = self.model(**dict(schema_obj))
         self.db.add(obj)
         return obj
 
-    async def update_object(self, obj, schema_obj):
+    async def update_object(self, obj: SQLBase, schema_obj: BaseSchema) -> SQLBase:
+        """
+        Update an existing object with data from a schema object.
+        Feel free to override this method.
+        """
         await async_resolve_ids_to_sqlalchemy_objects(schema_obj, self.db)
         for field_name, value in schema_obj:
             if value is NOT_SET:
@@ -292,7 +300,11 @@ class AsyncAlchemyView(BaseAlchemyView):
             setattr(obj, field_name, value)
         return await self.save_object(obj)
 
-    async def save_object(self, obj):
+    async def save_object(self, obj: SQLBase) -> SQLBase:
+        """
+        Save an object to the database.
+        Feel free to override this method.
+        """
         await self.db.flush()
         await self.db.refresh(obj)
         return obj
