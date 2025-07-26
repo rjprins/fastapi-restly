@@ -241,11 +241,14 @@ class AsyncAlchemyView(View):
 
     @route("/{id}", methods=["DELETE"], status_code=204)
     async def delete(self, id: int):
+        return await self.process_delete(id)
+
+    async def process_delete(self, id: int) -> fastapi.Response:
         obj = await self.process_get(id)
-        await self.process_delete(obj)
+        await self.delete_object(obj)
         return fastapi.Response(status_code=204)
 
-    async def process_delete(self, obj: SQLBase) -> None:
+    async def delete_object(self, obj: SQLBase) -> None:
         """
         Handle a DELETE request on "/{id}". This should delete an object from the
         database. `process_get()` is called first to lookup the object.

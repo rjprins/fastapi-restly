@@ -126,7 +126,13 @@ def apply_sorting(
 ) -> Select:
     sort_string = query_params.get("sort")
     if not sort_string:
-        return select_query
+        # Try to apply a default ordering
+        id_column = getattr(model, "id", None)
+        # TODO: Maybe check if this is a UUID and dont sort in that case?
+        if id_column:
+            return select_query.order_by(id_column)
+        else:
+            return select_query  # Unordered
 
     for column_name in sort_string.split(","):
         order = sqlalchemy.asc

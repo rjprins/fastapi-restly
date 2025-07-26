@@ -35,11 +35,9 @@ class AlchemyView(AsyncAlchemyView):
 
     @route("/")
     def index(self, query_params):
-        return self.process_index(query_params)
+        return self.process_index()
 
-    def process_index(
-        self, query_params: pydantic.BaseModel, query: sqlalchemy.Select | None = None
-    ) -> Sequence[Any]:
+    def process_index(self, query: sqlalchemy.Select | None = None) -> Sequence[Any]:
         """
         Handle a GET request on "/". This should return a list of objects.
         Accepts a query argument that can be used for narrowing down the selection.
@@ -47,7 +45,7 @@ class AlchemyView(AsyncAlchemyView):
 
             def process_index(self, query=None):
                 query = make_my_query()
-                objs = super.process_index(query)
+                objs = super().process_index(query)
                 return add_my_info(objs)
         """
         if query is None:
@@ -105,11 +103,14 @@ class AlchemyView(AsyncAlchemyView):
 
     @route("/{id}", methods=["DELETE"], status_code=204)
     def delete(self, id: int):
+        return self.process_delete(id)
+
+    def process_delete(self, id: int) -> fastapi.Response:
         obj = self.process_get(id)
-        self.process_delete(obj)
+        self.delete_object(obj)
         return fastapi.Response(status_code=204)
 
-    def process_delete(self, obj: SQLBase) -> None:
+    def delete_object(self, obj: SQLBase) -> None:
         """
         Handle a DELETE request on "/{id}". This should delete an object from the
         database. `process_get()` is called first to lookup the object.

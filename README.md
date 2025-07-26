@@ -6,7 +6,7 @@
 
 **FastAPI-Alchemy (`fa`)** is built on top of [FastAPI](https://fastapi.tiangolo.com) and [SQLAlchemy](https://www.sqlalchemy.org). 
 
-It provides the `AlchemyView` class which provides instant CRUD endpoints on SQLAlchemy models in a completely customizable and extendable way. Here's the smallest possible example:
+It provides the `AlchemyView` class which provides instant CRUD endpoints on SQLAlchemy models in a customizable and extendable way. Here's the smallest possible example:
 
 ```python
 import fastapi_alchmey as fa
@@ -53,40 +53,7 @@ $ pip install fastapi-alchemy
 ```
 
 
-### That's Too Implicit for My Pythonic Senses
-
-Where's the Pydantic model? What exactly is `IDBase`?
-
-We get it — implicitness can be annoying. On the other hand, explicitness gets repetitive once you've seen the same patterns ten times. Code is all about choosing your trade-offs.
-
-Luckily, `fa` lets you choose your level of abstraction. Here’s a more explicit example if you prefer seeing the details up front.
-```python
-import fastapi_alchemy as fa
-from fastapi import FastAPI
-from sqlalchemy import Mapped, mapped_column
-
-app = FastAPI()
-
-class World(fa.AlchemyView):
-    id: Mapped[int] = mapped_column(primary_key=True)
-    message: Mapped[str]
-
-class WorldSchema(fa.BaseSchema):
-    id: int
-    message: str
-
-@fa.include_view(app)
-class WorldView(fa.AlchemyView):
-    prefix = "world"
-    model = World
-    schema = WorldSchema
-```
-
-No hidden `id` column, no hidden Pydantic schema. Ahh, much better.
-
-Of course, many things are still abstracted away. But surely you don’t want to know *everything*. You’ve got stuff to do.
-
-## Show Me All That It Can Do
+## 
 Minimal examples look nice, but reality never turns out that way.
 Let's dive into the deep end where any serious project finds itself rather soon.
 Here is an example that includes relationships, nested models, custom routes, and class-level dependencies.

@@ -1,5 +1,6 @@
 import enum
 from datetime import datetime
+from typing import Any, Callable, cast
 
 from sqlalchemy import Enum, func, select
 from sqlalchemy.exc import NoResultFound
@@ -37,8 +38,18 @@ class IDMixin(MappedAsDataclass, kw_only=True):
 
 class TableNameMixin:
     @declared_attr
-    def __tablename__(cls):
-        return cls.__name__.lower()
+    @classmethod
+    def __tablename__(cls) -> Any:
+        return underscore(cls.__name__)
+
+
+def underscore(name: str) -> str:
+    result = []
+    for i, c in enumerate(name):
+        if c.isupper() and i > 0 and not name[i - 1].isupper():
+            result.append("_")
+        result.append(c.lower())
+    return "".join(result)
 
 
 class SQLBase(TableNameMixin, MappedAsDataclass, DeclarativeBase, kw_only=True):
