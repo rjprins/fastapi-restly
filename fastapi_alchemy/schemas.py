@@ -1,9 +1,8 @@
 import types
 from datetime import datetime
-from typing import Annotated, ClassVar, Generic, Optional, TypeVar, TypeVarTuple, Any
+from typing import Annotated, Any, ClassVar, Generic, TypeVar
 
 import pydantic
-from pydantic.fields import FieldInfo
 from sqlalchemy import select
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.exc import NoResultFound
@@ -40,7 +39,7 @@ class ReadOnly:
             id: ReadOnly[int]  # This field is read-only
     """
     
-    def __getitem__(self, t: type[T]) -> type[T]:
+    def __getitem__(self, t: type[T]) -> Annotated[T, "readonly"]:
         return Annotated[t, "readonly"]
 
 
@@ -71,12 +70,12 @@ class IDSchema(BaseSchema, Generic[SQLAlchemyModel]):
             return None
 
 
-class IDStampsSchema(TimestampsSchemaMixin, IDSchema):
+class IDStampsSchema(TimestampsSchemaMixin, IDSchema[SQLAlchemyModel]):
     pass
 
 
 async def async_resolve_ids_to_sqlalchemy_objects(
-    schema_obj: BaseSchema, session
+    schema_obj: BaseSchema, session: Any
 ) -> None:
     """
     Go over the Pydantic fields and turn any IDSchema objects into SQLAlchemy instances.
@@ -115,7 +114,7 @@ async def async_resolve_ids_to_sqlalchemy_objects(
             setattr(schema_obj, field, sql_model_objs)
 
 
-def resolve_ids_to_sqlalchemy_objects(schema_obj: BaseSchema, session) -> None:
+def resolve_ids_to_sqlalchemy_objects(schema_obj: BaseSchema, session: Any) -> None:
     """
     Go over the Pydantic fields and turn any IDSchema objects into SQLAlchemy instances.
     A database request is made for each IDSchema to look up the related row in the database.
@@ -195,7 +194,8 @@ def create_model_without_read_only_fields(
         if field_name in model_cls.model_fields:
             field_info = model_cls.model_fields[field_name]
             # Make the field optional with None as default
-            field_overrides[field_name] = (field_info.annotation | None, None)
+            from typing import Optional
+            field_overrides[field_name] = (Optional[field_info.annotation], None)
     
     # Create a new model by inheriting from the original
     # This preserves all validators, config, and other functionality
@@ -206,34 +206,13 @@ def create_model_without_read_only_fields(
         **field_overrides,
     )
     
-    # Override model_validate to handle read-only fields
-    original_model_validate = new_model_cls.model_validate
-    
-    @classmethod
-    def model_validate_with_ignore(cls, obj, *args, **kwargs):
-        # Filter out read-only fields from input data
-        if isinstance(obj, dict):
-            # Check for read-only fields if raise_on_readonly is True
-            if raise_on_readonly:
-                readonly_in_input = [k for k in obj.keys() if k in read_only_fields]
-                if readonly_in_input:
-                    raise ValueError(f"Read-only fields cannot be set: {readonly_in_input}")
-            
-            # Remove read-only fields from input
-            filtered_obj = {k: v for k, v in obj.items() if k not in read_only_fields}
-            obj = filtered_obj
-        
-        return original_model_validate(obj, *args, **kwargs)
-    
-    new_model_cls.model_validate = model_validate_with_ignore
-    
     return new_model_cls
 
 
 def rebase_with_model_config(
     base: tuple[type, ...], model_cls: type[pydantic.BaseModel]
 ) -> type[pydantic.BaseModel]:
-    def class_body(ns):
+    def class_body(ns: dict[str, Any]) -> None:
         ns["model_config"] = model_cls.model_config.copy()
 
     return types.new_class(
@@ -273,7 +252,8 @@ def create_model_with_optional_fields(model_cls: type[BaseSchema], raise_on_read
         if field_name in model_cls.model_fields:
             field_info = model_cls.model_fields[field_name]
             # Make the field optional with None as default
-            field_overrides[field_name] = (field_info.annotation | None, None)
+            from typing import Optional
+            field_overrides[field_name] = (Optional[field_info.annotation], None)
     
     # Create a new model by inheriting from the original
     # This preserves all validators, config, and other functionality
@@ -284,47 +264,26 @@ def create_model_with_optional_fields(model_cls: type[BaseSchema], raise_on_read
         **field_overrides,
     )
     
-    # Override model_validate to handle read-only fields
-    original_model_validate = new_model_cls.model_validate
-    
-    @classmethod
-    def model_validate_with_ignore(cls, obj, *args, **kwargs):
-        # Filter out read-only fields from input data
-        if isinstance(obj, dict):
-            # Check for read-only fields if raise_on_readonly is True
-            if raise_on_readonly:
-                readonly_in_input = [k for k in obj.keys() if k in read_only_fields]
-                if readonly_in_input:
-                    raise ValueError(f"Read-only fields cannot be set: {readonly_in_input}")
-            
-            # Remove read-only fields from input
-            filtered_obj = {k: v for k, v in obj.items() if k not in read_only_fields}
-            obj = filtered_obj
-        
-        return original_model_validate(obj, *args, **kwargs)
-    
-    new_model_cls.model_validate = model_validate_with_ignore
-    
     return new_model_cls
 
 
 def _get_writable_field_definitions(
     model_cls: type[pydantic.BaseModel],
-) -> dict[str, tuple]:
+) -> dict[str, tuple[Any, Any]]:
     """
     Return fields from a Pydantic model that are not mentioned in `read_only_fields`.
     Field definitions are returned in the form suitable for `pydantic.create_model()`.
     See https://docs.pydantic.dev/latest/api/base_model/#pydantic.create_model
     """
     read_only_fields = get_read_only_fields(model_cls)
-    writable_fields: dict[str, tuple] = {}
+    writable_fields: dict[str, tuple[Any, Any]] = {}
     for field_name, field_info in model_cls.model_fields.items():
         if field_name not in read_only_fields:
             writable_fields[field_name] = (field_info.annotation, field_info)
     return writable_fields
 
 
-def getattrs(obj, *attrs, default=None):
+def getattrs(obj: Any, *attrs: str, default: Any = None) -> Any:
     """
     Try access a chain of attributes and return the default if any of the attrs is not defined.
     """

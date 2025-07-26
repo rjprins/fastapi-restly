@@ -16,6 +16,10 @@ from .schemas import (
     ReadOnly,
     get_read_only_fields,
 )
+from .schema_generator import (
+    auto_generate_schema_for_view,
+    create_schema_from_model,
+)
 from .sqlbase import IDBase, IDStampsBase, SQLBase, TimestampsMixin
 from .sync_view import AlchemyView
 from ._views import BaseAlchemyView, include_view, route, get, post, put, delete
@@ -48,4 +52,6 @@ __all__ = [
     "delete",
     "settings",
     "setup_database_connection",
+    "auto_generate_schema_for_view",
+    "create_schema_from_model",
 ]

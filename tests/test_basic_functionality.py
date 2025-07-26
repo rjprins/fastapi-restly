@@ -76,6 +76,10 @@ def test_basic_crud_operations():
     print(f"Update schema fields: {ProductView.update_schema.model_fields.keys()}")
     print(f"Update schema required fields: {[name for name, field in ProductView.update_schema.model_fields.items() if field.is_required()]}")
     
+    # Debug: Check what the creation schema looks like
+    print(f"Creation schema fields: {ProductView.creation_schema.model_fields.keys()}")
+    print(f"Creation schema required fields: {[name for name, field in ProductView.creation_schema.model_fields.items() if field.is_required()]}")
+    
     # Create tables using the same engine as the framework
     import asyncio
     
@@ -93,6 +97,9 @@ def test_basic_crud_operations():
     # Test creating a product
     product_data = {"name": "Test Product", "price": 29.99}
     response = client.post("/products/", json=product_data)
+    if response.status_code != 201:
+        print(f"POST response: {response.status_code}")
+        print(f"POST response body: {response.text}")
     assert response.status_code == 201
     
     created_product = response.json()
