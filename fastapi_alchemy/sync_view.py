@@ -8,7 +8,7 @@ from ._session import DBDependency
 from .query_modifiers import apply_query_modifiers
 from .schemas import NOT_SET, resolve_ids_to_sqlalchemy_objects, BaseSchema
 from .sqlbase import SQLBase
-from ._views import BaseAlchemyView, route
+from ._views import BaseAlchemyView, get, post, put, delete
 
 T = TypeVar("T", bound=SQLBase)
 
@@ -35,7 +35,7 @@ class AlchemyView(BaseAlchemyView):
 
     db: DBDependency  # type: ignore[reportIncompatibleVariableOverride]
 
-    @route("/")
+    @get("/")
     def index(self, query_params: Any) -> Sequence[Any]:
         return self.process_index()
 
@@ -62,7 +62,7 @@ class AlchemyView(BaseAlchemyView):
         scalar_result = self.db.scalars(query)
         return scalar_result.all()
 
-    @route("/{id}")
+    @get("/{id}")
     def get(self, id: int) -> Any:
         return self.process_get(id)
 
@@ -77,7 +77,7 @@ class AlchemyView(BaseAlchemyView):
             raise fastapi.HTTPException(404)
         return obj
 
-    @route("/", methods=["POST"], status_code=201)
+    @post("/")
     def post(self, schema_obj: BaseSchema) -> Any:  # schema_obj type is set in before_include_view
         return self.process_post(schema_obj)
 
@@ -90,7 +90,7 @@ class AlchemyView(BaseAlchemyView):
         obj = self.save_object(obj)
         return obj
 
-    @route("/{id}", methods=["PUT"])
+    @put("/{id}")
     def put(self, id: int, schema_obj: BaseSchema) -> Any:
         return self.process_put(id, schema_obj)
 
@@ -103,7 +103,7 @@ class AlchemyView(BaseAlchemyView):
         obj = self.process_get(id)
         return self.update_object(obj, schema_obj)
 
-    @route("/{id}", methods=["DELETE"], status_code=204)
+    @delete("/{id}")
     def delete(self, id: int) -> fastapi.Response:
         return self.process_delete(id)
 

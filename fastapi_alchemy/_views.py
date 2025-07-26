@@ -98,7 +98,7 @@ def include_view(
     return class_decorator
 
 
-def route(path: str, **api_route_kwargs) -> Callable:
+def route(path: str, **api_route_kwargs: Any) -> Callable[..., Any]:
     """Decorator to mark a View method as an endpoint.
     The path and api_route_kwargs are passed into APIRouter.add_api_route(), see for example:
     https://fastapi.tiangolo.com/reference/apirouter/#fastapi.APIRouter.get
@@ -106,12 +106,49 @@ def route(path: str, **api_route_kwargs) -> Callable:
     Endpoints methods are later added as routes to the FastAPI app using `include_view()`
     """
 
-    def store_args_decorator(func: Callable) -> Callable:
+    def store_args_decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         # Create a new attribute: '_api_route_args'
         func._api_route_args = (path, api_route_kwargs)  # type: ignore[attr-defined]
         return func
 
     return store_args_decorator
+
+
+def get(path: str, **api_route_kwargs: Any) -> Callable[..., Any]:
+    """Decorator to mark a View method as a GET endpoint.
+    
+    Equivalent to: @route(path, methods=["GET"], status_code=200, **api_route_kwargs)
+    """
+    return route(path, **api_route_kwargs)
+
+
+def post(path: str, **api_route_kwargs: Any) -> Callable[..., Any]:
+    """Decorator to mark a View method as a POST endpoint.
+    
+    Equivalent to: @route(path, methods=["POST"], status_code=201, **api_route_kwargs)
+    """
+    api_route_kwargs.setdefault("methods", ["POST"])
+    api_route_kwargs.setdefault("status_code", 201)
+    return route(path, **api_route_kwargs)
+
+
+def put(path: str, **api_route_kwargs: Any) -> Callable[..., Any]:
+    """Decorator to mark a View method as a PUT endpoint.
+    
+    Equivalent to: @route(path, methods=["PUT"], status_code=200, **api_route_kwargs)
+    """
+    api_route_kwargs.setdefault("methods", ["PUT"])
+    return route(path, **api_route_kwargs)
+
+
+def delete(path: str, **api_route_kwargs: Any) -> Callable[..., Any]:
+    """Decorator to mark a View method as a DELETE endpoint.
+    
+    Equivalent to: @route(path, methods=["DELETE"], status_code=204, **api_route_kwargs)
+    """
+    api_route_kwargs.setdefault("methods", ["DELETE"])
+    api_route_kwargs.setdefault("status_code", 204)
+    return route(path, **api_route_kwargs)
 
 
 class BaseAlchemyView(View):

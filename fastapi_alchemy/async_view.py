@@ -7,7 +7,7 @@ import sqlalchemy
 from ._session import AsyncDBDependency
 from .query_modifiers import apply_query_modifiers
 from .schemas import NOT_SET, BaseSchema, async_resolve_ids_to_sqlalchemy_objects
-from ._views import BaseAlchemyView, route
+from ._views import BaseAlchemyView, get, post, put, delete
 from .sqlbase import SQLBase
 
 
@@ -26,7 +26,7 @@ class AsyncAlchemyView(BaseAlchemyView):
 
     db: AsyncDBDependency
 
-    @route("/")
+    @get("/")
     async def index(self, query_params: Any) -> Sequence[Any]:
         return await self.process_index(query_params)
 
@@ -53,7 +53,7 @@ class AsyncAlchemyView(BaseAlchemyView):
         scalar_result = await self.db.scalars(query)
         return scalar_result.all()
 
-    @route("/{id}")
+    @get("/{id}")
     async def get(self, id: int) -> Any:
         return await self.process_get(id)
 
@@ -68,7 +68,7 @@ class AsyncAlchemyView(BaseAlchemyView):
             raise fastapi.HTTPException(404)
         return obj
 
-    @route("/", methods=["POST"], status_code=201)
+    @post("/")
     async def post(
         self, schema_obj: BaseSchema
     ) -> Any:  # schema_obj type is set in before_include_view
@@ -82,7 +82,7 @@ class AsyncAlchemyView(BaseAlchemyView):
         obj = await self.make_new_object(schema_obj)
         return await self.save_object(obj)
 
-    @route("/{id}", methods=["PUT"])
+    @put("/{id}")
     async def put(self, id: int, schema_obj: BaseSchema) -> Any:
         return await self.process_put(id, schema_obj)
 
@@ -95,7 +95,7 @@ class AsyncAlchemyView(BaseAlchemyView):
         obj = await self.process_get(id)
         return await self.update_object(obj, schema_obj)
 
-    @route("/{id}", methods=["DELETE"], status_code=204)
+    @delete("/{id}")
     async def delete(self, id: int) -> fastapi.Response:
         return await self.process_delete(id)
 

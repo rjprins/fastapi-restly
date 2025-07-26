@@ -16,7 +16,7 @@ from .schemas import (
 )
 from .sqlbase import IDBase, IDStampsBase, SQLBase, TimestampsMixin
 from .sync_view import AlchemyView
-from ._views import BaseAlchemyView, include_view, route
+from ._views import BaseAlchemyView, include_view, route, get, post, put, delete
 
 __all__ = [
     "AlchemyView",
@@ -38,6 +38,10 @@ __all__ = [
     "setup_async_database_connection",
     "include_view",
     "route",
+    "get",
+    "post", 
+    "put",
+    "delete",
     "settings",
     "setup_database_connection",
 ]
