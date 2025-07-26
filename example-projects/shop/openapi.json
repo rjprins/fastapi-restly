@@ -12,16 +12,98 @@
         ],
         "summary": "Customerview Index",
         "operationId": "customerview_index_customers__get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sort"
+            }
+          },
+          {
+            "name": "filter[id]",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Filter[Id]"
+            }
+          },
+          {
+            "name": "filter[email]",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Filter[Email]"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
+                  "type": "array",
                   "items": {
                     "$ref": "#/components/schemas/CustomerSchema"
                   },
-                  "type": "array",
                   "title": "Response Customerview Index Customers  Get"
                 }
               }
@@ -29,6 +111,16 @@
           },
           "404": {
             "description": "Not found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
         }
       },
@@ -39,14 +131,14 @@
         "summary": "Customerview Post",
         "operationId": "customerview_post_customers__post",
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/CreateCustomerSchema"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "201": {
@@ -216,16 +308,133 @@
         ],
         "summary": "Productview Index",
         "operationId": "productview_index_products__get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sort"
+            }
+          },
+          {
+            "name": "filter[id]",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Filter[Id]"
+            }
+          },
+          {
+            "name": "filter[name]",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Filter[Name]"
+            }
+          },
+          {
+            "name": "filter[price]",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Filter[Price]"
+            }
+          },
+          {
+            "name": "filter[orders]",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/IDSchema_Order_"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Filter[Orders]"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
+                  "type": "array",
                   "items": {
                     "$ref": "#/components/schemas/ProductSchema"
                   },
-                  "type": "array",
                   "title": "Response Productview Index Products  Get"
                 }
               }
@@ -233,6 +442,16 @@
           },
           "404": {
             "description": "Not found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
         }
       },
@@ -243,14 +462,14 @@
         "summary": "Productview Post",
         "operationId": "productview_post_products__post",
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/CreateProductSchema"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "201": {
@@ -420,16 +639,183 @@
         ],
         "summary": "Orderview Index",
         "operationId": "orderview_index_orders__get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sort"
+            }
+          },
+          {
+            "name": "filter[id]",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Filter[Id]"
+            }
+          },
+          {
+            "name": "filter[created_at]",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Filter[Created At]"
+            }
+          },
+          {
+            "name": "filter[updated_at]",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Filter[Updated At]"
+            }
+          },
+          {
+            "name": "filter[customer.id]",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Filter[Customer.Id]"
+            }
+          },
+          {
+            "name": "filter[customer.email]",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Filter[Customer.Email]"
+            }
+          },
+          {
+            "name": "filter[customer_id.id]",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Filter[Customer Id.Id]"
+            }
+          },
+          {
+            "name": "filter[products]",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/IDSchema_Product_"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Filter[Products]"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
+                  "type": "array",
                   "items": {
                     "$ref": "#/components/schemas/OrderSchema"
                   },
-                  "type": "array",
                   "title": "Response Orderview Index Orders  Get"
                 }
               }
@@ -437,6 +823,16 @@
           },
           "404": {
             "description": "Not found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
         }
       },
@@ -447,14 +843,14 @@
         "summary": "Orderview Post",
         "operationId": "orderview_post_orders__post",
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/CreateOrderSchema"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "201": {
@@ -670,14 +1066,14 @@
               "$ref": "#/components/schemas/IDSchema_Order_"
             },
             "type": "array",
-            "title": "Orders"
+            "title": "Orders",
+            "default": []
           }
         },
         "type": "object",
         "required": [
           "name",
-          "price",
-          "orders"
+          "price"
         ],
         "title": "CreateProductSchema",
         "description": "Read-only have been fields removed."
@@ -812,15 +1208,15 @@
               "$ref": "#/components/schemas/IDSchema_Order_"
             },
             "type": "array",
-            "title": "Orders"
+            "title": "Orders",
+            "default": []
           }
         },
         "type": "object",
         "required": [
           "id",
           "name",
-          "price",
-          "orders"
+          "price"
         ],
         "title": "ProductSchema"
       },

@@ -30,7 +30,6 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    breakpoint()
     context.configure(
         url=settings.async_database_url,
         target_metadata=target_metadata,
@@ -54,7 +53,6 @@ async def run_async_migrations() -> None:
     and associate a connection with the context.
 
     """
-    breakpoint()
     connectable = async_engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",

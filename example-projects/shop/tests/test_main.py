@@ -61,5 +61,7 @@ def test_openapi_spec(client):
 
 def test_orders_rest(client):
     response = client.post("/customers/", json={"email": "test@example.com"})
-    breakpoint()
-    assert response.json() == {}
+    assert response.status_code == 201
+    data = response.json()
+    assert "id" in data
+    assert data["email"] == "test@example.com"
