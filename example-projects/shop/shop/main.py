@@ -1,13 +1,24 @@
+"""
+Shop example for FastAPI-Ding.
+
+This example demonstrates:
+- Custom endpoints
+- Custom filtering
+- Custom sorting
+- Custom pagination
+- Custom validation
+"""
+
 from typing import ClassVar
 from uuid import UUID, uuid4
 
 import sqlalchemy as sa
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from sqlalchemy import orm
 from sqlalchemy.dialects.postgresql import UUID as POSTGRES_UUID
 from starlette.middleware.cors import CORSMiddleware
 
-import fastapi_alchemy as fa
+import fastapi_ding as fa
 
 fa.setup_async_database_connection(async_database_url="sqlite+aiosqlite:///shop.db")
 

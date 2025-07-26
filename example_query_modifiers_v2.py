@@ -1,13 +1,10 @@
 """
-Example demonstrating the new v2 query modifiers interface.
+Query Modifiers v2 Example
 
-This example shows how to:
-1. Configure the framework to use v2 query modifiers
-2. Use the new standard HTTP interface for query parameters
-3. Compare the differences between v1 and v2 interfaces
+This example demonstrates the new query modifiers v2 functionality.
 """
 
-import fastapi_alchemy as fa
+import fastapi_ding as fa
 from fastapi import FastAPI
 from sqlalchemy.orm import Mapped, mapped_column
 from datetime import datetime

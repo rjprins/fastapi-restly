@@ -1,11 +1,11 @@
 """
-Example demonstrating auto-generated schemas from SQLAlchemy models.
+Auto Schema Example
 
-This example shows how you can create FastAPI-Alchemy views without explicitly
-defining Pydantic schemas - they will be auto-generated from your SQLAlchemy models.
+This example shows how you can create FastAPI-Ding views without explicitly
+defining Pydantic schemas - they are automatically generated from SQLAlchemy models.
 """
 
-import fastapi_alchemy as fa
+import fastapi_ding as fa
 from fastapi import FastAPI
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy import ForeignKey

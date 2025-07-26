@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
-"""
-Simple test to verify HTTP method helper functions work correctly.
-"""
+"""Test HTTP helper functions."""
 
 import sys
 import os
+import pytest
+from fastapi import FastAPI
+from httpx import AsyncClient
 
-# Add the current directory to the Python path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from fastapi_ding import get, post, put, delete
 
 try:
-    from fastapi_alchemy import get, post, put, delete
     print("✅ HTTP method helpers imported successfully!")
     
     # Test that they are callable

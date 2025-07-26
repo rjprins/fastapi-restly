@@ -1,23 +1,27 @@
 [project]
 name = "shop"
 version = "0.1.0"
-description = "A FastAPI-Alchemy example featuring customizations"
+description = "A FastAPI-Ding example featuring customizations"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-  "aiosqlite>=0.21.0",
-  "fastapi-alchemy",
+    "fastapi>=0.115.12",
+    "fastapi-ding",
+    "uvicorn[standard]>=0.32.1",
+    "sqlalchemy[asyncio]>=2.0.41",
+    "aiosqlite>=0.21.0",
+    "alembic>=1.15.2",
 ]
 
 [project.optional-dependencies]
-test = [
-  "pytest",
-]
-
-[tool.uv.sources]
-fastapi-alchemy = { path = "../../" }
-
-[dependency-groups]
 dev = [
     "pytest>=8.3.5",
+    "httpx>=0.28.1",
 ]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["shop"]
+
+[tool.uv.sources]
+fastapi-ding = { path = "../../" }

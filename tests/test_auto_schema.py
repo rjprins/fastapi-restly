@@ -1,16 +1,18 @@
-"""Test auto-generated schema functionality."""
+"""Test auto-generated schemas."""
 
 import asyncio
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sqlalchemy.orm import Mapped, mapped_column
+from httpx import AsyncClient
+from sqlalchemy.orm import Mapped
 
-import fastapi_alchemy as fa
+import fastapi_ding as fa
+from fastapi_ding._globals import fa_globals
 
 
 def reset_metadata():
     """Reset SQLAlchemy metadata to prevent table redefinition conflicts."""
-    from fastapi_alchemy._globals import fa_globals
     if hasattr(fa_globals, 'metadata'):
         fa_globals.metadata.clear()
     fa.SQLBase.metadata.clear()
@@ -27,7 +29,7 @@ def test_auto_generated_schema_in_view():
     class User(fa.IDBase):
         name: Mapped[str]
         email: Mapped[str]
-        is_active: Mapped[bool] = mapped_column(default=True)
+        is_active: Mapped[bool] = fa.mapped_column(default=True)
     
     # Create view WITHOUT specifying a schema - it should be auto-generated
     @fa.include_view(app)
@@ -38,7 +40,6 @@ def test_auto_generated_schema_in_view():
     
     # Create tables
     async def create_tables():
-        from fastapi_alchemy._globals import fa_globals
         engine = fa_globals.async_make_session.kw["bind"]
         async with engine.begin() as conn:
             await conn.run_sync(fa.SQLBase.metadata.create_all)
@@ -80,7 +81,7 @@ def test_auto_generated_schema_with_timestamps():
     class Product(fa.IDBase, fa.TimestampsMixin):
         name: Mapped[str]
         price: Mapped[float]
-        description: Mapped[str] = mapped_column(default="")
+        description: Mapped[str] = fa.mapped_column(default="")
     
     # Create view without schema
     @fa.include_view(app)
@@ -91,7 +92,6 @@ def test_auto_generated_schema_with_timestamps():
     
     # Create tables
     async def create_tables():
-        from fastapi_alchemy._globals import fa_globals
         engine = fa_globals.async_make_session.kw["bind"]
         async with engine.begin() as conn:
             await conn.run_sync(fa.SQLBase.metadata.create_all)
@@ -123,8 +123,8 @@ def test_auto_generated_schema_with_defaults():
     # Define a model with defaults
     class Category(fa.IDBase):
         name: Mapped[str]
-        description: Mapped[str] = mapped_column(default="No description")
-        is_active: Mapped[bool] = mapped_column(default=True)
+        description: Mapped[str] = fa.mapped_column(default="No description")
+        is_active: Mapped[bool] = fa.mapped_column(default=True)
     
     # Create view without schema
     @fa.include_view(app)
@@ -135,7 +135,6 @@ def test_auto_generated_schema_with_defaults():
     
     # Create tables
     async def create_tables():
-        from fastapi_alchemy._globals import fa_globals
         engine = fa_globals.async_make_session.kw["bind"]
         async with engine.begin() as conn:
             await conn.run_sync(fa.SQLBase.metadata.create_all)
@@ -175,7 +174,6 @@ def test_auto_generated_schema_crud_operations():
     
     # Create tables
     async def create_tables():
-        from fastapi_alchemy._globals import fa_globals
         engine = fa_globals.async_make_session.kw["bind"]
         async with engine.begin() as conn:
             await conn.run_sync(fa.SQLBase.metadata.create_all)

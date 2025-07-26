@@ -1,5 +1,5 @@
-site_name: FastAPI-Alchemy
-site_url: https://rjprins.github.io/fastapi-alchemy
+site_name: FastAPI-Ding
+site_url: https://rjprins.github.io/fastapi-ding
 theme:
   name: material
   features:

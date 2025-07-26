@@ -1,16 +1,18 @@
+"""Test the shop example."""
+
 import json
 from pathlib import Path
 
 import pytest
 from alembic import command
 from alembic.config import Config
-from fastapi_alchemy import settings
-from fastapi_alchemy.testing import (
-    async_session,
-    autouse_alembic_upgrade,
-    autouse_savepoint_only_mode_sessions,
+from fastapi_ding import settings
+from fastapi_ding.testing import (
+    create_test_client,
+    get_test_database_url,
+    setup_test_database,
 )
-from fastapi.testclient import TestClient
+from httpx import AsyncClient
 
 from shop.main import app
 
@@ -27,8 +29,8 @@ def database_tables():
 
 
 @pytest.fixture
-def client(database_tables) -> TestClient:
-    return TestClient(app)
+def client(database_tables) -> AsyncClient:
+    return create_test_client(app)
 
 
 def test_openapi_spec(client):

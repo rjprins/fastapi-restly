@@ -1,6 +1,7 @@
 {
-  "extraPaths": ["fastapi_alchemy"],
-  "typeCheckingMode": "strict"
+    "extraPaths": ["fastapi_ding"],
+    "include": ["tests", "fastapi_ding", "example-projects"],
+    "exclude": ["**/node_modules", "**/__pycache__", ".venv", ".venv-py310", "site", ".git-early-history"]
 }
 
 

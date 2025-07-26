@@ -1,32 +1,35 @@
-# FastAPI-Alchemy Documentation
+# FastAPI-Ding Documentation
 
-FastAPI-Alchemy (`fa`) is a framework that supplements FastAPI with instant CRUD endpoints, built on SQLAlchemy 2.0 and Pydantic v2.
+FastAPI-Ding (`fa`) is a framework that supplements FastAPI with instant CRUD endpoints, built on SQLAlchemy 2.0 and Pydantic v2.
 
 ## Quick Start
 
 ```python
-import fastapi_alchemy as fa
+import fastapi_ding as fa
 from fastapi import FastAPI
+from sqlalchemy.orm import Mapped
+
+app = FastAPI()
 
 # Setup database
-fa.setup_async_database_connection("sqlite+aiosqlite:///test.db")
+fa.setup_async_database_connection("sqlite+aiosqlite:///app.db")
 
-# Define models and schemas
+# Define your models
 class User(fa.IDBase):
     name: Mapped[str]
     email: Mapped[str]
 
+# Define your schemas
 class UserSchema(fa.IDSchema[User]):
     name: str
     email: str
 
-# Create view with instant CRUD
+# Create instant CRUD endpoints
+@fa.include_view(app)
 class UserView(fa.AsyncAlchemyView):
+    prefix = "/users"
+    model = User
     schema = UserSchema
-
-# Include in FastAPI app
-app = FastAPI()
-fa.include_view(app, UserView)
 ```
 
 ## Features
@@ -48,14 +51,14 @@ fa.include_view(app, UserView)
 ## Installation
 
 ```bash
-pip install fastapi-alchemy
+pip install fastapi-ding
 ```
 
 ## Development
 
 ```bash
-git clone https://github.com/your-repo/fastapi-alchemy
-cd fastapi-alchemy
+git clone https://github.com/your-repo/fastapi-ding
+cd fastapi-ding
 uv sync
 uv run pytest
 ```

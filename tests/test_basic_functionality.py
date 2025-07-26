@@ -1,11 +1,14 @@
-"""Test basic functionality of the FastAPI-Alchemy framework."""
+"""Test basic functionality of the FastAPI-Ding framework."""
 
 import asyncio
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sqlalchemy.orm import Mapped, mapped_column
+from httpx import AsyncClient
+from sqlalchemy.orm import Mapped
 
-import fastapi_alchemy as fa
+import fastapi_ding as fa
+from fastapi_ding._globals import fa_globals
 
 
 def reset_metadata():
@@ -39,7 +42,6 @@ def test_crud_endpoints_exist():
     
     # Create tables
     async def create_tables():
-        from fastapi_alchemy._globals import fa_globals
         engine = fa_globals.async_make_session.kw["bind"]
         async with engine.begin() as conn:
             await conn.run_sync(fa.SQLBase.metadata.create_all)
@@ -96,7 +98,6 @@ def test_basic_crud_operations():
     
     # Create tables
     async def create_tables():
-        from fastapi_alchemy._globals import fa_globals
         engine = fa_globals.async_make_session.kw["bind"]
         async with engine.begin() as conn:
             await conn.run_sync(fa.SQLBase.metadata.create_all)

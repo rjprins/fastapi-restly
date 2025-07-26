@@ -1,11 +1,11 @@
 # Tutorial
 
-This tutorial will guide you through building a simple CRUD API with FastAPI-Alchemy.
+This tutorial will guide you through building a simple CRUD API with FastAPI-Ding.
 
 ## Installation
 
 ```bash
-pip install fastapi-alchemy
+pip install fastapi-ding
 ```
 
 ## Quick Start
@@ -13,7 +13,7 @@ pip install fastapi-alchemy
 Let's create a simple blog API with posts and comments.
 
 ```python
-import fastapi_alchemy as fa
+import fastapi_ding as fa
 from fastapi import FastAPI
 from sqlalchemy.orm import Mapped
 
@@ -68,7 +68,7 @@ And the same for comments.
 
 ## Read-Only Fields
 
-FastAPI-Alchemy supports two ways to mark fields as read-only:
+FastAPI-Ding supports two ways to mark fields as read-only:
 
 ### Class-Level Read-Only Fields
 
@@ -108,7 +108,7 @@ The framework automatically creates tables for your models. For production, you 
 ```python
 # Create tables (development only)
 import asyncio
-from fastapi_alchemy._globals import fa_globals
+from fastapi_ding._globals import fa_globals
 
 async def create_tables():
     engine = fa_globals.async_make_session.kw["bind"]

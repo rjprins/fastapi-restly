@@ -1,11 +1,11 @@
-# FastAPI-Alchemy
+# FastAPI-Ding
 
 A framework that makes building CRUD APIs with FastAPI and SQLAlchemy incredibly simple.
 
 ## Quick Start
 
 ```python
-import fastapi_alchemy as fa
+import fastapi_ding as fa
 from fastapi import FastAPI
 from sqlalchemy.orm import Mapped
 
@@ -66,12 +66,12 @@ That's it! You now have a fully functional API with automatic CRUD operations, v
 ## Installation
 
 ```bash
-pip install fastapi-alchemy
+pip install fastapi-ding
 ```
 
 ## Documentation
 
-- [Tutorial](docs/tutorial.md) - Get started with FastAPI-Alchemy
+- [Tutorial](docs/tutorial.md) - Get started with FastAPI-Ding
 - [Technical Details](docs/technical_details.md) - Learn how the framework works
 - [Examples](example-projects/) - See real-world examples
 

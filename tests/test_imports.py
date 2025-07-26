@@ -1,15 +1,18 @@
 """Test that all imports work correctly."""
 
-import fastapi_alchemy as fa
-from fastapi_alchemy import (
+import fastapi_ding as fa
+from fastapi_ding import (
     AsyncAlchemyView,
     BaseSchema,
+    IDBase,
+    IDSchema,
     SQLBase,
+    TimestampsMixin,
     include_view,
-    schemas,
+    setup_async_database_connection,
     settings,
-    sqlbase,
 )
+from fastapi_ding import schemas, sqlbase
 
 
 def test_imports_work():

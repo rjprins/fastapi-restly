@@ -1,15 +1,13 @@
-# Using FastAPI-Alchemy in an Existing Project
+# Using FastAPI-Ding in an Existing Project
 
-`fa` can be used in any existing FastAPI project that also uses SQLAlchemy. Other ORMs are not supported.
+## Session Management
 
-## Let `fa` Use Your SQLAlchemy Session
-
-If you already have code that creates SQLAlchemy `AsyncSession` objects, you can tell `fa` to use it.
+If you already have a session generator, you can configure FastAPI-Ding to use it:
 
 ```python
 from typing import AsyncIterator
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi_alchemy import settings
+from fastapi_ding import settings
 
 async def my_get_db() -> AsyncIterator[AsyncSession]:
     ...
@@ -18,13 +16,28 @@ async def my_get_db() -> AsyncIterator[AsyncSession]:
 settings.session_generator = my_get_db()
 ```
 
-The other way around is of course also possible. So if you have need for a database session outside of `fa`, import the session generator like this:
+The other way around, you can use FastAPI-Ding's session generator like this:
+
 ```python
-from fastapi_alchemy import get_session
+from fastapi_ding import get_session
 
 with get_session() as session:
     session.execute(...)
 ```
 
-## Let `fa` Use Your DeclarativeBase Class
-Wait, does `fa` even need any specific base class??
+## Let fa use your DeclarativeBase class
+
+If you already have a DeclarativeBase class, you can make FastAPI-Ding use it:
+
+```python
+from fastapi_ding import DingBase, AsyncAlchemyView
+from sqlalchemy import Mapped
+
+class World(DingBase):
+    message: Mapped[str]
+
+class WorldView(AsyncAlchemyView):
+    prefix = "world"
+    model = World
+    schema = WorldSchema
+```

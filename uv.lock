@@ -242,7 +242,7 @@ wheels = [
 ]
 
 [[package]]
-name = "fastapi-alchemy"
+name = "fastapi-ding"
 version = "0.5"
 source = { virtual = "." }
 dependencies = [

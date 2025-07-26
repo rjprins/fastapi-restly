@@ -1,4 +1,4 @@
-import fastapi_alchemy as fa
+import fastapi_ding as fa
 from fastapi import FastAPI
 from sqlalchemy.orm import Mapped
 
