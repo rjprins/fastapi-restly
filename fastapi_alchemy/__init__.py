@@ -6,6 +6,7 @@ from ._session import (
     setup_database_connection,
 )
 from ._settings import settings
+from .async_view import AsyncAlchemyView
 from .schemas import (
     NOT_SET,
     BaseSchema,
@@ -15,7 +16,7 @@ from .schemas import (
 )
 from .sqlbase import IDBase, IDStampsBase, SQLBase, TimestampsMixin
 from .sync_view import AlchemyView
-from .views import AsyncAlchemyView, BaseAlchemyView, include_view, route
+from ._views import BaseAlchemyView, include_view, route
 
 __all__ = [
     "AlchemyView",

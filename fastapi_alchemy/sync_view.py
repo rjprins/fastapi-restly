@@ -8,7 +8,7 @@ from ._session import DBDependency
 from .query_modifiers import apply_query_modifiers
 from .schemas import NOT_SET, resolve_ids_to_sqlalchemy_objects, BaseSchema
 from .sqlbase import SQLBase
-from .views import BaseAlchemyView, route
+from ._views import BaseAlchemyView, route
 
 T = TypeVar("T", bound=SQLBase)
 

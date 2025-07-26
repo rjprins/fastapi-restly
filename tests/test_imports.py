@@ -9,7 +9,6 @@ from fastapi_alchemy import (
     schemas,
     settings,
     sqlbase,
-    views,
 )
 
 
@@ -24,20 +23,13 @@ def test_imports_work():
 
 def test_schemas_module():
     """Test that schemas module is accessible."""
-    assert hasattr(schemas, 'BaseSchema')
-    assert hasattr(schemas, 'IDSchema')
-    assert hasattr(schemas, 'TimestampsSchemaMixin')
+    assert hasattr(schemas, "BaseSchema")
+    assert hasattr(schemas, "IDSchema")
+    assert hasattr(schemas, "TimestampsSchemaMixin")
 
 
 def test_sqlbase_module():
     """Test that sqlbase module is accessible."""
-    assert hasattr(sqlbase, 'SQLBase')
-    assert hasattr(sqlbase, 'IDBase')
-    assert hasattr(sqlbase, 'TimestampsMixin')
-
-
-def test_views_module():
-    """Test that views module is accessible."""
-    assert hasattr(views, 'AsyncAlchemyView')
-    assert hasattr(views, 'View')
-    assert hasattr(views, 'include_view')
+    assert hasattr(sqlbase, "SQLBase")
+    assert hasattr(sqlbase, "IDBase")
+    assert hasattr(sqlbase, "TimestampsMixin")
