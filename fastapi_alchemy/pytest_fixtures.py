@@ -1,4 +1,5 @@
 import traceback
+from pathlib import Path
 from typing import AsyncIterator, Iterator
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -12,6 +13,18 @@ import alembic.config
 
 from ._globals import fa_globals
 from ._session import activate_savepoint_only_mode
+
+
+@pytest.fixture(scope="session")
+def project_root() -> Path:
+    """Return the project root directory."""
+    # Try to find the project root by looking for pyproject.toml
+    current = Path.cwd()
+    while current != current.parent:
+        if (current / "pyproject.toml").exists():
+            return current
+        current = current.parent
+    return Path.cwd()
 
 
 @pytest.fixture(autouse=True)

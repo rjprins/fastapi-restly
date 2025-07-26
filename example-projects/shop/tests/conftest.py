@@ -1,1 +1,2 @@
 from fastapi_alchemy.testing import autouse_alembic_upgrade
+from fastapi_alchemy.pytest_fixtures import project_root
