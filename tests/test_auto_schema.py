@@ -3,7 +3,6 @@
 import asyncio
 import pytest
 from fastapi import FastAPI
-from fastapi.testclient import TestClient
 from httpx import AsyncClient
 from sqlalchemy.orm import Mapped
 
@@ -18,12 +17,12 @@ def reset_metadata():
     fd.SQLBase.metadata.clear()
 
 
-def test_auto_generated_schema_in_view():
+def test_auto_generated_schema_in_view(client):
     """Test that schemas are auto-generated when not specified in views."""
     reset_metadata()
     fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
     
-    app = FastAPI()
+    app = client.app
     
     # Define a simple model without manually creating a schema
     class User(fd.IDBase):
@@ -46,11 +45,8 @@ def test_auto_generated_schema_in_view():
     
     asyncio.run(create_tables())
     
-    client = TestClient(app)
-    
     # Test that the API is working
     response = client.get("/openapi.json")
-    assert response.status_code == 200
     
     spec = response.json()
     paths = spec["paths"]
@@ -62,7 +58,6 @@ def test_auto_generated_schema_in_view():
     # Test creating a user
     user_data = {"name": "Test User", "email": "test@example.com"}
     response = client.post("/users/", json=user_data)
-    assert response.status_code == 201
     
     created_user = response.json()
     assert created_user["name"] == "Test User"
@@ -70,12 +65,12 @@ def test_auto_generated_schema_in_view():
     assert "id" in created_user
 
 
-def test_auto_generated_schema_with_timestamps():
+def test_auto_generated_schema_with_timestamps(client):
     """Test auto-generated schemas with timestamp fields."""
     reset_metadata()
     fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
     
-    app = FastAPI()
+    app = client.app
     
     # Define a model with timestamps
     class Product(fd.IDBase, fd.TimestampsMixin):
@@ -98,12 +93,9 @@ def test_auto_generated_schema_with_timestamps():
     
     asyncio.run(create_tables())
     
-    client = TestClient(app)
-    
     # Test creating a product
     product_data = {"name": "Test Product", "price": 29.99}
     response = client.post("/products/", json=product_data)
-    assert response.status_code == 201
     
     created_product = response.json()
     assert created_product["name"] == "Test Product"
@@ -113,12 +105,12 @@ def test_auto_generated_schema_with_timestamps():
     assert "updated_at" in created_product
 
 
-def test_auto_generated_schema_with_defaults():
+def test_auto_generated_schema_with_defaults(client):
     """Test auto-generated schemas with field defaults."""
     reset_metadata()
     fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
     
-    app = FastAPI()
+    app = client.app
     
     # Define a model with defaults
     class Category(fd.IDBase):
@@ -141,24 +133,21 @@ def test_auto_generated_schema_with_defaults():
     
     asyncio.run(create_tables())
     
-    client = TestClient(app)
-    
     # Test creating a category with minimal data
     category_data = {"name": "Electronics"}
     response = client.post("/categories/", json=category_data)
-    assert response.status_code == 201
     
     created_category = response.json()
     assert created_category["name"] == "Electronics"
     assert "id" in created_category
 
 
-def test_auto_generated_schema_crud_operations():
+def test_auto_generated_schema_crud_operations(client):
     """Test full CRUD operations with auto-generated schemas."""
     reset_metadata()
     fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
     
-    app = FastAPI()
+    app = client.app
     
     # Define a simple model
     class Item(fd.IDBase):
@@ -180,32 +169,25 @@ def test_auto_generated_schema_crud_operations():
     
     asyncio.run(create_tables())
     
-    client = TestClient(app)
-    
     # Test CREATE
     item_data = {"name": "Test Item", "quantity": 10}
     response = client.post("/items/", json=item_data)
-    assert response.status_code == 201
     
     created_item = response.json()
     item_id = created_item["id"]
     
     # Test READ
     response = client.get(f"/items/{item_id}")
-    assert response.status_code == 200
     assert response.json()["name"] == "Test Item"
     
     # Test UPDATE
     update_data = {"name": "Updated Item", "quantity": 20}
     response = client.put(f"/items/{item_id}", json=update_data)
-    assert response.status_code == 200
     assert response.json()["name"] == "Updated Item"
     assert response.json()["quantity"] == 20
     
     # Test DELETE
     response = client.delete(f"/items/{item_id}")
-    assert response.status_code == 204
     
     # Verify deletion
-    response = client.get(f"/items/{item_id}")
-    assert response.status_code == 404 
+    response = client.get(f"/items/{item_id}", response_code=404) 

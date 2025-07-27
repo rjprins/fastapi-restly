@@ -3,7 +3,6 @@
 import asyncio
 import pytest
 from fastapi import FastAPI
-from fastapi.testclient import TestClient
 from httpx import AsyncClient
 from sqlalchemy.orm import Mapped
 
@@ -16,12 +15,12 @@ def reset_metadata():
     fd.SQLBase.metadata.clear()
 
 
-def test_crud_endpoints_exist():
+def test_crud_endpoints_exist(client):
     """Test that all CRUD endpoints are created."""
     reset_metadata()
     fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
     
-    app = FastAPI()
+    app = client.app
     
     # Define a simple model
     class User(fd.IDBase):
@@ -48,14 +47,10 @@ def test_crud_endpoints_exist():
     
     asyncio.run(create_tables())
     
-    client = TestClient(app)
-    
     # Test that all CRUD endpoints exist
     response = client.get("/users/")
-    assert response.status_code == 200
     
     response = client.post("/users/", json={"name": "Test User", "email": "test@example.com"})
-    assert response.status_code == 201
     
     created_user = response.json()
     assert "id" in created_user
@@ -63,21 +58,18 @@ def test_crud_endpoints_exist():
     user_id = created_user["id"]
     
     response = client.get(f"/users/{user_id}")
-    assert response.status_code == 200
     
     response = client.put(f"/users/{user_id}", json={"name": "Updated User", "email": "updated@example.com"})
-    assert response.status_code == 200
     
     response = client.delete(f"/users/{user_id}")
-    assert response.status_code == 204
 
 
-def test_basic_crud_operations():
+def test_basic_crud_operations(client):
     """Test basic CRUD operations."""
     reset_metadata()
     fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
     
-    app = FastAPI()
+    app = client.app
     
     # Define a simple model
     class Product(fd.IDBase):
@@ -104,12 +96,9 @@ def test_basic_crud_operations():
     
     asyncio.run(create_tables())
     
-    client = TestClient(app)
-    
     # Test CREATE
     product_data = {"name": "Test Product", "price": 29.99}
     response = client.post("/products/", json=product_data)
-    assert response.status_code == 201
     
     created_product = response.json()
     assert created_product["name"] == "Test Product"
@@ -120,14 +109,12 @@ def test_basic_crud_operations():
     
     # Test READ (get all)
     response = client.get("/products/")
-    assert response.status_code == 200
     products = response.json()
     assert len(products) == 1
     assert products[0]["id"] == product_id
     
     # Test READ (get by id)
     response = client.get(f"/products/{product_id}")
-    assert response.status_code == 200
     product = response.json()
     assert product["id"] == product_id
     assert product["name"] == "Test Product"
@@ -135,7 +122,6 @@ def test_basic_crud_operations():
     # Test UPDATE
     update_data = {"name": "Updated Product", "price": 39.99}
     response = client.put(f"/products/{product_id}", json=update_data)
-    assert response.status_code == 200
     
     updated_product = response.json()
     assert updated_product["name"] == "Updated Product"
@@ -143,10 +129,8 @@ def test_basic_crud_operations():
     
     # Test DELETE
     response = client.delete(f"/products/{product_id}")
-    assert response.status_code == 204
     
     # Verify deletion
     response = client.get("/products/")
-    assert response.status_code == 200
     products = response.json()
     assert len(products) == 0 
