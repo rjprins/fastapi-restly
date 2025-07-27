@@ -5,10 +5,10 @@ import sqlalchemy
 from sqlalchemy.orm import Session
 
 from ._session import DBDependency
+from ._views import BaseAlchemyView, delete, get, post, put
 from .query_modifiers_config import apply_query_modifiers
-from .schemas import NOT_SET, resolve_ids_to_sqlalchemy_objects, BaseSchema
+from .schemas import NOT_SET, BaseSchema, resolve_ids_to_sqlalchemy_objects
 from .sqlbase import SQLBase
-from ._views import BaseAlchemyView, get, post, put, delete
 
 T = TypeVar("T", bound=SQLBase)
 
@@ -39,7 +39,9 @@ class AlchemyView(BaseAlchemyView):
     def index(self, query_params: Any) -> Sequence[Any]:
         return self.process_index()
 
-    def process_index(self, query: sqlalchemy.Select[Any] | None = None) -> Sequence[Any]:
+    def process_index(
+        self, query: sqlalchemy.Select[Any] | None = None
+    ) -> Sequence[Any]:
         """
         Handle a GET request on "/". This should return a list of objects.
         Accepts a query argument that can be used for narrowing down the selection.
@@ -78,7 +80,9 @@ class AlchemyView(BaseAlchemyView):
         return obj
 
     @post("/")
-    def post(self, schema_obj: BaseSchema) -> Any:  # schema_obj type is set in before_include_view
+    def post(
+        self, schema_obj: BaseSchema
+    ) -> Any:  # schema_obj type is set in before_include_view
         return self.process_post(schema_obj)
 
     def process_post(self, schema_obj: BaseSchema) -> Any:

@@ -29,13 +29,14 @@ from typing import (
 )
 
 import fastapi
+
 from .query_modifiers_config import apply_query_modifiers, create_query_param_schema
+from .schema_generator import auto_generate_schema_for_view
 from .schemas import (
     BaseSchema,
     create_model_with_optional_fields,
     create_model_without_read_only_fields,
 )
-from .schema_generator import auto_generate_schema_for_view
 from .sqlbase import SQLBase
 
 
@@ -117,7 +118,7 @@ def route(path: str, **api_route_kwargs: Any) -> Callable[..., Any]:
 
 def get(path: str, **api_route_kwargs: Any) -> Callable[..., Any]:
     """Decorator to mark a View method as a GET endpoint.
-    
+
     Equivalent to: @route(path, methods=["GET"], status_code=200, **api_route_kwargs)
     """
     return route(path, **api_route_kwargs)
@@ -125,7 +126,7 @@ def get(path: str, **api_route_kwargs: Any) -> Callable[..., Any]:
 
 def post(path: str, **api_route_kwargs: Any) -> Callable[..., Any]:
     """Decorator to mark a View method as a POST endpoint.
-    
+
     Equivalent to: @route(path, methods=["POST"], status_code=201, **api_route_kwargs)
     """
     api_route_kwargs.setdefault("methods", ["POST"])
@@ -135,7 +136,7 @@ def post(path: str, **api_route_kwargs: Any) -> Callable[..., Any]:
 
 def put(path: str, **api_route_kwargs: Any) -> Callable[..., Any]:
     """Decorator to mark a View method as a PUT endpoint.
-    
+
     Equivalent to: @route(path, methods=["PUT"], status_code=200, **api_route_kwargs)
     """
     api_route_kwargs.setdefault("methods", ["PUT"])
@@ -144,7 +145,7 @@ def put(path: str, **api_route_kwargs: Any) -> Callable[..., Any]:
 
 def delete(path: str, **api_route_kwargs: Any) -> Callable[..., Any]:
     """Decorator to mark a View method as a DELETE endpoint.
-    
+
     Equivalent to: @route(path, methods=["DELETE"], status_code=204, **api_route_kwargs)
     """
     api_route_kwargs.setdefault("methods", ["DELETE"])
@@ -183,9 +184,11 @@ class BaseAlchemyView(View):
         # Auto-generate schema if none is provided
         if not hasattr(cls, "schema"):
             if not hasattr(cls, "model"):
-                raise Exception(f"'{cls.__name__}.model' must be specified to auto-generate schema")
+                raise Exception(
+                    f"'{cls.__name__}.model' must be specified to auto-generate schema"
+                )
             cls.schema = auto_generate_schema_for_view(cls, cls.model)
-        
+
         if not hasattr(cls, "index_param_schema"):
             cls.index_param_schema = create_query_param_schema(cls.schema)
         if not hasattr(cls, "creation_schema"):

@@ -1,6 +1,6 @@
 import functools
 from collections import defaultdict
-from typing import Any, Callable, Iterator, Optional, cast, get_args, get_origin, Union
+from typing import Any, Callable, Iterator, Optional, Union, cast, get_args, get_origin
 
 import pydantic
 import sqlalchemy
@@ -80,7 +80,9 @@ def apply_query_modifiers_v2(
     return select_query
 
 
-def apply_pagination_v2(query_params: QueryParams, select_query: Select[Any]) -> Select[Any]:
+def apply_pagination_v2(
+    query_params: QueryParams, select_query: Select[Any]
+) -> Select[Any]:
     """
     Apply pagination using page and page_size parameters.
     """
@@ -171,7 +173,9 @@ def apply_filtering_v2(
     """
     Apply filtering using direct field names and __suffixes for range/null filtering.
     """
-    filters: dict[InstrumentedAttribute[Any], list[ColumnElement[Any]]] = defaultdict(list)
+    filters: dict[InstrumentedAttribute[Any], list[ColumnElement[Any]]] = defaultdict(
+        list
+    )
     for key, raw_value in query_params.multi_items():
         if key in ("page", "page_size", "order_by"):
             continue
@@ -257,4 +261,4 @@ def _make_where_clause_v2(
         return column != value
     else:  # eq
         value = parser(filter_value)
-        return column == value 
+        return column == value

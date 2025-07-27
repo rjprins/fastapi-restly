@@ -5,9 +5,9 @@ import pydantic
 import sqlalchemy
 
 from ._session import AsyncDBDependency
+from ._views import BaseAlchemyView, delete, get, post, put
 from .query_modifiers import apply_query_modifiers
 from .schemas import NOT_SET, BaseSchema, async_resolve_ids_to_sqlalchemy_objects
-from ._views import BaseAlchemyView, get, post, put, delete
 from .sqlbase import SQLBase
 
 
@@ -119,14 +119,14 @@ class AsyncAlchemyView(BaseAlchemyView):
         Feel free to override this method.
         """
         await async_resolve_ids_to_sqlalchemy_objects(schema_obj, self.db)
-        
+
         # Filter out read-only fields when creating the object
         data = {}
         for field_name, value in schema_obj:
             if field_name in self.schema.read_only_fields:
                 continue
             data[field_name] = value
-        
+
         obj = self.model(**data)
         self.db.add(obj)
         return obj

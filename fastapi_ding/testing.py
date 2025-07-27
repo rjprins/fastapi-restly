@@ -12,7 +12,7 @@ from .pytest_fixtures import (
 
 __all__ = [
     "async_session",
-    "autouse_alembic_upgrade", 
+    "autouse_alembic_upgrade",
     "autouse_savepoint_only_mode_sessions",
     "session",
     "create_test_client",
@@ -34,4 +34,4 @@ def get_test_database_url() -> str:
 def setup_test_database() -> None:
     """Setup the test database."""
     # This is a no-op for now, but could be used to setup test databases
-    pass 
+    pass
