@@ -1,21 +1,12 @@
 import json
 from pathlib import Path
 
-import pytest
-from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
 
 from blog.main import app
 
 root = Path(__file__).parent.parent
-
-
-@pytest.fixture(autouse=True)
-def database_tables():
-    alembic_cfg = Config(root / "alembic.ini")
-    alembic_cfg.set_main_option("script_location", str(root / "alembic"))
-    command.upgrade(alembic_cfg, "head")
 
 
 def test_openapi_spec():

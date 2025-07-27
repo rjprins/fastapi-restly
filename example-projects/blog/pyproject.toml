@@ -13,11 +13,6 @@ dependencies = [
     "alembic>=1.15.2",
 ]
 
-[project.optional-dependencies]
-dev = [
-    "pytest>=8.3.5",
-    "httpx>=0.28.1",
-]
 
 [tool.setuptools.packages.find]
 where = ["."]
@@ -25,4 +20,11 @@ include = ["blog"]
 
 [tool.uv.sources]
 fastapi-ding = { path = "../../", editable = true }
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.5",
+    "httpx>=0.28.1",
+    "ipython>=8.37.0",
+]
 
