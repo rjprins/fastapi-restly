@@ -4,7 +4,7 @@
 
 ### Read-Only Field Detection
 
-FastAPI-Alchemy supports two approaches for marking fields as read-only:
+FastAPI-Ding supports two approaches for marking fields as read-only:
 
 1. **Class-level approach**: Using `read_only_fields: ClassVar = ["field1", "field2"]`
 2. **Field-level approach**: Using `ReadOnly(type)` annotation

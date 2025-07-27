@@ -324,17 +324,6 @@
       },
       "CreateBlogSchema": {
         "properties": {
-          "id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Id"
-          },
           "title": {
             "type": "string",
             "title": "Title"
@@ -345,7 +334,7 @@
           "title"
         ],
         "title": "CreateBlogSchema",
-        "description": "Read-only fields are optional and ignored."
+        "description": "Read-only have been fields removed."
       },
       "HTTPValidationError": {
         "properties": {
@@ -362,28 +351,22 @@
       },
       "UpdateBlogSchema": {
         "properties": {
-          "id": {
+          "title": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Id"
-          },
-          "title": {
-            "type": "string",
-            "title": "Title"
+            "title": "Title",
+            "default": "Partial PUT does not support default values"
           }
         },
         "type": "object",
-        "required": [
-          "title"
-        ],
         "title": "UpdateBlogSchema",
-        "description": "Read-only have been fields removed and all fields are optional"
+        "description": "Read-only fields have been removed and all fields are optional."
       },
       "ValidationError": {
         "properties": {

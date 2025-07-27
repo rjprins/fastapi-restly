@@ -1,6 +1,6 @@
-# Testing FastAPI-Alchemy
+# Testing FastAPI-Ding
 
-This document explains how to run tests for the FastAPI-Alchemy framework and its example projects.
+This document explains how to run tests for the FastAPI-Ding framework and its example projects.
 
 ## Quick Start
 
