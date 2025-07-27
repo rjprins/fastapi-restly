@@ -30,12 +30,13 @@ from typing import (
 
 import fastapi
 
-from .query_modifiers_config import apply_query_modifiers, create_query_param_schema
+from .query_modifiers_config import create_query_param_schema
 from .schema_generator import auto_generate_schema_for_view
 from .schemas import (
     BaseSchema,
     create_model_with_optional_fields,
     create_model_without_read_only_fields,
+    make_response_schema,
 )
 from .sqlbase import SQLBase
 
@@ -196,22 +197,26 @@ class BaseAlchemyView(View):
         if not hasattr(cls, "update_schema"):
             cls.update_schema = create_model_with_optional_fields(cls.schema)
 
+        response_schema = make_response_schema(cls.schema)
+
         # Only annotate if the methods exist (they will be overridden in subclasses)
         if hasattr(cls, "index"):
             _annotate(
                 cls.index,
-                return_annotation=Sequence[cls.schema],
+                return_annotation=Sequence[response_schema],
                 query_params=Annotated[cls.index_param_schema, fastapi.Query()],
             )
         if hasattr(cls, "get"):
-            _annotate(cls.get, return_annotation=cls.schema)
+            _annotate(cls.get, return_annotation=response_schema)
         if hasattr(cls, "post"):
             _annotate(
-                cls.post, return_annotation=cls.schema, schema_obj=cls.creation_schema
+                cls.post,
+                return_annotation=response_schema,
+                schema_obj=cls.creation_schema,
             )
         if hasattr(cls, "put"):
             _annotate(
-                cls.put, return_annotation=cls.schema, schema_obj=cls.update_schema
+                cls.put, return_annotation=response_schema, schema_obj=cls.update_schema
             )
         _exclude_routes(cls)
 

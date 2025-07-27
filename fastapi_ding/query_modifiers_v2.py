@@ -15,19 +15,6 @@ from starlette.datastructures import QueryParams
 SchemaType = type[pydantic.BaseModel]
 
 
-def _get_field_type_for_schema(field: FieldInfo) -> type:
-    annotation = field.annotation
-    origin = get_origin(annotation)
-    if origin is Union:
-        args = get_args(annotation)
-        non_none_args = [arg for arg in args if arg is not type(None)]
-        if len(non_none_args) == 1:
-            annotation = non_none_args[0]
-    if isinstance(annotation, type):
-        return annotation
-    return object
-
-
 def create_query_param_schema_v2(schema_cls: SchemaType) -> SchemaType:
     """
     Create a pydantic model class that describes and validates all possible query parameters
@@ -47,18 +34,6 @@ def create_query_param_schema_v2(schema_cls: SchemaType) -> SchemaType:
     schema_name = "QueryParamV2" + schema_cls.__name__
     query_param_schema = pydantic.create_model(schema_name, **fields)  # type: ignore
     return query_param_schema
-
-
-def _iter_fields_including_nested_v2(
-    schema_cls: SchemaType, prefix: str = ""
-) -> Iterator[tuple[str, FieldInfo]]:
-    for name, field in schema_cls.model_fields.items():
-        full_name = f"{prefix}.{name}" if prefix else name
-        nested = _get_nested_schema_v2(field)
-        if nested:
-            yield from _iter_fields_including_nested_v2(nested, full_name)
-        else:
-            yield full_name, field
 
 
 def apply_query_modifiers_v2(
@@ -91,6 +66,31 @@ def apply_pagination_v2(
     offset = (page - 1) * page_size
     select_query = select_query.limit(page_size).offset(offset)
     return select_query
+
+
+def _get_field_type_for_schema(field: FieldInfo) -> type:
+    annotation = field.annotation
+    origin = get_origin(annotation)
+    if origin is Union:
+        args = get_args(annotation)
+        non_none_args = [arg for arg in args if arg is not type(None)]
+        if len(non_none_args) == 1:
+            annotation = non_none_args[0]
+    if isinstance(annotation, type):
+        return annotation
+    return object
+
+
+def _iter_fields_including_nested_v2(
+    schema_cls: SchemaType, prefix: str = ""
+) -> Iterator[tuple[str, FieldInfo]]:
+    for name, field in schema_cls.model_fields.items():
+        full_name = f"{prefix}.{name}" if prefix else name
+        nested = _get_nested_schema_v2(field)
+        if nested:
+            yield from _iter_fields_including_nested_v2(nested, full_name)
+        else:
+            yield full_name, field
 
 
 def _get_int_v2(query_params: QueryParams, param_name: str) -> Optional[int]:

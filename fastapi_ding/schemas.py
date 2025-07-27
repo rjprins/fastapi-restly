@@ -11,12 +11,6 @@ from sqlalchemy.orm import DeclarativeBase
 
 class BaseSchema(pydantic.BaseModel):
     # TODO: Is this still needed?
-    # XXX: Explain how users can use their own pydantic BaseModel and config
-    # model_config: ClassVar = pydantic.ConfigDict(
-    #     alias_generator=to_camel,
-    #     populate_by_name=True,
-    #     from_attributes=True,
-    # )
     pass
 
 
@@ -254,7 +248,8 @@ def create_model_with_optional_fields(
         if issubclass(base_cls, pydantic.BaseModel):
             # Check if the base class has any ReadOnly fields
             has_readonly_fields = any(
-                getattr(field_info, "metadata", None) and "readonly" in field_info.metadata
+                getattr(field_info, "metadata", None)
+                and "readonly" in field_info.metadata
                 for field_info in base_cls.model_fields.values()
             )
             if has_readonly_fields:
@@ -320,3 +315,30 @@ def getattrs(obj: Any, *attrs: str, default: Any = None) -> Any:
             return default
         obj = getattr(obj, attr)
     return obj
+
+
+def make_response_schema(
+    schema_cls: type[pydantic.BaseModel],
+) -> type[pydantic.BaseModel]:
+    """
+    Create a response model from a schema that includes populate_by_name=True.
+    This allows GET responses to work with aliases while keeping POST/PUT operations
+    safe by requiring field names.
+
+    Args:
+        schema_cls: The original schema class
+
+    Returns:
+        A new schema class with populate_by_name=True enabled
+    """
+    config = getattr(schema_cls, "model_config", pydantic.ConfigDict())
+    if config.get("populate_by_name") and config.get("from_attributes"):
+        return schema_cls
+
+    new_config = config.copy()
+    new_config.update(populate_by_name=True, from_attributes=True)
+    return type(
+        schema_cls.__name__,  # Don't change the name, OpenAPI specification stays the same
+        (schema_cls,),
+        {"model_config": new_config},
+    )

@@ -1,9 +1,7 @@
 """Test Pydantic alias feature handling in FastAPI-Ding framework."""
 
+import pydantic
 import asyncio
-import pytest
-from fastapi import FastAPI
-from httpx import AsyncClient
 from pydantic import Field
 from sqlalchemy.orm import Mapped
 
@@ -31,6 +29,8 @@ def test_pydantic_alias_feature(client):
 
     # Create a schema with Pydantic aliases
     class UserSchema(fd.IDSchema[User]):
+        model_config = pydantic.ConfigDict(from_attributes=True, populate_by_name=True)
+
         name: str
         email: str
         phone_number: str = Field(alias="phoneNumber")  # Using Pydantic alias
@@ -60,7 +60,7 @@ def test_pydantic_alias_feature(client):
             "phoneNumber": "123-456-7890",  # Using alias
         },
     )
-    
+
     created_user = response.json()
     assert "id" in created_user
     assert created_user["name"] == "John Doe"
@@ -73,7 +73,7 @@ def test_pydantic_alias_feature(client):
 
     # Test GET - should return with alias, not field name
     response = client.get(f"/users/{user_id}")
-    
+
     user = response.json()
     assert user["name"] == "John Doe"
     assert user["email"] == "john@example.com"
@@ -81,14 +81,17 @@ def test_pydantic_alias_feature(client):
 
     # Test UPDATE with alias
     # Note: The framework currently has an issue where it doesn't properly handle
-    # aliases in UPDATE operations. The framework should map phoneNumber (alias) 
+    # aliases in UPDATE operations. The framework should map phoneNumber (alias)
     # back to phone_number (field name) when updating the SQLAlchemy object.
-    response = client.put(f"/users/{user_id}", json={
-        "name": "Jane Doe",
-        "email": "jane@example.com", 
-        "phoneNumber": "098-765-4321"  # Using alias
-    })
-    
+    response = client.put(
+        f"/users/{user_id}",
+        json={
+            "name": "Jane Doe",
+            "email": "jane@example.com",
+            "phoneNumber": "098-765-4321",  # Using alias
+        },
+    )
+
     updated_user = response.json()
     assert updated_user["name"] == "Jane Doe"
     assert updated_user["email"] == "jane@example.com"
@@ -111,6 +114,8 @@ def test_pydantic_alias_with_multiple_aliases(client):
 
     # Create a schema with multiple Pydantic aliases
     class ProductSchema(fd.IDSchema[Product]):
+        model_config = pydantic.ConfigDict(from_attributes=True, populate_by_name=True)
+
         name: str
         price: float
         description: str = Field(alias="productDescription")
@@ -141,7 +146,7 @@ def test_pydantic_alias_with_multiple_aliases(client):
             "isActive": True,  # Using alias
         },
     )
-    
+
     created_product = response.json()
     assert "id" in created_product
     assert created_product["name"] == "Test Product"
@@ -153,7 +158,7 @@ def test_pydantic_alias_with_multiple_aliases(client):
 
     # Test GET - should return with aliases
     response = client.get(f"/products/{product_id}")
-    
+
     product = response.json()
     assert product["name"] == "Test Product"
     assert product["price"] == 29.99
@@ -198,7 +203,7 @@ def test_pydantic_alias_with_auto_generated_schema(client):
             "author_name": "Test Author",
         },
     )
-    
+
     created_article = response.json()
     assert created_article["title"] == "Test Article"
     assert created_article["content"] == "Test content"
@@ -259,10 +264,10 @@ def test_pydantic_alias_with_query_parameters(client):
 
     for article_data in articles_data:
         response = client.post("/articles/", json=article_data)
-    
-    # Test query parameters - should work with field names, not aliases
-    response = client.get("/articles/?author_name=John Doe")
-    
+
+    # Test query parameters - should work with aliases not field names
+    response = client.get("/articles/?authorName=John Doe")
+
     articles = response.json()
     assert len(articles) == 1
     assert articles[0]["title"] == "First Article"
@@ -312,7 +317,7 @@ def test_pydantic_alias_with_field_validation(client):
             "userAge": 25,  # Using alias with validation
         },
     )
-    
+
     created_user = response.json()
     assert created_user["name"] == "John Doe"
     assert created_user["userEmail"] == "john@example.com"  # Alias
