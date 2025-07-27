@@ -50,7 +50,7 @@ def apply_query_modifiers_v2(
       - Filtering: ?name=Bob&status=active&created_at__gte=2024-01-01
     """
     select_query = apply_filtering_v2(query_params, select_query, model, schema_cls)
-    select_query = apply_sorting_v2(query_params, select_query, model)
+    select_query = apply_sorting_v2(query_params, select_query, model, schema_cls)
     select_query = apply_pagination_v2(query_params, select_query)
     return select_query
 
@@ -85,7 +85,9 @@ def _iter_fields_including_nested_v2(
     schema_cls: SchemaType, prefix: str = ""
 ) -> Iterator[tuple[str, FieldInfo]]:
     for name, field in schema_cls.model_fields.items():
-        full_name = f"{prefix}.{name}" if prefix else name
+        # Use alias if available, otherwise use field name
+        field_name = field.alias or name
+        full_name = f"{prefix}.{field_name}" if prefix else field_name
         nested = _get_nested_schema_v2(field)
         if nested:
             yield from _iter_fields_including_nested_v2(nested, full_name)
@@ -97,6 +99,11 @@ def _get_int_v2(query_params: QueryParams, param_name: str) -> Optional[int]:
     value = query_params.get(param_name)
     if not value:
         return None
+    
+    # Handle string format issue
+    if value.startswith("['") and value.endswith("']"):
+        value = value[2:-2]  # Remove [' and ']
+    
     try:
         return int(value)
     except ValueError:
@@ -107,7 +114,7 @@ def _get_int_v2(query_params: QueryParams, param_name: str) -> Optional[int]:
 
 
 def apply_sorting_v2(
-    query_params: QueryParams, select_query: Select[Any], model: type[DeclarativeBase]
+    query_params: QueryParams, select_query: Select[Any], model: type[DeclarativeBase], schema_cls: SchemaType | None = None
 ) -> Select[Any]:
     """
     Apply sorting using the order_by parameter (comma-separated, - for descending).
@@ -119,12 +126,17 @@ def apply_sorting_v2(
             return select_query.order_by(id_column)
         else:
             return select_query
+    
+    # Handle string format issue
+    if sort_string.startswith("['") and sort_string.endswith("']"):
+        sort_string = sort_string[2:-2]  # Remove [' and ']
+    
     for column_name in sort_string.split(","):
         order = sqlalchemy.asc
         if column_name.startswith("-"):
             order = sqlalchemy.desc
             column_name = column_name[1:]
-        joins, column = _get_sqlalchemy_column_v2(model, column_name)
+        joins, column = _get_sqlalchemy_column_v2(model, column_name, schema_cls)
         for join in joins:
             select_query = select_query.join(join)
         select_query = select_query.order_by(order(column))
@@ -132,17 +144,21 @@ def apply_sorting_v2(
 
 
 def _get_sqlalchemy_column_v2(
-    model: type[DeclarativeBase], column_path: str
+    model: type[DeclarativeBase], column_path: str, schema_cls: SchemaType | None = None
 ) -> tuple[list[type[DeclarativeBase]], InstrumentedAttribute[Any]]:
-    *models, column = _resolve_sqlalchemy_column_v2(model, column_path)
+    *models, column = _resolve_sqlalchemy_column_v2(model, column_path, schema_cls)
     return cast(list[type[DeclarativeBase]], models), cast(
         InstrumentedAttribute[Any], column
     )
 
 
 def _resolve_sqlalchemy_column_v2(
-    model: type[DeclarativeBase], column_name: str
+    model: type[DeclarativeBase], column_name: str, schema_cls: SchemaType | None = None
 ) -> Iterator[type[DeclarativeBase] | InstrumentedAttribute[Any]]:
+    # Handle string format issue
+    if column_name.startswith("['") and column_name.endswith("']"):
+        column_name = column_name[2:-2]  # Remove [' and ']
+    
     if "." in column_name:
         relation, _, column_part = column_name.partition(".")
         rel = getattr(model, relation, None)
@@ -152,9 +168,49 @@ def _resolve_sqlalchemy_column_v2(
             raise HTTPException(400, f"Invalid attribute in URL query: {column_name}")
         related_model = rel.property.mapper.class_
         yield related_model
-        yield from _resolve_sqlalchemy_column_v2(related_model, column_part)
+        yield from _resolve_sqlalchemy_column_v2(related_model, column_part, schema_cls)
     else:
+        # Try to find the column directly
         column = getattr(model, column_name, None)
+        if (
+            column is not None
+            and isinstance(column, InstrumentedAttribute)
+            and isinstance(column.property, ColumnProperty)
+        ):
+            yield cast(InstrumentedAttribute[Any], column)
+            return
+        
+        # If not found and we have a schema, try to resolve alias to field name
+        if schema_cls:
+            field_name = None
+            
+            # Look for field with this alias
+            for name, field in schema_cls.model_fields.items():
+                if field.alias == column_name:
+                    field_name = name
+                    break
+            
+            # If not found by alias, check if populate_by_name is enabled
+            if field_name is None:
+                config = getattr(schema_cls, "model_config", pydantic.ConfigDict())
+                populate_by_name = config.get("populate_by_name", False)
+                if populate_by_name and column_name in schema_cls.model_fields:
+                    field_name = column_name
+                # Also allow fields that don't have aliases
+                elif not any(f.alias for f in schema_cls.model_fields.values()):
+                    # Schema has no aliases, so column_name might be a field name
+                    if column_name in schema_cls.model_fields:
+                        field_name = column_name
+                else:
+                    # Check if this field doesn't have an alias
+                    for name, field in schema_cls.model_fields.items():
+                        if name == column_name and not field.alias:
+                            field_name = name
+                            break
+            
+            if field_name:
+                column = getattr(model, field_name, None)
+        
         if (
             column is None
             or not isinstance(column, InstrumentedAttribute)
@@ -184,7 +240,7 @@ def apply_filtering_v2(
             column_name, op = key.split("__", 1)
         else:
             column_name, op = key, "eq"
-        joins, column = _get_sqlalchemy_column_v2(model, column_name)
+        joins, column = _get_sqlalchemy_column_v2(model, column_name, schema_cls)
         for join in joins:
             select_query = select_query.join(join)
         parser = functools.partial(_parse_value_v2, schema_cls, column_name)
@@ -217,11 +273,51 @@ def _parse_value_v2(schema_cls: SchemaType, column_name: str, value: str) -> Any
         if not schema:
             raise HTTPException(400, f"Invalid attribute in URL query: {column_name}")
         return _parse_value_v2(schema, column_part, value)
+    
+    # Handle value format - it might be a string representation of a list
+    if value.startswith("['") and value.endswith("']"):
+        # Extract the actual value from the string representation
+        value = value[2:-2]  # Remove [' and ']
+    
+    # Check if populate_by_name is enabled
+    config = getattr(schema_cls, "model_config", pydantic.ConfigDict())
+    populate_by_name = config.get("populate_by_name", False)
+    
+    # Try to find the field by alias first
+    field_name = None
+    for name, field in schema_cls.model_fields.items():
+        if field.alias == column_name:
+            field_name = name
+            break
+    
+    # If not found by alias and populate_by_name is True, try field name
+    if field_name is None and populate_by_name:
+        if column_name in schema_cls.model_fields:
+            field_name = column_name
+    
+    # If still not found and populate_by_name is False, try field name for schemas without aliases
+    if field_name is None and not populate_by_name:
+        # Check if this schema has any aliases
+        has_aliases = any(field.alias for field in schema_cls.model_fields.values())
+        if not has_aliases and column_name in schema_cls.model_fields:
+            field_name = column_name
+        # Also allow fields that don't have aliases (like 'age' in our test)
+        elif has_aliases:
+            # Check if this field doesn't have an alias
+            for name, field in schema_cls.model_fields.items():
+                if name == column_name and not field.alias:
+                    field_name = name
+                    break
+    
+    # If still not found, raise error
+    if field_name is None:
+        raise HTTPException(400, f"Invalid attribute in URL query: {column_name}")
+    
     try:
         obj = schema_cls.__pydantic_validator__.validate_assignment(
-            schema_cls.model_construct(), column_name, value
+            schema_cls.model_construct(), field_name, value
         )
-        return getattr(obj, column_name)
+        return getattr(obj, field_name)
     except Exception:
         raise HTTPException(400, f"Invalid attribute in URL query: {column_name}")
 

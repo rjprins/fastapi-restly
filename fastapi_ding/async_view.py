@@ -6,7 +6,7 @@ import sqlalchemy
 
 from ._session import AsyncDBDependency
 from ._views import BaseAlchemyView, delete, get, post, put
-from .query_modifiers import apply_query_modifiers
+from .query_modifiers_config import apply_query_modifiers
 from .schemas import (
     NOT_SET,
     BaseSchema,

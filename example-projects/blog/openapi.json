@@ -310,7 +310,7 @@
             "type": "integer",
             "title": "Id"
           },
-          "Title": {
+          "title": {
             "type": "string",
             "title": "Title"
           }
@@ -318,20 +318,20 @@
         "type": "object",
         "required": [
           "id",
-          "Title"
+          "title"
         ],
         "title": "BlogSchema"
       },
       "CreateBlogSchema": {
         "properties": {
-          "Title": {
+          "title": {
             "type": "string",
             "title": "Title"
           }
         },
         "type": "object",
         "required": [
-          "Title"
+          "title"
         ],
         "title": "CreateBlogSchema",
         "description": "Read-only have been fields removed."
@@ -351,7 +351,7 @@
       },
       "UpdateBlogSchema": {
         "properties": {
-          "Title": {
+          "title": {
             "anyOf": [
               {
                 "type": "string"

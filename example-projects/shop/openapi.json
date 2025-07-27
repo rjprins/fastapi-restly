@@ -1048,6 +1048,9 @@
       },
       "CreateOrderSchema": {
         "properties": {
+          "customer": {
+            "$ref": "#/components/schemas/CustomerSchema"
+          },
           "customer_id": {
             "$ref": "#/components/schemas/IDSchema_Customer_"
           },
@@ -1061,6 +1064,7 @@
         },
         "type": "object",
         "required": [
+          "customer",
           "customer_id",
           "products"
         ],
@@ -1262,6 +1266,17 @@
       },
       "UpdateOrderSchema": {
         "properties": {
+          "customer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CustomerSchema"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": "Partial PUT does not support default values"
+          },
           "customer_id": {
             "anyOf": [
               {

@@ -215,6 +215,14 @@ def test_pydantic_alias_with_query_parameters(client):
     reset_metadata()
     fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
 
+    # Set query modifier version to V2 for this test
+    from fastapi_ding.query_modifiers_config import (
+        set_query_modifier_version,
+        QueryModifierVersion,
+    )
+
+    set_query_modifier_version(QueryModifierVersion.V2)
+
     app = client.app
 
     # Define a model with aliased fields
@@ -331,8 +339,8 @@ def test_pydantic_alias_with_field_validation(client):
             "userEmail": "invalid@example.com",
             "userAge": 200,  # Invalid age (too high)
         },
+        response_code=422,
     )
-    assert response.status_code == 422  # Validation error
 
     # Test CREATE with negative age (should fail validation)
     response = client.post(
@@ -342,5 +350,5 @@ def test_pydantic_alias_with_field_validation(client):
             "userEmail": "invalid@example.com",
             "userAge": -5,  # Invalid age (negative)
         },
+        response_code=422,
     )
-    assert response.status_code == 422  # Validation error

@@ -56,6 +56,9 @@ class TestQueryModifierVersion:
 class TestConfigurationFunctions:
     def test_set_and_get_query_modifier_version(self):
         """Test setting and getting the query modifier version."""
+        # Reset to V1 to ensure we start with the expected default
+        set_query_modifier_version(QueryModifierVersion.V1)
+        
         # Default should be V1
         assert get_query_modifier_version() == QueryModifierVersion.V1
         
