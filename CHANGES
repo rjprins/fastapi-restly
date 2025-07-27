@@ -1,0 +1,15 @@
+# CHANGES
+
+## 2025-07-27
+
+### Improved
+- **Schema Generation**: Enhanced `create_model_with_optional_fields` function to use the same robust inheritance handling as `create_model_without_read_only_fields`. This ensures better consistency between creation and update schemas and improves handling of complex inheritance hierarchies.
+
+### Fixed
+- **Dependencies**: Added `aiosqlite` as a development dependency for testing purposes.
+
+### Technical Details
+- Update schemas now properly remove read-only fields entirely (instead of making them optional)
+- All writable fields in update schemas use `NOT_SET` defaults for proper partial update behavior
+- Improved base class handling for complex inheritance scenarios
+- Better preservation of validators, configuration, and metadata 
