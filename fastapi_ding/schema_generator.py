@@ -233,6 +233,15 @@ def create_schema_from_model(
         else:
             field_definitions[field_name] = (pydantic_type, ...)
 
+    # Apply ReadOnly annotation to read-only fields
+    if read_only_fields:
+        from .schemas import ReadOnly
+        for field_name in read_only_fields:
+            if field_name in field_definitions:
+                original_type, field_info = field_definitions[field_name]
+                # Apply ReadOnly annotation to the type
+                field_definitions[field_name] = (ReadOnly[original_type], field_info)
+
     # Create the schema class using pydantic.create_model
     import pydantic
 
@@ -242,9 +251,6 @@ def create_schema_from_model(
         __base__=tuple(bases),
         **field_definitions,
     )
-
-    # Set read-only fields as a class variable
-    schema_cls.read_only_fields = read_only_fields
 
     return schema_cls
 

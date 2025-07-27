@@ -7,7 +7,12 @@ import sqlalchemy
 from ._session import AsyncDBDependency
 from ._views import BaseAlchemyView, delete, get, post, put
 from .query_modifiers import apply_query_modifiers
-from .schemas import NOT_SET, BaseSchema, async_resolve_ids_to_sqlalchemy_objects
+from .schemas import (
+    NOT_SET,
+    BaseSchema,
+    async_resolve_ids_to_sqlalchemy_objects,
+    is_field_readonly,
+)
 from .sqlbase import SQLBase
 
 
@@ -123,7 +128,8 @@ class AsyncAlchemyView(BaseAlchemyView):
         # Filter out read-only fields when creating the object
         data = {}
         for field_name, value in schema_obj:
-            if field_name in self.schema.read_only_fields:
+            is_readonly = is_field_readonly(self.schema, field_name)
+            if is_readonly:
                 continue
             data[field_name] = value
 
@@ -140,10 +146,10 @@ class AsyncAlchemyView(BaseAlchemyView):
         for field_name, value in schema_obj:
             if value is NOT_SET:
                 continue
-            # `read_only_fields` are removed when using
+            # ReadOnly fields are filtered out when using
             # `create_model_without_read_only_fields()` but if a custom
             # `creation_schema` is used this might still be needed.
-            if field_name in self.schema.read_only_fields:
+            if is_field_readonly(self.schema, field_name):
                 continue
             setattr(obj, field_name, value)
         return await self.save_object(obj)

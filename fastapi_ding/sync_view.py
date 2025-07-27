@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from ._session import DBDependency
 from ._views import BaseAlchemyView, delete, get, post, put
 from .query_modifiers_config import apply_query_modifiers
-from .schemas import NOT_SET, BaseSchema, resolve_ids_to_sqlalchemy_objects
+from .schemas import NOT_SET, BaseSchema, resolve_ids_to_sqlalchemy_objects, is_field_readonly
 from .sqlbase import SQLBase
 
 T = TypeVar("T", bound=SQLBase)
@@ -143,10 +143,10 @@ class AlchemyView(BaseAlchemyView):
         for field_name, value in schema_obj:
             if value is NOT_SET:
                 continue
-            # `read_only_fields` are removed when using
+            # ReadOnly fields are filtered out when using
             # `create_model_without_read_only_fields()` but if a custom
             # `creation_schema` is used this might still be needed.
-            if field_name in self.schema.read_only_fields:
+            if is_field_readonly(self.schema, field_name):
                 continue
             setattr(obj, field_name, value)
         return self.save_object(obj)

@@ -1,35 +1,30 @@
 import types
 from datetime import datetime
-from typing import Annotated, Any, ClassVar, Generic, TypeVar
+from typing import Annotated, Any, ClassVar, Generic, Optional, TypeVar
 
 import pydantic
+from pydantic.fields import FieldInfo
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import DeclarativeBase
 
 
 class BaseSchema(pydantic.BaseModel):
+    # TODO: Is this still needed?
     # XXX: Explain how users can use their own pydantic BaseModel and config
     # model_config: ClassVar = pydantic.ConfigDict(
     #     alias_generator=to_camel,
     #     populate_by_name=True,
     #     from_attributes=True,
     # )
-    # XXX: Collect read_only_fields by MRO
-    read_only_fields: ClassVar[list[str]] = []
+    pass
 
 
-class TimestampsSchemaMixin(pydantic.BaseModel):
-    read_only_fields: ClassVar[list[str]] = ["created_at", "updated_at"]
-    created_at: datetime
-    updated_at: datetime
-
-
-SQLAlchemyModel = TypeVar("SQLAlchemyModel", bound=DeclarativeBase)
+# Define TypeVar T before it's used
 T = TypeVar("T")
 
 
-class ReadOnly:
+class ReadOnlyA:
     """
     A class that can be used with square brackets to mark fields as read-only.
     Example:
@@ -44,7 +39,15 @@ class ReadOnly:
 
 
 # Create a singleton instance
-ReadOnly = ReadOnly()
+ReadOnly = ReadOnlyA()
+
+
+class TimestampsSchemaMixin(pydantic.BaseModel):
+    created_at: ReadOnly[datetime]
+    updated_at: ReadOnly[datetime]
+
+
+SQLAlchemyModel = TypeVar("SQLAlchemyModel", bound=DeclarativeBase)
 
 
 class IDSchema(BaseSchema, Generic[SQLAlchemyModel]):
@@ -52,9 +55,7 @@ class IDSchema(BaseSchema, Generic[SQLAlchemyModel]):
     Can be used as IDSchema[MyModel].
     """
 
-    read_only_fields: ClassVar[list[str]] = ["id"]
-
-    id: int
+    id: ReadOnly[int]
 
     def get_sql_model_annotation(self) -> SQLAlchemyModel | None:
         """
@@ -152,21 +153,22 @@ def resolve_ids_to_sqlalchemy_objects(schema_obj: BaseSchema, session: Any) -> N
             setattr(schema_obj, field, sql_model_objs)
 
 
-def get_read_only_fields(model_cls: type[pydantic.BaseModel]) -> set[str]:
-    """
-    Get all read-only fields from a model, including those from class-level read_only_fields
-    and those marked with ReadOnly (Annotated with 'readonly').
-    """
-    read_only_fields: set[str] = set()
-    # Get read-only fields from class-level read_only_fields
-    for cls in model_cls.mro():
-        if "read_only_fields" in cls.__dict__:
-            read_only_fields.update(cls.__dict__["read_only_fields"])
+def get_read_only_fields(model_cls: type[pydantic.BaseModel]) -> list[str]:
+    """Get all fields from a model annotated as ReadOnly[]"""
+    read_only_fields: list[str] = []
     # Get read-only fields from Annotated metadata
     for field_name, field_info in model_cls.model_fields.items():
         if getattr(field_info, "metadata", None) and "readonly" in field_info.metadata:
-            read_only_fields.add(field_name)
+            read_only_fields.append(field_name)
     return read_only_fields
+
+
+def is_field_readonly(model_cls: type[pydantic.BaseModel], field_name: str) -> bool:
+    """Check if a specific field is marked as readonly."""
+    field_info = model_cls.model_fields.get(field_name)
+    if field_info is None:
+        return False
+    return getattr(field_info, "metadata", None) and "readonly" in field_info.metadata
 
 
 def create_model_without_read_only_fields(
@@ -176,15 +178,22 @@ def create_model_without_read_only_fields(
     Copy the given pydantic model class, but with fields with names in
     'read_only_fields' removed.
     """
-    if hasattr(model_cls, "__orig_bases__"):
+    read_only_fields = get_read_only_fields(model_cls)
+    if not read_only_fields:
+        return model_cls
+
+    # Get the base classes, handling both generic and non-generic classes
+    orig_bases: tuple[type, ...]
+    if hasattr(model_cls, "__orig_bases__") and model_cls.__orig_bases__:
         orig_bases = model_cls.__orig_bases__
     else:
         orig_bases = model_cls.__bases__
+
     bases: list[type[pydantic.BaseModel]] = []
     for base_cls in orig_bases:
-        if hasattr(base_cls, "read_only_fields"):
-            new_base_cls = create_model_without_read_only_fields(base_cls)
-            bases.append(new_base_cls)
+        if issubclass(base_cls, pydantic.BaseModel):
+            base_cls = create_model_without_read_only_fields(base_cls)
+            bases.append(base_cls)
         else:
             bases.append(base_cls)
     base = tuple(bases)
@@ -209,43 +218,6 @@ def create_model_without_read_only_fields(
     return new_model_cls
 
 
-def create_model_without_read_only_fields_v2(
-    model_cls: type[pydantic.BaseModel], raise_on_readonly: bool = False
-) -> type[pydantic.BaseModel]:
-    """
-    Create a new pydantic model/schema where all writable fields (those not mentioned
-    in `read_only_fields`) are preserved, and read-only fields are made optional.
-    This preserves all validators, config, and other functionality.
-
-    Args:
-        model_cls: The original model class
-        raise_on_readonly: If True, raise an error when read-only fields are provided
-    """
-    new_model_name = "Create" + model_cls.__name__
-    doc = model_cls.__doc__ or "" + "\nRead-only fields are optional and ignored."
-
-    # Get read-only fields from the original model
-    read_only_fields = get_read_only_fields(model_cls)
-
-    # Create field overrides for read-only fields to make them optional
-    field_overrides = {}
-    for field_name in read_only_fields:
-        if field_name in model_cls.model_fields:
-            field_info = model_cls.model_fields[field_name]
-            # Make the field optional with None as default
-            from typing import Optional
-
-            field_overrides[field_name] = (Optional[field_info.annotation], None)
-
-    # Create a new model by inheriting from the original
-    # This preserves all validators, config, and other functionality
-    new_model_cls = pydantic.create_model(  # type: ignore
-        new_model_name, __doc__=doc, __base__=(model_cls,), **field_overrides
-    )
-
-    return new_model_cls
-
-
 def rebase_with_model_config(
     base: tuple[type, ...], model_cls: type[pydantic.BaseModel]
 ) -> type[pydantic.BaseModel]:
@@ -264,34 +236,48 @@ NOT_SET = "Partial PUT does not support default values"
 
 
 def create_model_with_optional_fields(
-    model_cls: type[BaseSchema],
-) -> type[BaseSchema]:
+    model_cls: type[pydantic.BaseModel],
+) -> type[pydantic.BaseModel]:
     """
     Copy the given pydantic model class, but with fields with names in
     'read_only_fields' removed and all writable fields made optional with NOT_SET defaults.
     """
-    if hasattr(model_cls, "__orig_bases__"):
+    # Get the base classes, handling both generic and non-generic classes
+    orig_bases: tuple[type, ...]
+    if hasattr(model_cls, "__orig_bases__") and model_cls.__orig_bases__:
         orig_bases = model_cls.__orig_bases__
     else:
         orig_bases = model_cls.__bases__
+
     bases: list[type[pydantic.BaseModel]] = []
     for base_cls in orig_bases:
-        if hasattr(base_cls, "read_only_fields"):
-            new_base_cls = create_model_with_optional_fields(base_cls)
-            bases.append(new_base_cls)
+        if issubclass(base_cls, pydantic.BaseModel):
+            # Check if the base class has any ReadOnly fields
+            has_readonly_fields = any(
+                getattr(field_info, "metadata", None) and "readonly" in field_info.metadata
+                for field_info in base_cls.model_fields.values()
+            )
+            if has_readonly_fields:
+                new_base_cls = create_model_with_optional_fields(base_cls)
+                bases.append(new_base_cls)
+            else:
+                bases.append(base_cls)
         else:
             bases.append(base_cls)
     base = tuple(bases)
 
     new_model_name = "Update" + model_cls.__name__
-    doc = model_cls.__doc__ or "" + "\nRead-only fields have been removed and all fields are optional."
-    
+    doc = (
+        model_cls.__doc__
+        or "" + "\nRead-only fields have been removed and all fields are optional."
+    )
+
     # Get writable fields and make them optional with NOT_SET defaults
     writable_fields = _get_writable_field_definitions(model_cls)
     optional_fields = {}
     for field_name, (field_annotation, field_info) in writable_fields.items():
-        from typing import Optional
-        optional_fields[field_name] = (Optional[field_annotation], NOT_SET)
+        field_with_default = FieldInfo.merge_field_infos(field_info, default=NOT_SET)
+        optional_fields[field_name] = (Optional[field_annotation], field_with_default)
 
     if model_cls.model_config:
         base = rebase_with_model_config(base, model_cls)

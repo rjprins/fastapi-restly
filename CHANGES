@@ -1,5 +1,21 @@
 # CHANGES
 
+## 2025-01-27
+
+### Breaking Changes
+- **ReadOnly Fields**: Converted from class-level `read_only_fields` approach to `ReadOnly` type annotations. All schemas now use `ReadOnly[type]` instead of setting `read_only_fields: ClassVar = ["field1", "field2"]`.
+
+### Improved
+- **Schema Generation**: Auto-generated schemas now use `ReadOnly` annotations for read-only fields (id, created_at, updated_at) instead of class variables
+- **Type Safety**: Better type checking and IDE support with the new `ReadOnly` annotation approach
+- **Consistency**: All schemas (manual and auto-generated) now use the same read-only field mechanism
+
+### Technical Details
+- `ReadOnly` is now a singleton that can be used as `ReadOnly[type]` to mark fields as read-only
+- The `is_field_readonly()` helper function checks for `ReadOnly` annotations in field metadata
+- Auto-generated schemas apply `ReadOnly` annotations to id, created_at, and updated_at fields
+- Backward compatibility maintained through the same function interfaces
+
 ## 2025-07-27
 
 ### Improved

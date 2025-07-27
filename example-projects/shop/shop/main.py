@@ -81,13 +81,11 @@ class ProductSchema(fd.IDSchema[Product]):
 
 
 class OrderSchema(fd.TimestampsSchemaMixin, fd.IDSchema[Order]):
-    # Example of custom read-only field using class-level approach
-    read_only_fields: ClassVar = ["customer"]
     # Example of embedded schema
     customer: CustomerSchema
     customer_id: fd.IDSchema[Customer]
     products: list[fd.IDSchema[Product]]
-    # Example of field-level read-only using the new ReadOnly syntax
+    # Example of field-level read-only using the ReadOnly syntax
     internal_notes: fd.ReadOnly[str]
 
 
