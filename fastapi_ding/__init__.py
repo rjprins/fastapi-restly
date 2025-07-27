@@ -10,6 +10,7 @@ from ._session import (
 from ._settings import settings
 from ._views import BaseAlchemyView, delete, get, include_view, post, put, route
 from .async_view import AsyncAlchemyView
+from .pytest_fixtures import DingTestClient
 from .query_modifiers_config import (
     QueryModifierVersion,
     apply_query_modifiers,
@@ -57,4 +58,5 @@ __all__ = [
     "apply_query_modifiers",
     "create_query_param_schema",
     "mapped_column",
+    "DingTestClient",
 ]
