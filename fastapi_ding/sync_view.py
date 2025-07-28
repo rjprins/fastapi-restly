@@ -7,7 +7,12 @@ from sqlalchemy.orm import Session
 from ._session import DBDependency
 from ._views import BaseAlchemyView, delete, get, post, put
 from .query_modifiers_config import apply_query_modifiers
-from .schemas import NOT_SET, BaseSchema, resolve_ids_to_sqlalchemy_objects, is_field_readonly
+from .schemas import (
+    NOT_SET,
+    BaseSchema,
+    is_field_readonly,
+    resolve_ids_to_sqlalchemy_objects,
+)
 from .sqlbase import SQLBase
 
 T = TypeVar("T", bound=SQLBase)

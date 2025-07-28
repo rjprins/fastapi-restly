@@ -209,6 +209,7 @@ def create_model_without_read_only_fields(
         __cls_kwargs__=getattr(model_cls, "__cls_kwargs__", None),
         **writable_fields,
     )
+    set_schema_title(new_model_cls)
     return new_model_cls
 
 
@@ -287,6 +288,7 @@ def create_model_with_optional_fields(
         __cls_kwargs__=getattr(model_cls, "__cls_kwargs__", None),
         **optional_fields,
     )
+    set_schema_title(new_model_cls)
     return new_model_cls
 
 
@@ -317,6 +319,23 @@ def getattrs(obj: Any, *attrs: str, default: Any = None) -> Any:
     return obj
 
 
+def set_schema_title(schema_cls: type[pydantic.BaseModel]) -> None:
+    """
+    Ensure that a schema class maintains its name in OpenAPI generation.
+    This uses Pydantic's built-in model_config to control schema naming.
+
+    Args:
+        schema_cls: The original schema class
+    """
+    # Get or create model_config
+    config = getattr(schema_cls, "model_config", pydantic.ConfigDict())
+
+    # Ensure the title is set to the class name
+    if not config.get("title"):
+        config["title"] = schema_cls.__name__
+        schema_cls.model_config = config
+
+
 def make_response_schema(
     schema_cls: type[pydantic.BaseModel],
 ) -> type[pydantic.BaseModel]:
@@ -333,12 +352,21 @@ def make_response_schema(
     """
     config = getattr(schema_cls, "model_config", pydantic.ConfigDict())
     if config.get("populate_by_name") and config.get("from_attributes"):
+        set_schema_title(schema_cls)
         return schema_cls
 
     new_config = config.copy()
     new_config.update(populate_by_name=True, from_attributes=True)
-    return type(
-        schema_cls.__name__,  # Don't change the name, OpenAPI specification stays the same
+
+    # Create a new schema class using Pydantic's built-in capabilities
+    new_schema = type(
+        schema_cls.__name__,  # Keep the original name
         (schema_cls,),
-        {"model_config": new_config},
+        {
+            "model_config": new_config,
+            "__module__": schema_cls.__module__,  # Preserve module info
+        },
     )
+
+    set_schema_title(new_schema)
+    return new_schema

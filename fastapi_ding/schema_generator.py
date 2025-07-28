@@ -236,6 +236,7 @@ def create_schema_from_model(
     # Apply ReadOnly annotation to read-only fields
     if read_only_fields:
         from .schemas import ReadOnly
+
         for field_name in read_only_fields:
             if field_name in field_definitions:
                 original_type, field_info = field_definitions[field_name]

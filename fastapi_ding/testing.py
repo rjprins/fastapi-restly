@@ -4,13 +4,13 @@ from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
 from .pytest_fixtures import (
+    DingTestClient,
     app,
     async_session,
     autouse_alembic_upgrade,
     autouse_savepoint_only_mode_sessions,
     client,
     session,
-    DingTestClient,
 )
 
 __all__ = [
