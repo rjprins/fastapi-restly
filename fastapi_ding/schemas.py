@@ -158,6 +158,10 @@ def get_read_only_fields(model_cls: type[pydantic.BaseModel]) -> list[str]:
 def is_field_readonly(model_cls: type[pydantic.BaseModel], field_name: str) -> bool:
     """Check if a specific field is marked as readonly."""
     field_info = model_cls.model_fields.get(field_name)
+    return is_readonly_field(field_info)
+
+
+def is_readonly_field(field_info: FieldInfo | None) -> bool:
     if field_info is None:
         return False
     metadata = getattr(field_info, "metadata", None)
@@ -192,48 +196,37 @@ def create_model_without_read_only_fields(
     model_cls: type[pydantic.BaseModel],
 ) -> type[pydantic.BaseModel]:
     """
-    Copy the given pydantic model class, but with fields with names in
-    'read_only_fields' removed.
+    Create a subclass of the given pydantic model class with a new name.
     """
-    read_only_fields = get_read_only_fields(model_cls)
-    if not read_only_fields:
-        return model_cls
-
-    # Get the base classes, handling both generic and non-generic classes
-    orig_bases: tuple[type, ...]
-    if hasattr(model_cls, "__orig_bases__") and model_cls.__orig_bases__:
-        orig_bases = model_cls.__orig_bases__
-    else:
-        orig_bases = model_cls.__bases__
-
-    bases: list[type[pydantic.BaseModel]] = []
-    for base_cls in orig_bases:
-        if issubclass(base_cls, pydantic.BaseModel):
-            base_cls = create_model_without_read_only_fields(base_cls)
-            bases.append(base_cls)
-        else:
-            bases.append(base_cls)
-    base = tuple(bases)
-
     new_model_name = "Create" + model_cls.__name__
-    doc = model_cls.__doc__ or "" + "\nRead-only have been fields removed."
-    writable_fields = _get_writable_field_definitions(model_cls)
+    new_doc = (model_cls.__doc__ or "") + "\nRead-only fields have been removed."
 
-    if model_cls.model_config:
-        base = rebase_with_model_config(base, model_cls)
-
-    # Ignore mypy because Pydantic typing on __base__ is too strict
-    new_model_cls = pydantic.create_model(  # type: ignore
+    # Create a subclass that mixes in OmitReadOnly
+    new_model_cls = type(
         new_model_name,
-        __doc__=doc,
-        __base__=base,
-        __module__=model_cls.__module__,
-        __validators__=getattr(model_cls, "__validators__", None),
-        __cls_kwargs__=getattr(model_cls, "__cls_kwargs__", None),
-        **writable_fields,
+        (OmitReadOnly, model_cls),
+        {"__module__": model_cls.__module__, "__doc__": new_doc},
     )
-    set_schema_title(new_model_cls)
+
     return new_model_cls
+
+
+class OmitReadOnly(pydantic.BaseModel):
+    @classmethod
+    def __pydantic_init_subclass__(cls, **kwargs: Any) -> None:
+        super().__pydantic_init_subclass__(**kwargs)
+
+        # Collect readonly fields to delete first
+        readonly_fields = []
+        for name, field_info in cls.model_fields.items():
+            if is_readonly_field(field_info):
+                readonly_fields.append(name)
+
+        # Delete readonly fields after iteration is complete
+        for name in readonly_fields:
+            del cls.model_fields[name]
+
+        cls.model_rebuild(force=True)
 
 
 def rebase_with_model_config(
@@ -257,62 +250,34 @@ def create_model_with_optional_fields(
     model_cls: type[pydantic.BaseModel],
 ) -> type[pydantic.BaseModel]:
     """
-    Copy the given pydantic model class, but with fields with names in
-    'read_only_fields' removed and all writable fields made optional with NOT_SET defaults.
+    Create a subclass of the given pydantic model class with a new name.
+    Read-only fields are removed and all writable fields are made optional with NOT_SET defaults.
     """
-    # Get the base classes, handling both generic and non-generic classes
-    orig_bases: tuple[type, ...]
-    if hasattr(model_cls, "__orig_bases__") and model_cls.__orig_bases__:
-        orig_bases = model_cls.__orig_bases__
-    else:
-        orig_bases = model_cls.__bases__
-
-    bases: list[type[pydantic.BaseModel]] = []
-    for base_cls in orig_bases:
-        if issubclass(base_cls, pydantic.BaseModel):
-            # Check if the base class has any ReadOnly fields
-            has_readonly_fields = any(
-                getattr(field_info, "metadata", None)
-                and readonly_marker in field_info.metadata
-                for field_info in base_cls.model_fields.values()
-            )
-            if has_readonly_fields:
-                new_base_cls = create_model_with_optional_fields(base_cls)
-                bases.append(new_base_cls)
-            else:
-                bases.append(base_cls)
-        else:
-            bases.append(base_cls)
-    base = tuple(bases)
-
     new_model_name = "Update" + model_cls.__name__
-    doc = (
-        model_cls.__doc__
-        or "" + "\nRead-only fields have been removed and all fields are optional."
+    new_doc = (
+        model_cls.__doc__ or "" + "\nRead-only fields have been removed and all fields are optional."
     )
 
-    # Get writable fields and make them optional with NOT_SET defaults
-    writable_fields = _get_writable_field_definitions(model_cls)
-    optional_fields = {}
-    for field_name, (field_annotation, field_info) in writable_fields.items():
-        field_with_default = FieldInfo.merge_field_infos(field_info, default=NOT_SET)
-        optional_fields[field_name] = (Optional[field_annotation], field_with_default)
-
-    if model_cls.model_config:
-        base = rebase_with_model_config(base, model_cls)
-
-    # Ignore mypy because Pydantic typing on __base__ is too strict
-    new_model_cls = pydantic.create_model(  # type: ignore
+    # Create a subclass that mixes in both OmitReadOnly and PatchMixin
+    new_model_cls = type(
         new_model_name,
-        __doc__=doc,
-        __base__=base,
-        __module__=model_cls.__module__,
-        __validators__=getattr(model_cls, "__validators__", None),
-        __cls_kwargs__=getattr(model_cls, "__cls_kwargs__", None),
-        **optional_fields,
+        (PatchMixin, OmitReadOnly, model_cls),
+        {"__module__": model_cls.__module__, "__doc__": new_doc},
     )
-    set_schema_title(new_model_cls)
+
     return new_model_cls
+
+
+class PatchMixin(pydantic.BaseModel):
+    @classmethod
+    def __pydantic_init_subclass__(cls, **kwargs: Any) -> None:
+        super().__pydantic_init_subclass__(**kwargs)
+
+        for field in cls.model_fields.values():
+            field.default = NOT_SET
+            field.annotation = Optional[field.annotation]
+
+        cls.model_rebuild(force=True)
 
 
 def _get_writable_field_definitions(
