@@ -14,26 +14,21 @@ class BaseSchema(pydantic.BaseModel):
     pass
 
 
-# Define TypeVar T before it's used
-T = TypeVar("T")
+class _Marker:
+    def __init__(self, name: str):
+        self.name = name
+
+    def __repr__(self):
+        return f"fd._Marker('{self.name}'>"
 
 
-class ReadOnlyA:
-    """
-    A class that can be used with square brackets to mark fields as read-only.
-    Example:
-        class UserSchema(IDSchema[User]):
-            name: str
-            email: str
-            id: ReadOnly[int]  # This field is read-only
-    """
+readonly_marker = _Marker("ReadOnly")
+writeonly_marker = _Marker("WriteOnly")
 
-    def __getitem__(self, t: type[T]) -> Annotated[T, "readonly"]:
-        return Annotated[t, "readonly"]
+_T = TypeVar("_T")
 
-
-# Create a singleton instance
-ReadOnly = ReadOnlyA()
+ReadOnly = Annotated[_T, readonly_marker]
+WriteOnly = Annotated[_T, writeonly_marker]
 
 
 class TimestampsSchemaMixin(pydantic.BaseModel):
