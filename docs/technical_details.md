@@ -12,12 +12,17 @@ FastAPI-Ding supports two approaches for marking fields as read-only:
 The field-level approach uses Python's `typing.Annotated` to attach metadata to type annotations:
 
 ```python
-class ReadOnly:
-    def __getitem__(self, t: type[T]) -> type[T]:
-        return Annotated[t, "readonly"]
+class _Marker:
+    def __init__(self, name: str):
+        self.name = name
 
-# Create a singleton instance
-ReadOnly = ReadOnly()
+readonly_marker = _Marker("ReadOnly")
+writeonly_marker = _Marker("WriteOnly")
+
+_T = TypeVar("_T")
+
+ReadOnly = Annotated[_T, readonly_marker, Field(json_schema_extra={"readOnly": True})]
+WriteOnly = Annotated[_T, writeonly_marker, Field(json_schema_extra={"writeOnly": True})]
 ```
 
 ### Creation Schema Generation
@@ -80,32 +85,46 @@ The update schema will:
 
 ## Field-Level Read-Only Implementation
 
-The `ReadOnly` function uses Python's `typing.Annotated` to attach metadata to type annotations:
+The `ReadOnly` and `WriteOnly` annotations use Python's `typing.Annotated` to attach metadata to type annotations:
 
 ```python
-def ReadOnly(t: type[T]) -> type[T]:
-    return Annotated[t, "readonly"]
+class _Marker:
+    def __init__(self, name: str):
+        self.name = name
+
+readonly_marker = _Marker("ReadOnly")
+writeonly_marker = _Marker("WriteOnly")
+
+_T = TypeVar("_T")
+
+ReadOnly = Annotated[_T, readonly_marker, Field(json_schema_extra={"readOnly": True})]
+WriteOnly = Annotated[_T, writeonly_marker, Field(json_schema_extra={"writeOnly": True})]
 ```
 
 ### Detection Logic
 
-The framework detects read-only fields by checking field metadata:
+The framework detects read-only and write-only fields by checking field metadata:
 
 ```python
-def get_read_only_fields(model_cls: type[pydantic.BaseModel]) -> set[str]:
-    read_only_fields: set[str] = set()
-    
-    # Get class-level read-only fields
-    for cls in model_cls.mro():
-        if "read_only_fields" in cls.__dict__:
-            read_only_fields.update(cls.__dict__["read_only_fields"])
-    
-    # Get field-level read-only fields
+def get_read_only_fields(model_cls: type[pydantic.BaseModel]) -> list[str]:
+    """Get all fields from a model annotated as ReadOnly[]"""
+    read_only_fields: list[str] = []
+    # Get read-only fields from Annotated metadata
     for field_name, field_info in model_cls.model_fields.items():
-        if getattr(field_info, "metadata", None) and "readonly" in field_info.metadata:
-            read_only_fields.add(field_name)
-    
+        metadata = getattr(field_info, "metadata", None)
+        if metadata and readonly_marker in metadata:
+            read_only_fields.append(field_name)
     return read_only_fields
+
+def get_write_only_fields(model_cls: type[pydantic.BaseModel]) -> list[str]:
+    """Get all fields from a model annotated as WriteOnly[]"""
+    write_only_fields: list[str] = []
+    # Get write-only fields from Annotated metadata
+    for field_name, field_info in model_cls.model_fields.items():
+        metadata = getattr(field_info, "metadata", None)
+        if metadata and writeonly_marker in metadata:
+            write_only_fields.append(field_name)
+    return write_only_fields
 ```
 
 ### Benefits of This Approach

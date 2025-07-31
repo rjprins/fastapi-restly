@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Annotated, Any, ClassVar, Generic, Optional, TypeVar
 
 import pydantic
-from pydantic.fields import FieldInfo
+from pydantic.fields import Field, FieldInfo
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import DeclarativeBase
@@ -27,8 +27,10 @@ writeonly_marker = _Marker("WriteOnly")
 
 _T = TypeVar("_T")
 
-ReadOnly = Annotated[_T, readonly_marker]
-WriteOnly = Annotated[_T, writeonly_marker]
+ReadOnly = Annotated[_T, readonly_marker, Field(json_schema_extra={"readOnly": True})]
+WriteOnly = Annotated[
+    _T, writeonly_marker, Field(json_schema_extra={"writeOnly": True})
+]
 
 
 class TimestampsSchemaMixin(pydantic.BaseModel):
@@ -147,7 +149,8 @@ def get_read_only_fields(model_cls: type[pydantic.BaseModel]) -> list[str]:
     read_only_fields: list[str] = []
     # Get read-only fields from Annotated metadata
     for field_name, field_info in model_cls.model_fields.items():
-        if getattr(field_info, "metadata", None) and "readonly" in field_info.metadata:
+        metadata = getattr(field_info, "metadata", None)
+        if metadata and readonly_marker in metadata:
             read_only_fields.append(field_name)
     return read_only_fields
 
@@ -157,7 +160,32 @@ def is_field_readonly(model_cls: type[pydantic.BaseModel], field_name: str) -> b
     field_info = model_cls.model_fields.get(field_name)
     if field_info is None:
         return False
-    return getattr(field_info, "metadata", None) and "readonly" in field_info.metadata
+    metadata = getattr(field_info, "metadata", None)
+    if not metadata:
+        return False
+    return readonly_marker in metadata
+
+
+def get_write_only_fields(model_cls: type[pydantic.BaseModel]) -> list[str]:
+    """Get all fields from a model annotated as WriteOnly[]"""
+    write_only_fields: list[str] = []
+    # Get write-only fields from Annotated metadata
+    for field_name, field_info in model_cls.model_fields.items():
+        metadata = getattr(field_info, "metadata", None)
+        if metadata and writeonly_marker in metadata:
+            write_only_fields.append(field_name)
+    return write_only_fields
+
+
+def is_field_writeonly(model_cls: type[pydantic.BaseModel], field_name: str) -> bool:
+    """Check if a specific field is marked as writeonly."""
+    field_info = model_cls.model_fields.get(field_name)
+    if field_info is None:
+        return False
+    metadata = getattr(field_info, "metadata", None)
+    if not metadata:
+        return False
+    return writeonly_marker in metadata
 
 
 def create_model_without_read_only_fields(
@@ -245,7 +273,7 @@ def create_model_with_optional_fields(
             # Check if the base class has any ReadOnly fields
             has_readonly_fields = any(
                 getattr(field_info, "metadata", None)
-                and "readonly" in field_info.metadata
+                and readonly_marker in field_info.metadata
                 for field_info in base_cls.model_fields.values()
             )
             if has_readonly_fields:

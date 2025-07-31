@@ -308,7 +308,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "title": "Id"
+            "title": "Id",
+            "readOnly": true
           },
           "title": {
             "type": "string",

@@ -1102,7 +1102,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "title": "Id"
+            "title": "Id",
+            "readOnly": true
           },
           "email": {
             "type": "string",
@@ -1133,7 +1134,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "title": "Id"
+            "title": "Id",
+            "readOnly": true
           }
         },
         "type": "object",
@@ -1146,7 +1148,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "title": "Id"
+            "title": "Id",
+            "readOnly": true
           }
         },
         "type": "object",
@@ -1159,7 +1162,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "title": "Id"
+            "title": "Id",
+            "readOnly": true
           }
         },
         "type": "object",
@@ -1172,17 +1176,20 @@
         "properties": {
           "id": {
             "type": "integer",
-            "title": "Id"
+            "title": "Id",
+            "readOnly": true
           },
           "created_at": {
             "type": "string",
             "format": "date-time",
-            "title": "Created At"
+            "title": "Created At",
+            "readOnly": true
           },
           "updated_at": {
             "type": "string",
             "format": "date-time",
-            "title": "Updated At"
+            "title": "Updated At",
+            "readOnly": true
           },
           "customer": {
             "$ref": "#/components/schemas/CustomerSchema"
@@ -1199,7 +1206,8 @@
           },
           "internal_notes": {
             "type": "string",
-            "title": "Internal Notes"
+            "title": "Internal Notes",
+            "readOnly": true
           }
         },
         "type": "object",
@@ -1218,7 +1226,8 @@
         "properties": {
           "id": {
             "type": "integer",
-            "title": "Id"
+            "title": "Id",
+            "readOnly": true
           },
           "name": {
             "type": "string",
