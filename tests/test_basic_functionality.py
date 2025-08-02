@@ -10,14 +10,8 @@ import fastapi_ding as fd
 from fastapi_ding._globals import fa_globals
 
 
-def reset_metadata():
-    """Reset SQLAlchemy metadata to prevent table redefinition conflicts."""
-    fd.SQLBase.metadata.clear()
-
-
 def test_crud_endpoints_exist(client):
     """Test that all CRUD endpoints are created."""
-    reset_metadata()
     fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
     
     app = client.app
@@ -66,7 +60,6 @@ def test_crud_endpoints_exist(client):
 
 def test_basic_crud_operations(client):
     """Test basic CRUD operations."""
-    reset_metadata()
     fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
     
     app = client.app
@@ -107,30 +100,76 @@ def test_basic_crud_operations(client):
     
     product_id = created_product["id"]
     
-    # Test READ (get all)
-    response = client.get("/products/")
-    products = response.json()
-    assert len(products) == 1
-    assert products[0]["id"] == product_id
-    
-    # Test READ (get by id)
+    # Test READ
     response = client.get(f"/products/{product_id}")
-    product = response.json()
-    assert product["id"] == product_id
-    assert product["name"] == "Test Product"
+    retrieved_product = response.json()
+    assert retrieved_product["name"] == "Test Product"
+    assert retrieved_product["price"] == 29.99
     
     # Test UPDATE
     update_data = {"name": "Updated Product", "price": 39.99}
     response = client.put(f"/products/{product_id}", json=update_data)
-    
     updated_product = response.json()
     assert updated_product["name"] == "Updated Product"
     assert updated_product["price"] == 39.99
     
     # Test DELETE
     response = client.delete(f"/products/{product_id}")
+    assert response.status_code == 204
     
     # Verify deletion
-    response = client.get("/products/")
-    products = response.json()
-    assert len(products) == 0 
+    response = client.get(f"/products/{product_id}")
+    assert response.status_code == 404
+
+
+def test_list_endpoint(client):
+    """Test the list endpoint functionality."""
+    fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
+    
+    app = client.app
+    
+    # Define a simple model
+    class Category(fd.IDBase):
+        name: Mapped[str]
+        description: Mapped[str]
+    
+    # Create a schema
+    class CategorySchema(fd.IDSchema[Category]):
+        name: str
+        description: str
+    
+    # Create a view
+    @fd.include_view(app)
+    class CategoryView(fd.AsyncAlchemyView):
+        prefix = "/categories"
+        model = Category
+        schema = CategorySchema
+    
+    # Create tables
+    async def create_tables():
+        engine = fa_globals.async_make_session.kw["bind"]
+        async with engine.begin() as conn:
+            await conn.run_sync(fd.SQLBase.metadata.create_all)
+    
+    asyncio.run(create_tables())
+    
+    # Create multiple categories
+    categories_data = [
+        {"name": "Electronics", "description": "Electronic devices"},
+        {"name": "Books", "description": "Books and literature"},
+        {"name": "Clothing", "description": "Apparel and accessories"}
+    ]
+    
+    created_categories = []
+    for category_data in categories_data:
+        response = client.post("/categories/", json=category_data)
+        created_categories.append(response.json())
+    
+    # Test list endpoint
+    response = client.get("/categories/")
+    categories_list = response.json()
+    
+    assert len(categories_list) == 3
+    assert all("id" in category for category in categories_list)
+    assert all("name" in category for category in categories_list)
+    assert all("description" in category for category in categories_list) 

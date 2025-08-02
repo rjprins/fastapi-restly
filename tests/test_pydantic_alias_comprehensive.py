@@ -19,14 +19,8 @@ import fastapi_ding as fd
 from fastapi_ding._globals import fa_globals
 
 
-def reset_metadata():
-    """Reset SQLAlchemy metadata to prevent table redefinition conflicts."""
-    fd.SQLBase.metadata.clear()
-
-
 def test_get_requests_return_aliases(client):
     """Test that GET requests return data with aliases."""
-    reset_metadata()
     fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
 
     app = client.app
@@ -87,7 +81,6 @@ def test_get_requests_return_aliases(client):
 
 def test_post_requests_accept_aliases(client):
     """Test that POST requests accept aliases."""
-    reset_metadata()
     fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
 
     app = client.app
@@ -136,7 +129,6 @@ def test_post_requests_accept_aliases(client):
 
 def test_put_requests_accept_aliases(client):
     """Test that PUT requests accept aliases."""
-    reset_metadata()
     fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
 
     app = client.app
@@ -201,10 +193,13 @@ def test_put_requests_accept_aliases(client):
 
 def test_query_modifiers_with_aliases(client):
     """Test that query modifiers work with aliases."""
-    reset_metadata()
     fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
 
-    from fastapi_ding.query_modifiers_config import set_query_modifier_version, QueryModifierVersion
+    from fastapi_ding.query_modifiers_config import (
+        set_query_modifier_version,
+        QueryModifierVersion,
+    )
+
     set_query_modifier_version(QueryModifierVersion.V2)
 
     app = client.app
@@ -266,7 +261,6 @@ def test_query_modifiers_with_aliases(client):
 
 def test_validation_with_aliases(client):
     """Test that field validation works with aliases."""
-    reset_metadata()
     fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
 
     app = client.app
@@ -335,7 +329,6 @@ def test_validation_with_aliases(client):
 
 def test_optional_fields_with_aliases(client):
     """Test that optional fields work with aliases."""
-    reset_metadata()
     fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
 
     app = client.app
@@ -383,7 +376,6 @@ def test_optional_fields_with_aliases(client):
 
 def test_auto_generated_schema_works_without_aliases(client):
     """Test that auto-generated schemas work without aliases."""
-    reset_metadata()
     fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
 
     app = client.app
@@ -424,7 +416,6 @@ def test_auto_generated_schema_works_without_aliases(client):
 
 def test_complex_alias_scenarios(client):
     """Test complex scenarios with multiple aliases."""
-    reset_metadata()
     fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
 
     app = client.app
@@ -485,7 +476,6 @@ def test_complex_alias_scenarios(client):
 
 def test_documentation_example(client):
     """Test the example from the documentation."""
-    reset_metadata()
     fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
 
     app = client.app

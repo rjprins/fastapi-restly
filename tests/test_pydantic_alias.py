@@ -9,14 +9,8 @@ import fastapi_ding as fd
 from fastapi_ding._globals import fa_globals
 
 
-def reset_metadata():
-    """Reset SQLAlchemy metadata to prevent table redefinition conflicts."""
-    fd.SQLBase.metadata.clear()
-
-
 def test_pydantic_alias_feature(client):
     """Test that the framework correctly handles Pydantic's alias feature."""
-    reset_metadata()
     fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
 
     app = client.app
@@ -100,7 +94,6 @@ def test_pydantic_alias_feature(client):
 
 def test_pydantic_alias_with_multiple_aliases(client):
     """Test that the framework handles multiple aliased fields correctly."""
-    reset_metadata()
     fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
 
     app = client.app
@@ -168,7 +161,6 @@ def test_pydantic_alias_with_multiple_aliases(client):
 
 def test_pydantic_alias_with_auto_generated_schema(client):
     """Test that auto-generated schemas work correctly with aliases."""
-    reset_metadata()
     fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
 
     app = client.app
@@ -212,7 +204,6 @@ def test_pydantic_alias_with_auto_generated_schema(client):
 
 def test_pydantic_alias_with_query_parameters(client):
     """Test that query parameters work correctly with aliased fields."""
-    reset_metadata()
     fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
 
     # Set query modifier version to V2 for this test
@@ -284,7 +275,6 @@ def test_pydantic_alias_with_query_parameters(client):
 
 def test_pydantic_alias_with_field_validation(client):
     """Test that field validation works correctly with aliases."""
-    reset_metadata()
     fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
 
     app = client.app

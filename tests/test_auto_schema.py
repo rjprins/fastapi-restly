@@ -10,16 +10,8 @@ import fastapi_ding as fd
 from fastapi_ding._globals import fa_globals
 
 
-def reset_metadata():
-    """Reset SQLAlchemy metadata to prevent table redefinition conflicts."""
-    if hasattr(fa_globals, 'metadata'):
-        fa_globals.metadata.clear()
-    fd.SQLBase.metadata.clear()
-
-
 def test_auto_generated_schema_in_view(client):
     """Test that schemas are auto-generated when not specified in views."""
-    reset_metadata()
     fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
     
     app = client.app
@@ -67,7 +59,6 @@ def test_auto_generated_schema_in_view(client):
 
 def test_auto_generated_schema_with_timestamps(client):
     """Test auto-generated schemas with timestamp fields."""
-    reset_metadata()
     fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
     
     app = client.app
@@ -107,7 +98,6 @@ def test_auto_generated_schema_with_timestamps(client):
 
 def test_auto_generated_schema_with_defaults(client):
     """Test auto-generated schemas with field defaults."""
-    reset_metadata()
     fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
     
     app = client.app
@@ -134,17 +124,18 @@ def test_auto_generated_schema_with_defaults(client):
     asyncio.run(create_tables())
     
     # Test creating a category with minimal data
-    category_data = {"name": "Electronics"}
+    category_data = {"name": "Test Category"}
     response = client.post("/categories/", json=category_data)
     
     created_category = response.json()
-    assert created_category["name"] == "Electronics"
+    assert created_category["name"] == "Test Category"
+    assert created_category["description"] == "No description"
+    assert created_category["is_active"] is True
     assert "id" in created_category
 
 
 def test_auto_generated_schema_crud_operations(client):
-    """Test full CRUD operations with auto-generated schemas."""
-    reset_metadata()
+    """Test that auto-generated schemas work with full CRUD operations."""
     fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
     
     app = client.app
@@ -174,20 +165,29 @@ def test_auto_generated_schema_crud_operations(client):
     response = client.post("/items/", json=item_data)
     
     created_item = response.json()
+    assert created_item["name"] == "Test Item"
+    assert created_item["quantity"] == 10
+    assert "id" in created_item
+    
     item_id = created_item["id"]
     
     # Test READ
     response = client.get(f"/items/{item_id}")
-    assert response.json()["name"] == "Test Item"
+    retrieved_item = response.json()
+    assert retrieved_item["name"] == "Test Item"
+    assert retrieved_item["quantity"] == 10
     
     # Test UPDATE
     update_data = {"name": "Updated Item", "quantity": 20}
     response = client.put(f"/items/{item_id}", json=update_data)
-    assert response.json()["name"] == "Updated Item"
-    assert response.json()["quantity"] == 20
+    updated_item = response.json()
+    assert updated_item["name"] == "Updated Item"
+    assert updated_item["quantity"] == 20
     
     # Test DELETE
     response = client.delete(f"/items/{item_id}")
+    assert response.status_code == 204
     
     # Verify deletion
-    response = client.get(f"/items/{item_id}", response_code=404) 
+    response = client.get(f"/items/{item_id}")
+    assert response.status_code == 404 
