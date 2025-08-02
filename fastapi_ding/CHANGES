@@ -1,31 +1,45 @@
 # CHANGES
 
-## 2025-01-27
+#### Feature: **Contains Query Parameters**:
+2025-08-01
+Added support for case-insensitive substring matching on string fields in both query modifier versions:
 
-### Breaking Changes
-- **ReadOnly Fields**: Converted from class-level `read_only_fields` approach to `ReadOnly` type annotations. All schemas now use `ReadOnly[type]` instead of setting `read_only_fields: ClassVar = ["field1", "field2"]`.
+  **V1 Interface (JSONAPI-style):**
+  - `contains[name]=john` → `name ILIKE '%john%'`
+  - `contains[name]=john jane` → `name ILIKE '%john%' OR name ILIKE '%jane%'`
 
-### Improved
+  **V2 Interface (Standard HTTP):**
+  - `name__contains=john` → `name ILIKE '%john%'`
+  - `name__contains=john jane` → `name ILIKE '%john%' OR name ILIKE '%jane%'`
+
+  **Note:** Multiple values are separated by whitespace, not commas.
+
+
+#### Improvement: **Schema Generation**:
+create_model_without_read_only_fields now uses inheritance with OmitReadOnly mixin to
+create the Create- pydantic schemas that will have all validators, attributes and classmethods that
+one would expect, but without ReadOnly fields of course.
+Same for `create_model_with_optional_fields` function. It uses the same inheritance method and adds the PartialPUT
+
+
+#### Breaking Change:- **ReadOnly Fields**:
+2025-07-30
+Converted from class-level `read_only_fields` approach to `ReadOnly` type annotations. All schemas now use `ReadOnly[type]` instead of setting `read_only_fields: ClassVar = ["field1", "field2"]`.
+
 - **Schema Generation**: Auto-generated schemas now use `ReadOnly` annotations for read-only fields (id, created_at, updated_at) instead of class variables
 - **Type Safety**: Better type checking and IDE support with the new `ReadOnly` annotation approach
 - **Consistency**: All schemas (manual and auto-generated) now use the same read-only field mechanism
 
-### Technical Details
+##### Technical Details
 - `ReadOnly` is now a singleton that can be used as `ReadOnly[type]` to mark fields as read-only
 - The `is_field_readonly()` helper function checks for `ReadOnly` annotations in field metadata
 - Auto-generated schemas apply `ReadOnly` annotations to id, created_at, and updated_at fields
 - Backward compatibility maintained through the same function interfaces
+- Added `_is_string_field()` and `_is_string_field_v2()` helper functions to detect string field types (including Optional[str])
+- Query parameter schemas now include `contains[field]` (v1) and `field__contains` (v2) parameters for string fields
+- The `apply_filtering()` and `apply_filtering_v2()` functions now handle contains parameters with ILIKE queries
+- V2 interface uses the `__contains` suffix following the existing `__gte`, `__lte`, etc. pattern
 
-## 2025-07-27
 
-### Improved
-- **Schema Generation**: Enhanced `create_model_with_optional_fields` function to use the same robust inheritance handling as `create_model_without_read_only_fields`. This ensures better consistency between creation and update schemas and improves handling of complex inheritance hierarchies.
 
-### Fixed
-- **Dependencies**: Added `aiosqlite` as a development dependency for testing purposes.
 
-### Technical Details
-- Update schemas now properly remove read-only fields entirely (instead of making them optional)
-- All writable fields in update schemas use `NOT_SET` defaults for proper partial update behavior
-- Improved base class handling for complex inheritance scenarios
-- Better preservation of validators, configuration, and metadata 

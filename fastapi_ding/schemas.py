@@ -255,7 +255,8 @@ def create_model_with_optional_fields(
     """
     new_model_name = "Update" + model_cls.__name__
     new_doc = (
-        model_cls.__doc__ or "" + "\nRead-only fields have been removed and all fields are optional."
+        model_cls.__doc__
+        or "" + "\nRead-only fields have been removed and all fields are optional."
     )
 
     # Create a subclass that mixes in both OmitReadOnly and PatchMixin

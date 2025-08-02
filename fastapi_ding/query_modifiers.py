@@ -29,6 +29,11 @@ def create_query_param_schema(schema_cls: SchemaType) -> SchemaType:
         filter = f"filter[{name}]"
         fields[filter] = (Optional[field.annotation], None)
 
+        # Add contains parameter for string fields
+        if _is_string_field(field):
+            contains = f"contains[{name}]"
+            fields[contains] = (Optional[str], None)
+
         # TODO: Implement matching as OR-filters
         # match = f"match[{name}]"
         # fields[match] = (Optional[field.annotation], None)
@@ -36,18 +41,6 @@ def create_query_param_schema(schema_cls: SchemaType) -> SchemaType:
     schema_name = "QueryParam" + schema_cls.__name__
     query_param_schema = pydantic.create_model(schema_name, **fields)
     return query_param_schema
-
-
-def _iter_fields_including_nested(
-    schema_cls: SchemaType, prefix: str = ""
-) -> Iterator[tuple[str, FieldInfo]]:
-    for name, field in schema_cls.model_fields.items():
-        full_name = f"{prefix}.{name}" if prefix else name
-        nested = _get_nested_schema(field)
-        if nested:
-            yield from _iter_fields_including_nested(nested, full_name)
-        else:
-            yield full_name, field
 
 
 def apply_query_modifiers(
@@ -91,11 +84,46 @@ def apply_query_modifiers(
     Filter on NULL values:
     > filter[foo_id]=!null
     WHERE foo_id IS NOT NULL
+
+    For string fields, use contains for case-insensitive substring matching:
+    > contains[name]=john&contains[email]=example
+    WHERE name ILIKE '%john%' AND email ILIKE '%example%'
+
+    Multiple contains values for the same field (OR logic):
+    > contains[name]=john,jane
+    WHERE name ILIKE '%john%' OR name ILIKE '%jane%'
     """
     select_query = apply_pagination(query_params, select_query)
     select_query = apply_sorting(query_params, select_query, model)
     select_query = apply_filtering(query_params, select_query, model, schema_cls)
     return select_query
+
+
+def _iter_fields_including_nested(
+    schema_cls: SchemaType, prefix: str = ""
+) -> Iterator[tuple[str, FieldInfo]]:
+    for name, field in schema_cls.model_fields.items():
+        full_name = f"{prefix}.{name}" if prefix else name
+        nested = _get_nested_schema(field)
+        if nested:
+            yield from _iter_fields_including_nested(nested, full_name)
+        else:
+            yield full_name, field
+
+
+def _is_string_field(field: FieldInfo) -> bool:
+    """Check if a field is a string type."""
+    annotation = field.annotation
+
+    # Handle Optional[str] (i.e., Union[str, None])
+    origin = get_origin(annotation)
+    if origin is UnionType:
+        args = get_args(annotation)
+        non_none_args = [arg for arg in args if arg is not type(None)]
+        if len(non_none_args) == 1:
+            annotation = non_none_args[0]
+
+    return annotation is str
 
 
 def apply_pagination(query_params: QueryParams, select_query: Select) -> Select:
@@ -200,7 +228,47 @@ def apply_filtering(
     model: type[DeclarativeBase],
     schema_cls: SchemaType,
 ) -> Select:
+    """
+    Apply filtering through URL query parameters on a SQL query.
+    """
     filters: dict[InstrumentedAttribute, list[ColumnElement]] = defaultdict(list)
+
+    # Handle filter parameters
+    filter_filters = _apply_filter_parameters(
+        query_params, select_query, model, schema_cls
+    )
+
+    # Handle contains parameters
+    contains_filters = _apply_contains_parameters(
+        query_params, select_query, model, schema_cls
+    )
+
+    # Merge all filters
+    for column, clauses in filter_filters.items():
+        filters[column].extend(clauses)
+    for column, clauses in contains_filters.items():
+        filters[column].extend(clauses)
+
+    # Apply all filters
+    for column, or_clauses in filters.items():
+        if len(or_clauses) == 1:
+            and_clause = or_clauses[0]
+        else:
+            and_clause = sqlalchemy.and_(*or_clauses)  # CNF > DNF
+        select_query = select_query.where(and_clause)
+
+    return select_query
+
+
+def _apply_filter_parameters(
+    query_params: QueryParams,
+    select_query: Select,
+    model: type[DeclarativeBase],
+    schema_cls: SchemaType,
+) -> dict[InstrumentedAttribute, list[ColumnElement]]:
+    """Handle filter[field] parameters."""
+    filters: dict[InstrumentedAttribute, list[ColumnElement]] = defaultdict(list)
+
     for key, raw_value in query_params.multi_items():
         if not (key.startswith("filter[") and key.endswith("]")):
             continue
@@ -219,14 +287,38 @@ def apply_filtering(
             or_clause = sqlalchemy.or_(*clauses)
         filters[column].append(or_clause)
 
-    for column, or_clauses in filters.items():
-        if len(or_clauses) == 1:
-            and_clause = or_clauses[0]
-        else:
-            and_clause = sqlalchemy.and_(*or_clauses)  # CNF > DNF
-        select_query = select_query.where(and_clause)
+    return filters
 
-    return select_query
+
+def _apply_contains_parameters(
+    query_params: QueryParams,
+    select_query: Select,
+    model: type[DeclarativeBase],
+    schema_cls: SchemaType,
+) -> dict[InstrumentedAttribute, list[ColumnElement]]:
+    """Handle contains[field] parameters for string fields."""
+    filters: dict[InstrumentedAttribute, list[ColumnElement]] = defaultdict(list)
+
+    for key, raw_value in query_params.multi_items():
+        if not (key.startswith("contains[") and key.endswith("]")):
+            continue
+        column_name = key[9:-1]  # Extract field name from contains[field]
+        joins, column = _get_sqlalchemy_column(model, column_name)
+        for join in joins:
+            select_query = select_query.join(join)
+
+        # For contains, we don't need to parse the value since it's just a string
+        # Split by space for multiple contains values (AND logic)
+        split_values = raw_value.split()
+        clauses = [column.ilike(f"%{v}%") for v in split_values if v.strip()]
+        if clauses:
+            if len(clauses) == 1:
+                clause = clauses[0]
+            else:
+                clause = sqlalchemy.and_(*clauses)
+            filters[column].append(clause)
+
+    return filters
 
 
 def _parse_value(schema_cls: SchemaType, column_name: str, value: str) -> Any:

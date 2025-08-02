@@ -15,6 +15,21 @@ from starlette.datastructures import QueryParams
 SchemaType = type[pydantic.BaseModel]
 
 
+def _is_string_field_v2(field: FieldInfo) -> bool:
+    """Check if a field is a string type."""
+    annotation = field.annotation
+
+    # Handle Optional[str] (i.e., Union[str, None])
+    origin = get_origin(annotation)
+    if origin is Union:
+        args = get_args(annotation)
+        non_none_args = [arg for arg in args if arg is not type(None)]
+        if len(non_none_args) == 1:
+            annotation = non_none_args[0]
+
+    return annotation is str
+
+
 def create_query_param_schema_v2(schema_cls: SchemaType) -> SchemaType:
     """
     Create a pydantic model class that describes and validates all possible query parameters
@@ -31,6 +46,11 @@ def create_query_param_schema_v2(schema_cls: SchemaType) -> SchemaType:
         # Add range and null filters
         for suffix in ["__gte", "__lte", "__gt", "__lt", "__isnull"]:
             fields[f"{name}{suffix}"] = (Optional[field_type], None)
+
+        # Add contains filter for string fields
+        if _is_string_field_v2(field):
+            fields[f"{name}__contains"] = (Optional[str], None)
+
     schema_name = "QueryParamV2" + schema_cls.__name__
     query_param_schema = pydantic.create_model(schema_name, **fields)  # type: ignore
     return query_param_schema
@@ -48,6 +68,7 @@ def apply_query_modifiers_v2(
       - Pagination: page, page_size
       - Sorting: order_by=name,-created_at
       - Filtering: ?name=Bob&status=active&created_at__gte=2024-01-01
+      - Contains (string fields): ?name__contains=john&email__contains=example
     """
     select_query = apply_filtering_v2(query_params, select_query, model, schema_cls)
     select_query = apply_sorting_v2(query_params, select_query, model, schema_cls)
@@ -235,30 +256,22 @@ def apply_filtering_v2(
     filters: dict[InstrumentedAttribute[Any], list[ColumnElement[Any]]] = defaultdict(
         list
     )
-    for key, raw_value in query_params.multi_items():
-        if key in ("page", "page_size", "order_by"):
-            continue
-        # Parse suffixes
-        if "__" in key:
-            column_name, op = key.split("__", 1)
-        else:
-            column_name, op = key, "eq"
-        joins, column = _get_sqlalchemy_column_v2(model, column_name, schema_cls)
-        for join in joins:
-            select_query = select_query.join(join)
-        parser = functools.partial(_parse_value_v2, schema_cls, column_name)
-        if op == "isnull":
-            value = raw_value.lower() in ("1", "true", "yes")
-            clause = column.is_(None) if value else column.isnot(None)
-            filters[column].append(clause)
-            continue
-        split_values = raw_value.split(",")
-        clauses = [_make_where_clause_v2(column, v, op, parser) for v in split_values]
-        if len(clauses) == 1:
-            or_clause = clauses[0]
-        else:
-            or_clause = sqlalchemy.or_(*clauses)
-        filters[column].append(or_clause)
+
+    # Handle different parameter types
+    standard_filters = _apply_standard_parameters_v2(
+        query_params, select_query, model, schema_cls
+    )
+    suffix_filters = _apply_suffix_parameters_v2(
+        query_params, select_query, model, schema_cls
+    )
+
+    # Merge all filters
+    for column, clauses in standard_filters.items():
+        filters[column].extend(clauses)
+    for column, clauses in suffix_filters.items():
+        filters[column].extend(clauses)
+
+    # Apply all filters
     for column, or_clauses in filters.items():
         if len(or_clauses) == 1:
             and_clause = or_clauses[0]
@@ -266,6 +279,83 @@ def apply_filtering_v2(
             and_clause = sqlalchemy.and_(*or_clauses)
         select_query = select_query.where(and_clause)
     return select_query
+
+
+def _apply_standard_parameters_v2(
+    query_params: QueryParams,
+    select_query: Select[Any],
+    model: type[DeclarativeBase],
+    schema_cls: SchemaType,
+) -> dict[InstrumentedAttribute[Any], list[ColumnElement[Any]]]:
+    """Handle standard field parameters (no suffix)."""
+    filters: dict[InstrumentedAttribute[Any], list[ColumnElement[Any]]] = defaultdict(
+        list
+    )
+
+    for key, raw_value in query_params.multi_items():
+        if key in ("page", "page_size", "order_by") or "__" in key:
+            continue
+
+        # Standard field parameter (eq operator)
+        column_name = key
+        joins, column = _get_sqlalchemy_column_v2(model, column_name, schema_cls)
+        for join in joins:
+            select_query = select_query.join(join)
+
+        parser = functools.partial(_parse_value_v2, schema_cls, column_name)
+        split_values = raw_value.split(",")
+        clauses = [_make_where_clause_v2(column, v, "eq", parser) for v in split_values]
+        if len(clauses) == 1:
+            or_clause = clauses[0]
+        else:
+            or_clause = sqlalchemy.or_(*clauses)
+        filters[column].append(or_clause)
+
+    return filters
+
+
+def _apply_suffix_parameters_v2(
+    query_params: QueryParams,
+    select_query: Select[Any],
+    model: type[DeclarativeBase],
+    schema_cls: SchemaType,
+) -> dict[InstrumentedAttribute[Any], list[ColumnElement[Any]]]:
+    """Handle parameters with __suffixes (gte, lte, gt, lt, isnull, contains, etc.)."""
+    filters: dict[InstrumentedAttribute[Any], list[ColumnElement[Any]]] = defaultdict(
+        list
+    )
+
+    for key, raw_value in query_params.multi_items():
+        if key in ("page", "page_size", "order_by") or "__" not in key:
+            continue
+
+        # Parse suffixes
+        column_name, op = key.split("__", 1)
+        joins, column = _get_sqlalchemy_column_v2(model, column_name, schema_cls)
+        for join in joins:
+            select_query = select_query.join(join)
+
+        parser = functools.partial(_parse_value_v2, schema_cls, column_name)
+
+        if op == "isnull":
+            value = raw_value.lower() in ("1", "true", "yes")
+            clause = column.is_(None) if value else column.isnot(None)
+            filters[column].append(clause)
+            continue
+
+        # For contains, split by whitespace; for other operators, split by comma
+        if op == "contains":
+            split_values = raw_value.split()
+        else:
+            split_values = raw_value.split(",")
+        clauses = [_make_where_clause_v2(column, v, op, parser) for v in split_values]
+        if len(clauses) == 1:
+            or_clause = clauses[0]
+        else:
+            or_clause = sqlalchemy.or_(*clauses)
+        filters[column].append(or_clause)
+
+    return filters
 
 
 def _parse_value_v2(schema_cls: SchemaType, column_name: str, value: str) -> Any:
@@ -358,6 +448,9 @@ def _make_where_clause_v2(
     elif op == "ne":
         value = parser(filter_value)
         return column != value
+    elif op == "contains":
+        # For contains, we don't need to parse the value since it's just a string
+        return column.ilike(f"%{filter_value}%")
     else:  # eq
         value = parser(filter_value)
         return column == value
