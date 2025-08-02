@@ -17,13 +17,11 @@ from sqlalchemy.orm import Mapped
 
 import fastapi_ding as fd
 from fastapi_ding._globals import fa_globals
+from .conftest import create_tables
 
 
 def test_get_requests_return_aliases(client):
     """Test that GET requests return data with aliases."""
-    fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
-
-    app = client.app
 
     class User(fd.IDBase):
         user_name: Mapped[str]
@@ -35,18 +33,13 @@ def test_get_requests_return_aliases(client):
         user_email: str = Field(alias="userEmail")
         phone_number: str = Field(alias="phoneNumber")
 
-    @fd.include_view(app)
+    @fd.include_view(client.app)
     class UserView(fd.AsyncAlchemyView):
         prefix = "/users"
         model = User
         schema = UserSchema
 
-    async def create_tables():
-        engine = fa_globals.async_make_session.kw["bind"]
-        async with engine.begin() as conn:
-            await conn.run_sync(fd.SQLBase.metadata.create_all)
-
-    asyncio.run(create_tables())
+    create_tables()
 
     # Create a user
     response = client.post(
@@ -81,9 +74,6 @@ def test_get_requests_return_aliases(client):
 
 def test_post_requests_accept_aliases(client):
     """Test that POST requests accept aliases."""
-    fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
-
-    app = client.app
 
     class Product(fd.IDBase):
         product_name: Mapped[str]
@@ -95,18 +85,13 @@ def test_post_requests_accept_aliases(client):
         product_price: float = Field(alias="productPrice")
         is_active: bool = Field(alias="isActive")
 
-    @fd.include_view(app)
+    @fd.include_view(client.app)
     class ProductView(fd.AsyncAlchemyView):
         prefix = "/products"
         model = Product
         schema = ProductSchema
 
-    async def create_tables():
-        engine = fa_globals.async_make_session.kw["bind"]
-        async with engine.begin() as conn:
-            await conn.run_sync(fd.SQLBase.metadata.create_all)
-
-    asyncio.run(create_tables())
+    create_tables()
 
     # Test POST with aliases succeeds
     response = client.post(
@@ -123,15 +108,12 @@ def test_post_requests_accept_aliases(client):
             "product_price": 39.99,
             "is_active": False,
         },
-        response_code=422,
+        assert_status_code=422,
     )
 
 
 def test_put_requests_accept_aliases(client):
     """Test that PUT requests accept aliases."""
-    fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
-
-    app = client.app
 
     class Article(fd.IDBase):
         article_title: Mapped[str]
@@ -143,18 +125,13 @@ def test_put_requests_accept_aliases(client):
         article_content: str = Field(alias="articleContent")
         author_name: str = Field(alias="authorName")
 
-    @fd.include_view(app)
+    @fd.include_view(client.app)
     class ArticleView(fd.AsyncAlchemyView):
         prefix = "/articles"
         model = Article
         schema = ArticleSchema
 
-    async def create_tables():
-        engine = fa_globals.async_make_session.kw["bind"]
-        async with engine.begin() as conn:
-            await conn.run_sync(fd.SQLBase.metadata.create_all)
-
-    asyncio.run(create_tables())
+    create_tables()
 
     # Create an article
     response = client.post(
@@ -193,7 +170,6 @@ def test_put_requests_accept_aliases(client):
 
 def test_query_modifiers_with_aliases(client):
     """Test that query modifiers work with aliases."""
-    fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
 
     from fastapi_ding.query_modifiers_config import (
         set_query_modifier_version,
@@ -201,8 +177,6 @@ def test_query_modifiers_with_aliases(client):
     )
 
     set_query_modifier_version(QueryModifierVersion.V2)
-
-    app = client.app
 
     class Customer(fd.IDBase):
         customer_name: Mapped[str]
@@ -214,18 +188,13 @@ def test_query_modifiers_with_aliases(client):
         customer_email: str = Field(alias="customerEmail")
         registration_date: str = Field(alias="registrationDate")
 
-    @fd.include_view(app)
+    @fd.include_view(client.app)
     class CustomerView(fd.AsyncAlchemyView):
         prefix = "/customers"
         model = Customer
         schema = CustomerSchema
 
-    async def create_tables():
-        engine = fa_globals.async_make_session.kw["bind"]
-        async with engine.begin() as conn:
-            await conn.run_sync(fd.SQLBase.metadata.create_all)
-
-    asyncio.run(create_tables())
+    create_tables()
 
     # Create test data
     customers_data = [
@@ -261,9 +230,6 @@ def test_query_modifiers_with_aliases(client):
 
 def test_validation_with_aliases(client):
     """Test that field validation works with aliases."""
-    fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
-
-    app = client.app
 
     class User(fd.IDBase):
         user_name: Mapped[str]
@@ -275,18 +241,13 @@ def test_validation_with_aliases(client):
         user_age: int = Field(alias="userAge", ge=0, le=150)
         user_email: str = Field(alias="userEmail", pattern=r"^[^@]+@[^@]+\.[^@]+$")
 
-    @fd.include_view(app)
+    @fd.include_view(client.app)
     class UserView(fd.AsyncAlchemyView):
         prefix = "/users"
         model = User
         schema = UserSchema
 
-    async def create_tables():
-        engine = fa_globals.async_make_session.kw["bind"]
-        async with engine.begin() as conn:
-            await conn.run_sync(fd.SQLBase.metadata.create_all)
-
-    asyncio.run(create_tables())
+    create_tables()
 
     # Test valid data with aliases
     response = client.post(
@@ -303,7 +264,7 @@ def test_validation_with_aliases(client):
             "userAge": 25,
             "userEmail": "john@example.com",
         },
-        response_code=422,
+        assert_status_code=422,
     )
 
     response = client.post(
@@ -313,7 +274,7 @@ def test_validation_with_aliases(client):
             "userAge": 200,  # Too high
             "userEmail": "john@example.com",
         },
-        response_code=422,
+        assert_status_code=422,
     )
 
     response = client.post(
@@ -323,15 +284,12 @@ def test_validation_with_aliases(client):
             "userAge": 25,
             "userEmail": "invalid-email",  # Invalid email
         },
-        response_code=422,
+        assert_status_code=422,
     )
 
 
 def test_optional_fields_with_aliases(client):
     """Test that optional fields work with aliases."""
-    fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
-
-    app = client.app
 
     class Profile(fd.IDBase):
         profile_name: Mapped[str]
@@ -343,18 +301,13 @@ def test_optional_fields_with_aliases(client):
         profile_bio: str = Field(alias="profileBio")
         profile_website: str | None = Field(alias="profileWebsite", default=None)
 
-    @fd.include_view(app)
+    @fd.include_view(client.app)
     class ProfileView(fd.AsyncAlchemyView):
         prefix = "/profiles"
         model = Profile
         schema = ProfileSchema
 
-    async def create_tables():
-        engine = fa_globals.async_make_session.kw["bind"]
-        async with engine.begin() as conn:
-            await conn.run_sync(fd.SQLBase.metadata.create_all)
-
-    asyncio.run(create_tables())
+    create_tables()
 
     # Test POST with optional field using alias
     response = client.post(
@@ -376,25 +329,17 @@ def test_optional_fields_with_aliases(client):
 
 def test_auto_generated_schema_works_without_aliases(client):
     """Test that auto-generated schemas work without aliases."""
-    fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
-
-    app = client.app
 
     class Comment(fd.IDBase):
         comment_text: Mapped[str]
         author_name: Mapped[str]
 
-    @fd.include_view(app)
+    @fd.include_view(client.app)
     class CommentView(fd.AsyncAlchemyView):
         prefix = "/comments"
         model = Comment
 
-    async def create_tables():
-        engine = fa_globals.async_make_session.kw["bind"]
-        async with engine.begin() as conn:
-            await conn.run_sync(fd.SQLBase.metadata.create_all)
-
-    asyncio.run(create_tables())
+    create_tables()
 
     # Test that auto-generated schema works (without aliases)
     response = client.post(
@@ -416,9 +361,6 @@ def test_auto_generated_schema_works_without_aliases(client):
 
 def test_complex_alias_scenarios(client):
     """Test complex scenarios with multiple aliases."""
-    fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
-
-    app = client.app
 
     class Order(fd.IDBase):
         order_number: Mapped[str]
@@ -434,18 +376,13 @@ def test_complex_alias_scenarios(client):
         billing_address: str = Field(alias="billingAddress")
         order_status: str = Field(alias="orderStatus")
 
-    @fd.include_view(app)
+    @fd.include_view(client.app)
     class OrderView(fd.AsyncAlchemyView):
         prefix = "/orders"
         model = Order
         schema = OrderSchema
 
-    async def create_tables():
-        engine = fa_globals.async_make_session.kw["bind"]
-        async with engine.begin() as conn:
-            await conn.run_sync(fd.SQLBase.metadata.create_all)
-
-    asyncio.run(create_tables())
+    create_tables()
 
     # Test POST with all aliases
     response = client.post(
@@ -476,9 +413,6 @@ def test_complex_alias_scenarios(client):
 
 def test_documentation_example(client):
     """Test the example from the documentation."""
-    fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
-
-    app = client.app
 
     class User(fd.IDBase):
         name: Mapped[str]
@@ -490,18 +424,13 @@ def test_documentation_example(client):
         email: str
         phone_number: str = Field(alias="phoneNumber")
 
-    @fd.include_view(app)
+    @fd.include_view(client.app)
     class UserView(fd.AsyncAlchemyView):
         prefix = "/users"
         model = User
         schema = UserSchema
 
-    async def create_tables():
-        engine = fa_globals.async_make_session.kw["bind"]
-        async with engine.begin() as conn:
-            await conn.run_sync(fd.SQLBase.metadata.create_all)
-
-    asyncio.run(create_tables())
+    create_tables()
 
     # Test CREATE with alias
     response = client.post(

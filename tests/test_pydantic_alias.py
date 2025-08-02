@@ -1,19 +1,18 @@
-"""Test Pydantic alias feature handling in FastAPI-Ding framework."""
+"""Test Pydantic alias functionality."""
 
+import pytest
 import pydantic
-import asyncio
+from fastapi import FastAPI
+from httpx import AsyncClient
 from pydantic import Field
 from sqlalchemy.orm import Mapped
 
 import fastapi_ding as fd
-from fastapi_ding._globals import fa_globals
+from .conftest import create_tables
 
 
 def test_pydantic_alias_feature(client):
     """Test that the framework correctly handles Pydantic's alias feature."""
-    fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
-
-    app = client.app
 
     # Define a model with fields that have aliases
     class User(fd.IDBase):
@@ -30,19 +29,13 @@ def test_pydantic_alias_feature(client):
         phone_number: str = Field(alias="phoneNumber")  # Using Pydantic alias
 
     # Create a view
-    @fd.include_view(app)
+    @fd.include_view(client.app)
     class UserView(fd.AsyncAlchemyView):
         prefix = "/users"
         model = User
         schema = UserSchema
 
-    # Create tables
-    async def create_tables():
-        engine = fa_globals.async_make_session.kw["bind"]
-        async with engine.begin() as conn:
-            await conn.run_sync(fd.SQLBase.metadata.create_all)
-
-    asyncio.run(create_tables())
+    create_tables()
 
     # Test CREATE with alias - should accept both alias and field name
     # Using the alias (phoneNumber)
@@ -94,9 +87,6 @@ def test_pydantic_alias_feature(client):
 
 def test_pydantic_alias_with_multiple_aliases(client):
     """Test that the framework handles multiple aliased fields correctly."""
-    fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
-
-    app = client.app
 
     # Define a model with multiple aliased fields
     class Product(fd.IDBase):
@@ -115,19 +105,13 @@ def test_pydantic_alias_with_multiple_aliases(client):
         is_active: bool = Field(alias="isActive")
 
     # Create a view
-    @fd.include_view(app)
+    @fd.include_view(client.app)
     class ProductView(fd.AsyncAlchemyView):
         prefix = "/products"
         model = Product
         schema = ProductSchema
 
-    # Create tables
-    async def create_tables():
-        engine = fa_globals.async_make_session.kw["bind"]
-        async with engine.begin() as conn:
-            await conn.run_sync(fd.SQLBase.metadata.create_all)
-
-    asyncio.run(create_tables())
+    create_tables()
 
     # Test CREATE with multiple aliases
     response = client.post(
@@ -161,9 +145,6 @@ def test_pydantic_alias_with_multiple_aliases(client):
 
 def test_pydantic_alias_with_auto_generated_schema(client):
     """Test that auto-generated schemas work correctly with aliases."""
-    fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
-
-    app = client.app
 
     # Define a model with aliased fields
     class Article(fd.IDBase):
@@ -172,19 +153,13 @@ def test_pydantic_alias_with_auto_generated_schema(client):
         author_name: Mapped[str]
 
     # Create a view WITHOUT specifying a schema - should be auto-generated
-    @fd.include_view(app)
+    @fd.include_view(client.app)
     class ArticleView(fd.AsyncAlchemyView):
         prefix = "/articles"
         model = Article
         # No schema specified - should be auto-generated!
 
-    # Create tables
-    async def create_tables():
-        engine = fa_globals.async_make_session.kw["bind"]
-        async with engine.begin() as conn:
-            await conn.run_sync(fd.SQLBase.metadata.create_all)
-
-    asyncio.run(create_tables())
+    create_tables()
 
     # Test that auto-generated schema works (without aliases)
     response = client.post(
@@ -204,7 +179,6 @@ def test_pydantic_alias_with_auto_generated_schema(client):
 
 def test_pydantic_alias_with_query_parameters(client):
     """Test that query parameters work correctly with aliased fields."""
-    fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
 
     # Set query modifier version to V2 for this test
     from fastapi_ding.query_modifiers_config import (
@@ -213,8 +187,6 @@ def test_pydantic_alias_with_query_parameters(client):
     )
 
     set_query_modifier_version(QueryModifierVersion.V2)
-
-    app = client.app
 
     # Define a model with aliased fields
     class Article(fd.IDBase):
@@ -231,19 +203,13 @@ def test_pydantic_alias_with_query_parameters(client):
         publish_date: str = Field(alias="publishDate")
 
     # Create a view
-    @fd.include_view(app)
+    @fd.include_view(client.app)
     class ArticleView(fd.AsyncAlchemyView):
         prefix = "/articles"
         model = Article
         schema = ArticleSchema
 
-    # Create tables
-    async def create_tables():
-        engine = fa_globals.async_make_session.kw["bind"]
-        async with engine.begin() as conn:
-            await conn.run_sync(fd.SQLBase.metadata.create_all)
-
-    asyncio.run(create_tables())
+    create_tables()
 
     # Create some test data
     articles_data = [
@@ -275,9 +241,6 @@ def test_pydantic_alias_with_query_parameters(client):
 
 def test_pydantic_alias_with_field_validation(client):
     """Test that field validation works correctly with aliases."""
-    fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
-
-    app = client.app
 
     # Define a model with validation
     class User(fd.IDBase):
@@ -292,19 +255,13 @@ def test_pydantic_alias_with_field_validation(client):
         age: int = Field(alias="userAge", ge=0, le=150)
 
     # Create a view
-    @fd.include_view(app)
+    @fd.include_view(client.app)
     class UserView(fd.AsyncAlchemyView):
         prefix = "/users"
         model = User
         schema = UserSchema
 
-    # Create tables
-    async def create_tables():
-        engine = fa_globals.async_make_session.kw["bind"]
-        async with engine.begin() as conn:
-            await conn.run_sync(fd.SQLBase.metadata.create_all)
-
-    asyncio.run(create_tables())
+    create_tables()
 
     # Test CREATE with valid data using aliases
     response = client.post(
@@ -329,7 +286,7 @@ def test_pydantic_alias_with_field_validation(client):
             "userEmail": "invalid@example.com",
             "userAge": 200,  # Invalid age (too high)
         },
-        response_code=422,
+        assert_status_code=422,
     )
 
     # Test CREATE with negative age (should fail validation)
@@ -340,5 +297,5 @@ def test_pydantic_alias_with_field_validation(client):
             "userEmail": "invalid@example.com",
             "userAge": -5,  # Invalid age (negative)
         },
-        response_code=422,
+        assert_status_code=422,
     )

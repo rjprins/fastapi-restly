@@ -16,6 +16,16 @@ class AsyncSessionProxy:
         with AsyncSession() as async_session: ...
     """
 
+    def __call__(self) -> SA_AsyncSession:
+        return self._get_async_sessionmaker()()
+
+    def begin(self) -> SA_AsyncSession:
+        return self._get_async_sessionmaker().begin()
+
+    @property
+    def kw(self):
+        return self._get_async_sessionmaker().kw
+
     def _get_async_sessionmaker(self) -> async_sessionmaker[SA_AsyncSession]:
         if fa_globals.async_make_session is None:
             if not fa_globals.async_database_url:
@@ -26,12 +36,6 @@ class AsyncSessionProxy:
             else:
                 setup_async_database_connection(fa_globals.async_database_url)
         return fa_globals.async_make_session
-
-    def __call__(self) -> SA_AsyncSession:
-        return self._get_async_sessionmaker()()
-
-    def begin(self) -> SA_AsyncSession:
-        return self._get_async_sessionmaker().begin()
 
 
 AsyncSession = AsyncSessionProxy()
@@ -46,6 +50,16 @@ class SessionProxy:
         with Session() as session: ...
     """
 
+    def __call__(self) -> SA_Session:
+        return self._get_sessionmaker()()
+
+    def begin(self) -> SA_Session:
+        return self._get_sessionmaker().begin()
+
+    @property
+    def kw(self):
+        return self._get_sessionmaker().kw
+
     def _get_sessionmaker(self) -> sessionmaker[SA_Session]:
         if fa_globals.make_session is None:
             if not fa_globals.database_url:
@@ -56,12 +70,6 @@ class SessionProxy:
             else:
                 setup_database_connection(fa_globals.database_url)
         return fa_globals.make_session
-
-    def __call__(self) -> SA_Session:
-        return self._get_sessionmaker()()
-
-    def begin(self) -> SA_Session:
-        return self._get_sessionmaker().begin()
 
 
 Session = SessionProxy()

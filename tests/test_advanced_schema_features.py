@@ -22,6 +22,7 @@ from fastapi_ding.schemas import (
     BaseSchema,
     create_model_without_read_only_fields,
 )
+from .conftest import create_tables
 
 
 class TestValidatorInheritance:
@@ -127,9 +128,6 @@ class TestNestedSchemaSerialization:
 
     def test_nested_schema_with_aliases(self, client):
         """Test that nested schemas with aliases serialize correctly."""
-        fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
-
-        app = client.app
 
         # Define nested schema with aliases
         class AddressSchema(BaseSchema):
@@ -154,18 +152,13 @@ class TestNestedSchemaSerialization:
             city: Mapped[str]
             postal_code: Mapped[str]
 
-        @fd.include_view(app)
+        @fd.include_view(client.app)
         class UserView(fd.AsyncAlchemyView):
             prefix = "/users"
             model = User
             schema = UserSchema
 
-        async def create_tables():
-            engine = fa_globals.async_make_session.kw["bind"]
-            async with engine.begin() as conn:
-                await conn.run_sync(fd.SQLBase.metadata.create_all)
-
-        asyncio.run(create_tables())
+        create_tables()
 
         # Test POST with aliases
         response = client.post(
@@ -201,12 +194,9 @@ class TestNestedSchemaSerialization:
 
     def test_deeply_nested_schema_with_aliases(self, client):
         """Test deeply nested schemas with aliases."""
-        fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
-
-        app = client.app
 
         # Define schemas with aliases (flattened for now)
-        class EmployeeSchema(fd.IDSchema[fd.IDBase]):
+        class EmployeeSchema(fd.IDSchema):
             name: str
             # Contact info
             phone: str = Field(alias="phoneNumber")
@@ -228,18 +218,13 @@ class TestNestedSchemaSerialization:
             company_name: Mapped[str]
             industry: Mapped[str]
 
-        @fd.include_view(app)
+        @fd.include_view(client.app)
         class EmployeeView(fd.AsyncAlchemyView):
             prefix = "/employees"
             model = Employee
             schema = EmployeeSchema
 
-        async def create_tables():
-            engine = fa_globals.async_make_session.kw["bind"]
-            async with engine.begin() as conn:
-                await conn.run_sync(fd.SQLBase.metadata.create_all)
-
-        asyncio.run(create_tables())
+        create_tables()
 
         # Test POST with aliases
         response = client.post(
@@ -267,12 +252,9 @@ class TestNestedSchemaSerialization:
 
     def test_nested_schema_with_readonly_fields(self, client):
         """Test nested schemas where some fields are ReadOnly."""
-        fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
-
-        app = client.app
 
         # Define schema with ReadOnly fields (flattened)
-        class UserSchema(fd.IDSchema[fd.IDBase]):
+        class UserSchema(fd.IDSchema):
             id: ReadOnly[int]
             name: str
             email: str
@@ -289,18 +271,13 @@ class TestNestedSchemaSerialization:
             street: Mapped[str]
             city: Mapped[str]
 
-        @fd.include_view(app)
+        @fd.include_view(client.app)
         class UserView(fd.AsyncAlchemyView):
             prefix = "/users"
             model = User
             schema = UserSchema
 
-        async def create_tables():
-            engine = fa_globals.async_make_session.kw["bind"]
-            async with engine.begin() as conn:
-                await conn.run_sync(fd.SQLBase.metadata.create_all)
-
-        asyncio.run(create_tables())
+        create_tables()
 
         # Test POST - should not require ReadOnly fields
         response = client.post(
@@ -349,7 +326,7 @@ class TestComplexInheritanceScenarios:
                     raise ValueError("Postal code must be numeric")
                 return v
 
-        class UserSchema(fd.IDSchema[fd.IDBase]):
+        class UserSchema(fd.IDSchema):
             id: ReadOnly[int]
             name: str
             email: str
@@ -440,7 +417,7 @@ class TestComplexInheritanceScenarios:
                 return v.title()
 
         class ComplexUserSchema(
-            TimestampMixin, ContactMixin, AddressMixin, fd.IDSchema[fd.IDBase]
+            TimestampMixin, ContactMixin, AddressMixin, fd.IDSchema
         ):
             id: ReadOnly[int]
             name: str

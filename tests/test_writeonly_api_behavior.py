@@ -9,6 +9,7 @@ import fastapi_ding as fd
 from fastapi_ding.schemas import WriteOnly, BaseSchema
 from fastapi_ding.testing import DingTestClient
 from fastapi_ding._globals import fa_globals
+from .conftest import create_tables
 
 
 class TestWriteOnlyAPIBasicBehavior:
@@ -17,12 +18,9 @@ class TestWriteOnlyAPIBasicBehavior:
     @pytest.mark.xfail(reason="WriteOnly fields not yet implemented in API responses")
     def test_writeonly_fields_excluded_from_get_response(self, client):
         """Test that WriteOnly fields are excluded from GET responses."""
-        fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
-
-        app = client.app
 
         # Define schema with WriteOnly fields
-        class UserSchema(fd.IDSchema[fd.IDBase]):
+        class UserSchema(fd.IDSchema):
             id: int  # Regular field
             name: str
             email: str
@@ -36,18 +34,13 @@ class TestWriteOnlyAPIBasicBehavior:
             password: str
             secret_token: str
 
-        @fd.include_view(app)
+        @fd.include_view(client.app)
         class UserView(fd.AsyncAlchemyView):
             prefix = "/users"
             model = User
             schema = UserSchema
 
-        async def create_tables():
-            engine = fa_globals.async_make_session.kw["bind"]
-            async with engine.begin() as conn:
-                await conn.run_sync(fd.SQLBase.metadata.create_all)
-
-        asyncio.run(create_tables())
+        create_tables()
 
         # Create a user first
         response = client.post(
@@ -79,11 +72,8 @@ class TestWriteOnlyAPIBasicBehavior:
     @pytest.mark.xfail(reason="WriteOnly fields not yet implemented in API responses")
     def test_writeonly_fields_accepted_in_post_request(self, client):
         """Test that WriteOnly fields are accepted in POST requests."""
-        fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
 
-        app = client.app
-
-        class UserSchema(fd.IDSchema[fd.IDBase]):
+        class UserSchema(fd.IDSchema):
             id: int
             name: str
             email: str
@@ -94,18 +84,13 @@ class TestWriteOnlyAPIBasicBehavior:
             email: str
             password: str
 
-        @fd.include_view(app)
+        @fd.include_view(client.app)
         class UserView(fd.AsyncAlchemyView):
             prefix = "/users"
             model = User
             schema = UserSchema
 
-        async def create_tables():
-            engine = fa_globals.async_make_session.kw["bind"]
-            async with engine.begin() as conn:
-                await conn.run_sync(fd.SQLBase.metadata.create_all)
-
-        asyncio.run(create_tables())
+        create_tables()
 
         # Test POST with WriteOnly field - should succeed
         response = client.post(
@@ -130,11 +115,8 @@ class TestWriteOnlyAPIBasicBehavior:
     @pytest.mark.xfail(reason="WriteOnly fields not yet implemented in API responses")
     def test_writeonly_fields_accepted_in_put_request(self, client):
         """Test that WriteOnly fields are accepted in PUT requests."""
-        fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
 
-        app = client.app
-
-        class UserSchema(fd.IDSchema[fd.IDBase]):
+        class UserSchema(fd.IDSchema):
             id: int
             name: str
             email: str
@@ -145,18 +127,13 @@ class TestWriteOnlyAPIBasicBehavior:
             email: str
             password: str
 
-        @fd.include_view(app)
+        @fd.include_view(client.app)
         class UserView(fd.AsyncAlchemyView):
             prefix = "/users"
             model = User
             schema = UserSchema
 
-        async def create_tables():
-            engine = fa_globals.async_make_session.kw["bind"]
-            async with engine.begin() as conn:
-                await conn.run_sync(fd.SQLBase.metadata.create_all)
-
-        asyncio.run(create_tables())
+        create_tables()
 
         # Create a user first
         response = client.post(
@@ -193,11 +170,8 @@ class TestWriteOnlyAPIBasicBehavior:
     @pytest.mark.xfail(reason="WriteOnly fields not yet implemented in API responses")
     def test_writeonly_fields_excluded_from_list_response(self, client):
         """Test that WriteOnly fields are excluded from list GET responses."""
-        fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
 
-        app = client.app
-
-        class UserSchema(fd.IDSchema[fd.IDBase]):
+        class UserSchema(fd.IDSchema):
             id: int
             name: str
             email: str
@@ -208,18 +182,13 @@ class TestWriteOnlyAPIBasicBehavior:
             email: str
             password: str
 
-        @fd.include_view(app)
+        @fd.include_view(client.app)
         class UserView(fd.AsyncAlchemyView):
             prefix = "/users"
             model = User
             schema = UserSchema
 
-        async def create_tables():
-            engine = fa_globals.async_make_session.kw["bind"]
-            async with engine.begin() as conn:
-                await conn.run_sync(fd.SQLBase.metadata.create_all)
-
-        asyncio.run(create_tables())
+        create_tables()
 
         # Create multiple users
         for i in range(3):
@@ -255,13 +224,10 @@ class TestWriteOnlyWithMixedFields:
     @pytest.mark.xfail(reason="WriteOnly fields not yet implemented in API responses")
     def test_mixed_readonly_writeonly_regular_fields(self, client):
         """Test API behavior with ReadOnly, WriteOnly, and regular fields."""
-        fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
-
-        app = client.app
 
         from fastapi_ding.schemas import ReadOnly
 
-        class UserSchema(fd.IDSchema[fd.IDBase]):
+        class UserSchema(fd.IDSchema):
             id: ReadOnly[int]  # ReadOnly field
             name: str  # Regular field
             email: str  # Regular field
@@ -275,18 +241,13 @@ class TestWriteOnlyWithMixedFields:
             password: str
             secret_token: str
 
-        @fd.include_view(app)
+        @fd.include_view(client.app)
         class UserView(fd.AsyncAlchemyView):
             prefix = "/users"
             model = User
             schema = UserSchema
 
-        async def create_tables():
-            engine = fa_globals.async_make_session.kw["bind"]
-            async with engine.begin() as conn:
-                await conn.run_sync(fd.SQLBase.metadata.create_all)
-
-        asyncio.run(create_tables())
+        create_tables()
 
         # Test POST - should accept WriteOnly fields, ignore ReadOnly fields
         response = client.post(
@@ -338,12 +299,10 @@ class TestWriteOnlyWithAliases:
     @pytest.mark.xfail(reason="WriteOnly fields with aliases not yet tested")
     def test_writeonly_fields_with_aliases(self, client):
         """Test that WriteOnly fields work correctly with aliases."""
-        fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
 
-        app = client.app
         from pydantic import Field
 
-        class UserSchema(fd.IDSchema[fd.IDBase]):
+        class UserSchema(fd.IDSchema):
             id: int
             name: str
             email: str
@@ -356,18 +315,13 @@ class TestWriteOnlyWithAliases:
             password: str
             secret_token: str
 
-        @fd.include_view(app)
+        @fd.include_view(client.app)
         class UserView(fd.AsyncAlchemyView):
             prefix = "/users"
             model = User
             schema = UserSchema
 
-        async def create_tables():
-            engine = fa_globals.async_make_session.kw["bind"]
-            async with engine.begin() as conn:
-                await conn.run_sync(fd.SQLBase.metadata.create_all)
-
-        asyncio.run(create_tables())
+        create_tables()
 
         # Test POST with aliases - should succeed
         response = client.post(
@@ -416,9 +370,7 @@ class TestWriteOnlyInNestedSchemas:
     @pytest.mark.xfail(reason="WriteOnly fields in nested schemas not yet tested")
     def test_writeonly_fields_in_nested_schemas(self, client):
         """Test WriteOnly fields in nested schema relationships."""
-        fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
 
-        app = client.app
         from sqlalchemy.orm import Mapped, mapped_column, relationship
         from sqlalchemy import String, Integer, ForeignKey
 
@@ -452,18 +404,13 @@ class TestWriteOnlyInNestedSchemas:
             password: WriteOnly[str]
             profiles: List[ProfileSchema]
 
-        @fd.include_view(app)
+        @fd.include_view(client.app)
         class UserView(fd.AsyncAlchemyView):
             prefix = "/users"
             model = User
             schema = UserSchema
 
-        async def create_tables():
-            engine = fa_globals.async_make_session.kw["bind"]
-            async with engine.begin() as conn:
-                await conn.run_sync(fd.SQLBase.metadata.create_all)
-
-        asyncio.run(create_tables())
+        create_tables()
 
         # Test POST with nested WriteOnly fields - should succeed
         response = client.post(

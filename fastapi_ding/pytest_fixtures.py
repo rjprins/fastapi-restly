@@ -41,24 +41,32 @@ class DingTestClient(TestClient):
             )
             raise AssertionError(error_msg)
 
-    def get(self, *args, response_code: int = 200, **kwargs):
+    def get(self, *args, assert_status_code: int = 200, **kwargs):
         response = super().get(*args, **kwargs)
-        self._check_status_code("GET", response.status_code, response, response_code)
+        self._check_status_code(
+            "GET", response.status_code, response, assert_status_code
+        )
         return response
 
-    def post(self, *args, response_code: int = 201, **kwargs):
+    def post(self, *args, assert_status_code: int = 201, **kwargs):
         response = super().post(*args, **kwargs)
-        self._check_status_code("POST", response.status_code, response, response_code)
+        self._check_status_code(
+            "POST", response.status_code, response, assert_status_code
+        )
         return response
 
-    def put(self, *args, response_code: int = 200, **kwargs):
+    def put(self, *args, assert_status_code: int = 200, **kwargs):
         response = super().put(*args, **kwargs)
-        self._check_status_code("PUT", response.status_code, response, response_code)
+        self._check_status_code(
+            "PUT", response.status_code, response, assert_status_code
+        )
         return response
 
-    def delete(self, *args, response_code: int = 204, **kwargs):
+    def delete(self, *args, assert_status_code: int = 204, **kwargs):
         response = super().delete(*args, **kwargs)
-        self._check_status_code("DELETE", response.status_code, response, response_code)
+        self._check_status_code(
+            "DELETE", response.status_code, response, assert_status_code
+        )
         return response
 
 

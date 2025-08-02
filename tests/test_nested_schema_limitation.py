@@ -11,6 +11,7 @@ from sqlalchemy.orm import Mapped
 import fastapi_ding as fd
 from fastapi_ding._globals import fa_globals
 from fastapi_ding.schemas import ReadOnly, BaseSchema
+from .conftest import create_tables
 
 
 @pytest.mark.xfail(reason="Nested schemas not supported for input")
@@ -25,7 +26,7 @@ def test_nested_schema_limitation_demonstration(client):
 
     When you have a nested schema like:
     ```python
-    class UserSchema(fd.IDSchema[fd.IDBase]):
+    class UserSchema(fd.IDSchema):
         name: str
         email: str
         address: AddressSchema  # ← Nested schema
@@ -50,9 +51,6 @@ def test_nested_schema_limitation_demonstration(client):
     }
     ```
     """
-    fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
-
-    app = client.app
 
     # Define schemas with nested structure (this will FAIL)
     class AddressSchema(BaseSchema):
@@ -60,7 +58,7 @@ def test_nested_schema_limitation_demonstration(client):
         city: str = Field(alias="cityName")
         postal_code: str = Field(alias="postalCode")
 
-    class UserSchema(fd.IDSchema[fd.IDBase]):
+    class UserSchema(fd.IDSchema):
         name: str
         email: str
         address: AddressSchema  # ← This nested schema causes the problem
@@ -73,18 +71,13 @@ def test_nested_schema_limitation_demonstration(client):
         city: Mapped[str]
         postal_code: Mapped[str]
 
-    @fd.include_view(app)
+    @fd.include_view(client.app)
     class UserView(fd.AsyncAlchemyView):
         prefix = "/users"
         model = User
         schema = UserSchema
 
-    async def create_tables():
-        engine = fa_globals.async_make_session.kw["bind"]
-        async with engine.begin() as conn:
-            await conn.run_sync(fd.SQLBase.metadata.create_all)
-
-    asyncio.run(create_tables())
+    create_tables()
 
     # This POST request will FAIL because of nested schema
     response = client.post(
@@ -108,12 +101,9 @@ def test_working_flattened_approach(client):
     """
     This test shows the WORKING approach using flattened schemas.
     """
-    fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
-
-    app = client.app
 
     # Define a flattened schema (this is what WORKS)
-    class UserSchema(fd.IDSchema[fd.IDBase]):
+    class UserSchema(fd.IDSchema):
         name: str
         email: str
         street: str = Field(alias="streetAddress")  # ← Flattened
@@ -128,18 +118,13 @@ def test_working_flattened_approach(client):
         city: Mapped[str]
         postal_code: Mapped[str]
 
-    @fd.include_view(app)
+    @fd.include_view(client.app)
     class UserView(fd.AsyncAlchemyView):
         prefix = "/users"
         model = User
         schema = UserSchema
 
-    async def create_tables():
-        engine = fa_globals.async_make_session.kw["bind"]
-        async with engine.begin() as conn:
-            await conn.run_sync(fd.SQLBase.metadata.create_all)
-
-    asyncio.run(create_tables())
+    create_tables()
 
     # This POST request will WORK because it uses flattened fields
     response = client.post(
@@ -168,9 +153,6 @@ def test_deeply_nested_schema_limitation(client):
     """
     This test shows how deeply nested schemas would fail.
     """
-    fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
-
-    app = client.app
 
     # Define deeply nested schemas (this would FAIL)
     class ContactInfoSchema(BaseSchema):
@@ -186,7 +168,7 @@ def test_deeply_nested_schema_limitation(client):
         name: str = Field(alias="companyName")
         industry: str = Field(alias="industryType")
 
-    class EmployeeSchema(fd.IDSchema[fd.IDBase]):
+    class EmployeeSchema(fd.IDSchema):
         name: str
         address: AddressSchema  # ← Nested schema
         company: CompanySchema  # ← Nested schema
@@ -201,19 +183,13 @@ def test_deeply_nested_schema_limitation(client):
         company_name: Mapped[str]
         industry: Mapped[str]
 
-    @fd.include_view(app)
+    @fd.include_view(client.app)
     class EmployeeView(fd.AsyncAlchemyView):
         prefix = "/employees"
         model = Employee
         schema = EmployeeSchema
 
-    async def create_tables():
-        engine = fa_globals.async_make_session.kw["bind"]
-        async with engine.begin() as conn:
-            await conn.run_sync(fd.SQLBase.metadata.create_all)
-
-    asyncio.run(create_tables())
-
+    create_tables()
     # This POST request would FAIL
     response = client.post(
         "/employees/",

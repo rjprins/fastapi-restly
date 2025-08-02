@@ -13,6 +13,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 import fastapi_ding as fd
 from fastapi_ding._globals import fa_globals
 from fastapi_ding.schemas import ReadOnly, BaseSchema
+from .conftest import create_tables
 
 
 class TestOneToManyRelationships:
@@ -20,9 +21,6 @@ class TestOneToManyRelationships:
 
     def test_one_to_many_relationship_basic(self, client):
         """Test basic one-to-many relationship without aliases."""
-        fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
-
-        app = client.app
 
         # Define SQLAlchemy models with relationship
         class User1(fd.IDBase):
@@ -48,82 +46,67 @@ class TestOneToManyRelationships:
             email: str
             addresses: List[AddressSchema1]
 
-        @fd.include_view(app)
+        @fd.include_view(client.app)
         class UserView1(fd.AsyncAlchemyView):
             prefix = "/users1"
             model = User1
             schema = UserSchema1
 
-        async def create_tables():
-            engine = fa_globals.async_make_session.kw["bind"]
-            async with engine.begin() as conn:
-                await conn.run_sync(fd.SQLBase.metadata.create_all)
-
-        asyncio.run(create_tables())
+        create_tables()
 
         # Test GET - should return nested addresses
         response = client.get("/users1/")
         assert response.status_code == 200
 
-    # @pytest.mark.xfail(reason="Aliases in nested schemas not yet supported")
+    @pytest.mark.xfail(reason="Aliases in nested schemas not yet supported")
     def test_one_to_many_relationship_with_aliases(self, client):
         """Test one-to-many relationship with aliases in nested schemas."""
-        fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
-
-        app = client.app
 
         # Define SQLAlchemy models with relationship
-        class User2(fd.IDBase):
+        class User(fd.IDBase):
             name: Mapped[str] = mapped_column(String(100))
             email: Mapped[str] = mapped_column(String(100))
-            addresses: Mapped[List["Address2"]] = relationship(
-                "Address2", back_populates="user"
+            addresses: Mapped[List["Address"]] = relationship(
+                "Address", back_populates="user", default_factory=list
             )
 
-        class Address2(fd.IDBase):
+        class Address(fd.IDBase):
             street: Mapped[str] = mapped_column(String(200))
             city: Mapped[str] = mapped_column(String(100))
-            user_id: Mapped[int] = mapped_column(Integer, ForeignKey("user2.id"))
-            user: Mapped["User2"] = relationship("User2", back_populates="addresses")
+            user_id: Mapped[int] = mapped_column(
+                Integer, ForeignKey("user.id"), init=False
+            )
+            user: Mapped["User"] = relationship("User", back_populates="addresses")
 
         # Define schemas with aliases
-        class AddressSchema2(fd.IDSchema[Address2]):
+        class AddressSchema(fd.IDSchema[Address]):
             street: str = Field(alias="streetAddress")
             city: str = Field(alias="cityName")
 
-        class UserSchema2(fd.IDSchema[User2]):
+        class UserSchema(fd.IDSchema[User]):
             name: str
             email: str
-            addresses: List[AddressSchema2]
+            addresses: List[AddressSchema]
 
-        @fd.include_view(app)
+        @fd.include_view(client.app)
         class UserView2(fd.AsyncAlchemyView):
-            prefix = "/users2"
-            model = User2
-            schema = UserSchema2
+            prefix = "/users"
+            model = User
+            schema = UserSchema
 
-        async def create_tables():
-            engine = fa_globals.async_make_session.kw["bind"]
-            async with engine.begin() as conn:
-                await conn.run_sync(fd.SQLBase.metadata.create_all)
-
-        asyncio.run(create_tables())
+        create_tables()
 
         # Insert test data to actually test aliases
         async def insert_test_data():
-            async with fa_globals.async_make_session() as session:
+            async with fd.AsyncSession() as session:
                 # Create a user first
-                user = User2(name="John Doe", email="john@example.com")
+                user = User(name="John Doe", email="john@example.com")
                 session.add(user)
                 await session.flush()  # Get the user ID
 
                 # Create addresses for the user
-                address1 = Address2(
-                    street="123 Main St", city="Anytown", user_id=user.id
-                )
-                address2 = Address2(
-                    street="456 Oak Ave", city="Somewhere", user_id=user.id
-                )
+                address1 = Address(street="123 Main St", city="Anytown", user=user)
+                address2 = Address(street="456 Oak Ave", city="Somewhere", user=user)
                 session.add(address1)
                 session.add(address2)
                 await session.commit()
@@ -131,7 +114,7 @@ class TestOneToManyRelationships:
         asyncio.run(insert_test_data())
 
         # Test GET - should return nested addresses with aliases
-        response = client.get("/users2/")
+        response = client.get("/users/")
         assert response.status_code == 200
         users = response.json()
 
@@ -157,9 +140,6 @@ class TestOneToOneRelationships:
     @pytest.mark.xfail(reason="One-to-one relationships not yet tested")
     def test_one_to_one_relationship_basic(self, client):
         """Test basic one-to-one relationship without aliases."""
-        fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
-
-        app = client.app
 
         # Define SQLAlchemy models with relationship
         class User3(fd.IDBase):
@@ -187,18 +167,13 @@ class TestOneToOneRelationships:
             email: str
             profile: ProfileSchema3
 
-        @fd.include_view(app)
+        @fd.include_view(client.app)
         class UserView3(fd.AsyncAlchemyView):
             prefix = "/users3"
             model = User3
             schema = UserSchema3
 
-        async def create_tables():
-            engine = fa_globals.async_make_session.kw["bind"]
-            async with engine.begin() as conn:
-                await conn.run_sync(fd.SQLBase.metadata.create_all)
-
-        asyncio.run(create_tables())
+        create_tables()
 
         # Test GET - should return nested profile
         response = client.get("/users3/")
@@ -207,9 +182,6 @@ class TestOneToOneRelationships:
     @pytest.mark.xfail(reason="One-to-one relationships with aliases not yet tested")
     def test_one_to_one_relationship_with_aliases(self, client):
         """Test one-to-one relationship with aliases in nested schemas."""
-        fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
-
-        app = client.app
 
         # Define SQLAlchemy models with relationship
         class User4(fd.IDBase):
@@ -237,18 +209,13 @@ class TestOneToOneRelationships:
             email: str
             profile: ProfileSchema4
 
-        @fd.include_view(app)
+        @fd.include_view(client.app)
         class UserView4(fd.AsyncAlchemyView):
             prefix = "/users4"
             model = User4
             schema = UserSchema4
 
-        async def create_tables():
-            engine = fa_globals.async_make_session.kw["bind"]
-            async with engine.begin() as conn:
-                await conn.run_sync(fd.SQLBase.metadata.create_all)
-
-        asyncio.run(create_tables())
+        create_tables()
 
         # Test GET - should return nested profile with aliases
         response = client.get("/users4/")
@@ -270,9 +237,6 @@ class TestManyToManyRelationships:
     @pytest.mark.xfail(reason="Many-to-many relationships not yet tested")
     def test_many_to_many_relationship_basic(self, client):
         """Test basic many-to-many relationship without aliases."""
-        fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
-
-        app = client.app
 
         # Define SQLAlchemy models with many-to-many relationship
         class User5(fd.IDBase):
@@ -309,18 +273,13 @@ class TestManyToManyRelationships:
             email: str
             groups: List[GroupSchema5]
 
-        @fd.include_view(app)
+        @fd.include_view(client.app)
         class UserView5(fd.AsyncAlchemyView):
             prefix = "/users5"
             model = User5
             schema = UserSchema5
 
-        async def create_tables():
-            engine = fa_globals.async_make_session.kw["bind"]
-            async with engine.begin() as conn:
-                await conn.run_sync(fd.SQLBase.metadata.create_all)
-
-        asyncio.run(create_tables())
+        create_tables()
 
         # Test GET - should return nested groups
         response = client.get("/users5/")
@@ -333,9 +292,6 @@ class TestDeeplyNestedRelationships:
     @pytest.mark.xfail(reason="Deeply nested relationships not yet tested")
     def test_deeply_nested_relationships(self, client):
         """Test deeply nested relationships with aliases."""
-        fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
-
-        app = client.app
 
         # Define SQLAlchemy models with deep nesting
         class Company6(fd.IDBase):
@@ -398,18 +354,13 @@ class TestDeeplyNestedRelationships:
             name: str = Field(alias="companyName")
             departments: List[DepartmentSchema6]
 
-        @fd.include_view(app)
+        @fd.include_view(client.app)
         class CompanyView6(fd.AsyncAlchemyView):
             prefix = "/companies6"
             model = Company6
             schema = CompanySchema6
 
-        async def create_tables():
-            engine = fa_globals.async_make_session.kw["bind"]
-            async with engine.begin() as conn:
-                await conn.run_sync(fd.SQLBase.metadata.create_all)
-
-        asyncio.run(create_tables())
+        create_tables()
 
         # Test GET - should return deeply nested structure with aliases
         response = client.get("/companies6/")
@@ -422,9 +373,6 @@ class TestRelationshipWithReadOnlyFields:
     @pytest.mark.xfail(reason="ReadOnly fields in nested schemas not yet tested")
     def test_relationship_with_readonly_fields(self, client):
         """Test relationships where some fields are ReadOnly."""
-        fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
-
-        app = client.app
 
         # Define SQLAlchemy models with relationship
         class User7(fd.IDBase):
@@ -454,18 +402,13 @@ class TestRelationshipWithReadOnlyFields:
             addresses: List[AddressSchema7]
             created_at: ReadOnly[datetime]
 
-        @fd.include_view(app)
+        @fd.include_view(client.app)
         class UserView7(fd.AsyncAlchemyView):
             prefix = "/users7"
             model = User7
             schema = UserSchema7
 
-        async def create_tables():
-            engine = fa_globals.async_make_session.kw["bind"]
-            async with engine.begin() as conn:
-                await conn.run_sync(fd.SQLBase.metadata.create_all)
-
-        asyncio.run(create_tables())
+        create_tables()
 
         # Test GET - should return nested addresses with ReadOnly fields
         response = client.get("/users7/")
