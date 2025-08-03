@@ -1,22 +1,31 @@
-# FastAPI-Ding 🚀
-
-> **Build CRUD APIs with FastAPI and SQLAlchemy in minutes**
+# FastAPI-Ding
 
 > **⚠️ Development Status**: This project is in active development and has not been released on PyPI yet. For installation, please clone the repository and install in development mode.
 
-FastAPI-Ding is a powerful framework that eliminates boilerplate code when building REST APIs with FastAPI and SQLAlchemy. Define your models and schemas, and get a fully functional API with automatic CRUD operations, validation, filtering, sorting, and OpenAPI documentation.
-Designed to be fully extendable and customizable.
+FastAPI-Ding helps you build **maintainable CRUD APIs faster** on top of **FastAPI**, **SQLAlchemy 2.0**, and **Pydantic v2**.
+It provides auto-generated endpoints, schemas, and filters while keeping you in control—perfect for projects where you want to move quickly without giving up flexibility.
 
-## ✨ Features
+---
 
-- **⚡ Class-based Views**: With class-level FastAPI dependencies, and full inheritance support
-- **🚀 Instant CRUD**: Automatic endpoints for Create, Read, Update, Delete operations
-- **🔄 Pydantic Model Generation**: Automatically create Pydantic models from SQLAlchemy ORM classes
-- **🔍 Advanced Querying**: Built-in pagination, sorting and filtering, including relational fields (blog.author.name)
-- **🎯 React-Admin Integration**: Zero-config support for React-Admin on CRUD views
+## Why FastAPI-Ding?
 
-Each feature is always made with the assumption that you want to customize it. 
-FastAPI, Pydantic, and SQLAlchemy are combined with full functionality: Complex relationships, nested schemas, OpenAPI specification generation are all supported.
+* **Faster CRUD development** – Generate standard endpoints and Pydantic models automatically.
+* **Maintainable** – Class-based views with inheritance and dependencies keep things organized.
+* **Customizable** – Generated endpoints are fully overridable whenever you need custom behavior.
+* **Modern stack** – Built for SQLAlchemy 2.0 and Pydantic v2, with async support.
+
+---
+
+## ✅ Current Features
+
+* **CRUD endpoints in minutes** for SQLAlchemy models
+* **Class-based views** with dependency injection and inheritance
+* **Automatic Pydantic schemas** for create, update, and read
+* **Filtering, pagination, and sorting** (including nested relationships)
+* **OpenAPI docs** with all generated routes
+* **React-Admin friendly** API responses
+
+---
 
 ## 🎯 Ding Philosophy
 
@@ -232,6 +241,14 @@ fd.setup_async_database_connection("postgresql+asyncpg://user:pass@localhost/db"
 fd.setup_database_connection("sqlite:///app.db")
 ```
 
+## 🛠 Future Plans
+
+* Authentication & permissions
+* Admin interface
+* Background jobs & scheduling
+* CLI for code generation and scaffolding
+
+
 ## 🤝 Contributing
 
 We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
@@ -243,3 +260,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ---
 
 **Built with ❤️ for the FastAPI community**
+o
