@@ -6,13 +6,13 @@ from fastapi_ding import (
     BaseSchema,
     IDBase,
     IDSchema,
-    SQLBase,
     TimestampsMixin,
     include_view,
     setup_async_database_connection,
     settings,
+    Base,
 )
-from fastapi_ding import schemas, sqlbase
+from fastapi_ding import _schemas as schemas, _sqlbase as sqlbase
 
 
 def test_imports_work():
@@ -20,11 +20,11 @@ def test_imports_work():
     assert fd.AsyncAlchemyView is not None
     assert fd.IDBase is not None
     assert fd.IDSchema is not None
-    assert fd.SQLBase is not None
     assert fd.TimestampsMixin is not None
     assert fd.include_view is not None
     assert fd.setup_async_database_connection is not None
     assert fd.settings is not None
+    assert fd.Base is not None
 
 
 def test_schemas_module():
@@ -38,4 +38,4 @@ def test_sqlbase_module():
     """Test that sqlbase module can be imported."""
     assert sqlbase is not None
     # Test that we can access sqlbase from the module
-    assert hasattr(sqlbase, 'SQLBase')
+    assert hasattr(sqlbase, 'Base')

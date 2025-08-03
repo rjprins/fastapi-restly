@@ -12,7 +12,7 @@ pytest_plugins = ["fastapi_ding.pytest_fixtures"]
 @pytest.fixture(autouse=True)
 def reset_metadata():
     """Reset SQLAlchemy metadata to prevent table redefinition conflicts."""
-    fd.SQLBase.metadata.clear()
+    fd.Base.metadata.clear()
 
 
 @pytest.fixture(autouse=True)
@@ -24,6 +24,6 @@ def create_tables():
     async def create_tables():
         engine = fd.AsyncSession.kw["bind"]
         async with engine.begin() as conn:
-            await conn.run_sync(fd.SQLBase.metadata.create_all)
+            await conn.run_sync(fd.Base.metadata.create_all)
 
     asyncio.run(create_tables())

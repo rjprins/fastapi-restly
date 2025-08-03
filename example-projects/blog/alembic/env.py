@@ -1,21 +1,21 @@
 import asyncio
 from logging.config import fileConfig
 
-# Import to register all models in SQLBase.metadata
+# Import to register all models in Base.metadata
 import blog.main
 from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-from fastapi_ding import SQLBase, settings
+from fastapi_ding import Base, settings
 
 config = context.config
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-target_metadata = SQLBase.metadata
+target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:

@@ -52,7 +52,7 @@ def underscore(name: str) -> str:
     return "".join(result)
 
 
-class SQLBase(TableNameMixin, MappedAsDataclass, DeclarativeBase, kw_only=True):
+class Base(TableNameMixin, MappedAsDataclass, DeclarativeBase, kw_only=True):
     type_annotation_map = {
         # native_enum=False so enums are persisted as strings in the
         # database, not as Postgres TYPE objects. This prevents
@@ -79,7 +79,7 @@ class SQLBase(TableNameMixin, MappedAsDataclass, DeclarativeBase, kw_only=True):
             return new_instance
 
 
-class IDBase(IDMixin, SQLBase):
+class IDBase(IDMixin, Base):
     __abstract__ = True
 
 

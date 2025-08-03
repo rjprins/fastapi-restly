@@ -4,18 +4,18 @@ import fastapi
 import sqlalchemy
 from sqlalchemy.orm import Session
 
-from ._session import DBDependency
+from ._session import SessionDep
 from ._views import BaseAlchemyView, delete, get, post, put
-from .query_modifiers_config import apply_query_modifiers
-from .schemas import (
+from ._query_modifiers_config import apply_query_modifiers
+from ._schemas import (
     NOT_SET,
     BaseSchema,
     is_field_readonly,
     resolve_ids_to_sqlalchemy_objects,
 )
-from .sqlbase import SQLBase
+from ._sqlbase import Base
 
-T = TypeVar("T", bound=SQLBase)
+T = TypeVar("T", bound=Base)
 
 
 def make_new_object(session: Session, model_cls: type[T], schema_obj: BaseSchema) -> T:
@@ -38,7 +38,7 @@ class AlchemyView(BaseAlchemyView):
     Where `Foo` is a SQLAlchemy model and `FooSchema` a Pydantic model.
     """
 
-    db: DBDependency  # type: ignore[reportIncompatibleVariableOverride]
+    session: SessionDep  # type: ignore[reportIncompatibleVariableOverride]
 
     @get("/")
     def index(self, query_params: Any) -> Sequence[Any]:
@@ -66,7 +66,7 @@ class AlchemyView(BaseAlchemyView):
             self.model,
             self.schema,
         )
-        scalar_result = self.db.scalars(query)
+        scalar_result = self.session.scalars(query)
         return scalar_result.all()
 
     @get("/{id}")
@@ -79,7 +79,7 @@ class AlchemyView(BaseAlchemyView):
         Return a 404 if not found.
         Feel free to override this method.
         """
-        obj = self.db.get(self.model, id)
+        obj = self.session.get(self.model, id)
         if obj is None:
             raise fastapi.HTTPException(404)
         return obj
@@ -121,30 +121,30 @@ class AlchemyView(BaseAlchemyView):
         self.delete_object(obj)
         return fastapi.Response(status_code=204)
 
-    def delete_object(self, obj: SQLBase) -> None:
+    def delete_object(self, obj: Base) -> None:
         """
         Delete an object from the database.
         Feel free to override this method.
         """
-        self.db.delete(obj)
-        self.db.flush()
+        self.session.delete(obj)
+        self.session.flush()
 
-    def make_new_object(self, schema_obj: BaseSchema) -> SQLBase:
+    def make_new_object(self, schema_obj: BaseSchema) -> Base:
         """
         Create a new object from a schema object.
         Feel free to override this method.
         """
-        resolve_ids_to_sqlalchemy_objects(schema_obj, self.db)
+        resolve_ids_to_sqlalchemy_objects(schema_obj, self.session)
         obj = self.model(**dict(schema_obj))
-        self.db.add(obj)
+        self.session.add(obj)
         return obj
 
-    def update_object(self, obj: SQLBase, schema_obj: BaseSchema) -> SQLBase:
+    def update_object(self, obj: Base, schema_obj: BaseSchema) -> Base:
         """
         Update an existing object with data from a schema object.
         Feel free to override this method.
         """
-        resolve_ids_to_sqlalchemy_objects(schema_obj, self.db)
+        resolve_ids_to_sqlalchemy_objects(schema_obj, self.session)
         for field_name, value in schema_obj:
             if value is NOT_SET:
                 continue
@@ -156,12 +156,12 @@ class AlchemyView(BaseAlchemyView):
             setattr(obj, field_name, value)
         return self.save_object(obj)
 
-    def save_object(self, obj: SQLBase) -> SQLBase:
+    def save_object(self, obj: Base) -> Base:
         """
         Save an object to the database.
         Feel free to override this method.
         """
-        self.db.add(obj)
-        self.db.flush()
-        self.db.refresh(obj)
+        self.session.add(obj)
+        self.session.flush()
+        self.session.refresh(obj)
         return obj

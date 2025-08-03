@@ -2,23 +2,23 @@ from sqlalchemy.orm import mapped_column
 
 from ._make_session_proxy import AsyncSession, Session
 from ._session import (
-    AsyncDBDependency,
-    DBDependency,
+    AsyncSessionDep,
+    SessionDep,
     setup_async_database_connection,
     setup_database_connection,
 )
 from ._settings import settings
 from ._views import BaseAlchemyView, delete, get, include_view, post, put, route
-from .async_view import AsyncAlchemyView
-from .query_modifiers_config import (
+from ._async_view import AsyncAlchemyView
+from ._query_modifiers_config import (
     QueryModifierVersion,
     apply_query_modifiers,
     create_query_param_schema,
     get_query_modifier_version,
     set_query_modifier_version,
 )
-from .schema_generator import auto_generate_schema_for_view, create_schema_from_model
-from .schemas import (
+from ._schema_generator import auto_generate_schema_for_view, create_schema_from_model
+from ._schemas import (
     NOT_SET,
     BaseSchema,
     IDSchema,
@@ -26,8 +26,8 @@ from .schemas import (
     ReadOnly,
     TimestampsSchemaMixin,
 )
-from .sqlbase import IDBase, IDStampsBase, SQLBase, TimestampsMixin
-from .sync_view import AlchemyView
+from ._sqlbase import IDBase, IDStampsBase, Base, TimestampsMixin
+from ._sync_view import AlchemyView
 
 __all__ = [
     "AsyncSession",
@@ -43,9 +43,9 @@ __all__ = [
     "ReadOnly",
     "IDStampsBase",
     "QueryModifierVersion",
-    "SQLBase",
-    "DBDependency",
-    "AsyncDBDependency",
+    "Base",
+    "SessionDep",
+    "AsyncSessionDep",
     "TimestampsMixin",
     "TimestampsSchemaMixin",
     "apply_query_modifiers",

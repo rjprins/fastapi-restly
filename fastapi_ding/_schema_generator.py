@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional, Union, get_args
 
 from sqlalchemy.orm import DeclarativeBase, Mapped, RelationshipProperty
 
-from .schemas import BaseSchema, IDSchema, TimestampsSchemaMixin
+from ._schemas import BaseSchema, IDSchema, TimestampsSchemaMixin
 
 
 def get_sqlalchemy_field_type(field: Any) -> Any:
@@ -235,7 +235,7 @@ def create_schema_from_model(
 
     # Apply ReadOnly annotation to read-only fields
     if read_only_fields:
-        from .schemas import ReadOnly
+        from ._schemas import ReadOnly
 
         for field_name in read_only_fields:
             if field_name in field_definitions:

@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import List
 
 import fastapi_ding as fd
-from fastapi_ding.schemas import WriteOnly, BaseSchema
+from fastapi_ding._schemas import WriteOnly, BaseSchema
 from fastapi_ding.testing import DingTestClient
 from fastapi_ding._globals import fa_globals
 from .conftest import create_tables
@@ -225,7 +225,7 @@ class TestWriteOnlyWithMixedFields:
     def test_mixed_readonly_writeonly_regular_fields(self, client):
         """Test API behavior with ReadOnly, WriteOnly, and regular fields."""
 
-        from fastapi_ding.schemas import ReadOnly
+        from fastapi_ding._schemas import ReadOnly
 
         class UserSchema(fd.IDSchema):
             id: ReadOnly[int]  # ReadOnly field

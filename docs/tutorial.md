@@ -113,7 +113,7 @@ from fastapi_ding._globals import fa_globals
 async def create_tables():
     engine = fa_globals.async_make_session.kw["bind"]
     async with engine.begin() as conn:
-        await conn.run_sync(fd.SQLBase.metadata.create_all)
+        await conn.run_sync(fd.Base.metadata.create_all)
 
 asyncio.run(create_tables())
 ```

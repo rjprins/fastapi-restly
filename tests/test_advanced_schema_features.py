@@ -17,7 +17,7 @@ from sqlalchemy.orm import Mapped
 
 import fastapi_ding as fd
 from fastapi_ding._globals import fa_globals
-from fastapi_ding.schemas import (
+from fastapi_ding._schemas import (
     ReadOnly,
     BaseSchema,
     create_model_without_read_only_fields,

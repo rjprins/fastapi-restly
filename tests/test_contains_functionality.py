@@ -44,7 +44,7 @@ class TestContainsV1Functionality:
 
     def test_contains_v1_string_field_detection(self):
         """Test that string fields are correctly identified in v1."""
-        from fastapi_ding.query_modifiers import (
+        from fastapi_ding._query_modifiers import (
             _is_string_field,
             create_query_param_schema,
         )
@@ -69,7 +69,7 @@ class TestContainsV1Functionality:
 
     def test_contains_v1_query_processing(self):
         """Test that contains queries are processed correctly in v1."""
-        from fastapi_ding.query_modifiers import apply_filtering
+        from fastapi_ding._query_modifiers import apply_filtering
 
         # Create a mock query
         query = select(User)
@@ -85,7 +85,7 @@ class TestContainsV1Functionality:
 
     def test_contains_v1_multiple_values(self):
         """Test that multiple contains values work correctly in v1."""
-        from fastapi_ding.query_modifiers import apply_filtering
+        from fastapi_ding._query_modifiers import apply_filtering
 
         # Create a mock query
         query = select(User)
@@ -101,7 +101,7 @@ class TestContainsV1Functionality:
 
     def test_contains_v1_where_clause(self):
         """Test that the contains operator creates correct ILIKE clauses in v1."""
-        from fastapi_ding.query_modifiers import apply_filtering
+        from fastapi_ding._query_modifiers import apply_filtering
 
         # Create a mock query
         query = select(User)
@@ -115,7 +115,7 @@ class TestContainsV1Functionality:
 
     def test_contains_v1_combined_with_filters(self):
         """Test that contains works with other v1 filters."""
-        from fastapi_ding.query_modifiers import apply_filtering
+        from fastapi_ding._query_modifiers import apply_filtering
 
         query = select(User)
 
@@ -127,7 +127,7 @@ class TestContainsV1Functionality:
 
     def test_contains_v1_string_field_detection_edge_cases(self):
         """Test string field detection with edge cases in v1."""
-        from fastapi_ding.query_modifiers import _is_string_field
+        from fastapi_ding._query_modifiers import _is_string_field
 
         # Test with Optional[str]
         from typing import Optional
@@ -155,7 +155,7 @@ class TestContainsV2Functionality:
 
     def test_contains_v2_string_field_detection(self):
         """Test that string fields are correctly identified in v2."""
-        from fastapi_ding.query_modifiers_v2 import (
+        from fastapi_ding._query_modifiers_v2 import (
             _is_string_field_v2,
             create_query_param_schema_v2,
         )
@@ -187,7 +187,7 @@ class TestContainsV2Functionality:
 
     def test_contains_v2_query_processing(self):
         """Test that __contains queries are processed correctly in v2."""
-        from fastapi_ding.query_modifiers_v2 import apply_filtering_v2
+        from fastapi_ding._query_modifiers_v2 import apply_filtering_v2
 
         # Create a mock query
         query = select(User)
@@ -203,7 +203,7 @@ class TestContainsV2Functionality:
 
     def test_contains_v2_multiple_values(self):
         """Test that multiple __contains values work correctly in v2."""
-        from fastapi_ding.query_modifiers_v2 import apply_filtering_v2
+        from fastapi_ding._query_modifiers_v2 import apply_filtering_v2
 
         # Create a mock query
         query = select(User)
@@ -219,7 +219,7 @@ class TestContainsV2Functionality:
 
     def test_contains_v2_where_clause(self):
         """Test that the __contains operator creates correct ILIKE clauses in v2."""
-        from fastapi_ding.query_modifiers_v2 import _make_where_clause_v2
+        from fastapi_ding._query_modifiers_v2 import _make_where_clause_v2
 
         # Mock column
         class MockColumn:
@@ -236,7 +236,7 @@ class TestContainsV2Functionality:
 
     def test_contains_v2_combined_with_filters(self):
         """Test that __contains works with other v2 filters."""
-        from fastapi_ding.query_modifiers_v2 import apply_filtering_v2
+        from fastapi_ding._query_modifiers_v2 import apply_filtering_v2
 
         query = select(User)
 
@@ -248,7 +248,7 @@ class TestContainsV2Functionality:
 
     def test_contains_v2_string_field_detection_edge_cases(self):
         """Test string field detection with edge cases in v2."""
-        from fastapi_ding.query_modifiers_v2 import _is_string_field_v2
+        from fastapi_ding._query_modifiers_v2 import _is_string_field_v2
 
         # Test with Optional[str]
         from typing import Optional
@@ -274,7 +274,7 @@ class TestContainsIntegration:
 
     def test_contains_v1_with_aliases(self):
         """Test that v1 contains works with field aliases."""
-        from fastapi_ding.query_modifiers import create_query_param_schema
+        from fastapi_ding._query_modifiers import create_query_param_schema
 
         from pydantic import BaseModel, Field
 
@@ -293,7 +293,7 @@ class TestContainsIntegration:
 
     def test_contains_v2_with_aliases(self):
         """Test that v2 contains works with field aliases."""
-        from fastapi_ding.query_modifiers_v2 import create_query_param_schema_v2
+        from fastapi_ding._query_modifiers_v2 import create_query_param_schema_v2
 
         from pydantic import BaseModel, Field
 
@@ -312,7 +312,7 @@ class TestContainsIntegration:
 
     def test_contains_v1_with_nested_schemas(self):
         """Test that v1 contains works with nested schemas."""
-        from fastapi_ding.query_modifiers import create_query_param_schema
+        from fastapi_ding._query_modifiers import create_query_param_schema
 
         from pydantic import BaseModel
 
@@ -336,7 +336,7 @@ class TestContainsIntegration:
 
     def test_contains_v2_with_nested_schemas(self):
         """Test that v2 contains works with nested schemas."""
-        from fastapi_ding.query_modifiers_v2 import create_query_param_schema_v2
+        from fastapi_ding._query_modifiers_v2 import create_query_param_schema_v2
 
         from pydantic import BaseModel
 
@@ -360,7 +360,7 @@ class TestContainsIntegration:
 
     def test_contains_v1_complex_scenarios(self):
         """Test complex contains scenarios in v1."""
-        from fastapi_ding.query_modifiers import apply_filtering
+        from fastapi_ding._query_modifiers import apply_filtering
 
         query = select(User)
 
@@ -380,7 +380,7 @@ class TestContainsIntegration:
 
     def test_contains_v2_complex_scenarios(self):
         """Test complex contains scenarios in v2."""
-        from fastapi_ding.query_modifiers_v2 import apply_filtering_v2
+        from fastapi_ding._query_modifiers_v2 import apply_filtering_v2
 
         query = select(User)
 
@@ -404,7 +404,7 @@ class TestContainsErrorHandling:
 
     def test_contains_v1_invalid_field(self):
         """Test that v1 contains handles invalid fields gracefully."""
-        from fastapi_ding.query_modifiers import apply_filtering
+        from fastapi_ding._query_modifiers import apply_filtering
 
         query = select(User)
 
@@ -417,7 +417,7 @@ class TestContainsErrorHandling:
 
     def test_contains_v2_invalid_field(self):
         """Test that v2 contains handles invalid fields gracefully."""
-        from fastapi_ding.query_modifiers_v2 import apply_filtering_v2
+        from fastapi_ding._query_modifiers_v2 import apply_filtering_v2
 
         query = select(User)
 
@@ -430,7 +430,7 @@ class TestContainsErrorHandling:
 
     def test_contains_v1_empty_value(self):
         """Test that v1 contains handles empty values."""
-        from fastapi_ding.query_modifiers import apply_filtering
+        from fastapi_ding._query_modifiers import apply_filtering
 
         query = select(User)
 
@@ -443,7 +443,7 @@ class TestContainsErrorHandling:
 
     def test_contains_v2_empty_value(self):
         """Test that empty contains values are handled correctly in v2."""
-        from fastapi_ding.query_modifiers_v2 import apply_filtering_v2
+        from fastapi_ding._query_modifiers_v2 import apply_filtering_v2
 
         query = select(User)
 
@@ -455,8 +455,8 @@ class TestContainsErrorHandling:
 
     def test_contains_whitespace_splitting(self):
         """Test that contains queries correctly split on whitespace."""
-        from fastapi_ding.query_modifiers import apply_filtering
-        from fastapi_ding.query_modifiers_v2 import apply_filtering_v2
+        from fastapi_ding._query_modifiers import apply_filtering
+        from fastapi_ding._query_modifiers_v2 import apply_filtering_v2
 
         query = select(User)
 

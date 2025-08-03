@@ -171,7 +171,7 @@ def test_put_requests_accept_aliases(client):
 def test_query_modifiers_with_aliases(client):
     """Test that query modifiers work with aliases."""
 
-    from fastapi_ding.query_modifiers_config import (
+    from fastapi_ding._query_modifiers_config import (
         set_query_modifier_version,
         QueryModifierVersion,
     )

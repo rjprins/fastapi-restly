@@ -70,7 +70,7 @@ def get_query_modifier_interface() -> QueryModifierInterface:
         The query modifier interface to use
     """
     if _query_modifier_version == QueryModifierVersion.V2:
-        from .query_modifiers_v2 import apply_query_modifiers_v2
+        from ._query_modifiers_v2 import apply_query_modifiers_v2
 
         class V2Interface:
             def apply_query_modifiers(
@@ -86,7 +86,7 @@ def get_query_modifier_interface() -> QueryModifierInterface:
 
         return V2Interface()
     else:
-        from .query_modifiers import apply_query_modifiers
+        from ._query_modifiers import apply_query_modifiers
 
         class V1Interface:
             def apply_query_modifiers(
@@ -111,11 +111,11 @@ def get_query_param_schema_creator() -> Callable[[SchemaType], SchemaType]:
         A function that creates query param schemas
     """
     if _query_modifier_version == QueryModifierVersion.V2:
-        from .query_modifiers_v2 import create_query_param_schema_v2
+        from ._query_modifiers_v2 import create_query_param_schema_v2
 
         return create_query_param_schema_v2
     else:
-        from .query_modifiers import create_query_param_schema
+        from ._query_modifiers import create_query_param_schema
 
         return create_query_param_schema
 

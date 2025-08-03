@@ -25,7 +25,7 @@ FastAPI, Pydantic, and SQLAlchemy are combined with full functionality: Complex 
 Ding's goal is to make web application development as easy as possible by providing the tools production apps commonly need.
 
 - **Today**: Class-based views, automatic Pydantic schema generation, and database connection management.
-- **Tomorrow**: Admin interface, authentication, permissions, background jobs, job scheduling, and more.
+- **Tomorrow**: Admin interface, authentication, permissions, background jobs, job scheduling, plugins, etc.
 
 ### Designed in Layers
 
@@ -34,6 +34,7 @@ Ding is a stack of micro-libraries.
 - Each layer adds a step of convenience, but developers can always drop down a layer for deeper customization.
 - Each layer makes deliberate, opinionated choices that higher layers can rely on and extend.
 - The less customization you need, the more you get out-of-the-box—yet full customization never requires awkward hacks.
+- Built on FastAPI, Pydantic, and SQLAlchemy, Ding sticks to patterns provided by those libraries.
 
 ## 🚀 Quick Start
 
@@ -106,12 +107,12 @@ class UserView(fd.AsyncAlchemyView):
 
 ### Query Modifiers
 
-FastAPI-Ding supports two query parameter interfaces:
+FastAPI-Ding currently supports two query parameter interfaces:
 
 **V1 (JSONAPI-style):**
 ```bash
 # Filtering
-GET /users/?filter[name]=John&filter[email]=john@example.com
+GET /users/?filter[name]=John&filter[age]=>21
 
 # Sorting
 GET /users/?sort=name,-created_at
@@ -138,8 +139,8 @@ GET /users/?page=2&page_size=10
 ### Read-Only and Write-Only Fields
 
 ```python
-class UserSchema(fd.IDSchema[User]):
-    id: fd.ReadOnly[int]  # Can't be set in requests
+class UserSchema(pydantic.BaseModel):
+    id: fd.ReadOnly[UUID]  # Can't be set in requests
     name: str
     email: str
     password: fd.WriteOnly[str]  # Won't appear in responses
@@ -168,13 +169,13 @@ class UserView(fd.AsyncAlchemyView):
     model = User
     schema = UserSchema
 
-    @fd.get("/search")
-    async def search_users(self, q: str):
+    @fd.get("/{id}/download")
+    async def (self, q: str):
         """Custom search endpoint"""
         query = sqlalchemy.select(self.model).where(
             self.model.name.ilike(f"%{q}%")
         )
-        result = await self.db.scalars(query)
+        result = await self.session.scalars(query)
         return result.all()
 
     async def process_index(self, query_params):

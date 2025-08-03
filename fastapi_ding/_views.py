@@ -30,15 +30,15 @@ from typing import (
 
 import fastapi
 
-from .query_modifiers_config import create_query_param_schema
-from .schema_generator import auto_generate_schema_for_view
-from .schemas import (
+from ._query_modifiers_config import create_query_param_schema
+from ._schema_generator import auto_generate_schema_for_view
+from ._schemas import (
     BaseSchema,
     create_model_with_optional_fields,
     create_model_without_read_only_fields,
     make_response_schema,
 )
-from .sqlbase import SQLBase
+from ._sqlbase import Base
 
 
 class View:
@@ -168,7 +168,7 @@ class BaseAlchemyView(View):
     # using `create_model_without_read_only_fields()`.
     creation_schema: ClassVar[type[BaseSchema]]
     update_schema: ClassVar[type[BaseSchema]]
-    model: ClassVar[type[SQLBase]]
+    model: ClassVar[type[Base]]
     exclude_routes: ClassVar[list[str]] = []
 
     request: fastapi.Request

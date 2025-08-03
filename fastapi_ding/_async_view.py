@@ -4,16 +4,16 @@ import fastapi
 import pydantic
 import sqlalchemy
 
-from ._session import AsyncDBDependency
+from ._session import AsyncSessionDep
 from ._views import BaseAlchemyView, delete, get, post, put
-from .query_modifiers_config import apply_query_modifiers
-from .schemas import (
+from ._query_modifiers_config import apply_query_modifiers
+from ._schemas import (
     NOT_SET,
     BaseSchema,
     async_resolve_ids_to_sqlalchemy_objects,
     is_field_readonly,
 )
-from .sqlbase import SQLBase
+from ._sqlbase import Base
 
 
 class AsyncAlchemyView(BaseAlchemyView):
@@ -29,7 +29,7 @@ class AsyncAlchemyView(BaseAlchemyView):
     Where `Foo` is a SQLAlchemy model and `FooSchema` a Pydantic model.
     """
 
-    db: AsyncDBDependency
+    session: AsyncSessionDep
 
     @get("/")
     async def index(self, query_params: Any) -> Sequence[Any]:
@@ -55,7 +55,7 @@ class AsyncAlchemyView(BaseAlchemyView):
         query = apply_query_modifiers(
             self.request.query_params, query, self.model, self.schema
         )
-        scalar_result = await self.db.scalars(query)
+        scalar_result = await self.session.scalars(query)
         return scalar_result.all()
 
     @get("/{id}")
@@ -68,7 +68,7 @@ class AsyncAlchemyView(BaseAlchemyView):
         Return a 404 if not found.
         Feel free to override this method.
         """
-        obj = await self.db.get(self.model, id)
+        obj = await self.session.get(self.model, id)
         if obj is None:
             raise fastapi.HTTPException(404)
         return obj
@@ -109,21 +109,21 @@ class AsyncAlchemyView(BaseAlchemyView):
         await self.delete_object(obj)
         return fastapi.Response(status_code=204)
 
-    async def delete_object(self, obj: SQLBase) -> None:
+    async def delete_object(self, obj: Base) -> None:
         """
         Handle a DELETE request on "/{id}". This should delete an object from the
         database. `process_get()` is called first to lookup the object.
         Feel free to override this method.
         """
-        await self.db.delete(obj)
-        await self.db.flush()
+        await self.session.delete(obj)
+        await self.session.flush()
 
-    async def make_new_object(self, schema_obj: BaseSchema) -> SQLBase:
+    async def make_new_object(self, schema_obj: BaseSchema) -> Base:
         """
         Create a new object from a schema object.
         Feel free to override this method.
         """
-        await async_resolve_ids_to_sqlalchemy_objects(schema_obj, self.db)
+        await async_resolve_ids_to_sqlalchemy_objects(schema_obj, self.session)
 
         # Filter out read-only fields when creating the object
         data = {}
@@ -134,15 +134,15 @@ class AsyncAlchemyView(BaseAlchemyView):
             data[field_name] = value
 
         obj = self.model(**data)
-        self.db.add(obj)
+        self.session.add(obj)
         return obj
 
-    async def update_object(self, obj: SQLBase, schema_obj: BaseSchema) -> SQLBase:
+    async def update_object(self, obj: Base, schema_obj: BaseSchema) -> Base:
         """
         Update an existing object with data from a schema object.
         Feel free to override this method.
         """
-        await async_resolve_ids_to_sqlalchemy_objects(schema_obj, self.db)
+        await async_resolve_ids_to_sqlalchemy_objects(schema_obj, self.session)
         for field_name, value in schema_obj:
             if value is NOT_SET:
                 continue
@@ -154,11 +154,11 @@ class AsyncAlchemyView(BaseAlchemyView):
             setattr(obj, field_name, value)
         return await self.save_object(obj)
 
-    async def save_object(self, obj: SQLBase) -> SQLBase:
+    async def save_object(self, obj: Base) -> Base:
         """
         Save an object to the database.
         Feel free to override this method.
         """
-        await self.db.flush()
-        await self.db.refresh(obj)
+        await self.session.flush()
+        await self.session.refresh(obj)
         return obj

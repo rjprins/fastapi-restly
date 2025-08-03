@@ -45,14 +45,14 @@ class Customer(fd.IDBase):
 # Example of many-to-many
 product_order_table = sa.Table(
     "product_order",
-    fd.SQLBase.metadata,
+    fd.Base.metadata,
     sa.Column("product_id", sa.ForeignKey("product.id")),
     sa.Column("order_id", sa.ForeignKey("order.id")),
 )
 
 
 # Example with using UUID as primary key
-class Product(fd.SQLBase):
+class Product(fd.Base):
     id: orm.Mapped[UUID] = orm.mapped_column(primary_key=True, default_factory=uuid4)
     name: orm.Mapped[str]
     price: orm.Mapped[float]

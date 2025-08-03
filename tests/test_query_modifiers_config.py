@@ -12,7 +12,7 @@ from sqlalchemy import Select
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from starlette.datastructures import QueryParams
 
-from fastapi_ding.query_modifiers_config import (
+from fastapi_ding._query_modifiers_config import (
     QueryModifierVersion,
     set_query_modifier_version,
     get_query_modifier_version,
@@ -21,10 +21,10 @@ from fastapi_ding.query_modifiers_config import (
     apply_query_modifiers,
     create_query_param_schema,
 )
-from fastapi_ding.sqlbase import SQLBase
+from fastapi_ding._sqlbase import Base
 
 
-class TestModel(SQLBase):
+class TestModel(Base):
     __tablename__ = "test_model_config"
     
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -108,7 +108,7 @@ class TestConvenienceFunctions:
         """Test apply_query_modifiers with V1 version."""
         set_query_modifier_version(QueryModifierVersion.V1)
         
-        with patch('fastapi_ding.query_modifiers_config.get_query_modifier_interface') as mock_get_interface:
+        with patch('fastapi_ding._query_modifiers_config.get_query_modifier_interface') as mock_get_interface:
             mock_interface = Mock()
             mock_get_interface.return_value = mock_interface
             
@@ -122,7 +122,7 @@ class TestConvenienceFunctions:
         """Test apply_query_modifiers with V2 version."""
         set_query_modifier_version(QueryModifierVersion.V2)
         
-        with patch('fastapi_ding.query_modifiers_config.get_query_modifier_interface') as mock_get_interface:
+        with patch('fastapi_ding._query_modifiers_config.get_query_modifier_interface') as mock_get_interface:
             mock_interface = Mock()
             mock_get_interface.return_value = mock_interface
             
@@ -136,7 +136,7 @@ class TestConvenienceFunctions:
         """Test create_query_param_schema with V1 version."""
         set_query_modifier_version(QueryModifierVersion.V1)
         
-        with patch('fastapi_ding.query_modifiers_config.get_query_param_schema_creator') as mock_get_creator:
+        with patch('fastapi_ding._query_modifiers_config.get_query_param_schema_creator') as mock_get_creator:
             mock_creator = Mock()
             mock_get_creator.return_value = mock_creator
             
@@ -148,7 +148,7 @@ class TestConvenienceFunctions:
         """Test create_query_param_schema with V2 version."""
         set_query_modifier_version(QueryModifierVersion.V2)
         
-        with patch('fastapi_ding.query_modifiers_config.get_query_param_schema_creator') as mock_get_creator:
+        with patch('fastapi_ding._query_modifiers_config.get_query_param_schema_creator') as mock_get_creator:
             mock_creator = Mock()
             mock_get_creator.return_value = mock_creator
             

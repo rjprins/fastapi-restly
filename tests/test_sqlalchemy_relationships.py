@@ -12,7 +12,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 import fastapi_ding as fd
 from fastapi_ding._globals import fa_globals
-from fastapi_ding.schemas import ReadOnly, BaseSchema
+from fastapi_ding._schemas import ReadOnly, BaseSchema
 from .conftest import create_tables
 
 

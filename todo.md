@@ -77,10 +77,10 @@ Do I want to support "No alembic/just create tables?"
 * Do multi python versions tests. From 3.10 upwards.
 * Go over naming - Did I get the naming of things spot on?
   - make_session? Maybe should be Session? ✅ (Changed name of proxies)
-  - SQLBase => Base ? ORMBase and orm_cls everywhere
-  - self.db => self.session ?
+  - Base => Base ? ORMBase and orm_cls everywhere
+  - self.db => self.session ? ✅
   - any 'model' references rename to schema
-  - 'update_object' => update_orm_object?
+  - All modules should start with underscore except __init__.py ✅
 * Update the docs
   - Start working on API docs
   - Make clear getting started / tutorial
