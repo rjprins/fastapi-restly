@@ -36,7 +36,6 @@ from ._schemas import (
     BaseSchema,
     create_model_with_optional_fields,
     create_model_without_read_only_fields,
-    make_response_schema,
 )
 from ._sqlbase import Base
 
@@ -197,7 +196,7 @@ class BaseAlchemyView(View):
         if not hasattr(cls, "update_schema"):
             cls.update_schema = create_model_with_optional_fields(cls.schema)
 
-        response_schema = make_response_schema(cls.schema)
+        response_schema = cls.schema
 
         # Only annotate if the methods exist (they will be overridden in subclasses)
         if hasattr(cls, "index"):

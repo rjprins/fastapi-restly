@@ -1,6 +1,6 @@
 import types
 from datetime import datetime
-from typing import Annotated, Any, ClassVar, Generic, Optional, TypeVar, List
+from typing import Annotated, Any, ClassVar, Generic, List, Optional, TypeVar
 
 import pydantic
 from pydantic.fields import Field, FieldInfo
@@ -325,79 +325,91 @@ def set_schema_title(schema_cls: type[pydantic.BaseModel]) -> None:
         schema_cls.model_config = config
 
 
-def make_response_schema(
-    schema_cls: type[pydantic.BaseModel],
-) -> type[pydantic.BaseModel]:
-    """
-    Create a response model from a schema that includes populate_by_name=True.
-    This allows GET responses to work with aliases while keeping POST/PUT operations
-    safe by requiring field names.
+# def make_response_schema(
+#     schema_cls: type[pydantic.BaseModel],
+# ) -> type[pydantic.BaseModel]:
+#     """
+#     Create a response model from a schema that includes populate_by_name=True.
+#     This allows GET responses to work with aliases while keeping POST/PUT operations
+#     safe by requiring field names.
 
-    Args:
-        schema_cls: The original schema class
+#     Args:
+#         schema_cls: The original schema class
 
-    Returns:
-        A new schema class with populate_by_name=True enabled
-    """
-    config = getattr(schema_cls, "model_config", pydantic.ConfigDict())
-    if config.get("populate_by_name") and config.get("from_attributes"):
-        set_schema_title(schema_cls)
-        return schema_cls
+#     Returns:
+#         A new schema class with populate_by_name=True enabled
+#     """
+#     config = getattr(schema_cls, "model_config", pydantic.ConfigDict())
+#     if config.get("populate_by_name") and config.get("from_attributes"):
+#         set_schema_title(schema_cls)
+#         return schema_cls
 
-    new_config = config.copy()
-    new_config.update(populate_by_name=True, from_attributes=True)
+#     new_config = config.copy()
+#     new_config.update(populate_by_name=True, from_attributes=True)
 
-    # Build field definitions for the new schema
-    field_definitions = {}
-    for field_name, field_info in schema_cls.model_fields.items():
-        if hasattr(field_info.annotation, '__origin__') and field_info.annotation.__origin__ in (List, list):
-            if hasattr(field_info.annotation, '__args__') and len(field_info.annotation.__args__) == 1:
-                nested_schema = field_info.annotation.__args__[0]
-                if isinstance(nested_schema, type) and issubclass(nested_schema, pydantic.BaseModel):
-                    new_nested_schema = _create_response_schema_for_nested(nested_schema)
-                    field_definitions[field_name] = (List[new_nested_schema], ...)
-                else:
-                    field_definitions[field_name] = (field_info.annotation, ...)
-            else:
-                field_definitions[field_name] = (field_info.annotation, ...)
-        elif isinstance(field_info.annotation, type) and issubclass(field_info.annotation, pydantic.BaseModel):
-            new_nested_schema = _create_response_schema_for_nested(field_info.annotation)
-            field_definitions[field_name] = (new_nested_schema, ...)
-        else:
-            field_definitions[field_name] = (field_info.annotation, ...)
+#     # Build field definitions for the new schema
+#     field_definitions = {}
+#     for field_name, field_info in schema_cls.model_fields.items():
+#         if hasattr(
+#             field_info.annotation, "__origin__"
+#         ) and field_info.annotation.__origin__ in (List, list):
+#             if (
+#                 hasattr(field_info.annotation, "__args__")
+#                 and len(field_info.annotation.__args__) == 1
+#             ):
+#                 nested_schema = field_info.annotation.__args__[0]
+#                 if isinstance(nested_schema, type) and issubclass(
+#                     nested_schema, pydantic.BaseModel
+#                 ):
+#                     new_nested_schema = _create_response_schema_for_nested(
+#                         nested_schema
+#                     )
+#                     field_definitions[field_name] = (List[new_nested_schema], ...)
+#                 else:
+#                     field_definitions[field_name] = (field_info.annotation, ...)
+#             else:
+#                 field_definitions[field_name] = (field_info.annotation, ...)
+#         elif isinstance(field_info.annotation, type) and issubclass(
+#             field_info.annotation, pydantic.BaseModel
+#         ):
+#             new_nested_schema = _create_response_schema_for_nested(
+#                 field_info.annotation
+#             )
+#             field_definitions[field_name] = (new_nested_schema, ...)
+#         else:
+#             field_definitions[field_name] = (field_info.annotation, ...)
 
-    # Create the new schema from scratch
-    new_schema = pydantic.create_model(
-        f"Response{schema_cls.__name__}",
-        **field_definitions,
-        __module__=schema_cls.__module__,
-    )
+#     # Create the new schema from scratch
+#     new_schema = pydantic.create_model(
+#         f"Response{schema_cls.__name__}",
+#         **field_definitions,
+#         __module__=schema_cls.__module__,
+#     )
 
-    new_schema.model_config = new_config
-    set_schema_title(new_schema)
-    
-    return new_schema
+#     new_schema.model_config = new_config
+#     set_schema_title(new_schema)
+
+#     return new_schema
 
 
-def _create_response_schema_for_nested(schema_cls: type[pydantic.BaseModel]) -> type[pydantic.BaseModel]:
-    """
-    Create a response schema for a nested schema with populate_by_name=True and from_attributes=True.
-    """
-    config = getattr(schema_cls, "model_config", pydantic.ConfigDict())
-    if config.get("populate_by_name") and config.get("from_attributes"):
-        return schema_cls
+# def _create_response_schema_for_nested(
+#     schema_cls: type[pydantic.BaseModel],
+# ) -> type[pydantic.BaseModel]:
+#     """
+#     Create a response schema for a nested schema with populate_by_name=True and from_attributes=True.
+#     """
+#     config = getattr(schema_cls, "model_config", pydantic.ConfigDict())
+#     if config.get("populate_by_name") and config.get("from_attributes"):
+#         return schema_cls
 
-    new_config = config.copy()
-    new_config.update(populate_by_name=True, from_attributes=True)
+#     new_config = config.copy()
+#     new_config.update(populate_by_name=True, from_attributes=True)
 
-    new_schema = type(
-        f"Response{schema_cls.__name__}",
-        (schema_cls,),
-        {
-            "model_config": new_config,
-            "__module__": schema_cls.__module__,
-        },
-    )
+#     new_schema = type(
+#         f"Response{schema_cls.__name__}",
+#         (schema_cls,),
+#         {"model_config": new_config, "__module__": schema_cls.__module__},
+#     )
 
-    set_schema_title(new_schema)
-    return new_schema
+#     set_schema_title(new_schema)
+#     return new_schema

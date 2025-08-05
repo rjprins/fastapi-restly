@@ -4,8 +4,6 @@ import fastapi
 import sqlalchemy
 from sqlalchemy.orm import Session
 
-from ._session import SessionDep
-from ._views import BaseAlchemyView, delete, get, post, put
 from ._query_modifiers_config import apply_query_modifiers
 from ._schemas import (
     NOT_SET,
@@ -13,7 +11,9 @@ from ._schemas import (
     is_field_readonly,
     resolve_ids_to_sqlalchemy_objects,
 )
+from ._session import SessionDep
 from ._sqlbase import Base
+from ._views import BaseAlchemyView, delete, get, post, put
 
 T = TypeVar("T", bound=Base)
 

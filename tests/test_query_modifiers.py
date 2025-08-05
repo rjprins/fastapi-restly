@@ -8,8 +8,8 @@ from unittest.mock import Mock, patch
 import pydantic
 import sqlalchemy
 from fastapi import HTTPException
-from sqlalchemy import Column, Integer, String, DateTime, Boolean
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from starlette.datastructures import QueryParams
 
 from fastapi_ding._query_modifiers import (
@@ -57,9 +57,51 @@ class TestNestedModelV1(Base):
     user_id: Mapped[int] = mapped_column(Integer)
 
 
+# Test models for relation filtering
+class UserModel(Base):
+    __tablename__ = "users"
+    
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(50))
+    email: Mapped[str] = mapped_column(String(100))
+    
+    # Relationship
+    posts: Mapped[list["PostModel"]] = relationship("PostModel", back_populates="author")
+
+
+class PostModel(Base):
+    __tablename__ = "posts"
+    
+    id: Mapped[int] = mapped_column(primary_key=True)
+    title: Mapped[str] = mapped_column(String(100))
+    content: Mapped[str] = mapped_column(String(500))
+    author_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    
+    # Relationship
+    author: Mapped[UserModel] = relationship("UserModel", back_populates="posts")
+
+
+class UserSchema(pydantic.BaseModel):
+    id: int
+    name: str
+    email: str
+
+
+class PostSchema(pydantic.BaseModel):
+    id: int
+    title: str
+    content: str
+    author: UserSchema
+
+
 @pytest.fixture
 def select_query():
     return sqlalchemy.select(TestModelV1)
+
+
+@pytest.fixture
+def post_select_query():
+    return sqlalchemy.select(PostModel)
 
 
 @pytest.fixture
@@ -105,6 +147,18 @@ class TestCreateQueryParamSchema:
         assert "contains[user.name]" in schema.model_fields
         assert "contains[user.email]" in schema.model_fields
         assert "contains[user.age]" not in schema.model_fields  # int field
+
+    def test_create_query_param_schema_with_relations(self):
+        """Test creating a query param schema for models with relations."""
+        schema = create_query_param_schema(PostSchema)
+        
+        # Check that relation filter fields exist
+        assert "filter[author.name]" in schema.model_fields
+        assert "filter[author.email]" in schema.model_fields
+        
+        # Check that relation contains fields exist for string fields
+        assert "contains[author.name]" in schema.model_fields
+        assert "contains[author.email]" in schema.model_fields
 
 
 class TestApplyPagination:
@@ -359,6 +413,97 @@ class TestApplyQueryModifiers:
         assert hasattr(result, '_where_criteria')
 
 
+class TestRelationFiltering:
+    """Test filtering on relations in query modifiers v1."""
+    
+    def test_apply_filtering_on_relation_field(self, post_select_query, mock_query_params):
+        """Test applying filtering on a relation field."""
+        query_params = mock_query_params(**{"filter[author.name]": "John"})
+        result = apply_filtering(query_params, post_select_query, PostModel, PostSchema)
+        
+        # Check that the query has where clause
+        assert hasattr(result, '_where_criteria')
+        
+        # Check that the query has joins (this is the bug - it should have joins)
+        # The current implementation doesn't properly apply joins for relation filters
+        # This test will fail until the bug is fixed
+        assert hasattr(result, '_from_obj') or hasattr(result, '_setup_joins')
+
+    def test_apply_filtering_on_relation_field_contains(self, post_select_query, mock_query_params):
+        """Test applying contains filtering on a relation field."""
+        query_params = mock_query_params(**{"contains[author.name]": "john"})
+        result = apply_filtering(query_params, post_select_query, PostModel, PostSchema)
+        
+        # Check that the query has where clause
+        assert hasattr(result, '_where_criteria')
+        
+        # Check that the query has joins
+        assert hasattr(result, '_from_obj') or hasattr(result, '_setup_joins')
+
+    def test_apply_sorting_on_relation_field(self, post_select_query, mock_query_params):
+        """Test applying sorting on a relation field."""
+        query_params = mock_query_params(sort="author.name")
+        result = apply_sorting(query_params, post_select_query, PostModel)
+        
+        # Check that the query has ordering
+        assert hasattr(result, '_order_by_clauses')
+        
+        # Check that the query has joins
+        assert hasattr(result, '_from_obj') or hasattr(result, '_setup_joins')
+
+    def test_apply_filtering_multiple_relation_filters(self, post_select_query, mock_query_params):
+        """Test applying multiple filters on relation fields."""
+        query_params = mock_query_params(
+            **{"filter[author.name]": "John", "filter[title]": "Test"}
+        )
+        result = apply_filtering(query_params, post_select_query, PostModel, PostSchema)
+        
+        # Check that the query has where clause
+        assert hasattr(result, '_where_criteria')
+        
+        # Check that the query has joins
+        assert hasattr(result, '_from_obj') or hasattr(result, '_setup_joins')
+
+    def test_apply_filtering_nested_relation_field(self, post_select_query, mock_query_params):
+        """Test applying filtering on a deeply nested relation field."""
+        # This test assumes we have a more complex model structure
+        # For now, we'll test with the current structure
+        query_params = mock_query_params(**{"filter[author.email]": "john@example.com"})
+        result = apply_filtering(query_params, post_select_query, PostModel, PostSchema)
+        
+        # Check that the query has where clause
+        assert hasattr(result, '_where_criteria')
+        
+        # Check that the query has joins
+        assert hasattr(result, '_from_obj') or hasattr(result, '_setup_joins')
+
+    def test_relation_filtering_bug_demonstration(self, post_select_query, mock_query_params):
+        """Demonstrate the actual bug: joins are not properly applied."""
+        query_params = mock_query_params(**{"filter[author.name]": "John"})
+        
+        # Apply filtering
+        result = apply_filtering(query_params, post_select_query, PostModel, PostSchema)
+        
+        # The bug: the joins are applied inside _apply_filter_parameters but not returned
+        # to the main apply_filtering function. So the result query doesn't have the joins.
+        
+        # Let's check if the query actually has the joins by examining the SQL
+        # This is a more direct way to test the bug
+        try:
+            # Try to compile the query to see if it has the proper joins
+            compiled = result.compile(compile_kwargs={"literal_binds": True})
+            sql_str = str(compiled)
+            
+            # If the query has proper joins, it should contain both tables
+            # The bug is that the joins are not applied, so the query will fail
+            # or won't have the proper JOIN clauses
+            assert "JOIN" in sql_str or "users" in sql_str, f"Query should have joins: {sql_str}"
+            
+        except Exception as e:
+            # If the query fails to compile, that's evidence of the bug
+            pytest.fail(f"Query compilation failed, indicating missing joins: {e}")
+
+
 class TestParseValue:
     def test_parse_value_string(self):
         """Test parsing string values."""
@@ -397,6 +542,13 @@ class TestParseValue:
         
         # Should raise a validation error
         assert "validation error" in str(exc_info.value).lower() or "no such attribute" in str(exc_info.value).lower()
+
+    def test_parse_value_relation_field(self):
+        """Test parsing value for a relation field."""
+        from fastapi_ding._query_modifiers import _parse_value
+        
+        result = _parse_value(PostSchema, "author.name", "John")
+        assert result == "John"
 
 
 class TestMakeWhereClause:

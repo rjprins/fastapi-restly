@@ -176,50 +176,56 @@ def apply_sorting(
 
 def _get_sqlalchemy_column(
     model: type[DeclarativeBase], column_path: str
-) -> tuple[list[type[DeclarativeBase]], InstrumentedAttribute]:
-    *models, column = _resolve_sqlalchemy_column(model, column_path)
-    return cast(list[type[DeclarativeBase]], models), cast(
-        InstrumentedAttribute, column
-    )
+) -> tuple[list[InstrumentedAttribute], InstrumentedAttribute]:
+    """Get SQLAlchemy column and joins needed for a column path."""
+    joins, column = _resolve_sqlalchemy_column(model, column_path)
+    return joins, column
 
 
 def _resolve_sqlalchemy_column(
     model: type[DeclarativeBase], column_name: str
-) -> Iterator[type[DeclarativeBase] | InstrumentedAttribute]:
+) -> tuple[list[InstrumentedAttribute], InstrumentedAttribute]:
     """
     Recursively resolve a dot-separated column path to its SQLAlchemy column.
 
-    Yields all intermediate related model classes encountered in the path,
-    followed by the final InstrumentedAttribute representing the column.
+    Returns a tuple of (joins, column) where joins is a list of relationship attributes
+    that need to be joined, and column is the final InstrumentedAttribute representing the column.
 
     Example:
-        For column_name="upload.created_by.email", yields:
-            - Upload (model class)
-            - CreatedBy (model class)
-            - CreatedBy.email (InstrumentedAttribute)
+        For column_name="upload.created_by.email", returns:
+            - joins: [upload.created_by] (relationship attribute)
+            - column: CreatedBy.email (InstrumentedAttribute)
     """
+    joins = []
+    current_model = model
 
-    if "." in column_name:
+    while "." in column_name:
         relation, _, column_part = column_name.partition(".")
-        rel = getattr(model, relation, None)
+        rel = getattr(current_model, relation, None)
         if not isinstance(rel, InstrumentedAttribute) or not hasattr(
             rel.property, "mapper"
         ):
             # Fail if it is not a relation
             raise HTTPException(400, f"Invalid attribute in URL query: {column_name}")
-        related_model = rel.property.mapper.class_
-        yield related_model
-        yield from _resolve_sqlalchemy_column(related_model, column_part)
 
-    else:
-        column = getattr(model, column_name, None)
-        if (
-            column is None
-            or not isinstance(column, InstrumentedAttribute)
-            or not isinstance(column.property, ColumnProperty)
-        ):
-            raise HTTPException(400, f"Invalid attribute in URL query: {column_name}")
-        yield cast(InstrumentedAttribute, column)
+        # Add the relationship attribute to joins
+        joins.append(rel)
+
+        # Move to the related model
+        related_model = rel.property.mapper.class_
+        current_model = related_model
+        column_name = column_part
+
+    # Get the final column
+    column = getattr(current_model, column_name, None)
+    if (
+        column is None
+        or not isinstance(column, InstrumentedAttribute)
+        or not isinstance(column.property, ColumnProperty)
+    ):
+        raise HTTPException(400, f"Invalid attribute in URL query: {column_name}")
+
+    return joins, cast(InstrumentedAttribute, column)
 
 
 def apply_filtering(
@@ -232,16 +238,25 @@ def apply_filtering(
     Apply filtering through URL query parameters on a SQL query.
     """
     filters: dict[InstrumentedAttribute, list[ColumnElement]] = defaultdict(list)
+    all_joins: set[InstrumentedAttribute] = set()
 
     # Handle filter parameters
-    filter_filters = _apply_filter_parameters(
+    filter_filters, filter_joins = _apply_filter_parameters(
         query_params, select_query, model, schema_cls
     )
 
     # Handle contains parameters
-    contains_filters = _apply_contains_parameters(
+    contains_filters, contains_joins = _apply_contains_parameters(
         query_params, select_query, model, schema_cls
     )
+
+    # Collect all joins
+    all_joins.update(filter_joins)
+    all_joins.update(contains_joins)
+
+    # Apply all joins
+    for join in all_joins:
+        select_query = select_query.join(join)
 
     # Merge all filters
     for column, clauses in filter_filters.items():
@@ -265,17 +280,19 @@ def _apply_filter_parameters(
     select_query: Select,
     model: type[DeclarativeBase],
     schema_cls: SchemaType,
-) -> dict[InstrumentedAttribute, list[ColumnElement]]:
+) -> tuple[
+    dict[InstrumentedAttribute, list[ColumnElement]], set[InstrumentedAttribute]
+]:
     """Handle filter[field] parameters."""
     filters: dict[InstrumentedAttribute, list[ColumnElement]] = defaultdict(list)
+    joins: set[InstrumentedAttribute] = set()
 
     for key, raw_value in query_params.multi_items():
         if not (key.startswith("filter[") and key.endswith("]")):
             continue
         column_name = key[7:-1]
-        joins, column = _get_sqlalchemy_column(model, column_name)
-        for join in joins:
-            select_query = select_query.join(join)
+        column_joins, column = _get_sqlalchemy_column(model, column_name)
+        joins.update(column_joins)
 
         # Create a parser/validator for the filter values. Which is user input after all.
         parser = functools.partial(_parse_value, schema_cls, column_name)
@@ -287,7 +304,7 @@ def _apply_filter_parameters(
             or_clause = sqlalchemy.or_(*clauses)
         filters[column].append(or_clause)
 
-    return filters
+    return filters, joins
 
 
 def _apply_contains_parameters(
@@ -295,17 +312,19 @@ def _apply_contains_parameters(
     select_query: Select,
     model: type[DeclarativeBase],
     schema_cls: SchemaType,
-) -> dict[InstrumentedAttribute, list[ColumnElement]]:
+) -> tuple[
+    dict[InstrumentedAttribute, list[ColumnElement]], set[InstrumentedAttribute]
+]:
     """Handle contains[field] parameters for string fields."""
     filters: dict[InstrumentedAttribute, list[ColumnElement]] = defaultdict(list)
+    joins: set[InstrumentedAttribute] = set()
 
     for key, raw_value in query_params.multi_items():
         if not (key.startswith("contains[") and key.endswith("]")):
             continue
         column_name = key[9:-1]  # Extract field name from contains[field]
-        joins, column = _get_sqlalchemy_column(model, column_name)
-        for join in joins:
-            select_query = select_query.join(join)
+        column_joins, column = _get_sqlalchemy_column(model, column_name)
+        joins.update(column_joins)
 
         # For contains, we don't need to parse the value since it's just a string
         # Split by space for multiple contains values (AND logic)
@@ -318,7 +337,7 @@ def _apply_contains_parameters(
                 clause = sqlalchemy.and_(*clauses)
             filters[column].append(clause)
 
-    return filters
+    return filters, joins
 
 
 def _parse_value(schema_cls: SchemaType, column_name: str, value: str) -> Any:

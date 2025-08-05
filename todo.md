@@ -14,6 +14,7 @@
  - Document process_* functions intended for overriding
  - Add self.meta for meta response data. For example, warn about ignored fields on POST and PATCH. Use self.meta for "out-of-channel" communication to make_response()
  - Read up on typing libraries correctly: https://typing.python.org/en/latest/guides/libraries.html
+ - After first release, ask to be added to https://github.com/mjhea0/awesome-fastapi
 
 
 # DONE

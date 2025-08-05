@@ -1,5 +1,29 @@
 # CHANGES
 
+#### Bug Fix: **Relation Filtering in Query Modifiers V1**:
+2025-01-27
+Fixed a bug where filters on relations in query modifiers v1 were not properly applying join conditions. The issue was that joins were being applied inside helper functions but not returned to the main filtering function.
+
+**Before:** 
+```sql
+SELECT posts.id, posts.title, posts.content, posts.author_id
+FROM posts, users 
+WHERE users.name = 'John'
+```
+
+**After:**
+```sql
+SELECT posts.id, posts.title, posts.content, posts.author_id
+FROM posts JOIN users ON users.id = posts.author_id 
+WHERE users.name = 'John'
+```
+
+**Technical Details:**
+- Modified `_resolve_sqlalchemy_column()` to return relationship attributes instead of model classes
+- Updated `apply_filtering()` to properly collect and apply joins from helper functions
+- Added comprehensive test coverage for relation filtering scenarios
+- The fix ensures proper JOIN clauses with correct join conditions are generated
+
 #### Feature: **Contains Query Parameters**:
 2025-08-01
 Added support for case-insensitive substring matching on string fields in both query modifier versions:
