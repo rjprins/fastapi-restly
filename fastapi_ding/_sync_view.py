@@ -8,6 +8,7 @@ from ._query_modifiers_config import apply_query_modifiers
 from ._schemas import (
     NOT_SET,
     BaseSchema,
+    get_updated_fields,
     is_field_readonly,
     resolve_ids_to_sqlalchemy_objects,
 )
@@ -145,14 +146,7 @@ class AlchemyView(BaseAlchemyView):
         Feel free to override this method.
         """
         resolve_ids_to_sqlalchemy_objects(schema_obj, self.session)
-        for field_name, value in schema_obj:
-            if value is NOT_SET:
-                continue
-            # ReadOnly fields are filtered out when using
-            # `create_model_without_read_only_fields()` but if a custom
-            # `creation_schema` is used this might still be needed.
-            if is_field_readonly(self.schema, field_name):
-                continue
+        for field_name, value in get_updated_fields(schema_obj, self.schema).items():
             setattr(obj, field_name, value)
         return self.save_object(obj)
 

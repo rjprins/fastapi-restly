@@ -309,20 +309,42 @@ def getattrs(obj: Any, *attrs: str, default: Any = None) -> Any:
 
 
 def set_schema_title(schema_cls: type[pydantic.BaseModel]) -> None:
+    """Set the title of a schema class to its name.
+    This is used to make the schema title match the model name in the OpenAPI schema.
     """
-    Ensure that a schema class maintains its name in OpenAPI generation.
-    This uses Pydantic's built-in model_config to control schema naming.
+    schema_cls.model_config["title"] = schema_cls.__name__
+
+
+def get_updated_fields(
+    schema_obj: BaseSchema, schema_cls: type[pydantic.BaseModel] | None = None
+) -> dict[str, Any]:
+    """
+    Return field_name, value tuples for updated fields only.
+
+    Filters out:
+    - Fields with NOT_SET values
+    - ReadOnly fields
 
     Args:
-        schema_cls: The original schema class
-    """
-    # Get or create model_config
-    config = getattr(schema_cls, "model_config", pydantic.ConfigDict())
+        schema_obj: The schema object to extract updated fields from
+        schema_cls: The schema class to check for readonly fields. If None, uses schema_obj.__class__
 
-    # Ensure the title is set to the class name
-    if not config.get("title"):
-        config["title"] = schema_cls.__name__
-        schema_cls.model_config = config
+    Returns:
+        List of (field_name, value) tuples for updated fields only
+    """
+    if schema_cls is None:
+        schema_cls = schema_obj.__class__
+
+    updated_fields: dict[str, Any] = {}
+    for field_name, value in schema_obj:
+        if value is NOT_SET:
+            continue
+        # Skip readonly fields
+        if is_field_readonly(schema_cls, field_name):
+            continue
+        updated_fields[field_name] = value
+
+    return updated_fields
 
 
 # def make_response_schema(

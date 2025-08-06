@@ -17,6 +17,7 @@ from ._schemas import (
     IDStampsSchema,
     ReadOnly,
     TimestampsSchemaMixin,
+    get_updated_fields,
 )
 from ._session import (
     AsyncSessionDep,
@@ -55,6 +56,7 @@ __all__ = [
     "delete",
     "get",
     "get_query_modifier_version",
+    "get_updated_fields",
     "include_view",
     "mapped_column",
     "post",
