@@ -9,8 +9,8 @@ from ._schemas import (
     NOT_SET,
     BaseSchema,
     async_resolve_ids_to_sqlalchemy_objects,
-    get_updated_fields,
-    is_field_readonly,
+    get_writable_inputs,
+    is_readonly_field,
 )
 from ._session import AsyncSessionDep
 from ._sqlbase import Base
@@ -124,12 +124,12 @@ class AsyncAlchemyView(BaseAlchemyView):
         Create a new object from a schema object.
         Feel free to override this method.
         """
-        await async_resolve_ids_to_sqlalchemy_objects(schema_obj, self.session)
+        await async_resolve_ids_to_sqlalchemy_objects(self.session, schema_obj)
 
         # Filter out read-only fields when creating the object
         data = {}
         for field_name, value in schema_obj:
-            is_readonly = is_field_readonly(self.schema, field_name)
+            is_readonly = is_readonly_field(self.schema, field_name)
             if is_readonly:
                 continue
             data[field_name] = value
@@ -143,8 +143,8 @@ class AsyncAlchemyView(BaseAlchemyView):
         Update an existing object with data from a schema object.
         Feel free to override this method.
         """
-        await async_resolve_ids_to_sqlalchemy_objects(schema_obj, self.session)
-        for field_name, value in get_updated_fields(schema_obj, self.schema).items():
+        await async_resolve_ids_to_sqlalchemy_objects(self.session, schema_obj)
+        for field_name, value in get_writable_inputs(schema_obj, self.schema).items():
             setattr(obj, field_name, value)
         return await self.save_object(obj)
 

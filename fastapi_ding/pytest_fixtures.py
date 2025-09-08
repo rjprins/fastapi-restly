@@ -93,11 +93,14 @@ async def async_session(_shared_connection) -> AsyncIterator[SA_AsyncSession]:
         mock_sessionmaker = AsyncMock()
         mock_sessionmaker.side_effect = begin_nested
         mock_sessionmaker.begin.return_value.__aenter__.side_effect = begin_nested
+        # TODO: begin.return_value.__aexit__ should flush.
 
         async def passthrough_exit(self, exc_type, exc_value, traceback):
+            await sess.flush()
             return False  # re-raise any exception
 
         async def patched_commit(self):
+            await sess.flush()
             await sess.begin_nested()
 
         with (
@@ -126,11 +129,14 @@ def session(_shared_connection) -> Iterator[SA_Session]:
         mock_sessionmaker = MagicMock()
         mock_sessionmaker.side_effect = begin_nested
         mock_sessionmaker.begin.return_value.__enter__.side_effect = begin_nested
+        # TODO: begin.return_value.__exit__ should flush.
 
         def passthrough_exit(self, exc_type, exc_value, traceback):
+            sess.flush()
             return False  # re-raise any exception
 
         def patched_commit(self):
+            sess.flush()
             sess.begin_nested()
 
         with (

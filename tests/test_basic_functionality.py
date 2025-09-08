@@ -4,7 +4,8 @@ import asyncio
 import pytest
 from fastapi import FastAPI
 from httpx import AsyncClient
-from sqlalchemy.orm import Mapped
+from sqlalchemy import ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 import fastapi_ding as fd
 from fastapi_ding._globals import fa_globals
@@ -107,6 +108,94 @@ def test_basic_crud_operations(client):
 
     # Verify deletion
     client.get(f"/products/{product_id}", assert_status_code=404)
+
+
+def test_put_request_with_non_existing_id(client):
+    """Test PUT request with non-existing ID returns 404."""
+
+    # Define models with relationship
+    class User(fd.IDBase):
+        name: Mapped[str]
+        email: Mapped[str]
+        blogs: Mapped[list["Blog"]] = relationship("Blog", back_populates="author", default_factory=list)
+
+    class Blog(fd.IDBase):
+        title: Mapped[str]
+        content: Mapped[str]
+        author_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
+        author: Mapped["User"] = relationship("User", back_populates="blogs", default=None)
+
+    # Create schemas
+    class UserSchema(fd.IDSchema[User]):
+        name: str
+        email: str
+
+    class BlogSchema(fd.IDSchema[Blog]):
+        title: str
+        content: str
+        author_id: fd.IDSchema[User]
+
+    # Create views
+    @fd.include_view(client.app)
+    class UserView(fd.AsyncAlchemyView):
+        prefix = "/users"
+        model = User
+        schema = UserSchema
+
+    @fd.include_view(client.app)
+    class BlogView(fd.AsyncAlchemyView):
+        prefix = "/blogs"
+        model = Blog
+        schema = BlogSchema
+
+    create_tables()
+
+    # Create a user first
+    user_data = {"name": "John Doe", "email": "john@example.com"}
+    response = client.post("/users/", json=user_data)
+    assert response.status_code == 201
+    created_user = response.json()
+    user_id = created_user["id"]
+
+    # Create a blog
+    blog_data = {
+        "title": "My First Blog",
+        "content": "This is my first blog post",
+        "author_id": {"id": user_id}
+    }
+    response = client.post("/blogs/", json=blog_data)
+    assert response.status_code == 201
+    created_blog = response.json()
+    blog_id = created_blog["id"]
+
+    # Test PUT with existing ID - should succeed
+    update_data = {
+        "title": "Updated Blog Title",
+        "content": "Updated blog content",
+        "author_id": {"id": user_id}
+    }
+    response = client.put(f"/blogs/{blog_id}", json=update_data)
+    assert response.status_code == 200
+    updated_blog = response.json()
+    assert updated_blog["title"] == "Updated Blog Title"
+    assert updated_blog["content"] == "Updated blog content"
+
+    # Test PUT with non-existing ID - should return 404
+    non_existing_id = 99999
+    response = client.put(f"/blogs/{non_existing_id}", json=update_data)
+    assert response.status_code == 404
+
+    # Test PUT with non-existing author ID - should fail validation
+    non_existing_author_id = 88888
+    invalid_update_data = {
+        "title": "Blog with non-existing author",
+        "content": "This should fail",
+        "author_id": {"id": non_existing_author_id}
+    }
+    response = client.put(f"/blogs/{blog_id}", json=invalid_update_data)
+    # This should either return 404 (if author validation happens before blog lookup)
+    # or 422 (if validation fails during the update process)
+    assert response.status_code in [404, 422]
 
 
 def test_list_endpoint(client):

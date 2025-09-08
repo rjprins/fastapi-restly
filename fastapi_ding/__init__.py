@@ -15,9 +15,13 @@ from ._schemas import (
     BaseSchema,
     IDSchema,
     IDStampsSchema,
+    OmitReadOnlyMixin,
+    PatchMixin,
     ReadOnly,
     TimestampsSchemaMixin,
-    get_updated_fields,
+    get_writable_inputs,
+    is_readonly_field,
+    resolve_ids_to_sqlalchemy_objects,
 )
 from ._session import (
     AsyncSessionDep,
@@ -27,7 +31,7 @@ from ._session import (
 )
 from ._settings import settings
 from ._sqlbase import Base, IDBase, IDStampsBase, TimestampsMixin
-from ._sync_view import AlchemyView
+from ._sync_view import AlchemyView, make_new_object, update_object
 from ._views import BaseAlchemyView, delete, get, include_view, post, put, route
 
 __all__ = [
@@ -44,6 +48,8 @@ __all__ = [
     "ReadOnly",
     "IDStampsBase",
     "QueryModifierVersion",
+    "OmitReadOnlyMixin",
+    "PatchMixin",
     "Base",
     "SessionDep",
     "AsyncSessionDep",
@@ -56,14 +62,18 @@ __all__ = [
     "delete",
     "get",
     "get_query_modifier_version",
-    "get_updated_fields",
+    "get_writable_inputs",
     "include_view",
+    "is_readonly_field",
     "mapped_column",
+    "make_new_object",
     "post",
     "put",
+    "resolve_ids_to_sqlalchemy_objects",
     "route",
     "set_query_modifier_version",
     "setup_async_database_connection",
     "setup_database_connection",
     "settings",
+    "update_object",
 ]

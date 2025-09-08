@@ -127,8 +127,10 @@ async def async_generate_session() -> AsyncIterator[SA_AsyncSession]:
     """FastAPI dependency for async database session."""
     # FastAPI does not support contextmanagers as dependency directly,
     # but it does support generators.
-    async with fa_globals.async_make_session.begin() as session:
+    async with fa_globals.async_make_session() as session:
         yield session
+        if session.is_active:
+            await session.commit()
 
 
 AsyncSessionDep = Annotated[SA_AsyncSession, Depends(async_generate_session)]
@@ -136,8 +138,10 @@ AsyncSessionDep = Annotated[SA_AsyncSession, Depends(async_generate_session)]
 
 def generate_session() -> Iterator[SA_Session]:
     """FastAPI dependency for sync database session."""
-    with fa_globals.make_session.begin() as session:
+    with fa_globals.make_session() as session:
         yield session
+        if session.is_active:
+            session.commit()
 
 
 SessionDep = Annotated[SA_Session, Depends(generate_session)]

@@ -5,13 +5,7 @@ import sqlalchemy
 from sqlalchemy.orm import Session
 
 from ._query_modifiers_config import apply_query_modifiers
-from ._schemas import (
-    NOT_SET,
-    BaseSchema,
-    get_updated_fields,
-    is_field_readonly,
-    resolve_ids_to_sqlalchemy_objects,
-)
+from ._schemas import BaseSchema, get_writable_inputs, resolve_ids_to_sqlalchemy_objects
 from ._session import SessionDep
 from ._sqlbase import Base
 from ._views import BaseAlchemyView, delete, get, post, put
@@ -19,10 +13,35 @@ from ._views import BaseAlchemyView, delete, get, post, put
 T = TypeVar("T", bound=Base)
 
 
-def make_new_object(session: Session, model_cls: type[T], schema_obj: BaseSchema) -> T:
-    resolve_ids_to_sqlalchemy_objects(schema_obj, session)
-    obj = model_cls(**dict(schema_obj))
+def make_new_object(
+    session: Session,
+    model_cls: type[T],
+    schema_obj: BaseSchema,
+    schema_cls: type[BaseSchema] | None = None,
+) -> T:
+    resolve_ids_to_sqlalchemy_objects(session, schema_obj)
+    data = dict(schema_obj)
+    obj = model_cls(**data)
     session.add(obj)
+    return obj
+
+
+def update_object(
+    session: Session,
+    obj: Base,
+    schema_obj: BaseSchema,
+    schema_cls: type[BaseSchema] | None = None,
+) -> Base:
+    resolve_ids_to_sqlalchemy_objects(session, schema_obj)
+    for field_name, value in get_writable_inputs(schema_obj, schema_cls).items():
+        setattr(obj, field_name, value)
+    return save_object(session, obj)
+
+
+def save_object(session, obj: Base) -> Base:
+    session.add(obj)
+    session.flush()
+    session.refresh(obj)
     return obj
 
 
@@ -135,27 +154,20 @@ class AlchemyView(BaseAlchemyView):
         Create a new object from a schema object.
         Feel free to override this method.
         """
-        resolve_ids_to_sqlalchemy_objects(schema_obj, self.session)
-        obj = self.model(**dict(schema_obj))
-        self.session.add(obj)
-        return obj
+        return make_new_object(
+            self.session, self.model, schema_obj, self.creation_schema
+        )
 
     def update_object(self, obj: Base, schema_obj: BaseSchema) -> Base:
         """
         Update an existing object with data from a schema object.
         Feel free to override this method.
         """
-        resolve_ids_to_sqlalchemy_objects(schema_obj, self.session)
-        for field_name, value in get_updated_fields(schema_obj, self.schema).items():
-            setattr(obj, field_name, value)
-        return self.save_object(obj)
+        return update_object(self.session, obj, schema_obj, self.schema)
 
     def save_object(self, obj: Base) -> Base:
         """
         Save an object to the database.
         Feel free to override this method.
         """
-        self.session.add(obj)
-        self.session.flush()
-        self.session.refresh(obj)
-        return obj
+        return save_object(self.session, obj)

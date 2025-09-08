@@ -1,12 +1,13 @@
 import types
 from datetime import datetime
-from typing import Annotated, Any, ClassVar, Generic, List, Optional, TypeVar
+from typing import Annotated, Any, Generic, Optional, TypeVar
 
 import pydantic
 from pydantic.fields import Field, FieldInfo
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm.session import Session as SA_Session
 
 
 class BaseSchema(pydantic.BaseModel):
@@ -67,7 +68,7 @@ class IDStampsSchema(TimestampsSchemaMixin, IDSchema[SQLAlchemyModel]):
 
 
 async def async_resolve_ids_to_sqlalchemy_objects(
-    schema_obj: BaseSchema, session: Any
+    session: SA_Session, schema_obj: BaseSchema
 ) -> None:
     """
     Go over the Pydantic fields and turn any IDSchema objects into SQLAlchemy instances.
@@ -106,7 +107,9 @@ async def async_resolve_ids_to_sqlalchemy_objects(
             setattr(schema_obj, field, sql_model_objs)
 
 
-def resolve_ids_to_sqlalchemy_objects(schema_obj: BaseSchema, session: Any) -> None:
+def resolve_ids_to_sqlalchemy_objects(
+    session: SA_Session, schema_obj: BaseSchema
+) -> None:
     """
     Go over the Pydantic fields and turn any IDSchema objects into SQLAlchemy instances.
     A database request is made for each IDSchema to look up the related row in the database.
@@ -155,13 +158,17 @@ def get_read_only_fields(model_cls: type[pydantic.BaseModel]) -> list[str]:
     return read_only_fields
 
 
-def is_field_readonly(model_cls: type[pydantic.BaseModel], field_name: str) -> bool:
+def is_readonly_field(
+    model: pydantic.BaseModel | type[pydantic.BaseModel], field_name: str
+) -> bool:
     """Check if a specific field is marked as readonly."""
-    field_info = model_cls.model_fields.get(field_name)
-    return is_readonly_field(field_info)
+    if isinstance(model, pydantic.BaseModel):
+        model = model.__class__
+    field_info = model.model_fields.get(field_name)
+    return _is_readonly(field_info)
 
 
-def is_readonly_field(field_info: FieldInfo | None) -> bool:
+def _is_readonly(field_info: FieldInfo | None) -> bool:
     if field_info is None:
         return False
     metadata = getattr(field_info, "metadata", None)
@@ -201,17 +208,21 @@ def create_model_without_read_only_fields(
     new_model_name = "Create" + model_cls.__name__
     new_doc = (model_cls.__doc__ or "") + "\nRead-only fields have been removed."
 
-    # Create a subclass that mixes in OmitReadOnly
+    # Create a subclass that mixes in OmitReadOnlyMixin
     new_model_cls = type(
         new_model_name,
-        (OmitReadOnly, model_cls),
+        (OmitReadOnlyMixin, model_cls),
         {"__module__": model_cls.__module__, "__doc__": new_doc},
     )
 
     return new_model_cls
 
 
-class OmitReadOnly(pydantic.BaseModel):
+class OmitReadOnlyMixin(pydantic.BaseModel):
+    """
+    Mixin for pydantic models that removes all fields marked as ReadOnly.
+    """
+
     @classmethod
     def __pydantic_init_subclass__(cls, **kwargs: Any) -> None:
         super().__pydantic_init_subclass__(**kwargs)
@@ -219,7 +230,7 @@ class OmitReadOnly(pydantic.BaseModel):
         # Collect readonly fields to delete first
         readonly_fields = []
         for name, field_info in cls.model_fields.items():
-            if is_readonly_field(field_info):
+            if _is_readonly(field_info):
                 readonly_fields.append(name)
 
         # Delete readonly fields after iteration is complete
@@ -259,10 +270,10 @@ def create_model_with_optional_fields(
         or "" + "\nRead-only fields have been removed and all fields are optional."
     )
 
-    # Create a subclass that mixes in both OmitReadOnly and PatchMixin
+    # Create a subclass that mixes in both OmitReadOnlyMixin and PatchMixin
     new_model_cls = type(
         new_model_name,
-        (PatchMixin, OmitReadOnly, model_cls),
+        (PatchMixin, OmitReadOnlyMixin, model_cls),
         {"__module__": model_cls.__module__, "__doc__": new_doc},
     )
 
@@ -270,6 +281,11 @@ def create_model_with_optional_fields(
 
 
 class PatchMixin(pydantic.BaseModel):
+    """
+    A mixin for pydantic classes that makes all fields optional and replaces default
+    with the NOT_SET marker.
+    """
+
     @classmethod
     def __pydantic_init_subclass__(cls, **kwargs: Any) -> None:
         super().__pydantic_init_subclass__(**kwargs)
@@ -315,22 +331,22 @@ def set_schema_title(schema_cls: type[pydantic.BaseModel]) -> None:
     schema_cls.model_config["title"] = schema_cls.__name__
 
 
-def get_updated_fields(
+def get_writable_inputs(
     schema_obj: BaseSchema, schema_cls: type[pydantic.BaseModel] | None = None
 ) -> dict[str, Any]:
     """
-    Return field_name, value tuples for updated fields only.
+    Return a dictionary of field_name: value pairs for writable input fields.
 
     Filters out:
     - Fields with NOT_SET values
     - ReadOnly fields
 
     Args:
-        schema_obj: The schema object to extract updated fields from
+        schema_obj: The schema object to extract writable fields from
         schema_cls: The schema class to check for readonly fields. If None, uses schema_obj.__class__
 
     Returns:
-        List of (field_name, value) tuples for updated fields only
+        Dictionary mapping field names to their values for writable input fields only
     """
     if schema_cls is None:
         schema_cls = schema_obj.__class__
@@ -340,7 +356,7 @@ def get_updated_fields(
         if value is NOT_SET:
             continue
         # Skip readonly fields
-        if is_field_readonly(schema_cls, field_name):
+        if is_readonly_field(schema_cls, field_name):
             continue
         updated_fields[field_name] = value
 
