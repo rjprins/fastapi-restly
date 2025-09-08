@@ -1,12 +1,12 @@
 [project]
 name = "shop"
 version = "0.1.0"
-description = "A FastAPI-Ding example featuring customizations"
+description = "A FastAPI-Restly example featuring customizations"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "fastapi>=0.115.12",
-    "fastapi-ding",
+    "fastapi-restly",
     "uvicorn[standard]>=0.32.1",
     "sqlalchemy[asyncio]>=2.0.41",
     "aiosqlite>=0.21.0",
@@ -24,4 +24,4 @@ where = ["."]
 include = ["shop"]
 
 [tool.uv.sources]
-fastapi-ding = { path = "../../" }
+fastapi-restly = { path = "../../" }

@@ -12,7 +12,7 @@ from sqlalchemy import Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import Mapped, mapped_column
 from starlette.datastructures import QueryParams
 
-from fastapi_ding._query_modifiers_v2 import (
+from fastapi_restly._query_modifiers_v2 import (
     apply_query_modifiers_v2,
     apply_filtering_v2,
     apply_sorting_v2,
@@ -20,7 +20,7 @@ from fastapi_ding._query_modifiers_v2 import (
     _iter_fields_including_nested_v2,
     _parse_value_v2,
 )
-from fastapi_ding._sqlbase import Base
+from fastapi_restly._sqlbase import Base
 
 
 class TestModel(Base):

@@ -11,7 +11,7 @@ install-dev:
 
 # Test the main framework
 test-framework:
-	@echo "=== Testing FastAPI-Ding Framework ==="
+	@echo "=== Testing FastAPI-Restly Framework ==="
 	uv run pytest tests/ -v
 
 # Test shop example
@@ -51,14 +51,14 @@ dev-setup: install-dev
 # Run tests with coverage
 test-coverage:
 	@echo "=== Running Tests with Coverage ==="
-	uv run pytest tests/ --cov=fastapi_ding --cov-report=term-missing
+	uv run pytest tests/ --cov=fastapi_restly --cov-report=term-missing
 	cd example-projects/shop && uv run --active pytest tests/ --cov=shop --cov-report=term-missing
 	cd example-projects/blog && uv run --active pytest blog/ --cov=blog --cov-report=term-missing
 
 # Help
 help:
 	@echo "Available commands:"
-	@echo "  test-framework  - Test the main FastAPI-Ding framework"
+	@echo "  test-framework  - Test the main FastAPI-Restly framework"
 	@echo "  test-shop       - Test the shop example"
 	@echo "  test-blog       - Test the blog example"
 	@echo "  test-examples   - Test all examples"

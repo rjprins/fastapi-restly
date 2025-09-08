@@ -1,6 +1,6 @@
 {
-    "extraPaths": ["fastapi_ding"],
-    "include": ["tests", "fastapi_ding", "example-projects"],
+    "extraPaths": ["fastapi_restly"],
+    "include": ["tests", "fastapi_restly", "example-projects"],
     "exclude": ["**/node_modules", "**/__pycache__", ".venv", ".venv-py310", "site", ".git-early-history"]
 }
 

@@ -1,2 +1,2 @@
-from fastapi_ding.testing import autouse_alembic_upgrade
-from fastapi_ding.pytest_fixtures import project_root
+from fastapi_restly.testing import autouse_alembic_upgrade
+from fastapi_restly.pytest_fixtures import project_root

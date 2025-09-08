@@ -1,4 +1,4 @@
-"""Advanced schema feature tests for FastAPI-Ding framework.
+"""Advanced schema feature tests for FastAPI-Restly framework.
 
 These tests verify:
 - Validator inheritance with mixin approach
@@ -15,9 +15,9 @@ from httpx import AsyncClient
 from pydantic import Field, field_validator, model_validator
 from sqlalchemy.orm import Mapped
 
-import fastapi_ding as fd
-from fastapi_ding._globals import fa_globals
-from fastapi_ding._schemas import (
+import fastapi_restly as fd
+from fastapi_restly._globals import fa_globals
+from fastapi_restly._schemas import (
     ReadOnly,
     BaseSchema,
     create_model_without_read_only_fields,

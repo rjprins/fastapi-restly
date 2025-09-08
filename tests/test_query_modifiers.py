@@ -12,7 +12,7 @@ from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from starlette.datastructures import QueryParams
 
-from fastapi_ding._query_modifiers import (
+from fastapi_restly._query_modifiers import (
     apply_query_modifiers,
     apply_pagination,
     apply_sorting,
@@ -23,7 +23,7 @@ from fastapi_ding._query_modifiers import (
     _make_where_clause,
     _is_string_field,
 )
-from fastapi_ding._sqlbase import Base
+from fastapi_restly._sqlbase import Base
 
 
 class TestModelV1(Base):
@@ -507,35 +507,35 @@ class TestRelationFiltering:
 class TestParseValue:
     def test_parse_value_string(self):
         """Test parsing string values."""
-        from fastapi_ding._query_modifiers import _parse_value
+        from fastapi_restly._query_modifiers import _parse_value
         
         result = _parse_value(TestSchemaV1, "name", "John")
         assert result == "John"
 
     def test_parse_value_integer(self):
         """Test parsing integer values."""
-        from fastapi_ding._query_modifiers import _parse_value
+        from fastapi_restly._query_modifiers import _parse_value
         
         result = _parse_value(TestSchemaV1, "age", "25")
         assert result == 25
 
     def test_parse_value_boolean(self):
         """Test parsing boolean values."""
-        from fastapi_ding._query_modifiers import _parse_value
+        from fastapi_restly._query_modifiers import _parse_value
         
         result = _parse_value(TestSchemaV1, "is_active", "true")
         assert result is True
 
     def test_parse_value_datetime(self):
         """Test parsing datetime values."""
-        from fastapi_ding._query_modifiers import _parse_value
+        from fastapi_restly._query_modifiers import _parse_value
         
         result = _parse_value(TestSchemaV1, "created_at", "2024-01-01T00:00:00")
         assert isinstance(result, datetime)
 
     def test_parse_value_invalid_field(self):
         """Test parsing value with invalid field."""
-        from fastapi_ding._query_modifiers import _parse_value
+        from fastapi_restly._query_modifiers import _parse_value
         
         with pytest.raises(Exception) as exc_info:
             _parse_value(TestSchemaV1, "invalid", "value")
@@ -545,7 +545,7 @@ class TestParseValue:
 
     def test_parse_value_relation_field(self):
         """Test parsing value for a relation field."""
-        from fastapi_ding._query_modifiers import _parse_value
+        from fastapi_restly._query_modifiers import _parse_value
         
         result = _parse_value(PostSchema, "author.name", "John")
         assert result == "John"
@@ -554,7 +554,7 @@ class TestParseValue:
 class TestMakeWhereClause:
     def test_make_where_clause_equals(self):
         """Test making where clause with equals operator."""
-        from fastapi_ding._query_modifiers import _make_where_clause
+        from fastapi_restly._query_modifiers import _make_where_clause
         
         mock_column = Mock()
         mock_column.__eq__ = Mock(return_value="equals_clause")
@@ -566,7 +566,7 @@ class TestMakeWhereClause:
 
     def test_make_where_clause_greater_than(self):
         """Test making where clause with greater than operator."""
-        from fastapi_ding._query_modifiers import _make_where_clause
+        from fastapi_restly._query_modifiers import _make_where_clause
         
         mock_column = Mock()
         mock_column.__gt__ = Mock(return_value="gt_clause")
@@ -578,7 +578,7 @@ class TestMakeWhereClause:
 
     def test_make_where_clause_less_than(self):
         """Test making where clause with less than operator."""
-        from fastapi_ding._query_modifiers import _make_where_clause
+        from fastapi_restly._query_modifiers import _make_where_clause
         
         mock_column = Mock()
         mock_column.__lt__ = Mock(return_value="lt_clause")
@@ -590,7 +590,7 @@ class TestMakeWhereClause:
 
     def test_make_where_clause_not_equals(self):
         """Test making where clause with not equals operator."""
-        from fastapi_ding._query_modifiers import _make_where_clause
+        from fastapi_restly._query_modifiers import _make_where_clause
         
         mock_column = Mock()
         mock_column.__ne__ = Mock(return_value="ne_clause")
@@ -602,7 +602,7 @@ class TestMakeWhereClause:
 
     def test_make_where_clause_is_null(self):
         """Test making where clause with is null operator."""
-        from fastapi_ding._query_modifiers import _make_where_clause
+        from fastapi_restly._query_modifiers import _make_where_clause
         
         mock_column = Mock()
         mock_column.__eq__ = Mock(return_value="is_null_clause")
@@ -617,7 +617,7 @@ class TestMakeWhereClause:
 class TestIsStringField:
     def test_is_string_field_simple(self):
         """Test string field detection for simple string."""
-        from fastapi_ding._query_modifiers import _is_string_field
+        from fastapi_restly._query_modifiers import _is_string_field
         from pydantic.fields import FieldInfo
         
         # Create a mock field with str annotation
@@ -629,7 +629,7 @@ class TestIsStringField:
 
     def test_is_string_field_optional(self):
         """Test string field detection for Optional[str]."""
-        from fastapi_ding._query_modifiers import _is_string_field
+        from fastapi_restly._query_modifiers import _is_string_field
         from pydantic.fields import FieldInfo
         from typing import Optional
         
@@ -644,7 +644,7 @@ class TestIsStringField:
 
     def test_is_string_field_non_string(self):
         """Test string field detection for non-string field."""
-        from fastapi_ding._query_modifiers import _is_string_field
+        from fastapi_restly._query_modifiers import _is_string_field
         from pydantic.fields import FieldInfo
         
         # Create a mock field with int annotation
@@ -656,7 +656,7 @@ class TestIsStringField:
 
     def test_is_string_field_optional_non_string(self):
         """Test string field detection for Optional[int]."""
-        from fastapi_ding._query_modifiers import _is_string_field
+        from fastapi_restly._query_modifiers import _is_string_field
         from pydantic.fields import FieldInfo
         from typing import Optional
         
@@ -671,7 +671,7 @@ class TestIsStringField:
 class TestGetInt:
     def test_get_int_valid(self):
         """Test getting integer from valid string."""
-        from fastapi_ding._query_modifiers import _get_int
+        from fastapi_restly._query_modifiers import _get_int
         
         query_params = QueryParams({"limit": "10"})
         result = _get_int(query_params, "limit")
@@ -679,7 +679,7 @@ class TestGetInt:
 
     def test_get_int_none(self):
         """Test getting integer when parameter is None."""
-        from fastapi_ding._query_modifiers import _get_int
+        from fastapi_restly._query_modifiers import _get_int
         
         query_params = QueryParams({})
         result = _get_int(query_params, "limit")
@@ -687,7 +687,7 @@ class TestGetInt:
 
     def test_get_int_invalid(self):
         """Test getting integer from invalid string."""
-        from fastapi_ding._query_modifiers import _get_int
+        from fastapi_restly._query_modifiers import _get_int
         
         query_params = QueryParams({"limit": "invalid"})
         

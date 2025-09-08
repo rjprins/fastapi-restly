@@ -59,7 +59,7 @@ Converted from class-level `read_only_fields` approach to `ReadOnly` type annota
 - The `is_field_readonly()` helper function checks for `ReadOnly` annotations in field metadata
 - Auto-generated schemas apply `ReadOnly` annotations to id, created_at, and updated_at fields
 - Backward compatibility maintained through the same function interfaces
-- Added `_is_string_field()` and `_is_string_field_v2()` helper functions to detect string field types (including Optional[str])
+- Added `_is_string_field()` and `_is_string_field_v2()` helper functions to detect string field types (inclurestly Optional[str])
 - Query parameter schemas now include `contains[field]` (v1) and `field__contains` (v2) parameters for string fields
 - The `apply_filtering()` and `apply_filtering_v2()` functions now handle contains parameters with ILIKE queries
 - V2 interface uses the `__contains` suffix following the existing `__gte`, `__lte`, etc. pattern

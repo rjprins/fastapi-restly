@@ -1,32 +1,32 @@
-# FastAPI-Ding Documentation
+# FastAPI-Restly Documentation
 
-FastAPI-Ding (`fd`) is a framework that supplements FastAPI with instant CRUD endpoints, built on SQLAlchemy 2.0 and Pydantic v2.
+FastAPI-Restly (`fr`) is a framework that supplements FastAPI with instant CRUD endpoints, built on SQLAlchemy 2.0 and Pydantic v2.
 
 ## Quick Start
 
 ```python
-import fastapi_ding as fd
+import fastapi_restly as fr
 from fastapi import FastAPI
 from sqlalchemy.orm import Mapped
 
 app = FastAPI()
 
 # Setup database
-fd.setup_async_database_connection("sqlite+aiosqlite:///app.db")
+fr.setup_async_database_connection("sqlite+aiosqlite:///app.db")
 
 # Define your models
-class User(fd.IDBase):
+class User(fr.IDBase):
     name: Mapped[str]
     email: Mapped[str]
 
 # Define your schemas
-class UserSchema(fd.IDSchema[User]):
+class UserSchema(fr.IDSchema[User]):
     name: str
     email: str
 
 # Create instant CRUD endpoints
-@fd.include_view(app)
-class UserView(fd.AsyncAlchemyView):
+@fr.include_view(app)
+class UserView(fr.AsyncAlchemyView):
     prefix = "/users"
     model = User
     schema = UserSchema
@@ -51,14 +51,14 @@ class UserView(fd.AsyncAlchemyView):
 ## Installation
 
 ```bash
-pip install fastapi-ding
+pip install fastapi-restly
 ```
 
 ## Development
 
 ```bash
-git clone https://github.com/your-repo/fastapi-ding
-cd fastapi-ding
+git clone https://github.com/your-repo/fastapi-restly
+cd fastapi-restly
 uv sync
 uv run pytest
 ```

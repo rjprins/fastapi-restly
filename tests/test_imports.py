@@ -1,7 +1,7 @@
 """Test that all imports work correctly."""
 
-import fastapi_ding as fd
-from fastapi_ding import (
+import fastapi_restly as fd
+from fastapi_restly import (
     AsyncAlchemyView,
     BaseSchema,
     IDBase,
@@ -12,7 +12,7 @@ from fastapi_ding import (
     settings,
     Base,
 )
-from fastapi_ding import _schemas as schemas, _sqlbase as sqlbase
+from fastapi_restly import _schemas as schemas, _sqlbase as sqlbase
 
 
 def test_imports_work():

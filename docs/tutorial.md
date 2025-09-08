@@ -1,11 +1,11 @@
 # Tutorial
 
-This tutorial will guide you through building a simple CRUD API with FastAPI-Ding.
+This tutorial will guide you through builrestly a simple CRUD API with FastAPI-Restly.
 
 ## Installation
 
 ```bash
-pip install fastapi-ding
+pip install fastapi-restly
 ```
 
 ## Quick Start
@@ -13,44 +13,44 @@ pip install fastapi-ding
 Let's create a simple blog API with posts and comments.
 
 ```python
-import fastapi_ding as fd
+import fastapi_restly as fr
 from fastapi import FastAPI
 from sqlalchemy.orm import Mapped
 
 # Setup database
-fd.setup_async_database_connection("sqlite+aiosqlite:///blog.db")
+fr.setup_async_database_connection("sqlite+aiosqlite:///blog.db")
 
 app = FastAPI()
 
 # Define your SQLAlchemy models
-class Post(fd.IDBase):
+class Post(fr.IDBase):
     title: Mapped[str]
     content: Mapped[str]
     published: Mapped[bool] = Mapped(default=False)
 
-class Comment(fd.IDBase):
+class Comment(fr.IDBase):
     content: Mapped[str]
     post_id: Mapped[int] = Mapped(foreign_key="post.id")
 
 # Define your Pydantic schemas
-class PostSchema(fd.IDSchema[Post]):
+class PostSchema(fr.IDSchema[Post]):
     title: str
     content: str
     published: bool
 
-class CommentSchema(fd.IDSchema[Comment]):
+class CommentSchema(fr.IDSchema[Comment]):
     content: str
     post_id: int
 
 # Create views with instant CRUD
-@fd.include_view(app)
-class PostView(fd.AsyncAlchemyView):
+@fr.include_view(app)
+class PostView(fr.AsyncAlchemyView):
     prefix = "/posts"
     model = Post
     schema = PostSchema
 
-@fd.include_view(app)
-class CommentView(fd.AsyncAlchemyView):
+@fr.include_view(app)
+class CommentView(fr.AsyncAlchemyView):
     prefix = "/comments"
     model = Comment
     schema = CommentSchema
@@ -68,14 +68,14 @@ And the same for comments.
 
 ## Read-Only Fields
 
-FastAPI-Ding supports two ways to mark fields as read-only:
+FastAPI-Restly supports two ways to mark fields as read-only:
 
 ### Class-Level Read-Only Fields
 
 You can mark fields as read-only at the class level using the `read_only_fields` class variable:
 
 ```python
-class UserSchema(fd.IDSchema[User]):
+class UserSchema(fr.IDSchema[User]):
     read_only_fields: ClassVar = ["id", "created_at"]
     name: str
     email: str
@@ -88,11 +88,11 @@ class UserSchema(fd.IDSchema[User]):
 You can mark individual fields as read-only using the `ReadOnly` annotation:
 
 ```python
-class ProductSchema(fd.IDSchema[Product]):
+class ProductSchema(fr.IDSchema[Product]):
     name: str
     price: float
-    internal_id: fd.ReadOnly[str]  # This field is read-only
-    created_by: fd.ReadOnly[int]   # This field is also read-only
+    internal_id: fr.ReadOnly[str]  # This field is read-only
+    created_by: fr.ReadOnly[int]   # This field is also read-only
 ```
 
 Read-only fields are:
@@ -108,12 +108,12 @@ The framework automatically creates tables for your models. For production, you 
 ```python
 # Create tables (development only)
 import asyncio
-from fastapi_ding._globals import fa_globals
+from fastapi_restly._globals import fa_globals
 
 async def create_tables():
     engine = fa_globals.async_make_session.kw["bind"]
     async with engine.begin() as conn:
-        await conn.run_sync(fd.Base.metadata.create_all)
+        await conn.run_sync(fr.Base.metadata.create_all)
 
 asyncio.run(create_tables())
 ```

@@ -1,14 +1,14 @@
-"""Test DingTestClient functionality."""
+"""Test RestlyTestClient functionality."""
 
 import pytest
 from fastapi import FastAPI, status
 from fastapi.testclient import TestClient
 
-from fastapi_ding.testing import DingTestClient
+from fastapi_restly.testing import RestlyTestClient
 
 
-def test_ding_test_client_basic_functionality():
-    """Test that DingTestClient works with default response codes."""
+def test_restly_test_client_basic_functionality():
+    """Test that RestlyTestClient works with default response codes."""
     app = FastAPI()
 
     @app.get("/test")
@@ -27,7 +27,7 @@ def test_ding_test_client_basic_functionality():
     def test_delete():
         return {"message": "deleted"}
 
-    client = DingTestClient(app)
+    client = RestlyTestClient(app)
 
     # Test with default response codes
     response = client.get("/test")
@@ -46,8 +46,8 @@ def test_ding_test_client_basic_functionality():
     assert response.status_code == 204
 
 
-def test_ding_test_client_custom_assert_status_codes():
-    """Test that DingTestClient works with custom response codes."""
+def test_restly_test_client_custom_assert_status_codes():
+    """Test that RestlyTestClient works with custom response codes."""
     app = FastAPI()
 
     @app.get("/test")
@@ -58,7 +58,7 @@ def test_ding_test_client_custom_assert_status_codes():
     def test_post():
         return {"message": "created"}
 
-    client = DingTestClient(app)
+    client = RestlyTestClient(app)
 
     # Test with custom response codes
     response = client.get("/test", assert_status_code=200)
@@ -68,30 +68,30 @@ def test_ding_test_client_custom_assert_status_codes():
     assert response.status_code == 201
 
 
-def test_ding_test_client_skip_check():
-    """Test that DingTestClient skips status code check when assert_status_code is None."""
+def test_restly_test_client_skip_check():
+    """Test that RestlyTestClient skips status code check when assert_status_code is None."""
     app = FastAPI()
 
     @app.get("/test")
     def test_get():
         return {"message": "success"}
 
-    client = DingTestClient(app)
+    client = RestlyTestClient(app)
 
     # Test with assert_status_code=None - should not raise an error
     response = client.get("/test", assert_status_code=None)
     assert response.status_code == 200
 
 
-def test_ding_test_client_error_handling():
-    """Test that DingTestClient provides clear error messages."""
+def test_restly_test_client_error_handling():
+    """Test that RestlyTestClient provides clear error messages."""
     app = FastAPI()
 
     @app.get("/test")
     def test_get():
         return {"message": "success"}
 
-    client = DingTestClient(app)
+    client = RestlyTestClient(app)
 
     # Test that it raises an error when status code doesn't match
     with pytest.raises(AssertionError) as exc_info:
@@ -102,8 +102,8 @@ def test_ding_test_client_error_handling():
     assert "Response JSON:" in error_message
 
 
-def test_ding_test_client_backward_compatibility():
-    """Test that DingTestClient is backward compatible with existing code."""
+def test_restly_test_client_backward_compatibility():
+    """Test that RestlyTestClient is backward compatible with existing code."""
     app = FastAPI()
 
     @app.get("/test")
@@ -112,10 +112,10 @@ def test_ding_test_client_backward_compatibility():
 
     # Test that it works like a regular TestClient
     regular_client = TestClient(app)
-    ding_client = DingTestClient(app)
+    restly_client = RestlyTestClient(app)
 
     regular_response = regular_client.get("/test")
-    ding_response = ding_client.get("/test")
+    restly_response = restly_client.get("/test")
 
-    assert regular_response.status_code == ding_response.status_code
-    assert regular_response.json() == ding_response.json()
+    assert regular_response.status_code == restly_response.status_code
+    assert regular_response.json() == restly_response.json()

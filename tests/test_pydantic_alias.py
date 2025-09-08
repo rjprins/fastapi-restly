@@ -7,7 +7,7 @@ from httpx import AsyncClient
 from pydantic import Field
 from sqlalchemy.orm import Mapped
 
-import fastapi_ding as fd
+import fastapi_restly as fd
 from .conftest import create_tables
 
 
@@ -181,7 +181,7 @@ def test_pydantic_alias_with_query_parameters(client):
     """Test that query parameters work correctly with aliased fields."""
 
     # Set query modifier version to V2 for this test
-    from fastapi_ding._query_modifiers_config import (
+    from fastapi_restly._query_modifiers_config import (
         set_query_modifier_version,
         QueryModifierVersion,
     )

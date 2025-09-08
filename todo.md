@@ -1,5 +1,5 @@
 # The TODO List
- - Begin een website met korte artikeltjes over FastAPI-Ding
+ - Begin een website met korte artikeltjes over FastAPI-Restly
  - Begin een newsletter (to receive a notification for the first release!)
  - Update update_object and make_new_object to respect ReadOnly (they already do this?)
  - Remove make_response_schema
@@ -11,8 +11,9 @@
  - validators are not copied / inherited correctly in schema creation.
  - Refactor tests to re-use more code
  - Change PUT to PATCH and just forget about PUT altogether
- - Document process_* functions intended for overriding
+ - Document process_* functions intended for overrirestly
  - Add self.meta for meta response data. For example, warn about ignored fields on POST and PATCH. Use self.meta for "out-of-channel" communication to make_response()
+ - Fix view endpoints so that they work without trailing slash
  - Read up on typing libraries correctly: https://typing.python.org/en/latest/guides/libraries.html
  - After first release, ask to be added to https://github.com/mjhea0/awesome-fastapi
 
@@ -66,7 +67,9 @@ Start with version 0.5
 Do I want to support "No alembic/just create tables?"
 
 ## TODO
-* Find a nicer way to insert extra dependencies per endpoint (for permissions on post, put, delete, for example) other than overriding and copying the route details
+* Remove NOT_SET marker and use pydantic model_fields_set instead
+* Ensure consistent / symmetric exports in __init__.py for things like async_resolve_sqlalchemy and make_new_object and so on. Maybe create a nested import structure for those helpers.
+* Find a nicer way to insert extra dependencies per endpoint (for permissions on post, put, delete, for example) other than overrirestly and copying the route details
 * Improve route() decorator: Have get, post, put, delete variants and full keyword definitions?
 * Change index query parameters - make it simpler (foo=1, instead of filter[foo]=1)
 * Handle mixing query_params and other query parameters
@@ -86,7 +89,7 @@ Do I want to support "No alembic/just create tables?"
   - Start working on API docs
   - Make clear getting started / tutorial
 * Make nested views work nicely (concate route prefixes)
-* Address overriding type warnings for index, get, post etc
+* Address overrirestly type warnings for index, get, post etc
   - By using a very generic base method that does nothing? e.g. get(*args, **kwargs)?
 * Auto-create pydantic model from sqlalchemy model
 * Improve query modifiers

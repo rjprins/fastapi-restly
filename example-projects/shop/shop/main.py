@@ -1,5 +1,5 @@
 """
-Shop example for FastAPI-Ding.
+Shop example for FastAPI-Restly.
 
 This example demonstrates:
 - Custom endpoints
@@ -18,9 +18,9 @@ from sqlalchemy import orm
 from sqlalchemy.dialects.postgresql import UUID as POSTGRES_UUID
 from starlette.middleware.cors import CORSMiddleware
 
-import fastapi_ding as fd
+import fastapi_restly as fr
 
-fd.setup_async_database_connection(async_database_url="sqlite+aiosqlite:///shop.db")
+fr.setup_async_database_connection(async_database_url="sqlite+aiosqlite:///shop.db")
 
 
 app = FastAPI()
@@ -37,7 +37,7 @@ app.add_middleware(
 
 # Example of class using IDBase
 # This includes an id primary key
-class Customer(fd.IDBase):
+class Customer(fr.IDBase):
     email: orm.Mapped[str]
     orders: orm.Mapped[list["Order"]] = orm.relationship(default_factory=list)
 
@@ -45,14 +45,14 @@ class Customer(fd.IDBase):
 # Example of many-to-many
 product_order_table = sa.Table(
     "product_order",
-    fd.Base.metadata,
+    fr.Base.metadata,
     sa.Column("product_id", sa.ForeignKey("product.id")),
     sa.Column("order_id", sa.ForeignKey("order.id")),
 )
 
 
 # Example with using UUID as primary key
-class Product(fd.Base):
+class Product(fr.Base):
     id: orm.Mapped[UUID] = orm.mapped_column(primary_key=True, default_factory=uuid4)
     name: orm.Mapped[str]
     price: orm.Mapped[float]
@@ -62,49 +62,49 @@ class Product(fd.Base):
 
 
 # Example with TimestampsMixin
-class Order(fd.IDBase, fd.TimestampsMixin):
+class Order(fr.IDBase, fr.TimestampsMixin):
     customer_id: orm.Mapped[int] = orm.mapped_column(sa.ForeignKey(Customer.id))
     products: orm.Mapped[list[Product]] = orm.relationship(
         secondary=product_order_table, back_populates="orders"
     )
 
 
-class CustomerSchema(fd.IDSchema[Customer]):
+class CustomerSchema(fr.IDSchema[Customer]):
     email: str
 
 
-class ProductSchema(fd.IDSchema[Product]):
+class ProductSchema(fr.IDSchema[Product]):
     name: str
     price: float
     # Example with one-to-many id list
-    orders: list[fd.IDSchema[Order]] = []
+    orders: list[fr.IDSchema[Order]] = []
 
 
-class OrderSchema(fd.TimestampsSchemaMixin, fd.IDSchema[Order]):
+class OrderSchema(fr.TimestampsSchemaMixin, fr.IDSchema[Order]):
     # Example of embedded schema
     customer: CustomerSchema
-    customer_id: fd.IDSchema[Customer]
-    products: list[fd.IDSchema[Product]]
+    customer_id: fr.IDSchema[Customer]
+    products: list[fr.IDSchema[Product]]
     # Example of field-level read-only using the ReadOnly syntax
-    internal_notes: fd.ReadOnly[str]
+    internal_notes: fr.ReadOnly[str]
 
 
-@fd.include_view(app)
-class CustomerView(fd.AsyncAlchemyView):
+@fr.include_view(app)
+class CustomerView(fr.AsyncAlchemyView):
     prefix = "/customers"
     model = Customer
     schema = CustomerSchema
 
 
-@fd.include_view(app)
-class ProductView(fd.AsyncAlchemyView):
+@fr.include_view(app)
+class ProductView(fr.AsyncAlchemyView):
     prefix = "/products"
     model = Product
     schema = ProductSchema
 
 
-@fd.include_view(app)
-class OrderView(fd.AsyncAlchemyView):
+@fr.include_view(app)
+class OrderView(fr.AsyncAlchemyView):
     prefix = "/orders"
     model = Order
     schema = OrderSchema

@@ -1,6 +1,6 @@
-# Testing FastAPI-Ding
+# Testing FastAPI-Restly
 
-This document explains how to run tests for the FastAPI-Ding framework and its example projects.
+This document explains how to run tests for the FastAPI-Restly framework and its example projects.
 
 ## Quick Start
 
@@ -105,12 +105,12 @@ make test-coverage
 
 ## Contributing
 
-When adding new features:
+When adrestly new features:
 
 1. Add tests for the framework functionality
 2. Update example projects if needed
 3. Ensure all tests pass: `make test-all`
-4. Consider adding integration tests for complex scenarios
+4. Consider adrestly integration tests for complex scenarios
 
 ## Test Commands Reference
 

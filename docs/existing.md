@@ -1,13 +1,13 @@
-# Using FastAPI-Ding in an Existing Project
+# Using FastAPI-Restly in an Existing Project
 
 ## Session Management
 
-If you already have a session generator, you can configure FastAPI-Ding to use it:
+If you already have a session generator, you can configure FastAPI-Restly to use it:
 
 ```python
 from typing import AsyncIterator
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi_ding import settings
+from fastapi_restly import settings
 
 async def my_get_db() -> AsyncIterator[AsyncSession]:
     ...
@@ -16,24 +16,24 @@ async def my_get_db() -> AsyncIterator[AsyncSession]:
 settings.session_generator = my_get_db()
 ```
 
-The other way around, you can use FastAPI-Ding's session generator like this:
+The other way around, you can use FastAPI-Restly's session generator like this:
 
 ```python
-from fastapi_ding import get_session
+from fastapi_restly import get_session
 
 with get_session() as session:
     session.execute(...)
 ```
 
-## Let fd use your DeclarativeBase class
+## Let fr use your DeclarativeBase class
 
-If you already have a DeclarativeBase class, you can make FastAPI-Ding use it:
+If you already have a DeclarativeBase class, you can make FastAPI-Restly use it:
 
 ```python
-from fastapi_ding import DingBase, AsyncAlchemyView
+from fastapi_restly import RestlyBase, AsyncAlchemyView
 from sqlalchemy import Mapped
 
-class World(DingBase):
+class World(RestlyBase):
     message: Mapped[str]
 
 class WorldView(AsyncAlchemyView):

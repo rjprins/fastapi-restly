@@ -1,35 +1,35 @@
 """
 Auto Schema Example
 
-This example shows how you can create FastAPI-Ding views without explicitly
+This example shows how you can create FastAPI-Restly views without explicitly
 defining Pydantic schemas - they are automatically generated from SQLAlchemy models.
 """
 
-import fastapi_ding as fd
+import fastapi_restly as fr
 from fastapi import FastAPI
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy import ForeignKey
 from datetime import datetime, timezone
 
 # Setup database
-fd.setup_async_database_connection("sqlite+aiosqlite:///example_auto_schema.db")
+fr.setup_async_database_connection("sqlite+aiosqlite:///example_auto_schema.db")
 
 app = FastAPI()
 
 # Define SQLAlchemy models - no schemas needed!
-class User(fd.IDBase):
+class User(fr.IDBase):
     """A user model with auto-generated schema."""
     name: Mapped[str]
     email: Mapped[str]
     is_active: Mapped[bool] = mapped_column(default=True)
     created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(timezone.utc))
 
-class Category(fd.IDBase):
+class Category(fr.IDBase):
     """A category model with auto-generated schema."""
     name: Mapped[str]
     description: Mapped[str] = mapped_column(default="")
 
-class Product(fd.IDBase, fd.TimestampsMixin):
+class Product(fr.IDBase, fr.TimestampsMixin):
     """A product model with timestamps and auto-generated schema."""
     name: Mapped[str]
     price: Mapped[float]
@@ -37,37 +37,37 @@ class Product(fd.IDBase, fd.TimestampsMixin):
     description: Mapped[str] = mapped_column(default="")
     in_stock: Mapped[bool] = mapped_column(default=True)
 
-class Order(fd.IDBase):
+class Order(fr.IDBase):
     """An order model with auto-generated schema."""
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
     total_amount: Mapped[float]
-    status: Mapped[str] = mapped_column(default="pending")
+    status: Mapped[str] = mapped_column(default="penrestly")
     notes: Mapped[str] = mapped_column(default="")
 
 # Create views with auto-generated schemas
-@fd.include_view(app)
-class UserView(fd.AsyncAlchemyView):
+@fr.include_view(app)
+class UserView(fr.AsyncAlchemyView):
     """User view with auto-generated schema."""
     prefix = "/users"
     model = User
     # No schema specified - will be auto-generated!
 
-@fd.include_view(app)
-class CategoryView(fd.AsyncAlchemyView):
+@fr.include_view(app)
+class CategoryView(fr.AsyncAlchemyView):
     """Category view with auto-generated schema."""
     prefix = "/categories"
     model = Category
     # No schema specified - will be auto-generated!
 
-@fd.include_view(app)
-class ProductView(fd.AsyncAlchemyView):
+@fr.include_view(app)
+class ProductView(fr.AsyncAlchemyView):
     """Product view with auto-generated schema."""
     prefix = "/products"
     model = Product
     # No schema specified - will be auto-generated!
 
-@fd.include_view(app)
-class OrderView(fd.AsyncAlchemyView):
+@fr.include_view(app)
+class OrderView(fr.AsyncAlchemyView):
     """Order view with auto-generated schema."""
     prefix = "/orders"
     model = Order
@@ -76,11 +76,11 @@ class OrderView(fd.AsyncAlchemyView):
 # You can also manually generate schemas if needed
 if __name__ == "__main__":
     # Example of manually generating a schema
-    UserSchema = fd.create_schema_from_model(User)
+    UserSchema = fr.create_schema_from_model(User)
     print(f"Auto-generated UserSchema fields: {list(UserSchema.model_fields.keys())}")
     
     # Example of generating a schema with custom name
-    CustomProductSchema = fd.create_schema_from_model(
+    CustomProductSchema = fr.create_schema_from_model(
         Product, 
         schema_name="CustomProductSchema"
     )

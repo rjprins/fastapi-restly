@@ -1,13 +1,13 @@
-# FastAPI-Ding
+# FastAPI-Restly
 
 > **⚠️ Development Status**: This project is in active development and has not been released on PyPI yet. For installation, please clone the repository and install in development mode.
 
-FastAPI-Ding helps you build **maintainable CRUD APIs faster** on top of **FastAPI**, **SQLAlchemy 2.0**, and **Pydantic v2**.
+FastAPI-Restly helps you build **maintainable CRUD APIs faster** on top of **FastAPI**, **SQLAlchemy 2.0**, and **Pydantic v2**.
 It provides auto-generated endpoints, schemas, and filters while keeping you in control—perfect for projects where you want to move quickly without giving up flexibility.
 
 ---
 
-## Why FastAPI-Ding?
+## Why FastAPI-Restly?
 
 * **Faster CRUD development** – Generate standard endpoints and Pydantic models automatically.
 * **Maintainable** – Class-based views with inheritance and dependencies keep things organized.
@@ -21,29 +21,29 @@ It provides auto-generated endpoints, schemas, and filters while keeping you in 
 * **CRUD endpoints in minutes** for SQLAlchemy models
 * **Class-based views** with dependency injection and inheritance
 * **Automatic Pydantic schemas** for create, update, and read
-* **Filtering, pagination, and sorting** (including nested relationships)
+* **Filtering, pagination, and sorting** (inclurestly nested relationships)
 * **OpenAPI docs** with all generated routes
 * **React-Admin friendly** API responses
 
 ---
 
-## 🎯 Ding Philosophy
+## 🎯 Restly Philosophy
 
 ### Made to Build Serious Apps
 
-Ding's goal is to make web application development as easy as possible by providing the tools production apps commonly need.
+Restly's goal is to make web application development as easy as possible by provirestly the tools production apps commonly need.
 
 - **Today**: Class-based views, automatic Pydantic schema generation, and database connection management.
 - **Tomorrow**: Admin interface, authentication, permissions, background jobs, job scheduling, plugins, etc.
 
 ### Designed in Layers
 
-Ding is a stack of micro-libraries.
+Restly is a stack of micro-libraries.
 
 - Each layer adds a step of convenience, but developers can always drop down a layer for deeper customization.
 - Each layer makes deliberate, opinionated choices that higher layers can rely on and extend.
 - The less customization you need, the more you get out-of-the-box—yet full customization never requires awkward hacks.
-- Built on FastAPI, Pydantic, and SQLAlchemy, Ding sticks to patterns provided by those libraries.
+- Built on FastAPI, Pydantic, and SQLAlchemy, Restly sticks to patterns provided by those libraries.
 
 ## 🚀 Quick Start
 
@@ -51,8 +51,8 @@ Ding is a stack of micro-libraries.
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/fastapi-ding.git
-cd fastapi-ding
+git clone https://github.com/your-username/fastapi-restly.git
+cd fastapi-restly
 
 # Install in development mode
 pip install -e .
@@ -61,24 +61,24 @@ pip install -e .
 ### Basic Example
 
 ```python
-import fastapi_ding as fd
+import fastapi_restly as fr
 from fastapi import FastAPI
 from sqlalchemy.orm import Mapped
 
 # Setup database
-fd.setup_async_database_connection("sqlite+aiosqlite:///app.db")
+fr.setup_async_database_connection("sqlite+aiosqlite:///app.db")
 
 app = FastAPI()
 
 # Define your model
-class User(fd.IDBase):
+class User(fr.IDBase):
     name: Mapped[str]
     email: Mapped[str]
     age: Mapped[int]
 
 # Create instant CRUD endpoints with auto-generated schema
-@fd.include_view(app)
-class UserView(fd.AsyncAlchemyView):
+@fr.include_view(app)
+class UserView(fr.AsyncAlchemyView):
     prefix = "/users"
     model = User
     # Schema is auto-generated from the model!
@@ -100,15 +100,15 @@ The framework automatically generates the Pydantic schema from your SQLAlchemy m
 If you need custom validation or field aliases, you can define schemas manually:
 
 ```python
-class UserSchema(fd.IDSchema[User]):
+class UserSchema(fr.IDSchema[User]):
     name: str
     email: str
     age: int
     # Field-level read-only
-    internal_id: fd.ReadOnly[str]
+    internal_id: fr.ReadOnly[str]
 
-@fd.include_view(app)
-class UserView(fd.AsyncAlchemyView):
+@fr.include_view(app)
+class UserView(fr.AsyncAlchemyView):
     prefix = "/users"
     model = User
     schema = UserSchema  # Use custom schema
@@ -116,7 +116,7 @@ class UserView(fd.AsyncAlchemyView):
 
 ### Query Modifiers
 
-FastAPI-Ding currently supports two query parameter interfaces:
+FastAPI-Restly currently supports two query parameter interfaces:
 
 **V1 (JSONAPI-style):**
 ```bash
@@ -149,36 +149,36 @@ GET /users/?page=2&page_size=10
 
 ```python
 class UserSchema(pydantic.BaseModel):
-    id: fd.ReadOnly[UUID]  # Can't be set in requests
+    id: fr.ReadOnly[UUID]  # Can't be set in requests
     name: str
     email: str
-    password: fd.WriteOnly[str]  # Won't appear in responses
-    created_at: fd.ReadOnly[datetime]
+    password: fr.WriteOnly[str]  # Won't appear in responses
+    created_at: fr.ReadOnly[datetime]
 ```
 
 ### Relationships
 
 ```python
-class Order(fd.IDBase):
+class Order(fr.IDBase):
     customer_id: Mapped[int] = Mapped(foreign_key="customer.id")
     total: Mapped[float]
 
-class OrderSchema(fd.IDSchema[Order]):
+class OrderSchema(fr.IDSchema[Order]):
     customer: CustomerSchema  # Nested object
-    customer_id: fd.IDSchema[Customer]  # Just the ID
+    customer_id: fr.IDSchema[Customer]  # Just the ID
     total: float
 ```
 
 ### Custom Endpoints
 
 ```python
-@fd.include_view(app)
-class UserView(fd.AsyncAlchemyView):
+@fr.include_view(app)
+class UserView(fr.AsyncAlchemyView):
     prefix = "/users"
     model = User
     schema = UserSchema
 
-    @fd.get("/{id}/download")
+    @fr.get("/{id}/download")
     async def (self, q: str):
         """Custom search endpoint"""
         query = sqlalchemy.select(self.model).where(
@@ -195,7 +195,7 @@ class UserView(fd.AsyncAlchemyView):
 
 ## 📚 Documentation
 
-- **[Tutorial](docs/tutorial.md)** - Get started with FastAPI-Ding
+- **[Tutorial](docs/tutorial.md)** - Get started with FastAPI-Restly
 - **[Technical Details](docs/technical_details.md)** - Learn how the framework works
 - **[API Reference](docs/api_reference.md)** - Complete API documentation
 
@@ -208,11 +208,11 @@ Check out the [example projects](example-projects/) for complete applications:
 
 ## 🧪 Testing
 
-FastAPI-Ding includes testing utilities:
+FastAPI-Restly includes testing utilities:
 
 ```python
-import fastapi_ding as fd
-from fastapi_ding.pytest_fixtures import client
+import fastapi_restly as fr
+from fastapi_restly.pytest_fixtures import client
 
 def test_user_crud(client):
     # Create user
@@ -232,13 +232,13 @@ def test_user_crud(client):
 
 ```python
 # Async SQLite
-fd.setup_async_database_connection("sqlite+aiosqlite:///app.db")
+fr.setup_async_database_connection("sqlite+aiosqlite:///app.db")
 
 # Async PostgreSQL
-fd.setup_async_database_connection("postgresql+asyncpg://user:pass@localhost/db")
+fr.setup_async_database_connection("postgresql+asyncpg://user:pass@localhost/db")
 
 # Sync SQLite
-fd.setup_database_connection("sqlite:///app.db")
+fr.setup_database_connection("sqlite:///app.db")
 ```
 
 ## 🛠 Future Plans
@@ -246,7 +246,7 @@ fd.setup_database_connection("sqlite:///app.db")
 * Authentication & permissions
 * Admin interface
 * Background jobs & scheduling
-* CLI for code generation and scaffolding
+* CLI for code generation and scaffolrestly
 
 
 ## 🤝 Contributing

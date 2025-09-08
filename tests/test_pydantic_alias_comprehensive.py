@@ -1,4 +1,4 @@
-"""Comprehensive tests for Pydantic alias functionality in FastAPI-Ding framework.
+"""Comprehensive tests for Pydantic alias functionality in FastAPI-Restly framework.
 
 These tests verify that:
 - GET requests return data with aliases
@@ -15,8 +15,8 @@ from httpx import AsyncClient
 from pydantic import Field
 from sqlalchemy.orm import Mapped
 
-import fastapi_ding as fd
-from fastapi_ding._globals import fa_globals
+import fastapi_restly as fd
+from fastapi_restly._globals import fa_globals
 from .conftest import create_tables
 
 
@@ -171,7 +171,7 @@ def test_put_requests_accept_aliases(client):
 def test_query_modifiers_with_aliases(client):
     """Test that query modifiers work with aliases."""
 
-    from fastapi_ding._query_modifiers_config import (
+    from fastapi_restly._query_modifiers_config import (
         set_query_modifier_version,
         QueryModifierVersion,
     )

@@ -14,7 +14,7 @@ import alembic.config
 
 from ._globals import fa_globals
 from ._session import activate_savepoint_only_mode
-from .testing import DingTestClient
+from .testing import RestlyTestClient
 
 
 @pytest.fixture(scope="session")
@@ -154,6 +154,6 @@ def app() -> FastAPI:
 
 
 @pytest.fixture
-def client(app) -> DingTestClient:
-    """Create a DingTestClient instance for testing."""
-    return DingTestClient(app)
+def client(app) -> RestlyTestClient:
+    """Create a RestlyTestClient instance for testing."""
+    return RestlyTestClient(app)

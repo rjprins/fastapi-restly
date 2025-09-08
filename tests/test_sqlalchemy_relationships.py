@@ -1,4 +1,4 @@
-"""Tests for SQLAlchemy relationships with nested schemas in FastAPI-Ding framework."""
+"""Tests for SQLAlchemy relationships with nested schemas in FastAPI-Restly framework."""
 
 import asyncio
 import pytest
@@ -10,9 +10,9 @@ from pydantic import Field
 from sqlalchemy import ForeignKey, String, Integer, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-import fastapi_ding as fd
-from fastapi_ding._globals import fa_globals
-from fastapi_ding._schemas import ReadOnly, BaseSchema
+import fastapi_restly as fr
+from fastapi_restly._globals import fa_globals
+from fastapi_restly._schemas import ReadOnly, BaseSchema
 from .conftest import create_tables
 
 
@@ -23,31 +23,31 @@ class TestOneToManyRelationships:
         """Test basic one-to-many relationship without aliases."""
 
         # Define SQLAlchemy models with relationship
-        class User1(fd.IDBase):
+        class User1(fr.IDBase):
             name: Mapped[str] = mapped_column(String(100))
             email: Mapped[str] = mapped_column(String(100))
             addresses: Mapped[List["Address1"]] = relationship(
                 "Address1", back_populates="user"
             )
 
-        class Address1(fd.IDBase):
+        class Address1(fr.IDBase):
             street: Mapped[str] = mapped_column(String(200))
             city: Mapped[str] = mapped_column(String(100))
             user_id: Mapped[int] = mapped_column(Integer, ForeignKey("user1.id"))
             user: Mapped["User1"] = relationship("User1", back_populates="addresses")
 
         # Define schemas
-        class AddressSchema1(fd.IDSchema[Address1]):
+        class AddressSchema1(fr.IDSchema[Address1]):
             street: str
             city: str
 
-        class UserSchema1(fd.IDSchema[User1]):
+        class UserSchema1(fr.IDSchema[User1]):
             name: str
             email: str
             addresses: List[AddressSchema1]
 
-        @fd.include_view(client.app)
-        class UserView1(fd.AsyncAlchemyView):
+        @fr.include_view(client.app)
+        class UserView1(fr.AsyncAlchemyView):
             prefix = "/users1"
             model = User1
             schema = UserSchema1
@@ -63,14 +63,14 @@ class TestOneToManyRelationships:
         """Test one-to-many relationship with aliases in nested schemas."""
 
         # Define SQLAlchemy models with relationship
-        class User(fd.IDBase):
+        class User(fr.IDBase):
             name: Mapped[str] = mapped_column(String(100))
             email: Mapped[str] = mapped_column(String(100))
             addresses: Mapped[List["Address"]] = relationship(
                 "Address", back_populates="user", default_factory=list
             )
 
-        class Address(fd.IDBase):
+        class Address(fr.IDBase):
             street: Mapped[str] = mapped_column(String(200))
             city: Mapped[str] = mapped_column(String(100))
             user_id: Mapped[int] = mapped_column(
@@ -79,17 +79,17 @@ class TestOneToManyRelationships:
             user: Mapped["User"] = relationship("User", back_populates="addresses")
 
         # Define schemas with aliases
-        class AddressSchema(fd.IDSchema[Address]):
+        class AddressSchema(fr.IDSchema[Address]):
             street: str = Field(alias="streetAddress")
             city: str = Field(alias="cityName")
 
-        class UserSchema(fd.IDSchema[User]):
+        class UserSchema(fr.IDSchema[User]):
             name: str
             email: str
             addresses: List[AddressSchema]
 
-        @fd.include_view(client.app)
-        class UserView2(fd.AsyncAlchemyView):
+        @fr.include_view(client.app)
+        class UserView2(fr.AsyncAlchemyView):
             prefix = "/users"
             model = User
             schema = UserSchema
@@ -98,7 +98,7 @@ class TestOneToManyRelationships:
 
         # Insert test data to actually test aliases
         async def insert_test_data():
-            async with fd.AsyncSession() as session:
+            async with fr.AsyncSession() as session:
                 # Create a user first
                 user = User(name="John Doe", email="john@example.com")
                 session.add(user)
@@ -142,14 +142,14 @@ class TestOneToOneRelationships:
         """Test basic one-to-one relationship without aliases."""
 
         # Define SQLAlchemy models with relationship
-        class User3(fd.IDBase):
+        class User3(fr.IDBase):
             name: Mapped[str] = mapped_column(String(100))
             email: Mapped[str] = mapped_column(String(100))
             profile: Mapped["Profile3"] = relationship(
                 "Profile3", back_populates="user", uselist=False
             )
 
-        class Profile3(fd.IDBase):
+        class Profile3(fr.IDBase):
             bio: Mapped[str] = mapped_column(Text)
             website: Mapped[str] = mapped_column(String(200))
             user_id: Mapped[int] = mapped_column(
@@ -158,17 +158,17 @@ class TestOneToOneRelationships:
             user: Mapped["User3"] = relationship("User3", back_populates="profile")
 
         # Define schemas
-        class ProfileSchema3(fd.IDSchema[Profile3]):
+        class ProfileSchema3(fr.IDSchema[Profile3]):
             bio: str
             website: str
 
-        class UserSchema3(fd.IDSchema[User3]):
+        class UserSchema3(fr.IDSchema[User3]):
             name: str
             email: str
             profile: ProfileSchema3
 
-        @fd.include_view(client.app)
-        class UserView3(fd.AsyncAlchemyView):
+        @fr.include_view(client.app)
+        class UserView3(fr.AsyncAlchemyView):
             prefix = "/users3"
             model = User3
             schema = UserSchema3
@@ -184,14 +184,14 @@ class TestOneToOneRelationships:
         """Test one-to-one relationship with aliases in nested schemas."""
 
         # Define SQLAlchemy models with relationship
-        class User4(fd.IDBase):
+        class User4(fr.IDBase):
             name: Mapped[str] = mapped_column(String(100))
             email: Mapped[str] = mapped_column(String(100))
             profile: Mapped["Profile4"] = relationship(
                 "Profile4", back_populates="user", uselist=False
             )
 
-        class Profile4(fd.IDBase):
+        class Profile4(fr.IDBase):
             bio: Mapped[str] = mapped_column(Text)
             website: Mapped[str] = mapped_column(String(200))
             user_id: Mapped[int] = mapped_column(
@@ -200,17 +200,17 @@ class TestOneToOneRelationships:
             user: Mapped["User4"] = relationship("User4", back_populates="profile")
 
         # Define schemas with aliases
-        class ProfileSchema4(fd.IDSchema[Profile4]):
+        class ProfileSchema4(fr.IDSchema[Profile4]):
             bio: str = Field(alias="userBio")
             website: str = Field(alias="userWebsite")
 
-        class UserSchema4(fd.IDSchema[User4]):
+        class UserSchema4(fr.IDSchema[User4]):
             name: str
             email: str
             profile: ProfileSchema4
 
-        @fd.include_view(client.app)
-        class UserView4(fd.AsyncAlchemyView):
+        @fr.include_view(client.app)
+        class UserView4(fr.AsyncAlchemyView):
             prefix = "/users4"
             model = User4
             schema = UserSchema4
@@ -239,14 +239,14 @@ class TestManyToManyRelationships:
         """Test basic many-to-many relationship without aliases."""
 
         # Define SQLAlchemy models with many-to-many relationship
-        class User5(fd.IDBase):
+        class User5(fr.IDBase):
             name: Mapped[str] = mapped_column(String(100))
             email: Mapped[str] = mapped_column(String(100))
             groups: Mapped[List["Group5"]] = relationship(
                 "Group5", secondary="user5_group5", back_populates="users"
             )
 
-        class Group5(fd.IDBase):
+        class Group5(fr.IDBase):
             name: Mapped[str] = mapped_column(String(100))
             description: Mapped[str] = mapped_column(Text)
             users: Mapped[List["User5"]] = relationship(
@@ -254,7 +254,7 @@ class TestManyToManyRelationships:
             )
 
         # Association table
-        class UserGroup5(fd.IDBase):
+        class UserGroup5(fr.IDBase):
             __tablename__ = "user5_group5"
             user_id: Mapped[int] = mapped_column(
                 Integer, ForeignKey("user5.id"), primary_key=True
@@ -264,17 +264,17 @@ class TestManyToManyRelationships:
             )
 
         # Define schemas
-        class GroupSchema5(fd.IDSchema[Group5]):
+        class GroupSchema5(fr.IDSchema[Group5]):
             name: str
             description: str
 
-        class UserSchema5(fd.IDSchema[User5]):
+        class UserSchema5(fr.IDSchema[User5]):
             name: str
             email: str
             groups: List[GroupSchema5]
 
-        @fd.include_view(client.app)
-        class UserView5(fd.AsyncAlchemyView):
+        @fr.include_view(client.app)
+        class UserView5(fr.AsyncAlchemyView):
             prefix = "/users5"
             model = User5
             schema = UserSchema5
@@ -294,13 +294,13 @@ class TestDeeplyNestedRelationships:
         """Test deeply nested relationships with aliases."""
 
         # Define SQLAlchemy models with deep nesting
-        class Company6(fd.IDBase):
+        class Company6(fr.IDBase):
             name: Mapped[str] = mapped_column(String(100))
             departments: Mapped[List["Department6"]] = relationship(
                 "Department6", back_populates="company"
             )
 
-        class Department6(fd.IDBase):
+        class Department6(fr.IDBase):
             name: Mapped[str] = mapped_column(String(100))
             company_id: Mapped[int] = mapped_column(Integer, ForeignKey("company6.id"))
             company: Mapped["Company6"] = relationship(
@@ -310,7 +310,7 @@ class TestDeeplyNestedRelationships:
                 "Employee6", back_populates="department"
             )
 
-        class Employee6(fd.IDBase):
+        class Employee6(fr.IDBase):
             name: Mapped[str] = mapped_column(String(100))
             department_id: Mapped[int] = mapped_column(
                 Integer, ForeignKey("department6.id")
@@ -322,14 +322,14 @@ class TestDeeplyNestedRelationships:
                 "Project6", secondary="employee6_project6", back_populates="employees"
             )
 
-        class Project6(fd.IDBase):
+        class Project6(fr.IDBase):
             name: Mapped[str] = mapped_column(String(100))
             employees: Mapped[List["Employee6"]] = relationship(
                 "Employee6", secondary="employee6_project6", back_populates="projects"
             )
 
         # Association table
-        class EmployeeProject6(fd.IDBase):
+        class EmployeeProject6(fr.IDBase):
             __tablename__ = "employee6_project6"
             employee_id: Mapped[int] = mapped_column(
                 Integer, ForeignKey("employee6.id"), primary_key=True
@@ -339,23 +339,23 @@ class TestDeeplyNestedRelationships:
             )
 
         # Define schemas with aliases
-        class ProjectSchema6(fd.IDSchema[Project6]):
+        class ProjectSchema6(fr.IDSchema[Project6]):
             name: str = Field(alias="projectName")
 
-        class EmployeeSchema6(fd.IDSchema[Employee6]):
+        class EmployeeSchema6(fr.IDSchema[Employee6]):
             name: str = Field(alias="employeeName")
             projects: List[ProjectSchema6]
 
-        class DepartmentSchema6(fd.IDSchema[Department6]):
+        class DepartmentSchema6(fr.IDSchema[Department6]):
             name: str = Field(alias="departmentName")
             employees: List[EmployeeSchema6]
 
-        class CompanySchema6(fd.IDSchema[Company6]):
+        class CompanySchema6(fr.IDSchema[Company6]):
             name: str = Field(alias="companyName")
             departments: List[DepartmentSchema6]
 
-        @fd.include_view(client.app)
-        class CompanyView6(fd.AsyncAlchemyView):
+        @fr.include_view(client.app)
+        class CompanyView6(fr.AsyncAlchemyView):
             prefix = "/companies6"
             model = Company6
             schema = CompanySchema6
@@ -375,35 +375,35 @@ class TestRelationshipWithReadOnlyFields:
         """Test relationships where some fields are ReadOnly."""
 
         # Define SQLAlchemy models with relationship
-        class User7(fd.IDBase):
+        class User7(fr.IDBase):
             name: Mapped[str] = mapped_column(String(100))
             email: Mapped[str] = mapped_column(String(100))
             addresses: Mapped[List["Address7"]] = relationship(
                 "Address7", back_populates="user"
             )
 
-        class Address7(fd.IDBase):
+        class Address7(fr.IDBase):
             street: Mapped[str] = mapped_column(String(200))
             city: Mapped[str] = mapped_column(String(100))
             user_id: Mapped[int] = mapped_column(Integer, ForeignKey("user7.id"))
             user: Mapped["User7"] = relationship("User7", back_populates="addresses")
 
         # Define schemas with ReadOnly fields
-        class AddressSchema7(fd.IDSchema[Address7]):
+        class AddressSchema7(fr.IDSchema[Address7]):
             id: ReadOnly[int]
             street: str = Field(alias="streetAddress")
             city: str = Field(alias="cityName")
             created_at: ReadOnly[datetime]
 
-        class UserSchema7(fd.IDSchema[User7]):
+        class UserSchema7(fr.IDSchema[User7]):
             id: ReadOnly[int]
             name: str
             email: str
             addresses: List[AddressSchema7]
             created_at: ReadOnly[datetime]
 
-        @fd.include_view(client.app)
-        class UserView7(fd.AsyncAlchemyView):
+        @fr.include_view(client.app)
+        class UserView7(fr.AsyncAlchemyView):
             prefix = "/users7"
             model = User7
             schema = UserSchema7

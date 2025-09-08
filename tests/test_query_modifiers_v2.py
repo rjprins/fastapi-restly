@@ -12,7 +12,7 @@ from sqlalchemy import Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import Mapped, mapped_column
 from starlette.datastructures import QueryParams
 
-from fastapi_ding._query_modifiers_v2 import (
+from fastapi_restly._query_modifiers_v2 import (
     apply_query_modifiers_v2,
     apply_pagination_v2,
     apply_sorting_v2,
@@ -22,7 +22,7 @@ from fastapi_ding._query_modifiers_v2 import (
     _parse_value_v2,
     _make_where_clause_v2,
 )
-from fastapi_ding._sqlbase import Base
+from fastapi_restly._sqlbase import Base
 
 
 class TestModel(Base):
@@ -299,9 +299,9 @@ class TestApplyQueryModifiersV2:
         """Test that filtering is applied before sorting and pagination."""
         params = mock_query_params(name="John", order_by="age", page="1")
         
-        with patch('fastapi_ding._query_modifiers_v2.apply_filtering_v2') as mock_filter:
-            with patch('fastapi_ding._query_modifiers_v2.apply_sorting_v2') as mock_sort:
-                with patch('fastapi_ding._query_modifiers_v2.apply_pagination_v2') as mock_paginate:
+        with patch('fastapi_restly._query_modifiers_v2.apply_filtering_v2') as mock_filter:
+            with patch('fastapi_restly._query_modifiers_v2.apply_sorting_v2') as mock_sort:
+                with patch('fastapi_restly._query_modifiers_v2.apply_pagination_v2') as mock_paginate:
                     apply_query_modifiers_v2(params, select_query, TestModel, TestSchema)
                     
                     # Check call order

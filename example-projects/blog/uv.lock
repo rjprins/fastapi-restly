@@ -74,7 +74,7 @@ dependencies = [
     { name = "aiosqlite" },
     { name = "alembic" },
     { name = "fastapi" },
-    { name = "fastapi-ding" },
+    { name = "fastapi-restly" },
     { name = "sqlalchemy", extra = ["asyncio"] },
     { name = "uvicorn", extra = ["standard"] },
 ]
@@ -92,7 +92,7 @@ requires-dist = [
     { name = "aiosqlite", specifier = ">=0.21.0" },
     { name = "alembic", specifier = ">=1.15.2" },
     { name = "fastapi", specifier = ">=0.115.12" },
-    { name = "fastapi-ding", editable = "../../" },
+    { name = "fastapi-restly", editable = "../../" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0.41" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.32.1" },
 ]
@@ -179,7 +179,7 @@ wheels = [
 ]
 
 [[package]]
-name = "fastapi-ding"
+name = "fastapi-restly"
 version = "0.5"
 source = { editable = "../../" }
 dependencies = [

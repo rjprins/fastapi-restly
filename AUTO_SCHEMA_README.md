@@ -1,29 +1,29 @@
 # Auto-Generated Schemas
 
-FastAPI-Ding now supports auto-generating Pydantic schemas from SQLAlchemy models, eliminating the need to manually define schemas for simple CRUD operations.
+FastAPI-Restly now supports auto-generating Pydantic schemas from SQLAlchemy models, eliminating the need to manually define schemas for simple CRUD operations.
 
 ## Overview
 
-When you create an `AsyncAlchemyView` or `AlchemyView` without specifying a `schema`, FastAPI-Ding will automatically generate a Pydantic schema from your SQLAlchemy model.
+When you create an `AsyncAlchemyView` or `AlchemyView` without specifying a `schema`, FastAPI-Restly will automatically generate a Pydantic schema from your SQLAlchemy model.
 
 ## Basic Usage
 
 ```python
-import fastapi_ding as fd
+import fastapi_restly as fr
 from fastapi import FastAPI
 from sqlalchemy.orm import Mapped
 
 app = FastAPI()
 
 # Define your model
-class User(fd.IDBase):
+class User(fr.IDBase):
     name: Mapped[str]
     email: Mapped[str]
-    is_active: Mapped[bool] = fd.mapped_column(default=True)
+    is_active: Mapped[bool] = fr.mapped_column(default=True)
 
 # Create view WITHOUT specifying a schema - it will be auto-generated
-@fd.include_view(app)
-class UserView(fd.AsyncAlchemyView):
+@fr.include_view(app)
+class UserView(fr.AsyncAlchemyView):
     prefix = "/users"
     model = User
     # No schema needed - auto-generated!
@@ -36,7 +36,7 @@ class UserView(fd.AsyncAlchemyView):
 You can also manually generate schemas if needed:
 
 ```python
-from fastapi_ding import create_schema_from_model
+from fastapi_restly import create_schema_from_model
 
 # Generate schema manually
 UserSchema = create_schema_from_model(User)
@@ -55,10 +55,10 @@ CustomUserSchema = create_schema_from_model(
 Auto-generated schemas properly handle read-only fields:
 
 ```python
-class Product(fd.IDBase, fd.TimestampsMixin):
+class Product(fr.IDBase, fr.TimestampsMixin):
     name: Mapped[str]
     price: Mapped[float]
-    description: Mapped[str] = fd.mapped_column(default="")
+    description: Mapped[str] = fr.mapped_column(default="")
 
 # Auto-generated schema will have:
 # - id: read-only (from IDSchema)
@@ -69,13 +69,13 @@ class Product(fd.IDBase, fd.TimestampsMixin):
 
 ### Custom Field Types
 
-You can use `fd.ReadOnly` for custom read-only fields:
+You can use `fr.ReadOnly` for custom read-only fields:
 
 ```python
-class User(fd.IDBase):
+class User(fr.IDBase):
     name: Mapped[str]
     email: Mapped[str]
-    internal_id: fd.ReadOnly[str]  # This will be read-only in the schema
+    internal_id: fr.ReadOnly[str]  # This will be read-only in the schema
 ```
 
 ## Type Mapping
@@ -103,37 +103,37 @@ SQLAlchemy types are automatically mapped to Pydantic types:
 ## Complete Example
 
 ```python
-import fastapi_ding as fd
+import fastapi_restly as fr
 from fastapi import FastAPI
 from sqlalchemy.orm import Mapped
 
 # Setup
-fd.setup_async_database_connection("sqlite+aiosqlite:///app.db")
+fr.setup_async_database_connection("sqlite+aiosqlite:///app.db")
 app = FastAPI()
 
 # Models
-class User(fd.IDBase):
+class User(fr.IDBase):
     name: Mapped[str]
     email: Mapped[str]
-    is_active: Mapped[bool] = fd.mapped_column(default=True)
+    is_active: Mapped[bool] = fr.mapped_column(default=True)
 
-class Product(fd.IDBase, fd.TimestampsMixin):
+class Product(fr.IDBase, fr.TimestampsMixin):
     name: Mapped[str]
     price: Mapped[float]
-    description: Mapped[str] = fd.mapped_column(default="")
+    description: Mapped[str] = fr.mapped_column(default="")
 
 # Views with auto-generated schemas
-@fd.include_view(app)
-class UserView(fd.AsyncAlchemyView):
+@fr.include_view(app)
+class UserView(fr.AsyncAlchemyView):
     prefix = "/users"
     model = User
 
-@fd.include_view(app)
-class ProductView(fd.AsyncAlchemyView):
+@fr.include_view(app)
+class ProductView(fr.AsyncAlchemyView):
     prefix = "/products"
     model = Product
 
 # Your API is ready with full CRUD operations!
 ```
 
-This feature makes FastAPI-Ding even more user-friendly by eliminating the need for manual schema definition in most cases. 
+This feature makes FastAPI-Restly even more user-friendly by eliminating the need for manual schema definition in most cases. 

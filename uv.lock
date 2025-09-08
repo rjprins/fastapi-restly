@@ -254,7 +254,7 @@ wheels = [
 ]
 
 [[package]]
-name = "fastapi-ding"
+name = "fastapi-restly"
 version = "0.5"
 source = { virtual = "." }
 dependencies = [

@@ -1,5 +1,5 @@
 [project]
-name = "fastapi-ding"
+name = "fastapi-restly"
 version = "0.5"
 description = "A REST Framework for FastAPI"
 readme = "README.md"
@@ -41,5 +41,5 @@ split-on-trailing-comma = false
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["fastapi_ding"]
+include = ["fastapi_restly"]
 

@@ -4,18 +4,18 @@ Query Modifiers v2 Example
 This example demonstrates the new query modifiers v2 functionality.
 """
 
-import fastapi_ding as fd
+import fastapi_restly as fr
 from fastapi import FastAPI
 from sqlalchemy.orm import Mapped, mapped_column
 from datetime import datetime
 
 # Setup database
-fd.setup_async_database_connection("sqlite+aiosqlite:///example_v2.db")
+fr.setup_async_database_connection("sqlite+aiosqlite:///example_v2.db")
 
 app = FastAPI()
 
 # Define a model
-class User(fd.IDBase, fd.TimestampsMixin):
+class User(fr.IDBase, fr.TimestampsMixin):
     name: Mapped[str] = mapped_column(unique=True)
     email: Mapped[str] = mapped_column(unique=True)
     age: Mapped[int]
@@ -24,11 +24,11 @@ class User(fd.IDBase, fd.TimestampsMixin):
 
 
 # Configure the framework to use v2 query modifiers
-fd.set_query_modifier_version(fd.QueryModifierVersion.V2)
+fr.set_query_modifier_version(fr.QueryModifierVersion.V2)
 
 # Create view with v2 query modifiers
-@fd.include_view(app)
-class UserView(fd.AsyncAlchemyView):
+@fr.include_view(app)
+class UserView(fr.AsyncAlchemyView):
     prefix = "/users"
     model = User
 

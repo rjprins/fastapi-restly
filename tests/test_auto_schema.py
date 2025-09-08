@@ -6,8 +6,8 @@ from fastapi import FastAPI
 from httpx import AsyncClient
 from sqlalchemy.orm import Mapped
 
-import fastapi_ding as fd
-from fastapi_ding._globals import fa_globals
+import fastapi_restly as fd
+from fastapi_restly._globals import fa_globals
 from .conftest import create_tables
 
 

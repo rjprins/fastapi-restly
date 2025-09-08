@@ -5,10 +5,10 @@ import asyncio
 from datetime import datetime
 from typing import List
 
-import fastapi_ding as fd
-from fastapi_ding._schemas import WriteOnly, BaseSchema
-from fastapi_ding.testing import DingTestClient
-from fastapi_ding._globals import fa_globals
+import fastapi_restly as fr
+from fastapi_restly._schemas import WriteOnly, BaseSchema
+from fastapi_restly.testing import RestlyTestClient
+from fastapi_restly._globals import fa_globals
 from .conftest import create_tables
 
 
@@ -20,7 +20,7 @@ class TestWriteOnlyAPIBasicBehavior:
         """Test that WriteOnly fields are excluded from GET responses."""
 
         # Define schema with WriteOnly fields
-        class UserSchema(fd.IDSchema):
+        class UserSchema(fr.IDSchema):
             id: int  # Regular field
             name: str
             email: str
@@ -28,14 +28,14 @@ class TestWriteOnlyAPIBasicBehavior:
             secret_token: WriteOnly[str]  # Another WriteOnly field
 
         # Create a simple model
-        class User(fd.IDBase):
+        class User(fr.IDBase):
             name: str
             email: str
             password: str
             secret_token: str
 
-        @fd.include_view(client.app)
-        class UserView(fd.AsyncAlchemyView):
+        @fr.include_view(client.app)
+        class UserView(fr.AsyncAlchemyView):
             prefix = "/users"
             model = User
             schema = UserSchema
@@ -73,19 +73,19 @@ class TestWriteOnlyAPIBasicBehavior:
     def test_writeonly_fields_accepted_in_post_request(self, client):
         """Test that WriteOnly fields are accepted in POST requests."""
 
-        class UserSchema(fd.IDSchema):
+        class UserSchema(fr.IDSchema):
             id: int
             name: str
             email: str
             password: WriteOnly[str]
 
-        class User(fd.IDBase):
+        class User(fr.IDBase):
             name: str
             email: str
             password: str
 
-        @fd.include_view(client.app)
-        class UserView(fd.AsyncAlchemyView):
+        @fr.include_view(client.app)
+        class UserView(fr.AsyncAlchemyView):
             prefix = "/users"
             model = User
             schema = UserSchema
@@ -116,19 +116,19 @@ class TestWriteOnlyAPIBasicBehavior:
     def test_writeonly_fields_accepted_in_put_request(self, client):
         """Test that WriteOnly fields are accepted in PUT requests."""
 
-        class UserSchema(fd.IDSchema):
+        class UserSchema(fr.IDSchema):
             id: int
             name: str
             email: str
             password: WriteOnly[str]
 
-        class User(fd.IDBase):
+        class User(fr.IDBase):
             name: str
             email: str
             password: str
 
-        @fd.include_view(client.app)
-        class UserView(fd.AsyncAlchemyView):
+        @fr.include_view(client.app)
+        class UserView(fr.AsyncAlchemyView):
             prefix = "/users"
             model = User
             schema = UserSchema
@@ -171,19 +171,19 @@ class TestWriteOnlyAPIBasicBehavior:
     def test_writeonly_fields_excluded_from_list_response(self, client):
         """Test that WriteOnly fields are excluded from list GET responses."""
 
-        class UserSchema(fd.IDSchema):
+        class UserSchema(fr.IDSchema):
             id: int
             name: str
             email: str
             password: WriteOnly[str]
 
-        class User(fd.IDBase):
+        class User(fr.IDBase):
             name: str
             email: str
             password: str
 
-        @fd.include_view(client.app)
-        class UserView(fd.AsyncAlchemyView):
+        @fr.include_view(client.app)
+        class UserView(fr.AsyncAlchemyView):
             prefix = "/users"
             model = User
             schema = UserSchema
@@ -225,9 +225,9 @@ class TestWriteOnlyWithMixedFields:
     def test_mixed_readonly_writeonly_regular_fields(self, client):
         """Test API behavior with ReadOnly, WriteOnly, and regular fields."""
 
-        from fastapi_ding._schemas import ReadOnly
+        from fastapi_restly._schemas import ReadOnly
 
-        class UserSchema(fd.IDSchema):
+        class UserSchema(fr.IDSchema):
             id: ReadOnly[int]  # ReadOnly field
             name: str  # Regular field
             email: str  # Regular field
@@ -235,14 +235,14 @@ class TestWriteOnlyWithMixedFields:
             created_at: ReadOnly[datetime]  # ReadOnly field
             secret_token: WriteOnly[str]  # WriteOnly field
 
-        class User(fd.IDBase):
+        class User(fr.IDBase):
             name: str
             email: str
             password: str
             secret_token: str
 
-        @fd.include_view(client.app)
-        class UserView(fd.AsyncAlchemyView):
+        @fr.include_view(client.app)
+        class UserView(fr.AsyncAlchemyView):
             prefix = "/users"
             model = User
             schema = UserSchema
@@ -302,21 +302,21 @@ class TestWriteOnlyWithAliases:
 
         from pydantic import Field
 
-        class UserSchema(fd.IDSchema):
+        class UserSchema(fr.IDSchema):
             id: int
             name: str
             email: str
             password: WriteOnly[str] = Field(alias="userPassword")
             secret_token: WriteOnly[str] = Field(alias="secretKey")
 
-        class User(fd.IDBase):
+        class User(fr.IDBase):
             name: str
             email: str
             password: str
             secret_token: str
 
-        @fd.include_view(client.app)
-        class UserView(fd.AsyncAlchemyView):
+        @fr.include_view(client.app)
+        class UserView(fr.AsyncAlchemyView):
             prefix = "/users"
             model = User
             schema = UserSchema
@@ -375,7 +375,7 @@ class TestWriteOnlyInNestedSchemas:
         from sqlalchemy import String, Integer, ForeignKey
 
         # Define SQLAlchemy models with relationship
-        class User(fd.IDBase):
+        class User(fr.IDBase):
             name: Mapped[str] = mapped_column(String(100))
             email: Mapped[str] = mapped_column(String(100))
             password: Mapped[str] = mapped_column(String(100))
@@ -383,7 +383,7 @@ class TestWriteOnlyInNestedSchemas:
                 "Profile", back_populates="user"
             )
 
-        class Profile(fd.IDBase):
+        class Profile(fr.IDBase):
             bio: Mapped[str] = mapped_column(String(500))
             website: Mapped[str] = mapped_column(String(200))
             secret_key: Mapped[str] = mapped_column(String(100))
@@ -391,21 +391,21 @@ class TestWriteOnlyInNestedSchemas:
             user: Mapped["User"] = relationship("User", back_populates="profiles")
 
         # Define schemas with WriteOnly fields
-        class ProfileSchema(fd.IDSchema[Profile]):
+        class ProfileSchema(fr.IDSchema[Profile]):
             id: int
             bio: str
             website: str
             secret_key: WriteOnly[str]
 
-        class UserSchema(fd.IDSchema[User]):
+        class UserSchema(fr.IDSchema[User]):
             id: int
             name: str
             email: str
             password: WriteOnly[str]
             profiles: List[ProfileSchema]
 
-        @fd.include_view(client.app)
-        class UserView(fd.AsyncAlchemyView):
+        @fr.include_view(client.app)
+        class UserView(fr.AsyncAlchemyView):
             prefix = "/users"
             model = User
             schema = UserSchema

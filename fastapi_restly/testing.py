@@ -2,7 +2,7 @@ import httpx
 from fastapi.testclient import TestClient
 
 
-class DingTestClient(TestClient):
+class RestlyTestClient(TestClient):
     """Custom TestClient that automatically checks response codes and provides clear error messages."""
 
     def assert_status(self, response: httpx.Response, expected_code: int | None = None):

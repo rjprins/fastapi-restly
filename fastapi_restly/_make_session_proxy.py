@@ -11,7 +11,7 @@ class AsyncSessionProxy:
     """
     Proxy for the global async_sessionmaker.
     This enables consistent global imports, e.g.:
-        from fastapi_ding import AsyncSession
+        from fastapi_restly import AsyncSession
 
         with AsyncSession() as async_session: ...
     """
@@ -45,7 +45,7 @@ class SessionProxy:
     """
     Proxy for the global sessionmaker.
     This enables consistent global imports, e.g.:
-        from fastapi_ding import Session
+        from fastapi_restly import Session
 
         with Session() as session: ...
     """

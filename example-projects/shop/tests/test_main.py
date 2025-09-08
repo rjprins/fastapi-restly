@@ -6,8 +6,8 @@ from pathlib import Path
 import pytest
 from alembic import command
 from alembic.config import Config
-from fastapi_ding import settings
-from fastapi_ding.testing import (
+from fastapi_restly import settings
+from fastapi_restly.testing import (
     create_test_client,
     get_test_database_url,
     setup_test_database,

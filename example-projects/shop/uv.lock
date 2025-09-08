@@ -110,7 +110,7 @@ wheels = [
 ]
 
 [[package]]
-name = "fastapi-ding"
+name = "fastapi-restly"
 version = "0.5"
 source = { virtual = "../../" }
 dependencies = [
@@ -636,7 +636,7 @@ dependencies = [
     { name = "aiosqlite" },
     { name = "alembic" },
     { name = "fastapi" },
-    { name = "fastapi-ding" },
+    { name = "fastapi-restly" },
     { name = "sqlalchemy", extra = ["asyncio"] },
     { name = "uvicorn", extra = ["standard"] },
 ]
@@ -652,7 +652,7 @@ requires-dist = [
     { name = "aiosqlite", specifier = ">=0.21.0" },
     { name = "alembic", specifier = ">=1.15.2" },
     { name = "fastapi", specifier = ">=0.115.12" },
-    { name = "fastapi-ding", virtual = "../../" },
+    { name = "fastapi-restly", virtual = "../../" },
     { name = "httpx", marker = "extra == 'dev'", specifier = ">=0.28.1" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.3.5" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0.41" },

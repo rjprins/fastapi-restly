@@ -1,4 +1,4 @@
-"""Test to demonstrate the nested schema limitation in FastAPI-Ding framework."""
+"""Test to demonstrate the nested schema limitation in FastAPI-Restly framework."""
 
 import asyncio
 import pytest
@@ -8,9 +8,9 @@ from httpx import AsyncClient
 from pydantic import Field
 from sqlalchemy.orm import Mapped
 
-import fastapi_ding as fd
-from fastapi_ding._globals import fa_globals
-from fastapi_ding._schemas import ReadOnly, BaseSchema
+import fastapi_restly as fd
+from fastapi_restly._globals import fa_globals
+from fastapi_restly._schemas import ReadOnly, BaseSchema
 from .conftest import create_tables
 
 

@@ -2,7 +2,7 @@ import pytest
 from datetime import datetime
 from typing import Annotated, get_origin, get_args
 
-from fastapi_ding._schemas import (
+from fastapi_restly._schemas import (
     BaseSchema,
     ReadOnly,
     WriteOnly,
@@ -362,7 +362,7 @@ def test_writeonly_field_validation():
 
 def test_readonly_in_timestamps_mixin():
     """Test that TimestampsSchemaMixin uses ReadOnly correctly."""
-    from fastapi_ding._schemas import TimestampsSchemaMixin
+    from fastapi_restly._schemas import TimestampsSchemaMixin
 
     class TestSchema(TimestampsSchemaMixin, BaseSchema):
         name: str
@@ -376,7 +376,7 @@ def test_readonly_in_timestamps_mixin():
 
 def test_readonly_in_idschema():
     """Test that IDSchema uses ReadOnly correctly."""
-    from fastapi_ding._schemas import IDSchema
+    from fastapi_restly._schemas import IDSchema
     from sqlalchemy.orm import DeclarativeBase
 
     class MockModel(DeclarativeBase):

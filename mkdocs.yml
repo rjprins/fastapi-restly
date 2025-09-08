@@ -1,5 +1,5 @@
-site_name: FastAPI-Ding
-site_url: https://rjprins.github.io/fastapi-ding
+site_name: FastAPI-Restly
+site_url: https://rjprins.github.io/fastapi-restly
 theme:
   name: material
   features:

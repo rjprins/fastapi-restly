@@ -3,10 +3,10 @@
 import asyncio
 import pytest
 
-import fastapi_ding as fd
-from fastapi_ding._globals import fa_globals
+import fastapi_restly as fd
+from fastapi_restly._globals import fa_globals
 
-pytest_plugins = ["fastapi_ding.pytest_fixtures"]
+pytest_plugins = ["fastapi_restly.pytest_fixtures"]
 
 
 @pytest.fixture(autouse=True)
