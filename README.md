@@ -9,8 +9,8 @@ It provides auto-generated endpoints, schemas, and filters while keeping you in 
 
 ## Why FastAPI-Restly?
 
-* **Faster CRUD development** – Generate standard endpoints and Pydantic models automatically.
-* **Maintainable** – Class-based views with inheritance and dependencies keep things organized.
+* **Faster CRUD development** – Create endpoints for SQLAlchemy models by generating Pydantic models automatically.
+* **Maintainable** – Class-based views with inheritance and dependencies to keep things organized.
 * **Customizable** – Generated endpoints are fully overridable whenever you need custom behavior.
 * **Modern stack** – Built for SQLAlchemy 2.0 and Pydantic v2, with async support.
 
@@ -29,9 +29,9 @@ It provides auto-generated endpoints, schemas, and filters while keeping you in 
 
 ## 🎯 Restly Philosophy
 
-### Made to Build Serious Apps
+### Made to Build Apps
 
-Restly's goal is to make web application development as easy as possible by provirestly the tools production apps commonly need.
+Restly is not only a REST framework, it aims to grow with the most commont tools web apps need.
 
 - **Today**: Class-based views, automatic Pydantic schema generation, and database connection management.
 - **Tomorrow**: Admin interface, authentication, permissions, background jobs, job scheduling, plugins, etc.
@@ -44,6 +44,13 @@ Restly is a stack of micro-libraries.
 - Each layer makes deliberate, opinionated choices that higher layers can rely on and extend.
 - The less customization you need, the more you get out-of-the-box—yet full customization never requires awkward hacks.
 - Built on FastAPI, Pydantic, and SQLAlchemy, Restly sticks to patterns provided by those libraries.
+
+Current layers:
+- SQLAlchemy connection management
+- Class-based views supporting FastAPI dependencies
+- Pydantic schema generation from SQLAlchemy models or other pydantic schemas.
+- AlchemyView: CRUD view classes for SQLAlchemy models
+- Pytest fixtures for SQLAlchemy, alembic, and AlchemyViews.
 
 ## 🚀 Quick Start
 
