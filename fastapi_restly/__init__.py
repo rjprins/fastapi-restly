@@ -11,7 +11,6 @@ from ._query_modifiers_config import (
 )
 from ._schema_generator import auto_generate_schema_for_view, create_schema_from_model
 from ._schemas import (
-    NOT_SET,
     BaseSchema,
     IDSchema,
     IDStampsSchema,
@@ -44,7 +43,6 @@ __all__ = [
     "IDBase",
     "IDSchema",
     "IDStampsSchema",
-    "NOT_SET",
     "ReadOnly",
     "IDStampsBase",
     "QueryModifierVersion",

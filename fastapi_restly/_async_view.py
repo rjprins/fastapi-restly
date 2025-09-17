@@ -6,7 +6,6 @@ import sqlalchemy
 
 from ._query_modifiers_config import apply_query_modifiers
 from ._schemas import (
-    NOT_SET,
     BaseSchema,
     async_resolve_ids_to_sqlalchemy_objects,
     get_writable_inputs,

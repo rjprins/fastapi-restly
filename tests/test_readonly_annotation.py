@@ -12,7 +12,6 @@ from fastapi_restly._schemas import (
     is_field_writeonly,
     create_model_without_read_only_fields,
     create_model_with_optional_fields,
-    NOT_SET,
     readonly_marker,
     writeonly_marker,
 )
@@ -245,10 +244,9 @@ def test_create_model_with_optional_fields():
     assert "email" in UpdateTestSchema.model_fields
 
     # Test that the new model can be instantiated with optional fields
-    # The default value is NOT_SET, not None
     update_schema = UpdateTestSchema()
-    assert update_schema.name == NOT_SET
-    assert update_schema.email == NOT_SET
+    assert update_schema.name == None
+    assert update_schema.email == None
 
     # Test that fields can be set
     update_schema = UpdateTestSchema(name="Updated", email="updated@example.com")

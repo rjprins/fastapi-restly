@@ -20,7 +20,7 @@ class _Marker:
         self.name = name
 
     def __repr__(self):
-        return f"fr._Marker('{self.name}'>"
+        return f"fr.{self.name}"
 
 
 readonly_marker = _Marker("ReadOnly")
@@ -251,18 +251,12 @@ def rebase_with_model_config(
     )
 
 
-# NOT_SET is used as a sentinel value for validating incoming data. It is the default
-# value for update_schemas and allows us to see the difference between 'None' and
-# 'not submitted'. A string is used so it renders nicely in /docs and /redoc.
-NOT_SET = "Partial PUT does not support default values"
-
-
 def create_model_with_optional_fields(
     model_cls: type[pydantic.BaseModel],
 ) -> type[pydantic.BaseModel]:
     """
     Create a subclass of the given pydantic model class with a new name.
-    Read-only fields are removed and all writable fields are made optional with NOT_SET defaults.
+    Read-only fields are removed and all writable fields are made optional with None as default.
     """
     new_model_name = "Update" + model_cls.__name__
     new_doc = (
@@ -282,8 +276,8 @@ def create_model_with_optional_fields(
 
 class PatchMixin(pydantic.BaseModel):
     """
-    A mixin for pydantic classes that makes all fields optional and replaces default
-    with the NOT_SET marker.
+    A mixin for pydantic classes that makes all fields optional and replaces defaults
+    with None.
     """
 
     @classmethod
@@ -291,7 +285,7 @@ class PatchMixin(pydantic.BaseModel):
         super().__pydantic_init_subclass__(**kwargs)
 
         for field in cls.model_fields.values():
-            field.default = NOT_SET
+            field.default = None
             field.annotation = Optional[field.annotation]
 
         cls.model_rebuild(force=True)
@@ -338,8 +332,8 @@ def get_writable_inputs(
     Return a dictionary of field_name: value pairs for writable input fields.
 
     Filters out:
-    - Fields with NOT_SET values
     - ReadOnly fields
+    - fields not provided with input (using Pydantic model_fields_set)
 
     Args:
         schema_obj: The schema object to extract writable fields from
@@ -353,7 +347,7 @@ def get_writable_inputs(
 
     updated_fields: dict[str, Any] = {}
     for field_name, value in schema_obj:
-        if value is NOT_SET:
+        if field_name not in schema_obj.model_fields_set:
             continue
         # Skip readonly fields
         if is_readonly_field(schema_cls, field_name):
