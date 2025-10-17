@@ -21,9 +21,8 @@ It provides auto-generated endpoints, schemas, and filters while keeping you in 
 * **CRUD endpoints in minutes** for SQLAlchemy models
 * **Class-based views** with dependency injection and inheritance
 * **Automatic Pydantic schemas** for create, update, and read
-* **Filtering, pagination, and sorting** (inclurestly nested relationships)
+* **Filtering, pagination, and sorting** (including on nested relationships)
 * **OpenAPI docs** with all generated routes
-* **React-Admin friendly** API responses
 
 ---
 
@@ -31,10 +30,10 @@ It provides auto-generated endpoints, schemas, and filters while keeping you in 
 
 ### Made to Build Apps
 
-Restly is not only a REST framework, it aims to grow with the most commont tools web apps need.
+Restly is not only a REST framework, it aims to grow with the most common tools web apps need.
 
-- **Today**: Class-based views, automatic Pydantic schema generation, and database connection management.
-- **Tomorrow**: Admin interface, authentication, permissions, background jobs, job scheduling, plugins, etc.
+- **Current features**: Class-based views, automatic Pydantic schema generation, and database connection management.
+- **Possible future features**: Admin interface, authentication, permissions, background jobs, job scheduling, plugins, etc.
 
 ### Designed in Layers
 
@@ -42,8 +41,8 @@ Restly is a stack of micro-libraries.
 
 - Each layer adds a step of convenience, but developers can always drop down a layer for deeper customization.
 - Each layer makes deliberate, opinionated choices that higher layers can rely on and extend.
-- The less customization you need, the more you get out-of-the-box—yet full customization never requires awkward hacks.
-- Built on FastAPI, Pydantic, and SQLAlchemy, Restly sticks to patterns provided by those libraries.
+- The less customization you need, the more you get out-of-the-box — yet full customization never requires awkward hacks.
+- Built on FastAPI, Pydantic, and SQLAlchemy; Restly sticks to patterns provided by those libraries.
 
 Current layers:
 - SQLAlchemy connection management
