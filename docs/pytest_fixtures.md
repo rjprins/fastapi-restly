@@ -1,4 +1,4 @@
-# TODO, obviously
+# pytest fixtures
 
 ### 1. **Support shared sync+async sessions if user uses `psycopg`**
 

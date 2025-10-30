@@ -1,4 +1,4 @@
-.PHONY: test test-framework test-examples test-all clean install-dev
+.PHONY: test test-framework test-examples test-all clean install-dev docs serve-docs
 
 # Default target
 all: test-all
@@ -55,6 +55,13 @@ test-coverage:
 	cd example-projects/shop && uv run --active pytest tests/ --cov=shop --cov-report=term-missing
 	cd example-projects/blog && uv run --active pytest blog/ --cov=blog --cov-report=term-missing
 
+docs:
+	uv run sphinx-build -M html docs site
+	@echo "Documentation available at site/index.html"
+
+serve-docs:
+	uv run sphinx-autobuild docs site
+
 # Help
 help:
 	@echo "Available commands:"
@@ -68,4 +75,6 @@ help:
 	@echo "  install-dev     - Install all development dependencies"
 	@echo "  clean           - Clean up cache and temporary files"
 	@echo "  ci              - Full CI setup and test run"
-	@echo "  dev-setup       - Setup development environment" 
+	@echo "  dev-setup       - Setup development environment"
+	@echo "  docs            - Build documentation" 
+	@echo "  serve-docs      - Autobuild and serve documentation" 

@@ -62,3 +62,12 @@ cd fastapi-restly
 uv sync
 uv run pytest
 ```
+
+## Contents
+```{toctree}
+:maxdepth: 2
+:glob:
+
+tutorial
+*
+```
