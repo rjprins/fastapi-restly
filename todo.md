@@ -1,6 +1,6 @@
 # The TODO List
- - Begin een website met korte artikeltjes over FastAPI-Restly
- - Begin een newsletter (to receive a notification for the first release!)
+ - Start a website with short articles on FastAPI-Restly
+ - Start a newsletter? (to receive a notification for the first release!)
  - Update update_object and make_new_object to respect ReadOnly (they already do this?)
  - Remove make_response_schema
  - Create make_response function that respects WriteOnly
@@ -17,32 +17,17 @@
  - Read up on typing libraries correctly: https://typing.python.org/en/latest/guides/libraries.html
  - After first release, ask to be added to https://github.com/mjhea0/awesome-fastapi
 
-
-# DONE
- - Simplify create_ schema functions to just subclass and rename.
- - Add json_schema_extra={"readOnly": True} and writeonly to pydantic fields.. during view init
-
-
-
 # Where I am at right now
 
-I want to get this out of the door ASAP.
-Please cut corners as much as you can.
-We want it LIVE LIVE LIVE.
+1. Ensure everything works as it should: Add more testing
+2. Add a realistic example project with tests
+3. Polish main API points (database init? AlchemyView overrides and symmetry?)
+4. Write a comprehensive tutorial
+5. Add API documentation
 
-MAIN GOAL: Get the more complicated example project working.
-Secondary goal: Get the docs up to a minimal state to get anyone started.
 
-Which functionality can I *skip*?
-
-What is go live?
-
-## 1. It is on GitHub ✅
-If it is public on GitHub it is open source™
-Doesn't have to be functional yet, so we can do this today!
-
-## 2. Package on PYPI
-Now it will for real. Minimal requirements for this:
+## Package on PYPI
+Minimal requirements for this:
 * *NO NEW FUNCTIONALITY NEEDED*
 * Tests have enough coverage
 * Naming is sort-of stable
@@ -101,7 +86,4 @@ Do I want to support "No alembic/just create tables?"
 * Wrap all responses in {"data": {}} ?
 * Create a nice tests suite that tests the example projects
 * Add alembic tests by default
-
-
-
-
+* Do we want FastAPI restly DeclarativeBase to be replacable? Is that even necessary?

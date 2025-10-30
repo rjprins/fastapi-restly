@@ -16,7 +16,7 @@ It provides auto-generated endpoints, schemas, and filters while keeping you in 
 
 ---
 
-## ✅ Current Features
+## Current Features
 
 * **CRUD endpoints in minutes** for SQLAlchemy models
 * **Class-based views** with dependency injection and inheritance
@@ -26,7 +26,7 @@ It provides auto-generated endpoints, schemas, and filters while keeping you in 
 
 ---
 
-## 🎯 Restly Philosophy
+## Restly Philosophy
 
 ### Made to Build Apps
 
@@ -51,7 +51,7 @@ Current layers:
 - AlchemyView: CRUD view classes for SQLAlchemy models
 - Pytest fixtures for SQLAlchemy, alembic, and AlchemyViews.
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Installation
 
@@ -99,7 +99,7 @@ class UserView(fr.AsyncAlchemyView):
 
 The framework automatically generates the Pydantic schema from your SQLAlchemy model, so you don't need to write any schema definitions!
 
-## 🎯 Advanced Features
+## Advanced Features
 
 ### Manual Schema Definition
 
@@ -199,20 +199,20 @@ class UserView(fr.AsyncAlchemyView):
         return await super().process_index(query_params)
 ```
 
-## 📚 Documentation
+## Documentation
 
 - **[Tutorial](docs/tutorial.md)** - Get started with FastAPI-Restly
 - **[Technical Details](docs/technical_details.md)** - Learn how the framework works
 - **[API Reference](docs/api_reference.md)** - Complete API documentation
 
-## 🛠️ Examples
+## Examples
 
 Check out the [example projects](example-projects/) for complete applications:
 
 - **[Shop](example-projects/shop/)** - E-commerce API with products, orders, and customers
 - **[Blog](example-projects/blog/)** - Simple blog with posts and comments
 
-## 🧪 Testing
+## Testing
 
 FastAPI-Restly includes testing utilities:
 
@@ -232,7 +232,7 @@ def test_user_crud(client):
     assert response.json()["name"] == "John"
 ```
 
-## 🔧 Configuration
+## Configuration
 
 ### Database Setup
 
@@ -247,7 +247,7 @@ fr.setup_async_database_connection("postgresql+asyncpg://user:pass@localhost/db"
 fr.setup_database_connection("sqlite:///app.db")
 ```
 
-## 🛠 Future Plans
+## Future Plans
 
 * Authentication & permissions
 * Admin interface
@@ -255,11 +255,11 @@ fr.setup_database_connection("sqlite:///app.db")
 * CLI for code generation and scaffolrestly
 
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
