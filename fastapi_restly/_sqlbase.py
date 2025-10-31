@@ -1,6 +1,6 @@
 import enum
-from datetime import datetime
-from typing import Any, Callable, cast
+from datetime import datetime, timezone
+from typing import Any
 
 from sqlalchemy import Enum, func, select
 from sqlalchemy.exc import NoResultFound
@@ -21,14 +21,21 @@ CASCADE_ALL_ASYNC = "save-update, merge, delete, expunge"
 CASCADE_ALL_DELETE_ORPHAN_ASYNC = CASCADE_ALL_ASYNC + ", delete-orphan"
 
 
+def utc_now() -> datetime:
+    """Replacement for the deprecated datetime.utcnow()"""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
 class TimestampsMixin(MappedAsDataclass, kw_only=True):
+    """
+    Mixin to add created_at and updated_at timestamps (timezone naive).
+    """
+
     created_at: Mapped[datetime] = mapped_column(
-        default_factory=datetime.utcnow, server_default=func.now()
+        default_factory=utc_now, server_default=func.now()
     )
     updated_at: Mapped[datetime] = mapped_column(
-        default_factory=datetime.utcnow,
-        onupdate=datetime.utcnow,
-        server_default=func.now(),
+        default_factory=utc_now, onupdate=utc_now, server_default=func.now()
     )
 
 

@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session as SA_Session
 import alembic
 import alembic.config
 
-from ._globals import fa_globals
+from ._globals import fr_globals
 from ._session import activate_savepoint_only_mode
 from .testing import RestlyTestClient
 
@@ -51,22 +51,22 @@ def autouse_alembic_upgrade(project_root):
 @pytest.fixture(autouse=True, scope="session")
 def autouse_savepoint_only_mode_sessions() -> None:
     # Only run if database connections are set up
-    if not fa_globals.async_make_session and not fa_globals.make_session:
+    if not fr_globals.async_make_session and not fr_globals.make_session:
         return  # Skip if no database connections
 
-    if fa_globals.async_make_session:
-        activate_savepoint_only_mode(fa_globals.async_make_session)
-    if fa_globals.make_session:
-        activate_savepoint_only_mode(fa_globals.make_session)
+    if fr_globals.async_make_session:
+        activate_savepoint_only_mode(fr_globals.async_make_session)
+    if fr_globals.make_session:
+        activate_savepoint_only_mode(fr_globals.make_session)
 
 
 @pytest.fixture
 def _shared_connection():
     # Only run if database connections are set up
-    if not fa_globals.make_session:
+    if not fr_globals.make_session:
         pytest.skip("Database connection not set up")
 
-    engine = fa_globals.make_session.kw["bind"]
+    engine = fr_globals.make_session.kw["bind"]
     with engine.connect() as conn:
         yield conn
 
@@ -79,12 +79,12 @@ async def async_session(_shared_connection) -> AsyncIterator[SA_AsyncSession]:
     nested transactions. Commits inside the test won't persist to the DB.
     """
     # Only run if database connections are set up
-    if not fa_globals.async_make_session:
+    if not fr_globals.async_make_session:
         pytest.skip("Database connection not set up")
 
-    async_engine = fa_globals.async_make_session.kw["bind"]
+    async_engine = fr_globals.async_make_session.kw["bind"]
     async_conn = AsyncConnection(async_engine, sync_connection=_shared_connection)
-    async with fa_globals.async_make_session(bind=async_conn) as sess:
+    async with fr_globals.async_make_session(bind=async_conn) as sess:
 
         async def begin_nested():
             await sess.begin_nested()
@@ -104,7 +104,7 @@ async def async_session(_shared_connection) -> AsyncIterator[SA_AsyncSession]:
             await sess.begin_nested()
 
         with (
-            patch.object(fa_globals, "async_make_session", mock_sessionmaker),
+            patch.object(fr_globals, "async_make_session", mock_sessionmaker),
             patch.object(SA_AsyncSession, "__aexit__", passthrough_exit),
             patch.object(SA_AsyncSession, "commit", patched_commit),
         ):
@@ -117,10 +117,10 @@ def session(_shared_connection) -> Iterator[SA_Session]:
     TODO: Describe what this function does exactly
     """
     # Only run if database connections are set up
-    if not fa_globals.make_session:
+    if not fr_globals.make_session:
         pytest.skip("Database connection not set up")
 
-    with fa_globals.make_session(bind=_shared_connection) as sess:
+    with fr_globals.make_session(bind=_shared_connection) as sess:
 
         def begin_nested():
             sess.begin_nested()
@@ -140,7 +140,7 @@ def session(_shared_connection) -> Iterator[SA_Session]:
             sess.begin_nested()
 
         with (
-            patch.object(fa_globals, "make_session", mock_sessionmaker),
+            patch.object(fr_globals, "make_session", mock_sessionmaker),
             patch.object(SA_Session, "__exit__", passthrough_exit),
             patch.object(SA_Session, "commit", patched_commit),
         ):

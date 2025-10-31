@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from typing import Annotated, Any, AsyncIterator, Iterator, cast
 
 from fastapi import Depends
@@ -7,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession as SA_AsyncSession
 from sqlalchemy.orm import Session as SA_Session
 from sqlalchemy.orm import sessionmaker
 
-from ._globals import fa_globals
+from ._globals import fr_globals
 
 try:
     import orjson
@@ -47,8 +48,8 @@ def setup_async_database_connection(
             bind=async_engine, autoflush=False, expire_on_commit=False
         )
 
-    fa_globals.async_database_url = async_database_url
-    fa_globals.async_make_session = async_make_session
+    fr_globals.async_database_url = async_database_url
+    fr_globals.async_make_session = async_make_session
     return async_make_session
 
 
@@ -72,9 +73,23 @@ def setup_database_connection(
             )
         make_session = sessionmaker(bind=engine, expire_on_commit=False)
 
-    fa_globals.database_url = database_url
-    fa_globals.make_session = make_session
+    fr_globals.database_url = database_url
+    fr_globals.make_session = make_session
     return make_session
+
+
+def db_lifespan(*, create_tables: bool = False):
+    @asynccontextmanager
+    async def _db_lifespan(app):
+        if create_tables:
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+        try:
+            yield
+        finally:
+            await engine.dispose()
+
+    return _db_lifespan
 
 
 def activate_savepoint_only_mode(
@@ -127,7 +142,7 @@ async def async_generate_session() -> AsyncIterator[SA_AsyncSession]:
     """FastAPI dependency for async database session."""
     # FastAPI does not support contextmanagers as dependency directly,
     # but it does support generators.
-    async with fa_globals.async_make_session() as session:
+    async with fr_globals.async_make_session() as session:
         yield session
         if session.is_active:
             await session.commit()
@@ -138,7 +153,7 @@ AsyncSessionDep = Annotated[SA_AsyncSession, Depends(async_generate_session)]
 
 def generate_session() -> Iterator[SA_Session]:
     """FastAPI dependency for sync database session."""
-    with fa_globals.make_session() as session:
+    with fr_globals.make_session() as session:
         yield session
         if session.is_active:
             session.commit()
