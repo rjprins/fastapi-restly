@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>pytest fixtures &#8212; FastAPI-Restly 0.5 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=686e5160" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
+    <script src="_static/documentation_options.js?v=db78e746"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="canonical" href="https://rjprins.github.io/fastapi-restly/pytest_fixtures.html" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Filtering on relations" href="query_modifiers.html" />
+    <link rel="prev" title="Using FastAPI-Restly in an Existing Project" href="existing.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="pytest-fixtures">
+<h1>pytest fixtures<a class="headerlink" href="#pytest-fixtures" title="Link to this heading">¶</a></h1>
+<section id="support-shared-sync-async-sessions-if-user-uses-psycopg">
+<h2>1. <strong>Support shared sync+async sessions if user uses <code class="docutils literal notranslate"><span class="pre">psycopg</span></code></strong><a class="headerlink" href="#support-shared-sync-async-sessions-if-user-uses-psycopg" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Document this clearly: <em>“To share a DB connection between sync and async tests (for nested transactions, visibility, etc.), use the <code class="docutils literal notranslate"><span class="pre">psycopg</span></code> driver in both engines.”</em></p></li>
+<li><p>Provide a helper for wrapping the sync connection into an async one.</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">wrap_sync_connection_for_async</span><span class="p">(</span><span class="n">sync_conn</span><span class="p">,</span> <span class="n">async_engine</span><span class="p">):</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.ext.asyncio</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncConnection</span>
+    <span class="k">return</span> <span class="n">AsyncConnection</span><span class="p">(</span><span class="n">async_engine</span><span class="p">,</span> <span class="n">sync_connection</span><span class="o">=</span><span class="n">sync_conn</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Let advanced users opt in.</p>
+<hr class="docutils" />
+</section>
+<section id="gracefully-fall-back-for-psycopg2-asyncpg-users">
+<h2>2. <strong>Gracefully fall back for <code class="docutils literal notranslate"><span class="pre">psycopg2</span></code>/<code class="docutils literal notranslate"><span class="pre">asyncpg</span></code> users</strong><a class="headerlink" href="#gracefully-fall-back-for-psycopg2-asyncpg-users" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>If sync and async drivers are different, just don’t share the connection.</p></li>
+<li><p>Document that they won’t get shared transactions/savepoints in that case.</p></li>
+<li><p>This still lets them write reliable tests, just without the visibility guarantee between sync and async sessions.</p></li>
+</ul>
+<hr class="docutils" />
+</section>
+<section id="detect-and-warn-optional">
+<h2>3. <strong>Detect and warn (optional)</strong><a class="headerlink" href="#detect-and-warn-optional" title="Link to this heading">¶</a></h2>
+<p>You can even do a driver-level check and raise/log a warning:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">sync_conn</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">connection</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="nb">type</span><span class="p">(</span><span class="n">async_conn</span><span class="o">.</span><span class="n">sync_connection</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">connection</span><span class="p">):</span>
+    <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;Sync and async sessions do not share the same DBAPI connection. Use psycopg to enable this.&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="suggested-doc-phrasing">
+<h2>💡 Suggested doc phrasing<a class="headerlink" href="#suggested-doc-phrasing" title="Link to this heading">¶</a></h2>
+<blockquote>
+<div><p><strong>Note</strong>: If you want your sync and async test sessions to share the same database connection (e.g. to see each other’s writes in the same transaction), use the <code class="docutils literal notranslate"><span class="pre">psycopg</span></code> driver for both engines:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">postgresql+psycopg://...</span></code> for both <code class="docutils literal notranslate"><span class="pre">create_engine</span></code> and <code class="docutils literal notranslate"><span class="pre">create_async_engine</span></code></p></li>
+</ul>
+<p>Other combinations like <code class="docutils literal notranslate"><span class="pre">psycopg2</span></code> + <code class="docutils literal notranslate"><span class="pre">asyncpg</span></code> are supported, but do <strong>not</strong> allow shared DB-level state across sync/async boundaries.</p>
+</div></blockquote>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">FastAPI-Restly</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="tutorial.html">Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api_reference.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="auto_schema.html">Auto-Generated Schemas</a></li>
+<li class="toctree-l1"><a class="reference internal" href="custom_endpoints.html">Custom Endpoints</a></li>
+<li class="toctree-l1"><a class="reference internal" href="existing.html">Using FastAPI-Restly in an Existing Project</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">pytest fixtures</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#support-shared-sync-async-sessions-if-user-uses-psycopg">1. <strong>Support shared sync+async sessions if user uses <code class="docutils literal notranslate"><span class="pre">psycopg</span></code></strong></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#gracefully-fall-back-for-psycopg2-asyncpg-users">2. <strong>Gracefully fall back for <code class="docutils literal notranslate"><span class="pre">psycopg2</span></code>/<code class="docutils literal notranslate"><span class="pre">asyncpg</span></code> users</strong></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#detect-and-warn-optional">3. <strong>Detect and warn (optional)</strong></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#suggested-doc-phrasing">💡 Suggested doc phrasing</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="query_modifiers.html">Filtering on relations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="technical_details.html">Technical Details</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="existing.html" title="previous chapter">Using FastAPI-Restly in an Existing Project</a></li>
+      <li>Next: <a href="query_modifiers.html" title="next chapter">Filtering on relations</a></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2025, Rutger Prins.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.1.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="_sources/pytest_fixtures.md.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Technical Details &#8212; FastAPI-Restly 0.5 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=686e5160" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
+    <script src="_static/documentation_options.js?v=db78e746"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="canonical" href="https://rjprins.github.io/fastapi-restly/technical_details.html" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Filtering on relations" href="query_modifiers.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="technical-details">
+<h1>Technical Details<a class="headerlink" href="#technical-details" title="Link to this heading">¶</a></h1>
+<section id="schema-generation-under-the-hood">
+<h2>Schema Generation Under the Hood<a class="headerlink" href="#schema-generation-under-the-hood" title="Link to this heading">¶</a></h2>
+<section id="read-only-field-detection">
+<h3>Read-Only Field Detection<a class="headerlink" href="#read-only-field-detection" title="Link to this heading">¶</a></h3>
+<p>FastAPI-Restly supports two approaches for marking fields as read-only:</p>
+<ol class="arabic simple">
+<li><p><strong>Class-level approach</strong>: Using <code class="docutils literal notranslate"><span class="pre">read_only_fields:</span> <span class="pre">ClassVar</span> <span class="pre">=</span> <span class="pre">[&quot;field1&quot;,</span> <span class="pre">&quot;field2&quot;]</span></code></p></li>
+<li><p><strong>Field-level approach</strong>: Using <code class="docutils literal notranslate"><span class="pre">ReadOnly(type)</span></code> annotation</p></li>
+</ol>
+<p>The field-level approach uses Python’s <code class="docutils literal notranslate"><span class="pre">typing.Annotated</span></code> to attach metadata to type annotations:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">_Marker</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+
+<span class="n">readonly_marker</span> <span class="o">=</span> <span class="n">_Marker</span><span class="p">(</span><span class="s2">&quot;ReadOnly&quot;</span><span class="p">)</span>
+<span class="n">writeonly_marker</span> <span class="o">=</span> <span class="n">_Marker</span><span class="p">(</span><span class="s2">&quot;WriteOnly&quot;</span><span class="p">)</span>
+
+<span class="n">_T</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s2">&quot;_T&quot;</span><span class="p">)</span>
+
+<span class="n">ReadOnly</span> <span class="o">=</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">_T</span><span class="p">,</span> <span class="n">readonly_marker</span><span class="p">,</span> <span class="n">Field</span><span class="p">(</span><span class="n">json_schema_extra</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;readOnly&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">})]</span>
+<span class="n">WriteOnly</span> <span class="o">=</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">_T</span><span class="p">,</span> <span class="n">writeonly_marker</span><span class="p">,</span> <span class="n">Field</span><span class="p">(</span><span class="n">json_schema_extra</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;writeOnly&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">})]</span>
+</pre></div>
+</div>
+</section>
+<section id="creation-schema-generation">
+<h3>Creation Schema Generation<a class="headerlink" href="#creation-schema-generation" title="Link to this heading">¶</a></h3>
+<p>When you define a schema with read-only fields, the framework automatically generates a creation schema using an <strong>inheritance + override</strong> approach:</p>
+<ol class="arabic simple">
+<li><p><strong>Inheritance</strong>: The creation schema inherits from your original schema, preserving all validators, config, methods, and other functionality</p></li>
+<li><p><strong>Field Override</strong>: Read-only fields are overridden to be optional with <code class="docutils literal notranslate"><span class="pre">None</span></code> as default</p></li>
+<li><p><strong>Input Filtering</strong>: The <code class="docutils literal notranslate"><span class="pre">model_validate</span></code> method is overridden to filter out read-only fields from input data</p></li>
+</ol>
+<section id="side-effects-to-be-aware-of">
+<h4>Side Effects to Be Aware Of<a class="headerlink" href="#side-effects-to-be-aware-of" title="Link to this heading">¶</a></h4>
+<ul class="simple">
+<li><p><strong>Read-only fields are absent</strong>: They cannot be set and do not appear in creation endpoints</p></li>
+<li><p><strong>Validators for writable fields are preserved</strong>: All validation logic for included fields works as expected</p></li>
+<li><p><strong>No validation for read-only fields</strong>: Any validators or logic depending on read-only fields will not run during creation</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="update-schema-creation">
+<h3>Update Schema Creation<a class="headerlink" href="#update-schema-creation" title="Link to this heading">¶</a></h3>
+<p>When you define a schema with <code class="docutils literal notranslate"><span class="pre">read_only_fields</span></code>, the framework automatically generates an update schema using an <strong>inheritance + ignore</strong> approach:</p>
+<ol class="arabic simple">
+<li><p><strong>Inheritance</strong>: The update schema inherits from your original schema, preserving all validators, config, methods, and other functionality</p></li>
+<li><p><strong>Field Override</strong>: Read-only fields are overridden to be optional with <code class="docutils literal notranslate"><span class="pre">None</span></code> as default</p></li>
+<li><p><strong>Input Filtering</strong>: The <code class="docutils literal notranslate"><span class="pre">model_validate</span></code> method is overridden to filter out read-only fields from input data</p></li>
+</ol>
+</section>
+<section id="how-it-works">
+<h3>How It Works<a class="headerlink" href="#how-it-works" title="Link to this heading">¶</a></h3>
+<ol class="arabic simple">
+<li><p>Your original schema defines fields and validators</p></li>
+<li><p>The framework creates a new schema class that inherits from yours</p></li>
+<li><p>Read-only fields are redefined as optional (<code class="docutils literal notranslate"><span class="pre">field:</span> <span class="pre">type</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></code>)</p></li>
+<li><p>The validation method ignores read-only fields in incoming data</p></li>
+<li><p>Result: A schema that preserves all functionality but ignores read-only fields</p></li>
+</ol>
+</section>
+<section id="id1">
+<h3>Side Effects to Be Aware Of<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><strong>Read-only fields become optional</strong>: They default to <code class="docutils literal notranslate"><span class="pre">None</span></code> when not provided</p></li>
+<li><p><strong>Input filtering is transparent</strong>: Read-only fields in request data are silently ignored</p></li>
+<li><p><strong>Validators work normally</strong>: All field and model validators function as expected</p></li>
+<li><p><strong>Type hints reflect reality</strong>: The generated schema accurately represents what fields are actually used</p></li>
+</ul>
+</section>
+<section id="example">
+<h3>Example<a class="headerlink" href="#example" title="Link to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserSchema</span><span class="p">(</span><span class="n">IDSchema</span><span class="p">[</span><span class="n">User</span><span class="p">]):</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">email</span><span class="p">:</span> <span class="nb">str</span>
+    
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s1">&#39;email&#39;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">validate_email</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
+        <span class="c1"># This validator works in both original and update schemas</span>
+        <span class="k">return</span> <span class="n">v</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>The update schema will:</p>
+<ul class="simple">
+<li><p>Inherit the email validator</p></li>
+<li><p>Make <code class="docutils literal notranslate"><span class="pre">id</span></code> optional (defaults to <code class="docutils literal notranslate"><span class="pre">None</span></code>)</p></li>
+<li><p>Ignore <code class="docutils literal notranslate"><span class="pre">id</span></code> if provided in input data</p></li>
+<li><p>Keep <code class="docutils literal notranslate"><span class="pre">name</span></code> and <code class="docutils literal notranslate"><span class="pre">email</span></code> as optional fields for partial updates</p></li>
+</ul>
+</section>
+</section>
+<section id="field-level-read-only-implementation">
+<h2>Field-Level Read-Only Implementation<a class="headerlink" href="#field-level-read-only-implementation" title="Link to this heading">¶</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> and <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> annotations use Python’s <code class="docutils literal notranslate"><span class="pre">typing.Annotated</span></code> to attach metadata to type annotations:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">_Marker</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+
+<span class="n">readonly_marker</span> <span class="o">=</span> <span class="n">_Marker</span><span class="p">(</span><span class="s2">&quot;ReadOnly&quot;</span><span class="p">)</span>
+<span class="n">writeonly_marker</span> <span class="o">=</span> <span class="n">_Marker</span><span class="p">(</span><span class="s2">&quot;WriteOnly&quot;</span><span class="p">)</span>
+
+<span class="n">_T</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s2">&quot;_T&quot;</span><span class="p">)</span>
+
+<span class="n">ReadOnly</span> <span class="o">=</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">_T</span><span class="p">,</span> <span class="n">readonly_marker</span><span class="p">,</span> <span class="n">Field</span><span class="p">(</span><span class="n">json_schema_extra</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;readOnly&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">})]</span>
+<span class="n">WriteOnly</span> <span class="o">=</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">_T</span><span class="p">,</span> <span class="n">writeonly_marker</span><span class="p">,</span> <span class="n">Field</span><span class="p">(</span><span class="n">json_schema_extra</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;writeOnly&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">})]</span>
+</pre></div>
+</div>
+<section id="detection-logic">
+<h3>Detection Logic<a class="headerlink" href="#detection-logic" title="Link to this heading">¶</a></h3>
+<p>The framework detects read-only and write-only fields by checking field metadata:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">get_read_only_fields</span><span class="p">(</span><span class="n">model_cls</span><span class="p">:</span> <span class="nb">type</span><span class="p">[</span><span class="n">pydantic</span><span class="o">.</span><span class="n">BaseModel</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Get all fields from a model annotated as ReadOnly[]&quot;&quot;&quot;</span>
+    <span class="n">read_only_fields</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="c1"># Get read-only fields from Annotated metadata</span>
+    <span class="k">for</span> <span class="n">field_name</span><span class="p">,</span> <span class="n">field_info</span> <span class="ow">in</span> <span class="n">model_cls</span><span class="o">.</span><span class="n">model_fields</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">metadata</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">field_info</span><span class="p">,</span> <span class="s2">&quot;metadata&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">metadata</span> <span class="ow">and</span> <span class="n">readonly_marker</span> <span class="ow">in</span> <span class="n">metadata</span><span class="p">:</span>
+            <span class="n">read_only_fields</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">field_name</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">read_only_fields</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">get_write_only_fields</span><span class="p">(</span><span class="n">model_cls</span><span class="p">:</span> <span class="nb">type</span><span class="p">[</span><span class="n">pydantic</span><span class="o">.</span><span class="n">BaseModel</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Get all fields from a model annotated as WriteOnly[]&quot;&quot;&quot;</span>
+    <span class="n">write_only_fields</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="c1"># Get write-only fields from Annotated metadata</span>
+    <span class="k">for</span> <span class="n">field_name</span><span class="p">,</span> <span class="n">field_info</span> <span class="ow">in</span> <span class="n">model_cls</span><span class="o">.</span><span class="n">model_fields</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">metadata</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">field_info</span><span class="p">,</span> <span class="s2">&quot;metadata&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">metadata</span> <span class="ow">and</span> <span class="n">writeonly_marker</span> <span class="ow">in</span> <span class="n">metadata</span><span class="p">:</span>
+            <span class="n">write_only_fields</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">field_name</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">write_only_fields</span>
+</pre></div>
+</div>
+</section>
+<section id="benefits-of-this-approach">
+<h3>Benefits of This Approach<a class="headerlink" href="#benefits-of-this-approach" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><strong>Type-safe</strong>: Works with static type checkers and IDEs</p></li>
+<li><p><strong>Introspectable</strong>: Metadata is preserved and can be accessed at runtime</p></li>
+<li><p><strong>Future-proof</strong>: Uses standard Python typing mechanisms</p></li>
+<li><p><strong>Extensible</strong>: Easy to add other field-level metadata in the future</p></li>
+</ul>
+</section>
+</section>
+<section id="read-only-field-behavior">
+<h2>Read-Only Field Behavior<a class="headerlink" href="#read-only-field-behavior" title="Link to this heading">¶</a></h2>
+<section id="default-behavior-silent-ignore">
+<h3>Default Behavior: Silent Ignore<a class="headerlink" href="#default-behavior-silent-ignore" title="Link to this heading">¶</a></h3>
+<p>By default, read-only fields are <strong>silently ignored</strong> when provided in requests:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># This request will succeed, with internal_id being ignored</span>
+<span class="n">POST</span> <span class="o">/</span><span class="n">products</span><span class="o">/</span>
+<span class="p">{</span>
+    <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Test Product&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;price&quot;</span><span class="p">:</span> <span class="mf">29.99</span><span class="p">,</span>
+    <span class="s2">&quot;internal_id&quot;</span><span class="p">:</span> <span class="s2">&quot;IGNORED&quot;</span>  <span class="c1"># This field is ignored</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="why-silent-ignore">
+<h3>Why Silent Ignore?<a class="headerlink" href="#why-silent-ignore" title="Link to this heading">¶</a></h3>
+<p>This approach is chosen because:</p>
+<ol class="arabic simple">
+<li><p><strong>User-Friendly</strong>: Clients can send full objects without filtering</p></li>
+<li><p><strong>Backward Compatible</strong>: Existing code won’t break</p></li>
+<li><p><strong>Flexible</strong>: Common pattern in many APIs (Django REST Framework, etc.)</p></li>
+<li><p><strong>Non-Breaking</strong>: Prevents client errors from accidental field inclusion</p></li>
+</ol>
+</section>
+<section id="optional-error-raising">
+<h3>Optional Error-Raising<a class="headerlink" href="#optional-error-raising" title="Link to this heading">¶</a></h3>
+<p>For development or debugging, you can enable strict validation by setting <code class="docutils literal notranslate"><span class="pre">raise_on_readonly=True</span></code> in the schema generation functions:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># This would raise a ValueError if read-only fields are provided</span>
+<span class="n">create_model_without_read_only_fields</span><span class="p">(</span><span class="n">MySchema</span><span class="p">,</span> <span class="n">raise_on_readonly</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">create_model_with_optional_fields</span><span class="p">(</span><span class="n">MySchema</span><span class="p">,</span> <span class="n">raise_on_readonly</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This is useful for:</p>
+<ul class="simple">
+<li><p><strong>Development</strong>: Catching client bugs early</p></li>
+<li><p><strong>Debugging</strong>: Understanding what fields are being sent</p></li>
+<li><p><strong>Strict APIs</strong>: When you want explicit feedback about invalid requests</p></li>
+</ul>
+</section>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">FastAPI-Restly</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="tutorial.html">Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api_reference.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="auto_schema.html">Auto-Generated Schemas</a></li>
+<li class="toctree-l1"><a class="reference internal" href="custom_endpoints.html">Custom Endpoints</a></li>
+<li class="toctree-l1"><a class="reference internal" href="existing.html">Using FastAPI-Restly in an Existing Project</a></li>
+<li class="toctree-l1"><a class="reference internal" href="pytest_fixtures.html">pytest fixtures</a></li>
+<li class="toctree-l1"><a class="reference internal" href="query_modifiers.html">Filtering on relations</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Technical Details</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#schema-generation-under-the-hood">Schema Generation Under the Hood</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#field-level-read-only-implementation">Field-Level Read-Only Implementation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#read-only-field-behavior">Read-Only Field Behavior</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="query_modifiers.html" title="previous chapter">Filtering on relations</a></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2025, Rutger Prins.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.1.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="_sources/technical_details.md.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
