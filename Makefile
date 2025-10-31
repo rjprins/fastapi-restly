@@ -1,4 +1,4 @@
-.PHONY: test test-framework test-examples test-all clean install-dev docs serve-docs
+.PHONY: test test-framework test-examples test-all clean install-dev docs docs-serve docs-push
 
 # Default target
 all: test-all
@@ -59,8 +59,11 @@ docs:
 	uv run sphinx-build -M html docs site
 	@echo "Documentation available at site/index.html"
 
-serve-docs:
+docs-serve:
 	uv run sphinx-autobuild docs site
+
+docs-push:
+	uv run ghp-import --no-history --no-jekyll --push site/html
 
 # Help
 help:

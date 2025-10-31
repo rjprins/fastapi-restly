@@ -2,10 +2,10 @@
 
 > **⚠️ Development Status**: This project is in active development and has not been released on PyPI yet. For installation, please clone the repository and install in development mode.
 
-FastAPI-Restly helps you build **maintainable CRUD APIs faster** on top of **FastAPI**, **SQLAlchemy 2.0**, and **Pydantic v2**.
-It provides auto-generated endpoints, schemas, and filters while keeping you in control—perfect for projects where you want to move quickly without giving up flexibility.
+**Documentation:** https://rjprins.github.io/fastapi-restly/
 
----
+FastAPI-Restly helps you build **maintainable CRUD APIs faster** on top of **FastAPI**, **SQLAlchemy 2.0**, and **Pydantic v2**.
+It provides auto-generated endpoints, schemas, and filters while keeping everything extensible or customizable.
 
 ## Why FastAPI-Restly?
 
@@ -14,8 +14,6 @@ It provides auto-generated endpoints, schemas, and filters while keeping you in 
 * **Customizable** – Generated endpoints are fully overridable whenever you need custom behavior.
 * **Modern stack** – Built for SQLAlchemy 2.0 and Pydantic v2, with async support.
 
----
-
 ## Current Features
 
 * **CRUD endpoints in minutes** for SQLAlchemy models
@@ -23,8 +21,6 @@ It provides auto-generated endpoints, schemas, and filters while keeping you in 
 * **Automatic Pydantic schemas** for create, update, and read
 * **Filtering, pagination, and sorting** (including on nested relationships)
 * **OpenAPI docs** with all generated routes
-
----
 
 ## Restly Philosophy
 
@@ -262,7 +258,5 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
 
 **Built with ❤️ for the FastAPI community**

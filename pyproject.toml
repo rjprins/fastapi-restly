@@ -17,6 +17,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "aiosqlite>=0.21.0",
+    "ghp-import>=2.1.0",
     "ipython>=8.36.0",
     "myst-parser>=4.0.1",
     "pdbpp>=0.11.6",
