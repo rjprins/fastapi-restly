@@ -108,10 +108,10 @@ The framework automatically creates tables for your models. For production, you 
 ```python
 # Create tables (development only)
 import asyncio
-from fastapi_restly._globals import fa_globals
+from fastapi_restly._globals import fr_globals
 
 async def create_tables():
-    engine = fa_globals.async_make_session.kw["bind"]
+    engine = fr_globals.async_make_session.kw["bind"]
     async with engine.begin() as conn:
         await conn.run_sync(fr.Base.metadata.create_all)
 

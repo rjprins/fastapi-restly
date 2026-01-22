@@ -16,7 +16,7 @@ from pydantic import Field
 from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fd
-from fastapi_restly._globals import fa_globals
+from fastapi_restly._globals import fr_globals
 from .conftest import create_tables
 
 
