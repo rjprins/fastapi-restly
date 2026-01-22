@@ -62,7 +62,7 @@ docs:
 docs-serve:
 	uv run sphinx-autobuild docs site
 
-docs-push:
+docs-push: docs
 	uv run ghp-import --no-history --no-jekyll --push site/html
 
 # Help

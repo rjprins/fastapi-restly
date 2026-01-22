@@ -13,8 +13,8 @@ release = "0.5"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
-
-extensions = ["myst_parser"]
+html_baseurl = "https://rjprins.github.io/fastapi-restly"
+extensions = ["myst_parser", "sphinx_sitemap"]
 
 templates_path = ["_templates"]
 exclude_patterns = []
