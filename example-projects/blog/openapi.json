@@ -92,6 +92,22 @@
               ],
               "title": "Filter[Title]"
             }
+          },
+          {
+            "name": "contains[title]",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Contains[Title]"
+            }
           }
         ],
         "responses": {
@@ -335,7 +351,7 @@
           "title"
         ],
         "title": "CreateBlogSchema",
-        "description": "Read-only have been fields removed."
+        "description": "Read-only fields have been removed."
       },
       "HTTPValidationError": {
         "properties": {
@@ -361,8 +377,7 @@
                 "type": "null"
               }
             ],
-            "title": "Title",
-            "default": "Partial PUT does not support default values"
+            "title": "Title"
           }
         },
         "type": "object",

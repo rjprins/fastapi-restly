@@ -53,6 +53,7 @@ Do I want to support "No alembic/just create tables?"
 
 ## TODO
 * ✅ Remove NOT_SET marker and use pydantic model_fields_set instead
+* Ensure both sync and async database connections can be set up at the same time
 * Ensure consistent / symmetric exports in __init__.py for things like async_sqlalchemy and make_new_object and so on. Maybe create a nested import structure for those helpers.
 * Find a nicer way to insert extra dependencies per endpoint (for permissions on post, put, delete, for example) other than overrirestly and copying the route details
 * Improve route() decorator: Have get, post, put, delete variants and full keyword definitions?
