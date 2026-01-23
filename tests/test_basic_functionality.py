@@ -8,7 +8,7 @@ from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 import fastapi_restly as fd
-from fastapi_restly._globals import fr_globals
+from fastapi_restly.db import fr_globals
 from .conftest import create_tables
 
 

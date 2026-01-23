@@ -4,16 +4,16 @@ import fastapi
 import pydantic
 import sqlalchemy
 
-from ._query_modifiers_config import apply_query_modifiers
-from ._schemas import (
+from ..db import AsyncSessionDep
+from ..models import Base
+from ..query import apply_query_modifiers
+from ..schemas import (
     BaseSchema,
     async_resolve_ids_to_sqlalchemy_objects,
     get_writable_inputs,
     is_readonly_field,
 )
-from ._session import AsyncSessionDep
-from ._sqlbase import Base
-from ._views import BaseAlchemyView, delete, get, post, put
+from ._base import BaseAlchemyView, delete, get, post, put
 
 
 class AsyncAlchemyView(BaseAlchemyView):

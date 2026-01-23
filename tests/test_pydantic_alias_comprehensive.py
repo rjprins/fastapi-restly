@@ -16,7 +16,7 @@ from pydantic import Field
 from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fd
-from fastapi_restly._globals import fr_globals
+from fastapi_restly.db import fr_globals
 from .conftest import create_tables
 
 
@@ -171,7 +171,7 @@ def test_put_requests_accept_aliases(client):
 def test_query_modifiers_with_aliases(client):
     """Test that query modifiers work with aliases."""
 
-    from fastapi_restly._query_modifiers_config import (
+    from fastapi_restly.query import (
         set_query_modifier_version,
         QueryModifierVersion,
     )

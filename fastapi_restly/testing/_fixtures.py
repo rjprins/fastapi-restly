@@ -12,9 +12,8 @@ from sqlalchemy.orm import Session as SA_Session
 import alembic
 import alembic.config
 
-from ._globals import fr_globals
-from ._session import activate_savepoint_only_mode
-from .testing import RestlyTestClient
+from ..db import activate_savepoint_only_mode, fr_globals
+from ._client import RestlyTestClient
 
 
 @pytest.fixture(scope="session")

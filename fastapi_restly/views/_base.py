@@ -30,14 +30,14 @@ from typing import (
 
 import fastapi
 
-from ._query_modifiers_config import create_query_param_schema
-from ._schema_generator import auto_generate_schema_for_view
-from ._schemas import (
+from ..models import Base
+from ..query import create_query_param_schema
+from ..schemas import (
     BaseSchema,
+    auto_generate_schema_for_view,
     create_model_with_optional_fields,
     create_model_without_read_only_fields,
 )
-from ._sqlbase import Base
 
 
 class View:

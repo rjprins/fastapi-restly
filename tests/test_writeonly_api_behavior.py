@@ -6,9 +6,9 @@ from datetime import datetime
 from typing import List
 
 import fastapi_restly as fr
-from fastapi_restly._schemas import WriteOnly, BaseSchema
+from fastapi_restly.schemas import WriteOnly, BaseSchema
 from fastapi_restly.testing import RestlyTestClient
-from fastapi_restly._globals import fr_globals
+from fastapi_restly.db import fr_globals
 from .conftest import create_tables
 
 
@@ -225,7 +225,7 @@ class TestWriteOnlyWithMixedFields:
     def test_mixed_readonly_writeonly_regular_fields(self, client):
         """Test API behavior with ReadOnly, WriteOnly, and regular fields."""
 
-        from fastapi_restly._schemas import ReadOnly
+        from fastapi_restly.schemas import ReadOnly
 
         class UserSchema(fr.IDSchema):
             id: ReadOnly[int]  # ReadOnly field

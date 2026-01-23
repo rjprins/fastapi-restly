@@ -214,7 +214,7 @@ def _resolve_sqlalchemy_column_v2(
                     field_name = name
                     break
 
-            # If not found by alias, check if populate_by_name is enabled
+            # If not found by alias and populate_by_name is True, try field name
             if field_name is None:
                 config = getattr(schema_cls, "model_config", pydantic.ConfigDict())
                 populate_by_name = config.get("populate_by_name", False)

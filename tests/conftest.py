@@ -4,9 +4,9 @@ import asyncio
 import pytest
 
 import fastapi_restly as fd
-from fastapi_restly._globals import fr_globals
+from fastapi_restly.db import fr_globals
 
-pytest_plugins = ["fastapi_restly.pytest_fixtures"]
+pytest_plugins = ["fastapi_restly.testing._fixtures"]
 
 
 @pytest.fixture(autouse=True)

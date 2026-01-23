@@ -16,8 +16,8 @@ from pydantic import Field, field_validator, model_validator
 from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fd
-from fastapi_restly._globals import fr_globals
-from fastapi_restly._schemas import (
+from fastapi_restly.db import fr_globals
+from fastapi_restly.schemas import (
     ReadOnly,
     BaseSchema,
     create_model_without_read_only_fields,

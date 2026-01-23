@@ -181,7 +181,7 @@ def test_pydantic_alias_with_query_parameters(client):
     """Test that query parameters work correctly with aliased fields."""
 
     # Set query modifier version to V2 for this test
-    from fastapi_restly._query_modifiers_config import (
+    from fastapi_restly.query import (
         set_query_modifier_version,
         QueryModifierVersion,
     )

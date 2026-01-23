@@ -12,7 +12,8 @@ from fastapi_restly import (
     settings,
     Base,
 )
-from fastapi_restly import _schemas as schemas, _sqlbase as sqlbase
+from fastapi_restly import schemas
+from fastapi_restly import models as sqlbase
 
 
 def test_imports_work():
