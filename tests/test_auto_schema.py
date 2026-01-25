@@ -144,7 +144,7 @@ def test_auto_generated_schema_crud_operations(client):
 
     # Test UPDATE
     update_data = {"name": "Updated Item", "quantity": 20}
-    response = client.put(f"/items/{item_id}", json=update_data)
+    response = client.patch(f"/items/{item_id}", json=update_data)
     updated_item = response.json()
     assert updated_item["name"] == "Updated Item"
     assert updated_item["quantity"] == 20

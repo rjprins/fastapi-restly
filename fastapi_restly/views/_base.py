@@ -143,6 +143,15 @@ def put(path: str, **api_route_kwargs: Any) -> Callable[..., Any]:
     return route(path, **api_route_kwargs)
 
 
+def patch(path: str, **api_route_kwargs: Any) -> Callable[..., Any]:
+    """Decorator to mark a View method as a PATCH endpoint.
+
+    Equivalent to: @route(path, methods=["PATCH"], status_code=200, **api_route_kwargs)
+    """
+    api_route_kwargs.setdefault("methods", ["PATCH"])
+    return route(path, **api_route_kwargs)
+
+
 def delete(path: str, **api_route_kwargs: Any) -> Callable[..., Any]:
     """Decorator to mark a View method as a DELETE endpoint.
 
@@ -213,9 +222,9 @@ class BaseAlchemyView(View):
                 return_annotation=response_schema,
                 schema_obj=cls.creation_schema,
             )
-        if hasattr(cls, "put"):
+        if hasattr(cls, "patch"):
             _annotate(
-                cls.put, return_annotation=response_schema, schema_obj=cls.update_schema
+                cls.patch, return_annotation=response_schema, schema_obj=cls.update_schema
             )
         _exclude_routes(cls)
 

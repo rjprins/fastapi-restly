@@ -70,7 +70,7 @@ def test_pydantic_alias_feature(client):
     # Note: The framework currently has an issue where it doesn't properly handle
     # aliases in UPDATE operations. The framework should map phoneNumber (alias)
     # back to phone_number (field name) when updating the SQLAlchemy object.
-    response = client.put(
+    response = client.patch(
         f"/users/{user_id}",
         json={
             "name": "Jane Doe",

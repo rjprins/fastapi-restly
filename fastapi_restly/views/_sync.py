@@ -7,8 +7,8 @@ from sqlalchemy.orm import Session
 from ..db import SessionDep
 from ..models import Base
 from ..query import apply_query_modifiers
-from ..schemas import BaseSchema, get_writable_inputs, resolve_ids_to_sqlalchemy_objects
-from ._base import BaseAlchemyView, delete, get, post, put
+from ..schemas import BaseSchema, get_writable_inputs, is_readonly_field, resolve_ids_to_sqlalchemy_objects
+from ._base import BaseAlchemyView, delete, get, patch, post
 
 T = TypeVar("T", bound=Base)
 
@@ -20,7 +20,12 @@ def make_new_object(
     schema_cls: type[BaseSchema] | None = None,
 ) -> T:
     resolve_ids_to_sqlalchemy_objects(session, schema_obj)
-    data = dict(schema_obj)
+    # Filter out read-only fields when creating the object
+    data = {}
+    for field_name, value in schema_obj:
+        if schema_cls is not None and is_readonly_field(schema_cls, field_name):
+            continue
+        data[field_name] = value
     obj = model_cls(**data)
     session.add(obj)
     return obj
@@ -62,10 +67,12 @@ class AlchemyView(BaseAlchemyView):
 
     @get("/")
     def index(self, query_params: Any) -> Sequence[Any]:
-        return self.process_index()
+        return self.process_index(query_params)
 
     def process_index(
-        self, query: sqlalchemy.Select[Any] | None = None
+        self,
+        query_params: Any,
+        query: sqlalchemy.Select[Any] | None = None,
     ) -> Sequence[Any]:
         """
         Handle a GET request on "/". This should return a list of objects.
@@ -80,8 +87,7 @@ class AlchemyView(BaseAlchemyView):
         if query is None:
             query = sqlalchemy.select(self.model)
         query = apply_query_modifiers(
-            # XXX: Ideally use query_params argument instead of request.query_params
-            self.request.query_params,
+            query_params,
             query,
             self.model,
             self.schema,
@@ -119,13 +125,13 @@ class AlchemyView(BaseAlchemyView):
         obj = self.save_object(obj)
         return obj
 
-    @put("/{id}")
-    def put(self, id: int, schema_obj: BaseSchema) -> Any:
-        return self.process_put(id, schema_obj)
+    @patch("/{id}")
+    def patch(self, id: int, schema_obj: BaseSchema) -> Any:
+        return self.process_patch(id, schema_obj)
 
-    def process_put(self, id: int, schema_obj: BaseSchema) -> Any:
+    def process_patch(self, id: int, schema_obj: BaseSchema) -> Any:
         """
-        Handle a PUT request on "/{id}". This should (partially) update an existing
+        Handle a PATCH request on "/{id}". This should partially update an existing
         object.
         Feel free to override this method.
         """

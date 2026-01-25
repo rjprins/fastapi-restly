@@ -13,7 +13,7 @@ from ..schemas import (
     get_writable_inputs,
     is_readonly_field,
 )
-from ._base import BaseAlchemyView, delete, get, post, put
+from ._base import BaseAlchemyView, delete, get, patch, post
 
 
 class AsyncAlchemyView(BaseAlchemyView):
@@ -87,13 +87,13 @@ class AsyncAlchemyView(BaseAlchemyView):
         obj = await self.make_new_object(schema_obj)
         return await self.save_object(obj)
 
-    @put("/{id}")
-    async def put(self, id: int, schema_obj: BaseSchema) -> Any:
-        return await self.process_put(id, schema_obj)
+    @patch("/{id}")
+    async def patch(self, id: int, schema_obj: BaseSchema) -> Any:
+        return await self.process_patch(id, schema_obj)
 
-    async def process_put(self, id: int, schema_obj: BaseSchema) -> Any:
+    async def process_patch(self, id: int, schema_obj: BaseSchema) -> Any:
         """
-        Handle a PUT request on "/{id}". This should (partially) update an existing
+        Handle a PATCH request on "/{id}". This should partially update an existing
         object.
         Feel free to override this method.
         """

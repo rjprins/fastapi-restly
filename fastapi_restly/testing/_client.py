@@ -49,6 +49,12 @@ class RestlyTestClient(TestClient):
         self.assert_status(response, assert_status_code)
         return response
 
+    def patch(self, *args, assert_status_code: int = 200, **kwargs):
+        __tracebackhide__ = True
+        response = super().patch(*args, **kwargs)
+        self.assert_status(response, assert_status_code)
+        return response
+
     def delete(self, *args, assert_status_code: int = 204, **kwargs):
         __tracebackhide__ = True
         response = super().delete(*args, **kwargs)

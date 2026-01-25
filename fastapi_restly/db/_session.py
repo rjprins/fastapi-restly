@@ -1,4 +1,3 @@
-from contextlib import asynccontextmanager
 from typing import Annotated, Any, AsyncIterator, Iterator, cast
 
 from fastapi import Depends
@@ -76,20 +75,6 @@ def setup_database_connection(
     fr_globals.database_url = database_url
     fr_globals.make_session = make_session
     return make_session
-
-
-def db_lifespan(*, create_tables: bool = False):
-    @asynccontextmanager
-    async def _db_lifespan(app):
-        if create_tables:
-            async with engine.begin() as conn:
-                await conn.run_sync(Base.metadata.create_all)
-        try:
-            yield
-        finally:
-            await engine.dispose()
-
-    return _db_lifespan
 
 
 def activate_savepoint_only_mode(

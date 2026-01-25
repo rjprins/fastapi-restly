@@ -48,7 +48,7 @@ def test_crud_endpoints_exist(client):
 
     response = client.get(f"/users/{user_id}")
 
-    response = client.put(
+    response = client.patch(
         f"/users/{user_id}",
         json={"name": "Updated User", "email": "updated@example.com"},
     )
@@ -97,7 +97,7 @@ def test_basic_crud_operations(client):
 
     # Test UPDATE
     update_data = {"name": "Updated Product", "price": 39.99}
-    response = client.put(f"/products/{product_id}", json=update_data)
+    response = client.patch(f"/products/{product_id}", json=update_data)
     updated_product = response.json()
     assert updated_product["name"] == "Updated Product"
     assert updated_product["price"] == 39.99
@@ -174,7 +174,7 @@ def test_put_request_with_non_existing_id(client):
         "content": "Updated blog content",
         "author_id": {"id": user_id}
     }
-    response = client.put(f"/blogs/{blog_id}", json=update_data)
+    response = client.patch(f"/blogs/{blog_id}", json=update_data)
     assert response.status_code == 200
     updated_blog = response.json()
     assert updated_blog["title"] == "Updated Blog Title"
@@ -182,7 +182,7 @@ def test_put_request_with_non_existing_id(client):
 
     # Test PUT with non-existing ID - should return 404
     non_existing_id = 99999
-    response = client.put(f"/blogs/{non_existing_id}", json=update_data)
+    response = client.patch(f"/blogs/{non_existing_id}", json=update_data)
     assert response.status_code == 404
 
     # Test PUT with non-existing author ID - should fail validation
@@ -192,7 +192,7 @@ def test_put_request_with_non_existing_id(client):
         "content": "This should fail",
         "author_id": {"id": non_existing_author_id}
     }
-    response = client.put(f"/blogs/{blog_id}", json=invalid_update_data)
+    response = client.patch(f"/blogs/{blog_id}", json=invalid_update_data)
     # This should either return 404 (if author validation happens before blog lookup)
     # or 422 (if validation fails during the update process)
     assert response.status_code in [404, 422]

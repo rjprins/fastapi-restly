@@ -148,7 +148,7 @@ class TestWriteOnlyAPIBasicBehavior:
         created_user = response.json()
 
         # Test PUT with WriteOnly field - should succeed
-        response = client.put(
+        response = client.patch(
             f"/users/{created_user['id']}",
             json={
                 "name": "Bob Smith Updated",

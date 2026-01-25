@@ -146,7 +146,7 @@ def test_put_requests_accept_aliases(client):
     article_id = created_article["id"]
 
     # Test PUT with aliases succeeds
-    response = client.put(
+    response = client.patch(
         f"/articles/{article_id}",
         json={
             "articleTitle": "Updated Title",
@@ -157,7 +157,7 @@ def test_put_requests_accept_aliases(client):
     assert response.status_code in [200, 201]
 
     # Test PUT with field names also succeeds (populate_by_name=True allows both)
-    response = client.put(
+    response = client.patch(
         f"/articles/{article_id}",
         json={
             "article_title": "Updated Title 2",
@@ -455,7 +455,7 @@ def test_documentation_example(client):
     assert user["email"] == "john@example.com"
 
     # Test UPDATE with alias
-    response = client.put(
+    response = client.patch(
         f"/users/{user_id}",
         json={
             "name": "Jane Doe",

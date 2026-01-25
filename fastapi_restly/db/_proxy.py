@@ -6,13 +6,13 @@ from sqlalchemy.orm import Session as SA_Session, sessionmaker
 from ._globals import fr_globals
 
 
-class AsyncSessionProxy:
+class FRAsyncSessionProxy:
     """
     Proxy for the global async_sessionmaker.
     This enables consistent global imports, e.g.:
-        from fastapi_restly import AsyncSession
+        from fastapi_restly import FRAsyncSession
 
-        async with AsyncSession() as session: ...
+        async with FRAsyncSession() as session: ...
     """
 
     def __call__(self) -> SA_AsyncSession:
@@ -28,22 +28,25 @@ class AsyncSessionProxy:
     def _get_async_sessionmaker(self) -> async_sessionmaker[SA_AsyncSession]:
         if fr_globals.async_make_session is None:
             raise RuntimeError(
-                "Sessionmaker 'AsyncSession' is not initialized. "
+                "Sessionmaker 'FRAsyncSession' is not initialized. "
                 "Call setup_async_database_connection() first."
             )
         return fr_globals.async_make_session
 
 
-AsyncSession = AsyncSessionProxy()
+FRAsyncSession = FRAsyncSessionProxy()
+# Backwards compatibility alias (deprecated)
+AsyncSession = FRAsyncSession
+AsyncSessionProxy = FRAsyncSessionProxy
 
 
-class SessionProxy:
+class FRSessionProxy:
     """
     Proxy for the global sessionmaker.
     This enables consistent global imports, e.g.:
-        from fastapi_restly import Session
+        from fastapi_restly import FRSession
 
-        with Session() as session: ...
+        with FRSession() as session: ...
     """
 
     def __call__(self) -> SA_Session:
@@ -59,10 +62,13 @@ class SessionProxy:
     def _get_sessionmaker(self) -> sessionmaker[SA_Session]:
         if fr_globals.make_session is None:
             raise RuntimeError(
-                "Sessionmaker 'make_session' is not initialized. "
+                "Sessionmaker 'FRSession' is not initialized. "
                 "Call setup_database_connection() first."
             )
         return fr_globals.make_session
 
 
-Session = SessionProxy()
+FRSession = FRSessionProxy()
+# Backwards compatibility aliases (deprecated)
+Session = FRSession
+SessionProxy = FRSessionProxy

@@ -23,6 +23,10 @@ def test_restly_test_client_basic_functionality():
     def test_put():
         return {"message": "updated"}
 
+    @app.patch("/test")
+    def test_patch():
+        return {"message": "patched"}
+
     @app.delete("/test", status_code=status.HTTP_204_NO_CONTENT)
     def test_delete():
         return {"message": "deleted"}
@@ -41,6 +45,10 @@ def test_restly_test_client_basic_functionality():
     response = client.put("/test")
     assert response.status_code == 200
     assert response.json()["message"] == "updated"
+
+    response = client.patch("/test")
+    assert response.status_code == 200
+    assert response.json()["message"] == "patched"
 
     response = client.delete("/test")
     assert response.status_code == 204

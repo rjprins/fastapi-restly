@@ -4,6 +4,8 @@ from sqlalchemy.orm import mapped_column
 from .db import (
     AsyncSession,
     AsyncSessionDep,
+    FRAsyncSession,
+    FRSession,
     Session,
     SessionDep,
     activate_savepoint_only_mode,
@@ -52,6 +54,7 @@ from .views import (
     get,
     include_view,
     make_new_object,
+    patch,
     post,
     put,
     route,
@@ -59,11 +62,15 @@ from .views import (
 )
 
 __all__ = [
-    # Database
-    "AsyncSession",
+    # Database (new names - preferred)
+    "FRAsyncSession",
+    "FRSession",
     "AsyncSessionDep",
-    "Session",
     "SessionDep",
+    # Database (deprecated aliases)
+    "AsyncSession",
+    "Session",
+    # Database utilities
     "activate_savepoint_only_mode",
     "deactivate_savepoint_only_mode",
     "setup_async_database_connection",
@@ -103,6 +110,7 @@ __all__ = [
     "include_view",
     "make_new_object",
     "mapped_column",
+    "patch",
     "post",
     "put",
     "route",
