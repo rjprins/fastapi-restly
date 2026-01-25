@@ -1,3 +1,4 @@
 site/
 build/
 *.egg-info/
+*.db

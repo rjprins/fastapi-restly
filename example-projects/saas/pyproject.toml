@@ -1,0 +1,40 @@
+[project]
+name = "saas-example"
+version = "0.1.0"
+description = "Multi-tenant SaaS example for FastAPI-Restly"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.115.12",
+    "fastapi-restly",
+    "sqlalchemy[asyncio]>=2.0.41",
+    "aiosqlite>=0.21.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.5",
+    "pytest-asyncio",
+    "httpx>=0.28.1",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+pythonpath = ["."]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.0.2",
+    "pytest-asyncio>=1.3.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[tool.uv.sources]
+fastapi-restly = { path = "../.." }
