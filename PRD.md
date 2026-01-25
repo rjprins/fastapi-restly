@@ -25,88 +25,163 @@ bd blocked         # See dependency chains
 bd stats           # Project health
 ```
 
-## Current Phase: Foundation Fixes
+## Current Phase: Example Project (Phase 2)
 
 **Epic:** `fastapi-restly-4m4` - Framework Design & Roadmap Execution
+**Task:** `fastapi-restly-4w8` - Phase 2: Example Project - Multi-Tenant SaaS
 
-### Phase 1 Blockers (must complete first)
-| ID | Priority | Issue |
-|----|----------|-------|
-| `fastapi-restly-jop` | P0 | Fix sync index() not passing query_params |
-| `fastapi-restly-tgm` | P0 | Fix broken db_lifespan |
-| `fastapi-restly-3p8` | P1 | Add read-only filtering to sync make_new_object |
-| `fastapi-restly-edu` | P2 | Rename Session → FRSession, FRAsyncSession |
-| `fastapi-restly-3lh` | P2 | Change PUT → PATCH |
+### Phase 1 ✅ COMPLETE
+- FRSession/FRAsyncSession naming
+- PUT → PATCH
+- Sync/async parity
+- db_lifespan removed
 
 ### Phase Roadmap
 ```
-Phase 1: Foundation Fixes (current) → Phase 2: Example Project
+Phase 1: Foundation Fixes ✅ → Phase 2: Example Project (CURRENT)
     → Phase 3: React-Admin → Phase 4: Auth → Phase 5: Permissions → Phase 6: Users
 ```
+
+## Phase 2 Goal
+
+Build a **realistic multi-tenant project management API** that validates the framework handles real-world complexity. This example will:
+- Prove the API is production-ready
+- Serve as documentation/reference
+- Expose any missing features before Phase 3
+
+## Domain Model
+
+```
+example-projects/saas/
+├── app/
+│   ├── __init__.py
+│   ├── main.py              # FastAPI app entry point
+│   ├── models/
+│   │   ├── __init__.py
+│   │   ├── organization.py  # Tenant model
+│   │   ├── user.py          # User with org membership
+│   │   ├── project.py       # Projects belong to org
+│   │   └── task.py          # Tasks belong to project
+│   ├── schemas/
+│   │   ├── __init__.py
+│   │   └── ...              # Pydantic schemas
+│   └── views/
+│       ├── __init__.py
+│       └── ...              # View classes
+├── tests/
+│   └── ...
+├── alembic/                  # Migrations
+└── conftest.py
+```
+
+### Models to Implement
+
+1. **Organization** (tenant)
+   - id, name, slug, created_at
+
+2. **User**
+   - id, email, name, organization_id (FK)
+   - role: owner | admin | member
+
+3. **Project**
+   - id, name, description, organization_id (FK)
+   - status: active | archived
+
+4. **Task**
+   - id, title, description, project_id (FK)
+   - status: todo | in_progress | done
+   - assignee_id (FK to User, nullable)
+   - priority: 1-4
+
+### Relationships to Test
+- Organization → Users (one-to-many)
+- Organization → Projects (one-to-many)
+- Project → Tasks (one-to-many)
+- User → Tasks (one-to-many, assignee)
+
+## Implementation Checklist
+
+### Step 1: Project Structure
+- [ ] Create `example-projects/saas/` directory structure
+- [ ] Set up `pyproject.toml` or use root deps
+- [ ] Create `conftest.py` with test fixtures
+
+### Step 2: Models
+- [ ] Organization model with IDStampsBase
+- [ ] User model with organization FK and role enum
+- [ ] Project model with organization FK and status enum
+- [ ] Task model with project FK, assignee FK, priority
+
+### Step 3: Schemas
+- [ ] OrganizationSchema with IDSchema
+- [ ] UserSchema with ReadOnly org relationship
+- [ ] ProjectSchema with nested task count (optional)
+- [ ] TaskSchema with assignee reference
+
+### Step 4: Views
+- [ ] OrganizationView - basic CRUD
+- [ ] UserView - CRUD with org scoping
+- [ ] ProjectView - CRUD with org scoping
+- [ ] TaskView - CRUD with project scoping
+
+### Step 5: Advanced Features
+- [ ] Nested routes: `/projects/{id}/tasks`
+- [ ] Filtering: `?status=active&assignee_id=5`
+- [ ] Sorting: `?order_by=-priority,created_at`
+- [ ] Pagination: `?page=1&page_size=20`
+
+### Step 6: Tests
+- [ ] CRUD tests for each model
+- [ ] Relationship tests (create with FK)
+- [ ] Filter/sort/paginate tests
+- [ ] Edge cases (404, validation errors)
 
 ## Ralph Loop Instructions
 
 ### Before Each Iteration
 
-1. **Check available work:**
+1. **Check progress:** Review what exists in `example-projects/saas/`
+2. **Identify next step:** Follow the checklist above in order
+3. **Create subtasks if needed:**
    ```bash
-   bd ready
-   ```
-
-2. **Claim a task:**
-   ```bash
-   bd update <id> --status=in_progress
-   ```
-
-3. **Refine if needed:** If a task is too vague or large, break it down:
-   ```bash
-   bd create --title="Subtask 1" --type=task --priority=1
-   bd create --title="Subtask 2" --type=task --priority=1
-   bd dep add <parent> <subtask1>
-   bd close <parent> --reason="Split into subtasks"
+   bd create --title="Create Organization model" --type=task --priority=1
    ```
 
 ### During Each Iteration
 
-1. **Read the task:** `bd show <id>`
-2. **Understand context:** Read relevant source files
-3. **Make changes:** Edit code, add tests
-4. **Verify:** Run `make test-framework` or specific tests
-5. **Commit:** Stage and commit changes
+1. **Write code:** Models, schemas, views
+2. **Write tests:** Every feature needs tests
+3. **Run tests:** `uv run pytest example-projects/saas/tests/ -v`
+4. **Fix issues:** Iterate until tests pass
 
 ### After Completing Work
 
-1. **Close completed issues:**
-   ```bash
-   bd close <id1> <id2> ...
-   ```
-
-2. **Check for newly unblocked work:**
-   ```bash
-   bd ready
-   ```
-
-3. **Sync:**
-   ```bash
-   bd sync
-   ```
+1. **Commit:** Stage and commit changes
+2. **Update beads:** Close completed subtasks
+3. **Check progress:** Review checklist
 
 ### Completion Promise
 
-When all Phase 1 blockers are resolved and `fastapi-restly-j1g` can be closed:
+When the example project is complete with:
+- All 4 models implemented
+- All 4 views working
+- Tests passing for CRUD, relationships, filtering
 
 ```
-<promise>PHASE 1 COMPLETE</promise>
+<promise>PHASE 2 COMPLETE</promise>
 ```
 
 ## Quality Gates
 
-Before closing any issue:
+Before marking Phase 2 complete:
 
-- [ ] Code compiles/runs without errors
-- [ ] Tests pass: `make test-framework`
-- [ ] Async/sync parity maintained (if applicable)
-- [ ] No regressions in existing tests
+- [ ] All models have proper relationships
+- [ ] All views have working CRUD endpoints
+- [ ] Filtering works on all relevant fields
+- [ ] Sorting works on all sortable fields
+- [ ] Pagination works on list endpoints
+- [ ] Tests cover all endpoints
+- [ ] Tests pass: `uv run pytest example-projects/saas/ -v`
 
 ## Key Decisions (from PLAN.md)
 
@@ -114,7 +189,7 @@ Before closing any issue:
 |----------|-------|
 | Session naming | `FRSession`, `FRAsyncSession` |
 | Update semantics | PATCH (not PUT) |
-| Query default | React-admin format |
+| Query default | React-admin format (Phase 3) |
 
 ## File Structure
 
@@ -162,14 +237,14 @@ If a task from beads is:
 
 ## Success Criteria
 
-Phase 1 is complete when:
-- All P0 bugs fixed
-- Sync/async parity achieved
-- Session classes renamed to FRSession/FRAsyncSession
-- PUT changed to PATCH
-- db_lifespan fixed or removed
-- All tests pass
-- `fastapi-restly-j1g` closed
+Phase 2 is complete when:
+- All 4 models (Organization, User, Project, Task) implemented
+- All 4 views with full CRUD working
+- Relationships properly handled (FK creation, nested responses)
+- Query modifiers working (filter, sort, paginate)
+- Comprehensive test suite passing
+- Example serves as documentation for framework usage
+- `fastapi-restly-4w8` closed
 
 ---
 
