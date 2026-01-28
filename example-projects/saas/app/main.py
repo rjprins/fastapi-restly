@@ -13,8 +13,8 @@ from fastapi import FastAPI
 
 import fastapi_restly as fr
 
-from .models import Organization, User, Project, Task
-from .views import OrganizationView, UserView, ProjectView, TaskView
+from .models import Organization, User, Project, Task, Label, TaskLabel
+from .views import OrganizationView, UserView, ProjectView, TaskView, LabelView, TaskLabelView
 
 # Set up database connection
 fr.setup_async_database_connection(
@@ -33,6 +33,8 @@ fr.include_view(app, OrganizationView)
 fr.include_view(app, UserView)
 fr.include_view(app, ProjectView)
 fr.include_view(app, TaskView)
+fr.include_view(app, LabelView)
+fr.include_view(app, TaskLabelView)
 
 
 # Health check endpoint

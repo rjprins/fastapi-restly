@@ -25,3 +25,8 @@ class Organization(fr.IDStampsBase):
         default_factory=list,
         cascade="all, delete-orphan",
     )
+    labels: orm.Mapped[list["Label"]] = orm.relationship(  # noqa: F821
+        back_populates="organization",
+        default_factory=list,
+        cascade="all, delete-orphan",
+    )

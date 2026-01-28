@@ -3,7 +3,8 @@
 from .organization import Organization
 from .user import User, UserRole
 from .project import Project, ProjectStatus
-from .task import Task, TaskStatus, TaskPriority
+from .task import Task, TaskStatus, TaskPriority, TaskType
+from .label import Label, TaskLabel
 
 __all__ = [
     "Organization",
@@ -14,4 +15,7 @@ __all__ = [
     "Task",
     "TaskStatus",
     "TaskPriority",
+    "TaskType",
+    "Label",
+    "TaskLabel",
 ]

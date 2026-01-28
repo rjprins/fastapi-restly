@@ -13,6 +13,7 @@ class UserRole(str, Enum):
     OWNER = "owner"
     ADMIN = "admin"
     MEMBER = "member"
+    HR = "hr"  # Can see salary information
 
 
 class User(fr.IDStampsBase):
@@ -24,6 +25,8 @@ class User(fr.IDStampsBase):
     email: orm.Mapped[str] = orm.mapped_column(unique=True)
     name: orm.Mapped[str]
     role: orm.Mapped[UserRole] = orm.mapped_column(default=UserRole.MEMBER)
+    # Sensitive field - only visible to HR role
+    salary: orm.Mapped[int | None] = orm.mapped_column(default=None)
 
     # Foreign keys
     organization_id: orm.Mapped[int] = orm.mapped_column(ForeignKey("organization.id"))
