@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from ..db import SessionDep
 from ..models import Base
 from ..query import apply_query_modifiers
-from ..schemas import BaseSchema, get_writable_inputs, is_readonly_field, resolve_ids_to_sqlalchemy_objects
+from ..schemas import BaseSchema, IDSchema, get_writable_inputs, is_readonly_field, resolve_ids_to_sqlalchemy_objects
 from ._base import BaseAlchemyView, delete, get, patch, post
 
 T = TypeVar("T", bound=Base)
@@ -25,6 +25,15 @@ def make_new_object(
     for field_name, value in schema_obj:
         if schema_cls is not None and is_readonly_field(schema_cls, field_name):
             continue
+        if isinstance(value, IDSchema) and field_name.endswith("_id"):
+            data[field_name] = value.id
+            continue
+        if isinstance(value, Base) and field_name.endswith("_id"):
+            data[field_name] = value.id
+            relation_name = field_name[:-3]
+            if hasattr(model_cls, relation_name):
+                data[relation_name] = value
+            continue
         data[field_name] = value
     obj = model_cls(**data)
     session.add(obj)
@@ -39,6 +48,15 @@ def update_object(
 ) -> Base:
     resolve_ids_to_sqlalchemy_objects(session, schema_obj)
     for field_name, value in get_writable_inputs(schema_obj, schema_cls).items():
+        if isinstance(value, IDSchema) and field_name.endswith("_id"):
+            setattr(obj, field_name, value.id)
+            continue
+        if isinstance(value, Base) and field_name.endswith("_id"):
+            setattr(obj, field_name, value.id)
+            relation_name = field_name[:-3]
+            if hasattr(obj, relation_name):
+                setattr(obj, relation_name, value)
+            continue
         setattr(obj, field_name, value)
     return save_object(session, obj)
 

@@ -9,6 +9,7 @@ from ..models import Base
 from ..query import apply_query_modifiers
 from ..schemas import (
     BaseSchema,
+    IDSchema,
     async_resolve_ids_to_sqlalchemy_objects,
     get_writable_inputs,
     is_readonly_field,
@@ -135,6 +136,15 @@ class AsyncAlchemyView(BaseAlchemyView):
             is_readonly = is_readonly_field(self.schema, field_name)
             if is_readonly:
                 continue
+            if isinstance(value, IDSchema) and field_name.endswith("_id"):
+                data[field_name] = value.id
+                continue
+            if isinstance(value, Base) and field_name.endswith("_id"):
+                data[field_name] = value.id
+                relation_name = field_name[:-3]
+                if hasattr(self.model, relation_name):
+                    data[relation_name] = value
+                continue
             data[field_name] = value
 
         obj = self.model(**data)
@@ -148,6 +158,15 @@ class AsyncAlchemyView(BaseAlchemyView):
         """
         await async_resolve_ids_to_sqlalchemy_objects(self.session, schema_obj)
         for field_name, value in get_writable_inputs(schema_obj, self.schema).items():
+            if isinstance(value, IDSchema) and field_name.endswith("_id"):
+                setattr(obj, field_name, value.id)
+                continue
+            if isinstance(value, Base) and field_name.endswith("_id"):
+                setattr(obj, field_name, value.id)
+                relation_name = field_name[:-3]
+                if hasattr(obj, relation_name):
+                    setattr(obj, relation_name, value)
+                continue
             setattr(obj, field_name, value)
         return await self.save_object(obj)
 

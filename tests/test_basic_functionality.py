@@ -182,7 +182,9 @@ def test_put_request_with_non_existing_id(client):
 
     # Test PUT with non-existing ID - should return 404
     non_existing_id = 99999
-    response = client.patch(f"/blogs/{non_existing_id}", json=update_data)
+    response = client.patch(
+        f"/blogs/{non_existing_id}", json=update_data, assert_status_code=404
+    )
     assert response.status_code == 404
 
     # Test PUT with non-existing author ID - should fail validation
@@ -192,7 +194,7 @@ def test_put_request_with_non_existing_id(client):
         "content": "This should fail",
         "author_id": {"id": non_existing_author_id}
     }
-    response = client.patch(f"/blogs/{blog_id}", json=invalid_update_data)
+    response = client.request("PATCH", f"/blogs/{blog_id}", json=invalid_update_data)
     # This should either return 404 (if author validation happens before blog lookup)
     # or 422 (if validation fails during the update process)
     assert response.status_code in [404, 422]

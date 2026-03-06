@@ -192,7 +192,13 @@ class BaseAlchemyView(View):
         for field_name, field_info in self.schema.model_fields.items():
             key = field_info.alias or field_name
             if hasattr(obj, field_name):
-                payload[key] = getattr(obj, field_name)
+                value = getattr(obj, field_name)
+                if field_name.endswith("_id") and isinstance(value, int):
+                    payload[key] = {"id": value}
+                elif field_name.endswith("_id") and hasattr(value, "id"):
+                    payload[key] = {"id": value.id}
+                else:
+                    payload[key] = value
             elif hasattr(obj, key):
                 payload[key] = getattr(obj, key)
 
