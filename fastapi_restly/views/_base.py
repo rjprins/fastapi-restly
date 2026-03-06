@@ -16,6 +16,7 @@ SQLAlchemy models.
 import functools
 import inspect
 from enum import Enum
+from math import ceil
 from typing import (
     Annotated,
     Any,
@@ -29,6 +30,9 @@ from typing import (
 )
 
 import fastapi
+import pydantic
+from pydantic import create_model
+from starlette.datastructures import QueryParams
 
 from ..models import Base
 from ..query import create_query_param_schema
@@ -181,6 +185,7 @@ class BaseAlchemyView(View):
     update_schema: ClassVar[type[BaseSchema]]
     model: ClassVar[type[Base]]
     id_type: ClassVar[type[Any]] = int
+    include_pagination_metadata: ClassVar[bool] = False
     exclude_routes: ClassVar[list[str]] = []
 
     request: fastapi.Request
@@ -211,6 +216,61 @@ class BaseAlchemyView(View):
         # omissions (for example WriteOnly fields) don't trigger required errors.
         return self.schema.model_construct(**payload)
 
+    @staticmethod
+    def _to_query_params(query_params: Any) -> QueryParams:
+        if isinstance(query_params, QueryParams):
+            return query_params
+        if isinstance(query_params, pydantic.BaseModel):
+            dumped = query_params.model_dump(exclude_none=True, by_alias=True)
+            return QueryParams({k: str(v) for k, v in dumped.items()})
+        if isinstance(query_params, dict):
+            return QueryParams({k: str(v) for k, v in query_params.items()})
+        return QueryParams(query_params)
+
+    @classmethod
+    def _create_pagination_response_schema(
+        cls, response_schema: type[BaseSchema]
+    ) -> type[pydantic.BaseModel]:
+        return create_model(
+            f"{cls.__name__}PaginatedResponse",
+            items=(Sequence[response_schema], ...),
+            total=(int, ...),
+            page=(int | None, None),
+            page_size=(int | None, None),
+            total_pages=(int | None, None),
+            limit=(int | None, None),
+            offset=(int | None, None),
+        )
+
+    def _build_pagination_payload(
+        self, query_params: Any, items: Sequence[Any], total: int
+    ) -> dict[str, Any]:
+        params = self._to_query_params(query_params)
+        payload: dict[str, Any] = {
+            "items": [self.to_response_schema(obj) for obj in items],
+            "total": total,
+            "page": None,
+            "page_size": None,
+            "total_pages": None,
+            "limit": None,
+            "offset": None,
+        }
+        if "page" in params or "page_size" in params:
+            page = int(params.get("page", "1"))
+            page_size = int(params.get("page_size", "100"))
+            payload["page"] = page
+            payload["page_size"] = page_size
+            payload["total_pages"] = ceil(total / page_size) if page_size > 0 else 0
+            payload["limit"] = page_size
+            payload["offset"] = (page - 1) * page_size
+            return payload
+
+        if "limit" in params:
+            payload["limit"] = int(params["limit"])
+        if "offset" in params:
+            payload["offset"] = int(params["offset"])
+        return payload
+
     @classmethod
     def before_include_view(cls):
         """
@@ -238,10 +298,17 @@ class BaseAlchemyView(View):
         response_schema = cls.schema
 
         # Only annotate if the methods exist (they will be overridden in subclasses)
+        index_response_annotation: Any = Sequence[response_schema]
+        if cls.include_pagination_metadata:
+            cls.pagination_response_schema = cls._create_pagination_response_schema(
+                response_schema
+            )
+            index_response_annotation = cls.pagination_response_schema
+
         if hasattr(cls, "index"):
             _annotate(
                 cls.index,
-                return_annotation=Sequence[response_schema],
+                return_annotation=index_response_annotation,
                 query_params=Annotated[cls.index_param_schema, fastapi.Query()],
             )
         if hasattr(cls, "get"):

@@ -39,6 +39,23 @@ The active version is controlled via:
 - `fr.set_query_modifier_version(...)`
 - `fr.get_query_modifier_version(...)`
 
+## Optional Pagination Metadata
+
+List endpoints return a JSON array by default. Set `include_pagination_metadata = True`
+on a view to return metadata together with the list items:
+
+```json
+{
+  "items": [...],
+  "total": 123,
+  "page": null,
+  "page_size": null,
+  "total_pages": null,
+  "limit": 20,
+  "offset": 40
+}
+```
+
 ## Endpoint Decorators
 
 Use these decorators on methods in a view class:

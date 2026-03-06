@@ -1,9 +1,8 @@
 from typing import Any, Sequence
 
 import fastapi
-import pydantic
 import sqlalchemy
-from starlette.datastructures import QueryParams
+from sqlalchemy import func, select
 
 from ..db import AsyncSessionDep
 from ..models import Base
@@ -34,13 +33,17 @@ class AsyncAlchemyView(BaseAlchemyView):
     session: AsyncSessionDep
 
     @get("/")
-    async def index(self, query_params: Any) -> Sequence[Any]:
+    async def index(self, query_params: Any) -> Any:
         objs = await self.process_index(query_params)
-        return [self.to_response_schema(obj) for obj in objs]
+        if not self.include_pagination_metadata:
+            return [self.to_response_schema(obj) for obj in objs]
+
+        total = await self.count_index(query_params)
+        return self._build_pagination_payload(query_params, objs, total)
 
     async def process_index(
         self,
-        query_params: pydantic.BaseModel,
+        query_params: Any,
         query: sqlalchemy.Select[Any] | None = None,
     ) -> Sequence[Any]:
         """
@@ -55,16 +58,22 @@ class AsyncAlchemyView(BaseAlchemyView):
         """
         if query is None:
             query = sqlalchemy.select(self.model)
-
-        if isinstance(query_params, pydantic.BaseModel):
-            dumped = query_params.model_dump(exclude_none=True, by_alias=True)
-            query_params = QueryParams({k: str(v) for k, v in dumped.items()})
+        query_params = self._to_query_params(query_params)
 
         query = apply_query_modifiers(
             query_params, query, self.model, self.schema
         )
         scalar_result = await self.session.scalars(query)
         return scalar_result.all()
+
+    async def count_index(self, query_params: Any) -> int:
+        query_params = self._to_query_params(query_params)
+        filtered_query = apply_query_modifiers(
+            query_params, sqlalchemy.select(self.model), self.model, self.schema
+        )
+        filtered_query = filtered_query.order_by(None).limit(None).offset(None)
+        count_query = select(func.count()).select_from(filtered_query.subquery())
+        return int(await self.session.scalar(count_query) or 0)
 
     @get("/{id}")
     async def get(self, id: Any) -> Any:

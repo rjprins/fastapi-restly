@@ -2,6 +2,7 @@ from typing import Any, Sequence, TypeVar
 
 import fastapi
 import sqlalchemy
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..db import SessionDep
@@ -84,9 +85,13 @@ class AlchemyView(BaseAlchemyView):
     session: SessionDep  # type: ignore[reportIncompatibleVariableOverride]
 
     @get("/")
-    def index(self, query_params: Any) -> Sequence[Any]:
+    def index(self, query_params: Any) -> Any:
         objs = self.process_index(query_params)
-        return [self.to_response_schema(obj) for obj in objs]
+        if not self.include_pagination_metadata:
+            return [self.to_response_schema(obj) for obj in objs]
+
+        total = self.count_index(query_params)
+        return self._build_pagination_payload(query_params, objs, total)
 
     def process_index(
         self,
@@ -105,6 +110,7 @@ class AlchemyView(BaseAlchemyView):
         """
         if query is None:
             query = sqlalchemy.select(self.model)
+        query_params = self._to_query_params(query_params)
         query = apply_query_modifiers(
             query_params,
             query,
@@ -113,6 +119,15 @@ class AlchemyView(BaseAlchemyView):
         )
         scalar_result = self.session.scalars(query)
         return scalar_result.all()
+
+    def count_index(self, query_params: Any) -> int:
+        query_params = self._to_query_params(query_params)
+        filtered_query = apply_query_modifiers(
+            query_params, sqlalchemy.select(self.model), self.model, self.schema
+        )
+        filtered_query = filtered_query.order_by(None).limit(None).offset(None)
+        count_query = select(func.count()).select_from(filtered_query.subquery())
+        return int(self.session.scalar(count_query) or 0)
 
     @get("/{id}")
     def get(self, id: Any) -> Any:
