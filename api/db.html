@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Database API &#8212; FastAPI-Restly 0.5 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=686e5160" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=27fed22d" />
+    <script src="../_static/documentation_options.js?v=db78e746"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="canonical" href="https://rjprins.github.io/fastapi-restly/api/db.html" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Models API" href="models.html" />
+    <link rel="prev" title="API Modules" href="index.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="module-fastapi_restly.db">
+<span id="database-api"></span><h1>Database API<a class="headerlink" href="#module-fastapi_restly.db" title="Link to this heading">¶</a></h1>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="fastapi_restly.db.AsyncSessionProxy">
+<span class="sig-prename descclassname"><span class="pre">fastapi_restly.db.</span></span><span class="sig-name descname"><span class="pre">AsyncSessionProxy</span></span><a class="headerlink" href="#fastapi_restly.db.AsyncSessionProxy" title="Link to this definition">¶</a></dt>
+<dd><p>alias of <a class="reference internal" href="#fastapi_restly.db.FRAsyncSessionProxy" title="fastapi_restly.db._proxy.FRAsyncSessionProxy"><code class="xref py py-class docutils literal notranslate"><span class="pre">FRAsyncSessionProxy</span></code></a></p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="fastapi_restly.db.FRAsyncSessionProxy">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.db.</span></span><span class="sig-name descname"><span class="pre">FRAsyncSessionProxy</span></span><a class="headerlink" href="#fastapi_restly.db.FRAsyncSessionProxy" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Proxy for the global async_sessionmaker.</p>
+<p>This enables consistent global imports, for example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="kn">import</span> <span class="n">FRAsyncSession</span>
+<span class="k">async</span> <span class="k">with</span> <span class="n">FRAsyncSession</span><span class="p">()</span> <span class="k">as</span> <span class="n">session</span><span class="p">:</span>
+    <span class="o">...</span>
+</pre></div>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="fastapi_restly.db.FRAsyncSessionProxy.begin">
+<span class="sig-name descname"><span class="pre">begin</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">_AsyncSessionContextManager</span><span class="p"><span class="pre">[</span></span><span class="pre">AsyncSession</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#fastapi_restly.db.FRAsyncSessionProxy.begin" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="fastapi_restly.db.FRAsyncSessionProxy.kw">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">kw</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dict</span></em><a class="headerlink" href="#fastapi_restly.db.FRAsyncSessionProxy.kw" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="fastapi_restly.db.FRGlobals">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.db.</span></span><span class="sig-name descname"><span class="pre">FRGlobals</span></span><a class="headerlink" href="#fastapi_restly.db.FRGlobals" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="fastapi_restly.db.FRGlobals.async_database_url">
+<span class="sig-name descname"><span class="pre">async_database_url</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#fastapi_restly.db.FRGlobals.async_database_url" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="fastapi_restly.db.FRGlobals.async_make_session">
+<span class="sig-name descname"><span class="pre">async_make_session</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">async_sessionmaker</span><span class="p"><span class="pre">[</span></span><span class="pre">AsyncSession</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#fastapi_restly.db.FRGlobals.async_make_session" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="fastapi_restly.db.FRGlobals.database_url">
+<span class="sig-name descname"><span class="pre">database_url</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#fastapi_restly.db.FRGlobals.database_url" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="fastapi_restly.db.FRGlobals.make_session">
+<span class="sig-name descname"><span class="pre">make_session</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">sessionmaker</span><span class="p"><span class="pre">[</span></span><span class="pre">Session</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#fastapi_restly.db.FRGlobals.make_session" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="fastapi_restly.db.FRSessionProxy">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.db.</span></span><span class="sig-name descname"><span class="pre">FRSessionProxy</span></span><a class="headerlink" href="#fastapi_restly.db.FRSessionProxy" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Proxy for the global sessionmaker.</p>
+<p>This enables consistent global imports, for example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="kn">import</span> <span class="n">FRSession</span>
+<span class="k">with</span> <span class="n">FRSession</span><span class="p">()</span> <span class="k">as</span> <span class="n">session</span><span class="p">:</span>
+    <span class="o">...</span>
+</pre></div>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="fastapi_restly.db.FRSessionProxy.begin">
+<span class="sig-name descname"><span class="pre">begin</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">AbstractContextManager</span><span class="p"><span class="pre">[</span></span><span class="pre">Session</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#fastapi_restly.db.FRSessionProxy.begin" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="fastapi_restly.db.FRSessionProxy.kw">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">kw</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dict</span></em><a class="headerlink" href="#fastapi_restly.db.FRSessionProxy.kw" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="fastapi_restly.db.SessionProxy">
+<span class="sig-prename descclassname"><span class="pre">fastapi_restly.db.</span></span><span class="sig-name descname"><span class="pre">SessionProxy</span></span><a class="headerlink" href="#fastapi_restly.db.SessionProxy" title="Link to this definition">¶</a></dt>
+<dd><p>alias of <a class="reference internal" href="#fastapi_restly.db.FRSessionProxy" title="fastapi_restly.db._proxy.FRSessionProxy"><code class="xref py py-class docutils literal notranslate"><span class="pre">FRSessionProxy</span></code></a></p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="fastapi_restly.db.activate_savepoint_only_mode">
+<span class="sig-prename descclassname"><span class="pre">fastapi_restly.db.</span></span><span class="sig-name descname"><span class="pre">activate_savepoint_only_mode</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">make_session</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">async_sessionmaker</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">sessionmaker</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#fastapi_restly.db.activate_savepoint_only_mode" title="Link to this definition">¶</a></dt>
+<dd><p>When <cite>savepoint_only_mode</cite> is enabled, any changes to the database will not be
+committed. This is done with “create_savepoint” mode and a wrapper on
+engine.connect() that begins the transaction before the Session can use it.
+<a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/session_transaction.html#session-external-transaction">https://docs.sqlalchemy.org/en/20/orm/session_transaction.html#session-external-transaction</a></p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="fastapi_restly.db.async_generate_session">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.db.</span></span><span class="sig-name descname"><span class="pre">async_generate_session</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">AsyncIterator</span><span class="p"><span class="pre">[</span></span><span class="pre">AsyncSession</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#fastapi_restly.db.async_generate_session" title="Link to this definition">¶</a></dt>
+<dd><p>FastAPI dependency for async database session.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="fastapi_restly.db.deactivate_savepoint_only_mode">
+<span class="sig-prename descclassname"><span class="pre">fastapi_restly.db.</span></span><span class="sig-name descname"><span class="pre">deactivate_savepoint_only_mode</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">make_session</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">async_sessionmaker</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">sessionmaker</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#fastapi_restly.db.deactivate_savepoint_only_mode" title="Link to this definition">¶</a></dt>
+<dd><p>Reverts the effect of <cite>activate_savepoint_only_mode</cite>.
+Restores the original engine.connect and disables savepoint-only mode.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="fastapi_restly.db.generate_session">
+<span class="sig-prename descclassname"><span class="pre">fastapi_restly.db.</span></span><span class="sig-name descname"><span class="pre">generate_session</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Iterator</span><span class="p"><span class="pre">[</span></span><span class="pre">Session</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#fastapi_restly.db.generate_session" title="Link to this definition">¶</a></dt>
+<dd><p>FastAPI dependency for sync database session.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="fastapi_restly.db.get_fr_globals">
+<span class="sig-prename descclassname"><span class="pre">fastapi_restly.db.</span></span><span class="sig-name descname"><span class="pre">get_fr_globals</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#fastapi_restly.db.FRGlobals" title="fastapi_restly.db._globals.FRGlobals"><span class="pre">FRGlobals</span></a></span></span><a class="headerlink" href="#fastapi_restly.db.get_fr_globals" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="fastapi_restly.db.setup_async_database_connection">
+<span class="sig-prename descclassname"><span class="pre">fastapi_restly.db.</span></span><span class="sig-name descname"><span class="pre">setup_async_database_connection</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">async_database_url</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">async_engine</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">AsyncEngine</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">async_make_session</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">async_sessionmaker</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">async_sessionmaker</span></span></span><a class="headerlink" href="#fastapi_restly.db.setup_async_database_connection" title="Link to this definition">¶</a></dt>
+<dd><p>Create and set an async session maker. Returns the session maker.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="fastapi_restly.db.setup_database_connection">
+<span class="sig-prename descclassname"><span class="pre">fastapi_restly.db.</span></span><span class="sig-name descname"><span class="pre">setup_database_connection</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">database_url</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">engine</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Engine</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">make_session</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">sessionmaker</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">sessionmaker</span></span></span><a class="headerlink" href="#fastapi_restly.db.setup_database_connection" title="Link to this definition">¶</a></dt>
+<dd><p>Create and set a sync session maker. Returns the session maker.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="fastapi_restly.db.use_fr_globals">
+<span class="sig-prename descclassname"><span class="pre">fastapi_restly.db.</span></span><span class="sig-name descname"><span class="pre">use_fr_globals</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">globals_obj</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#fastapi_restly.db.FRGlobals" title="fastapi_restly.db._globals.FRGlobals"><span class="pre">FRGlobals</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Iterator</span><span class="p"><span class="pre">[</span></span><span class="pre">None</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#fastapi_restly.db.use_fr_globals" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">FastAPI-Restly</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../tutorial.html">Tutorial</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../api_reference.html">API Reference</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../api_reference.html#generated-crud-endpoints">Generated CRUD Endpoints</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api_reference.html#query-parameters-list-endpoint">Query Parameters (List Endpoint)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api_reference.html#optional-pagination-metadata">Optional Pagination Metadata</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api_reference.html#endpoint-decorators">Endpoint Decorators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api_reference.html#route-exclusion">Route Exclusion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api_reference.html#response-modeling">Response Modeling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api_reference.html#minimal-example">Minimal Example</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="../api_reference.html#full-python-api-autodoc">Full Python API (Autodoc)</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../auto_schema.html">Auto-Generated Schemas</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../custom_endpoints.html">Custom Endpoints</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../existing.html">Using FastAPI-Restly in an Existing Project</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../howto.html">How-To Guides</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../howto_custom_schema.html">How-To: Use Custom Schemas and Aliases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../howto_override_endpoints.html">How-To: Override CRUD Behavior and Add Custom Endpoints</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../howto_query_modifiers.html">How-To: Filter, Sort, and Paginate Lists</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../howto_relationship_idschema.html">How-To: Work with Foreign Keys Using IDSchema</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../howto_testing.html">How-To: Test APIs with RestlyTestClient and Fixtures</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../pytest_fixtures.html">pytest fixtures</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../query_modifiers.html">Filtering on relations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../technical_details.html">Technical Details</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="../api_reference.html">API Reference</a><ul>
+  <li><a href="index.html">API Modules</a><ul>
+      <li>Previous: <a href="index.html" title="previous chapter">API Modules</a></li>
+      <li>Next: <a href="models.html" title="next chapter">Models API</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2025, Rutger Prins.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.1.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="../_sources/api/db.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

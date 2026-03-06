@@ -1,0 +1,7 @@
+Top-Level Package
+=================
+
+.. automodule:: fastapi_restly
+   :members:
+   :undoc-members:
+   :show-inheritance:
