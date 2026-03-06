@@ -34,7 +34,7 @@ class UserView(fr.AsyncAlchemyView):
 
 ## Features
 
-- **Instant CRUD endpoints** - GET, POST, PUT, DELETE with zero boilerplate
+- **Instant CRUD endpoints** - GET, POST, PATCH, DELETE with zero boilerplate
 - **SQLAlchemy 2.0 support** - Async-first with modern patterns
 - **Pydantic v2 integration** - Full validation and serialization
 - **Automatic schema generation** - Create and update schemas generated automatically
