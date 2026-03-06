@@ -91,6 +91,8 @@ def apply_pagination_v2(
 
 def _get_field_type_for_schema(field: FieldInfo) -> type:
     annotation = field.annotation
+    if annotation is Any:
+        return Any
     origin = get_origin(annotation)
     if origin is Union:
         args = get_args(annotation)
