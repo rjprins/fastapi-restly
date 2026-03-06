@@ -11,8 +11,9 @@ from sqlalchemy.orm.session import Session as SA_Session
 
 
 class BaseSchema(pydantic.BaseModel):
-    # TODO: Is this still needed?
-    pass
+    # Allow validating SQLAlchemy model instances directly in request/response flows.
+    # This keeps aliased fields working when FastAPI validates ORM objects.
+    model_config = pydantic.ConfigDict(from_attributes=True)
 
 
 class _Marker:

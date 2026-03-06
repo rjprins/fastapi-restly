@@ -67,7 +67,8 @@ class AlchemyView(BaseAlchemyView):
 
     @get("/")
     def index(self, query_params: Any) -> Sequence[Any]:
-        return self.process_index(query_params)
+        objs = self.process_index(query_params)
+        return [self.to_response_schema(obj) for obj in objs]
 
     def process_index(
         self,
@@ -97,7 +98,8 @@ class AlchemyView(BaseAlchemyView):
 
     @get("/{id}")
     def get(self, id: int) -> Any:
-        return self.process_get(id)
+        obj = self.process_get(id)
+        return self.to_response_schema(obj)
 
     def process_get(self, id: int) -> Any:
         """
@@ -114,7 +116,8 @@ class AlchemyView(BaseAlchemyView):
     def post(
         self, schema_obj: BaseSchema
     ) -> Any:  # schema_obj type is set in before_include_view
-        return self.process_post(schema_obj)
+        obj = self.process_post(schema_obj)
+        return self.to_response_schema(obj)
 
     def process_post(self, schema_obj: BaseSchema) -> Any:
         """
@@ -127,7 +130,8 @@ class AlchemyView(BaseAlchemyView):
 
     @patch("/{id}")
     def patch(self, id: int, schema_obj: BaseSchema) -> Any:
-        return self.process_patch(id, schema_obj)
+        obj = self.process_patch(id, schema_obj)
+        return self.to_response_schema(obj)
 
     def process_patch(self, id: int, schema_obj: BaseSchema) -> Any:
         """

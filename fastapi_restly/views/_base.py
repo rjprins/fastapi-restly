@@ -181,6 +181,23 @@ class BaseAlchemyView(View):
 
     request: fastapi.Request
 
+    def to_response_schema(self, obj: Any) -> BaseSchema:
+        """Serialize an ORM object to the configured response schema."""
+        if isinstance(obj, self.schema):
+            return obj
+
+        # Build a payload using alias keys so schemas with aliases serialize
+        # correctly even when populate_by_name is not enabled.
+        payload: dict[str, Any] = {}
+        for field_name, field_info in self.schema.model_fields.items():
+            key = field_info.alias or field_name
+            if hasattr(obj, field_name):
+                payload[key] = getattr(obj, field_name)
+            elif hasattr(obj, key):
+                payload[key] = getattr(obj, key)
+
+        return self.schema.model_validate(payload)
+
     @classmethod
     def before_include_view(cls):
         """
