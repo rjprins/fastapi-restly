@@ -198,6 +198,7 @@ class UserView(fr.AsyncAlchemyView):
 
 ## Documentation
 
+- **[Getting Started](docs/getting_started.md)** - Fast path from zero to a working API
 - **[Tutorial](docs/tutorial.md)** - Get started with FastAPI-Restly
 - **[Technical Details](docs/technical_details.md)** - Learn how the framework works
 - **[API Reference](docs/api_reference.md)** - Complete API documentation

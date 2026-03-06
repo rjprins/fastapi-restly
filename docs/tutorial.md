@@ -1,38 +1,29 @@
 # Tutorial
 
-This tutorial will guide you through builrestly a simple CRUD API with FastAPI-Restly.
+This tutorial builds a small blog API and shows the most common FastAPI-Restly patterns.
 
-## Installation
+If you want the shortest path first, start with [Getting Started](getting_started.md).
 
-```bash
-pip install fastapi-restly
-```
-
-## Quick Start
-
-Let's create a simple blog API with posts and comments.
+## Blog API Example
 
 ```python
 import fastapi_restly as fr
 from fastapi import FastAPI
-from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import ForeignKey
 
-# Setup database
 fr.setup_async_database_connection("sqlite+aiosqlite:///blog.db")
-
 app = FastAPI()
 
-# Define your SQLAlchemy models
 class Post(fr.IDBase):
     title: Mapped[str]
     content: Mapped[str]
-    published: Mapped[bool] = Mapped(default=False)
+    published: Mapped[bool] = mapped_column(default=False)
 
 class Comment(fr.IDBase):
     content: Mapped[str]
-    post_id: Mapped[int] = Mapped(foreign_key="post.id")
+    post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
 
-# Define your Pydantic schemas
 class PostSchema(fr.IDSchema[Post]):
     title: str
     content: str
@@ -40,9 +31,8 @@ class PostSchema(fr.IDSchema[Post]):
 
 class CommentSchema(fr.IDSchema[Comment]):
     content: str
-    post_id: int
+    post_id: fr.IDSchema[Post]
 
-# Create views with instant CRUD
 @fr.include_view(app)
 class PostView(fr.AsyncAlchemyView):
     prefix = "/posts"
@@ -56,96 +46,63 @@ class CommentView(fr.AsyncAlchemyView):
     schema = CommentSchema
 ```
 
-That's it! You now have a fully functional API with:
+## Generated Endpoints
 
-- `GET /posts/` - List all posts
-- `POST /posts/` - Create a new post
-- `GET /posts/{id}` - Get a specific post
-- `PUT /posts/{id}` - Update a post
-- `DELETE /posts/{id}` - Delete a post
+For each view, FastAPI-Restly generates:
 
-And the same for comments.
+- `GET /{prefix}/`
+- `POST /{prefix}/`
+- `GET /{prefix}/{id}`
+- `PATCH /{prefix}/{id}`
+- `DELETE /{prefix}/{id}`
 
-## Read-Only Fields
-
-FastAPI-Restly supports two ways to mark fields as read-only:
-
-### Class-Level Read-Only Fields
-
-You can mark fields as read-only at the class level using the `read_only_fields` class variable:
+## Read-Only and Write-Only Fields
 
 ```python
 class UserSchema(fr.IDSchema[User]):
-    read_only_fields: ClassVar = ["id", "created_at"]
     name: str
     email: str
-    id: int
-    created_at: datetime
+    password: fr.WriteOnly[str]
+    internal_id: fr.ReadOnly[str]
 ```
 
-### Field-Level Read-Only Fields
+Behavior:
+- `ReadOnly` fields are ignored for writes and included in responses.
+- `WriteOnly` fields are accepted in writes and hidden in responses.
 
-You can mark individual fields as read-only using the `ReadOnly` annotation:
+## Querying Lists
 
-```python
-class ProductSchema(fr.IDSchema[Product]):
-    name: str
-    price: float
-    internal_id: fr.ReadOnly[str]  # This field is read-only
-    created_by: fr.ReadOnly[int]   # This field is also read-only
+Use query modifiers on list endpoints:
+
+```text
+GET /posts/?filter[published]=true
+GET /posts/?sort=-id
+GET /posts/?limit=10&offset=0
 ```
 
-Read-only fields are:
-- **Ignored during creation** - They won't appear in the creation schema
-- **Ignored during updates** - They won't appear in the update schema  
-- **Preserved in responses** - They'll still be included in GET responses
-- **Marked in OpenAPI docs** - They'll be marked as read-only in the API documentation
+Or V2 style:
 
-## Database Setup
-
-The framework automatically creates tables for your models. For production, you should use migrations:
-
-```python
-# Create tables (development only)
-import asyncio
-from fastapi_restly._globals import fr_globals
-
-async def create_tables():
-    engine = fr_globals.async_make_session.kw["bind"]
-    async with engine.begin() as conn:
-        await conn.run_sync(fr.Base.metadata.create_all)
-
-asyncio.run(create_tables())
+```text
+GET /posts/?published=true&sort=-id&page=1&page_size=10
 ```
 
 ## Testing
-
-Test your API with the FastAPI test client:
 
 ```python
 from fastapi.testclient import TestClient
 
 client = TestClient(app)
 
-# Create a post
-response = client.post("/posts/", json={
-    "title": "My First Post",
-    "content": "Hello, world!",
-    "published": False
-})
-print(response.json())
+create = client.post("/posts/", json={"title": "Hello", "content": "World", "published": False})
+assert create.status_code == 201
 
-# Get all posts
-response = client.get("/posts/")
-print(response.json())
+items = client.get("/posts/")
+assert items.status_code == 200
 ```
 
 ## Next Steps
 
-- [Query Modifiers](query_modifiers.md) - Filter, sort, and paginate your data
-- [Relationships](relationships.md) - Handle foreign keys and nested objects
-- [Testing](testing.md) - Write tests for your API
-- [Technical Details](technical_details.md) - Learn how the framework works under the hood
-
-
-
+- [API Reference](api_reference.md)
+- [Query Modifiers](query_modifiers.md)
+- [Technical Details](technical_details.md)
+- Testing guide: `TESTING.md` (repository root)
