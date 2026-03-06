@@ -52,46 +52,31 @@ def apply_query_modifiers(
     """
     Apply pagination, sorting, and filtering through URL query parameters on a SQL query.
 
-    Roughly follows JSONAPI for the format of query parameters
-    See https://jsonapi.org/format/#query-parameters-families
+    Roughly follows JSONAPI query parameter families:
+    https://jsonapi.org/format/#query-parameters-families
 
-    For pagination use these two parameters:
-     * limit=100
-     * offset=200
+    Common examples::
 
-    For sorting use the 'sort' parameter. Multiple fields are supported. The minus
-    sign ('-') can be used to reverse the order.
-     * sort=field1,-field2
+        # Pagination
+        limit=100&offset=200
 
-    Filtering is best described with some examples:
+        # Sorting
+        sort=field1,-field2
 
-    Combine filters:
-    > filter[foo_id]=1&filter[name]=Bob
-    WHERE foo_id = 1 AND name = 'Bob'
+        # Equality filter
+        filter[foo_id]=1&filter[name]=Bob
 
-    Filter on multliple OR values:
-    > filter[id]=1,2,3
-    WHERE id = 1 OR id = 2 OR id = 3
+        # OR-values
+        filter[id]=1,2,3
 
-    Filter on mutliple AND values, and use NOT:
-    > filter[name]=!Bob&filter[name]=!Alice
-    WHERE name != 'Bob AND name != 'Alice'
+        # Range filters
+        filter[created_at]=>=2024-01-01&filter[created_at]=<2025-01-01
 
-    Filter on ranges:
-    > filter[created_at]=>=2024-01-01&filter[created_at]=<2025-01-01
-    WHERE created_at >= '2024-01-01' AND created_at < '2025-01-01'
+        # NULL checks
+        filter[foo_id]=!null
 
-    Filter on NULL values:
-    > filter[foo_id]=!null
-    WHERE foo_id IS NOT NULL
-
-    For string fields, use contains for case-insensitive substring matching:
-    > contains[name]=john&contains[email]=example
-    WHERE name ILIKE '%john%' AND email ILIKE '%example%'
-
-    Multiple contains values for the same field (OR logic):
-    > contains[name]=john,jane
-    WHERE name ILIKE '%john%' OR name ILIKE '%jane%'
+        # Case-insensitive contains
+        contains[name]=john&contains[email]=example
     """
     select_query = apply_pagination(query_params, select_query)
     select_query = apply_sorting(query_params, select_query, model)

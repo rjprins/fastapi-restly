@@ -9,10 +9,12 @@ from ._globals import fr_globals
 class FRAsyncSessionProxy:
     """
     Proxy for the global async_sessionmaker.
-    This enables consistent global imports, e.g.:
-        from fastapi_restly import FRAsyncSession
 
-        async with FRAsyncSession() as session: ...
+    This enables consistent global imports, for example::
+
+        from fastapi_restly import FRAsyncSession
+        async with FRAsyncSession() as session:
+            ...
     """
 
     def __call__(self) -> SA_AsyncSession:
@@ -43,10 +45,12 @@ AsyncSessionProxy = FRAsyncSessionProxy
 class FRSessionProxy:
     """
     Proxy for the global sessionmaker.
-    This enables consistent global imports, e.g.:
-        from fastapi_restly import FRSession
 
-        with FRSession() as session: ...
+    This enables consistent global imports, for example::
+
+        from fastapi_restly import FRSession
+        with FRSession() as session:
+            ...
     """
 
     def __call__(self) -> SA_Session:

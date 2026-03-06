@@ -105,6 +105,11 @@ class UserView(fr.AsyncAlchemyView):
 
 The framework automatically generates the Pydantic schema from your SQLAlchemy model, so you don't need to write any schema definitions!
 
+### Auto-schema vs Explicit schema
+
+Use **auto-schema** when speed matters most (prototyping, internal tools, simple models).
+Use an **explicit schema** when contract stability and control matter most (public APIs, custom validation, aliases, strict response shapes).
+
 ## Advanced Features
 
 ### Manual Schema Definition

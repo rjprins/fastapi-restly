@@ -25,25 +25,33 @@ async with fr.FRAsyncSession() as session:
     session.execute(...)
 ```
 
-## Let fr use your DeclarativeBase class
+## Use Your Own DeclarativeBase Models
 
-If you already have a DeclarativeBase class, you can make FastAPI-Restly use it:
+If your project already has SQLAlchemy models on a custom `DeclarativeBase`,
+you can use those models directly in FastAPI-Restly views:
 
 ```python
 import fastapi_restly as fr
-from sqlalchemy import Mapped
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
-class World(fr.Base):
+
+class AppBase(DeclarativeBase):
+    pass
+
+
+class World(AppBase):
+    __tablename__ = "world"
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     message: Mapped[str]
+
 
 class WorldView(fr.AsyncAlchemyView):
     prefix = "world"
     model = World
-    schema = WorldSchema
 ```
 
-If you prefer standard SQLAlchemy declarative models without dataclass semantics,
-use `fr.PlainBase` / `fr.PlainIDBase` instead of `fr.Base` / `fr.IDBase`.
+FastAPI-Restly supports these models for generated CRUD routes and auto-generated schemas.
+When creating tables, use your base metadata (for example `AppBase.metadata.create_all(...)`).
 
 ## Isolating Runtime State Per App
 

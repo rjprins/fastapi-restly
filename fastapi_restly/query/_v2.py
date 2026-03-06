@@ -64,11 +64,20 @@ def apply_query_modifiers_v2(
 ) -> Select[Any]:
     """
     Apply pagination, sorting, and filtering through URL query parameters on a SQL query.
-    Uses a more standard interface:
-      - Pagination: page, page_size
-      - Sorting: order_by=name,-created_at
-      - Filtering: ?name=Bob&status=active&created_at__gte=2024-01-01
-      - Contains (string fields): ?name__contains=john&email__contains=example
+
+    Uses a more standard interface::
+
+        # Pagination
+        page=2&page_size=50
+
+        # Sorting
+        order_by=name,-created_at
+
+        # Filtering
+        name=Bob&status=active&created_at__gte=2024-01-01
+
+        # Contains (string fields)
+        name__contains=john&email__contains=example
     """
     select_query = apply_filtering_v2(query_params, select_query, model, schema_cls)
     select_query = apply_sorting_v2(query_params, select_query, model, schema_cls)

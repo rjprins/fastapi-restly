@@ -4,6 +4,8 @@ FastAPI-Restly (`fr`) is a framework that supplements FastAPI with instant CRUD 
 
 ## Quick Start
 
+### Zero-boilerplate mode (auto-schema)
+
 ```python
 import fastapi_restly as fr
 from fastapi import FastAPI
@@ -19,18 +21,30 @@ class User(fr.IDBase):
     name: Mapped[str]
     email: Mapped[str]
 
-# Define your schemas
+# Create instant CRUD endpoints
+@fr.include_view(app)
+class UserView(fr.AsyncAlchemyView):
+    prefix = "/users"
+    model = User
+```
+
+### Explicit schema mode
+
+```python
 class UserSchema(fr.IDSchema[User]):
     name: str
     email: str
 
-# Create instant CRUD endpoints
 @fr.include_view(app)
 class UserView(fr.AsyncAlchemyView):
     prefix = "/users"
     model = User
     schema = UserSchema
 ```
+
+Use auto-schema when you want speed and low boilerplate. Use explicit schemas when
+you need strict public API contracts, custom validation, aliases, or field-level
+serialization control.
 
 ## Features
 

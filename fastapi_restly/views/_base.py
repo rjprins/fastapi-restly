@@ -86,13 +86,15 @@ def include_view(
     Add the routes of a View class to a FastAPI app or APIRouter.
     This function should be used for every View class.
 
-    Can be used as decorator:
-    @include_view(app)
-    class MyView(AsyncAlchemyView):
-        ...
+    Can be used as a decorator::
 
-    Or as a function:
-    include_view(app, MyView)
+        @include_view(app)
+        class MyView(AsyncAlchemyView):
+            ...
+
+    Or as a function::
+
+        include_view(app, MyView)
     """
     if view_cls is not None:
         _init_view_cls_and_add_to_router(view_cls, parent_router)
@@ -124,7 +126,9 @@ def route(path: str, **api_route_kwargs: Any) -> Callable[..., Any]:
 def get(path: str, **api_route_kwargs: Any) -> Callable[..., Any]:
     """Decorator to mark a View method as a GET endpoint.
 
-    Equivalent to: @route(path, methods=["GET"], status_code=200, **api_route_kwargs)
+    Equivalent to::
+
+        @route(path, methods=["GET"], status_code=200, ... )
     """
     api_route_kwargs.setdefault("methods", ["GET"])
     api_route_kwargs.setdefault("status_code", 200)
@@ -134,7 +138,9 @@ def get(path: str, **api_route_kwargs: Any) -> Callable[..., Any]:
 def post(path: str, **api_route_kwargs: Any) -> Callable[..., Any]:
     """Decorator to mark a View method as a POST endpoint.
 
-    Equivalent to: @route(path, methods=["POST"], status_code=201, **api_route_kwargs)
+    Equivalent to::
+
+        @route(path, methods=["POST"], status_code=201, ... )
     """
     api_route_kwargs.setdefault("methods", ["POST"])
     api_route_kwargs.setdefault("status_code", 201)
@@ -144,7 +150,9 @@ def post(path: str, **api_route_kwargs: Any) -> Callable[..., Any]:
 def put(path: str, **api_route_kwargs: Any) -> Callable[..., Any]:
     """Decorator to mark a View method as a PUT endpoint.
 
-    Equivalent to: @route(path, methods=["PUT"], status_code=200, **api_route_kwargs)
+    Equivalent to::
+
+        @route(path, methods=["PUT"], status_code=200, ... )
     """
     api_route_kwargs.setdefault("methods", ["PUT"])
     return route(path, **api_route_kwargs)
@@ -153,7 +161,9 @@ def put(path: str, **api_route_kwargs: Any) -> Callable[..., Any]:
 def patch(path: str, **api_route_kwargs: Any) -> Callable[..., Any]:
     """Decorator to mark a View method as a PATCH endpoint.
 
-    Equivalent to: @route(path, methods=["PATCH"], status_code=200, **api_route_kwargs)
+    Equivalent to::
+
+        @route(path, methods=["PATCH"], status_code=200, ... )
     """
     api_route_kwargs.setdefault("methods", ["PATCH"])
     return route(path, **api_route_kwargs)
@@ -162,7 +172,9 @@ def patch(path: str, **api_route_kwargs: Any) -> Callable[..., Any]:
 def delete(path: str, **api_route_kwargs: Any) -> Callable[..., Any]:
     """Decorator to mark a View method as a DELETE endpoint.
 
-    Equivalent to: @route(path, methods=["DELETE"], status_code=204, **api_route_kwargs)
+    Equivalent to::
+
+        @route(path, methods=["DELETE"], status_code=204, ... )
     """
     api_route_kwargs.setdefault("methods", ["DELETE"])
     api_route_kwargs.setdefault("status_code", 204)

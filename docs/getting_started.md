@@ -40,6 +40,11 @@ class UserView(fr.AsyncAlchemyView):
 
 With no manual schema, FastAPI-Restly auto-generates one from your model.
 
+When this mode is a good fit:
+- Internal tools and backoffice APIs
+- Early project scaffolding or prototypes
+- Straightforward models with minimal validation rules
+
 ## 3. Run
 
 ```bash
@@ -76,6 +81,12 @@ class UserView(fr.AsyncAlchemyView):
     model = User
     schema = UserSchema
 ```
+
+Choose explicit schemas when you need:
+- Public API contracts you want to keep stable
+- Custom validation logic
+- Field aliases and strict response shaping
+- Extra clarity for teams that prefer less implicit behavior
 
 ## 6. Test Quickly
 

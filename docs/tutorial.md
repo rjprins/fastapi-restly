@@ -4,6 +4,9 @@ This tutorial builds a small blog API and shows the most common FastAPI-Restly p
 
 If you want the shortest path first, start with [Getting Started](getting_started.md).
 
+This tutorial uses explicit schemas for clarity. For faster scaffolding, you can
+omit `schema = ...` on a view and let FastAPI-Restly auto-generate it from the model.
+
 ## Blog API Example
 
 ```python
