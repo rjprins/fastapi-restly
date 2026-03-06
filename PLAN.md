@@ -21,9 +21,10 @@ process_get()        ↔  get()           # Logic vs endpoint
 make_new_object()    ↔  update_object() # Create vs update
 ```
 
-**Current Violations to Fix:**
-- Sync `process_index()` doesn't receive `query_params` (async does)
-- Sync `make_new_object()` doesn't filter read-only fields (async does)
+**Current focus for 1.0:**
+- Keep async/sync semantics aligned as features evolve
+- Document behavior clearly (especially update semantics and query filtering)
+- Maintain stable full-suite execution across framework and examples
 
 ### 2. Progressive Disclosure
 
@@ -79,7 +80,7 @@ class UserView(fr.AsyncAlchemyView):
 Follow REST principles, but not dogmatically. The framework should make **correct REST easy** while allowing **pragmatic escapes**.
 
 ```python
-# Correct REST: PUT updates, DELETE deletes
+# Correct REST: PATCH updates, DELETE deletes
 # Pragmatic: Custom actions when needed
 @fr.post("/users/{id}/activate")
 async def activate_user(self, id: int): ...
@@ -146,14 +147,12 @@ async def activate_user(self, id: int): ...
 
 | Priority | Issue | Impact |
 |----------|-------|--------|
-| P0 | Sync/async parity violations | API inconsistency |
-| P0 | `db_lifespan()` broken | Feature unusable |
-| P1 | PUT has PATCH semantics | REST violation |
-| P1 | Session naming collision | Import confusion |
-| P2 | No authentication system | Feature gap |
-| P2 | No permissions system | Feature gap |
-| P2 | No react-admin compatibility | Feature gap |
-| P3 | Missing `__repr__` on models | Debug experience |
+| P0 | Final API docs for public endpoints | Release blocker for 1.0 |
+| P0 | "Getting Started" docs are incomplete | Onboarding friction |
+| P0 | Missing feature-specific How-To guides | Adoption risk |
+| P1 | CI quality gates must stay green on 3.10-3.13 | Release confidence |
+| P1 | Roadmap/PRD drift from implementation | Planning confusion |
+| P2 | Authentication/permissions are post-1.0 scope | Future roadmap |
 
 ---
 
@@ -225,9 +224,9 @@ This example validates the framework handles:
 
 ## Feature Roadmap
 
-### Phase 1: Foundation Fixes (Current State → Solid)
+### Phase 1: Foundation Fixes ✅
 
-**Goal**: Fix all P0/P1 issues, achieve perfect async/sync parity.
+**Outcome**: PATCH-based updates, session naming improvements, parity and stability fixes.
 
 1. **Fix Sync/Async Parity**
    ```python
@@ -248,7 +247,20 @@ This example validates the framework handles:
    - Consider: `fr.Session` → `fr.SyncSession` to avoid collision
    - Or: Document the import order requirement
 
-### Phase 2: Authentication System
+### Phase 2: Example Projects ✅
+
+**Outcome**: `shop`, `blog`, and `saas` examples are working and tested.
+
+### Phase 3: 1.0 Release Readiness (Current)
+
+**Goal**: Complete documentation and release gating work required for a confident 1.0.
+
+1. Document all public endpoints
+2. Improve Getting Started experience
+3. Publish How-To guides for core features
+4. Keep CI green on Python 3.10-3.13 across framework + examples
+
+### Phase 4: Authentication System (Post-1.0)
 
 **Goal**: First-class authentication support without being opinionated about strategy.
 
@@ -543,41 +555,29 @@ For every PR:
 ## Implementation Order
 
 ```
-Phase 1: Foundation Fixes (minimal)
-├── 1.1 Rename Session → FRSession, AsyncSession → FRAsyncSession
-├── 1.2 Fix sync/async parity (process_index, make_new_object)
-├── 1.3 Change PUT → PATCH for partial updates
-└── 1.4 Fix/remove db_lifespan()
+Phase 1: Foundation Fixes ✅
+├── 1.1 Session naming updates
+├── 1.2 Sync/async parity fixes
+├── 1.3 PATCH semantics for updates
+└── 1.4 Lifespan and stability fixes
 
-Phase 2: Example Project (validates API)
-├── 2.1 Core domain models (Organization, User, Project, Task)
-├── 2.2 Basic CRUD views
-├── 2.3 Relationship handling
-└── 2.4 Complex queries
+Phase 2: Example Projects ✅
+├── 2.1 Shop example
+├── 2.2 Blog example
+├── 2.3 Multi-tenant SaaS example
+└── 2.4 Cross-example testing gate
 
-Phase 3: React-Admin Compatibility (becomes default)
-├── 3.1 Query parameter parsing (filter JSON, sort array, range)
-├── 3.2 Response formatting ({data, total}, Content-Range)
-├── 3.3 Bulk operations
-└── 3.4 Reference handling
+Phase 3: 1.0 Release Readiness (CURRENT)
+├── 3.1 Public endpoint API documentation
+├── 3.2 Getting Started documentation
+├── 3.3 Feature How-To guides
+└── 3.4 Release checklist and RC validation
 
-Phase 4: Authentication
-├── 4.1 JWT backend
-├── 4.2 Token endpoints
-├── 4.3 CurrentUser dependency
-└── 4.4 Auth decorators
-
-Phase 5: Permissions
-├── 5.1 Permission base class
-├── 5.2 Common permissions
-├── 5.3 View integration
-└── 5.4 Object-level permissions
-
-Phase 6: User Management
-├── 6.1 User model
-├── 6.2 Registration flow
-├── 6.3 Password reset
-└── 6.4 Email verification
+Phase 4+: Post-1.0 Expansion
+├── 4.1 Authentication backends
+├── 4.2 Permissions framework
+├── 4.3 Admin/reaction-admin compatibility
+└── 4.4 Additional ecosystem tooling
 ```
 
 ---
@@ -587,12 +587,10 @@ Phase 6: User Management
 The framework is successful when:
 
 1. **Zero to CRUD in 5 minutes**: New users can have working API in 5 minutes
-2. **Example project works**: Multi-tenant SaaS is fully functional
-3. **React-admin just works**: Connect react-admin with minimal config
-4. **Auth is effortless**: Add auth with 3 lines of code
-5. **Permissions are clear**: Any permission scheme is expressible
-6. **Tests pass**: 100% of tests pass on every commit
-7. **Types check**: `mypy --strict` passes
+2. **Examples are healthy**: Shop/Blog/SaaS all pass in CI
+3. **Documentation is complete**: API reference + onboarding + how-to guides
+4. **Release gating is strict**: Python 3.10-3.13 matrix stays green
+5. **Tests pass**: Framework and example suites pass on every commit
 
 ---
 

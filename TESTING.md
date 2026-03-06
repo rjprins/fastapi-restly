@@ -18,6 +18,7 @@ make test-examples
 # Run specific example
 make test-shop
 make test-blog
+make test-saas
 
 # Install dependencies and run all tests
 make ci
@@ -45,6 +46,13 @@ cd example-projects/blog
 uv run pytest blog/ -v
 ```
 
+### SaaS Example Tests
+```bash
+# From project root
+cd example-projects/saas
+uv run pytest tests/ -v
+```
+
 ## Test Structure
 
 ### Framework Tests (`tests/`)
@@ -60,6 +68,10 @@ uv run pytest blog/ -v
 - **`test_main.py`** - Tests the blog API endpoints
 - Tests OpenAPI spec generation
 - Tests basic blog operations
+
+### SaaS Example Tests (`example-projects/saas/tests/`)
+- CRUD and workflow behavior across tenants, projects, users, and tasks
+- Query modifiers (filter/sort/pagination) in realistic multi-tenant scenarios
 
 
 ## Troubleshooting
@@ -105,12 +117,12 @@ make test-coverage
 
 ## Contributing
 
-When adrestly new features:
+When adding new features:
 
 1. Add tests for the framework functionality
 2. Update example projects if needed
 3. Ensure all tests pass: `make test-all`
-4. Consider adrestly integration tests for complex scenarios
+4. Consider adding integration tests for complex scenarios
 
 ## Test Commands Reference
 
@@ -121,9 +133,8 @@ When adrestly new features:
 | `make test-examples` | Run example tests only |
 | `make test-shop` | Run shop example tests |
 | `make test-blog` | Run blog example tests |
+| `make test-saas` | Run SaaS example tests |
 | `make test-coverage` | Run tests with coverage |
 | `make install-dev` | Install all dependencies |
 | `make clean` | Clean cache files |
 | `make ci` | Full CI setup and test run |
-| `./test.sh` | Run all tests (shell script) |
-| `python3 run_tests.py` | Run all tests (Python script) | 

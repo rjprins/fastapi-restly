@@ -7,6 +7,11 @@
 FastAPI-Restly helps you build **maintainable CRUD APIs faster** on top of **FastAPI**, **SQLAlchemy 2.0**, and **Pydantic v2**.
 It provides auto-generated endpoints, schemas, and filters while keeping everything extensible or customizable.
 
+## 1.0 Status
+
+The project is currently in a **v1.0 release-readiness phase**.
+Core framework tests and all maintained example projects (`shop`, `blog`, `saas`) are green in local CI (`make test-all`), and GitHub Actions is configured to run the matrix on Python 3.10-3.13.
+
 ## Why FastAPI-Restly?
 
 * **Faster CRUD development** – Create endpoints for SQLAlchemy models by generating Pydantic models automatically.
@@ -89,7 +94,7 @@ class UserView(fr.AsyncAlchemyView):
 # - GET /users/ - List all users, comes with complete filtering and pagination 
 # - POST /users/ - Create a user  
 # - GET /users/{id} - Get a specific user
-# - PUT /users/{id} - Update a user
+# - PATCH /users/{id} - Partially update a user
 # - DELETE /users/{id} - Delete a user
 ```
 
@@ -181,13 +186,9 @@ class UserView(fr.AsyncAlchemyView):
     schema = UserSchema
 
     @fr.get("/{id}/download")
-    async def (self, q: str):
+    async def download_user(self, id: int):
         """Custom search endpoint"""
-        query = sqlalchemy.select(self.model).where(
-            self.model.name.ilike(f"%{q}%")
-        )
-        result = await self.session.scalars(query)
-        return result.all()
+        return {"id": id, "status": "ok"}
 
     async def process_index(self, query_params):
         """Override default list behavior"""
@@ -207,6 +208,7 @@ Check out the [example projects](example-projects/) for complete applications:
 
 - **[Shop](example-projects/shop/)** - E-commerce API with products, orders, and customers
 - **[Blog](example-projects/blog/)** - Simple blog with posts and comments
+- **[SaaS](example-projects/saas/)** - Multi-tenant project management API
 
 ## Testing
 

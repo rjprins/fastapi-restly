@@ -25,29 +25,37 @@ bd blocked         # See dependency chains
 bd stats           # Project health
 ```
 
-## Current Phase: Example Project (Phase 2)
+## Current Phase: v1.0 Release Readiness
 
-**Epic:** `fastapi-restly-4m4` - Framework Design & Roadmap Execution
-**Task:** `fastapi-restly-4w8` - Phase 2: Example Project - Multi-Tenant SaaS
+**Epic:** `fastapi-restly-0ex` - v1.0 Release Readiness
 
-### Phase 1 ✅ COMPLETE
-- FRSession/FRAsyncSession naming
-- PUT → PATCH
-- Sync/async parity
-- db_lifespan removed
+### Completed in this phase
+- Alias and response serialization regressions fixed
+- Query modifier V2 typing regression fixed
+- Test-order / mapper contamination stabilized
+- Blog example aligned with current PATCH semantics and startup DB init
+- CI matrix added for Python 3.10-3.13
+- `make test-all` now includes framework + `shop` + `blog` + `saas`
 
-### Phase Roadmap
+### Remaining phase goals
+- Align product docs with actual framework semantics
+- Publish comprehensive endpoint/API docs
+- Improve Getting Started docs and add feature-focused How-To guides
+- Define and execute 1.0 RC/release checklist
+
+### Roadmap Snapshot
 ```
-Phase 1: Foundation Fixes ✅ → Phase 2: Example Project (CURRENT)
-    → Phase 3: React-Admin → Phase 4: Auth → Phase 5: Permissions → Phase 6: Users
+Foundation fixes ✅ → Example projects ✅ → v1.0 release readiness (CURRENT)
+    → 1.0 release candidate → 1.0 GA
 ```
 
-## Phase 2 Goal
+## Current Goal
 
-Build a **realistic multi-tenant project management API** that validates the framework handles real-world complexity. This example will:
-- Prove the API is production-ready
-- Serve as documentation/reference
-- Expose any missing features before Phase 3
+Finish the documentation and release checklist needed to confidently ship 1.0:
+- Accurate API semantics in docs (PATCH-based updates)
+- Endpoint reference for public APIs
+- A clear onboarding path (Getting Started)
+- Practical How-To guides for core framework features
 
 ## Domain Model
 
@@ -237,14 +245,12 @@ If a task from beads is:
 
 ## Success Criteria
 
-Phase 2 is complete when:
-- All 4 models (Organization, User, Project, Task) implemented
-- All 4 views with full CRUD working
-- Relationships properly handled (FK creation, nested responses)
-- Query modifiers working (filter, sort, paginate)
-- Comprehensive test suite passing
-- Example serves as documentation for framework usage
-- `fastapi-restly-4w8` closed
+v1.0 readiness is complete when:
+- Framework test suite is stable in full runs (`pytest -q tests`)
+- Example suites are stable (`make test-examples`)
+- CI gate enforces Python 3.10-3.13 with framework + examples
+- README/PLAN/PRD/TESTING reflect actual behavior and release state
+- API reference + Getting Started + How-To docs are published and reviewed
 
 ---
 
