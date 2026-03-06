@@ -7,6 +7,8 @@ implementations (v1 vs v2) and allows users to configure their preferred interfa
 
 from enum import Enum
 from functools import lru_cache
+from contextlib import contextmanager
+from contextvars import ContextVar
 from typing import Any, Callable, Protocol
 
 import pydantic
@@ -65,8 +67,10 @@ class V2Interface(_FunctionQueryModifierInterface):
     pass
 
 
-# Global configuration
-_query_modifier_version = QueryModifierVersion.V1
+# Context-local configuration (falls back to V1 by default)
+_query_modifier_version: ContextVar[QueryModifierVersion] = ContextVar(
+    "fastapi_restly_query_modifier_version", default=QueryModifierVersion.V1
+)
 
 
 @lru_cache(maxsize=1)
@@ -108,8 +112,7 @@ def set_query_modifier_version(version: QueryModifierVersion) -> None:
     Args:
         version: The query modifier version to use (V1 or V2)
     """
-    global _query_modifier_version
-    _query_modifier_version = version
+    _query_modifier_version.set(version)
 
 
 def get_query_modifier_version() -> QueryModifierVersion:
@@ -119,7 +122,16 @@ def get_query_modifier_version() -> QueryModifierVersion:
     Returns:
         The current query modifier version
     """
-    return _query_modifier_version
+    return _query_modifier_version.get()
+
+
+@contextmanager
+def use_query_modifier_version(version: QueryModifierVersion):
+    token = _query_modifier_version.set(version)
+    try:
+        yield
+    finally:
+        _query_modifier_version.reset(token)
 
 
 def get_query_modifier_interface() -> QueryModifierInterface:
@@ -129,7 +141,7 @@ def get_query_modifier_interface() -> QueryModifierInterface:
     Returns:
         The query modifier interface to use
     """
-    if _query_modifier_version == QueryModifierVersion.V2:
+    if get_query_modifier_version() == QueryModifierVersion.V2:
         return V2Interface(_resolve_v2_apply())
     return V1Interface(_resolve_v1_apply())
 
@@ -141,7 +153,7 @@ def get_query_param_schema_creator() -> Callable[[SchemaType], SchemaType]:
     Returns:
         A function that creates query param schemas
     """
-    if _query_modifier_version == QueryModifierVersion.V2:
+    if get_query_modifier_version() == QueryModifierVersion.V2:
         return _resolve_v2_schema_creator()
     return _resolve_v1_schema_creator()
 

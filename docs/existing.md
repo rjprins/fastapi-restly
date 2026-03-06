@@ -41,3 +41,21 @@ class WorldView(fr.AsyncAlchemyView):
     model = World
     schema = WorldSchema
 ```
+
+## Isolating Runtime State Per App
+
+FastAPI-Restly keeps default runtime state for convenience, but you can isolate
+state per context when running multiple apps in one process:
+
+```python
+from fastapi_restly.db import FRGlobals, use_fr_globals
+
+app_a_globals = FRGlobals()
+app_b_globals = FRGlobals()
+
+with use_fr_globals(app_a_globals):
+    ...
+
+with use_fr_globals(app_b_globals):
+    ...
+```

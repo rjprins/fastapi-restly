@@ -7,6 +7,7 @@ from ._config import (
     get_query_modifier_version,
     get_query_param_schema_creator,
     set_query_modifier_version,
+    use_query_modifier_version,
 )
 from ._v1 import (
     apply_filtering,
@@ -46,4 +47,5 @@ __all__ = [
     "get_query_modifier_version",
     "get_query_param_schema_creator",
     "set_query_modifier_version",
+    "use_query_modifier_version",
 ]

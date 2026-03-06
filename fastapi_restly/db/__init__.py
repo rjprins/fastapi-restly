@@ -1,4 +1,4 @@
-from ._globals import FRGlobals, fr_globals
+from ._globals import FRGlobals, fr_globals, get_fr_globals, use_fr_globals
 from ._proxy import (
     AsyncSession,
     AsyncSessionProxy,
@@ -40,7 +40,9 @@ __all__ = [
     "async_generate_session",
     "deactivate_savepoint_only_mode",
     "fr_globals",
+    "get_fr_globals",
     "generate_session",
     "setup_async_database_connection",
     "setup_database_connection",
+    "use_fr_globals",
 ]

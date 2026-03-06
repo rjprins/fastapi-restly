@@ -10,8 +10,10 @@ from .db import (
     SessionDep,
     activate_savepoint_only_mode,
     deactivate_savepoint_only_mode,
+    get_fr_globals,
     setup_async_database_connection,
     setup_database_connection,
+    use_fr_globals,
 )
 
 # Model base classes
@@ -24,6 +26,7 @@ from .query import (
     create_query_param_schema,
     get_query_modifier_version,
     set_query_modifier_version,
+    use_query_modifier_version,
 )
 
 # Schema utilities
@@ -73,8 +76,10 @@ __all__ = [
     # Database utilities
     "activate_savepoint_only_mode",
     "deactivate_savepoint_only_mode",
+    "get_fr_globals",
     "setup_async_database_connection",
     "setup_database_connection",
+    "use_fr_globals",
     # Models
     "Base",
     "IDBase",
@@ -86,6 +91,7 @@ __all__ = [
     "create_query_param_schema",
     "get_query_modifier_version",
     "set_query_modifier_version",
+    "use_query_modifier_version",
     # Schemas
     "BaseSchema",
     "IDSchema",
