@@ -227,12 +227,12 @@
           }
         }
       },
-      "put": {
+      "patch": {
         "tags": [
           "BlogView"
         ],
-        "summary": "Blogview Put",
-        "operationId": "blogview_put_blogs__id__put",
+        "summary": "Blogview Patch",
+        "operationId": "blogview_patch_blogs__id__patch",
         "parameters": [
           {
             "name": "id",
