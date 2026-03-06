@@ -6,6 +6,7 @@ implementations (v1 vs v2) and allows users to configure their preferred interfa
 """
 
 from enum import Enum
+from functools import lru_cache
 from typing import Any, Callable, Protocol
 
 import pydantic
@@ -37,8 +38,67 @@ class QueryModifierInterface(Protocol):
         ...
 
 
+class _FunctionQueryModifierInterface:
+    def __init__(
+        self,
+        apply_fn: Callable[
+            [QueryParams, Select[Any], type[DeclarativeBase], SchemaType], Select[Any]
+        ],
+    ):
+        self._apply_fn = apply_fn
+
+    def apply_query_modifiers(
+        self,
+        query_params: QueryParams,
+        select_query: Select[Any],
+        model: type[DeclarativeBase],
+        schema_cls: SchemaType,
+    ) -> Select[Any]:
+        return self._apply_fn(query_params, select_query, model, schema_cls)
+
+
+class V1Interface(_FunctionQueryModifierInterface):
+    pass
+
+
+class V2Interface(_FunctionQueryModifierInterface):
+    pass
+
+
 # Global configuration
 _query_modifier_version = QueryModifierVersion.V1
+
+
+@lru_cache(maxsize=1)
+def _resolve_v1_apply() -> Callable[
+    [QueryParams, Select[Any], type[DeclarativeBase], SchemaType], Select[Any]
+]:
+    from ._v1 import apply_query_modifiers
+
+    return apply_query_modifiers
+
+
+@lru_cache(maxsize=1)
+def _resolve_v2_apply() -> Callable[
+    [QueryParams, Select[Any], type[DeclarativeBase], SchemaType], Select[Any]
+]:
+    from ._v2 import apply_query_modifiers_v2
+
+    return apply_query_modifiers_v2
+
+
+@lru_cache(maxsize=1)
+def _resolve_v1_schema_creator() -> Callable[[SchemaType], SchemaType]:
+    from ._v1 import create_query_param_schema
+
+    return create_query_param_schema
+
+
+@lru_cache(maxsize=1)
+def _resolve_v2_schema_creator() -> Callable[[SchemaType], SchemaType]:
+    from ._v2 import create_query_param_schema_v2
+
+    return create_query_param_schema_v2
 
 
 def set_query_modifier_version(version: QueryModifierVersion) -> None:
@@ -70,37 +130,8 @@ def get_query_modifier_interface() -> QueryModifierInterface:
         The query modifier interface to use
     """
     if _query_modifier_version == QueryModifierVersion.V2:
-        from ._v2 import apply_query_modifiers_v2
-
-        class V2Interface:
-            def apply_query_modifiers(
-                self,
-                query_params: QueryParams,
-                select_query: Select[Any],
-                model: type[DeclarativeBase],
-                schema_cls: SchemaType,
-            ) -> Select[Any]:
-                return apply_query_modifiers_v2(
-                    query_params, select_query, model, schema_cls
-                )
-
-        return V2Interface()
-    else:
-        from ._v1 import apply_query_modifiers
-
-        class V1Interface:
-            def apply_query_modifiers(
-                self,
-                query_params: QueryParams,
-                select_query: Select[Any],
-                model: type[DeclarativeBase],
-                schema_cls: SchemaType,
-            ) -> Select[Any]:
-                return apply_query_modifiers(
-                    query_params, select_query, model, schema_cls
-                )
-
-        return V1Interface()
+        return V2Interface(_resolve_v2_apply())
+    return V1Interface(_resolve_v1_apply())
 
 
 def get_query_param_schema_creator() -> Callable[[SchemaType], SchemaType]:
@@ -111,13 +142,8 @@ def get_query_param_schema_creator() -> Callable[[SchemaType], SchemaType]:
         A function that creates query param schemas
     """
     if _query_modifier_version == QueryModifierVersion.V2:
-        from ._v2 import create_query_param_schema_v2
-
-        return create_query_param_schema_v2
-    else:
-        from ._v1 import create_query_param_schema
-
-        return create_query_param_schema
+        return _resolve_v2_schema_creator()
+    return _resolve_v1_schema_creator()
 
 
 # Convenience functions for backward compatibility
