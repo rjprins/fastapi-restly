@@ -180,6 +180,7 @@ class BaseAlchemyView(View):
     creation_schema: ClassVar[type[BaseSchema]]
     update_schema: ClassVar[type[BaseSchema]]
     model: ClassVar[type[Base]]
+    id_type: ClassVar[type[Any]] = int
     exclude_routes: ClassVar[list[str]] = []
 
     request: fastapi.Request
@@ -244,7 +245,7 @@ class BaseAlchemyView(View):
                 query_params=Annotated[cls.index_param_schema, fastapi.Query()],
             )
         if hasattr(cls, "get"):
-            _annotate(cls.get, return_annotation=response_schema)
+            _annotate(cls.get, return_annotation=response_schema, id=cls.id_type)
         if hasattr(cls, "post"):
             _annotate(
                 cls.post,
@@ -253,8 +254,13 @@ class BaseAlchemyView(View):
             )
         if hasattr(cls, "patch"):
             _annotate(
-                cls.patch, return_annotation=response_schema, schema_obj=cls.update_schema
+                cls.patch,
+                return_annotation=response_schema,
+                schema_obj=cls.update_schema,
+                id=cls.id_type,
             )
+        if hasattr(cls, "delete"):
+            _annotate(cls.delete, return_annotation=fastapi.Response, id=cls.id_type)
         _exclude_routes(cls)
 
 

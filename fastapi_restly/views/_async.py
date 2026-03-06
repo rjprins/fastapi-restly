@@ -67,11 +67,11 @@ class AsyncAlchemyView(BaseAlchemyView):
         return scalar_result.all()
 
     @get("/{id}")
-    async def get(self, id: int) -> Any:
+    async def get(self, id: Any) -> Any:
         obj = await self.process_get(id)
         return self.to_response_schema(obj)
 
-    async def process_get(self, id: int) -> Any:
+    async def process_get(self, id: Any) -> Any:
         """
         Handle a GET request on "/{id}". This should return a single object.
         Return a 404 if not found.
@@ -98,11 +98,11 @@ class AsyncAlchemyView(BaseAlchemyView):
         return await self.save_object(obj)
 
     @patch("/{id}")
-    async def patch(self, id: int, schema_obj: BaseSchema) -> Any:
+    async def patch(self, id: Any, schema_obj: BaseSchema) -> Any:
         obj = await self.process_patch(id, schema_obj)
         return self.to_response_schema(obj)
 
-    async def process_patch(self, id: int, schema_obj: BaseSchema) -> Any:
+    async def process_patch(self, id: Any, schema_obj: BaseSchema) -> Any:
         """
         Handle a PATCH request on "/{id}". This should partially update an existing
         object.
@@ -112,10 +112,10 @@ class AsyncAlchemyView(BaseAlchemyView):
         return await self.update_object(obj, schema_obj)
 
     @delete("/{id}")
-    async def delete(self, id: int) -> fastapi.Response:
+    async def delete(self, id: Any) -> fastapi.Response:
         return await self.process_delete(id)
 
-    async def process_delete(self, id: int) -> fastapi.Response:
+    async def process_delete(self, id: Any) -> fastapi.Response:
         obj = await self.process_get(id)
         await self.delete_object(obj)
         return fastapi.Response(status_code=204)

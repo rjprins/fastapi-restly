@@ -115,11 +115,11 @@ class AlchemyView(BaseAlchemyView):
         return scalar_result.all()
 
     @get("/{id}")
-    def get(self, id: int) -> Any:
+    def get(self, id: Any) -> Any:
         obj = self.process_get(id)
         return self.to_response_schema(obj)
 
-    def process_get(self, id: int) -> Any:
+    def process_get(self, id: Any) -> Any:
         """
         Handle a GET request on "/{id}". This should return a single object.
         Return a 404 if not found.
@@ -147,11 +147,11 @@ class AlchemyView(BaseAlchemyView):
         return obj
 
     @patch("/{id}")
-    def patch(self, id: int, schema_obj: BaseSchema) -> Any:
+    def patch(self, id: Any, schema_obj: BaseSchema) -> Any:
         obj = self.process_patch(id, schema_obj)
         return self.to_response_schema(obj)
 
-    def process_patch(self, id: int, schema_obj: BaseSchema) -> Any:
+    def process_patch(self, id: Any, schema_obj: BaseSchema) -> Any:
         """
         Handle a PATCH request on "/{id}". This should partially update an existing
         object.
@@ -161,10 +161,10 @@ class AlchemyView(BaseAlchemyView):
         return self.update_object(obj, schema_obj)
 
     @delete("/{id}")
-    def delete(self, id: int) -> fastapi.Response:
+    def delete(self, id: Any) -> fastapi.Response:
         return self.process_delete(id)
 
-    def process_delete(self, id: int) -> fastapi.Response:
+    def process_delete(self, id: Any) -> fastapi.Response:
         obj = self.process_get(id)
         self.delete_object(obj)
         return fastapi.Response(status_code=204)
