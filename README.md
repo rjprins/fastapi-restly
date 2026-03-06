@@ -24,6 +24,7 @@ Core framework tests and all maintained example projects (`shop`, `blog`, `saas`
 * **CRUD endpoints in minutes** for SQLAlchemy models
 * **Class-based views** with dependency injection and inheritance
 * **Async and sync view support** (`AsyncAlchemyView` and `AlchemyView`)
+* **Dataclass and non-dataclass model bases** (`IDBase` and `PlainIDBase`)
 * **Automatic Pydantic schemas** for create, update, and read
 * **Filtering, pagination, and sorting** with V1 and V2 query interfaces
 * **Read-only and write-only field support** in schemas

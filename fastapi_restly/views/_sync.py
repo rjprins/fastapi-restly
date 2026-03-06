@@ -3,15 +3,14 @@ from typing import Any, Sequence, TypeVar
 import fastapi
 import sqlalchemy
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import DeclarativeBase, Session
 
 from ..db import SessionDep
-from ..models import Base
 from ..query import apply_query_modifiers
 from ..schemas import BaseSchema, IDSchema, get_writable_inputs, is_readonly_field, resolve_ids_to_sqlalchemy_objects
 from ._base import BaseAlchemyView, delete, get, patch, post
 
-T = TypeVar("T", bound=Base)
+T = TypeVar("T", bound=DeclarativeBase)
 
 
 def make_new_object(
@@ -29,7 +28,7 @@ def make_new_object(
         if isinstance(value, IDSchema) and field_name.endswith("_id"):
             data[field_name] = value.id
             continue
-        if isinstance(value, Base) and field_name.endswith("_id"):
+        if isinstance(value, DeclarativeBase) and field_name.endswith("_id"):
             data[field_name] = value.id
             relation_name = field_name[:-3]
             if hasattr(model_cls, relation_name):
@@ -43,16 +42,16 @@ def make_new_object(
 
 def update_object(
     session: Session,
-    obj: Base,
+    obj: DeclarativeBase,
     schema_obj: BaseSchema,
     schema_cls: type[BaseSchema] | None = None,
-) -> Base:
+) -> DeclarativeBase:
     resolve_ids_to_sqlalchemy_objects(session, schema_obj)
     for field_name, value in get_writable_inputs(schema_obj, schema_cls).items():
         if isinstance(value, IDSchema) and field_name.endswith("_id"):
             setattr(obj, field_name, value.id)
             continue
-        if isinstance(value, Base) and field_name.endswith("_id"):
+        if isinstance(value, DeclarativeBase) and field_name.endswith("_id"):
             setattr(obj, field_name, value.id)
             relation_name = field_name[:-3]
             if hasattr(obj, relation_name):
@@ -62,7 +61,7 @@ def update_object(
     return save_object(session, obj)
 
 
-def save_object(session, obj: Base) -> Base:
+def save_object(session, obj: DeclarativeBase) -> DeclarativeBase:
     session.add(obj)
     session.flush()
     session.refresh(obj)
@@ -184,7 +183,7 @@ class AlchemyView(BaseAlchemyView):
         self.delete_object(obj)
         return fastapi.Response(status_code=204)
 
-    def delete_object(self, obj: Base) -> None:
+    def delete_object(self, obj: DeclarativeBase) -> None:
         """
         Delete an object from the database.
         Feel free to override this method.
@@ -192,7 +191,7 @@ class AlchemyView(BaseAlchemyView):
         self.session.delete(obj)
         self.session.flush()
 
-    def make_new_object(self, schema_obj: BaseSchema) -> Base:
+    def make_new_object(self, schema_obj: BaseSchema) -> DeclarativeBase:
         """
         Create a new object from a schema object.
         Feel free to override this method.
@@ -201,14 +200,14 @@ class AlchemyView(BaseAlchemyView):
             self.session, self.model, schema_obj, self.creation_schema
         )
 
-    def update_object(self, obj: Base, schema_obj: BaseSchema) -> Base:
+    def update_object(self, obj: DeclarativeBase, schema_obj: BaseSchema) -> DeclarativeBase:
         """
         Update an existing object with data from a schema object.
         Feel free to override this method.
         """
         return update_object(self.session, obj, schema_obj, self.schema)
 
-    def save_object(self, obj: Base) -> Base:
+    def save_object(self, obj: DeclarativeBase) -> DeclarativeBase:
         """
         Save an object to the database.
         Feel free to override this method.

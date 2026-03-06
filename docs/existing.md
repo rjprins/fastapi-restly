@@ -42,6 +42,9 @@ class WorldView(fr.AsyncAlchemyView):
     schema = WorldSchema
 ```
 
+If you prefer standard SQLAlchemy declarative models without dataclass semantics,
+use `fr.PlainBase` / `fr.PlainIDBase` instead of `fr.Base` / `fr.IDBase`.
+
 ## Isolating Runtime State Per App
 
 FastAPI-Restly keeps default runtime state for convenience, but you can isolate

@@ -92,3 +92,36 @@ class IDBase(IDMixin, Base):
 
 class IDStampsBase(TimestampsMixin, IDBase):
     __abstract__ = True
+
+
+class PlainTimestampsMixin:
+    """
+    Non-dataclass timestamp mixin for standard SQLAlchemy declarative models.
+    """
+
+    created_at: Mapped[datetime] = mapped_column(default=utc_now, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        default=utc_now, onupdate=utc_now, server_default=func.now()
+    )
+
+
+class PlainIDMixin:
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+
+
+class PlainBase(TableNameMixin, DeclarativeBase):
+    """
+    Alternative declarative base without dataclass semantics.
+    """
+
+    type_annotation_map = {
+        enum.Enum: Enum(enum.Enum, native_enum=False, length=64)
+    }
+
+
+class PlainIDBase(PlainIDMixin, PlainBase):
+    __abstract__ = True
+
+
+class PlainIDStampsBase(PlainTimestampsMixin, PlainIDBase):
+    __abstract__ = True

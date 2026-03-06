@@ -32,9 +32,9 @@ from typing import (
 import fastapi
 import pydantic
 from pydantic import create_model
+from sqlalchemy.orm import DeclarativeBase
 from starlette.datastructures import QueryParams
 
-from ..models import Base
 from ..query import create_query_param_schema
 from ..schemas import (
     BaseSchema,
@@ -183,7 +183,7 @@ class BaseAlchemyView(View):
     # using `create_model_without_read_only_fields()`.
     creation_schema: ClassVar[type[BaseSchema]]
     update_schema: ClassVar[type[BaseSchema]]
-    model: ClassVar[type[Base]]
+    model: ClassVar[type[DeclarativeBase]]
     id_type: ClassVar[type[Any]] = int
     include_pagination_metadata: ClassVar[bool] = False
     exclude_routes: ClassVar[list[str]] = []

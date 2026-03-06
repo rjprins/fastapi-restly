@@ -3,9 +3,9 @@ from typing import Any, Sequence
 import fastapi
 import sqlalchemy
 from sqlalchemy import func, select
+from sqlalchemy.orm import DeclarativeBase
 
 from ..db import AsyncSessionDep
-from ..models import Base
 from ..query import apply_query_modifiers
 from ..schemas import (
     BaseSchema,
@@ -129,7 +129,7 @@ class AsyncAlchemyView(BaseAlchemyView):
         await self.delete_object(obj)
         return fastapi.Response(status_code=204)
 
-    async def delete_object(self, obj: Base) -> None:
+    async def delete_object(self, obj: DeclarativeBase) -> None:
         """
         Handle a DELETE request on "/{id}". This should delete an object from the
         database. `process_get()` is called first to lookup the object.
@@ -138,7 +138,7 @@ class AsyncAlchemyView(BaseAlchemyView):
         await self.session.delete(obj)
         await self.session.flush()
 
-    async def make_new_object(self, schema_obj: BaseSchema) -> Base:
+    async def make_new_object(self, schema_obj: BaseSchema) -> DeclarativeBase:
         """
         Create a new object from a schema object.
         Feel free to override this method.
@@ -154,7 +154,7 @@ class AsyncAlchemyView(BaseAlchemyView):
             if isinstance(value, IDSchema) and field_name.endswith("_id"):
                 data[field_name] = value.id
                 continue
-            if isinstance(value, Base) and field_name.endswith("_id"):
+            if isinstance(value, DeclarativeBase) and field_name.endswith("_id"):
                 data[field_name] = value.id
                 relation_name = field_name[:-3]
                 if hasattr(self.model, relation_name):
@@ -166,7 +166,7 @@ class AsyncAlchemyView(BaseAlchemyView):
         self.session.add(obj)
         return obj
 
-    async def update_object(self, obj: Base, schema_obj: BaseSchema) -> Base:
+    async def update_object(self, obj: DeclarativeBase, schema_obj: BaseSchema) -> DeclarativeBase:
         """
         Update an existing object with data from a schema object.
         Feel free to override this method.
@@ -176,7 +176,7 @@ class AsyncAlchemyView(BaseAlchemyView):
             if isinstance(value, IDSchema) and field_name.endswith("_id"):
                 setattr(obj, field_name, value.id)
                 continue
-            if isinstance(value, Base) and field_name.endswith("_id"):
+            if isinstance(value, DeclarativeBase) and field_name.endswith("_id"):
                 setattr(obj, field_name, value.id)
                 relation_name = field_name[:-3]
                 if hasattr(obj, relation_name):
@@ -185,7 +185,7 @@ class AsyncAlchemyView(BaseAlchemyView):
             setattr(obj, field_name, value)
         return await self.save_object(obj)
 
-    async def save_object(self, obj: Base) -> Base:
+    async def save_object(self, obj: DeclarativeBase) -> DeclarativeBase:
         """
         Save an object to the database.
         Feel free to override this method.

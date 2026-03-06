@@ -17,7 +17,15 @@ from .db import (
 )
 
 # Model base classes
-from .models import Base, IDBase, IDStampsBase, TimestampsMixin
+from .models import (
+    Base,
+    IDBase,
+    IDStampsBase,
+    PlainBase,
+    PlainIDBase,
+    PlainIDStampsBase,
+    TimestampsMixin,
+)
 
 # Query modifiers
 from .query import (
@@ -84,6 +92,9 @@ __all__ = [
     "Base",
     "IDBase",
     "IDStampsBase",
+    "PlainBase",
+    "PlainIDBase",
+    "PlainIDStampsBase",
     "TimestampsMixin",
     # Query modifiers
     "QueryModifierVersion",
