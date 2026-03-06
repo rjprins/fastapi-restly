@@ -46,6 +46,7 @@ class UserView(fr.AsyncAlchemyView):
 
 - [Getting Started](getting_started.md) - Fast path from zero to CRUD API
 - [Tutorial](tutorial.md) - Extended walkthrough and schema usage
+- [How-To Guides](howto.md) - Task-focused recipes for core features
 - [Technical Details](technical_details.md) - How schema generation works under the hood
 - [API Reference](api_reference.md) - Complete API documentation
 
