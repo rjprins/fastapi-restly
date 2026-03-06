@@ -23,7 +23,7 @@ CASCADE_ALL_DELETE_ORPHAN_ASYNC = CASCADE_ALL_ASYNC + ", delete-orphan"
 
 def utc_now() -> datetime:
     """Replacement for the deprecated datetime.utcnow()"""
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+    return datetime.now(timezone.utc)
 
 
 class TimestampsMixin(MappedAsDataclass, kw_only=True):

@@ -3,6 +3,7 @@ from typing import Any, Sequence
 import fastapi
 import pydantic
 import sqlalchemy
+from starlette.datastructures import QueryParams
 
 from ..db import AsyncSessionDep
 from ..models import Base
@@ -54,8 +55,13 @@ class AsyncAlchemyView(BaseAlchemyView):
         """
         if query is None:
             query = sqlalchemy.select(self.model)
+
+        if isinstance(query_params, pydantic.BaseModel):
+            dumped = query_params.model_dump(exclude_none=True, by_alias=True)
+            query_params = QueryParams({k: str(v) for k, v in dumped.items()})
+
         query = apply_query_modifiers(
-            self.request.query_params, query, self.model, self.schema
+            query_params, query, self.model, self.schema
         )
         scalar_result = await self.session.scalars(query)
         return scalar_result.all()

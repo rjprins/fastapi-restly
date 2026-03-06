@@ -122,6 +122,8 @@ def get(path: str, **api_route_kwargs: Any) -> Callable[..., Any]:
 
     Equivalent to: @route(path, methods=["GET"], status_code=200, **api_route_kwargs)
     """
+    api_route_kwargs.setdefault("methods", ["GET"])
+    api_route_kwargs.setdefault("status_code", 200)
     return route(path, **api_route_kwargs)
 
 
@@ -254,12 +256,6 @@ class BaseAlchemyView(View):
                 cls.patch, return_annotation=response_schema, schema_obj=cls.update_schema
             )
         _exclude_routes(cls)
-
-
-async def _excluded_route(self, *args, **kwargs):
-    raise NotImplementedError(
-        "This route has been excluded from {self.__class__.__name__}"
-    )
 
 
 def _exclude_routes(cls: type[View]):

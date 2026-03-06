@@ -11,7 +11,7 @@ fr.setup_async_database_connection(async_database_url=f"sqlite+aiosqlite:///{DB_
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    engine = fr.AsyncSession.kw["bind"]
+    engine = fr.FRAsyncSession.kw["bind"]
     async with engine.begin() as conn:
         await conn.run_sync(fr.Base.metadata.create_all)
     yield
