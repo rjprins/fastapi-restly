@@ -329,7 +329,11 @@ def _apply_contains_parameters(
         # For contains, we don't need to parse the value since it's just a string
         # Split by space for multiple contains values (AND logic)
         split_values = raw_value.split()
-        clauses = [column.ilike(f"%{v}%") for v in split_values if v.strip()]
+        clauses = [
+            column.ilike(f"%{_escape_like_value(v)}%", escape="\\")
+            for v in split_values
+            if v.strip()
+        ]
         if clauses:
             if len(clauses) == 1:
                 clause = clauses[0]
@@ -383,18 +387,18 @@ def _get_nested_schema(field: FieldInfo | None) -> SchemaType | None:
 def _make_where_clause(
     column: InstrumentedAttribute, filter_value: str, parser: Callable
 ) -> ColumnElement:
-    if filter_value.startswith(">"):
-        value = parser(filter_value[1:])
-        return column > value
-    elif filter_value.startswith("<"):
-        value = parser(filter_value[1:])
-        return column < value
-    elif filter_value.startswith(">="):
+    if filter_value.startswith(">="):
         value = parser(filter_value[2:])
         return column >= value
     elif filter_value.startswith("<="):
         value = parser(filter_value[2:])
         return column <= value
+    elif filter_value.startswith(">"):
+        value = parser(filter_value[1:])
+        return column > value
+    elif filter_value.startswith("<"):
+        value = parser(filter_value[1:])
+        return column < value
     elif filter_value.startswith("!"):
         value = filter_value[1:]
         if value == "null":
@@ -406,3 +410,11 @@ def _make_where_clause(
             value = None
         value = parser(filter_value)
         return column == value
+
+
+def _escape_like_value(value: str) -> str:
+    """Escape SQL LIKE wildcard characters for literal substring matching."""
+    escaped = value.replace("\\", "\\\\")
+    escaped = escaped.replace("%", "\\%")
+    escaped = escaped.replace("_", "\\_")
+    return escaped

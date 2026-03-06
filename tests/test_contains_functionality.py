@@ -223,8 +223,8 @@ class TestContainsV2Functionality:
 
         # Mock column
         class MockColumn:
-            def ilike(self, pattern):
-                return f"ILIKE {pattern}"
+            def ilike(self, pattern, escape=None):
+                return f"ILIKE {pattern} ESCAPE {escape}"
 
         column = MockColumn()
 
@@ -233,6 +233,17 @@ class TestContainsV2Functionality:
 
         # Should create an ILIKE clause with %john%
         assert "ILIKE %john%" in str(result)
+        assert "ESCAPE \\" in str(result)
+
+    def test_contains_escapes_like_wildcards(self):
+        """Test that contains escapes % and _ wildcard characters."""
+        from fastapi_restly.query._v1 import _escape_like_value as escape_v1
+        from fastapi_restly.query._v2 import _escape_like_value as escape_v2
+
+        raw = r"100%_match\\"
+        expected = r"100\%\_match\\\\"
+        assert escape_v1(raw) == expected
+        assert escape_v2(raw) == expected
 
     def test_contains_v2_combined_with_filters(self):
         """Test that __contains works with other v2 filters."""

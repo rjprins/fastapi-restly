@@ -7,6 +7,7 @@ import pydantic
 from pydantic.fields import Field, FieldInfo
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
+from sqlalchemy.ext.asyncio.session import AsyncSession as SA_AsyncSession
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm.session import Session as SA_Session
 
@@ -70,7 +71,7 @@ class IDStampsSchema(TimestampsSchemaMixin, IDSchema[SQLAlchemyModel]):
 
 
 async def async_resolve_ids_to_sqlalchemy_objects(
-    session: SA_Session, schema_obj: BaseSchema
+    session: SA_AsyncSession, schema_obj: BaseSchema
 ) -> None:
     """
     Go over the Pydantic fields and turn any IDSchema objects into SQLAlchemy instances.

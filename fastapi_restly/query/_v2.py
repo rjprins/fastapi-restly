@@ -452,7 +452,16 @@ def _make_where_clause_v2(
         return column != value
     elif op == "contains":
         # For contains, we don't need to parse the value since it's just a string
-        return column.ilike(f"%{filter_value}%")
+        escaped = _escape_like_value(filter_value)
+        return column.ilike(f"%{escaped}%", escape="\\")
     else:  # eq
         value = parser(filter_value)
         return column == value
+
+
+def _escape_like_value(value: str) -> str:
+    """Escape SQL LIKE wildcard characters for literal substring matching."""
+    escaped = value.replace("\\", "\\\\")
+    escaped = escaped.replace("%", "\\%")
+    escaped = escaped.replace("_", "\\_")
+    return escaped

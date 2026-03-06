@@ -588,6 +588,30 @@ class TestMakeWhereClause:
         
         assert result == "lt_clause"
 
+    def test_make_where_clause_greater_than_equal(self):
+        """Test making where clause with greater than or equal operator."""
+        from fastapi_restly.query._v1 import _make_where_clause
+
+        mock_column = Mock()
+        mock_column.__ge__ = Mock(return_value="ge_clause")
+
+        parser = lambda x: x
+        result = _make_where_clause(mock_column, ">=value", parser)
+
+        assert result == "ge_clause"
+
+    def test_make_where_clause_less_than_equal(self):
+        """Test making where clause with less than or equal operator."""
+        from fastapi_restly.query._v1 import _make_where_clause
+
+        mock_column = Mock()
+        mock_column.__le__ = Mock(return_value="le_clause")
+
+        parser = lambda x: x
+        result = _make_where_clause(mock_column, "<=value", parser)
+
+        assert result == "le_clause"
+
     def test_make_where_clause_not_equals(self):
         """Test making where clause with not equals operator."""
         from fastapi_restly.query._v1 import _make_where_clause

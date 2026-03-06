@@ -37,6 +37,7 @@ from ..schemas import (
     auto_generate_schema_for_view,
     create_model_with_optional_fields,
     create_model_without_read_only_fields,
+    is_field_writeonly,
 )
 
 
@@ -186,23 +187,26 @@ class BaseAlchemyView(View):
         if isinstance(obj, self.schema):
             return obj
 
-        # Build a payload using alias keys so schemas with aliases serialize
-        # correctly even when populate_by_name is not enabled.
+        # Build a payload using canonical field names. Alias rendering happens
+        # when FastAPI serializes the response model.
         payload: dict[str, Any] = {}
         for field_name, field_info in self.schema.model_fields.items():
-            key = field_info.alias or field_name
+            if is_field_writeonly(self.schema, field_name):
+                continue
             if hasattr(obj, field_name):
                 value = getattr(obj, field_name)
                 if field_name.endswith("_id") and isinstance(value, int):
-                    payload[key] = {"id": value}
+                    payload[field_name] = {"id": value}
                 elif field_name.endswith("_id") and hasattr(value, "id"):
-                    payload[key] = {"id": value.id}
+                    payload[field_name] = {"id": value.id}
                 else:
-                    payload[key] = value
-            elif hasattr(obj, key):
-                payload[key] = getattr(obj, key)
+                    payload[field_name] = value
+            elif field_info.alias and hasattr(obj, field_info.alias):
+                payload[field_name] = getattr(obj, field_info.alias)
 
-        return self.schema.model_validate(payload)
+        # model_construct intentionally bypasses validation so response-only
+        # omissions (for example WriteOnly fields) don't trigger required errors.
+        return self.schema.model_construct(**payload)
 
     @classmethod
     def before_include_view(cls):
