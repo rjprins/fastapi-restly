@@ -8,6 +8,7 @@ install-dev:
 	uv sync
 	cd example-projects/shop && uv sync --active
 	cd example-projects/blog && uv sync --active
+	cd example-projects/saas && uv sync --active
 
 # Test the main framework
 test-framework:
@@ -24,8 +25,13 @@ test-blog:
 	@echo "=== Testing Blog Example ==="
 	cd example-projects/blog && uv run --active pytest blog/ -v
 
+# Test saas example
+test-saas:
+	@echo "=== Testing SaaS Example ==="
+	cd example-projects/saas && uv run --active pytest tests/ -v
+
 # Test all examples
-test-examples: test-shop test-blog
+test-examples: test-shop test-blog test-saas
 
 # Test everything
 test-all: test-framework test-examples
@@ -54,6 +60,7 @@ test-coverage:
 	uv run pytest tests/ --cov=fastapi_restly --cov-report=term-missing
 	cd example-projects/shop && uv run --active pytest tests/ --cov=shop --cov-report=term-missing
 	cd example-projects/blog && uv run --active pytest blog/ --cov=blog --cov-report=term-missing
+	cd example-projects/saas && uv run --active pytest tests/ --cov=app --cov-report=term-missing
 
 docs:
 	uv run sphinx-build -M html docs site
@@ -71,6 +78,7 @@ help:
 	@echo "  test-framework  - Test the main FastAPI-Restly framework"
 	@echo "  test-shop       - Test the shop example"
 	@echo "  test-blog       - Test the blog example"
+	@echo "  test-saas       - Test the SaaS example"
 	@echo "  test-examples   - Test all examples"
 	@echo "  test-all        - Test framework and all examples"
 	@echo "  test            - Quick test (just framework)"
