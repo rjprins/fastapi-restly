@@ -23,8 +23,12 @@ Core framework tests and all maintained example projects (`shop`, `blog`, `saas`
 
 * **CRUD endpoints in minutes** for SQLAlchemy models
 * **Class-based views** with dependency injection and inheritance
+* **Async and sync view support** (`AsyncAlchemyView` and `AlchemyView`)
 * **Automatic Pydantic schemas** for create, update, and read
-* **Filtering, pagination, and sorting** (including on nested relationships)
+* **Filtering, pagination, and sorting** with V1 and V2 query interfaces
+* **Read-only and write-only field support** in schemas
+* **Relationship ID resolution** via `IDSchema[...]`
+* **Testing utilities** (`RestlyTestClient` and pytest fixtures)
 * **OpenAPI docs** with all generated routes
 
 ## Restly Philosophy
@@ -61,8 +65,8 @@ Current layers:
 git clone https://github.com/your-username/fastapi-restly.git
 cd fastapi-restly
 
-# Install in development mode
-pip install -e .
+# Install project dependencies
+uv sync
 ```
 
 ### Basic Example
@@ -166,8 +170,11 @@ class UserSchema(pydantic.BaseModel):
 ### Relationships
 
 ```python
+from sqlalchemy import ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column
+
 class Order(fr.IDBase):
-    customer_id: Mapped[int] = Mapped(foreign_key="customer.id")
+    customer_id: Mapped[int] = mapped_column(ForeignKey("customer.id"))
     total: Mapped[float]
 
 class OrderSchema(fr.IDSchema[Order]):
@@ -187,7 +194,7 @@ class UserView(fr.AsyncAlchemyView):
 
     @fr.get("/{id}/download")
     async def download_user(self, id: int):
-        """Custom search endpoint"""
+        """Custom endpoint"""
         return {"id": id, "status": "ok"}
 
     async def process_index(self, query_params):
@@ -218,9 +225,13 @@ FastAPI-Restly includes testing utilities:
 
 ```python
 import fastapi_restly as fr
-from fastapi_restly.pytest_fixtures import client
+from fastapi_restly.testing import RestlyTestClient
+from fastapi import FastAPI
 
-def test_user_crud(client):
+app = FastAPI()
+client = RestlyTestClient(app)
+
+def test_user_crud():
     # Create user
     response = client.post("/users/", json={"name": "John", "email": "john@example.com"})
     assert response.status_code == 201
@@ -252,12 +263,12 @@ fr.setup_database_connection("sqlite:///app.db")
 * Authentication & permissions
 * Admin interface
 * Background jobs & scheduling
-* CLI for code generation and scaffolrestly
+* CLI for code generation and scaffolding
 
 
 ## Contributing
 
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+We welcome contributions through pull requests and issue discussions.
 
 ## License
 
