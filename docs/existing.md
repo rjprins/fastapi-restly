@@ -13,15 +13,15 @@ async def my_get_db() -> AsyncIterator[AsyncSession]:
     ...
     yield MyAsyncSession()
 
-settings.session_generator = my_get_db()
+settings.session_generator = my_get_db
 ```
 
-The other way around, you can use FastAPI-Restly's session generator like this:
+Or use FastAPI-Restly's configured session proxy:
 
 ```python
-from fastapi_restly import get_session
+import fastapi_restly as fr
 
-with get_session() as session:
+async with fr.FRAsyncSession() as session:
     session.execute(...)
 ```
 
@@ -30,13 +30,13 @@ with get_session() as session:
 If you already have a DeclarativeBase class, you can make FastAPI-Restly use it:
 
 ```python
-from fastapi_restly import RestlyBase, AsyncAlchemyView
+import fastapi_restly as fr
 from sqlalchemy import Mapped
 
-class World(RestlyBase):
+class World(fr.Base):
     message: Mapped[str]
 
-class WorldView(AsyncAlchemyView):
+class WorldView(fr.AsyncAlchemyView):
     prefix = "world"
     model = World
     schema = WorldSchema

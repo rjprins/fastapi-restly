@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession as SA_AsyncSession
 from sqlalchemy.orm import Session as SA_Session
 from sqlalchemy.orm import sessionmaker
 
+from .._settings import settings
 from ._globals import fr_globals
 
 try:
@@ -32,6 +33,13 @@ def setup_async_database_connection(
     async_make_session: async_sessionmaker | None = None,
 ) -> async_sessionmaker:
     """Create and set an async session maker. Returns the session maker."""
+    if (
+        async_database_url is None
+        and async_engine is None
+        and async_make_session is None
+    ):
+        async_database_url = settings.async_database_url
+
     if not async_make_session:
         if not async_engine:
             if not async_database_url:
@@ -49,6 +57,8 @@ def setup_async_database_connection(
 
     fr_globals.async_database_url = async_database_url
     fr_globals.async_make_session = async_make_session
+    if async_database_url:
+        settings.async_database_url = async_database_url
     return async_make_session
 
 
@@ -59,6 +69,9 @@ def setup_database_connection(
     make_session: sessionmaker | None = None,
 ) -> sessionmaker:
     """Create and set a sync session maker. Returns the session maker."""
+    if database_url is None and engine is None and make_session is None:
+        database_url = settings.database_url
+
     if make_session is None:
         if engine is None:
             if not database_url:
@@ -74,6 +87,8 @@ def setup_database_connection(
 
     fr_globals.database_url = database_url
     fr_globals.make_session = make_session
+    if database_url:
+        settings.database_url = database_url
     return make_session
 
 
@@ -125,6 +140,11 @@ def _get_sync_engine(make_session: async_sessionmaker | sessionmaker) -> Engine:
 
 async def async_generate_session() -> AsyncIterator[SA_AsyncSession]:
     """FastAPI dependency for async database session."""
+    if settings.session_generator is not None:
+        async for session in settings.session_generator():
+            yield session
+        return
+
     # FastAPI does not support contextmanagers as dependency directly,
     # but it does support generators.
     async with fr_globals.async_make_session() as session:
@@ -138,6 +158,10 @@ AsyncSessionDep = Annotated[SA_AsyncSession, Depends(async_generate_session)]
 
 def generate_session() -> Iterator[SA_Session]:
     """FastAPI dependency for sync database session."""
+    if settings.sync_session_generator is not None:
+        yield from settings.sync_session_generator()
+        return
+
     with fr_globals.make_session() as session:
         yield session
         if session.is_active:
