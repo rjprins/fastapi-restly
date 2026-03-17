@@ -76,27 +76,28 @@ def _is_idschema_annotation(annotation: Any) -> bool:
         return False
 
 
-def _serialize_idschema_value(value: Any) -> Any:
+def _serialize_idschema_value(annotation: Any, value: Any) -> Any:
     if value is None:
         return None
-    if isinstance(value, IDSchema):
-        return {"id": value.id}
-    if hasattr(value, "id"):
-        return {"id": value.id}
-    return {"id": value}
+    id_value = value.id if hasattr(value, "id") else value
+    if inspect.isclass(annotation) and issubclass(annotation, IDSchema):
+        return annotation.model_construct(id=id_value)
+    return {"id": id_value}
 
 
 def _serialize_response_value(annotation: Any, value: Any) -> Any:
     annotation = _unwrap_optional_annotation(annotation)
 
     if _is_idschema_annotation(annotation):
-        return _serialize_idschema_value(value)
+        return _serialize_idschema_value(annotation, value)
 
     origin = get_origin(annotation)
     if origin is list:
         item_annotation = get_args(annotation)[0] if get_args(annotation) else Any
         if _is_idschema_annotation(item_annotation) and isinstance(value, Sequence):
-            return [_serialize_idschema_value(item) for item in value]
+            return [
+                _serialize_idschema_value(item_annotation, item) for item in value
+            ]
 
     return value
 
@@ -326,7 +327,10 @@ class BaseAlchemyView(View):
             "limit": None,
             "offset": None,
         }
-        if "page" in params or "page_size" in params:
+        uses_v2_pagination = (
+            self.get_query_modifier_version() == QueryModifierVersion.V2
+        )
+        if uses_v2_pagination or "page" in params or "page_size" in params:
             page = int(params.get("page", "1"))
             page_size = int(params.get("page_size", "100"))
             payload["page"] = page

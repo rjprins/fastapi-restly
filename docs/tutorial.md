@@ -10,12 +10,15 @@ omit `schema = ...` on a view and let FastAPI-Restly auto-generate it from the m
 ## Blog API Example
 
 ```python
+import asyncio
 import fastapi_restly as fr
 from fastapi import FastAPI
-from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy import ForeignKey
+from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.orm import Mapped, mapped_column
 
-fr.setup_async_database_connection("sqlite+aiosqlite:///blog.db")
+engine = create_async_engine("sqlite+aiosqlite:///blog.db")
+fr.setup_async_database_connection(async_engine=engine)
 app = FastAPI()
 
 class Post(fr.IDBase):
@@ -47,6 +50,14 @@ class CommentView(fr.AsyncAlchemyView):
     prefix = "/comments"
     model = Comment
     schema = CommentSchema
+
+
+async def init_models() -> None:
+    async with engine.begin() as conn:
+        await conn.run_sync(fr.Base.metadata.create_all)
+
+
+asyncio.run(init_models())
 ```
 
 ## Generated Endpoints

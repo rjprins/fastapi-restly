@@ -1,6 +1,6 @@
 import types
 from datetime import datetime
-from typing import Annotated, Any, Generic, Optional, TypeVar
+from typing import Annotated, Any, Generic, Optional, TypeVar, get_args, get_origin
 
 from fastapi import HTTPException
 import pydantic
@@ -50,7 +50,46 @@ class IDSchema(BaseSchema, Generic[SQLAlchemyModel]):
     Can be used as IDSchema[MyModel].
     """
 
-    id: ReadOnly[int]
+    # Keep this broad so relation-id payloads can target non-int primary keys.
+    id: ReadOnly[Any]
+
+    @classmethod
+    def _get_sql_model_annotation(cls) -> type[DeclarativeBase] | None:
+        try:
+            sql_model = cls.__pydantic_generic_metadata__["args"][0]
+        except Exception:
+            return None
+        return sql_model if isinstance(sql_model, type) else None
+
+    @classmethod
+    def _get_sql_model_id_type(cls) -> Any:
+        sql_model = cls._get_sql_model_annotation()
+        if sql_model is None:
+            return None
+
+        for model_cls in sql_model.mro():
+            annotation = getattr(model_cls, "__annotations__", {}).get("id")
+            if annotation is None:
+                continue
+            origin = get_origin(annotation)
+            if origin is not None:
+                args = get_args(annotation)
+                if args:
+                    return args[0]
+            return annotation
+
+        try:
+            return sql_model.__mapper__.primary_key[0].type.python_type
+        except Exception:
+            return None
+
+    @pydantic.field_validator("id", mode="before", check_fields=False)
+    @classmethod
+    def _coerce_id_to_model_primary_key_type(cls, value: Any) -> Any:
+        id_type = cls._get_sql_model_id_type()
+        if id_type in (None, Any):
+            return value
+        return pydantic.TypeAdapter(id_type).validate_python(value)
 
     def get_sql_model_annotation(self) -> SQLAlchemyModel | None:
         """
@@ -60,10 +99,7 @@ class IDSchema(BaseSchema, Generic[SQLAlchemyModel]):
 
         This property will return "Foo".
         """
-        try:
-            return self.__pydantic_generic_metadata__["args"][0]
-        except Exception:
-            return None
+        return self._get_sql_model_annotation()
 
 
 class IDStampsSchema(TimestampsSchemaMixin, IDSchema):

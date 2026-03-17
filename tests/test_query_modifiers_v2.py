@@ -90,6 +90,35 @@ class PostSchemaV2(pydantic.BaseModel):
     author: UserSchemaV2
 
 
+class AuditUserModelV2(Base):
+    __tablename__ = "audit_users_v2"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(50))
+
+
+class AuditLogModelV2(Base):
+    __tablename__ = "audit_logs_v2"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    creator_id: Mapped[int] = mapped_column(ForeignKey("audit_users_v2.id"))
+    updater_id: Mapped[int] = mapped_column(ForeignKey("audit_users_v2.id"))
+
+    creator: Mapped[AuditUserModelV2] = relationship(foreign_keys=[creator_id])
+    updater: Mapped[AuditUserModelV2] = relationship(foreign_keys=[updater_id])
+
+
+class AuditUserSchemaV2(pydantic.BaseModel):
+    id: int
+    name: str
+
+
+class AuditLogSchemaV2(pydantic.BaseModel):
+    id: int
+    creator: AuditUserSchemaV2
+    updater: AuditUserSchemaV2
+
+
 @pytest.fixture
 def select_query():
     return sqlalchemy.select(TestModel)
@@ -105,6 +134,11 @@ def mock_query_params():
 @pytest.fixture
 def post_select_query():
     return sqlalchemy.select(PostModelV2)
+
+
+@pytest.fixture
+def audit_log_select_query():
+    return sqlalchemy.select(AuditLogModelV2)
 
 
 class TestCreateQueryParamSchemaV2:
@@ -338,6 +372,36 @@ class TestApplyFilteringV2:
         assert 'JOIN users_v2 ON users_v2.id = posts_v2.author_id' in rendered
         assert 'FROM posts_v2, users_v2' not in rendered
         assert "WHERE users_v2.name = " in rendered
+
+    def test_apply_filtering_v2_relation_field_handles_ambiguous_foreign_keys(
+        self, audit_log_select_query, mock_query_params
+    ):
+        params = mock_query_params(**{"creator.name": "Alice"})
+        result = apply_filtering_v2(
+            params, audit_log_select_query, AuditLogModelV2, AuditLogSchemaV2
+        )
+
+        rendered = str(result)
+        assert (
+            "JOIN audit_users_v2 ON audit_users_v2.id = audit_logs_v2.creator_id"
+            in rendered
+        )
+        assert "WHERE audit_users_v2.name = " in rendered
+
+    def test_apply_sorting_v2_relation_field_handles_ambiguous_foreign_keys(
+        self, audit_log_select_query, mock_query_params
+    ):
+        params = mock_query_params(order_by="creator.name,-id")
+        result = apply_sorting_v2(
+            params, audit_log_select_query, AuditLogModelV2, AuditLogSchemaV2
+        )
+
+        rendered = str(result)
+        assert (
+            "JOIN audit_users_v2 ON audit_users_v2.id = audit_logs_v2.creator_id"
+            in rendered
+        )
+        assert "ORDER BY audit_users_v2.name ASC, audit_logs_v2.id DESC" in rendered
 
 
 class TestApplyQueryModifiersV2:

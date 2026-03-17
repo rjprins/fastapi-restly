@@ -52,12 +52,16 @@ uv sync
 ### Basic Example
 
 ```python
+import asyncio
 import fastapi_restly as fr
 from fastapi import FastAPI
+from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.orm import Mapped
 
 # Setup database
-fr.setup_async_database_connection("sqlite+aiosqlite:///app.db")
+DATABASE_URL = "sqlite+aiosqlite:///app.db"
+engine = create_async_engine(DATABASE_URL)
+fr.setup_async_database_connection(async_engine=engine)
 
 app = FastAPI()
 
@@ -73,6 +77,14 @@ class UserView(fr.AsyncAlchemyView):
     prefix = "/users"
     model = User
     # Schema is auto-generated from the model!
+
+
+async def init_models() -> None:
+    async with engine.begin() as conn:
+        await conn.run_sync(fr.Base.metadata.create_all)
+
+
+asyncio.run(init_models())
 
 # That's it! You now have a fully functional API with:
 # - GET /users/ - List all users, comes with complete filtering and pagination
@@ -164,7 +176,7 @@ class Order(fr.IDBase):
 
 class OrderSchema(fr.IDSchema):
     customer: CustomerSchema  # Nested object
-    customer_id: fr.IDSchema[Customer]  # Just the ID
+    customer_id: fr.IDSchema[Customer]  # Just the related ID, e.g. int or UUID
     total: float
 ```
 

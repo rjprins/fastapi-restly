@@ -177,9 +177,9 @@ def apply_sorting_v2(
 
 def _get_sqlalchemy_column_v2(
     model: type[DeclarativeBase], column_path: str, schema_cls: SchemaType | None = None
-) -> tuple[list[type[DeclarativeBase]], InstrumentedAttribute[Any]]:
+) -> tuple[list[InstrumentedAttribute[Any]], InstrumentedAttribute[Any]]:
     *models, column = _resolve_sqlalchemy_column_v2(model, column_path, schema_cls)
-    return cast(list[type[DeclarativeBase]], models), cast(
+    return cast(list[InstrumentedAttribute[Any]], models), cast(
         InstrumentedAttribute[Any], column
     )
 
@@ -199,7 +199,7 @@ def _resolve_sqlalchemy_column_v2(
         ):
             raise HTTPException(400, f"Invalid attribute in URL query: {column_name}")
         related_model = rel.property.mapper.class_
-        yield related_model
+        yield rel
         yield from _resolve_sqlalchemy_column_v2(related_model, column_part, schema_cls)
     else:
         # Try to find the column directly

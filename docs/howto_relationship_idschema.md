@@ -36,5 +36,6 @@ class ArticleSchema(fr.IDSchema):
 ## Behavior
 
 - FastAPI-Restly resolves `author_id` to an `Author` instance.
+- The nested `id` value can use the related model's primary-key type, such as `int` or `UUID`.
 - Missing related IDs return `404`.
 - Writes keep FK values and relation assignment in sync.

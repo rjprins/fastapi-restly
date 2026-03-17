@@ -2,8 +2,12 @@
 Schema generation utilities for auto-generating Pydantic schemas from SQLAlchemy models.
 """
 
+import enum
 import inspect
+from datetime import date, datetime, time
+from decimal import Decimal
 from typing import Any, Dict, List, Optional, Union, get_args
+from uuid import UUID
 
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.orm import DeclarativeBase, Mapped, RelationshipProperty
@@ -286,46 +290,52 @@ def convert_sqlalchemy_type_to_pydantic(
     Returns:
         A Pydantic-compatible type
     """
-    # Handle common SQLAlchemy types
-    type_mapping = {
-        "str": str,
-        "int": int,
-        "float": float,
-        "bool": bool,
-        "datetime": "datetime",
-        "date": "date",
-        "time": "time",
-        "UUID": "UUID",
-        "Decimal": "Decimal",
-        "Text": str,
-        "String": str,
-        "Integer": int,
-        "Float": float,
-        "Boolean": bool,
-        "DateTime": "datetime",
-        "Date": "date",
-        "Time": "time",
-    }
-
-    # Get the type name
     type_name = getattr(sqlalchemy_type, "__name__", str(sqlalchemy_type))
 
-    # Map to Pydantic type
-    pydantic_type = type_mapping.get(type_name, str)
-
-    # Handle datetime types specifically
-    if type_name in ["datetime", "DateTime"]:
-        from datetime import datetime
-
+    if sqlalchemy_type is Any:
+        pydantic_type = Any
+    elif sqlalchemy_type in (
+        str,
+        int,
+        float,
+        bool,
+        dict,
+        list,
+        datetime,
+        date,
+        time,
+        UUID,
+        Decimal,
+    ):
+        pydantic_type = sqlalchemy_type
+    elif isinstance(sqlalchemy_type, type) and issubclass(sqlalchemy_type, enum.Enum):
+        pydantic_type = sqlalchemy_type
+    elif isinstance(sqlalchemy_type, type) and issubclass(
+        sqlalchemy_type, DeclarativeBase
+    ):
+        # Relationship targets are replaced with nested schemas later.
+        pydantic_type = sqlalchemy_type
+    elif getattr(sqlalchemy_type, "__origin__", None) is not None:
+        # Preserve parameterized container types like dict[str, Any] or list[int].
+        pydantic_type = sqlalchemy_type
+    elif type_name in {"Text", "String"}:
+        pydantic_type = str
+    elif type_name in {"Integer"}:
+        pydantic_type = int
+    elif type_name in {"Float"}:
+        pydantic_type = float
+    elif type_name in {"Boolean"}:
+        pydantic_type = bool
+    elif type_name in {"DateTime"}:
         pydantic_type = datetime
-    elif type_name in ["date", "Date"]:
-        from datetime import date
-
+    elif type_name in {"Date"}:
         pydantic_type = date
-    elif type_name in ["time", "Time"]:
-        from datetime import time
-
+    elif type_name in {"Time"}:
         pydantic_type = time
+    else:
+        raise TypeError(
+            f"Unsupported field type for auto-generated schema: {sqlalchemy_type!r}"
+        )
 
     # Handle optional types
     if is_optional:

@@ -6,6 +6,7 @@ import pytest
 from fastapi import FastAPI
 from httpx import AsyncClient
 from sqlalchemy import ForeignKey
+from sqlalchemy.types import JSON
 from sqlalchemy.orm import Mapped, relationship
 from typing import Union, get_args, get_origin
 
@@ -206,3 +207,12 @@ def test_view_auto_schema_excludes_relationship_fields_by_default(client):
 
     assert "user" not in OrderView.schema.model_fields
     assert "user_id" in OrderView.schema.model_fields
+
+
+def test_create_schema_from_model_preserves_json_dict_types():
+    class Event(fd.IDBase):
+        payload: Mapped[dict] = fd.mapped_column(JSON)
+
+    schema = fd.create_schema_from_model(Event)
+
+    assert schema.model_fields["payload"].annotation is dict

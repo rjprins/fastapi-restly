@@ -21,11 +21,15 @@ make install-dev
 Create `main.py`:
 
 ```python
+import asyncio
 import fastapi_restly as fr
 from fastapi import FastAPI
+from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.orm import Mapped
 
-fr.setup_async_database_connection("sqlite+aiosqlite:///app.db")
+DATABASE_URL = "sqlite+aiosqlite:///app.db"
+engine = create_async_engine(DATABASE_URL)
+fr.setup_async_database_connection(async_engine=engine)
 app = FastAPI()
 
 class User(fr.IDBase):
@@ -36,6 +40,14 @@ class User(fr.IDBase):
 class UserView(fr.AsyncAlchemyView):
     prefix = "/users"
     model = User
+
+
+async def init_models() -> None:
+    async with engine.begin() as conn:
+        await conn.run_sync(fr.Base.metadata.create_all)
+
+
+asyncio.run(init_models())
 ```
 
 With no manual schema, FastAPI-Restly auto-generates one from your model.

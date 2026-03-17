@@ -20,7 +20,7 @@ Notes:
 - Update semantics are `PATCH` (partial update), not `PUT`.
 - `GET /{id}` and `DELETE /{id}` return `404` when the object is not found.
 - Read-only schema fields are ignored on create/update.
-- `*_id: IDSchema[Model]` inputs are resolved to SQLAlchemy objects and validated against the database.
+- `*_id: IDSchema[Model]` inputs are resolved to SQLAlchemy objects and validated against the database. The nested `id` accepts the related primary-key type, such as `int` or `UUID`.
 
 ## Query Parameters (List Endpoint)
 
@@ -55,13 +55,15 @@ on a view to return metadata together with the list items:
 {
   "items": [],
   "total": 123,
-  "page": null,
-  "page_size": null,
-  "total_pages": null,
-  "limit": 20,
-  "offset": 40
+  "page": 1,
+  "page_size": 100,
+  "total_pages": 2,
+  "limit": 100,
+  "offset": 0
 }
 ```
+
+For V1 views, `page`, `page_size`, and `total_pages` stay `null` unless you opt into the V2 query interface.
 
 ## Endpoint Decorators
 
@@ -103,11 +105,14 @@ For generated CRUD endpoints:
 ## Minimal Example
 
 ```python
+import asyncio
 import fastapi_restly as fr
 from fastapi import FastAPI
+from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.orm import Mapped
 
-fr.setup_async_database_connection("sqlite+aiosqlite:///app.db")
+engine = create_async_engine("sqlite+aiosqlite:///app.db")
+fr.setup_async_database_connection(async_engine=engine)
 app = FastAPI()
 
 class User(fr.IDBase):
@@ -117,6 +122,14 @@ class User(fr.IDBase):
 class UserView(fr.AsyncAlchemyView):
     prefix = "/users"
     model = User
+
+
+async def init_models() -> None:
+    async with engine.begin() as conn:
+        await conn.run_sync(fr.Base.metadata.create_all)
+
+
+asyncio.run(init_models())
 ```
 
 Generated endpoints:

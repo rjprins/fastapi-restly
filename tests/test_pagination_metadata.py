@@ -59,3 +59,35 @@ def test_index_can_return_pagination_metadata(client):
     assert payload["page"] is None
     assert payload["page_size"] is None
     assert payload["total_pages"] is None
+
+
+def test_v2_pagination_metadata_reports_effective_defaults(client):
+    class PaginatedItem(fr.IDBase):
+        name: str
+
+    class PaginatedItemSchema(fr.IDSchema):
+        name: str
+
+    @fr.include_view(client.app)
+    class PaginatedItemView(fr.AsyncAlchemyView):
+        prefix = "/paginated-items"
+        model = PaginatedItem
+        schema = PaginatedItemSchema
+        include_pagination_metadata = True
+        query_modifier_version = fr.QueryModifierVersion.V2
+
+    create_tables()
+
+    for i in range(105):
+        client.post("/paginated-items/", json={"name": f"Item {i}"})
+
+    response = client.get("/paginated-items/")
+    payload = response.json()
+
+    assert payload["total"] == 105
+    assert payload["page"] == 1
+    assert payload["page_size"] == 100
+    assert payload["total_pages"] == 2
+    assert payload["limit"] == 100
+    assert payload["offset"] == 0
+    assert len(payload["items"]) == 100
