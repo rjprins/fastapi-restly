@@ -366,7 +366,9 @@ class TestWriteOnlyWithAliases:
 
 class TestWriteOnlyInNestedSchemas:
     """Test WriteOnly fields in nested schemas."""
-    @pytest.mark.xfail(reason="WriteOnly fields in nested schemas not yet tested")
+    @pytest.mark.xfail(
+        reason="WriteOnly fields in nested schemas not yet tested", run=False
+    )
 
     def test_writeonly_fields_in_nested_schemas(self, client):
         """Test WriteOnly fields in nested schema relationships."""

@@ -13,6 +13,7 @@ Provides default reading and writing functions on the database using
 SQLAlchemy models.
 """
 
+import types
 import functools
 import inspect
 from enum import Enum
@@ -24,6 +25,8 @@ from typing import (
     ClassVar,
     Sequence,
     TypeVar,
+    Union,
+    get_args,
     get_origin,
     get_type_hints,
     overload,
@@ -38,11 +41,59 @@ from starlette.datastructures import QueryParams
 from ..query import create_query_param_schema
 from ..schemas import (
     BaseSchema,
+    IDSchema,
     auto_generate_schema_for_view,
     create_model_with_optional_fields,
     create_model_without_read_only_fields,
     is_field_writeonly,
 )
+
+
+def _unwrap_optional_annotation(annotation: Any) -> Any:
+    origin = get_origin(annotation)
+    if origin not in (types.UnionType, Union, None):
+        return annotation
+
+    if origin is None:
+        return annotation
+
+    non_none_args = [arg for arg in get_args(annotation) if arg is not type(None)]
+    if len(non_none_args) == 1:
+        return non_none_args[0]
+    return annotation
+
+
+def _is_idschema_annotation(annotation: Any) -> bool:
+    annotation = _unwrap_optional_annotation(annotation)
+    try:
+        return inspect.isclass(annotation) and issubclass(annotation, IDSchema)
+    except TypeError:
+        return False
+
+
+def _serialize_idschema_value(value: Any) -> Any:
+    if value is None:
+        return None
+    if isinstance(value, IDSchema):
+        return {"id": value.id}
+    if hasattr(value, "id"):
+        return {"id": value.id}
+    return {"id": value}
+
+
+def _serialize_response_value(annotation: Any, value: Any) -> Any:
+    annotation = _unwrap_optional_annotation(annotation)
+
+    if _is_idschema_annotation(annotation):
+        return _serialize_idschema_value(value)
+
+    origin = get_origin(annotation)
+    if origin is list:
+        item_annotation = get_args(annotation)[0] if get_args(annotation) else Any
+        if _is_idschema_annotation(item_annotation) and isinstance(value, Sequence):
+            return [_serialize_idschema_value(item) for item in value]
+
+    return value
 
 
 class View:
@@ -215,12 +266,9 @@ class BaseAlchemyView(View):
                 continue
             if hasattr(obj, field_name):
                 value = getattr(obj, field_name)
-                if field_name.endswith("_id") and isinstance(value, int):
-                    payload[field_name] = {"id": value}
-                elif field_name.endswith("_id") and hasattr(value, "id"):
-                    payload[field_name] = {"id": value.id}
-                else:
-                    payload[field_name] = value
+                payload[field_name] = _serialize_response_value(
+                    field_info.annotation, value
+                )
             elif field_info.alias and hasattr(obj, field_info.alias):
                 payload[field_name] = getattr(obj, field_info.alias)
 
@@ -233,7 +281,9 @@ class BaseAlchemyView(View):
         if isinstance(query_params, QueryParams):
             return query_params
         if isinstance(query_params, pydantic.BaseModel):
-            dumped = query_params.model_dump(exclude_none=True, by_alias=True)
+            dumped = query_params.model_dump(
+                exclude_none=True, by_alias=True, mode="json"
+            )
             return QueryParams({k: str(v) for k, v in dumped.items()})
         if isinstance(query_params, dict):
             return QueryParams({k: str(v) for k, v in query_params.items()})

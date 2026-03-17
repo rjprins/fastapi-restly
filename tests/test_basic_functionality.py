@@ -192,12 +192,39 @@ def test_put_request_with_non_existing_id(client):
     invalid_update_data = {
         "title": "Blog with non-existing author",
         "content": "This should fail",
-        "author_id": {"id": non_existing_author_id}
+        "author_id": {"id": non_existing_author_id},
     }
     response = client.request("PATCH", f"/blogs/{blog_id}", json=invalid_update_data)
     # This should either return 404 (if author validation happens before blog lookup)
     # or 422 (if validation fails during the update process)
     assert response.status_code in [404, 422]
+
+
+def test_plain_foreign_key_fields_serialize_as_scalars(client):
+    """Plain int foreign key fields should not be coerced into IDSchema payloads."""
+
+    class Task(fd.IDBase):
+        title: Mapped[str]
+        assignee_id: Mapped[int | None]
+
+    class TaskSchema(fd.IDSchema):
+        title: str
+        assignee_id: int | None = None
+
+    @fd.include_view(client.app)
+    class TaskView(fd.AsyncAlchemyView):
+        prefix = "/tasks"
+        model = Task
+        schema = TaskSchema
+
+    create_tables()
+
+    response = client.post("/tasks/", json={"title": "Task", "assignee_id": 123})
+    assert response.status_code == 201
+    task = response.json()
+
+    assert task["assignee_id"] == 123
+    assert isinstance(task["assignee_id"], int)
 
 
 def test_list_endpoint(client):
