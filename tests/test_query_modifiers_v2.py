@@ -8,8 +8,8 @@ from unittest.mock import Mock, patch
 import pydantic
 import sqlalchemy
 from fastapi import HTTPException
-from sqlalchemy import Column, Integer, String, DateTime, Boolean
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from starlette.datastructures import QueryParams
 
 from fastapi_restly.query._v2 import (
@@ -56,6 +56,40 @@ class TestNestedModel(Base):
     user_id: Mapped[int] = mapped_column(Integer)
 
 
+class UserModelV2(Base):
+    __tablename__ = "users_v2"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(50))
+    email: Mapped[str] = mapped_column(String(100))
+
+    posts: Mapped[list["PostModelV2"]] = relationship("PostModelV2", back_populates="author")
+
+
+class PostModelV2(Base):
+    __tablename__ = "posts_v2"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    title: Mapped[str] = mapped_column(String(100))
+    content: Mapped[str] = mapped_column(String(500))
+    author_id: Mapped[int] = mapped_column(ForeignKey("users_v2.id"))
+
+    author: Mapped[UserModelV2] = relationship("UserModelV2", back_populates="posts")
+
+
+class UserSchemaV2(pydantic.BaseModel):
+    id: int
+    name: str
+    email: str
+
+
+class PostSchemaV2(pydantic.BaseModel):
+    id: int
+    title: str
+    content: str
+    author: UserSchemaV2
+
+
 @pytest.fixture
 def select_query():
     return sqlalchemy.select(TestModel)
@@ -66,6 +100,11 @@ def mock_query_params():
     def _create_params(**kwargs):
         return QueryParams(kwargs)
     return _create_params
+
+
+@pytest.fixture
+def post_select_query():
+    return sqlalchemy.select(PostModelV2)
 
 
 class TestCreateQueryParamSchemaV2:
@@ -103,6 +142,16 @@ class TestCreateQueryParamSchemaV2:
         # Check that nested field filters exist (using dot notation)
         assert "user.name" in schema.model_fields
         assert "user.age__gte" in schema.model_fields
+
+    def test_create_query_param_schema_v2_nested_pep604_optional(self):
+        """Optional nested schemas using X | None should still expand nested filters."""
+        class OptionalNestedSchema(pydantic.BaseModel):
+            user: TestSchema | None = None
+
+        schema = create_query_param_schema_v2(OptionalNestedSchema)
+
+        assert "user.name" in schema.model_fields
+        assert "user.email__contains" in schema.model_fields
 
 
 class TestApplyPaginationV2:
@@ -275,6 +324,20 @@ class TestApplyFilteringV2:
         
         assert exc_info.value.status_code == 400
         assert "Invalid attribute" in str(exc_info.value.detail)
+
+    def test_apply_filtering_v2_relation_field_uses_join(
+        self, post_select_query, mock_query_params
+    ):
+        """Relation filtering should join through the relationship instead of cross joining."""
+        params = mock_query_params(**{"author.name": "Alice"})
+        result = apply_filtering_v2(
+            params, post_select_query, PostModelV2, PostSchemaV2
+        )
+
+        rendered = str(result)
+        assert 'JOIN users_v2 ON users_v2.id = posts_v2.author_id' in rendered
+        assert 'FROM posts_v2, users_v2' not in rendered
+        assert "WHERE users_v2.name = " in rendered
 
 
 class TestApplyQueryModifiersV2:
@@ -455,3 +518,11 @@ class TestGetFieldTypeForSchema:
         
         result = _get_field_type_for_schema(field)
         assert result == Any  # Any should remain Any, not become object 
+
+    def test_get_field_type_for_schema_pep604_optional(self):
+        """PEP 604 optionals should unwrap to their inner type."""
+        field = Mock()
+        field.annotation = str | None
+
+        result = _get_field_type_for_schema(field)
+        assert result == str

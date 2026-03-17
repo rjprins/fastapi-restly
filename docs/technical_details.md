@@ -2,177 +2,61 @@
 
 ## Schema Generation Under the Hood
 
-### Read-Only Field Detection
+FastAPI-Restly builds request and response schemas from your declared schema class,
+or auto-generates one from the SQLAlchemy model when `schema` is omitted on a
+view.
 
-FastAPI-Restly supports two approaches for marking fields as read-only:
+### ReadOnly and WriteOnly
 
-1. **Class-level approach**: Using `read_only_fields: ClassVar = ["field1", "field2"]`
-2. **Field-level approach**: Using `ReadOnly(type)` annotation
-
-The field-level approach uses Python's `typing.Annotated` to attach metadata to type annotations:
-
-```python
-class _Marker:
-    def __init__(self, name: str):
-        self.name = name
-
-readonly_marker = _Marker("ReadOnly")
-writeonly_marker = _Marker("WriteOnly")
-
-_T = TypeVar("_T")
-
-ReadOnly = Annotated[_T, readonly_marker, Field(json_schema_extra={"readOnly": True})]
-WriteOnly = Annotated[_T, writeonly_marker, Field(json_schema_extra={"writeOnly": True})]
-```
-
-### Creation Schema Generation
-
-When you define a schema with read-only fields, the framework automatically generates a creation schema using an **inheritance + override** approach:
-
-1. **Inheritance**: The creation schema inherits from your original schema, preserving all validators, config, methods, and other functionality
-2. **Field Override**: Read-only fields are overridden to be optional with `None` as default
-3. **Input Filtering**: The `model_validate` method is overridden to filter out read-only fields from input data
-
-#### Side Effects to Be Aware Of
-
-- **Read-only fields are absent**: They cannot be set and do not appear in creation endpoints
-- **Validators for writable fields are preserved**: All validation logic for included fields works as expected
-- **No validation for read-only fields**: Any validators or logic depending on read-only fields will not run during creation
-
----
-
-### Update Schema Creation
-
-When you define a schema with `read_only_fields`, the framework automatically generates an update schema using an **inheritance + ignore** approach:
-
-1. **Inheritance**: The update schema inherits from your original schema, preserving all validators, config, methods, and other functionality
-2. **Field Override**: Read-only fields are overridden to be optional with `None` as default
-3. **Input Filtering**: The `model_validate` method is overridden to filter out read-only fields from input data
-
-### How It Works
-
-1. Your original schema defines fields and validators
-2. The framework creates a new schema class that inherits from yours
-3. Read-only fields are redefined as optional (`field: type | None = None`)
-4. The validation method ignores read-only fields in incoming data
-5. Result: A schema that preserves all functionality but ignores read-only fields
-
-### Side Effects to Be Aware Of
-
-- **Read-only fields become optional**: They default to `None` when not provided
-- **Input filtering is transparent**: Read-only fields in request data are silently ignored
-- **Validators work normally**: All field and model validators function as expected
-- **Type hints reflect reality**: The generated schema accurately represents what fields are actually used
-
-### Example
+Field-level markers are implemented with `typing.Annotated` metadata:
 
 ```python
 class UserSchema(IDSchema):
-    name: str
+    id: ReadOnly[int]
     email: str
-    
-    @field_validator('email')
-    def validate_email(cls, v):
-        # This validator works in both original and update schemas
-        return v.lower()
+    password: WriteOnly[str]
 ```
 
-The update schema will:
-- Inherit the email validator
-- Make `id` optional (defaults to `None`)
-- Ignore `id` if provided in input data
-- Keep `name` and `email` as optional fields for partial updates
+- `ReadOnly[...]` fields are removed from generated create/update input schemas.
+- `WriteOnly[...]` fields are accepted on input and omitted from serialized responses.
 
-## Field-Level Read-Only Implementation
+### Generated Input Schemas
 
-The `ReadOnly` and `WriteOnly` annotations use Python's `typing.Annotated` to attach metadata to type annotations:
+For a view schema `MySchema`, Restly derives:
 
-```python
-class _Marker:
-    def __init__(self, name: str):
-        self.name = name
+- `creation_schema`: removes `ReadOnly[...]` fields
+- `update_schema`: removes `ReadOnly[...]` fields and makes the remaining fields optional
 
-readonly_marker = _Marker("ReadOnly")
-writeonly_marker = _Marker("WriteOnly")
+Those derived schemas inherit from the original schema so validators and model
+config continue to apply to writable fields.
 
-_T = TypeVar("_T")
+### Auto-Generated Schemas
 
-ReadOnly = Annotated[_T, readonly_marker, Field(json_schema_extra={"readOnly": True})]
-WriteOnly = Annotated[_T, writeonly_marker, Field(json_schema_extra={"writeOnly": True})]
-```
+`create_schema_from_model(...)` inspects SQLAlchemy model annotations and can
+generate nested relationship fields when `include_relationships=True`.
 
-### Detection Logic
+`auto_generate_schema_for_view(...)` is more conservative: it excludes
+relationship attributes by default and focuses on scalar fields and foreign-key
+columns. This keeps generated CRUD views usable without requiring nested ORM
+loading or nested write payloads.
 
-The framework detects read-only and write-only fields by checking field metadata:
+## Query Modifier Lifecycle
 
-```python
-def get_read_only_fields(model_cls: type[pydantic.BaseModel]) -> list[str]:
-    """Get all fields from a model annotated as ReadOnly[]"""
-    read_only_fields: list[str] = []
-    # Get read-only fields from Annotated metadata
-    for field_name, field_info in model_cls.model_fields.items():
-        metadata = getattr(field_info, "metadata", None)
-        if metadata and readonly_marker in metadata:
-            read_only_fields.append(field_name)
-    return read_only_fields
+Query modifiers have two versions:
 
-def get_write_only_fields(model_cls: type[pydantic.BaseModel]) -> list[str]:
-    """Get all fields from a model annotated as WriteOnly[]"""
-    write_only_fields: list[str] = []
-    # Get write-only fields from Annotated metadata
-    for field_name, field_info in model_cls.model_fields.items():
-        metadata = getattr(field_info, "metadata", None)
-        if metadata and writeonly_marker in metadata:
-            write_only_fields.append(field_name)
-    return write_only_fields
-```
+- `QueryModifierVersion.V1`: `filter[...]`, `sort`, `limit`, `offset`
+- `QueryModifierVersion.V2`: direct fields, `order_by`, `page`, `page_size`
 
-### Benefits of This Approach
+Views capture the active query modifier version when `@include_view(...)`
+registers them. That captured version is then used for both:
 
-- **Type-safe**: Works with static type checkers and IDEs
-- **Introspectable**: Metadata is preserved and can be accessed at runtime
-- **Future-proof**: Uses standard Python typing mechanisms
-- **Extensible**: Easy to add other field-level metadata in the future
+- generating the query parameter schema
+- applying filtering, sorting, and pagination at runtime
 
-## Read-Only Field Behavior
+This means:
 
-### Default Behavior: Silent Ignore
-
-By default, read-only fields are **silently ignored** when provided in requests:
-
-```python
-# This request will succeed, with internal_id being ignored
-POST /products/
-{
-    "name": "Test Product",
-    "price": 29.99,
-    "internal_id": "IGNORED"  # This field is ignored
-}
-```
-
-### Why Silent Ignore?
-
-This approach is chosen because:
-
-1. **User-Friendly**: Clients can send full objects without filtering
-2. **Backward Compatible**: Existing code won't break
-3. **Flexible**: Common pattern in many APIs (Django REST Framework, etc.)
-4. **Non-Breaking**: Prevents client errors from accidental field inclusion
-
-### Optional Error-Raising
-
-For development or debugging, you can enable strict validation by setting `raise_on_readonly=True` in the schema generation functions:
-
-```python
-# This would raise a ValueError if read-only fields are provided
-create_model_without_read_only_fields(MySchema, raise_on_readonly=True)
-create_model_with_optional_fields(MySchema, raise_on_readonly=True)
-```
-
-This is useful for:
-- **Development**: Catching client bugs early
-- **Debugging**: Understanding what fields are being sent
-- **Strict APIs**: When you want explicit feedback about invalid requests
+- call `set_query_modifier_version(...)` before registering the view, or
+- set `query_modifier_version = QueryModifierVersion.V1|V2` on the view class
 
 ## More Topics
 
@@ -183,5 +67,4 @@ auto_schema
 custom_endpoints
 existing
 query_modifiers
-pytest_fixtures
 ```

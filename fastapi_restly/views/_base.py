@@ -38,7 +38,12 @@ from pydantic import create_model
 from sqlalchemy.orm import DeclarativeBase
 from starlette.datastructures import QueryParams
 
-from ..query import create_query_param_schema
+from ..query import (
+    QueryModifierVersion,
+    create_query_param_schema,
+    get_query_modifier_version,
+    use_query_modifier_version,
+)
 from ..schemas import (
     BaseSchema,
     IDSchema,
@@ -250,8 +255,12 @@ class BaseAlchemyView(View):
     id_type: ClassVar[type[Any]] = int
     include_pagination_metadata: ClassVar[bool] = False
     exclude_routes: ClassVar[list[str]] = []
+    query_modifier_version: ClassVar[QueryModifierVersion]
 
     request: fastapi.Request
+
+    def get_query_modifier_version(self) -> QueryModifierVersion:
+        return getattr(self, "query_modifier_version", get_query_modifier_version())
 
     def to_response_schema(self, obj: Any) -> BaseSchema:
         """Serialize an ORM object to the configured response schema."""
@@ -350,8 +359,11 @@ class BaseAlchemyView(View):
                 )
             cls.schema = auto_generate_schema_for_view(cls, cls.model)
 
+        if not hasattr(cls, "query_modifier_version"):
+            cls.query_modifier_version = get_query_modifier_version()
         if not hasattr(cls, "index_param_schema"):
-            cls.index_param_schema = create_query_param_schema(cls.schema)
+            with use_query_modifier_version(cls.query_modifier_version):
+                cls.index_param_schema = create_query_param_schema(cls.schema)
         if not hasattr(cls, "creation_schema"):
             cls.creation_schema = create_model_without_read_only_fields(cls.schema)
         if not hasattr(cls, "update_schema"):

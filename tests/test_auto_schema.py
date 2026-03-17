@@ -1,10 +1,13 @@
 """Test auto-generated schemas."""
 
 import asyncio
+import types
 import pytest
 from fastapi import FastAPI
 from httpx import AsyncClient
-from sqlalchemy.orm import Mapped
+from sqlalchemy import ForeignKey
+from sqlalchemy.orm import Mapped, relationship
+from typing import Union, get_args, get_origin
 
 import fastapi_restly as fd
 from fastapi_restly.db import fr_globals
@@ -155,3 +158,51 @@ def test_auto_generated_schema_crud_operations(client):
 
     # Verify deletion
     client.get(f"/items/{item_id}", assert_status_code=404)
+
+
+def test_create_schema_from_model_includes_nested_relationship_schema():
+    """Manual schema generation should resolve relationships to nested schemas."""
+
+    class User(fd.IDBase):
+        name: Mapped[str]
+        email: Mapped[str]
+
+    class Order(fd.IDBase):
+        user_id: Mapped[int] = fd.mapped_column(ForeignKey("user.id"))
+        user: Mapped[User] = relationship()
+
+    schema = fd.create_schema_from_model(Order, include_relationships=True)
+
+    assert "user" in schema.model_fields
+    user_annotation = schema.model_fields["user"].annotation
+    if get_origin(user_annotation) in (types.UnionType, Union):
+        nested_annotation = next(
+            arg for arg in get_args(user_annotation) if arg is not type(None)
+        )
+    else:
+        nested_annotation = user_annotation
+    assert nested_annotation is not str
+    assert hasattr(nested_annotation, "model_fields")
+    assert "name" in nested_annotation.model_fields
+    assert "email" in nested_annotation.model_fields
+
+
+def test_view_auto_schema_excludes_relationship_fields_by_default(client):
+    """View auto-schema should stay focused on scalar/FK fields unless opted in explicitly."""
+
+    class User(fd.IDBase):
+        name: Mapped[str]
+
+    class Order(fd.IDBase):
+        user_id: Mapped[int] = fd.mapped_column(ForeignKey("user.id"))
+        user: Mapped[User] = relationship()
+
+    @fd.include_view(client.app)
+    class OrderView(fd.AsyncAlchemyView):
+        prefix = "/orders"
+        model = Order
+
+    create_tables()
+
+    assert "user" not in OrderView.schema.model_fields
+    assert "user_id" in OrderView.schema.model_fields

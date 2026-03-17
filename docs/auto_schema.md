@@ -6,6 +6,10 @@ FastAPI-Restly now supports auto-generating Pydantic schemas from SQLAlchemy mod
 
 When you create an `AsyncAlchemyView` or `AlchemyView` without specifying a `schema`, FastAPI-Restly will automatically generate a Pydantic schema from your SQLAlchemy model.
 
+View auto-schema intentionally focuses on scalar fields and foreign-key columns.
+Relationship attributes are excluded by default so generated CRUD endpoints stay
+safe and predictable in request/response flows.
+
 ## Basic Usage
 
 ```python
@@ -46,6 +50,12 @@ CustomUserSchema = create_schema_from_model(
     User, 
     schema_name="CustomUserSchema"
 )
+
+# Opt into nested relationship fields explicitly
+DetailedOrderSchema = create_schema_from_model(
+    Order,
+    include_relationships=True,
+)
 ```
 
 ## Advanced Features
@@ -66,6 +76,22 @@ class Product(fr.IDBase, fr.TimestampsMixin):
 # - updated_at: read-only (from TimestampsMixin)
 # - name, price, description: editable
 ```
+
+### Relationships
+
+Manual schema generation can include nested relationship schemas:
+
+```python
+class Order(fr.IDBase):
+    customer_id: Mapped[int] = fr.mapped_column(ForeignKey("customer.id"))
+    customer: Mapped[Customer] = relationship()
+
+OrderSchema = create_schema_from_model(Order, include_relationships=True)
+```
+
+For view auto-schema, prefer the foreign-key column such as `customer_id`. If
+you need nested relationship fields in the API contract, use an explicit schema
+or a manually generated schema configured the way you want.
 
 ### Custom Field Types
 

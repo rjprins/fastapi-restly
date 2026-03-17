@@ -279,6 +279,24 @@ class TestContainsV2Functionality:
         assert _is_string_field_v2(email_field) is True
         assert _is_string_field_v2(age_field) is False
 
+    def test_contains_v2_string_field_detection_pep604_optional(self):
+        """PEP 604 optionals should still be treated as strings for __contains."""
+        from fastapi_restly.query._v2 import _is_string_field_v2, create_query_param_schema_v2
+        from pydantic import BaseModel
+
+        class TestSchema(BaseModel):
+            email: str | None = None
+            age: int
+
+        email_field = TestSchema.model_fields["email"]
+        age_field = TestSchema.model_fields["age"]
+
+        assert _is_string_field_v2(email_field) is True
+        assert _is_string_field_v2(age_field) is False
+
+        schema = create_query_param_schema_v2(TestSchema)
+        assert "email__contains" in schema.model_fields
+
 
 class TestContainsIntegration:
     """Test contains functionality integration with other features."""

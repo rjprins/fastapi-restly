@@ -34,12 +34,17 @@ Notes:
 
 ### V2 (HTTP-style)
 - Filtering: `?name=John&email__contains=example`
-- Sorting: `?sort=name,-created_at`
+- Sorting: `?order_by=name,-created_at`
 - Pagination: `?page=2&page_size=10`
 
 The active version is controlled via:
 - `fr.set_query_modifier_version(...)`
 - `fr.get_query_modifier_version(...)`
+
+Views capture the active query-modifier version when they are registered with
+`@fr.include_view(...)`. Set the global version before registering the view, or
+set `query_modifier_version = fr.QueryModifierVersion.V1|V2` on the view class
+for explicit per-view behavior.
 
 ## Optional Pagination Metadata
 

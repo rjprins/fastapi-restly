@@ -16,7 +16,7 @@ GET /users/?contains[email]=example
 ```text
 GET /users/?name=John
 GET /users/?email__contains=example
-GET /users/?sort=-id
+GET /users/?order_by=-id
 GET /users/?page=1&page_size=20
 ```
 
@@ -26,6 +26,17 @@ GET /users/?page=1&page_size=20
 from fastapi_restly import QueryModifierVersion, set_query_modifier_version
 
 set_query_modifier_version(QueryModifierVersion.V2)
+```
+
+Call `set_query_modifier_version(...)` before `@fr.include_view(...)` so the
+generated query schema and runtime behavior stay aligned.
+
+## Per-View Fixed Version
+
+```python
+class UserView(fr.AsyncAlchemyView):
+    query_modifier_version = fr.QueryModifierVersion.V2
+    ...
 ```
 
 ## Per-View Override Pattern
@@ -38,4 +49,3 @@ class UserView(fr.AsyncAlchemyView):
         query = sqlalchemy.select(self.model).where(self.model.active.is_(True))
         return await super().process_index(query_params, query=query)
 ```
-

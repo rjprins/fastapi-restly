@@ -6,7 +6,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import DeclarativeBase
 
 from ..db import AsyncSessionDep
-from ..query import apply_query_modifiers
+from ..query import apply_query_modifiers, use_query_modifier_version
 from ..schemas import (
     BaseSchema,
     IDSchema,
@@ -60,17 +60,19 @@ class AsyncAlchemyView(BaseAlchemyView):
             query = sqlalchemy.select(self.model)
         query_params = self._to_query_params(query_params)
 
-        query = apply_query_modifiers(
-            query_params, query, self.model, self.schema
-        )
+        with use_query_modifier_version(self.get_query_modifier_version()):
+            query = apply_query_modifiers(
+                query_params, query, self.model, self.schema
+            )
         scalar_result = await self.session.scalars(query)
         return scalar_result.all()
 
     async def count_index(self, query_params: Any) -> int:
         query_params = self._to_query_params(query_params)
-        filtered_query = apply_query_modifiers(
-            query_params, sqlalchemy.select(self.model), self.model, self.schema
-        )
+        with use_query_modifier_version(self.get_query_modifier_version()):
+            filtered_query = apply_query_modifiers(
+                query_params, sqlalchemy.select(self.model), self.model, self.schema
+            )
         filtered_query = filtered_query.order_by(None).limit(None).offset(None)
         count_query = select(func.count()).select_from(filtered_query.subquery())
         return int(await self.session.scalar(count_query) or 0)

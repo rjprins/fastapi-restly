@@ -1,6 +1,7 @@
 """Test query modifiers configuration."""
 
 import pytest
+import fastapi_restly as fr
 from fastapi import FastAPI
 from httpx import AsyncClient
 from sqlalchemy.orm import Mapped
@@ -22,6 +23,7 @@ from fastapi_restly.query import (
     create_query_param_schema,
 )
 from fastapi_restly.models import Base
+from .conftest import create_tables
 
 
 class TestModel(Base):
@@ -199,4 +201,32 @@ class TestIntegration:
         assert "page" in schema.model_fields
         assert "page_size" in schema.model_fields
         assert "order_by" in schema.model_fields
-        assert "name" in schema.model_fields 
+        assert "name" in schema.model_fields
+
+    def test_view_keeps_query_modifier_version_from_registration(self, client):
+        """Views should keep a stable query schema and runtime behavior after registration."""
+        set_query_modifier_version(QueryModifierVersion.V1)
+
+        class User(fr.IDBase):
+            name: Mapped[str]
+
+        @fr.include_view(client.app)
+        class UserView(fr.AsyncAlchemyView):
+            prefix = "/users"
+            model = User
+
+        create_tables()
+
+        client.post("/users/", json={"name": "Alice"})
+        client.post("/users/", json={"name": "Bob"})
+
+        assert "limit" in UserView.index_param_schema.model_fields
+        assert "page" not in UserView.index_param_schema.model_fields
+
+        set_query_modifier_version(QueryModifierVersion.V2)
+
+        limited = client.get("/users/?limit=1")
+        assert len(limited.json()) == 1
+
+        paged = client.get("/users/?page=1&page_size=1")
+        assert len(paged.json()) == 2

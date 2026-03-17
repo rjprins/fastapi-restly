@@ -86,7 +86,7 @@ GET /posts/?limit=10&offset=0
 Or V2 style:
 
 ```text
-GET /posts/?published=true&sort=-id&page=1&page_size=10
+GET /posts/?published=true&order_by=-id&page=1&page_size=10
 ```
 
 ## Testing

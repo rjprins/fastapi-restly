@@ -1,4 +1,5 @@
 import functools
+import types
 from collections import defaultdict
 from typing import Any, Callable, Iterator, Optional, Union, cast, get_args, get_origin
 
@@ -15,18 +16,20 @@ from starlette.datastructures import QueryParams
 SchemaType = type[pydantic.BaseModel]
 
 
+def _unwrap_optional_annotation(annotation: Any) -> Any:
+    origin = get_origin(annotation)
+    if origin not in (types.UnionType, Union):
+        return annotation
+
+    non_none_args = [arg for arg in get_args(annotation) if arg is not type(None)]
+    if len(non_none_args) == 1:
+        return non_none_args[0]
+    return annotation
+
+
 def _is_string_field_v2(field: FieldInfo) -> bool:
     """Check if a field is a string type."""
-    annotation = field.annotation
-
-    # Handle Optional[str] (i.e., Union[str, None])
-    origin = get_origin(annotation)
-    if origin is Union:
-        args = get_args(annotation)
-        non_none_args = [arg for arg in args if arg is not type(None)]
-        if len(non_none_args) == 1:
-            annotation = non_none_args[0]
-
+    annotation = _unwrap_optional_annotation(field.annotation)
     return annotation is str
 
 
@@ -99,15 +102,9 @@ def apply_pagination_v2(
 
 
 def _get_field_type_for_schema(field: FieldInfo) -> type:
-    annotation = field.annotation
+    annotation = _unwrap_optional_annotation(field.annotation)
     if annotation is Any:
         return Any
-    origin = get_origin(annotation)
-    if origin is Union:
-        args = get_args(annotation)
-        non_none_args = [arg for arg in args if arg is not type(None)]
-        if len(non_none_args) == 1:
-            annotation = non_none_args[0]
     if isinstance(annotation, type):
         return annotation
     return object
@@ -267,14 +264,21 @@ def apply_filtering_v2(
     filters: dict[InstrumentedAttribute[Any], list[ColumnElement[Any]]] = defaultdict(
         list
     )
+    all_joins: set[InstrumentedAttribute[Any]] = set()
 
     # Handle different parameter types
-    standard_filters = _apply_standard_parameters_v2(
+    standard_filters, standard_joins = _apply_standard_parameters_v2(
         query_params, select_query, model, schema_cls
     )
-    suffix_filters = _apply_suffix_parameters_v2(
+    suffix_filters, suffix_joins = _apply_suffix_parameters_v2(
         query_params, select_query, model, schema_cls
     )
+
+    all_joins.update(standard_joins)
+    all_joins.update(suffix_joins)
+
+    for join in all_joins:
+        select_query = select_query.join(join)
 
     # Merge all filters
     for column, clauses in standard_filters.items():
@@ -297,11 +301,15 @@ def _apply_standard_parameters_v2(
     select_query: Select[Any],
     model: type[DeclarativeBase],
     schema_cls: SchemaType,
-) -> dict[InstrumentedAttribute[Any], list[ColumnElement[Any]]]:
+) -> tuple[
+    dict[InstrumentedAttribute[Any], list[ColumnElement[Any]]],
+    set[InstrumentedAttribute[Any]],
+]:
     """Handle standard field parameters (no suffix)."""
     filters: dict[InstrumentedAttribute[Any], list[ColumnElement[Any]]] = defaultdict(
         list
     )
+    joins: set[InstrumentedAttribute[Any]] = set()
 
     for key, raw_value in query_params.multi_items():
         if key in ("page", "page_size", "order_by") or "__" in key:
@@ -309,9 +317,8 @@ def _apply_standard_parameters_v2(
 
         # Standard field parameter (eq operator)
         column_name = key
-        joins, column = _get_sqlalchemy_column_v2(model, column_name, schema_cls)
-        for join in joins:
-            select_query = select_query.join(join)
+        column_joins, column = _get_sqlalchemy_column_v2(model, column_name, schema_cls)
+        joins.update(column_joins)
 
         parser = functools.partial(_parse_value_v2, schema_cls, column_name)
         split_values = raw_value.split(",")
@@ -322,7 +329,7 @@ def _apply_standard_parameters_v2(
             or_clause = sqlalchemy.or_(*clauses)
         filters[column].append(or_clause)
 
-    return filters
+    return filters, joins
 
 
 def _apply_suffix_parameters_v2(
@@ -330,11 +337,15 @@ def _apply_suffix_parameters_v2(
     select_query: Select[Any],
     model: type[DeclarativeBase],
     schema_cls: SchemaType,
-) -> dict[InstrumentedAttribute[Any], list[ColumnElement[Any]]]:
+) -> tuple[
+    dict[InstrumentedAttribute[Any], list[ColumnElement[Any]]],
+    set[InstrumentedAttribute[Any]],
+]:
     """Handle parameters with __suffixes (gte, lte, gt, lt, isnull, contains, etc.)."""
     filters: dict[InstrumentedAttribute[Any], list[ColumnElement[Any]]] = defaultdict(
         list
     )
+    joins: set[InstrumentedAttribute[Any]] = set()
 
     for key, raw_value in query_params.multi_items():
         if key in ("page", "page_size", "order_by") or "__" not in key:
@@ -342,9 +353,8 @@ def _apply_suffix_parameters_v2(
 
         # Parse suffixes
         column_name, op = key.split("__", 1)
-        joins, column = _get_sqlalchemy_column_v2(model, column_name, schema_cls)
-        for join in joins:
-            select_query = select_query.join(join)
+        column_joins, column = _get_sqlalchemy_column_v2(model, column_name, schema_cls)
+        joins.update(column_joins)
 
         parser = functools.partial(_parse_value_v2, schema_cls, column_name)
 
@@ -366,7 +376,7 @@ def _apply_suffix_parameters_v2(
             or_clause = sqlalchemy.or_(*clauses)
         filters[column].append(or_clause)
 
-    return filters
+    return filters, joins
 
 
 def _parse_value_v2(schema_cls: SchemaType, column_name: str, value: str) -> Any:
@@ -429,13 +439,7 @@ def _parse_value_v2(schema_cls: SchemaType, column_name: str, value: str) -> Any
 def _get_nested_schema_v2(field: FieldInfo | None) -> SchemaType | None:
     if field is None:
         return None
-    annotation = field.annotation
-    origin = get_origin(annotation)
-    if origin is Union:
-        args = get_args(annotation)
-        non_none_args = [arg for arg in args if arg is not type(None)]
-        if len(non_none_args) == 1:
-            annotation = non_none_args[0]
+    annotation = _unwrap_optional_annotation(field.annotation)
     if isinstance(annotation, type) and issubclass(annotation, pydantic.BaseModel):
         return annotation
     return None

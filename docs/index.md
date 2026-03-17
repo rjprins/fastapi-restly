@@ -67,7 +67,9 @@ serialization control.
 ## Installation
 
 ```bash
-pip install fastapi-restly
+git clone https://github.com/rjprins/fastapi-restly.git
+cd fastapi-restly
+uv sync
 ```
 
 ## Development

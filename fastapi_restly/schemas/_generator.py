@@ -5,6 +5,7 @@ Schema generation utilities for auto-generating Pydantic schemas from SQLAlchemy
 import inspect
 from typing import Any, Dict, List, Optional, Union, get_args
 
+from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.orm import DeclarativeBase, Mapped, RelationshipProperty
 
 from ._base import BaseSchema, IDSchema, TimestampsSchemaMixin
@@ -40,7 +41,9 @@ def is_relationship_field(field: Any) -> bool:
     Returns:
         True if the field is a relationship, False otherwise
     """
-    return isinstance(field, RelationshipProperty)
+    if isinstance(field, RelationshipProperty):
+        return True
+    return isinstance(getattr(field, "property", None), RelationshipProperty)
 
 
 def get_relationship_target_model(field: Any) -> Optional[type[DeclarativeBase]]:
@@ -57,8 +60,12 @@ def get_relationship_target_model(field: Any) -> Optional[type[DeclarativeBase]]
         return None
 
     # Try to get the target from the relationship property
-    if hasattr(field, "mapper") and hasattr(field.mapper, "class_"):
-        return field.mapper.class_
+    relationship = field
+    if not isinstance(relationship, RelationshipProperty):
+        relationship = getattr(field, "property", None)
+
+    if hasattr(relationship, "mapper") and hasattr(relationship.mapper, "class_"):
+        return relationship.mapper.class_
 
     # Try to get from the type annotation
     if hasattr(field, "type"):
@@ -86,6 +93,8 @@ def get_model_fields(model_cls: type[DeclarativeBase]) -> Dict[str, Any]:
     """
     fields: Dict[str, Any] = {}
 
+    mapper = sa_inspect(model_cls)
+
     # Get all annotations from the model class and its base classes
     all_annotations = {}
     for cls in model_cls.mro():
@@ -106,11 +115,14 @@ def get_model_fields(model_cls: type[DeclarativeBase]) -> Dict[str, Any]:
             continue
 
         actual_type = args[0]
+        relationship = mapper.relationships.get(name)
 
         field_info: Dict[str, Any] = {
             "type": actual_type,
-            "is_relationship": is_relationship_field(field_type),
-            "target_model": get_relationship_target_model(field_type),
+            "is_relationship": relationship is not None,
+            "target_model": (
+                relationship.mapper.class_ if relationship is not None else None
+            ),
             "is_optional": False,
             "default": None,
         }
@@ -127,12 +139,14 @@ def get_model_fields(model_cls: type[DeclarativeBase]) -> Dict[str, Any]:
                     if non_none_types:
                         field_info["type"] = non_none_types[0]
 
-        # Check for default values from the model instance
-        if hasattr(model_cls, name):
-            attr = getattr(model_cls, name)
-            if hasattr(attr, "default"):
-                field_info["default"] = attr.default
-                # If there's a SQLAlchemy default, make the field optional
+        if relationship is not None:
+            # Relationship fields are response-oriented in generated schemas.
+            # Keep them optional so create/update inputs can rely on FK columns.
+            field_info["is_optional"] = True
+        elif name in mapper.columns:
+            column = mapper.columns[name]
+            if column.default is not None or column.server_default is not None:
+                field_info["default"] = column.default or column.server_default
                 field_info["is_optional"] = True
 
         fields[name] = field_info
@@ -223,6 +237,9 @@ def create_schema_from_model(
                     include_readonly_fields=False,
                 )
                 pydantic_type = target_schema
+
+            if field_info["is_optional"]:
+                pydantic_type = Optional[pydantic_type]
 
         # Add field to definitions - use proper Pydantic field format
         # Don't include SQLAlchemy defaults as they're not JSON-serializable
@@ -336,4 +353,6 @@ def auto_generate_schema_for_view(
     if schema_name is None:
         schema_name = f"{view_cls.__name__}Schema"
 
-    return create_schema_from_model(model_cls, schema_name)
+    return create_schema_from_model(
+        model_cls, schema_name, include_relationships=False
+    )
