@@ -2,3 +2,6 @@ site/
 build/
 *.egg-info/
 *.db
+
+# Dolt database files (added by bd init)
+.dolt/
