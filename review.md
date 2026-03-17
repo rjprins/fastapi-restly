@@ -1,135 +1,200 @@
-# Critical Review of FastAPI-Restly
+# Code Review: FastAPI-Restly
 
-## 1. Operator Precedence Bug in V1 Filters (Real Bug)
+## Bugs
 
-`fastapi_restly/query/_v1.py:386-397` — The `>=` and `<=` checks are **unreachable**:
-
-```python
-if filter_value.startswith(">"):       # matches ">=" too!
-    ...
-elif filter_value.startswith("<"):     # matches "<=" too!
-    ...
-elif filter_value.startswith(">="):    # DEAD CODE — never reached
-    ...
-elif filter_value.startswith("<="):    # DEAD CODE — never reached
-```
-
-`>=` always matches `>` first. The `>=` and `<=` operators literally cannot work.
-
-## 2. Global Mutable State for Everything
-
-The framework relies on module-level singletons everywhere:
-
-- `fr_globals` (`_globals.py:14`) — holds the database sessionmaker
-- `_query_modifier_version` (`_config.py:41`) — global query version
-- `settings` (`_settings.py:13`) — disconnected Settings object
-
-This means:
-- **You cannot run two apps with different databases in the same process.** Multi-tenancy, multiple test suites, or running two FastAPI sub-applications with different DBs is impossible.
-- **Tests must carefully reset global state** — the conftest.py already shows this pain with `reset_metadata`.
-- Thread safety is not guaranteed.
-
-## 3. `settings` Is Completely Disconnected
-
-`_settings.py` defines `Settings` with `async_database_url` and `database_url`, and it's exported in `__init__.py`. But **nothing in the framework reads from it**. `setup_async_database_connection()` takes its own URL argument and stores it in `fr_globals`. Two sources of truth, one of which does nothing.
-
-## 4. ILIKE Wildcard Injection in `contains` Filters
-
-`_v1.py:332` and `_v2.py:455`:
-```python
-column.ilike(f"%{filter_value}%")
-```
-
-The `%` and `_` characters are ILIKE wildcards and aren't escaped. A user sending `contains[name]=%` matches everything. Not SQL injection (SQLAlchemy parameterizes), but it's a semantic bypass of the intended "substring search" behavior.
-
-## 5. ID Type Hardcoded to `int`
-
-Every CRUD method signature uses `id: int`:
-- `_async.py:64` — `async def get(self, id: int)`
-- `_async.py:95` — `async def patch(self, id: int, ...)`
-- `_async.py:109` — `async def delete(self, id: int)`
-
-UUID primary keys are extremely common. Using the framework with UUIDs requires overriding every single endpoint method, defeating the purpose of auto-generation.
-
-## 6. `async_resolve_ids_to_sqlalchemy_objects` Has Wrong Type Annotation
-
-`_base.py:72-73`:
-```python
-async def async_resolve_ids_to_sqlalchemy_objects(
-    session: SA_Session, schema_obj: BaseSchema  # SA_Session = sync Session!
-```
-
-This async function annotates its session parameter as `SA_Session` (the sync session) but then calls `await session.get_one(...)`. Should be `SA_AsyncSession`.
-
-## 7. `WriteOnly` Fields Are Not Filtered from Responses
-
-`WriteOnly[T]` is documented and exists, but `to_response_schema()` (`_base.py:184-205`) never filters them out. It builds a payload dict from the ORM object and calls `self.schema.model_validate(payload)`. If the schema has a `password: WriteOnly[str]` field and the ORM object has a `password` attribute, it will appear in the API response. The `writeOnly` in `json_schema_extra` is just OpenAPI documentation — it doesn't actually hide the field.
-
-## 8. Dead Code with a Bug
-
-`_base.py:255-258`:
-```python
-async def _excluded_route(self, *args, **kwargs):
-    raise NotImplementedError(
-        "This route has been excluded from {self.__class__.__name__}"
-    )
-```
-
-This function is never called (the actual exclusion mechanism deletes `_api_route_args` instead). And it has a bug — it uses a regular string, not an f-string, so `{self.__class__.__name__}` would appear literally.
-
-## 9. `MappedAsDataclass` as the Only Option Is Very Constraining
-
-`Base` inherits from `MappedAsDataclass` (`_base.py:62`). This forces all user models into dataclass semantics:
-- Field order matters (required before optional)
-- Mutable defaults need `default_factory`
-- You can't use plain class-level attributes
-- Inheritance is finicky with field ordering
-
-This is a significant constraint that isn't highlighted in docs. Standard SQLAlchemy `DeclarativeBase` would be more flexible while still supporting the same features.
-
-## 10. Massive Duplication Between V1 and V2 Query Systems
-
-`_v1.py` (~410 lines) and `_v2.py` (~460 lines) duplicate most logic: column resolution, nested schema handling, value parsing, clause building. The `_config.py` adapter pattern instantiates throwaway `V1Interface`/`V2Interface` classes inside a function on every call. This should be a shared base with strategy-specific overrides, not two parallel implementations.
-
-## 11. `process_index` Ignores Its Own `query_params` Argument (Async)
-
-`_async.py:40-61` — The `index()` endpoint receives `query_params` from FastAPI (a Pydantic-validated model) and passes it to `process_index()`. But `process_index` then ignores it:
+### 1. `filter[field]=null` is broken (`_v1.py:393–397`)
 
 ```python
-query = apply_query_modifiers(
-    self.request.query_params,  # uses raw Starlette QueryParams instead
-    query, self.model, self.schema
-)
+else:
+    if filter_value == "null":
+        value = None            # dead code —
+    value = parser(filter_value)  # always overwrites, even when filter_value == "null"
+    return column == value
 ```
 
-The Pydantic validation on `query_params` runs but its result is thrown away. The sync `AlchemyView` does it differently — it passes `query_params` directly. This inconsistency means the validated data is never used in async mode.
+When `filter[name]=null`, `value = None` is set then immediately overwritten by
+`parser("null")`. For a string field this filters for the literal string `"null"`,
+not SQL `NULL`. Same structural problem in the `!null` branch (lines 388–391):
+`value = None` then `parser(None)` is called, which may or may not validate
+depending on field optionality.
 
-## 12. No Pagination Metadata
+### 2. `offset=0` not applied in V1 pagination (`_v1.py:119`)
 
-The list endpoint returns a bare JSON array. No total count, no page info, no next/prev links. For any real API this is a significant gap — clients have no way to know if there are more results.
-
-## 13. `utc_now()` Creates Misleading Naive Datetimes
-
-`_base.py:26`:
 ```python
-def utc_now() -> datetime:
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+if offset:  # falsy for 0, so offset=0 is silently skipped
+    select_query = select_query.offset(offset)
 ```
 
-Creates a UTC datetime then strips the timezone. This produces naive datetimes that are semantically UTC but not marked as such, which causes comparison issues with timezone-aware datetimes and makes the intent invisible to downstream code.
+Should be `if offset is not None:`.
 
-## 14. Inconsistent Import Convention
+### 3. `_is_string_field` in V1 misses `typing.Union` (`_v1.py:99–111`)
 
-CLAUDE.md and README say `import fastapi_restly as fr`, but the test suite uses `import fastapi_restly as fd`. The blog example uses the deprecated `fr.AsyncSession` instead of `fr.FRAsyncSession`. The `__init__.py` re-exports `mapped_column` from SQLAlchemy (but not `Mapped`, `relationship`, or `ForeignKey` which users still need from SQLAlchemy directly).
+```python
+origin = get_origin(annotation)
+if origin is UnionType:   # only matches `str | None` new-style union
+```
 
-## 15. `get()` Decorator Doesn't Set `methods=["GET"]`
+`Optional[str]` from `typing` has `get_origin() == typing.Union`, not
+`types.UnionType`. Fields annotated `Optional[str]` won't get `contains[field]`
+query parameters generated. The V2 version correctly handles both cases via
+`_unwrap_optional_annotation`.
 
-`_base.py:119-124`: The `get()` decorator just calls `route()` without setting `methods`. The docstring says "Equivalent to: @route(path, methods=["GET"], status_code=200)" but it doesn't actually do either. It works because FastAPI defaults to GET, but it's inconsistent with `post()`, `put()`, `patch()`, and `delete()` which all explicitly set their HTTP method.
+### 4. `AlchemyView` missing relationship eager-loading (`_sync.py`)
+
+`AsyncAlchemyView.process_index` calls `self.get_relationship_loader_options()`
+and applies them to the query. `AlchemyView.process_index` does not — relationships
+are never eagerly loaded in the sync view.
+
+Same for `process_get` (`_sync.py:144`): the async version passes
+`options=loader_options` to `session.get()`; the sync version doesn't.
 
 ---
 
-## Summary
+## Design Issues
 
-The two most concerning issues are the **operator precedence bug** (#1, `>=`/`<=` filters are broken) and the **WriteOnly not actually working** (#7, passwords could leak). The global state design (#2) is the biggest architectural limitation — it prevents multi-tenancy and makes testing fragile. The hardcoded `int` ID type (#5) significantly limits the framework's applicability.
+### 5. `_escape_like_value` duplicated verbatim
 
-The framework has a solid core idea and the layered philosophy is sound, but it needs a pass to fix the real bugs and to reconsider the global state approach before a 1.0 release.
+`_v1.py:400–405` and `_v2.py:485–490` are identical. Should live in a shared
+internal module.
+
+### 6. `['value']` string-parsing hack repeated throughout `_v2.py`
+
+```python
+if value.startswith("['") and value.endswith("']"):
+    value = value[2:-2]
+```
+
+This appears in 6+ places. It works around Pydantic rendering a single-element
+list as its `repr()`. It's a symptom of a deeper serialization issue and is
+fragile: it silently corrupts values that happen to start with `['` or end
+with `']`.
+
+### 7. Readonly check asymmetry between sync and async `make_new_object`
+
+- `AlchemyView.make_new_object` passes `self.creation_schema` to the readonly
+  check — but `creation_schema` already has readonly fields removed, so the
+  check is always a no-op.
+- `AsyncAlchemyView.make_new_object` passes `self.schema`, where the check
+  actually does something.
+
+Both produce the same result by accident. The sync version should use
+`self.schema` for clarity, or the check should be removed from the async
+version.
+
+### 8. `make_new_object` / `update_object` standalone only for sync
+
+`fr.make_new_object(session, model, schema_obj)` and `fr.update_object(...)` are
+exported as standalone functions for the sync path. There are no async equivalents.
+Composing async CRUD logic outside a view subclass requires reimplementing these
+from scratch.
+
+### 9. Auto-generated schema doesn't parameterize `IDSchema`
+
+In `_generator.py`, when a model has an `id` field, `IDSchema` (bare, without a
+type parameter) is used as a base class. This means
+`_coerce_id_to_model_primary_key_type` can't infer the PK type and skips
+coercion. UUID primary keys passed as strings won't be coerced to `UUID` in
+auto-generated schemas. The explicit `IDSchema[MyModel]` form works; the
+auto-generated path does not.
+
+### 10. Mutable `ClassVar` defaults on `View`
+
+```python
+exclude_routes: ClassVar[list[str]] = []
+responses: ClassVar[dict[int, Any]] = {404: {"description": "Not found"}}
+```
+
+These are shared mutable objects across all subclasses.
+`SomeView.exclude_routes.append("delete")` would silently contaminate every other
+view. The intended pattern is reassignment (e.g.
+`exclude_routes = ["delete"]`), not mutation, but there's nothing enforcing this.
+
+### 11. `Base.get_one_or_create` is `async` on a non-async base class
+
+`Base` is used as the foundation for both sync and async models. Putting an
+`async` utility method on it means sync `AlchemyView` users who inherit from
+`Base` see an `async` method that can't be called in a sync context. There is no
+sync counterpart.
+
+### 12. `set_query_modifier_version` sets a `ContextVar`, not a true global
+
+```python
+def set_query_modifier_version(version: QueryModifierVersion) -> None:
+    _query_modifier_version.set(version)
+```
+
+The name implies "set this globally", but `ContextVar.set()` only affects the
+current execution context. In asyncio apps, tasks copy the context at creation
+time. Calling this inside a running request handler changes the version only for
+that request. Calling it at module import time (the common case) works as
+expected, but the semantics are surprising and the docs don't address this.
+
+### 13. `V1Interface` / `V2Interface` add nothing
+
+Both classes in `_config.py` inherit from `_FunctionQueryModifierInterface`
+without adding any behaviour or fields. They exist only as type tokens but are
+never used in `isinstance` checks. They should either be removed or given a
+purpose.
+
+---
+
+## Documentation Issues
+
+### 14. `pytest_plugins` path inconsistent across docs
+
+`howto_testing.md` documents:
+```python
+pytest_plugins = ["fastapi_restly.pytest_fixtures"]
+```
+
+`pytest_fixtures.md` documents:
+```python
+pytest_plugins = ["fastapi_restly.testing._fixtures"]
+```
+
+Both work, but one is the public module and one is a private implementation
+detail. The docs should consistently point to `fastapi_restly.pytest_fixtures`.
+
+### 15. `TESTING.md` referenced but doesn't exist
+
+Both `getting_started.md` and `tutorial.md` end with a "Next Steps" link to
+`TESTING.md` at the repository root. No such file exists.
+
+### 16. `TimestampsMixin` docstring says "timezone naive"
+
+```python
+class TimestampsMixin(MappedAsDataclass, kw_only=True):
+    """Mixin to add created_at and updated_at timestamps (timezone naive)."""
+```
+
+`utc_now()` returns `datetime.now(timezone.utc)` — a timezone-aware datetime.
+The docstring is wrong.
+
+### 17. `howto_custom_schema.md` schema has a field absent from the model
+
+```python
+class User(fr.IDBase):
+    first_name: Mapped[str]
+    email: Mapped[str]
+
+class UserSchema(fr.IDSchema):
+    first_name: str = Field(alias="firstName")
+    email: str
+    internal_id: fr.ReadOnly[str]  # not on the model
+```
+
+`to_response_schema` silently skips fields the ORM object doesn't have, so
+`internal_id` is absent from responses without any error or warning. As a how-to
+guide this is misleading — it implies the pattern works end-to-end.
+
+---
+
+## Minor Issues
+
+- `_client.py:26` has a bare `except:` — should be `except Exception:`.
+- `getattrs`, `rebase_with_model_config`, `set_schema_title` are exported from
+  `schemas/__init__.py` but not from `fastapi_restly.__init__`. The public API
+  surface is inconsistent.
+- V1 and V2 query implementations are two ~400-line parallel files sharing
+  almost no code. Column resolution, value parsing, and clause building are all
+  duplicated. An internal shared module would reduce future drift between them.

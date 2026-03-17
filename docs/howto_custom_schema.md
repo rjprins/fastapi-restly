@@ -18,7 +18,6 @@ from pydantic import Field
 class UserSchema(fr.IDSchema):
     first_name: str = Field(alias="firstName")
     email: str
-    internal_id: fr.ReadOnly[str]
 ```
 
 ## 3. Attach Schema to View
@@ -35,4 +34,3 @@ class UserView(fr.AsyncAlchemyView):
 
 - Incoming payloads accept alias keys (for example `firstName`).
 - Response payloads use alias keys from the schema.
-- Read-only fields are skipped for create/update.

@@ -28,7 +28,7 @@ def utc_now() -> datetime:
 
 class TimestampsMixin(MappedAsDataclass, kw_only=True):
     """
-    Mixin to add created_at and updated_at timestamps (timezone naive).
+    Mixin to add created_at and updated_at timestamps (UTC-aware).
     """
 
     created_at: Mapped[datetime] = mapped_column(
@@ -68,12 +68,30 @@ class Base(TableNameMixin, MappedAsDataclass, DeclarativeBase, kw_only=True):
     }
 
     @classmethod
-    async def get_one_or_create(cls, session, **kwargs):
+    def get_one_or_create(cls, session, **kwargs):
         """
-        Do a database select for the given keyword arguments.
+        Sync version. Do a database select for the given keyword arguments.
         The arguments must uniquely select a row.
         If no matching row/object is found, create a new object and
-        return it.
+        return it. For async sessions, use async_get_one_or_create.
+        """
+        select_query = select(cls).filter_by(**kwargs)
+        results = session.scalars(select_query)
+        try:
+            return results.one()
+        except NoResultFound:
+            new_instance = cls(**kwargs)
+            session.add(new_instance)
+            session.flush()
+            return new_instance
+
+    @classmethod
+    async def async_get_one_or_create(cls, session, **kwargs):
+        """
+        Async version. Do a database select for the given keyword arguments.
+        The arguments must uniquely select a row.
+        If no matching row/object is found, create a new object and
+        return it. Requires an async session. For sync sessions, use get_one_or_create.
         """
         select_query = select(cls).filter_by(**kwargs)
         results = await session.scalars(select_query)

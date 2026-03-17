@@ -7,7 +7,7 @@ FastAPI-Restly ships a set of pytest fixtures that handle database setup, transa
 In your `conftest.py`, register the plugin:
 
 ```python
-pytest_plugins = ["fastapi_restly.testing._fixtures"]
+pytest_plugins = ["fastapi_restly.pytest_fixtures"]
 ```
 
 This activates all fixtures below. Autouse fixtures run automatically; the rest you request by name.

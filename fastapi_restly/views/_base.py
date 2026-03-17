@@ -318,7 +318,7 @@ class BaseAlchemyView(View):
     model: ClassVar[type[DeclarativeBase]]
     id_type: ClassVar[type[Any]] = int
     include_pagination_metadata: ClassVar[bool] = False
-    exclude_routes: ClassVar[list[str]] = []
+    exclude_routes: ClassVar[tuple[str, ...]] = ()
     query_modifier_version: ClassVar[QueryModifierVersion]
 
     request: fastapi.Request

@@ -119,4 +119,4 @@ assert items.status_code == 200
 - [API Reference](api_reference.md)
 - [Query Modifiers](query_modifiers.md)
 - [Technical Details](technical_details.md)
-- Testing guide: `TESTING.md` (repository root)
+

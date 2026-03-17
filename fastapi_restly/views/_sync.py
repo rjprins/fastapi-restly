@@ -109,6 +109,9 @@ class AlchemyView(BaseAlchemyView):
         """
         if query is None:
             query = sqlalchemy.select(self.model)
+        loader_options = self.get_relationship_loader_options()
+        if loader_options:
+            query = query.options(*loader_options)
         query_params = self._to_query_params(query_params)
         with use_query_modifier_version(self.get_query_modifier_version()):
             query = apply_query_modifiers(
@@ -141,7 +144,8 @@ class AlchemyView(BaseAlchemyView):
         Return a 404 if not found.
         Feel free to override this method.
         """
-        obj = self.session.get(self.model, id)
+        loader_options = self.get_relationship_loader_options()
+        obj = self.session.get(self.model, id, options=loader_options)
         if obj is None:
             raise fastapi.HTTPException(404)
         return obj
@@ -199,7 +203,7 @@ class AlchemyView(BaseAlchemyView):
         Feel free to override this method.
         """
         return make_new_object(
-            self.session, self.model, schema_obj, self.creation_schema
+            self.session, self.model, schema_obj, self.schema
         )
 
     def update_object(self, obj: DeclarativeBase, schema_obj: BaseSchema) -> DeclarativeBase:

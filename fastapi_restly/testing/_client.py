@@ -21,7 +21,7 @@ class RestlyTestClient(TestClient):
         try:
             response_content = response.json()
             content_str = f"Response JSON: {response_content}"
-        except:
+        except Exception:
             content_str = (
                 f"Response content: {response.content.decode(errors='ignore')}"
             )
