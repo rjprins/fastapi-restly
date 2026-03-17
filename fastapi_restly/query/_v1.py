@@ -360,7 +360,7 @@ def _get_nested_schema(field: FieldInfo | None) -> SchemaType | None:
 
     # Handle Optional[NestedModel] (i.e., Union[NestedModel, None])
     origin = get_origin(annotation)
-    if origin is UnionType:
+    if origin in (UnionType, Union):
         args = get_args(annotation)
         non_none_args = [arg for arg in args if arg is not type(None)]
         if len(non_none_args) == 1:

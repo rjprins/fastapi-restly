@@ -65,7 +65,7 @@ DetailedOrderSchema = create_schema_from_model(
 Auto-generated schemas properly handle read-only fields:
 
 ```python
-class Product(fr.IDBase, fr.TimestampsMixin):
+class Product(fr.IDStampsBase):
     name: Mapped[str]
     price: Mapped[float]
     description: Mapped[str] = fr.mapped_column(default="")
@@ -143,7 +143,7 @@ class User(fr.IDBase):
     email: Mapped[str]
     is_active: Mapped[bool] = fr.mapped_column(default=True)
 
-class Product(fr.IDBase, fr.TimestampsMixin):
+class Product(fr.IDStampsBase):
     name: Mapped[str]
     price: Mapped[float]
     description: Mapped[str] = fr.mapped_column(default="")

@@ -132,10 +132,6 @@ def _get_int_v2(query_params: QueryParams, param_name: str) -> Optional[int]:
     if not value:
         return None
 
-    # Handle string format issue
-    if value.startswith("['") and value.endswith("']"):
-        value = value[2:-2]  # Remove [' and ']
-
     try:
         return int(value)
     except ValueError:
@@ -162,10 +158,6 @@ def apply_sorting_v2(
         else:
             return select_query
 
-    # Handle string format issue
-    if sort_string.startswith("['") and sort_string.endswith("']"):
-        sort_string = sort_string[2:-2]  # Remove [' and ']
-
     for column_name in sort_string.split(","):
         order = sqlalchemy.asc
         if column_name.startswith("-"):
@@ -190,10 +182,6 @@ def _get_sqlalchemy_column_v2(
 def _resolve_sqlalchemy_column_v2(
     model: type[DeclarativeBase], column_name: str, schema_cls: SchemaType | None = None
 ) -> Iterator[type[DeclarativeBase] | InstrumentedAttribute[Any]]:
-    # Handle string format issue
-    if column_name.startswith("['") and column_name.endswith("']"):
-        column_name = column_name[2:-2]  # Remove [' and ']
-
     if "." in column_name:
         relation, _, column_part = column_name.partition(".")
         rel = getattr(model, relation, None)
@@ -362,8 +350,6 @@ def _apply_suffix_parameters_v2(
         parser = functools.partial(_parse_value_v2, schema_cls, column_name)
 
         if op == "isnull":
-            if raw_value.startswith("['") and raw_value.endswith("']"):
-                raw_value = raw_value[2:-2]
             try:
                 value = pydantic.TypeAdapter(bool).validate_python(raw_value)
             except pydantic.ValidationError as exc:
@@ -399,11 +385,6 @@ def _parse_value_v2(schema_cls: SchemaType, column_name: str, value: str) -> Any
         if not schema:
             raise HTTPException(400, f"Invalid attribute in URL query: {column_name}")
         return _parse_value_v2(schema, column_part, value)
-
-    # Handle value format - it might be a string representation of a list
-    if value.startswith("['") and value.endswith("']"):
-        # Extract the actual value from the string representation
-        value = value[2:-2]  # Remove [' and ']
 
     # Check if populate_by_name is enabled
     config = getattr(schema_cls, "model_config", pydantic.ConfigDict())

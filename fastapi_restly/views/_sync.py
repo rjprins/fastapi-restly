@@ -62,7 +62,6 @@ def update_object(
 
 
 def save_object(session, obj: DeclarativeBase) -> DeclarativeBase:
-    session.add(obj)
     session.flush()
     session.refresh(obj)
     return obj

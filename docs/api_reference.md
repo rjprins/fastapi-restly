@@ -39,7 +39,7 @@ Notes:
 
 The active version is controlled via:
 - `fr.set_query_modifier_version(...)`
-- `fr.get_query_modifier_version(...)`
+- `fr.get_query_modifier_version()`
 
 Views capture the active query-modifier version when they are registered with
 `@fr.include_view(...)`. Set the global version before registering the view, or

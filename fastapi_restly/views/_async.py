@@ -51,9 +51,9 @@ class AsyncAlchemyView(BaseAlchemyView):
         Accepts a query argument that can be used for narrowing down the selection.
         Feel free to override this method, e.g.:
 
-            async def process_index(self, query=None):
+            async def process_index(self, query_params, query=None):
                 query = make_my_query()
-                objs = await super.process_index(query)
+                objs = await super().process_index(query_params, query)
                 return add_my_info(objs)
         """
         if query is None:

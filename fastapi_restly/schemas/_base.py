@@ -241,8 +241,10 @@ def get_write_only_fields(model_cls: type[pydantic.BaseModel]) -> list[str]:
     return write_only_fields
 
 
-def is_field_writeonly(model_cls: type[pydantic.BaseModel], field_name: str) -> bool:
+def is_field_writeonly(model_cls: pydantic.BaseModel | type[pydantic.BaseModel], field_name: str) -> bool:
     """Check if a specific field is marked as writeonly."""
+    if isinstance(model_cls, pydantic.BaseModel):
+        model_cls = model_cls.__class__
     field_info = model_cls.model_fields.get(field_name)
     if field_info is None:
         return False
@@ -313,9 +315,8 @@ def create_model_with_optional_fields(
     """
     new_model_name = "Update" + model_cls.__name__
     new_doc = (
-        model_cls.__doc__
-        or "" + "\nRead-only fields have been removed and all fields are optional."
-    )
+        model_cls.__doc__ or ""
+    ) + "\nRead-only fields have been removed and all fields are optional."
 
     # Create a subclass that mixes in both OmitReadOnlyMixin and PatchMixin
     new_model_cls = type(

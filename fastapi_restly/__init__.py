@@ -62,6 +62,7 @@ from .views import (
     AlchemyView,
     AsyncAlchemyView,
     BaseAlchemyView,
+    View,
     delete,
     get,
     include_view,
@@ -70,6 +71,7 @@ from .views import (
     post,
     put,
     route,
+    save_object,
     update_object,
 )
 
@@ -124,6 +126,7 @@ __all__ = [
     "AlchemyView",
     "AsyncAlchemyView",
     "BaseAlchemyView",
+    "View",
     "delete",
     "get",
     "include_view",
@@ -133,5 +136,6 @@ __all__ = [
     "post",
     "put",
     "route",
+    "save_object",
     "update_object",
 ]

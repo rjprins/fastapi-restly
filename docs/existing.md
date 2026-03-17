@@ -46,7 +46,7 @@ class World(AppBase):
 
 
 class WorldView(fr.AsyncAlchemyView):
-    prefix = "world"
+    prefix = "/world"
     model = World
 ```
 

@@ -158,7 +158,7 @@ def get_query_param_schema_creator() -> Callable[[SchemaType], SchemaType]:
     return _resolve_v1_schema_creator()
 
 
-# Convenience functions for backward compatibility
+# Convenience functions that delegate to the configured version's implementation
 def apply_query_modifiers(
     query_params: QueryParams,
     select_query: Select[Any],
