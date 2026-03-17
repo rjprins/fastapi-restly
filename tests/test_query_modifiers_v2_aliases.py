@@ -71,12 +71,7 @@ def select_query():
 @pytest.fixture
 def mock_query_params():
     def _mock_query_params(**kwargs):
-        params = {}
-        for key, value in kwargs.items():
-            if isinstance(value, (list, tuple)):
-                params[key] = value
-            else:
-                params[key] = [str(value)]
+        params = {key: str(value) for key, value in kwargs.items()}
         return QueryParams(params)
     return _mock_query_params
 
