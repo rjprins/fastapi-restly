@@ -4,46 +4,28 @@
 
 # FastAPI-Restly
 
-> **⚠️ Development Status**: This project is in active development and has not been released on PyPI yet. For installation, please clone the repository and install in development mode.
+> **Warning**: This project is in active development and has not been released on PyPI yet. For installation, please clone the repository and install in development mode.
 
 **Documentation:** https://rjprins.github.io/fastapi-restly/
 
 FastAPI-Restly helps you build **maintainable CRUD APIs faster** on top of **FastAPI**, **SQLAlchemy 2.0**, and **Pydantic v2**.
 It provides auto-generated endpoints, schemas, and filters while keeping everything extensible or customizable.
 
-## 1.0 Status
-
-The project is currently in a **v1.0 release-readiness phase**.
-Core framework tests and all maintained example projects (`shop`, `blog`, `saas`) are green in local CI (`make test-all`), and GitHub Actions is configured to run the matrix on Python 3.10-3.13.
-
 ## Why FastAPI-Restly?
 
-* **Faster CRUD development** – Create endpoints for SQLAlchemy models by generating Pydantic models automatically.
-* **Maintainable** – Class-based views with inheritance and dependencies to keep things organized.
+* **CRUD endpoints in minutes** – Create endpoints for SQLAlchemy models with auto-generated Pydantic schemas.
+* **Maintainable** – Class-based views with dependency injection and inheritance to keep things organized.
 * **Customizable** – Generated endpoints are fully overridable whenever you need custom behavior.
-* **Modern stack** – Built for SQLAlchemy 2.0 and Pydantic v2, with async support.
-
-## Current Features
-
-* **CRUD endpoints in minutes** for SQLAlchemy models
-* **Class-based views** with dependency injection and inheritance
-* **Async and sync view support** (`AsyncAlchemyView` and `AlchemyView`)
-* **Dataclass and non-dataclass model bases** (`IDBase` and `PlainIDBase`)
-* **Automatic Pydantic schemas** for create, update, and read
-* **Filtering, pagination, and sorting** with V1 and V2 query interfaces
-* **Read-only and write-only field support** in schemas
-* **Relationship ID resolution** via `IDSchema[...]`
-* **Testing utilities** (`RestlyTestClient` and pytest fixtures)
-* **OpenAPI docs** with all generated routes
+* **Modern stack** – Built for SQLAlchemy 2.0 and Pydantic v2, with async and sync support.
+* **Filtering, pagination, and sorting** – Two query parameter interfaces (JSONAPI-style and standard HTTP).
+* **Field control** – `ReadOnly` and `WriteOnly` field markers, plus relationship ID resolution via `IDSchema[...]`.
+* **Testing utilities** – `RestlyTestClient` and savepoint-based isolation fixtures for clean, fast tests.
 
 ## Restly Philosophy
 
 ### Made to Build Apps
 
 Restly is not only a REST framework, it aims to grow with the most common tools web apps need.
-
-- **Current features**: Class-based views, automatic Pydantic schema generation, and database connection management.
-- **Possible future features**: Admin interface, authentication, permissions, background jobs, job scheduling, plugins, etc.
 
 ### Designed in Layers
 
@@ -54,20 +36,13 @@ Restly is a stack of micro-libraries.
 - The less customization you need, the more you get out-of-the-box — yet full customization never requires awkward hacks.
 - Built on FastAPI, Pydantic, and SQLAlchemy; Restly sticks to patterns provided by those libraries.
 
-Current layers:
-- SQLAlchemy connection management
-- Class-based views supporting FastAPI dependencies
-- Pydantic schema generation from SQLAlchemy models or other pydantic schemas.
-- AlchemyView: CRUD view classes for SQLAlchemy models
-- Pytest fixtures for SQLAlchemy, alembic, and AlchemyViews.
-
 ## Quick Start
 
 ### Installation
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/fastapi-restly.git
+git clone https://github.com/rjprins/fastapi-restly.git
 cd fastapi-restly
 
 # Install project dependencies
@@ -100,8 +75,8 @@ class UserView(fr.AsyncAlchemyView):
     # Schema is auto-generated from the model!
 
 # That's it! You now have a fully functional API with:
-# - GET /users/ - List all users, comes with complete filtering and pagination 
-# - POST /users/ - Create a user  
+# - GET /users/ - List all users, comes with complete filtering and pagination
+# - POST /users/ - Create a user
 # - GET /users/{id} - Get a specific user
 # - PATCH /users/{id} - Partially update a user
 # - DELETE /users/{id} - Delete a user
@@ -160,7 +135,7 @@ GET /users/?contains[name]=john
 GET /users/?name=John&email__contains=example
 
 # Sorting
-GET /users/?sort=name,-created_at
+GET /users/?order_by=name,-created_at
 
 # Pagination
 GET /users/?page=2&page_size=10
@@ -169,7 +144,7 @@ GET /users/?page=2&page_size=10
 ### Read-Only and Write-Only Fields
 
 ```python
-class UserSchema(pydantic.BaseModel):
+class UserSchema(fr.IDSchema):
     id: fr.ReadOnly[UUID]  # Can't be set in requests
     name: str
     email: str
@@ -215,11 +190,11 @@ class UserView(fr.AsyncAlchemyView):
 
 ## Documentation
 
-- **[Getting Started](docs/getting_started.md)** - Fast path from zero to a working API
-- **[Tutorial](docs/tutorial.md)** - Get started with FastAPI-Restly
-- **[How-To Guides](docs/howto.md)** - Recipes for common framework tasks
-- **[Technical Details](docs/technical_details.md)** - Learn how the framework works
-- **[API Reference](docs/api_reference.md)** - Complete API documentation
+- **[Getting Started](https://rjprins.github.io/fastapi-restly/getting_started.html)** - Fast path from zero to a working API
+- **[Tutorial](https://rjprins.github.io/fastapi-restly/tutorial.html)** - Get started with FastAPI-Restly
+- **[How-To Guides](https://rjprins.github.io/fastapi-restly/howto.html)** - Recipes for common framework tasks
+- **[Technical Details](https://rjprins.github.io/fastapi-restly/technical_details.html)** - Learn how the framework works
+- **[API Reference](https://rjprins.github.io/fastapi-restly/api_reference.html)** - Complete API documentation
 
 ## Examples
 
@@ -231,7 +206,7 @@ Check out the [example projects](example-projects/) for complete applications:
 
 ## Testing
 
-FastAPI-Restly includes testing utilities:
+FastAPI-Restly includes testing utilities with **savepoint-based isolation**, so each test runs inside a database transaction that is rolled back automatically — no test data leaks between tests.
 
 ```python
 import fastapi_restly as fr
@@ -245,7 +220,7 @@ def test_user_crud():
     # Create user
     response = client.post("/users/", json={"name": "John", "email": "john@example.com"})
     assert response.status_code == 201
-    
+
     # Get user
     user_id = response.json()["id"]
     response = client.get(f"/users/{user_id}")
@@ -268,14 +243,6 @@ fr.setup_async_database_connection("postgresql+asyncpg://user:pass@localhost/db"
 fr.setup_database_connection("sqlite:///app.db")
 ```
 
-## Future Plans
-
-* Authentication & permissions
-* Admin interface
-* Background jobs & scheduling
-* CLI for code generation and scaffolding
-
-
 ## Contributing
 
 We welcome contributions through pull requests and issue discussions.
@@ -283,5 +250,3 @@ We welcome contributions through pull requests and issue discussions.
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-**Built with ❤️ for the FastAPI community**

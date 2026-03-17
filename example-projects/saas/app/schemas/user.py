@@ -12,6 +12,7 @@ class UserSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
 
     email: str
     name: str
+    password: fr.WriteOnly[str] = ""
     role: UserRole = UserRole.MEMBER
     organization_id: int
     # Sensitive field - only visible to HR (see UserView.get_user_with_field_permissions)

@@ -24,12 +24,14 @@ class User(fr.IDStampsBase):
 
     email: orm.Mapped[str] = orm.mapped_column(unique=True)
     name: orm.Mapped[str]
-    role: orm.Mapped[UserRole] = orm.mapped_column(default=UserRole.MEMBER)
-    # Sensitive field - only visible to HR role
-    salary: orm.Mapped[int | None] = orm.mapped_column(default=None)
 
     # Foreign keys
     organization_id: orm.Mapped[int] = orm.mapped_column(ForeignKey("organization.id"))
+
+    password: orm.Mapped[str] = orm.mapped_column(default="")
+    role: orm.Mapped[UserRole] = orm.mapped_column(default=UserRole.MEMBER)
+    # Sensitive field - only visible to HR role
+    salary: orm.Mapped[int | None] = orm.mapped_column(default=None)
 
     # Relationships
     organization: orm.Mapped["Organization"] = orm.relationship(  # noqa: F821
