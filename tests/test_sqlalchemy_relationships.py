@@ -12,7 +12,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 import fastapi_restly as fr
 from fastapi_restly.db import fr_globals
-from fastapi_restly.schemas import ReadOnly, BaseSchema
+from fastapi_restly.schemas import ReadOnly
 from .conftest import create_tables
 
 
@@ -27,13 +27,15 @@ class TestOneToManyRelationships:
             name: Mapped[str] = mapped_column(String(100))
             email: Mapped[str] = mapped_column(String(100))
             addresses: Mapped[List["Address1"]] = relationship(
-                "Address1", back_populates="user"
+                "Address1", back_populates="user", default_factory=list
             )
 
         class Address1(fr.IDBase):
             street: Mapped[str] = mapped_column(String(200))
             city: Mapped[str] = mapped_column(String(100))
-            user_id: Mapped[int] = mapped_column(Integer, ForeignKey("user1.id"))
+            user_id: Mapped[int] = mapped_column(
+                Integer, ForeignKey("user1.id"), init=False
+            )
             user: Mapped["User1"] = relationship("User1", back_populates="addresses")
 
         # Define schemas
@@ -54,29 +56,51 @@ class TestOneToManyRelationships:
 
         create_tables()
 
-        # Test GET - should return nested addresses
-        response = client.get("/users1/")
-        assert response.status_code == 200
+        async def insert_test_data():
+            async with fr.AsyncSession() as session:
+                user = User1(name="John Doe", email="john@example.com")
+                address1 = Address1(street="123 Main St", city="Anytown", user=user)
+                address2 = Address1(street="456 Oak Ave", city="Somewhere", user=user)
+                session.add(user)
+                session.add(address1)
+                session.add(address2)
+                await session.commit()
 
-    @pytest.mark.xfail(reason="Aliases in nested schemas not yet supported")
+        asyncio.run(insert_test_data())
+
+        response = client.get("/users1/")
+        users = response.json()
+
+        assert len(users) == 1
+        user = users[0]
+        assert user["name"] == "John Doe"
+        assert {address["street"] for address in user["addresses"]} == {
+            "123 Main St",
+            "456 Oak Ave",
+        }
+        assert {address["city"] for address in user["addresses"]} == {
+            "Anytown",
+            "Somewhere",
+        }
+
     def test_one_to_many_relationship_with_aliases(self, client):
         """Test one-to-many relationship with aliases in nested schemas."""
 
         # Define SQLAlchemy models with relationship
-        class User(fr.IDBase):
+        class User2(fr.IDBase):
             name: Mapped[str] = mapped_column(String(100))
             email: Mapped[str] = mapped_column(String(100))
-            addresses: Mapped[List["Address"]] = relationship(
-                "Address", back_populates="user", default_factory=list
+            addresses: Mapped[List["Address2"]] = relationship(
+                "Address2", back_populates="user", default_factory=list
             )
 
-        class Address(fr.IDBase):
+        class Address2(fr.IDBase):
             street: Mapped[str] = mapped_column(String(200))
             city: Mapped[str] = mapped_column(String(100))
             user_id: Mapped[int] = mapped_column(
-                Integer, ForeignKey("user.id"), init=False
+                Integer, ForeignKey("user2.id"), init=False
             )
-            user: Mapped["User"] = relationship("User", back_populates="addresses")
+            user: Mapped["User2"] = relationship("User2", back_populates="addresses")
 
         # Define schemas with aliases
         class AddressSchema(fr.IDSchema):
@@ -91,7 +115,7 @@ class TestOneToManyRelationships:
         @fr.include_view(client.app)
         class UserView2(fr.AsyncAlchemyView):
             prefix = "/users"
-            model = User
+            model = User2
             schema = UserSchema
 
         create_tables()
@@ -100,13 +124,13 @@ class TestOneToManyRelationships:
         async def insert_test_data():
             async with fr.AsyncSession() as session:
                 # Create a user first
-                user = User(name="John Doe", email="john@example.com")
+                user = User2(name="John Doe", email="john@example.com")
                 session.add(user)
                 await session.flush()  # Get the user ID
 
                 # Create addresses for the user
-                address1 = Address(street="123 Main St", city="Anytown", user=user)
-                address2 = Address(street="456 Oak Ave", city="Somewhere", user=user)
+                address1 = Address2(street="123 Main St", city="Anytown", user=user)
+                address2 = Address2(street="456 Oak Ave", city="Somewhere", user=user)
                 session.add(address1)
                 session.add(address2)
                 await session.commit()
@@ -125,7 +149,6 @@ class TestOneToManyRelationships:
         assert len(user["addresses"]) > 0, "No addresses in user"
 
         address = user["addresses"][0]
-        # This should fail because aliases don't work in nested schemas
         assert "streetAddress" in address, "Expected alias 'streetAddress' not found"
         assert "cityName" in address, "Expected alias 'cityName' not found"
 
@@ -137,7 +160,6 @@ class TestOneToManyRelationships:
 class TestOneToOneRelationships:
     """Test one-to-one relationships with nested schemas."""
 
-    @pytest.mark.xfail(reason="One-to-one relationships not yet tested")
     def test_one_to_one_relationship_basic(self, client):
         """Test basic one-to-one relationship without aliases."""
 
@@ -146,14 +168,14 @@ class TestOneToOneRelationships:
             name: Mapped[str] = mapped_column(String(100))
             email: Mapped[str] = mapped_column(String(100))
             profile: Mapped["Profile3"] = relationship(
-                "Profile3", back_populates="user", uselist=False
+                "Profile3", back_populates="user", uselist=False, default=None
             )
 
         class Profile3(fr.IDBase):
             bio: Mapped[str] = mapped_column(Text)
             website: Mapped[str] = mapped_column(String(200))
             user_id: Mapped[int] = mapped_column(
-                Integer, ForeignKey("user3.id"), unique=True
+                Integer, ForeignKey("user3.id"), unique=True, init=False
             )
             user: Mapped["User3"] = relationship("User3", back_populates="profile")
 
@@ -175,11 +197,28 @@ class TestOneToOneRelationships:
 
         create_tables()
 
-        # Test GET - should return nested profile
-        response = client.get("/users3/")
-        assert response.status_code == 200
+        async def insert_test_data():
+            async with fr.AsyncSession() as session:
+                user = User3(name="John Doe", email="john@example.com")
+                profile = Profile3(
+                    bio="Backend engineer", website="https://example.com", user=user
+                )
+                session.add(user)
+                session.add(profile)
+                await session.commit()
 
-    @pytest.mark.xfail(reason="One-to-one relationships with aliases not yet tested")
+        asyncio.run(insert_test_data())
+
+        response = client.get("/users3/")
+        users = response.json()
+
+        assert len(users) == 1
+        user = users[0]
+        assert user["name"] == "John Doe"
+        assert user["email"] == "john@example.com"
+        assert user["profile"]["bio"] == "Backend engineer"
+        assert user["profile"]["website"] == "https://example.com"
+
     def test_one_to_one_relationship_with_aliases(self, client):
         """Test one-to-one relationship with aliases in nested schemas."""
 
@@ -188,14 +227,14 @@ class TestOneToOneRelationships:
             name: Mapped[str] = mapped_column(String(100))
             email: Mapped[str] = mapped_column(String(100))
             profile: Mapped["Profile4"] = relationship(
-                "Profile4", back_populates="user", uselist=False
+                "Profile4", back_populates="user", uselist=False, default=None
             )
 
         class Profile4(fr.IDBase):
             bio: Mapped[str] = mapped_column(Text)
             website: Mapped[str] = mapped_column(String(200))
             user_id: Mapped[int] = mapped_column(
-                Integer, ForeignKey("user4.id"), unique=True
+                Integer, ForeignKey("user4.id"), unique=True, init=False
             )
             user: Mapped["User4"] = relationship("User4", back_populates="profile")
 
@@ -217,24 +256,33 @@ class TestOneToOneRelationships:
 
         create_tables()
 
-        # Test GET - should return nested profile with aliases
+        async def insert_test_data():
+            async with fr.AsyncSession() as session:
+                user = User4(name="Jane Doe", email="jane@example.com")
+                profile = Profile4(
+                    bio="Alias bio", website="https://alias.example.com", user=user
+                )
+                session.add(user)
+                session.add(profile)
+                await session.commit()
+
+        asyncio.run(insert_test_data())
+
         response = client.get("/users4/")
-        assert response.status_code == 200
         users = response.json()
 
-        # Check that nested profile uses aliases
-        if users:  # If there are users in the database
-            user = users[0]
-            if "profile" in user and user["profile"]:
-                profile = user["profile"]
-                assert "userBio" in profile
-                assert "userWebsite" in profile
+        assert len(users) == 1
+        user = users[0]
+        profile = user["profile"]
+        assert profile["userBio"] == "Alias bio"
+        assert profile["userWebsite"] == "https://alias.example.com"
+        assert "bio" not in profile
+        assert "website" not in profile
 
 
 class TestManyToManyRelationships:
     """Test many-to-many relationships with nested schemas."""
 
-    @pytest.mark.xfail(reason="Many-to-many relationships not yet tested")
     def test_many_to_many_relationship_basic(self, client):
         """Test basic many-to-many relationship without aliases."""
 
@@ -243,24 +291,30 @@ class TestManyToManyRelationships:
             name: Mapped[str] = mapped_column(String(100))
             email: Mapped[str] = mapped_column(String(100))
             groups: Mapped[List["Group5"]] = relationship(
-                "Group5", secondary="user5_group5", back_populates="users"
+                "Group5",
+                secondary="user5_group5",
+                back_populates="users",
+                default_factory=list,
             )
 
         class Group5(fr.IDBase):
             name: Mapped[str] = mapped_column(String(100))
             description: Mapped[str] = mapped_column(Text)
             users: Mapped[List["User5"]] = relationship(
-                "User5", secondary="user5_group5", back_populates="groups"
+                "User5",
+                secondary="user5_group5",
+                back_populates="groups",
+                default_factory=list,
             )
 
         # Association table
-        class UserGroup5(fr.IDBase):
+        class UserGroup5(fr.Base):
             __tablename__ = "user5_group5"
             user_id: Mapped[int] = mapped_column(
-                Integer, ForeignKey("user5.id"), primary_key=True
+                Integer, ForeignKey("user5.id"), primary_key=True, init=False
             )
             group_id: Mapped[int] = mapped_column(
-                Integer, ForeignKey("group5.id"), primary_key=True
+                Integer, ForeignKey("group5.id"), primary_key=True, init=False
             )
 
         # Define schemas
@@ -281,15 +335,34 @@ class TestManyToManyRelationships:
 
         create_tables()
 
-        # Test GET - should return nested groups
+        async def insert_test_data():
+            async with fr.AsyncSession() as session:
+                user = User5(name="John Doe", email="john@example.com")
+                group1 = Group5(name="Admins", description="System administrators")
+                group2 = Group5(name="Editors", description="Content editors")
+                user.groups.extend([group1, group2])
+                session.add(user)
+                session.add(group1)
+                session.add(group2)
+                await session.commit()
+
+        asyncio.run(insert_test_data())
+
         response = client.get("/users5/")
-        assert response.status_code == 200
+        users = response.json()
+
+        assert len(users) == 1
+        user = users[0]
+        assert user["name"] == "John Doe"
+        assert {group["name"] for group in user["groups"]} == {"Admins", "Editors"}
+        assert {
+            group["description"] for group in user["groups"]
+        } == {"System administrators", "Content editors"}
 
 
 class TestDeeplyNestedRelationships:
     """Test deeply nested relationships with aliases."""
 
-    @pytest.mark.xfail(reason="Deeply nested relationships not yet tested")
     def test_deeply_nested_relationships(self, client):
         """Test deeply nested relationships with aliases."""
 
@@ -297,45 +370,53 @@ class TestDeeplyNestedRelationships:
         class Company6(fr.IDBase):
             name: Mapped[str] = mapped_column(String(100))
             departments: Mapped[List["Department6"]] = relationship(
-                "Department6", back_populates="company"
+                "Department6", back_populates="company", default_factory=list
             )
 
         class Department6(fr.IDBase):
             name: Mapped[str] = mapped_column(String(100))
-            company_id: Mapped[int] = mapped_column(Integer, ForeignKey("company6.id"))
+            company_id: Mapped[int] = mapped_column(
+                Integer, ForeignKey("company6.id"), init=False
+            )
             company: Mapped["Company6"] = relationship(
-                "Company6", back_populates="departments"
+                "Company6", back_populates="departments", default=None
             )
             employees: Mapped[List["Employee6"]] = relationship(
-                "Employee6", back_populates="department"
+                "Employee6", back_populates="department", default_factory=list
             )
 
         class Employee6(fr.IDBase):
             name: Mapped[str] = mapped_column(String(100))
             department_id: Mapped[int] = mapped_column(
-                Integer, ForeignKey("department6.id")
+                Integer, ForeignKey("department6.id"), init=False
             )
             department: Mapped["Department6"] = relationship(
-                "Department6", back_populates="employees"
+                "Department6", back_populates="employees", default=None
             )
             projects: Mapped[List["Project6"]] = relationship(
-                "Project6", secondary="employee6_project6", back_populates="employees"
+                "Project6",
+                secondary="employee6_project6",
+                back_populates="employees",
+                default_factory=list,
             )
 
         class Project6(fr.IDBase):
             name: Mapped[str] = mapped_column(String(100))
             employees: Mapped[List["Employee6"]] = relationship(
-                "Employee6", secondary="employee6_project6", back_populates="projects"
+                "Employee6",
+                secondary="employee6_project6",
+                back_populates="projects",
+                default_factory=list,
             )
 
         # Association table
-        class EmployeeProject6(fr.IDBase):
+        class EmployeeProject6(fr.Base):
             __tablename__ = "employee6_project6"
             employee_id: Mapped[int] = mapped_column(
-                Integer, ForeignKey("employee6.id"), primary_key=True
+                Integer, ForeignKey("employee6.id"), primary_key=True, init=False
             )
             project_id: Mapped[int] = mapped_column(
-                Integer, ForeignKey("project6.id"), primary_key=True
+                Integer, ForeignKey("project6.id"), primary_key=True, init=False
             )
 
         # Define schemas with aliases
@@ -362,30 +443,62 @@ class TestDeeplyNestedRelationships:
 
         create_tables()
 
-        # Test GET - should return deeply nested structure with aliases
+        async def insert_test_data():
+            async with fr.AsyncSession() as session:
+                company = Company6(name="Acme Corp")
+                department = Department6(name="Engineering", company=company)
+                employee = Employee6(name="Alice", department=department)
+                project = Project6(name="Platform")
+                employee.projects.append(project)
+                session.add(company)
+                session.add(department)
+                session.add(employee)
+                session.add(project)
+                await session.commit()
+
+        asyncio.run(insert_test_data())
+
         response = client.get("/companies6/")
-        assert response.status_code == 200
+        companies = response.json()
+
+        assert len(companies) == 1
+        company = companies[0]
+        assert company["companyName"] == "Acme Corp"
+        assert "name" not in company
+
+        department = company["departments"][0]
+        assert department["departmentName"] == "Engineering"
+        assert "name" not in department
+
+        employee = department["employees"][0]
+        assert employee["employeeName"] == "Alice"
+        assert "name" not in employee
+
+        project = employee["projects"][0]
+        assert project["projectName"] == "Platform"
+        assert "name" not in project
 
 
 class TestRelationshipWithReadOnlyFields:
     """Test relationships with ReadOnly fields."""
 
-    @pytest.mark.xfail(reason="ReadOnly fields in nested schemas not yet tested")
     def test_relationship_with_readonly_fields(self, client):
         """Test relationships where some fields are ReadOnly."""
 
         # Define SQLAlchemy models with relationship
-        class User7(fr.IDBase):
+        class User7(fr.IDStampsBase):
             name: Mapped[str] = mapped_column(String(100))
             email: Mapped[str] = mapped_column(String(100))
             addresses: Mapped[List["Address7"]] = relationship(
-                "Address7", back_populates="user"
+                "Address7", back_populates="user", default_factory=list
             )
 
-        class Address7(fr.IDBase):
+        class Address7(fr.IDStampsBase):
             street: Mapped[str] = mapped_column(String(200))
             city: Mapped[str] = mapped_column(String(100))
-            user_id: Mapped[int] = mapped_column(Integer, ForeignKey("user7.id"))
+            user_id: Mapped[int] = mapped_column(
+                Integer, ForeignKey("user7.id"), init=False
+            )
             user: Mapped["User7"] = relationship("User7", back_populates="addresses")
 
         # Define schemas with ReadOnly fields
@@ -410,19 +523,30 @@ class TestRelationshipWithReadOnlyFields:
 
         create_tables()
 
-        # Test GET - should return nested addresses with ReadOnly fields
+        async def insert_test_data():
+            async with fr.AsyncSession() as session:
+                user = User7(name="John Doe", email="john@example.com")
+                address = Address7(
+                    street="123 Main St", city="Anytown", user=user
+                )
+                session.add(user)
+                session.add(address)
+                await session.commit()
+
+        asyncio.run(insert_test_data())
+
         response = client.get("/users7/")
-        assert response.status_code == 200
         users = response.json()
 
-        # Check that ReadOnly fields are present in nested objects
-        if users:  # If there are users in the database
-            user = users[0]
-            assert "id" in user
-            assert "created_at" in user
-            if "addresses" in user and user["addresses"]:
-                address = user["addresses"][0]
-                assert "id" in address
-                assert "created_at" in address
-                assert "streetAddress" in address
-                assert "cityName" in address
+        assert len(users) == 1
+        user = users[0]
+        assert isinstance(user["id"], int)
+        assert user["created_at"]
+
+        address = user["addresses"][0]
+        assert isinstance(address["id"], int)
+        assert address["created_at"]
+        assert address["streetAddress"] == "123 Main St"
+        assert address["cityName"] == "Anytown"
+        assert "street" not in address
+        assert "city" not in address

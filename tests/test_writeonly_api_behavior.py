@@ -6,38 +6,37 @@ from datetime import datetime
 from typing import List
 
 import fastapi_restly as fr
-from fastapi_restly.schemas import WriteOnly, BaseSchema
+from fastapi_restly.schemas import ReadOnly, WriteOnly, BaseSchema
 from fastapi_restly.testing import RestlyTestClient
 from fastapi_restly.db import fr_globals
+from sqlalchemy.orm import Mapped
 from .conftest import create_tables
 
 
 class TestWriteOnlyAPIBasicBehavior:
     """Test basic WriteOnly API behavior."""
-    @pytest.mark.xfail(reason="WriteOnly fields not yet implemented in API responses")
-
     def test_writeonly_fields_excluded_from_get_response(self, client):
         """Test that WriteOnly fields are excluded from GET responses."""
 
         # Define schema with WriteOnly fields
         class UserSchema(fr.IDSchema):
-            id: int  # Regular field
+            id: ReadOnly[int]
             name: str
             email: str
             password: WriteOnly[str]  # WriteOnly field
             secret_token: WriteOnly[str]  # Another WriteOnly field
 
         # Create a simple model
-        class User(fr.IDBase):
-            name: str
-            email: str
-            password: str
-            secret_token: str
+        class WriteOnlyUserGet(fr.IDBase):
+            name: Mapped[str]
+            email: Mapped[str]
+            password: Mapped[str]
+            secret_token: Mapped[str]
 
         @fr.include_view(client.app)
         class UserView(fr.AsyncAlchemyView):
             prefix = "/users"
-            model = User
+            model = WriteOnlyUserGet
             schema = UserSchema
 
         create_tables()
@@ -68,26 +67,24 @@ class TestWriteOnlyAPIBasicBehavior:
         # Should NOT include WriteOnly fields
         assert "password" not in user
         assert "secret_token" not in user
-    @pytest.mark.xfail(reason="WriteOnly fields not yet implemented in API responses")
-
     def test_writeonly_fields_accepted_in_post_request(self, client):
         """Test that WriteOnly fields are accepted in POST requests."""
 
         class UserSchema(fr.IDSchema):
-            id: int
+            id: ReadOnly[int]
             name: str
             email: str
             password: WriteOnly[str]
 
-        class User(fr.IDBase):
-            name: str
-            email: str
-            password: str
+        class WriteOnlyUserPost(fr.IDBase):
+            name: Mapped[str]
+            email: Mapped[str]
+            password: Mapped[str]
 
         @fr.include_view(client.app)
         class UserView(fr.AsyncAlchemyView):
             prefix = "/users"
-            model = User
+            model = WriteOnlyUserPost
             schema = UserSchema
 
         create_tables()
@@ -111,26 +108,24 @@ class TestWriteOnlyAPIBasicBehavior:
 
         # Should NOT include WriteOnly field in response
         assert "password" not in created_user
-    @pytest.mark.xfail(reason="WriteOnly fields not yet implemented in API responses")
-
     def test_writeonly_fields_accepted_in_put_request(self, client):
         """Test that WriteOnly fields are accepted in PUT requests."""
 
         class UserSchema(fr.IDSchema):
-            id: int
+            id: ReadOnly[int]
             name: str
             email: str
             password: WriteOnly[str]
 
-        class User(fr.IDBase):
-            name: str
-            email: str
-            password: str
+        class WriteOnlyUserPatch(fr.IDBase):
+            name: Mapped[str]
+            email: Mapped[str]
+            password: Mapped[str]
 
         @fr.include_view(client.app)
         class UserView(fr.AsyncAlchemyView):
             prefix = "/users"
-            model = User
+            model = WriteOnlyUserPatch
             schema = UserSchema
 
         create_tables()
@@ -166,26 +161,24 @@ class TestWriteOnlyAPIBasicBehavior:
 
         # Should NOT include WriteOnly field in response
         assert "password" not in updated_user
-    @pytest.mark.xfail(reason="WriteOnly fields not yet implemented in API responses")
-
     def test_writeonly_fields_excluded_from_list_response(self, client):
         """Test that WriteOnly fields are excluded from list GET responses."""
 
         class UserSchema(fr.IDSchema):
-            id: int
+            id: ReadOnly[int]
             name: str
             email: str
             password: WriteOnly[str]
 
-        class User(fr.IDBase):
-            name: str
-            email: str
-            password: str
+        class WriteOnlyUserList(fr.IDBase):
+            name: Mapped[str]
+            email: Mapped[str]
+            password: Mapped[str]
 
         @fr.include_view(client.app)
         class UserView(fr.AsyncAlchemyView):
             prefix = "/users"
-            model = User
+            model = WriteOnlyUserList
             schema = UserSchema
 
         create_tables()
@@ -220,12 +213,8 @@ class TestWriteOnlyAPIBasicBehavior:
 
 class TestWriteOnlyWithMixedFields:
     """Test WriteOnly fields mixed with ReadOnly and regular fields."""
-    @pytest.mark.xfail(reason="WriteOnly fields not yet implemented in API responses")
-
     def test_mixed_readonly_writeonly_regular_fields(self, client):
         """Test API behavior with ReadOnly, WriteOnly, and regular fields."""
-
-        from fastapi_restly.schemas import ReadOnly
 
         class UserSchema(fr.IDSchema):
             id: ReadOnly[int]  # ReadOnly field
@@ -235,16 +224,16 @@ class TestWriteOnlyWithMixedFields:
             created_at: ReadOnly[datetime]  # ReadOnly field
             secret_token: WriteOnly[str]  # WriteOnly field
 
-        class User(fr.IDBase):
-            name: str
-            email: str
-            password: str
-            secret_token: str
+        class WriteOnlyUserMixed(fr.IDStampsBase):
+            name: Mapped[str]
+            email: Mapped[str]
+            password: Mapped[str]
+            secret_token: Mapped[str]
 
         @fr.include_view(client.app)
         class UserView(fr.AsyncAlchemyView):
             prefix = "/users"
-            model = User
+            model = WriteOnlyUserMixed
             schema = UserSchema
 
         create_tables()
@@ -295,30 +284,28 @@ class TestWriteOnlyWithMixedFields:
 
 class TestWriteOnlyWithAliases:
     """Test WriteOnly fields with field aliases."""
-    @pytest.mark.xfail(reason="WriteOnly fields with aliases not yet tested")
-
     def test_writeonly_fields_with_aliases(self, client):
         """Test that WriteOnly fields work correctly with aliases."""
 
         from pydantic import Field
 
         class UserSchema(fr.IDSchema):
-            id: int
+            id: ReadOnly[int]
             name: str
             email: str
             password: WriteOnly[str] = Field(alias="userPassword")
             secret_token: WriteOnly[str] = Field(alias="secretKey")
 
-        class User(fr.IDBase):
-            name: str
-            email: str
-            password: str
-            secret_token: str
+        class WriteOnlyUserAlias(fr.IDBase):
+            name: Mapped[str]
+            email: Mapped[str]
+            password: Mapped[str]
+            secret_token: Mapped[str]
 
         @fr.include_view(client.app)
         class UserView(fr.AsyncAlchemyView):
             prefix = "/users"
-            model = User
+            model = WriteOnlyUserAlias
             schema = UserSchema
 
         create_tables()

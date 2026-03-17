@@ -294,8 +294,8 @@ wheels = [
 
 [[package]]
 name = "fastapi-restly"
-version = "0.5"
-source = { virtual = "." }
+version = "1.0"
+source = { editable = "." }
 dependencies = [
     { name = "alembic" },
     { name = "fastapi" },

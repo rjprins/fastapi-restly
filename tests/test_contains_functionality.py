@@ -2,8 +2,11 @@
 Tests for contains functionality in both v1 and v2 query modifiers.
 """
 
+import warnings
+
 import pytest
 from fastapi import FastAPI
+from sqlalchemy.exc import SADeprecationWarning
 from sqlalchemy.orm import Mapped, mapped_column
 from starlette.datastructures import QueryParams
 from sqlalchemy import select
@@ -479,7 +482,9 @@ class TestContainsErrorHandling:
         # Test empty contains value
         query_params = QueryParams("name__contains=")
 
-        result = apply_filtering_v2(query_params, query, User, UserSchema)
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", SADeprecationWarning)
+            result = apply_filtering_v2(query_params, query, User, UserSchema)
         assert hasattr(result, "where")
 
     def test_contains_whitespace_splitting(self):

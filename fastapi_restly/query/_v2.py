@@ -46,9 +46,10 @@ def create_query_param_schema_v2(schema_cls: SchemaType) -> SchemaType:
     for name, field in _iter_fields_including_nested_v2(schema_cls):
         field_type = _get_field_type_for_schema(field)
         fields[name] = (Optional[field_type], None)
-        # Add range and null filters
-        for suffix in ["__gte", "__lte", "__gt", "__lt", "__isnull"]:
+        # Add range filters
+        for suffix in ["__gte", "__lte", "__gt", "__lt"]:
             fields[f"{name}{suffix}"] = (Optional[field_type], None)
+        fields[f"{name}__isnull"] = (Optional[bool], None)
 
         # Add contains filter for string fields
         if _is_string_field_v2(field):
@@ -359,7 +360,14 @@ def _apply_suffix_parameters_v2(
         parser = functools.partial(_parse_value_v2, schema_cls, column_name)
 
         if op == "isnull":
-            value = raw_value.lower() in ("1", "true", "yes")
+            if raw_value.startswith("['") and raw_value.endswith("']"):
+                raw_value = raw_value[2:-2]
+            try:
+                value = pydantic.TypeAdapter(bool).validate_python(raw_value)
+            except pydantic.ValidationError as exc:
+                raise HTTPException(
+                    400, f"Invalid attribute in URL query: {key}"
+                ) from exc
             clause = column.is_(None) if value else column.isnot(None)
             filters[column].append(clause)
             continue
@@ -370,6 +378,8 @@ def _apply_suffix_parameters_v2(
         else:
             split_values = raw_value.split(",")
         clauses = [_make_where_clause_v2(column, v, op, parser) for v in split_values]
+        if not clauses:
+            continue
         if len(clauses) == 1:
             or_clause = clauses[0]
         else:

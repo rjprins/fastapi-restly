@@ -58,6 +58,7 @@ dev = [
 [tool.pytest.ini_options]
 pythonpath = ["."]
 addopts = "--ignore=example-projects"
+xfail_strict = true
 
 [tool.ruff.format]
 skip-magic-trailing-comma = true
@@ -72,4 +73,3 @@ split-on-trailing-comma = false
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["fastapi_restly", "fastapi_restly.*"]
-

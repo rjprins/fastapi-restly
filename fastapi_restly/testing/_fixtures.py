@@ -1,9 +1,11 @@
 import traceback
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import AsyncIterator, Iterator
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+import pytest_asyncio
 from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.ext.asyncio import AsyncSession as SA_AsyncSession
@@ -12,7 +14,7 @@ from sqlalchemy.orm import Session as SA_Session
 import alembic
 import alembic.config
 
-from ..db import activate_savepoint_only_mode, fr_globals
+from ..db import activate_savepoint_only_mode, fr_globals, get_fr_globals
 from ._client import RestlyTestClient
 
 
@@ -61,16 +63,18 @@ def autouse_savepoint_only_mode_sessions() -> None:
 
 @pytest.fixture
 def _shared_connection():
-    # Only run if database connections are set up
+    # Sync tests need a sync sessionmaker, but async-only projects should still
+    # be able to use the async_session fixture without one.
     if not fr_globals.make_session:
-        pytest.skip("Database connection not set up")
+        yield None
+        return
 
     engine = fr_globals.make_session.kw["bind"]
     with engine.connect() as conn:
         yield conn
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def async_session(_shared_connection) -> AsyncIterator[SA_AsyncSession]:
     """
     Mock async_make_session and sqlalchemy AsyncSession to always return the same
@@ -82,32 +86,48 @@ async def async_session(_shared_connection) -> AsyncIterator[SA_AsyncSession]:
         pytest.skip("Database connection not set up")
 
     async_engine = fr_globals.async_make_session.kw["bind"]
-    async_conn = AsyncConnection(async_engine, sync_connection=_shared_connection)
-    async with fr_globals.async_make_session(bind=async_conn) as sess:
 
-        async def begin_nested():
-            await sess.begin_nested()
-            return sess
+    @asynccontextmanager
+    async def get_bound_async_connection():
+        if _shared_connection is None:
+            async with async_engine.connect() as async_conn:
+                yield async_conn
+            return
 
-        mock_sessionmaker = AsyncMock()
-        mock_sessionmaker.side_effect = begin_nested
-        mock_sessionmaker.begin.return_value.__aenter__.side_effect = begin_nested
-        # TODO: begin.return_value.__aexit__ should flush.
+        async_conn = AsyncConnection(async_engine, sync_connection=_shared_connection)
+        async with async_conn:
+            yield async_conn
 
-        async def passthrough_exit(self, exc_type, exc_value, traceback):
-            await sess.flush()
-            return False  # re-raise any exception
+    async with get_bound_async_connection() as async_conn:
+        async with fr_globals.async_make_session(bind=async_conn) as sess:
+            async def begin_nested():
+                await sess.begin_nested()
+                return sess
 
-        async def patched_commit(self):
-            await sess.flush()
-            await sess.begin_nested()
+            mock_sessionmaker = AsyncMock()
+            mock_sessionmaker.side_effect = begin_nested
+            mock_sessionmaker.begin.return_value.__aenter__.side_effect = begin_nested
+            # TODO: begin.return_value.__aexit__ should flush.
 
-        with (
-            patch.object(fr_globals, "async_make_session", mock_sessionmaker),
-            patch.object(SA_AsyncSession, "__aexit__", passthrough_exit),
-            patch.object(SA_AsyncSession, "commit", patched_commit),
-        ):
-            yield sess
+            async def passthrough_exit(self, exc_type, exc_value, traceback):
+                await sess.flush()
+                return False  # re-raise any exception
+
+            async def patched_commit(self):
+                await sess.flush()
+                await sess.begin_nested()
+
+            globals_obj = get_fr_globals()
+            original_async_make_session = globals_obj.async_make_session
+            globals_obj.async_make_session = mock_sessionmaker
+            try:
+                with (
+                    patch.object(SA_AsyncSession, "__aexit__", passthrough_exit),
+                    patch.object(SA_AsyncSession, "commit", patched_commit),
+                ):
+                    yield sess
+            finally:
+                globals_obj.async_make_session = original_async_make_session
 
 
 @pytest.fixture
@@ -138,12 +158,17 @@ def session(_shared_connection) -> Iterator[SA_Session]:
             sess.flush()
             sess.begin_nested()
 
-        with (
-            patch.object(fr_globals, "make_session", mock_sessionmaker),
-            patch.object(SA_Session, "__exit__", passthrough_exit),
-            patch.object(SA_Session, "commit", patched_commit),
-        ):
-            yield sess
+        globals_obj = get_fr_globals()
+        original_make_session = globals_obj.make_session
+        globals_obj.make_session = mock_sessionmaker
+        try:
+            with (
+                patch.object(SA_Session, "__exit__", passthrough_exit),
+                patch.object(SA_Session, "commit", patched_commit),
+            ):
+                yield sess
+        finally:
+            globals_obj.make_session = original_make_session
 
 
 @pytest.fixture

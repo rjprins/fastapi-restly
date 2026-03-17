@@ -25,7 +25,7 @@ client.patch("/users/999", json={}, assert_status_code=404)
 ## Pytest Fixtures
 
 ```python
-pytest_plugins = ["fastapi_restly.testing._fixtures"]
+pytest_plugins = ["fastapi_restly.pytest_fixtures"]
 ```
 
 Useful fixtures include:
@@ -33,6 +33,8 @@ Useful fixtures include:
 - `client`
 - `session`
 - `async_session`
+
+See [pytest Fixtures Reference](pytest_fixtures.md) for the full fixture list and isolation model details.
 
 ## Run Test Suites
 

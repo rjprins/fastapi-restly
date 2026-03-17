@@ -10,4 +10,5 @@ howto_override_endpoints
 howto_query_modifiers
 howto_relationship_idschema
 howto_testing
+pytest_fixtures
 ```

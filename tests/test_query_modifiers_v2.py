@@ -168,6 +168,12 @@ class TestCreateQueryParamSchemaV2:
         
         # Check that boolean filters exist
         assert "is_active__isnull" in schema.model_fields
+        isnull_annotation = schema.model_fields["age__isnull"].annotation
+        schema_types = {
+            item["type"]
+            for item in pydantic.TypeAdapter(isnull_annotation).json_schema()["anyOf"]
+        }
+        assert schema_types == {"boolean", "null"}
 
     def test_create_query_param_schema_v2_nested(self):
         """Test creating a query param schema for nested fields."""
@@ -257,6 +263,22 @@ class TestApplySortingV2:
         result = apply_sorting_v2(params, select_query, TestModel)
         
         assert "ORDER BY test_model.name ASC, test_model.age DESC" in str(result)
+
+
+class TestApplyFilteringV2IsNull:
+    def test_apply_filtering_v2_isnull_valid_boolean(self, select_query, mock_query_params):
+        params = mock_query_params(age__isnull="true")
+        result = apply_filtering_v2(params, select_query, TestModel, TestSchema)
+
+        assert "test_model.age IS NULL" in str(result)
+
+    def test_apply_filtering_v2_isnull_rejects_invalid_values(self, select_query, mock_query_params):
+        params = mock_query_params(age__isnull="123")
+
+        with pytest.raises(HTTPException) as exc_info:
+            apply_filtering_v2(params, select_query, TestModel, TestSchema)
+
+        assert exc_info.value.status_code == 400
 
     def test_apply_sorting_v2_invalid_field(self, select_query, mock_query_params):
         """Test sorting with invalid field."""

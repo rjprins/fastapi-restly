@@ -58,6 +58,9 @@ class AsyncAlchemyView(BaseAlchemyView):
         """
         if query is None:
             query = sqlalchemy.select(self.model)
+        loader_options = self.get_relationship_loader_options()
+        if loader_options:
+            query = query.options(*loader_options)
         query_params = self._to_query_params(query_params)
 
         with use_query_modifier_version(self.get_query_modifier_version()):
@@ -88,7 +91,8 @@ class AsyncAlchemyView(BaseAlchemyView):
         Return a 404 if not found.
         Feel free to override this method.
         """
-        obj = await self.session.get(self.model, id)
+        loader_options = self.get_relationship_loader_options()
+        obj = await self.session.get(self.model, id, options=loader_options)
         if obj is None:
             raise fastapi.HTTPException(404)
         return obj

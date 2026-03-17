@@ -35,7 +35,8 @@ from typing import (
 import fastapi
 import pydantic
 from pydantic import create_model
-from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy import inspect as sa_inspect
+from sqlalchemy.orm import DeclarativeBase, selectinload
 from starlette.datastructures import QueryParams
 
 from ..query import (
@@ -68,12 +69,19 @@ def _unwrap_optional_annotation(annotation: Any) -> Any:
     return annotation
 
 
-def _is_idschema_annotation(annotation: Any) -> bool:
+def _is_idschema_reference_annotation(annotation: Any) -> bool:
     annotation = _unwrap_optional_annotation(annotation)
+    if annotation is IDSchema:
+        return True
+    if not inspect.isclass(annotation):
+        return False
     try:
-        return inspect.isclass(annotation) and issubclass(annotation, IDSchema)
+        if not issubclass(annotation, IDSchema):
+            return False
     except TypeError:
         return False
+    metadata = getattr(annotation, "__pydantic_generic_metadata__", {})
+    return metadata.get("origin") is IDSchema
 
 
 def _serialize_idschema_value(annotation: Any, value: Any) -> Any:
@@ -88,18 +96,73 @@ def _serialize_idschema_value(annotation: Any, value: Any) -> Any:
 def _serialize_response_value(annotation: Any, value: Any) -> Any:
     annotation = _unwrap_optional_annotation(annotation)
 
-    if _is_idschema_annotation(annotation):
+    if _is_idschema_reference_annotation(annotation):
         return _serialize_idschema_value(annotation, value)
 
     origin = get_origin(annotation)
     if origin is list:
         item_annotation = get_args(annotation)[0] if get_args(annotation) else Any
-        if _is_idschema_annotation(item_annotation) and isinstance(value, Sequence):
+        if _is_idschema_reference_annotation(item_annotation) and isinstance(
+            value, Sequence
+        ):
             return [
                 _serialize_idschema_value(item_annotation, item) for item in value
             ]
 
     return value
+
+
+def _get_nested_schema_annotation(annotation: Any) -> type[BaseSchema] | None:
+    annotation = _unwrap_optional_annotation(annotation)
+
+    try:
+        if inspect.isclass(annotation) and issubclass(annotation, BaseSchema):
+            return annotation
+    except TypeError:
+        pass
+
+    origin = get_origin(annotation)
+    if origin is list:
+        args = get_args(annotation)
+        if args:
+            return _get_nested_schema_annotation(args[0])
+
+    return None
+
+
+def _build_relationship_loader_options(
+    model_cls: type[DeclarativeBase],
+    schema_cls: type[BaseSchema],
+    seen: set[tuple[type[DeclarativeBase], type[BaseSchema]]] | None = None,
+) -> list[Any]:
+    if seen is None:
+        seen = set()
+
+    visit_key = (model_cls, schema_cls)
+    if visit_key in seen:
+        return []
+    seen = seen | {visit_key}
+
+    mapper = sa_inspect(model_cls)
+    options: list[Any] = []
+    for field_name, field_info in schema_cls.model_fields.items():
+        if field_name not in mapper.relationships:
+            continue
+
+        relationship_prop = mapper.relationships[field_name]
+        loader = selectinload(getattr(model_cls, field_name))
+        nested_schema = _get_nested_schema_annotation(field_info.annotation)
+
+        if nested_schema is not None:
+            child_options = _build_relationship_loader_options(
+                relationship_prop.mapper.class_, nested_schema, seen
+            )
+            if child_options:
+                loader = loader.options(*child_options)
+
+        options.append(loader)
+
+    return options
 
 
 class View:
@@ -262,6 +325,9 @@ class BaseAlchemyView(View):
 
     def get_query_modifier_version(self) -> QueryModifierVersion:
         return getattr(self, "query_modifier_version", get_query_modifier_version())
+
+    def get_relationship_loader_options(self) -> list[Any]:
+        return _build_relationship_loader_options(self.model, self.schema)
 
     def to_response_schema(self, obj: Any) -> BaseSchema:
         """Serialize an ORM object to the configured response schema."""

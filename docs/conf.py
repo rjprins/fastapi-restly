@@ -41,6 +41,11 @@ exclude_patterns = []
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_theme = "furo"
+html_theme_options = {
+    "source_repository": "https://github.com/rjprins/fastapi-restly",
+    "source_branch": "main",
+    "source_directory": "docs/",
+}
 html_static_path = ["_static"]
 html_logo = "_static/restly-cat.png"
 html_css_files = ["custom.css"]
