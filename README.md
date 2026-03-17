@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/_static/restly-cat.png" alt="FastAPI-Restly logo" width="200">
+</p>
+
 # FastAPI-Restly
 
 > **⚠️ Development Status**: This project is in active development and has not been released on PyPI yet. For installation, please clone the repository and install in development mode.
@@ -117,7 +121,7 @@ Use an **explicit schema** when contract stability and control matter most (publ
 If you need custom validation or field aliases, you can define schemas manually:
 
 ```python
-class UserSchema(fr.IDSchema[User]):
+class UserSchema(fr.IDSchema):
     name: str
     email: str
     age: int
@@ -183,7 +187,7 @@ class Order(fr.IDBase):
     customer_id: Mapped[int] = mapped_column(ForeignKey("customer.id"))
     total: Mapped[float]
 
-class OrderSchema(fr.IDSchema[Order]):
+class OrderSchema(fr.IDSchema):
     customer: CustomerSchema  # Nested object
     customer_id: fr.IDSchema[Customer]  # Just the ID
     total: float

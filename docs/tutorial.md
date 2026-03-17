@@ -27,12 +27,12 @@ class Comment(fr.IDBase):
     content: Mapped[str]
     post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
 
-class PostSchema(fr.IDSchema[Post]):
+class PostSchema(fr.IDSchema):
     title: str
     content: str
     published: bool
 
-class CommentSchema(fr.IDSchema[Comment]):
+class CommentSchema(fr.IDSchema):
     content: str
     post_id: fr.IDSchema[Post]
 
@@ -62,7 +62,7 @@ For each view, FastAPI-Restly generates:
 ## Read-Only and Write-Only Fields
 
 ```python
-class UserSchema(fr.IDSchema[User]):
+class UserSchema(fr.IDSchema):
     name: str
     email: str
     password: fr.WriteOnly[str]

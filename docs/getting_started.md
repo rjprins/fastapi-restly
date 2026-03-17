@@ -70,7 +70,7 @@ Update semantics are `PATCH` (partial update).
 ## 5. Add an Explicit Schema (Optional)
 
 ```python
-class UserSchema(fr.IDSchema[User]):
+class UserSchema(fr.IDSchema):
     name: str
     email: str
     internal_id: fr.ReadOnly[str]

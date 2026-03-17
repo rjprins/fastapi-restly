@@ -67,7 +67,7 @@ When you define a schema with `read_only_fields`, the framework automatically ge
 ### Example
 
 ```python
-class UserSchema(IDSchema[User]):
+class UserSchema(IDSchema):
     name: str
     email: str
     
@@ -172,4 +172,16 @@ create_model_with_optional_fields(MySchema, raise_on_readonly=True)
 This is useful for:
 - **Development**: Catching client bugs early
 - **Debugging**: Understanding what fields are being sent
-- **Strict APIs**: When you want explicit feedback about invalid requests 
+- **Strict APIs**: When you want explicit feedback about invalid requests
+
+## More Topics
+
+```{toctree}
+:maxdepth: 1
+
+auto_schema
+custom_endpoints
+existing
+query_modifiers
+pytest_fixtures
+```

@@ -1,4 +1,4 @@
-# FastAPI-Restly Documentation
+# FastAPI-Restly
 
 FastAPI-Restly (`fr`) is a framework that supplements FastAPI with instant CRUD endpoints, built on SQLAlchemy 2.0 and Pydantic v2.
 
@@ -31,7 +31,7 @@ class UserView(fr.AsyncAlchemyView):
 ### Explicit schema mode
 
 ```python
-class UserSchema(fr.IDSchema[User]):
+class UserSchema(fr.IDSchema):
     name: str
     email: str
 
@@ -79,11 +79,13 @@ uv sync
 uv run pytest
 ```
 
-## Contents
 ```{toctree}
 :maxdepth: 2
-:glob:
+:hidden:
 
+getting_started
 tutorial
-*
+howto
+technical_details
+api_reference
 ```

@@ -1,0 +1,31 @@
+/* Main page title */
+h1:first-of-type {
+    font-size: 3rem !important;
+    padding: 1.5rem;
+    border-radius: 8px;
+    background-color: #dbeafe;
+}
+
+/* Dark mode */
+body[data-theme="dark"] h1:first-of-type {
+    background-color: #dbeafe;
+    color: black;
+}
+
+@media (prefers-color-scheme: dark) {
+    body:not([data-theme="light"]) h1:first-of-type {
+        background-color: #dbeafe;
+        color: black;
+    }
+}
+
+/* Invert sidebar logo in dark mode */
+body[data-theme="dark"] img.sidebar-logo {
+    filter: invert(1) hue-rotate(180deg);
+}
+
+@media (prefers-color-scheme: dark) {
+    body:not([data-theme="light"]) img.sidebar-logo {
+        filter: invert(1) hue-rotate(180deg);
+    }
+}

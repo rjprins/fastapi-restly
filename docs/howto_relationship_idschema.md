@@ -16,10 +16,10 @@ class Article(fr.IDBase):
 ## Schema Setup
 
 ```python
-class AuthorSchema(fr.IDSchema[Author]):
+class AuthorSchema(fr.IDSchema):
     name: str
 
-class ArticleSchema(fr.IDSchema[Article]):
+class ArticleSchema(fr.IDSchema):
     title: str
     author_id: fr.IDSchema[Author]
 ```
@@ -38,4 +38,3 @@ class ArticleSchema(fr.IDSchema[Article]):
 - FastAPI-Restly resolves `author_id` to an `Author` instance.
 - Missing related IDs return `404`.
 - Writes keep FK values and relation assignment in sync.
-
