@@ -1,9 +1,29 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "fastapi-restly"
-version = "0.5"
+version = "1.0"
 description = "A REST Framework for FastAPI"
 readme = "README.md"
 requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+    { name = "Rutger Prins", email = "rutgerprins@gmail.com" },
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Framework :: FastAPI",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
+]
 dependencies = [
     "alembic>=1.15.2",
     "fastapi>=0.115.12",
@@ -14,9 +34,14 @@ dependencies = [
     "sqlalchemy[asyncio]>=2.0.41",
 ]
 
+[project.urls]
+Homepage = "https://github.com/rjprins/fastapi-restly"
+Repository = "https://github.com/rjprins/fastapi-restly"
+
 [dependency-groups]
 dev = [
     "aiosqlite>=0.21.0",
+    "furo>=2025.12.19",
     "ghp-import>=2.1.0",
     "ipython>=8.36.0",
     "myst-parser>=4.0.1",
