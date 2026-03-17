@@ -380,7 +380,7 @@ def test_readonly_in_idschema():
     class MockModel(DeclarativeBase):
         pass
 
-    class TestIDSchema(IDSchema[MockModel]):
+    class TestIDSchema(IDSchema):
         pass
 
     # Test that IDSchema has ReadOnly id field

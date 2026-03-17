@@ -11,7 +11,7 @@ def test_plain_id_base_works_with_generated_async_crud(client):
     class PlainProduct(fr.PlainIDBase):
         name: Mapped[str] = mapped_column()
 
-    class PlainProductSchema(fr.IDSchema[PlainProduct]):
+    class PlainProductSchema(fr.IDSchema):
         name: str
 
     @fr.include_view(client.app)

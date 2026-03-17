@@ -28,7 +28,7 @@ def test_get_requests_return_aliases(client):
         user_email: Mapped[str]
         phone_number: Mapped[str]
 
-    class UserSchema(fd.IDSchema[User]):
+    class UserSchema(fd.IDSchema):
         user_name: str = Field(alias="userName")
         user_email: str = Field(alias="userEmail")
         phone_number: str = Field(alias="phoneNumber")
@@ -80,7 +80,7 @@ def test_post_requests_accept_aliases(client):
         product_price: Mapped[float]
         is_active: Mapped[bool]
 
-    class ProductSchema(fd.IDSchema[Product]):
+    class ProductSchema(fd.IDSchema):
         product_name: str = Field(alias="productName")
         product_price: float = Field(alias="productPrice")
         is_active: bool = Field(alias="isActive")
@@ -120,7 +120,7 @@ def test_put_requests_accept_aliases(client):
         article_content: Mapped[str]
         author_name: Mapped[str]
 
-    class ArticleSchema(fd.IDSchema[Article]):
+    class ArticleSchema(fd.IDSchema):
         article_title: str = Field(alias="articleTitle")
         article_content: str = Field(alias="articleContent")
         author_name: str = Field(alias="authorName")
@@ -183,7 +183,7 @@ def test_query_modifiers_with_aliases(client):
         customer_email: Mapped[str]
         registration_date: Mapped[str]
 
-    class CustomerSchema(fd.IDSchema[Customer]):
+    class CustomerSchema(fd.IDSchema):
         customer_name: str = Field(alias="customerName")
         customer_email: str = Field(alias="customerEmail")
         registration_date: str = Field(alias="registrationDate")
@@ -236,7 +236,7 @@ def test_validation_with_aliases(client):
         user_age: Mapped[int]
         user_email: Mapped[str]
 
-    class UserSchema(fd.IDSchema[User]):
+    class UserSchema(fd.IDSchema):
         user_name: str = Field(alias="userName", min_length=2)
         user_age: int = Field(alias="userAge", ge=0, le=150)
         user_email: str = Field(alias="userEmail", pattern=r"^[^@]+@[^@]+\.[^@]+$")
@@ -296,7 +296,7 @@ def test_optional_fields_with_aliases(client):
         profile_bio: Mapped[str]
         profile_website: Mapped[str | None]
 
-    class ProfileSchema(fd.IDSchema[Profile]):
+    class ProfileSchema(fd.IDSchema):
         profile_name: str = Field(alias="profileName")
         profile_bio: str = Field(alias="profileBio")
         profile_website: str | None = Field(alias="profileWebsite", default=None)
@@ -369,7 +369,7 @@ def test_complex_alias_scenarios(client):
         billing_address: Mapped[str]
         order_status: Mapped[str]
 
-    class OrderSchema(fd.IDSchema[Order]):
+    class OrderSchema(fd.IDSchema):
         order_number: str = Field(alias="orderNumber")
         total_amount: float = Field(alias="totalAmount")
         shipping_address: str = Field(alias="shippingAddress")
@@ -419,7 +419,7 @@ def test_documentation_example(client):
         email: Mapped[str]
         phone_number: Mapped[str]
 
-    class UserSchema(fd.IDSchema[User]):
+    class UserSchema(fd.IDSchema):
         name: str
         email: str
         phone_number: str = Field(alias="phoneNumber")

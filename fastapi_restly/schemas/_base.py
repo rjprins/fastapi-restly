@@ -66,7 +66,7 @@ class IDSchema(BaseSchema, Generic[SQLAlchemyModel]):
             return None
 
 
-class IDStampsSchema(TimestampsSchemaMixin, IDSchema[SQLAlchemyModel]):
+class IDStampsSchema(TimestampsSchemaMixin, IDSchema):
     pass
 
 

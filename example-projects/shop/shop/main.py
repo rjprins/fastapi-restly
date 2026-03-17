@@ -69,18 +69,18 @@ class Order(fr.IDBase, fr.TimestampsMixin):
     )
 
 
-class CustomerSchema(fr.IDSchema[Customer]):
+class CustomerSchema(fr.IDSchema):
     email: str
 
 
-class ProductSchema(fr.IDSchema[Product]):
+class ProductSchema(fr.IDSchema):
     name: str
     price: float
     # Example with one-to-many id list
     orders: list[fr.IDSchema[Order]] = []
 
 
-class OrderSchema(fr.TimestampsSchemaMixin, fr.IDSchema[Order]):
+class OrderSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
     # Example of embedded schema
     customer: CustomerSchema
     customer_id: fr.IDSchema[Customer]

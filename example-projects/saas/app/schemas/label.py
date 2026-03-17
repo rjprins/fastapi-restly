@@ -5,7 +5,7 @@ import fastapi_restly as fr
 from ..models import Label, TaskLabel
 
 
-class LabelSchema(fr.TimestampsSchemaMixin, fr.IDSchema[Label]):
+class LabelSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
     """Schema for Label model."""
 
     name: str
@@ -13,7 +13,7 @@ class LabelSchema(fr.TimestampsSchemaMixin, fr.IDSchema[Label]):
     organization_id: int
 
 
-class TaskLabelSchema(fr.TimestampsSchemaMixin, fr.IDSchema[TaskLabel]):
+class TaskLabelSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
     """Schema for TaskLabel association with metadata."""
 
     task_id: int

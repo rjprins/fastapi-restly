@@ -9,7 +9,7 @@ def test_index_response_defaults_to_plain_list(client):
     class Product(fr.IDBase):
         name: str
 
-    class ProductSchema(fr.IDSchema[Product]):
+    class ProductSchema(fr.IDSchema):
         name: str
 
     @fr.include_view(client.app)
@@ -34,7 +34,7 @@ def test_index_can_return_pagination_metadata(client):
     class ProductWithMeta(fr.IDBase):
         name: str
 
-    class ProductWithMetaSchema(fr.IDSchema[ProductWithMeta]):
+    class ProductWithMetaSchema(fr.IDSchema):
         name: str
 
     @fr.include_view(client.app)

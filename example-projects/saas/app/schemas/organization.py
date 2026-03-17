@@ -9,7 +9,7 @@ import fastapi_restly as fr
 from ..models import Organization
 
 
-class OrganizationSchema(fr.TimestampsSchemaMixin, fr.IDSchema[Organization]):
+class OrganizationSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
     """Schema for Organization model."""
 
     name: str

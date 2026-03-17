@@ -25,7 +25,7 @@ class User(fr.IDBase):
 
 
 # Define schema
-class UserSchema(fr.IDSchema[User]):
+class UserSchema(fr.IDSchema):
     name: str
     email: str
     description: str

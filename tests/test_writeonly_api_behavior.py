@@ -14,8 +14,8 @@ from .conftest import create_tables
 
 class TestWriteOnlyAPIBasicBehavior:
     """Test basic WriteOnly API behavior."""
-
     @pytest.mark.xfail(reason="WriteOnly fields not yet implemented in API responses")
+
     def test_writeonly_fields_excluded_from_get_response(self, client):
         """Test that WriteOnly fields are excluded from GET responses."""
 
@@ -68,8 +68,8 @@ class TestWriteOnlyAPIBasicBehavior:
         # Should NOT include WriteOnly fields
         assert "password" not in user
         assert "secret_token" not in user
-
     @pytest.mark.xfail(reason="WriteOnly fields not yet implemented in API responses")
+
     def test_writeonly_fields_accepted_in_post_request(self, client):
         """Test that WriteOnly fields are accepted in POST requests."""
 
@@ -111,8 +111,8 @@ class TestWriteOnlyAPIBasicBehavior:
 
         # Should NOT include WriteOnly field in response
         assert "password" not in created_user
-
     @pytest.mark.xfail(reason="WriteOnly fields not yet implemented in API responses")
+
     def test_writeonly_fields_accepted_in_put_request(self, client):
         """Test that WriteOnly fields are accepted in PUT requests."""
 
@@ -166,8 +166,8 @@ class TestWriteOnlyAPIBasicBehavior:
 
         # Should NOT include WriteOnly field in response
         assert "password" not in updated_user
-
     @pytest.mark.xfail(reason="WriteOnly fields not yet implemented in API responses")
+
     def test_writeonly_fields_excluded_from_list_response(self, client):
         """Test that WriteOnly fields are excluded from list GET responses."""
 
@@ -220,8 +220,8 @@ class TestWriteOnlyAPIBasicBehavior:
 
 class TestWriteOnlyWithMixedFields:
     """Test WriteOnly fields mixed with ReadOnly and regular fields."""
-
     @pytest.mark.xfail(reason="WriteOnly fields not yet implemented in API responses")
+
     def test_mixed_readonly_writeonly_regular_fields(self, client):
         """Test API behavior with ReadOnly, WriteOnly, and regular fields."""
 
@@ -295,8 +295,8 @@ class TestWriteOnlyWithMixedFields:
 
 class TestWriteOnlyWithAliases:
     """Test WriteOnly fields with field aliases."""
-
     @pytest.mark.xfail(reason="WriteOnly fields with aliases not yet tested")
+
     def test_writeonly_fields_with_aliases(self, client):
         """Test that WriteOnly fields work correctly with aliases."""
 
@@ -366,8 +366,8 @@ class TestWriteOnlyWithAliases:
 
 class TestWriteOnlyInNestedSchemas:
     """Test WriteOnly fields in nested schemas."""
-
     @pytest.mark.xfail(reason="WriteOnly fields in nested schemas not yet tested")
+
     def test_writeonly_fields_in_nested_schemas(self, client):
         """Test WriteOnly fields in nested schema relationships."""
 
@@ -391,13 +391,13 @@ class TestWriteOnlyInNestedSchemas:
             user: Mapped["User"] = relationship("User", back_populates="profiles")
 
         # Define schemas with WriteOnly fields
-        class ProfileSchema(fr.IDSchema[Profile]):
+        class ProfileSchema(fr.IDSchema):
             id: int
             bio: str
             website: str
             secret_key: WriteOnly[str]
 
-        class UserSchema(fr.IDSchema[User]):
+        class UserSchema(fr.IDSchema):
             id: int
             name: str
             email: str

@@ -9,7 +9,7 @@ import fastapi_restly as fr
 from ..models import Project, ProjectStatus
 
 
-class ProjectSchema(fr.TimestampsSchemaMixin, fr.IDSchema[Project]):
+class ProjectSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
     """Schema for Project model."""
 
     name: str

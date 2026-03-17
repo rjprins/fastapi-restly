@@ -21,7 +21,7 @@ def test_crud_endpoints_exist(client):
         email: Mapped[str]
 
     # Create a schema
-    class UserSchema(fd.IDSchema[User]):
+    class UserSchema(fd.IDSchema):
         name: str
         email: str
 
@@ -65,7 +65,7 @@ def test_basic_crud_operations(client):
         price: Mapped[float]
 
     # Create a schema
-    class ProductSchema(fd.IDSchema[Product]):
+    class ProductSchema(fd.IDSchema):
         name: str
         price: float
 
@@ -126,11 +126,11 @@ def test_put_request_with_non_existing_id(client):
         author: Mapped["User"] = relationship("User", back_populates="blogs", default=None)
 
     # Create schemas
-    class UserSchema(fd.IDSchema[User]):
+    class UserSchema(fd.IDSchema):
         name: str
         email: str
 
-    class BlogSchema(fd.IDSchema[Blog]):
+    class BlogSchema(fd.IDSchema):
         title: str
         content: str
         author_id: fd.IDSchema[User]
@@ -209,7 +209,7 @@ def test_list_endpoint(client):
         description: Mapped[str]
 
     # Create a schema
-    class CategorySchema(fd.IDSchema[Category]):
+    class CategorySchema(fd.IDSchema):
         name: str
         description: str
 

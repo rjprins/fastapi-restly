@@ -21,7 +21,7 @@ def test_pydantic_alias_feature(client):
         phone_number: Mapped[str]
 
     # Create a schema with Pydantic aliases
-    class UserSchema(fd.IDSchema[User]):
+    class UserSchema(fd.IDSchema):
         model_config = pydantic.ConfigDict(from_attributes=True, populate_by_name=True)
 
         name: str
@@ -96,7 +96,7 @@ def test_pydantic_alias_with_multiple_aliases(client):
         is_active: Mapped[bool]
 
     # Create a schema with multiple Pydantic aliases
-    class ProductSchema(fd.IDSchema[Product]):
+    class ProductSchema(fd.IDSchema):
         model_config = pydantic.ConfigDict(from_attributes=True, populate_by_name=True)
 
         name: str
@@ -196,7 +196,7 @@ def test_pydantic_alias_with_query_parameters(client):
         publish_date: Mapped[str]
 
     # Create a schema with aliases
-    class ArticleSchema(fd.IDSchema[Article]):
+    class ArticleSchema(fd.IDSchema):
         title: str
         content: str
         author_name: str = Field(alias="authorName")
@@ -249,7 +249,7 @@ def test_pydantic_alias_with_field_validation(client):
         age: Mapped[int]
 
     # Create a schema with aliases and validation
-    class UserSchema(fd.IDSchema[User]):
+    class UserSchema(fd.IDSchema):
         name: str
         email: str = Field(alias="userEmail")
         age: int = Field(alias="userAge", ge=0, le=150)

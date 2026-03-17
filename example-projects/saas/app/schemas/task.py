@@ -5,7 +5,7 @@ import fastapi_restly as fr
 from ..models import Task, TaskStatus, TaskPriority, TaskType
 
 
-class TaskSchema(fr.TimestampsSchemaMixin, fr.IDSchema[Task]):
+class TaskSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
     """Schema for Task model.
 
     Note: Conditional validation (bugs require severity) is implemented

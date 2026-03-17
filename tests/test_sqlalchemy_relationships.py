@@ -37,11 +37,11 @@ class TestOneToManyRelationships:
             user: Mapped["User1"] = relationship("User1", back_populates="addresses")
 
         # Define schemas
-        class AddressSchema1(fr.IDSchema[Address1]):
+        class AddressSchema1(fr.IDSchema):
             street: str
             city: str
 
-        class UserSchema1(fr.IDSchema[User1]):
+        class UserSchema1(fr.IDSchema):
             name: str
             email: str
             addresses: List[AddressSchema1]
@@ -79,11 +79,11 @@ class TestOneToManyRelationships:
             user: Mapped["User"] = relationship("User", back_populates="addresses")
 
         # Define schemas with aliases
-        class AddressSchema(fr.IDSchema[Address]):
+        class AddressSchema(fr.IDSchema):
             street: str = Field(alias="streetAddress")
             city: str = Field(alias="cityName")
 
-        class UserSchema(fr.IDSchema[User]):
+        class UserSchema(fr.IDSchema):
             name: str
             email: str
             addresses: List[AddressSchema]
@@ -158,11 +158,11 @@ class TestOneToOneRelationships:
             user: Mapped["User3"] = relationship("User3", back_populates="profile")
 
         # Define schemas
-        class ProfileSchema3(fr.IDSchema[Profile3]):
+        class ProfileSchema3(fr.IDSchema):
             bio: str
             website: str
 
-        class UserSchema3(fr.IDSchema[User3]):
+        class UserSchema3(fr.IDSchema):
             name: str
             email: str
             profile: ProfileSchema3
@@ -200,11 +200,11 @@ class TestOneToOneRelationships:
             user: Mapped["User4"] = relationship("User4", back_populates="profile")
 
         # Define schemas with aliases
-        class ProfileSchema4(fr.IDSchema[Profile4]):
+        class ProfileSchema4(fr.IDSchema):
             bio: str = Field(alias="userBio")
             website: str = Field(alias="userWebsite")
 
-        class UserSchema4(fr.IDSchema[User4]):
+        class UserSchema4(fr.IDSchema):
             name: str
             email: str
             profile: ProfileSchema4
@@ -264,11 +264,11 @@ class TestManyToManyRelationships:
             )
 
         # Define schemas
-        class GroupSchema5(fr.IDSchema[Group5]):
+        class GroupSchema5(fr.IDSchema):
             name: str
             description: str
 
-        class UserSchema5(fr.IDSchema[User5]):
+        class UserSchema5(fr.IDSchema):
             name: str
             email: str
             groups: List[GroupSchema5]
@@ -339,18 +339,18 @@ class TestDeeplyNestedRelationships:
             )
 
         # Define schemas with aliases
-        class ProjectSchema6(fr.IDSchema[Project6]):
+        class ProjectSchema6(fr.IDSchema):
             name: str = Field(alias="projectName")
 
-        class EmployeeSchema6(fr.IDSchema[Employee6]):
+        class EmployeeSchema6(fr.IDSchema):
             name: str = Field(alias="employeeName")
             projects: List[ProjectSchema6]
 
-        class DepartmentSchema6(fr.IDSchema[Department6]):
+        class DepartmentSchema6(fr.IDSchema):
             name: str = Field(alias="departmentName")
             employees: List[EmployeeSchema6]
 
-        class CompanySchema6(fr.IDSchema[Company6]):
+        class CompanySchema6(fr.IDSchema):
             name: str = Field(alias="companyName")
             departments: List[DepartmentSchema6]
 
@@ -389,13 +389,13 @@ class TestRelationshipWithReadOnlyFields:
             user: Mapped["User7"] = relationship("User7", back_populates="addresses")
 
         # Define schemas with ReadOnly fields
-        class AddressSchema7(fr.IDSchema[Address7]):
+        class AddressSchema7(fr.IDSchema):
             id: ReadOnly[int]
             street: str = Field(alias="streetAddress")
             city: str = Field(alias="cityName")
             created_at: ReadOnly[datetime]
 
-        class UserSchema7(fr.IDSchema[User7]):
+        class UserSchema7(fr.IDSchema):
             id: ReadOnly[int]
             name: str
             email: str

@@ -24,7 +24,7 @@ class Blog(fr.IDBase):
     title: Mapped[str]
 
 
-class BlogSchema(fr.IDSchema[Blog]):
+class BlogSchema(fr.IDSchema):
     title: str
 
 
