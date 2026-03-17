@@ -67,3 +67,5 @@
 {"actor":"Rutger Prins","comment":null,"created_at":"2026-03-06T19:41:50Z","event_type":"closed","id":67,"issue_id":"fastapi-restly-f4u","new_value":"Implemented in commit 60bf1bd","old_value":""}
 {"actor":"Rutger Prins","comment":null,"created_at":"2026-03-06T19:42:44Z","event_type":"closed","id":68,"issue_id":"fastapi-restly-438","new_value":"Implemented in commit eafc5c1","old_value":""}
 {"actor":"Rutger Prins","comment":null,"created_at":"2026-03-06T19:44:12Z","event_type":"closed","id":69,"issue_id":"fastapi-restly-n6k","new_value":"Implemented in commit dd49701","old_value":""}
+{"actor":"Rutger Prins","comment":null,"created_at":"2026-03-06T19:46:15Z","event_type":"closed","id":70,"issue_id":"fastapi-restly-4ux","new_value":"Implemented in commit 787fe03","old_value":""}
+{"actor":"Rutger Prins","comment":null,"created_at":"2026-03-06T19:46:24Z","event_type":"closed","id":71,"issue_id":"fastapi-restly-wtb","new_value":"All review.md findings implemented and validated","old_value":""}
