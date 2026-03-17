@@ -627,14 +627,15 @@ class TestMakeWhereClause:
     def test_make_where_clause_is_null(self):
         """Test making where clause with is null operator."""
         from fastapi_restly.query._v1 import _make_where_clause
-        
+
         mock_column = Mock()
-        mock_column.__eq__ = Mock(return_value="is_null_clause")
-        
-        # For null values, the parser should return None
+        mock_column.is_ = Mock(return_value="is_null_clause")
+
+        # For null values, _make_where_clause uses column.is_(None)
         parser = lambda x: None if x == "null" else x
         result = _make_where_clause(mock_column, "null", parser)
-        
+
+        mock_column.is_.assert_called_once_with(None)
         assert result == "is_null_clause"
 
 
@@ -656,15 +657,14 @@ class TestIsStringField:
         from fastapi_restly.query._v1 import _is_string_field
         from pydantic.fields import FieldInfo
         from typing import Optional
-        
+
         # Create a mock field with Optional[str] annotation
         field = Mock(spec=FieldInfo)
         field.annotation = Optional[str]
-        
+
         result = _is_string_field(field)
-        # The current implementation doesn't handle Optional[str] correctly
-        # This is a known limitation - it should return True but currently returns False
-        assert result is False  # Current behavior, should be True ideally
+        # Optional[str] (typing.Union[str, None]) is correctly identified as a string field
+        assert result is True
 
     def test_is_string_field_non_string(self):
         """Test string field detection for non-string field."""

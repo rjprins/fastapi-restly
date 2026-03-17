@@ -147,9 +147,7 @@ class TestContainsV1Functionality:
         age_field = TestSchema.model_fields["age"]
 
         assert _is_string_field(name_field) is True
-        # Note: The current implementation doesn't handle Optional[str] correctly
-        # This is expected behavior for now
-        assert _is_string_field(email_field) is False
+        assert _is_string_field(email_field) is True
         assert _is_string_field(age_field) is False
 
 

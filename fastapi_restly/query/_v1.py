@@ -1,7 +1,9 @@
 import functools
 from collections import defaultdict
 from types import UnionType
-from typing import Any, Callable, Iterator, Optional, cast, get_args, get_origin
+from typing import Any, Callable, Iterator, Optional, Union, cast, get_args, get_origin
+
+from ._shared import _escape_like_value
 
 import pydantic
 import sqlalchemy
@@ -100,9 +102,10 @@ def _is_string_field(field: FieldInfo) -> bool:
     """Check if a field is a string type."""
     annotation = field.annotation
 
-    # Handle Optional[str] (i.e., Union[str, None])
+    # Handle Optional[str] (i.e., Union[str, None]) — both new-style (str | None)
+    # and typing.Optional[str] / typing.Union[str, None]
     origin = get_origin(annotation)
-    if origin is UnionType:
+    if origin in (UnionType, Union):
         args = get_args(annotation)
         non_none_args = [arg for arg in args if arg is not type(None)]
         if len(non_none_args) == 1:
@@ -113,10 +116,10 @@ def _is_string_field(field: FieldInfo) -> bool:
 
 def apply_pagination(query_params: QueryParams, select_query: Select) -> Select:
     limit = _get_int(query_params, "limit")
-    if limit:
+    if limit is not None:
         select_query = select_query.limit(limit)
     offset = _get_int(query_params, "offset")
-    if offset:
+    if offset is not None:
         select_query = select_query.offset(offset)
     return select_query
 
@@ -387,19 +390,13 @@ def _make_where_clause(
     elif filter_value.startswith("!"):
         value = filter_value[1:]
         if value == "null":
-            value = None
+            return column.isnot(None)
         value = parser(value)
         return column != value
     else:
         if filter_value == "null":
-            value = None
+            return column.is_(None)
         value = parser(filter_value)
         return column == value
 
 
-def _escape_like_value(value: str) -> str:
-    """Escape SQL LIKE wildcard characters for literal substring matching."""
-    escaped = value.replace("\\", "\\\\")
-    escaped = escaped.replace("%", "\\%")
-    escaped = escaped.replace("_", "\\_")
-    return escaped
