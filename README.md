@@ -226,6 +226,7 @@ class UserView(fr.AsyncAlchemyView):
 - **[Getting Started](https://rjprins.github.io/fastapi-restly/getting_started.html)** - Fast path from zero to a working API
 - **[Tutorial](https://rjprins.github.io/fastapi-restly/tutorial.html)** - Get started with FastAPI-Restly
 - **[How-To Guides](https://rjprins.github.io/fastapi-restly/howto.html)** - Recipes for common framework tasks
+- **[Existing Project Integration](https://rjprins.github.io/fastapi-restly/howto_existing_project.html)** - Add Restly to a project with its own session management
 - **[Technical Details](https://rjprins.github.io/fastapi-restly/technical_details.html)** - Learn how the framework works
 - **[API Reference](https://rjprins.github.io/fastapi-restly/api_reference.html)** - Complete API documentation
 
@@ -234,7 +235,7 @@ class UserView(fr.AsyncAlchemyView):
 Check out the [example projects](example-projects/) for complete applications:
 
 - **[Shop](example-projects/shop/)** - E-commerce API with products, orders, and customers
-- **[Blog](example-projects/blog/)** - Simple blog with posts and comments
+- **[Blog](example-projects/blog/)** - Minimal blog with a single `Blog` model
 - **[SaaS](example-projects/saas/)** - Multi-tenant project management API
 
 ## Testing

@@ -40,7 +40,7 @@ own code (for example in background tasks):
 ```python
 import fastapi_restly as fr
 
-async with fr.FRAsyncSession() as session:
+async with fr.async_session() as session:
     result = await session.execute(...)
 ```
 

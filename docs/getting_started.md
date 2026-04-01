@@ -2,6 +2,8 @@
 
 This guide walks from zero to a working CRUD API with FastAPI-Restly.
 
+**Requirements:** Python 3.10 or later.
+
 ## 1. Install
 
 From the repository root:
@@ -72,6 +74,8 @@ When auto-generated schemas are a good fit:
 ```bash
 uv run fastapi dev main.py
 ```
+
+> **Note:** `fastapi dev` requires the `fastapi[standard]` extras (`pip install "fastapi[standard]"` or add it to your dependencies). It is not needed for production — only for the development server.
 
 Open:
 

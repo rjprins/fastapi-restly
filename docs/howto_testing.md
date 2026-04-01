@@ -13,6 +13,7 @@ client = RestlyTestClient(app)
 The client auto-asserts default status codes:
 - `get` expects `200`
 - `post` expects `201`
+- `put` expects `200`
 - `patch` expects `200`
 - `delete` expects `204`
 

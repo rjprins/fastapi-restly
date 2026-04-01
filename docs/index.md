@@ -61,6 +61,7 @@ serialization control.
 - [Getting Started](getting_started.md) - Fast path from zero to CRUD API
 - [Tutorial](tutorial.md) - Extended walkthrough and schema usage
 - [How-To Guides](howto.md) - Task-focused recipes for core features
+- [Existing Project Integration](howto_existing_project.md) - Add Restly to a project with its own session management
 - [Technical Details](technical_details.md) - How schema generation works under the hood
 - [API Reference](api_reference.md) - Complete API documentation
 

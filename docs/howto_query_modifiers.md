@@ -191,15 +191,11 @@ Suffixes add other operators:
 | `__lte` | `field <= value` | `?age__lte=64` |
 | `__gt` | `field > value` | `?age__gt=17` |
 | `__lt` | `field < value` | `?age__lt=65` |
+| `__ne` | `field != value` | `?status__ne=archived` |
 | `__contains` | `field ILIKE '%value%'` | `?email__contains=example` |
 | `__isnull` | `field IS NULL` / `IS NOT NULL` | `?deleted_at__isnull=true` |
 
 `__isnull` accepts a boolean value (`true` or `false`), **not** the string `"null"`.
-
-> **Note on `__ne` (not equals):** The runtime handler accepts `?field__ne=value`
-> and produces `field != value`, but `__ne` is not registered in the generated
-> OpenAPI/query schema. FastAPI will not advertise it in the docs and Pydantic will
-> not validate the input. Use it with caution until this is resolved.
 
 #### OR logic with comma-separated values
 

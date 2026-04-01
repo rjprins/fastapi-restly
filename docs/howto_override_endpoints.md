@@ -6,11 +6,13 @@ You can customize behavior by overriding `process_*` hooks or by defining custom
 
 Override any `process_*` method to change how a specific CRUD operation works. The available hooks are:
 
-- `process_index(self, query_params)` — list endpoint (`GET /`)
+- `process_index(self, query_params, query=None)` — list endpoint (`GET /`). Pass `query` to supply a pre-filtered SQLAlchemy `Select` statement.
 - `process_get(self, id)` — single-object endpoint (`GET /{id}`)
 - `process_post(self, schema_obj)` — create endpoint (`POST /`)
 - `process_patch(self, id, schema_obj)` — update endpoint (`PATCH /{id}`)
 - `process_delete(self, id)` — delete endpoint (`DELETE /{id}`)
+- `count_index(self, query_params)` — count query used when `include_pagination_metadata = True`. Override to apply the same filters as `process_index`.
+- `delete_object(self, obj)` — low-level delete called by `process_delete`. Override to add soft-delete logic.
 
 ```python
 import fastapi_restly as fr
@@ -31,7 +33,7 @@ class UserView(fr.AsyncAlchemyView):
 
 ## Add a Custom Route
 
-Use `@fr.get`, `@fr.post`, `@fr.patch`, `@fr.delete`, or `@fr.route` to add endpoints alongside the generated ones.
+Use `@fr.get`, `@fr.post`, `@fr.put`, `@fr.patch`, `@fr.delete`, or `@fr.route` to add endpoints alongside the generated ones.
 
 ```python
 @fr.include_view(app)
@@ -83,6 +85,6 @@ Valid values are: `"index"`, `"get"`, `"post"`, `"patch"`, `"delete"`. Passing a
 
 ## Choosing Between `@fr.route` and the Shorthand Decorators
 
-Prefer `@fr.get`, `@fr.post`, `@fr.patch`, and `@fr.delete` for most endpoints — they set the HTTP method automatically, and `@fr.get` (200), `@fr.post` (201), and `@fr.delete` (204) also set default status codes. `@fr.patch` and `@fr.put` do not set a default; FastAPI uses 200.
+Prefer `@fr.get`, `@fr.post`, `@fr.put`, `@fr.patch`, and `@fr.delete` for most endpoints — they set the HTTP method automatically, and `@fr.get` (200), `@fr.post` (201), and `@fr.delete` (204) also set default status codes. `@fr.put` and `@fr.patch` do not set a default; FastAPI uses 200.
 
 Use `@fr.route(path, methods=[...], ...)` only when you need full manual control over route options (for example, to register a single path under multiple HTTP methods, or to set non-standard response codes).

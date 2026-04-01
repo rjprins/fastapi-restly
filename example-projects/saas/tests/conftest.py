@@ -2,16 +2,20 @@
 import asyncio
 from pathlib import Path
 
-import app.main  # noqa: F401
+import pytest
 
-from fastapi_restly.db import get_async_engine
-from fastapi_restly.models import DataclassBase
+import app.main  # noqa: F401  -- registers fr.configure() before fixtures run
+from app.main import app as saas_app
+
+import fastapi_restly as fr
+
+pytest_plugins = ["fastapi_restly.pytest_fixtures"]
 
 
 async def _create_tables():
     """Create all tables asynchronously."""
-    async with get_async_engine().begin() as conn:
-        await conn.run_sync(DataclassBase.metadata.create_all)
+    async with fr.get_async_engine().begin() as conn:
+        await conn.run_sync(fr.DataclassBase.metadata.create_all)
 
 
 # Delete the database file if it exists and create fresh tables
@@ -20,3 +24,8 @@ if db_file.exists():
     db_file.unlink()
 
 asyncio.run(_create_tables())
+
+
+@pytest.fixture
+def app():
+    return saas_app

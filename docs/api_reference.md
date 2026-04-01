@@ -146,6 +146,8 @@ For generated CRUD endpoints:
 | `fr.PlainTimestampsMixin` | Non-dataclass mixin adding `created_at` / `updated_at` to a `PlainBase` subclass. |
 | `fr.get_one_or_create(model, session, **kwargs)` | Return the unique matching row or create it using a sync SQLAlchemy session. |
 | `fr.async_get_one_or_create(model, session, **kwargs)` | Async variant of `get_one_or_create`. |
+| `fr.CASCADE_ALL_ASYNC` | Cascade string for use with `relationship(cascade=...)` in async SQLAlchemy models. Equivalent to `"save-update, merge, delete, expunge"`. SQLAlchemy's default `"all"` includes `"refresh-expire"` which is incompatible with async sessions. |
+| `fr.CASCADE_ALL_DELETE_ORPHAN_ASYNC` | Like `CASCADE_ALL_ASYNC` but also includes `"delete-orphan"`. |
 
 ### Schema Classes and Utilities
 
@@ -160,6 +162,26 @@ For generated CRUD endpoints:
 | `fr.OmitReadOnlyMixin` | Mixin that strips `ReadOnly` fields from a schema subclass (used by `creation_schema`). |
 | `fr.PatchMixin` | Mixin that makes all writable fields optional with `None` default (used by `update_schema`). |
 | `fr.create_schema_from_model(model)` | Auto-generate a Pydantic schema from a SQLAlchemy model. |
+| `fr.auto_generate_schema_for_view(view_cls, model_cls)` | Generate a schema for a view from its model, excluding relationship fields. Used internally by `include_view`. |
+| `fr.resolve_ids_to_sqlalchemy_objects(session, schema_obj)` | Walk a schema instance, load `_id`-suffixed `IDSchema` fields from the database, and replace them with ORM objects. Called automatically during create/update. |
+
+### View Classes
+
+| Symbol | Description |
+|---|---|
+| `fr.View` | Base class for all class-based views. Subclass this directly when you do not need CRUD — add endpoints with `@fr.get`, `@fr.post`, etc. |
+| `fr.BaseAlchemyView` | Abstract base shared by `AsyncAlchemyView` and `AlchemyView`. Holds all CRUD class attributes and `process_*` hooks. |
+| `fr.AsyncAlchemyView` | Async CRUD view. Use with async SQLAlchemy sessions. |
+| `fr.AlchemyView` | Sync CRUD view. Use with sync SQLAlchemy sessions. |
+
+`fr.View` class attributes:
+
+| Attribute | Type | Description |
+|---|---|---|
+| `prefix` | `ClassVar[str]` | URL prefix for all routes in the view (e.g. `"/users"`). Required. |
+| `tags` | `ClassVar[list[str] \| None]` | OpenAPI tags. The view class name is always added automatically; set this to add extra tags. |
+| `dependencies` | `ClassVar[list[Any] \| None]` | FastAPI dependencies applied to every route in the view. |
+| `responses` | `ClassVar[dict[int, Any]]` | OpenAPI response overrides. Defaults to `{404: {"description": "Not found"}}`. |
 
 ### View Class Attributes
 
@@ -174,12 +196,20 @@ For generated CRUD endpoints:
 | `exclude_routes` | `ClassVar[tuple[str, ...]]` | Route names to suppress. |
 | `query_modifier_version` | `ClassVar[QueryModifierVersion]` | Per-view query style override. Defaults to the global setting at registration time. |
 
+### View Free Functions
+
+These module-level functions mirror the instance methods on `AsyncAlchemyView` / `AlchemyView` but take an explicit session argument. Use them when you need the same logic outside a view class.
+
+| Symbol | Description |
+|---|---|
+| `fr.make_new_object(session, model_cls, schema_obj, schema_cls=None)` | Create a new model instance from a schema, resolve FK `IDSchema` fields, add to session, and return the object. |
+| `fr.update_object(session, obj, schema_obj, schema_cls=None)` | Apply schema fields to an existing ORM object, resolve FK fields, flush, and return the object. |
+| `fr.save_object(session, obj)` | Flush the session and refresh `obj` from the database, then return it. |
+
 ### Database
 
 | Symbol | Description |
 |---|---|
-| `fr.FRAsyncSession` | Global async session proxy. Use as a FastAPI dependency or call directly in tests. |
-| `fr.FRSession` | Global sync session proxy. |
 | `fr.AsyncSessionDep` | FastAPI `Depends`-compatible async session dependency. |
 | `fr.SessionDep` | FastAPI `Depends`-compatible sync session dependency. |
 | `fr.configure(async_database_url=..., ...)` | Configure the framework. Accepts async/sync URLs, engines, session makers, or custom session generators. |
