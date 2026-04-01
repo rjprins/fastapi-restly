@@ -19,6 +19,13 @@ Define schemas with field aliases, write-only fields, and read-only computed fie
 Customize `process_*` hooks and add custom routes alongside generated CRUD.
 :::
 
+:::{grid-item-card} Share Behaviour with Base Views
+:link: howto_inheritance
+:link-type: doc
+
+Use Python inheritance to share CRUD overrides, dependencies, URL prefixes, and access control across multiple views.
+:::
+
 :::{grid-item-card} Filter, Sort, and Paginate
 :link: howto_query_modifiers
 :link-type: doc
@@ -61,6 +68,7 @@ Plug FastAPI-Restly into a project that already manages its own sessions.
 
 howto_custom_schema
 howto_override_endpoints
+howto_inheritance
 howto_query_modifiers
 howto_relationship_idschema
 howto_testing
