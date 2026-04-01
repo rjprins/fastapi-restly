@@ -8,7 +8,6 @@ import fastapi_restly as fr
 from .conftest import create_tables
 
 
-
 def test_basic_crud_operations(client):
     """Test basic CRUD operations."""
 
