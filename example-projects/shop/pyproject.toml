@@ -28,4 +28,4 @@ include = ["shop"]
 pythonpath = ["."]
 
 [tool.uv.sources]
-fastapi-restly = { path = "../../" }
+fastapi-restly = { path = "../../", editable = true }

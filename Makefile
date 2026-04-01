@@ -6,9 +6,9 @@ all: test-all
 # Install development dependencies
 install-dev:
 	uv sync
-	cd example-projects/shop && uv sync
-	cd example-projects/blog && uv sync
-	cd example-projects/saas && uv sync
+	cd example-projects/shop && uv sync --all-extras --all-groups
+	cd example-projects/blog && uv sync --all-extras --all-groups
+	cd example-projects/saas && uv sync --all-extras --all-groups
 
 pre-commit-install:
 	uv run pre-commit install
