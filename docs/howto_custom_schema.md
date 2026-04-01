@@ -45,6 +45,6 @@ class UserView(fr.AsyncAlchemyView):
 ## What You Get
 
 - Incoming payloads accept the alias key (`firstName`).
-- Responses use the alias key when FastAPI is configured to serialize by alias (set `response_model_by_alias=True` on individual routes, or configure it globally). Without that setting, responses use the canonical field name (`first_name`).
+- Responses use the alias key (`firstName`) on Restly routes as well.
 - `id` never appears in POST/PATCH request bodies because it is `ReadOnly` on `IDSchema`.
 - `password_hash` never appears in responses because it is `WriteOnly`.

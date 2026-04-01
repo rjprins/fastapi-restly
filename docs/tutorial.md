@@ -229,7 +229,7 @@ class PostView(fr.AsyncAlchemyView):
     query_modifier_version = fr.QueryModifierVersion.V2
 ```
 
-See [Query Modifiers](query_modifiers.md) for the full list of filters and operators.
+See [How-To: Filter, Sort, and Paginate Lists](howto_query_modifiers.md) for the full list of filters and operators.
 
 ---
 
@@ -271,10 +271,23 @@ full setup and savepoint details.
 
 ---
 
+## Nested Schemas
+
+Nested schemas are supported for **responses** and relation filtering. If a response schema
+includes nested related objects, Restly eagerly loads those relationships and serializes the
+nested payloads, including aliases.
+
+Nested schemas are **not** supported for create/update payloads. `POST` and `PATCH` inputs must
+still map directly to model attributes or use the `*_id: IDSchema[Model]` pattern for foreign
+keys. If you need a nested request shape, flatten it in the schema or override `process_post` /
+`process_patch` and transform the payload yourself.
+
+---
+
 ## Next steps
 
 - [Auto-Generated Schemas](technical_details.md#auto-generated-schemas) — skip writing schemas for simple models
-- [Query Modifiers](query_modifiers.md) — full filter and sort reference
+- [How-To: Filter, Sort, and Paginate Lists](howto_query_modifiers.md) — full filter and sort reference
 - [How-To: Foreign Keys with IDSchema](howto_relationship_idschema.md) — list relations and nested objects
 - [How-To: Testing](howto_testing.md) — savepoint isolation and test fixtures
 - [How-To: Override Endpoints](howto_override_endpoints.md) — customise individual CRUD handlers

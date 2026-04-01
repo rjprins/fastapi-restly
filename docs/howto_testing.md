@@ -43,6 +43,10 @@ Two fixtures run automatically for every test session (you do not need to reques
 - `autouse_alembic_upgrade` — runs `alembic upgrade head` once before the suite starts. If migrations fail, the entire suite is aborted immediately. Skips silently if no `alembic/` directory is found.
 - `autouse_savepoint_only_mode_sessions` — puts session factories into savepoint-only mode so no test data is committed to the database. Skips if no database connections are configured.
 
+One caveat to be aware of: explicit `with session.begin(): ...` / `async with session.begin(): ...`
+blocks inside tests are supported, but the fixture implementation currently documents a visibility
+caveat around those blocks. See [pytest Fixtures Reference](pytest_fixtures.md) for details.
+
 A third fixture, `project_root`, is session-scoped and used internally by `autouse_alembic_upgrade` to locate the project directory. It is not autouse.
 
 Example — override `app` in your `conftest.py`:

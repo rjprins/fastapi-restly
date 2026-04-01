@@ -33,24 +33,31 @@ Notes:
 - Sorting: `?sort=name,-created_at`
 - Pagination: `?limit=10&offset=20` (no limit is applied when omitted)
 - Contains: `?contains[name]=john` (multiple space-separated words are AND'd: all must be contained)
+  - V1 uses schema field names, not aliases
 
 ### V2 (HTTP-style)
 - Filtering: `?name=John&created_at__gte=2024-01-01`
   - Suffixes: `__gte`, `__lte`, `__gt`, `__lt`, `__ne`, `__isnull`, `__contains` (string fields only)
   - OR-values: `?id=1,2,3` (comma-separated values are OR'd together)
-  - For aliased schemas, use the **alias name** as the query parameter, not the Python field name.
+  - Flat aliased fields use the alias name. If `populate_by_name=True` is enabled, flat fields also accept the Python field name.
 - Contains: `?name__contains=john` (multiple space-separated words are AND'd: all must be contained)
+  - `%`, `_`, and `\\` are escaped before building the SQL `ILIKE`
 - Sorting: `?order_by=name,-created_at`
 - Pagination: `?page=2&page_size=10`
   - **Always applied:** even with no pagination params, V2 applies `LIMIT 100 OFFSET 0` by default.
   - Defaults: `page=1`, `page_size=100`.
+
+Relation-filtering caveat for V2:
+- The relation segment must still use the schema/model field name
+- Only nested field segments may use aliases
+- Example: `?author.authorName=Alice` can work, while `?writer.authorName=Alice` does not
 
 ### Query Modifier Version Configuration
 
 The active version is controlled via:
 - `fr.set_query_modifier_version(fr.QueryModifierVersion.V2)` — set globally
 - `fr.get_query_modifier_version()` — read the current global setting
-- `fr.use_query_modifier_version(version)` — context manager; preferred for tests and per-request overrides
+- `fr.use_query_modifier_version(version)` — context manager; preferred for tests and direct low-level helper calls
 
 `fr.QueryModifierVersion` is an enum with two members: `QueryModifierVersion.V1` (default) and `QueryModifierVersion.V2`.
 
@@ -191,7 +198,7 @@ For generated CRUD endpoints:
 | `creation_schema` | `ClassVar[type[BaseSchema]]` | Schema for `POST` input. Auto-derived by removing `ReadOnly` fields. |
 | `update_schema` | `ClassVar[type[BaseSchema]]` | Schema for `PATCH` input. Auto-derived by making all writable fields optional. |
 | `model` | `ClassVar[type[DeclarativeBase]]` | The SQLAlchemy model class. |
-| `id_type` | `ClassVar[type]` | Primary key type used in `GET /{id}` and `DELETE /{id}`. Defaults to `int`. |
+| `id_type` | `ClassVar[type]` | Primary key type used in generated `GET /{id}`, `PATCH /{id}`, and `DELETE /{id}` routes. Defaults to `int`. |
 | `include_pagination_metadata` | `ClassVar[bool]` | Set `True` to return the paginated metadata envelope. Defaults to `False`. |
 | `exclude_routes` | `ClassVar[tuple[str, ...]]` | Route names to suppress. |
 | `query_modifier_version` | `ClassVar[QueryModifierVersion]` | Per-view query style override. Defaults to the global setting at registration time. |
@@ -219,6 +226,13 @@ These module-level functions mirror the instance methods on `AsyncAlchemyView` /
 | `fr.deactivate_savepoint_only_mode(make_session)` | Restore normal session behavior. |
 | `fr.use_fr_globals(globals_obj)` | Context manager that swaps the global state for test isolation. |
 | `fr.get_fr_globals()` | Return the current `FRGlobals` instance (engine, session factory, etc.). |
+
+## Important Limitations and Capabilities
+
+- Nested schemas are supported for **responses** and relation filtering, including nested aliases
+- Nested schemas are **not** supported for create/update payloads; write payloads must still map directly to model fields or use `*_id: IDSchema[Model]`
+- `fr.PlainBase` / `fr.PlainIDBase` models work with generated CRUD views
+- UUID and other non-`int` primary keys are supported through `id_type` and `IDSchema[Model]`
 
 ## Minimal Example
 

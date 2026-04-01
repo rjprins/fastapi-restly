@@ -145,6 +145,11 @@ GET /users/?order_by=name,-created_at
 GET /users/?page=2&page_size=10
 ```
 
+Notes:
+- V1 query parameters use schema field names, not aliases.
+- V2 query parameters use schema aliases for flat fields. If `populate_by_name=True` is enabled, flat fields also accept the Python field name.
+- For V2 relation filters, keep the relation path segment as the schema/model field name and only use aliases for nested fields. Example: `author.authorName=Alice`, not `writer.authorName=Alice`.
+
 ### Read-Only and Write-Only Fields
 
 `IDSchema` already provides a read-only `id` field, so you don't need to redeclare it unless you want to narrow the type.

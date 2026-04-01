@@ -76,7 +76,7 @@ uv sync
 ## Development
 
 ```bash
-git clone https://github.com/your-repo/fastapi-restly
+git clone https://github.com/rjprins/fastapi-restly.git
 cd fastapi-restly
 uv sync
 uv run pytest

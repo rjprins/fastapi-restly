@@ -1,67 +1,42 @@
-# Filtering on Relations
+# Query Modifiers
+
+FastAPI-Restly ships two query parameter interfaces for list endpoints:
+
+- **V1**: JSONAPI-style (`filter[name]=John`, `sort=-id`, `limit=20`)
+- **V2**: standard HTTP-style (`name=John`, `order_by=-id`, `page=2&page_size=20`)
+
+For the full operator reference, pagination rules, alias behavior, and examples, see
+[How-To: Filter, Sort, and Paginate Lists](howto_query_modifiers.md).
+
+## Relation Filtering
 
 Both V1 and V2 support filtering on fields of a related model using dot notation.
 The relation must be defined in both the SQLAlchemy model (as a `relationship`) and
 the Pydantic schema (as a nested schema field).
 
-For a full operator and feature reference, see
-[How-To: Filter, Sort, and Paginate Lists](howto_query_modifiers.md).
-
----
-
-## Example
-
-Given this URL:
+Examples:
 
 ```text
-GET /orders/?filter[user.name]=Alice    # V1 syntax
-GET /orders/?user.name=Alice            # V2 syntax
+GET /orders/?filter[user.name]=Alice    # V1
+GET /orders/?user.name=Alice            # V2
+GET /orders/?user.name__contains=ali    # V2 contains
 ```
 
-The framework automatically joins the `user` table and filters on `user.name`.
+Supported constraints:
 
-### SQLAlchemy models
+- Nested schemas can be optional: `user: UserSchema | None`
+- Deep nesting is supported
+- Lists of nested schemas (`list[UserSchema]`) are not supported for relation filtering
 
-```python
-import fastapi_restly as fr
-from sqlalchemy import String, ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+V2 alias caveat:
 
-class User(fr.IDBase):
-    __tablename__ = "user"
-    name: Mapped[str] = mapped_column(String)
+- Flat aliased fields work as expected
+- For relation filters, the relation segment must still use the schema/model field name
+- Only the nested field segment may use an alias
 
-class Order(fr.IDBase):
-    __tablename__ = "order"
-    user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
-    user: Mapped[User] = relationship("User")
+Example:
+
+```text
+GET /articles/?author.authorName=Alice   # supported
+GET /articles/?writer.authorName=Alice   # not supported
 ```
-
-### Pydantic schemas
-
-```python
-from pydantic import BaseModel
-
-class UserSchema(BaseModel):
-    name: str
-
-class OrderSchema(BaseModel):
-    user: UserSchema  # or: user: UserSchema | None
-```
-
-### What happens
-
-When `filter[user.name]=Alice` (V1) or `user.name=Alice` (V2) is received:
-
-1. The `user` table is joined.
-2. `"Alice"` is validated as a valid value for `UserSchema.name`.
-3. The query is filtered with `user.name = 'Alice'`.
-
----
-
-## Constraints
-
-- Nested schemas can be optional: `user: UserSchema | None`.
-- Deep nesting is supported: `filter[blog.author.name]=Alice`.
-- Lists of nested schemas (`list[UserSchema]`) are **not** supported.
-- V2 relation params use the alias name of each path segment when aliases are defined.

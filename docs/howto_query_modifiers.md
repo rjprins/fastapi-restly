@@ -20,8 +20,9 @@ set_query_modifier_version(QueryModifierVersion.V2)
 ### Temporary override (context manager)
 
 `use_query_modifier_version` is a context manager that temporarily switches the active
-version and resets it on exit. Useful in tests or in middleware that needs to toggle
-the version for a single request.
+version and resets it on exit. It is mainly useful in tests and when calling low-level
+helpers like `create_query_param_schema(...)` or `apply_query_modifiers(...)` directly.
+Already-registered views keep the version they captured during `@fr.include_view(...)`.
 
 ```python
 from fastapi_restly import QueryModifierVersion, use_query_modifier_version
@@ -107,6 +108,9 @@ GET /users/?contains[name]=john doe
 
 Produces `WHERE name ILIKE '%john%' AND name ILIKE '%doe%'`. This is intentionally
 different from the comma OR logic in `filter[...]`.
+
+Literal `%`, `_`, and `\` characters are escaped before building the SQL `ILIKE`, so
+contains searches behave like literal substring matching rather than wildcard matching.
 
 ### Sorting
 
@@ -244,9 +248,9 @@ GET /users/?page=2&page_size=50
 
 ### Alias support
 
-V2 query parameter names follow the Pydantic schema field **aliases**. If a schema
-field defines `alias="userName"`, the query parameter key is `userName`, not
-`user_name`:
+For flat fields, V2 query parameter names follow the Pydantic schema field **aliases**.
+If a schema field defines `alias="userName"`, the query parameter key is `userName`,
+not `user_name`:
 
 ```python
 class UserSchema(BaseModel):
@@ -261,7 +265,7 @@ GET /users/?user_name=Alice       # works only if populate_by_name=True
 ```
 
 When `populate_by_name=True` is set on the schema config, both the alias and the
-field name are accepted as query parameters.
+field name are accepted as query parameters for flat fields.
 
 ### Relation filtering
 
@@ -273,8 +277,24 @@ GET /orders/?user.name__contains=ali
 ```
 
 The same requirements apply: the relation must be defined in both the SQLAlchemy
-model and the Pydantic schema. For schemas with aliases, the dot-path segments must
-use the alias names.
+model and the Pydantic schema. For aliased nested fields, only the **nested field**
+segment uses the alias. The relation segment itself must still use the schema/model
+field name.
+
+Example:
+
+```python
+class AuthorSchema(BaseModel):
+    name: str = Field(alias="authorName")
+
+class ArticleSchema(BaseModel):
+    author: AuthorSchema
+```
+
+```text
+GET /articles/?author.authorName=Alice   # supported
+GET /articles/?writer.authorName=Alice   # not supported
+```
 
 ### Quick reference
 

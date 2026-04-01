@@ -51,6 +51,7 @@ at registration time (see [Query Modifier Lifecycle](#query-modifier-lifecycle))
 They can be overridden by declaring `creation_schema` or `update_schema` directly
 on the view class before `include_view()` is called.
 
+(auto-generated-schemas)=
 ### Auto-Generated Schemas
 
 `create_schema_from_model(model_cls, ...)` walks all `Mapped[...]` annotations
@@ -160,6 +161,25 @@ the `process_*` method to change business logic while keeping the endpoint
 wrapper intact, or override the endpoint method itself (e.g. `index`) to replace
 the full request/response flow.
 
+### Nested Response Schemas vs Write Payloads
+
+Nested schemas serve two different roles in Restly today:
+
+- **Response serialization**: supported. `BaseAlchemyView` recursively builds
+  `selectinload(...)` options for nested relationship fields in the response
+  schema, so related objects can be serialized efficiently and with aliases.
+- **Create/update payloads**: not supported in the general case. The default
+  `make_new_object()` / `update_object()` flow expects payload keys to map
+  directly to model attributes, with `*_id: IDSchema[Model]` as the supported
+  special case for foreign keys.
+
+If you declare a nested input field like `address: AddressSchema` on a write
+schema, the default CRUD implementation will pass that nested Pydantic object
+through to the SQLAlchemy model constructor or attribute setter, which usually
+does not match the ORM model shape. Use a flattened schema or override
+`process_post()` / `process_patch()` to transform the payload first.
+
+(query-modifier-lifecycle)=
 ## Query Modifier Lifecycle
 
 Query modifiers have two versions:
