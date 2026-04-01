@@ -1,61 +1,12 @@
 """Test basic functionality of the FastAPI-Restly framework."""
 
-import asyncio
-
-import pytest
-from fastapi import FastAPI
-from httpx import AsyncClient
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 import fastapi_restly as fr
-from fastapi_restly.db import fr_globals
 
 from .conftest import create_tables
 
-
-def test_crud_endpoints_exist(client):
-    """Test that all CRUD endpoints are created."""
-
-    # Define a simple model
-    class User(fr.IDBase):
-        name: Mapped[str]
-        email: Mapped[str]
-
-    # Create a schema
-    class UserSchema(fr.IDSchema):
-        name: str
-        email: str
-
-    # Create a view
-    @fr.include_view(client.app)
-    class UserView(fr.AsyncAlchemyView):
-        prefix = "/users"
-        model = User
-        schema = UserSchema
-
-    create_tables()
-
-    # Test that all CRUD endpoints exist
-    response = client.get("/users/")
-
-    response = client.post(
-        "/users/", json={"name": "Test User", "email": "test@example.com"}
-    )
-
-    created_user = response.json()
-    assert "id" in created_user
-
-    user_id = created_user["id"]
-
-    response = client.get(f"/users/{user_id}")
-
-    response = client.patch(
-        f"/users/{user_id}",
-        json={"name": "Updated User", "email": "updated@example.com"},
-    )
-
-    response = client.delete(f"/users/{user_id}")
 
 
 def test_basic_crud_operations(client):
@@ -196,10 +147,7 @@ def test_put_request_with_non_existing_id(client):
         "content": "This should fail",
         "author_id": {"id": non_existing_author_id},
     }
-    response = client.request("PATCH", f"/blogs/{blog_id}", json=invalid_update_data)
-    # This should either return 404 (if author validation happens before blog lookup)
-    # or 422 (if validation fails during the update process)
-    assert response.status_code in [404, 422]
+    client.patch(f"/blogs/{blog_id}", json=invalid_update_data, assert_status_code=404)
 
 
 def test_plain_foreign_key_fields_serialize_as_scalars(client):

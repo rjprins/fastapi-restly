@@ -1,60 +1,21 @@
 """Test to demonstrate the nested schema limitation in FastAPI-Restly framework."""
 
-import asyncio
-from datetime import datetime
-
 import pytest
-from fastapi import FastAPI
-from httpx import AsyncClient
 from pydantic import Field
 from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
-from fastapi_restly.db import fr_globals
-from fastapi_restly.schemas import BaseSchema, ReadOnly
+from fastapi_restly.schemas import BaseSchema
 
 from .conftest import create_tables
 
 
 @pytest.mark.xfail(reason="Nested schemas not supported for input")
 def test_nested_schema_limitation_demonstration(client):
-    """
-    This test demonstrates why nested schemas don't work in the current framework.
+    """Nested schemas fail because make_new_object passes a Pydantic object to the
+    SQLAlchemy model constructor instead of flattened fields. Use flattened schemas
+    with aliases as a workaround (see test_working_flattened_approach)."""
 
-    The issue is in the async_view.py make_new_object method:
-    ```
-    obj = self.model(**data)
-    ```
-
-    When you have a nested schema like:
-    ```python
-    class UserSchema(fr.IDSchema):
-        name: str
-        email: str
-        address: AddressSchema  # ← Nested schema
-    ```
-
-    The `data` dictionary becomes:
-    ```python
-    {
-        'name': 'John Doe',
-        'email': 'john@example.com',
-        'address': AddressSchema(street='123 Main St', city='Anytown')  # ← Pydantic object
-    }
-    ```
-
-    But the SQLAlchemy model expects:
-    ```python
-    {
-        'name': 'John Doe',
-        'email': 'john@example.com',
-        'street': '123 Main St',  # ← Flattened fields
-        'city': 'Anytown'         # ← Flattened fields
-    }
-    ```
-    """
-
-    # Define schemas with nested structure (this will FAIL)
     class AddressSchema(BaseSchema):
         street: str = Field(alias="streetAddress")
         city: str = Field(alias="cityName")
@@ -81,7 +42,6 @@ def test_nested_schema_limitation_demonstration(client):
 
     create_tables()
 
-    # This POST request will FAIL because of nested schema
     response = client.post(
         "/users/",
         json={
@@ -94,8 +54,6 @@ def test_nested_schema_limitation_demonstration(client):
             },
         },
     )
-
-    # This will fail with: TypeError: __init__() got an unexpected keyword argument 'address'
     assert response.status_code == 201
 
 
@@ -152,11 +110,8 @@ def test_working_flattened_approach(client):
 
 @pytest.mark.xfail(reason="Deeply nested schemas not supported for input")
 def test_deeply_nested_schema_limitation(client):
-    """
-    This test shows how deeply nested schemas would fail.
-    """
+    """Same limitation as above, with multiple levels of nesting."""
 
-    # Define deeply nested schemas (this would FAIL)
     class ContactInfoSchema(BaseSchema):
         phone: str = Field(alias="phoneNumber")
         email: str = Field(alias="emailAddress")
@@ -164,7 +119,7 @@ def test_deeply_nested_schema_limitation(client):
     class AddressSchema(BaseSchema):
         street: str = Field(alias="streetAddress")
         city: str = Field(alias="cityName")
-        contact: ContactInfoSchema  # ← Nested schema
+        contact: ContactInfoSchema
 
     class CompanySchema(BaseSchema):
         name: str = Field(alias="companyName")
@@ -172,10 +127,9 @@ def test_deeply_nested_schema_limitation(client):
 
     class EmployeeSchema(fr.IDSchema):
         name: str
-        address: AddressSchema  # ← Nested schema
-        company: CompanySchema  # ← Nested schema
+        address: AddressSchema
+        company: CompanySchema
 
-    # Create a simple model
     class Employee(fr.IDBase):
         name: Mapped[str]
         phone: Mapped[str]
@@ -192,7 +146,6 @@ def test_deeply_nested_schema_limitation(client):
         schema = EmployeeSchema
 
     create_tables()
-    # This POST request would FAIL
     response = client.post(
         "/employees/",
         json={
@@ -209,5 +162,4 @@ def test_deeply_nested_schema_limitation(client):
         },
     )
 
-    # This will fail with: TypeError: __init__() got an unexpected keyword argument 'address'
-    assert response.status_code == 201  # This will fail
+    assert response.status_code == 201

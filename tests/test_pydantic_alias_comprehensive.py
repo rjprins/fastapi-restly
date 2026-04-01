@@ -1,23 +1,9 @@
-"""Comprehensive tests for Pydantic alias functionality in FastAPI-Restly framework.
+"""Tests for Pydantic alias functionality in FastAPI-Restly framework."""
 
-These tests verify that:
-- GET requests return data with aliases
-- POST and PUT requests accept aliases
-- Query modifiers work with aliases
-- Validation works with aliased fields
-- Optional fields work with aliases
-"""
-
-import asyncio
-
-import pytest
-from fastapi import FastAPI
-from httpx import AsyncClient
 from pydantic import Field
 from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
-from fastapi_restly.db import fr_globals
 
 from .conftest import create_tables
 
@@ -100,7 +86,7 @@ def test_post_requests_accept_aliases(client):
         "/products/",
         json={"productName": "Test Product", "productPrice": 29.99, "isActive": True},
     )
-    assert response.status_code in [200, 201]
+    assert response.status_code == 201
 
     # Test POST with field names fails (should only accept aliases)
     response = client.post(
@@ -156,7 +142,7 @@ def test_put_requests_accept_aliases(client):
             "authorName": "Updated Author",
         },
     )
-    assert response.status_code in [200, 201]
+    assert response.status_code == 200
 
     # Test PUT with field names also succeeds (populate_by_name=True allows both)
     response = client.patch(
@@ -167,7 +153,7 @@ def test_put_requests_accept_aliases(client):
             "author_name": "Updated Author 2",
         },
     )
-    assert response.status_code in [200, 201]
+    assert response.status_code == 200
 
 
 def test_query_modifiers_with_aliases(client):
@@ -253,7 +239,7 @@ def test_validation_with_aliases(client):
         "/users/",
         json={"userName": "John", "userAge": 25, "userEmail": "john@example.com"},
     )
-    assert response.status_code in [200, 201]
+    assert response.status_code == 201
 
     # Test invalid data with aliases
     response = client.post(
@@ -317,13 +303,13 @@ def test_optional_fields_with_aliases(client):
             "profileWebsite": "https://johndoe.com",
         },
     )
-    assert response.status_code in [200, 201]
+    assert response.status_code == 201
 
     # Test POST without optional field
     response = client.post(
         "/profiles/", json={"profileName": "Jane Smith", "profileBio": "Designer"}
     )
-    assert response.status_code in [200, 201]
+    assert response.status_code == 201
 
 
 def test_auto_generated_schema_works_without_aliases(client):
@@ -344,7 +330,7 @@ def test_auto_generated_schema_works_without_aliases(client):
     response = client.post(
         "/comments/", json={"comment_text": "Great post!", "author_name": "John Doe"}
     )
-    assert response.status_code in [200, 201]
+    assert response.status_code == 201
     created_comment = response.json()
     assert created_comment["comment_text"] == "Great post!"
     assert created_comment["author_name"] == "John Doe"
@@ -394,7 +380,7 @@ def test_complex_alias_scenarios(client):
             "orderStatus": "pending",
         },
     )
-    assert response.status_code in [200, 201]
+    assert response.status_code == 201
 
     created_order = response.json()
     order_id = created_order["id"]
@@ -440,7 +426,7 @@ def test_documentation_example(client):
             "phoneNumber": "123-456-7890",
         },
     )
-    assert response.status_code in [200, 201]
+    assert response.status_code == 201
 
     created_user = response.json()
     user_id = created_user["id"]
@@ -462,4 +448,4 @@ def test_documentation_example(client):
             "phoneNumber": "098-765-4321",
         },
     )
-    assert response.status_code in [200, 201]
+    assert response.status_code == 200

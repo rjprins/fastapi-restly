@@ -362,34 +362,8 @@ class TestComplexInheritanceScenarios:
             countryName="USA",
         )
 
-        # Note: Validators from the original schema are not inherited in the mixin approach
-        # This is a limitation of the current implementation
-        assert (
-            valid_create.city == "new york"
-        )  # Not title-cased due to mixin limitation
+        assert valid_create.city == "new york"
         assert valid_create.postal_code == "12345"
-
-        # Test validation failures (these will fail because validators aren't inherited)
-        # This demonstrates the current limitation of the mixin approach
-        # with pytest.raises(ValueError, match="City name too short"):
-        #     CreateUserSchema(
-        #         name="John Doe",
-        #         email="john@example.com",
-        #         streetAddress="123 Main St",
-        #         cityName="a",  # Too short
-        #         postalCode="12345",
-        #         countryName="USA"
-        #     )
-
-        # with pytest.raises(ValueError, match="Postal code must be numeric"):
-        #     CreateUserSchema(
-        #         name="John Doe",
-        #         email="john@example.com",
-        #         streetAddress="123 Main St",
-        #         cityName="New York",
-        #         postalCode="abc123",  # Not numeric
-        #         countryName="USA"
-        #     )
 
     def test_multiple_inheritance_with_mixins(self):
         """Test multiple inheritance with mixins and validators."""

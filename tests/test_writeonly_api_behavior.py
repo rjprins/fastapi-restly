@@ -1,16 +1,11 @@
 """Test WriteOnly API behavior in endpoints."""
 
-import asyncio
 from datetime import datetime
-from typing import List
 
-import pytest
 from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
-from fastapi_restly.db import fr_globals
-from fastapi_restly.schemas import BaseSchema, ReadOnly, WriteOnly
-from fastapi_restly.testing import RestlyTestClient
+from fastapi_restly.schemas import ReadOnly, WriteOnly
 
 from .conftest import create_tables
 
@@ -353,120 +348,3 @@ class TestWriteOnlyWithAliases:
         assert "secret_token" not in user
 
 
-class TestWriteOnlyInNestedSchemas:
-    """Test WriteOnly fields in nested schemas."""
-    @pytest.mark.xfail(
-        reason="WriteOnly fields in nested schemas not yet tested", run=False
-    )
-
-    def test_writeonly_fields_in_nested_schemas(self, client):
-        """Test WriteOnly fields in nested schema relationships."""
-
-        from sqlalchemy import ForeignKey, Integer, String
-        from sqlalchemy.orm import Mapped, mapped_column, relationship
-
-        # Define SQLAlchemy models with relationship
-        class User(fr.IDBase):
-            name: Mapped[str] = mapped_column(String(100))
-            email: Mapped[str] = mapped_column(String(100))
-            password: Mapped[str] = mapped_column(String(100))
-            profiles: Mapped[List["Profile"]] = relationship(
-                "Profile", back_populates="user"
-            )
-
-        class Profile(fr.IDBase):
-            bio: Mapped[str] = mapped_column(String(500))
-            website: Mapped[str] = mapped_column(String(200))
-            secret_key: Mapped[str] = mapped_column(String(100))
-            user_id: Mapped[int] = mapped_column(Integer, ForeignKey("user.id"))
-            user: Mapped["User"] = relationship("User", back_populates="profiles")
-
-        # Define schemas with WriteOnly fields
-        class ProfileSchema(fr.IDSchema):
-            id: int
-            bio: str
-            website: str
-            secret_key: WriteOnly[str]
-
-        class UserSchema(fr.IDSchema):
-            id: int
-            name: str
-            email: str
-            password: WriteOnly[str]
-            profiles: List[ProfileSchema]
-
-        @fr.include_view(client.app)
-        class UserView(fr.AsyncAlchemyView):
-            prefix = "/users"
-            model = User
-            schema = UserSchema
-
-        create_tables()
-
-        # Test POST with nested WriteOnly fields - should succeed
-        response = client.post(
-            "/users/",
-            json={
-                "name": "Nested User",
-                "email": "nested@example.com",
-                "password": "secret123",
-                "profiles": [
-                    {
-                        "bio": "My bio",
-                        "website": "https://example.com",
-                        "secret_key": "profile_secret",
-                    }
-                ],
-            },
-        )
-        assert response.status_code == 201
-        created_user = response.json()
-
-        # Should include regular fields
-        assert "id" in created_user
-        assert "name" in created_user
-        assert "email" in created_user
-
-        # Should NOT include WriteOnly fields
-        assert "password" not in created_user
-
-        # Should include nested profiles but exclude their WriteOnly fields
-        assert "profiles" in created_user
-        profiles = created_user["profiles"]
-        assert len(profiles) == 1
-        profile = profiles[0]
-
-        # Profile should include regular fields
-        assert "id" in profile
-        assert "bio" in profile
-        assert "website" in profile
-
-        # Profile should NOT include WriteOnly fields
-        assert "secret_key" not in profile
-
-        # Test GET - should exclude WriteOnly fields from nested objects
-        response = client.get(f"/users/{created_user['id']}")
-        assert response.status_code == 200
-        user = response.json()
-
-        # Should include regular fields
-        assert "id" in user
-        assert "name" in user
-        assert "email" in user
-
-        # Should NOT include WriteOnly fields
-        assert "password" not in user
-
-        # Should include nested profiles but exclude their WriteOnly fields
-        assert "profiles" in user
-        profiles = user["profiles"]
-        assert len(profiles) == 1
-        profile = profiles[0]
-
-        # Profile should include regular fields
-        assert "id" in profile
-        assert "bio" in profile
-        assert "website" in profile
-
-        # Profile should NOT include WriteOnly fields
-        assert "secret_key" not in profile
