@@ -1,15 +1,17 @@
 """Test WriteOnly API behavior in endpoints."""
 
-import pytest
 import asyncio
 from datetime import datetime
 from typing import List
 
-import fastapi_restly as fr
-from fastapi_restly.schemas import ReadOnly, WriteOnly, BaseSchema
-from fastapi_restly.testing import RestlyTestClient
-from fastapi_restly.db import fr_globals
+import pytest
 from sqlalchemy.orm import Mapped
+
+import fastapi_restly as fr
+from fastapi_restly.db import fr_globals
+from fastapi_restly.schemas import BaseSchema, ReadOnly, WriteOnly
+from fastapi_restly.testing import RestlyTestClient
+
 from .conftest import create_tables
 
 
@@ -360,8 +362,8 @@ class TestWriteOnlyInNestedSchemas:
     def test_writeonly_fields_in_nested_schemas(self, client):
         """Test WriteOnly fields in nested schema relationships."""
 
+        from sqlalchemy import ForeignKey, Integer, String
         from sqlalchemy.orm import Mapped, mapped_column, relationship
-        from sqlalchemy import String, Integer, ForeignKey
 
         # Define SQLAlchemy models with relationship
         class User(fr.IDBase):

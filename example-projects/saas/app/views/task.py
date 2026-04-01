@@ -5,9 +5,8 @@ from sqlalchemy import select
 
 import fastapi_restly as fr
 
-from ..models import Task, TaskStatus, TaskPriority, TaskType
+from ..models import Task, TaskPriority, TaskStatus, TaskType
 from ..schemas import TaskSchema
-
 
 # Simulated current user from auth context - in real apps, get from JWT/session
 CURRENT_USER_ID: int | None = None  # Set to enable row-level permissions

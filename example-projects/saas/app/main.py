@@ -13,8 +13,15 @@ from fastapi import FastAPI
 
 import fastapi_restly as fr
 
-from .models import Organization, User, Project, Task, Label, TaskLabel
-from .views import OrganizationView, UserView, ProjectView, TaskView, LabelView, TaskLabelView
+from .models import Label, Organization, Project, Task, TaskLabel, User
+from .views import (
+    LabelView,
+    OrganizationView,
+    ProjectView,
+    TaskLabelView,
+    TaskView,
+    UserView,
+)
 
 # Set up database connection
 fr.configure(async_database_url="sqlite+aiosqlite:///saas.db")

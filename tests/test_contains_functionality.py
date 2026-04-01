@@ -6,10 +6,10 @@ import warnings
 
 import pytest
 from fastapi import FastAPI
+from sqlalchemy import select
 from sqlalchemy.exc import SADeprecationWarning
 from sqlalchemy.orm import Mapped, mapped_column
 from starlette.datastructures import QueryParams
-from sqlalchemy import select
 
 import fastapi_restly as fr
 
@@ -47,10 +47,7 @@ class TestContainsV1Functionality:
 
     def test_contains_v1_string_field_detection(self):
         """Test that string fields are correctly identified in v1."""
-        from fastapi_restly.query._v1 import (
-            _is_string_field,
-            create_query_param_schema,
-        )
+        from fastapi_restly.query._v1 import _is_string_field, create_query_param_schema
 
         # Test basic string field
         schema = create_query_param_schema(UserSchema)
@@ -130,11 +127,12 @@ class TestContainsV1Functionality:
 
     def test_contains_v1_string_field_detection_edge_cases(self):
         """Test string field detection with edge cases in v1."""
-        from fastapi_restly.query._v1 import _is_string_field
-
         # Test with Optional[str]
         from typing import Optional
+
         from pydantic import BaseModel
+
+        from fastapi_restly.query._v1 import _is_string_field
 
         class TestSchema(BaseModel):
             name: str
@@ -260,11 +258,12 @@ class TestContainsV2Functionality:
 
     def test_contains_v2_string_field_detection_edge_cases(self):
         """Test string field detection with edge cases in v2."""
-        from fastapi_restly.query._v2 import _is_string_field_v2
-
         # Test with Optional[str]
         from typing import Optional
+
         from pydantic import BaseModel
+
+        from fastapi_restly.query._v2 import _is_string_field_v2
 
         class TestSchema(BaseModel):
             name: str
@@ -282,8 +281,12 @@ class TestContainsV2Functionality:
 
     def test_contains_v2_string_field_detection_pep604_optional(self):
         """PEP 604 optionals should still be treated as strings for __contains."""
-        from fastapi_restly.query._v2 import _is_string_field_v2, create_query_param_schema_v2
         from pydantic import BaseModel
+
+        from fastapi_restly.query._v2 import (
+            _is_string_field_v2,
+            create_query_param_schema_v2,
+        )
 
         class TestSchema(BaseModel):
             email: str | None = None
@@ -304,9 +307,9 @@ class TestContainsIntegration:
 
     def test_contains_v1_with_aliases(self):
         """Test that v1 contains works with field aliases."""
-        from fastapi_restly.query._v1 import create_query_param_schema
-
         from pydantic import BaseModel, Field
+
+        from fastapi_restly.query._v1 import create_query_param_schema
 
         class UserSchemaWithAliases(BaseModel):
             name: str = Field(alias="userName")
@@ -323,9 +326,9 @@ class TestContainsIntegration:
 
     def test_contains_v2_with_aliases(self):
         """Test that v2 contains works with field aliases."""
-        from fastapi_restly.query._v2 import create_query_param_schema_v2
-
         from pydantic import BaseModel, Field
+
+        from fastapi_restly.query._v2 import create_query_param_schema_v2
 
         class UserSchemaWithAliases(BaseModel):
             name: str = Field(alias="userName")
@@ -342,9 +345,9 @@ class TestContainsIntegration:
 
     def test_contains_v1_with_nested_schemas(self):
         """Test that v1 contains works with nested schemas."""
-        from fastapi_restly.query._v1 import create_query_param_schema
-
         from pydantic import BaseModel
+
+        from fastapi_restly.query._v1 import create_query_param_schema
 
         class AddressSchema(BaseModel):
             street: str
@@ -366,9 +369,9 @@ class TestContainsIntegration:
 
     def test_contains_v2_with_nested_schemas(self):
         """Test that v2 contains works with nested schemas."""
-        from fastapi_restly.query._v2 import create_query_param_schema_v2
-
         from pydantic import BaseModel
+
+        from fastapi_restly.query._v2 import create_query_param_schema_v2
 
         class AddressSchema(BaseModel):
             street: str

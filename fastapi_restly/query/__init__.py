@@ -9,17 +9,9 @@ from ._config import (
     set_query_modifier_version,
     use_query_modifier_version,
 )
-from ._v1 import (
-    apply_filtering,
-    apply_pagination,
-    apply_sorting,
-)
-from ._v1 import (
-    apply_query_modifiers as apply_query_modifiers_v1,
-)
-from ._v1 import (
-    create_query_param_schema as create_query_param_schema_v1,
-)
+from ._v1 import apply_filtering, apply_pagination, apply_sorting
+from ._v1 import apply_query_modifiers as apply_query_modifiers_v1
+from ._v1 import create_query_param_schema as create_query_param_schema_v1
 from ._v2 import (
     apply_filtering_v2,
     apply_pagination_v2,

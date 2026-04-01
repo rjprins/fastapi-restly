@@ -1,10 +1,10 @@
 """Pydantic schemas for the SaaS example."""
 
+from .label import LabelSchema, TaskLabelSchema
 from .organization import OrganizationSchema
-from .user import UserSchema
 from .project import ProjectSchema
 from .task import TaskSchema
-from .label import LabelSchema, TaskLabelSchema
+from .user import UserSchema
 
 __all__ = [
     "OrganizationSchema",

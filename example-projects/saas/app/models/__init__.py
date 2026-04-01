@@ -1,10 +1,10 @@
 """SQLAlchemy models for the SaaS example."""
 
-from .organization import Organization
-from .user import User, UserRole
-from .project import Project, ProjectStatus
-from .task import Task, TaskStatus, TaskPriority, TaskType
 from .label import Label, TaskLabel
+from .organization import Organization
+from .project import Project, ProjectStatus
+from .task import Task, TaskPriority, TaskStatus, TaskType
+from .user import User, UserRole
 
 __all__ = [
     "Organization",

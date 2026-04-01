@@ -1,9 +1,18 @@
 import types
 from datetime import datetime
-from typing import Annotated, Any, Generic, Optional, TypeVar, Union, get_args, get_origin
+from typing import (
+    Annotated,
+    Any,
+    Generic,
+    Optional,
+    TypeVar,
+    Union,
+    get_args,
+    get_origin,
+)
 
-from fastapi import HTTPException
 import pydantic
+from fastapi import HTTPException
 from pydantic.fields import Field, FieldInfo
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound

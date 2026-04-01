@@ -4,10 +4,12 @@ Query Modifiers v2 Example
 This example demonstrates the new query modifiers v2 functionality.
 """
 
-import fastapi_restly as fr
+from datetime import datetime
+
 from fastapi import FastAPI
 from sqlalchemy.orm import Mapped, mapped_column
-from datetime import datetime
+
+import fastapi_restly as fr
 
 # Setup database
 fr.configure(async_database_url="sqlite+aiosqlite:///example_v2.db")
@@ -36,7 +38,7 @@ class UserView(fr.AsyncAlchemyView):
 # Example usage and comparison
 if __name__ == "__main__":
     import uvicorn
-    
+
     print("=== Query Modifiers V2 Example ===")
     print()
     print("V2 Interface (Standard HTTP):")
@@ -63,5 +65,5 @@ if __name__ == "__main__":
     print("  GET /users?order_by=name,-age")
     print("  GET /users?name=John&age__gte=25")
     print("  GET /users?is_active__isnull=false")
-    
-    uvicorn.run(app, host="0.0.0.0", port=8000) 
+
+    uvicorn.run(app, host="0.0.0.0", port=8000)

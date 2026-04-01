@@ -1,18 +1,20 @@
 """Tests for SQLAlchemy relationships with nested schemas in FastAPI-Restly framework."""
 
 import asyncio
-import pytest
 from datetime import datetime
 from typing import List
+
+import pytest
 from fastapi import FastAPI
 from httpx import AsyncClient
 from pydantic import Field
-from sqlalchemy import ForeignKey, String, Integer, Text
+from sqlalchemy import ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 import fastapi_restly as fr
 from fastapi_restly.db import fr_globals
 from fastapi_restly.schemas import ReadOnly
+
 from .conftest import create_tables
 
 

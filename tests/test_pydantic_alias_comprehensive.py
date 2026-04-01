@@ -9,32 +9,34 @@ These tests verify that:
 """
 
 import asyncio
+
 import pytest
 from fastapi import FastAPI
 from httpx import AsyncClient
 from pydantic import Field
 from sqlalchemy.orm import Mapped
 
-import fastapi_restly as fd
+import fastapi_restly as fr
 from fastapi_restly.db import fr_globals
+
 from .conftest import create_tables
 
 
 def test_get_requests_return_aliases(client):
     """Test that GET requests return data with aliases."""
 
-    class User(fd.IDBase):
+    class User(fr.IDBase):
         user_name: Mapped[str]
         user_email: Mapped[str]
         phone_number: Mapped[str]
 
-    class UserSchema(fd.IDSchema):
+    class UserSchema(fr.IDSchema):
         user_name: str = Field(alias="userName")
         user_email: str = Field(alias="userEmail")
         phone_number: str = Field(alias="phoneNumber")
 
-    @fd.include_view(client.app)
-    class UserView(fd.AsyncAlchemyView):
+    @fr.include_view(client.app)
+    class UserView(fr.AsyncAlchemyView):
         prefix = "/users"
         model = User
         schema = UserSchema
@@ -75,18 +77,18 @@ def test_get_requests_return_aliases(client):
 def test_post_requests_accept_aliases(client):
     """Test that POST requests accept aliases."""
 
-    class Product(fd.IDBase):
+    class Product(fr.IDBase):
         product_name: Mapped[str]
         product_price: Mapped[float]
         is_active: Mapped[bool]
 
-    class ProductSchema(fd.IDSchema):
+    class ProductSchema(fr.IDSchema):
         product_name: str = Field(alias="productName")
         product_price: float = Field(alias="productPrice")
         is_active: bool = Field(alias="isActive")
 
-    @fd.include_view(client.app)
-    class ProductView(fd.AsyncAlchemyView):
+    @fr.include_view(client.app)
+    class ProductView(fr.AsyncAlchemyView):
         prefix = "/products"
         model = Product
         schema = ProductSchema
@@ -115,18 +117,18 @@ def test_post_requests_accept_aliases(client):
 def test_put_requests_accept_aliases(client):
     """Test that PUT requests accept aliases."""
 
-    class Article(fd.IDBase):
+    class Article(fr.IDBase):
         article_title: Mapped[str]
         article_content: Mapped[str]
         author_name: Mapped[str]
 
-    class ArticleSchema(fd.IDSchema):
+    class ArticleSchema(fr.IDSchema):
         article_title: str = Field(alias="articleTitle")
         article_content: str = Field(alias="articleContent")
         author_name: str = Field(alias="authorName")
 
-    @fd.include_view(client.app)
-    class ArticleView(fd.AsyncAlchemyView):
+    @fr.include_view(client.app)
+    class ArticleView(fr.AsyncAlchemyView):
         prefix = "/articles"
         model = Article
         schema = ArticleSchema
@@ -171,25 +173,22 @@ def test_put_requests_accept_aliases(client):
 def test_query_modifiers_with_aliases(client):
     """Test that query modifiers work with aliases."""
 
-    from fastapi_restly.query import (
-        set_query_modifier_version,
-        QueryModifierVersion,
-    )
+    from fastapi_restly.query import QueryModifierVersion, set_query_modifier_version
 
     set_query_modifier_version(QueryModifierVersion.V2)
 
-    class Customer(fd.IDBase):
+    class Customer(fr.IDBase):
         customer_name: Mapped[str]
         customer_email: Mapped[str]
         registration_date: Mapped[str]
 
-    class CustomerSchema(fd.IDSchema):
+    class CustomerSchema(fr.IDSchema):
         customer_name: str = Field(alias="customerName")
         customer_email: str = Field(alias="customerEmail")
         registration_date: str = Field(alias="registrationDate")
 
-    @fd.include_view(client.app)
-    class CustomerView(fd.AsyncAlchemyView):
+    @fr.include_view(client.app)
+    class CustomerView(fr.AsyncAlchemyView):
         prefix = "/customers"
         model = Customer
         schema = CustomerSchema
@@ -231,18 +230,18 @@ def test_query_modifiers_with_aliases(client):
 def test_validation_with_aliases(client):
     """Test that field validation works with aliases."""
 
-    class User(fd.IDBase):
+    class User(fr.IDBase):
         user_name: Mapped[str]
         user_age: Mapped[int]
         user_email: Mapped[str]
 
-    class UserSchema(fd.IDSchema):
+    class UserSchema(fr.IDSchema):
         user_name: str = Field(alias="userName", min_length=2)
         user_age: int = Field(alias="userAge", ge=0, le=150)
         user_email: str = Field(alias="userEmail", pattern=r"^[^@]+@[^@]+\.[^@]+$")
 
-    @fd.include_view(client.app)
-    class UserView(fd.AsyncAlchemyView):
+    @fr.include_view(client.app)
+    class UserView(fr.AsyncAlchemyView):
         prefix = "/users"
         model = User
         schema = UserSchema
@@ -291,18 +290,18 @@ def test_validation_with_aliases(client):
 def test_optional_fields_with_aliases(client):
     """Test that optional fields work with aliases."""
 
-    class Profile(fd.IDBase):
+    class Profile(fr.IDBase):
         profile_name: Mapped[str]
         profile_bio: Mapped[str]
         profile_website: Mapped[str | None]
 
-    class ProfileSchema(fd.IDSchema):
+    class ProfileSchema(fr.IDSchema):
         profile_name: str = Field(alias="profileName")
         profile_bio: str = Field(alias="profileBio")
         profile_website: str | None = Field(alias="profileWebsite", default=None)
 
-    @fd.include_view(client.app)
-    class ProfileView(fd.AsyncAlchemyView):
+    @fr.include_view(client.app)
+    class ProfileView(fr.AsyncAlchemyView):
         prefix = "/profiles"
         model = Profile
         schema = ProfileSchema
@@ -330,12 +329,12 @@ def test_optional_fields_with_aliases(client):
 def test_auto_generated_schema_works_without_aliases(client):
     """Test that auto-generated schemas work without aliases."""
 
-    class Comment(fd.IDBase):
+    class Comment(fr.IDBase):
         comment_text: Mapped[str]
         author_name: Mapped[str]
 
-    @fd.include_view(client.app)
-    class CommentView(fd.AsyncAlchemyView):
+    @fr.include_view(client.app)
+    class CommentView(fr.AsyncAlchemyView):
         prefix = "/comments"
         model = Comment
 
@@ -362,22 +361,22 @@ def test_auto_generated_schema_works_without_aliases(client):
 def test_complex_alias_scenarios(client):
     """Test complex scenarios with multiple aliases."""
 
-    class Order(fd.IDBase):
+    class Order(fr.IDBase):
         order_number: Mapped[str]
         total_amount: Mapped[float]
         shipping_address: Mapped[str]
         billing_address: Mapped[str]
         order_status: Mapped[str]
 
-    class OrderSchema(fd.IDSchema):
+    class OrderSchema(fr.IDSchema):
         order_number: str = Field(alias="orderNumber")
         total_amount: float = Field(alias="totalAmount")
         shipping_address: str = Field(alias="shippingAddress")
         billing_address: str = Field(alias="billingAddress")
         order_status: str = Field(alias="orderStatus")
 
-    @fd.include_view(client.app)
-    class OrderView(fd.AsyncAlchemyView):
+    @fr.include_view(client.app)
+    class OrderView(fr.AsyncAlchemyView):
         prefix = "/orders"
         model = Order
         schema = OrderSchema
@@ -414,18 +413,18 @@ def test_complex_alias_scenarios(client):
 def test_documentation_example(client):
     """Test the example from the documentation."""
 
-    class User(fd.IDBase):
+    class User(fr.IDBase):
         name: Mapped[str]
         email: Mapped[str]
         phone_number: Mapped[str]
 
-    class UserSchema(fd.IDSchema):
+    class UserSchema(fr.IDSchema):
         name: str
         email: str
         phone_number: str = Field(alias="phoneNumber")
 
-    @fd.include_view(client.app)
-    class UserView(fd.AsyncAlchemyView):
+    @fr.include_view(client.app)
+    class UserView(fr.AsyncAlchemyView):
         prefix = "/users"
         model = User
         schema = UserSchema

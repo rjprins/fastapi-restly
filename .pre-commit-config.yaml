@@ -1,0 +1,15 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-yaml
+      - id: end-of-file-fixer
+        files: ^(.*\.(md|py|toml|yaml|yml)$|Makefile)$
+      - id: trailing-whitespace
+        files: ^(.*\.(md|py|toml|yaml|yml)$|Makefile)$
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.11.10
+    hooks:
+      - id: ruff-check
+        args: [--fix]

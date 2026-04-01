@@ -2,7 +2,7 @@
 
 import fastapi_restly as fr
 
-from ..models import Task, TaskStatus, TaskPriority, TaskType
+from ..models import Task, TaskPriority, TaskStatus, TaskType
 
 
 class TaskSchema(fr.TimestampsSchemaMixin, fr.IDSchema):

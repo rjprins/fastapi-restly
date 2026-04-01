@@ -33,7 +33,7 @@ Minimal requirements for this:
 * Naming is sort-of stable
 * Minimal set of docs
 
-- [ ] Run test suite 
+- [ ] Run test suite
 - [ ] Run test suite on py 3.10 - 3.13
 
 Start with version 0.5
@@ -48,7 +48,7 @@ Start with version 0.5
 * Blog example fully functional?
   * Test every endpoint
 * Test testing helpers both sync and async
-  
+
 Do I want to support "No alembic/just create tables?"
 
 ## TODO

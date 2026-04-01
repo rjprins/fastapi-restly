@@ -1,4 +1,4 @@
-.PHONY: test test-framework test-examples test-all clean install-dev docs docs-serve docs-push
+.PHONY: test test-framework test-examples test-all clean install-dev lint pre-commit-install pre-commit-run docs docs-serve docs-push
 
 # Default target
 all: test-all
@@ -10,6 +10,15 @@ install-dev:
 	cd example-projects/blog && uv sync --active
 	cd example-projects/saas && uv sync --active
 
+pre-commit-install:
+	uv run pre-commit install
+
+pre-commit-run:
+	uv run pre-commit run --all-files
+
+lint:
+	uv run ruff check .
+
 # Test the main framework
 test-framework:
 	@echo "=== Testing FastAPI-Restly Framework ==="
@@ -20,7 +29,7 @@ test-shop:
 	@echo "=== Testing Shop Example ==="
 	cd example-projects/shop && uv run --active pytest tests/ -v
 
-# Test blog example  
+# Test blog example
 test-blog:
 	@echo "=== Testing Blog Example ==="
 	cd example-projects/blog && uv run --active pytest blog/ -v
@@ -84,8 +93,11 @@ help:
 	@echo "  test            - Quick test (just framework)"
 	@echo "  test-coverage   - Run tests with coverage reports"
 	@echo "  install-dev     - Install all development dependencies"
+	@echo "  lint            - Run Ruff lint checks"
+	@echo "  pre-commit-install - Install pre-commit hooks"
+	@echo "  pre-commit-run  - Run all pre-commit hooks"
 	@echo "  clean           - Clean up cache and temporary files"
 	@echo "  ci              - Full CI setup and test run"
 	@echo "  dev-setup       - Setup development environment"
-	@echo "  docs            - Build documentation" 
-	@echo "  serve-docs      - Autobuild and serve documentation" 
+	@echo "  docs            - Build documentation"
+	@echo "  serve-docs      - Autobuild and serve documentation"

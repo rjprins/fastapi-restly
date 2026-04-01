@@ -1,6 +1,6 @@
 """Test that all imports work correctly."""
 
-import fastapi_restly as fd
+import fastapi_restly as fr
 from fastapi_restly import (
     AsyncAlchemyView,
     BaseSchema,
@@ -10,20 +10,20 @@ from fastapi_restly import (
     TimestampsMixin,
     configure,
     include_view,
+    schemas,
 )
-from fastapi_restly import schemas
 from fastapi_restly import models as sqlbase
 
 
 def test_imports_work():
     """Test that all main imports work."""
-    assert fd.AsyncAlchemyView is not None
-    assert fd.IDBase is not None
-    assert fd.IDSchema is not None
-    assert fd.TimestampsMixin is not None
-    assert fd.include_view is not None
-    assert fd.configure is not None
-    assert fd.DataclassBase is not None
+    assert fr.AsyncAlchemyView is not None
+    assert fr.IDBase is not None
+    assert fr.IDSchema is not None
+    assert fr.TimestampsMixin is not None
+    assert fr.include_view is not None
+    assert fr.configure is not None
+    assert fr.DataclassBase is not None
 
 
 def test_schemas_module():

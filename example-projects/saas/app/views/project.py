@@ -9,9 +9,8 @@ from sqlalchemy.orm import selectinload
 
 import fastapi_restly as fr
 
-from ..models import Project, Task, TaskStatus, TaskPriority, TaskType, ProjectStatus
+from ..models import Project, ProjectStatus, Task, TaskPriority, TaskStatus, TaskType
 from ..schemas import ProjectSchema, TaskSchema
-
 
 # Simulated current org from auth context - in real apps, get from JWT/session
 CURRENT_ORG_ID: int | None = None  # Set to enable tenant isolation

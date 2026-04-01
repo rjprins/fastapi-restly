@@ -13,9 +13,9 @@ Provides default reading and writing functions on the database using
 SQLAlchemy models.
 """
 
-import types
 import functools
 import inspect
+import types
 from enum import Enum
 from math import ceil
 from typing import (

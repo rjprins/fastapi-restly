@@ -2,9 +2,8 @@
 import asyncio
 from pathlib import Path
 
-import pytest
-
 import app.main  # noqa: F401  -- registers fr.configure() before fixtures run
+import pytest
 from app.main import app as saas_app
 
 import fastapi_restly as fr

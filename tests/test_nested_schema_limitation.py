@@ -1,16 +1,18 @@
 """Test to demonstrate the nested schema limitation in FastAPI-Restly framework."""
 
 import asyncio
-import pytest
 from datetime import datetime
+
+import pytest
 from fastapi import FastAPI
 from httpx import AsyncClient
 from pydantic import Field
 from sqlalchemy.orm import Mapped
 
-import fastapi_restly as fd
+import fastapi_restly as fr
 from fastapi_restly.db import fr_globals
-from fastapi_restly.schemas import ReadOnly, BaseSchema
+from fastapi_restly.schemas import BaseSchema, ReadOnly
+
 from .conftest import create_tables
 
 
@@ -26,7 +28,7 @@ def test_nested_schema_limitation_demonstration(client):
 
     When you have a nested schema like:
     ```python
-    class UserSchema(fd.IDSchema):
+    class UserSchema(fr.IDSchema):
         name: str
         email: str
         address: AddressSchema  # ← Nested schema
@@ -58,21 +60,21 @@ def test_nested_schema_limitation_demonstration(client):
         city: str = Field(alias="cityName")
         postal_code: str = Field(alias="postalCode")
 
-    class UserSchema(fd.IDSchema):
+    class UserSchema(fr.IDSchema):
         name: str
         email: str
         address: AddressSchema  # ← This nested schema causes the problem
 
     # Create a simple model with flattened fields
-    class User(fd.IDBase):
+    class User(fr.IDBase):
         name: Mapped[str]
         email: Mapped[str]
         street: Mapped[str]
         city: Mapped[str]
         postal_code: Mapped[str]
 
-    @fd.include_view(client.app)
-    class UserView(fd.AsyncAlchemyView):
+    @fr.include_view(client.app)
+    class UserView(fr.AsyncAlchemyView):
         prefix = "/users"
         model = User
         schema = UserSchema
@@ -103,7 +105,7 @@ def test_working_flattened_approach(client):
     """
 
     # Define a flattened schema (this is what WORKS)
-    class UserSchema(fd.IDSchema):
+    class UserSchema(fr.IDSchema):
         name: str
         email: str
         street: str = Field(alias="streetAddress")  # ← Flattened
@@ -111,15 +113,15 @@ def test_working_flattened_approach(client):
         postal_code: str = Field(alias="postalCode")  # ← Flattened
 
     # Create a simple model
-    class User(fd.IDBase):
+    class User(fr.IDBase):
         name: Mapped[str]
         email: Mapped[str]
         street: Mapped[str]
         city: Mapped[str]
         postal_code: Mapped[str]
 
-    @fd.include_view(client.app)
-    class UserView(fd.AsyncAlchemyView):
+    @fr.include_view(client.app)
+    class UserView(fr.AsyncAlchemyView):
         prefix = "/users"
         model = User
         schema = UserSchema
@@ -168,13 +170,13 @@ def test_deeply_nested_schema_limitation(client):
         name: str = Field(alias="companyName")
         industry: str = Field(alias="industryType")
 
-    class EmployeeSchema(fd.IDSchema):
+    class EmployeeSchema(fr.IDSchema):
         name: str
         address: AddressSchema  # ← Nested schema
         company: CompanySchema  # ← Nested schema
 
     # Create a simple model
-    class Employee(fd.IDBase):
+    class Employee(fr.IDBase):
         name: Mapped[str]
         phone: Mapped[str]
         email: Mapped[str]
@@ -183,8 +185,8 @@ def test_deeply_nested_schema_limitation(client):
         company_name: Mapped[str]
         industry: Mapped[str]
 
-    @fd.include_view(client.app)
-    class EmployeeView(fd.AsyncAlchemyView):
+    @fr.include_view(client.app)
+    class EmployeeView(fr.AsyncAlchemyView):
         prefix = "/employees"
         model = Employee
         schema = EmployeeSchema

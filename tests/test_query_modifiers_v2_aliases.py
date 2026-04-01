@@ -1,31 +1,31 @@
 """Test query modifiers v2 with Pydantic aliases."""
 
-import pytest
 from datetime import datetime
 from typing import Any, Optional
 from unittest.mock import Mock
 
 import pydantic
+import pytest
 import sqlalchemy
 from fastapi import HTTPException
-from sqlalchemy import Column, Integer, String, DateTime, Boolean
+from sqlalchemy import Boolean, Column, DateTime, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 from starlette.datastructures import QueryParams
 
+from fastapi_restly.models import DataclassBase
 from fastapi_restly.query._v2 import (
-    apply_query_modifiers_v2,
-    apply_filtering_v2,
-    apply_sorting_v2,
-    create_query_param_schema_v2,
     _iter_fields_including_nested_v2,
     _parse_value_v2,
+    apply_filtering_v2,
+    apply_query_modifiers_v2,
+    apply_sorting_v2,
+    create_query_param_schema_v2,
 )
-from fastapi_restly.models import DataclassBase
 
 
 class TestModel(DataclassBase):
     __tablename__ = "test_model_aliases"
-    
+
     id: Mapped[int] = mapped_column(primary_key=True)
     user_name: Mapped[str] = mapped_column(String(50))
     user_email: Mapped[str] = mapped_column(String(100))
@@ -45,7 +45,7 @@ class TestSchemaWithAliases(pydantic.BaseModel):
 
 class TestSchemaWithPopulateByName(pydantic.BaseModel):
     model_config = pydantic.ConfigDict(populate_by_name=True, from_attributes=True)
-    
+
     id: int
     user_name: str = pydantic.Field(alias="userName")
     user_email: str = pydantic.Field(alias="userEmail")
@@ -80,22 +80,22 @@ class TestCreateQueryParamSchemaV2WithAliases:
     def test_create_query_param_schema_v2_with_aliases(self):
         """Test creating a query param schema with aliases."""
         schema = create_query_param_schema_v2(TestSchemaWithAliases)
-        
+
         # Check that the schema was created
         assert schema.__name__ == "QueryParamV2TestSchemaWithAliases"
-        
+
         # Check that pagination fields exist
         assert "page" in schema.model_fields
         assert "page_size" in schema.model_fields
         assert "order_by" in schema.model_fields
-        
+
         # Check that field filters use aliases
         assert "userName" in schema.model_fields  # Alias
         assert "userEmail" in schema.model_fields  # Alias
         assert "age" in schema.model_fields  # No alias
         assert "createdAt" in schema.model_fields  # Alias
         assert "isActive" in schema.model_fields  # Alias
-        
+
         # Check that range filters use aliases
         assert "userName__gte" in schema.model_fields
         assert "userName__lte" in schema.model_fields
@@ -107,7 +107,7 @@ class TestCreateQueryParamSchemaV2WithAliases:
     def test_create_query_param_schema_v2_without_aliases(self):
         """Test creating a query param schema without aliases."""
         schema = create_query_param_schema_v2(TestSchemaWithoutAliases)
-        
+
         # Check that field filters use field names
         assert "user_name" in schema.model_fields
         assert "user_email" in schema.model_fields
@@ -120,7 +120,7 @@ class TestIterFieldsIncludingNestedV2WithAliases:
     def test_iter_fields_including_nested_v2_with_aliases(self):
         """Test field iteration with aliases."""
         fields = list(_iter_fields_including_nested_v2(TestSchemaWithAliases))
-        
+
         # Check that aliases are used
         field_names = [name for name, _ in fields]
         assert "userName" in field_names
@@ -128,7 +128,7 @@ class TestIterFieldsIncludingNestedV2WithAliases:
         assert "age" in field_names  # No alias
         assert "createdAt" in field_names
         assert "isActive" in field_names
-        
+
         # Check that field names are not used
         assert "user_name" not in field_names
         assert "user_email" not in field_names
@@ -138,7 +138,7 @@ class TestIterFieldsIncludingNestedV2WithAliases:
     def test_iter_fields_including_nested_v2_without_aliases(self):
         """Test field iteration without aliases."""
         fields = list(_iter_fields_including_nested_v2(TestSchemaWithoutAliases))
-        
+
         # Check that field names are used
         field_names = [name for name, _ in fields]
         assert "user_name" in field_names
@@ -154,7 +154,7 @@ class TestParseValueV2WithAliases:
         # Test with alias
         result = _parse_value_v2(TestSchemaWithAliases, "userName", "John Doe")
         assert result == "John Doe"
-        
+
         # Test with field name (should fail)
         with pytest.raises(HTTPException) as exc_info:
             _parse_value_v2(TestSchemaWithAliases, "user_name", "John Doe")
@@ -165,7 +165,7 @@ class TestParseValueV2WithAliases:
         # Test with alias
         result = _parse_value_v2(TestSchemaWithPopulateByName, "userName", "John Doe")
         assert result == "John Doe"
-        
+
         # Test with field name (should work with populate_by_name=True)
         result = _parse_value_v2(TestSchemaWithPopulateByName, "user_name", "John Doe")
         assert result == "John Doe"
@@ -175,7 +175,7 @@ class TestParseValueV2WithAliases:
         # Test with field name
         result = _parse_value_v2(TestSchemaWithoutAliases, "user_name", "John Doe")
         assert result == "John Doe"
-        
+
         # Test with non-existent field
         with pytest.raises(HTTPException) as exc_info:
             _parse_value_v2(TestSchemaWithoutAliases, "userName", "John Doe")
@@ -187,7 +187,7 @@ class TestApplyFilteringV2WithAliases:
         """Test filtering with aliases."""
         params = mock_query_params(userName="John Doe")
         result = apply_filtering_v2(params, select_query, TestModel, TestSchemaWithAliases)
-        
+
         assert "WHERE test_model_aliases.user_name = " in str(result)
 
     def test_apply_filtering_v2_with_populate_by_name(self, select_query, mock_query_params):
@@ -196,7 +196,7 @@ class TestApplyFilteringV2WithAliases:
         params = mock_query_params(userName="John Doe")
         result = apply_filtering_v2(params, select_query, TestModel, TestSchemaWithPopulateByName)
         assert "WHERE test_model_aliases.user_name = " in str(result)
-        
+
         # Test with field name
         params = mock_query_params(user_name="John Doe")
         result = apply_filtering_v2(params, select_query, TestModel, TestSchemaWithPopulateByName)
@@ -206,14 +206,14 @@ class TestApplyFilteringV2WithAliases:
         """Test filtering without aliases."""
         params = mock_query_params(user_name="John Doe")
         result = apply_filtering_v2(params, select_query, TestModel, TestSchemaWithoutAliases)
-        
+
         assert "WHERE test_model_aliases.user_name = " in str(result)
 
     def test_apply_filtering_v2_range_filters_with_aliases(self, select_query, mock_query_params):
         """Test range filtering with aliases."""
         params = mock_query_params(age__gte="25", userEmail__isnull="false")
         result = apply_filtering_v2(params, select_query, TestModel, TestSchemaWithAliases)
-        
+
         assert "WHERE test_model_aliases.age >=" in str(result)
         assert "test_model_aliases.user_email IS NOT NULL" in str(result)
 
@@ -224,7 +224,7 @@ class TestApplyFilteringV2WithAliases:
         result = apply_filtering_v2(params, select_query, TestModel, TestSchemaWithPopulateByName)
         assert "WHERE test_model_aliases.age >=" in str(result)
         assert "test_model_aliases.user_email IS NOT NULL" in str(result)
-        
+
         # Test with field name
         params = mock_query_params(age__gte="25", user_email__isnull="false")
         result = apply_filtering_v2(params, select_query, TestModel, TestSchemaWithPopulateByName)
@@ -237,7 +237,7 @@ class TestApplySortingV2WithAliases:
         """Test sorting with aliases."""
         params = mock_query_params(order_by="userName,-age")
         result = apply_sorting_v2(params, select_query, TestModel, TestSchemaWithAliases)
-        
+
         assert "ORDER BY test_model_aliases.user_name ASC, test_model_aliases.age DESC" in str(result)
 
     def test_apply_sorting_v2_with_populate_by_name(self, select_query, mock_query_params):
@@ -246,7 +246,7 @@ class TestApplySortingV2WithAliases:
         params = mock_query_params(order_by="userName,-age")
         result = apply_sorting_v2(params, select_query, TestModel, TestSchemaWithPopulateByName)
         assert "ORDER BY test_model_aliases.user_name ASC, test_model_aliases.age DESC" in str(result)
-        
+
         # Test with field name
         params = mock_query_params(order_by="user_name,-age")
         result = apply_sorting_v2(params, select_query, TestModel, TestSchemaWithPopulateByName)
@@ -256,7 +256,7 @@ class TestApplySortingV2WithAliases:
         """Test sorting without aliases."""
         params = mock_query_params(order_by="user_name,-age")
         result = apply_sorting_v2(params, select_query, TestModel, TestSchemaWithoutAliases)
-        
+
         assert "ORDER BY test_model_aliases.user_name ASC, test_model_aliases.age DESC" in str(result)
 
 
@@ -271,7 +271,7 @@ class TestApplyQueryModifiersV2WithAliases:
             age__gte="25"
         )
         result = apply_query_modifiers_v2(params, select_query, TestModel, TestSchemaWithAliases)
-        
+
         # Should have pagination, sorting, and filtering
         assert "LIMIT :param_1" in str(result)
         assert "OFFSET :param_2" in str(result)
@@ -289,13 +289,13 @@ class TestApplyQueryModifiersV2WithAliases:
             age__gte="25"
         )
         result = apply_query_modifiers_v2(params, select_query, TestModel, TestSchemaWithPopulateByName)
-        
+
         # Should have pagination, sorting, and filtering
         assert "LIMIT :param_1" in str(result)
         assert "OFFSET :param_2" in str(result)
         assert "ORDER BY test_model_aliases.user_name ASC, test_model_aliases.age DESC" in str(result)
         assert "WHERE" in str(result)
-        
+
         # Test with field names
         params = mock_query_params(
             page="2",
@@ -305,9 +305,9 @@ class TestApplyQueryModifiersV2WithAliases:
             age__gte="25"
         )
         result = apply_query_modifiers_v2(params, select_query, TestModel, TestSchemaWithPopulateByName)
-        
+
         # Should have pagination, sorting, and filtering
         assert "LIMIT :param_1" in str(result)
         assert "OFFSET :param_2" in str(result)
         assert "ORDER BY test_model_aliases.user_name ASC, test_model_aliases.age DESC" in str(result)
-        assert "WHERE" in str(result) 
+        assert "WHERE" in str(result)

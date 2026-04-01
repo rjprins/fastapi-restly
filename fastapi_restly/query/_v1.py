@@ -2,8 +2,6 @@ import functools
 from collections import defaultdict
 from typing import Any, Callable, Iterator, Optional, cast
 
-from ._shared import _escape_like_value, _unwrap_optional_annotation
-
 import pydantic
 import sqlalchemy
 from fastapi import HTTPException
@@ -13,6 +11,8 @@ from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.properties import ColumnProperty
 from starlette.datastructures import QueryParams
+
+from ._shared import _escape_like_value, _unwrap_optional_annotation
 
 SchemaType = type[pydantic.BaseModel]
 
@@ -383,5 +383,3 @@ def _make_where_clause(
             return column.is_(None)
         value = parser(filter_value)
         return column == value
-
-

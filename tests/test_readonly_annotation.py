@@ -1,17 +1,18 @@
-import pytest
 from datetime import datetime
-from typing import Annotated, get_origin, get_args
+from typing import Annotated, get_args, get_origin
+
+import pytest
 
 from fastapi_restly.schemas import (
     BaseSchema,
     ReadOnly,
     WriteOnly,
+    create_model_with_optional_fields,
+    create_model_without_read_only_fields,
     get_read_only_fields,
     get_write_only_fields,
     is_field_readonly,
     is_field_writeonly,
-    create_model_without_read_only_fields,
-    create_model_with_optional_fields,
     readonly_marker,
     writeonly_marker,
 )
@@ -374,8 +375,9 @@ def test_readonly_in_timestamps_mixin():
 
 def test_readonly_in_idschema():
     """Test that IDSchema uses ReadOnly correctly."""
-    from fastapi_restly.schemas import IDSchema
     from sqlalchemy.orm import DeclarativeBase
+
+    from fastapi_restly.schemas import IDSchema
 
     class MockModel(DeclarativeBase):
         pass

@@ -2,16 +2,18 @@
 
 import asyncio
 import types
+from typing import Union, get_args, get_origin
+
 import pytest
 from fastapi import FastAPI
 from httpx import AsyncClient
 from sqlalchemy import ForeignKey
-from sqlalchemy.types import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from typing import Union, get_args, get_origin
+from sqlalchemy.types import JSON
 
-import fastapi_restly as fd
+import fastapi_restly as fr
 from fastapi_restly.db import fr_globals
+
 from .conftest import create_tables
 
 
@@ -19,14 +21,14 @@ def test_auto_generated_schema_in_view(client):
     """Test that schemas are auto-generated when not specified in views."""
 
     # Define a simple model without manually creating a schema
-    class User(fd.IDBase):
+    class User(fr.IDBase):
         name: Mapped[str]
         email: Mapped[str]
         is_active: Mapped[bool] = mapped_column(default=True)
 
     # Create view WITHOUT specifying a schema - it should be auto-generated
-    @fd.include_view(client.app)
-    class UserView(fd.AsyncAlchemyView):
+    @fr.include_view(client.app)
+    class UserView(fr.AsyncAlchemyView):
         prefix = "/users"
         model = User
         # No schema specified - should be auto-generated!
@@ -57,14 +59,14 @@ def test_auto_generated_schema_with_timestamps(client):
     """Test auto-generated schemas with timestamp fields."""
 
     # Define a model with timestamps
-    class Product(fd.IDBase, fd.TimestampsMixin):
+    class Product(fr.IDBase, fr.TimestampsMixin):
         name: Mapped[str]
         price: Mapped[float]
         description: Mapped[str] = mapped_column(default="")
 
     # Create view without schema
-    @fd.include_view(client.app)
-    class ProductView(fd.AsyncAlchemyView):
+    @fr.include_view(client.app)
+    class ProductView(fr.AsyncAlchemyView):
         prefix = "/products"
         model = Product
         # No schema specified - should be auto-generated!
@@ -87,14 +89,14 @@ def test_auto_generated_schema_with_defaults(client):
     """Test auto-generated schemas with field defaults."""
 
     # Define a model with defaults
-    class Category(fd.IDBase):
+    class Category(fr.IDBase):
         name: Mapped[str]
         description: Mapped[str] = mapped_column(default="No description")
         is_active: Mapped[bool] = mapped_column(default=True)
 
     # Create view without schema
-    @fd.include_view(client.app)
-    class CategoryView(fd.AsyncAlchemyView):
+    @fr.include_view(client.app)
+    class CategoryView(fr.AsyncAlchemyView):
         prefix = "/categories"
         model = Category
         # No schema specified - should be auto-generated!
@@ -116,13 +118,13 @@ def test_auto_generated_schema_crud_operations(client):
     """Test that auto-generated schemas work with full CRUD operations."""
 
     # Define a simple model
-    class Item(fd.IDBase):
+    class Item(fr.IDBase):
         name: Mapped[str]
         quantity: Mapped[int]
 
     # Create view without schema
-    @fd.include_view(client.app)
-    class ItemView(fd.AsyncAlchemyView):
+    @fr.include_view(client.app)
+    class ItemView(fr.AsyncAlchemyView):
         prefix = "/items"
         model = Item
         # No schema specified - should be auto-generated!
@@ -164,15 +166,15 @@ def test_auto_generated_schema_crud_operations(client):
 def test_create_schema_from_model_includes_nested_relationship_schema():
     """Manual schema generation should resolve relationships to nested schemas."""
 
-    class User(fd.IDBase):
+    class User(fr.IDBase):
         name: Mapped[str]
         email: Mapped[str]
 
-    class Order(fd.IDBase):
+    class Order(fr.IDBase):
         user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
         user: Mapped[User] = relationship()
 
-    schema = fd.create_schema_from_model(Order, include_relationships=True)
+    schema = fr.create_schema_from_model(Order, include_relationships=True)
 
     assert "user" in schema.model_fields
     user_annotation = schema.model_fields["user"].annotation
@@ -191,15 +193,15 @@ def test_create_schema_from_model_includes_nested_relationship_schema():
 def test_view_auto_schema_excludes_relationship_fields_by_default(client):
     """View auto-schema should stay focused on scalar/FK fields unless opted in explicitly."""
 
-    class User(fd.IDBase):
+    class User(fr.IDBase):
         name: Mapped[str]
 
-    class Order(fd.IDBase):
+    class Order(fr.IDBase):
         user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
         user: Mapped[User] = relationship()
 
-    @fd.include_view(client.app)
-    class OrderView(fd.AsyncAlchemyView):
+    @fr.include_view(client.app)
+    class OrderView(fr.AsyncAlchemyView):
         prefix = "/orders"
         model = Order
 
@@ -210,9 +212,9 @@ def test_view_auto_schema_excludes_relationship_fields_by_default(client):
 
 
 def test_create_schema_from_model_preserves_json_dict_types():
-    class Event(fd.IDBase):
+    class Event(fr.IDBase):
         payload: Mapped[dict] = mapped_column(JSON)
 
-    schema = fd.create_schema_from_model(Event)
+    schema = fr.create_schema_from_model(Event)
 
     assert schema.model_fields["payload"].annotation is dict

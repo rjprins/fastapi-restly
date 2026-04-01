@@ -12,18 +12,18 @@ from ._base import (
     create_model_with_optional_fields,
     create_model_without_read_only_fields,
     get_read_only_fields,
-    get_write_only_fields,
     get_writable_inputs,
+    get_write_only_fields,
     getattrs,
     is_field_writeonly,
     is_readonly_field,
-    is_readonly_field as is_field_readonly,  # Alias for consistency
     readonly_marker,
     rebase_with_model_config,
     resolve_ids_to_sqlalchemy_objects,
     set_schema_title,
     writeonly_marker,
 )
+from ._base import is_readonly_field as is_field_readonly  # Alias for consistency
 from ._generator import (
     auto_generate_schema_for_view,
     convert_sqlalchemy_type_to_pydantic,

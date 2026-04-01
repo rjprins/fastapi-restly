@@ -7,7 +7,13 @@ from sqlalchemy.orm import DeclarativeBase, Session
 
 from ..db import SessionDep
 from ..query import apply_query_modifiers, use_query_modifier_version
-from ..schemas import BaseSchema, IDSchema, get_writable_inputs, is_readonly_field, resolve_ids_to_sqlalchemy_objects
+from ..schemas import (
+    BaseSchema,
+    IDSchema,
+    get_writable_inputs,
+    is_readonly_field,
+    resolve_ids_to_sqlalchemy_objects,
+)
 from ._base import BaseAlchemyView, delete, get, patch, post
 
 T = TypeVar("T", bound=DeclarativeBase)

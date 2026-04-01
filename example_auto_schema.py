@@ -5,11 +5,13 @@ This example shows how you can create FastAPI-Restly views without explicitly
 defining Pydantic schemas - they are automatically generated from SQLAlchemy models.
 """
 
-import fastapi_restly as fr
-from fastapi import FastAPI
-from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import ForeignKey
 from datetime import datetime, timezone
+
+from fastapi import FastAPI
+from sqlalchemy import ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column
+
+import fastapi_restly as fr
 
 # Setup database
 fr.configure(async_database_url="sqlite+aiosqlite:///example_auto_schema.db")
@@ -78,20 +80,20 @@ if __name__ == "__main__":
     # Example of manually generating a schema
     UserSchema = fr.create_schema_from_model(User)
     print(f"Auto-generated UserSchema fields: {list(UserSchema.model_fields.keys())}")
-    
+
     # Example of generating a schema with custom name
     CustomProductSchema = fr.create_schema_from_model(
-        Product, 
+        Product,
         schema_name="CustomProductSchema"
     )
     print(f"Custom ProductSchema fields: {list(CustomProductSchema.model_fields.keys())}")
-    
+
     print("\nAuto-generated schemas include:")
     print("- All model fields with appropriate types")
     print("- Read-only fields (id, created_at, updated_at)")
     print("- Proper inheritance (IDSchema, TimestampsSchemaMixin)")
     print("- Optional fields with defaults")
-    
+
     print("\nTo run the server:")
     print("uvicorn example_auto_schema:app --reload")
-    print("Then visit http://localhost:8000/docs to see the auto-generated API docs!") 
+    print("Then visit http://localhost:8000/docs to see the auto-generated API docs!")

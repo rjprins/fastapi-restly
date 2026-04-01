@@ -7,21 +7,23 @@ These tests verify:
 """
 
 import asyncio
-import pytest
 from datetime import datetime
 from typing import Optional
+
+import pytest
 from fastapi import FastAPI
 from httpx import AsyncClient
 from pydantic import Field, field_validator, model_validator
 from sqlalchemy.orm import Mapped
 
-import fastapi_restly as fd
+import fastapi_restly as fr
 from fastapi_restly.db import fr_globals
 from fastapi_restly.schemas import (
-    ReadOnly,
     BaseSchema,
+    ReadOnly,
     create_model_without_read_only_fields,
 )
+
 from .conftest import create_tables
 
 
@@ -135,7 +137,7 @@ class TestNestedSchemaSerialization:
             city: str = Field(alias="cityName")
             postal_code: str = Field(alias="postalCode")
 
-        class UserSchema(fd.IDSchema):
+        class UserSchema(fr.IDSchema):
             name: str
             email: str
             # Note: We'll test this without nested schemas for now
@@ -145,15 +147,15 @@ class TestNestedSchemaSerialization:
             postal_code: str = Field(alias="postalCode")
 
         # Create a simple model
-        class User(fd.IDBase):
+        class User(fr.IDBase):
             name: Mapped[str]
             email: Mapped[str]
             street: Mapped[str]
             city: Mapped[str]
             postal_code: Mapped[str]
 
-        @fd.include_view(client.app)
-        class UserView(fd.AsyncAlchemyView):
+        @fr.include_view(client.app)
+        class UserView(fr.AsyncAlchemyView):
             prefix = "/users"
             model = User
             schema = UserSchema
@@ -196,7 +198,7 @@ class TestNestedSchemaSerialization:
         """Test deeply nested schemas with aliases."""
 
         # Define schemas with aliases (flattened for now)
-        class EmployeeSchema(fd.IDSchema):
+        class EmployeeSchema(fr.IDSchema):
             name: str
             # Contact info
             phone: str = Field(alias="phoneNumber")
@@ -209,7 +211,7 @@ class TestNestedSchemaSerialization:
             industry: str = Field(alias="industryType")
 
         # Create a simple model
-        class Employee(fd.IDBase):
+        class Employee(fr.IDBase):
             name: Mapped[str]
             phone: Mapped[str]
             email: Mapped[str]
@@ -218,8 +220,8 @@ class TestNestedSchemaSerialization:
             company_name: Mapped[str]
             industry: Mapped[str]
 
-        @fd.include_view(client.app)
-        class EmployeeView(fd.AsyncAlchemyView):
+        @fr.include_view(client.app)
+        class EmployeeView(fr.AsyncAlchemyView):
             prefix = "/employees"
             model = Employee
             schema = EmployeeSchema
@@ -254,7 +256,7 @@ class TestNestedSchemaSerialization:
         """Test nested schemas where some fields are ReadOnly."""
 
         # Define schema with ReadOnly fields (flattened)
-        class UserSchema(fd.IDSchema):
+        class UserSchema(fr.IDSchema):
             id: ReadOnly[int]
             name: str
             email: str
@@ -265,14 +267,14 @@ class TestNestedSchemaSerialization:
             # created_at: ReadOnly[datetime]
 
         # Create a simple model
-        class User(fd.IDBase):
+        class User(fr.IDBase):
             name: Mapped[str]
             email: Mapped[str]
             street: Mapped[str]
             city: Mapped[str]
 
-        @fd.include_view(client.app)
-        class UserView(fd.AsyncAlchemyView):
+        @fr.include_view(client.app)
+        class UserView(fr.AsyncAlchemyView):
             prefix = "/users"
             model = User
             schema = UserSchema
@@ -326,7 +328,7 @@ class TestComplexInheritanceScenarios:
                     raise ValueError("Postal code must be numeric")
                 return v
 
-        class UserSchema(fd.IDSchema):
+        class UserSchema(fr.IDSchema):
             id: ReadOnly[int]
             name: str
             email: str
@@ -417,7 +419,7 @@ class TestComplexInheritanceScenarios:
                 return v.title()
 
         class ComplexUserSchema(
-            TimestampMixin, ContactMixin, AddressMixin, fd.IDSchema
+            TimestampMixin, ContactMixin, AddressMixin, fr.IDSchema
         ):
             id: ReadOnly[int]
             name: str

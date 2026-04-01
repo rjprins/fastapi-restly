@@ -1,14 +1,16 @@
 """Test basic functionality of the FastAPI-Restly framework."""
 
 import asyncio
+
 import pytest
 from fastapi import FastAPI
 from httpx import AsyncClient
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-import fastapi_restly as fd
+import fastapi_restly as fr
 from fastapi_restly.db import fr_globals
+
 from .conftest import create_tables
 
 
@@ -16,18 +18,18 @@ def test_crud_endpoints_exist(client):
     """Test that all CRUD endpoints are created."""
 
     # Define a simple model
-    class User(fd.IDBase):
+    class User(fr.IDBase):
         name: Mapped[str]
         email: Mapped[str]
 
     # Create a schema
-    class UserSchema(fd.IDSchema):
+    class UserSchema(fr.IDSchema):
         name: str
         email: str
 
     # Create a view
-    @fd.include_view(client.app)
-    class UserView(fd.AsyncAlchemyView):
+    @fr.include_view(client.app)
+    class UserView(fr.AsyncAlchemyView):
         prefix = "/users"
         model = User
         schema = UserSchema
@@ -60,18 +62,18 @@ def test_basic_crud_operations(client):
     """Test basic CRUD operations."""
 
     # Define a simple model
-    class Product(fd.IDBase):
+    class Product(fr.IDBase):
         name: Mapped[str]
         price: Mapped[float]
 
     # Create a schema
-    class ProductSchema(fd.IDSchema):
+    class ProductSchema(fr.IDSchema):
         name: str
         price: float
 
     # Create a view
-    @fd.include_view(client.app)
-    class ProductView(fd.AsyncAlchemyView):
+    @fr.include_view(client.app)
+    class ProductView(fr.AsyncAlchemyView):
         prefix = "/products"
         model = Product
         schema = ProductSchema
@@ -114,36 +116,36 @@ def test_put_request_with_non_existing_id(client):
     """Test PUT request with non-existing ID returns 404."""
 
     # Define models with relationship
-    class User(fd.IDBase):
+    class User(fr.IDBase):
         name: Mapped[str]
         email: Mapped[str]
         blogs: Mapped[list["Blog"]] = relationship("Blog", back_populates="author", default_factory=list)
 
-    class Blog(fd.IDBase):
+    class Blog(fr.IDBase):
         title: Mapped[str]
         content: Mapped[str]
         author_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
         author: Mapped["User"] = relationship("User", back_populates="blogs", default=None)
 
     # Create schemas
-    class UserSchema(fd.IDSchema):
+    class UserSchema(fr.IDSchema):
         name: str
         email: str
 
-    class BlogSchema(fd.IDSchema):
+    class BlogSchema(fr.IDSchema):
         title: str
         content: str
-        author_id: fd.IDSchema[User]
+        author_id: fr.IDSchema[User]
 
     # Create views
-    @fd.include_view(client.app)
-    class UserView(fd.AsyncAlchemyView):
+    @fr.include_view(client.app)
+    class UserView(fr.AsyncAlchemyView):
         prefix = "/users"
         model = User
         schema = UserSchema
 
-    @fd.include_view(client.app)
-    class BlogView(fd.AsyncAlchemyView):
+    @fr.include_view(client.app)
+    class BlogView(fr.AsyncAlchemyView):
         prefix = "/blogs"
         model = Blog
         schema = BlogSchema
@@ -203,16 +205,16 @@ def test_put_request_with_non_existing_id(client):
 def test_plain_foreign_key_fields_serialize_as_scalars(client):
     """Plain int foreign key fields should not be coerced into IDSchema payloads."""
 
-    class Task(fd.IDBase):
+    class Task(fr.IDBase):
         title: Mapped[str]
         assignee_id: Mapped[int | None]
 
-    class TaskSchema(fd.IDSchema):
+    class TaskSchema(fr.IDSchema):
         title: str
         assignee_id: int | None = None
 
-    @fd.include_view(client.app)
-    class TaskView(fd.AsyncAlchemyView):
+    @fr.include_view(client.app)
+    class TaskView(fr.AsyncAlchemyView):
         prefix = "/tasks"
         model = Task
         schema = TaskSchema
@@ -231,18 +233,18 @@ def test_list_endpoint(client):
     """Test the list endpoint functionality."""
 
     # Define a simple model
-    class Category(fd.IDBase):
+    class Category(fr.IDBase):
         name: Mapped[str]
         description: Mapped[str]
 
     # Create a schema
-    class CategorySchema(fd.IDSchema):
+    class CategorySchema(fr.IDSchema):
         name: str
         description: str
 
     # Create a view
-    @fd.include_view(client.app)
-    class CategoryView(fd.AsyncAlchemyView):
+    @fr.include_view(client.app)
+    class CategoryView(fr.AsyncAlchemyView):
         prefix = "/categories"
         model = Category
         schema = CategorySchema

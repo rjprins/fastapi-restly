@@ -1,9 +1,9 @@
 """CRUD tests for all models."""
 
 import pytest
-from fastapi_restly.testing import RestlyTestClient
-
 from app.main import app
+
+from fastapi_restly.testing import RestlyTestClient
 
 
 @pytest.fixture

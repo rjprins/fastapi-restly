@@ -1,9 +1,10 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-import fastapi_restly as fr
 from fastapi import FastAPI
 from sqlalchemy.orm import Mapped
+
+import fastapi_restly as fr
 
 DB_PATH = Path(__file__).resolve().parents[1] / "blog.db"
 fr.configure(async_database_url=f"sqlite+aiosqlite:///{DB_PATH}")

@@ -1,14 +1,14 @@
 """User view."""
 
-from pydantic import BaseModel
 from typing import Any
+
+from pydantic import BaseModel
 
 import fastapi_restly as fr
 
 from ..models import User, UserRole
 from ..schemas import UserSchema
-from ..schemas.user import UserPublicSchema, UserFullSchema
-
+from ..schemas.user import UserFullSchema, UserPublicSchema
 
 # Simulating a "current user" - in real apps this would come from auth
 CURRENT_USER_ID = 1  # Would be set by auth middleware

@@ -5,10 +5,10 @@ This module provides a pluggable system for choosing between different query mod
 implementations (v1 vs v2) and allows users to configure their preferred interface.
 """
 
-from enum import Enum
-from functools import lru_cache
 from contextlib import contextmanager
 from contextvars import ContextVar
+from enum import Enum
+from functools import lru_cache
 from typing import Any, Callable, Protocol
 
 import pydantic

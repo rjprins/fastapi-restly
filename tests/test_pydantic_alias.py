@@ -1,13 +1,14 @@
 """Test Pydantic alias functionality."""
 
-import pytest
 import pydantic
+import pytest
 from fastapi import FastAPI
 from httpx import AsyncClient
 from pydantic import Field
 from sqlalchemy.orm import Mapped
 
-import fastapi_restly as fd
+import fastapi_restly as fr
+
 from .conftest import create_tables
 
 
@@ -15,13 +16,13 @@ def test_pydantic_alias_feature(client):
     """Test that the framework correctly handles Pydantic's alias feature."""
 
     # Define a model with fields that have aliases
-    class User(fd.IDBase):
+    class User(fr.IDBase):
         name: Mapped[str]
         email: Mapped[str]
         phone_number: Mapped[str]
 
     # Create a schema with Pydantic aliases
-    class UserSchema(fd.IDSchema):
+    class UserSchema(fr.IDSchema):
         model_config = pydantic.ConfigDict(from_attributes=True, populate_by_name=True)
 
         name: str
@@ -29,8 +30,8 @@ def test_pydantic_alias_feature(client):
         phone_number: str = Field(alias="phoneNumber")  # Using Pydantic alias
 
     # Create a view
-    @fd.include_view(client.app)
-    class UserView(fd.AsyncAlchemyView):
+    @fr.include_view(client.app)
+    class UserView(fr.AsyncAlchemyView):
         prefix = "/users"
         model = User
         schema = UserSchema
@@ -89,14 +90,14 @@ def test_pydantic_alias_with_multiple_aliases(client):
     """Test that the framework handles multiple aliased fields correctly."""
 
     # Define a model with multiple aliased fields
-    class Product(fd.IDBase):
+    class Product(fr.IDBase):
         name: Mapped[str]
         price: Mapped[float]
         description: Mapped[str]
         is_active: Mapped[bool]
 
     # Create a schema with multiple Pydantic aliases
-    class ProductSchema(fd.IDSchema):
+    class ProductSchema(fr.IDSchema):
         model_config = pydantic.ConfigDict(from_attributes=True, populate_by_name=True)
 
         name: str
@@ -105,8 +106,8 @@ def test_pydantic_alias_with_multiple_aliases(client):
         is_active: bool = Field(alias="isActive")
 
     # Create a view
-    @fd.include_view(client.app)
-    class ProductView(fd.AsyncAlchemyView):
+    @fr.include_view(client.app)
+    class ProductView(fr.AsyncAlchemyView):
         prefix = "/products"
         model = Product
         schema = ProductSchema
@@ -147,14 +148,14 @@ def test_pydantic_alias_with_auto_generated_schema(client):
     """Test that auto-generated schemas work correctly with aliases."""
 
     # Define a model with aliased fields
-    class Article(fd.IDBase):
+    class Article(fr.IDBase):
         title: Mapped[str]
         content: Mapped[str]
         author_name: Mapped[str]
 
     # Create a view WITHOUT specifying a schema - should be auto-generated
-    @fd.include_view(client.app)
-    class ArticleView(fd.AsyncAlchemyView):
+    @fr.include_view(client.app)
+    class ArticleView(fr.AsyncAlchemyView):
         prefix = "/articles"
         model = Article
         # No schema specified - should be auto-generated!
@@ -181,30 +182,27 @@ def test_pydantic_alias_with_query_parameters(client):
     """Test that query parameters work correctly with aliased fields."""
 
     # Set query modifier version to V2 for this test
-    from fastapi_restly.query import (
-        set_query_modifier_version,
-        QueryModifierVersion,
-    )
+    from fastapi_restly.query import QueryModifierVersion, set_query_modifier_version
 
     set_query_modifier_version(QueryModifierVersion.V2)
 
     # Define a model with aliased fields
-    class Article(fd.IDBase):
+    class Article(fr.IDBase):
         title: Mapped[str]
         content: Mapped[str]
         author_name: Mapped[str]
         publish_date: Mapped[str]
 
     # Create a schema with aliases
-    class ArticleSchema(fd.IDSchema):
+    class ArticleSchema(fr.IDSchema):
         title: str
         content: str
         author_name: str = Field(alias="authorName")
         publish_date: str = Field(alias="publishDate")
 
     # Create a view
-    @fd.include_view(client.app)
-    class ArticleView(fd.AsyncAlchemyView):
+    @fr.include_view(client.app)
+    class ArticleView(fr.AsyncAlchemyView):
         prefix = "/articles"
         model = Article
         schema = ArticleSchema
@@ -243,20 +241,20 @@ def test_pydantic_alias_with_field_validation(client):
     """Test that field validation works correctly with aliases."""
 
     # Define a model with validation
-    class User(fd.IDBase):
+    class User(fr.IDBase):
         name: Mapped[str]
         email: Mapped[str]
         age: Mapped[int]
 
     # Create a schema with aliases and validation
-    class UserSchema(fd.IDSchema):
+    class UserSchema(fr.IDSchema):
         name: str
         email: str = Field(alias="userEmail")
         age: int = Field(alias="userAge", ge=0, le=150)
 
     # Create a view
-    @fd.include_view(client.app)
-    class UserView(fd.AsyncAlchemyView):
+    @fr.include_view(client.app)
+    class UserView(fr.AsyncAlchemyView):
         prefix = "/users"
         model = User
         schema = UserSchema

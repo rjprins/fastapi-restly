@@ -4,16 +4,15 @@ from pathlib import Path
 from typing import AsyncIterator, Iterator
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import alembic
+import alembic.command
+import alembic.config
 import pytest
 import pytest_asyncio
 from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.ext.asyncio import AsyncSession as SA_AsyncSession
 from sqlalchemy.orm import Session as SA_Session
-
-import alembic
-import alembic.command
-import alembic.config
 
 from ..db import activate_savepoint_only_mode, fr_globals, get_fr_globals
 from ._client import RestlyTestClient

@@ -1,9 +1,9 @@
 """Test the shop example."""
 
 import pytest
-from fastapi_restly.testing import RestlyTestClient
-
 from shop.main import app
+
+from fastapi_restly.testing import RestlyTestClient
 
 
 @pytest.fixture
