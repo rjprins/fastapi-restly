@@ -27,17 +27,17 @@ test-framework:
 # Test shop example
 test-shop:
 	@echo "=== Testing Shop Example ==="
-	cd example-projects/shop && uv run --active pytest tests/ -v
+	cd example-projects/shop && uv run pytest tests/ -v
 
 # Test blog example
 test-blog:
 	@echo "=== Testing Blog Example ==="
-	cd example-projects/blog && uv run --active pytest blog/ -v
+	cd example-projects/blog && uv run pytest blog/ -v
 
 # Test saas example
 test-saas:
 	@echo "=== Testing SaaS Example ==="
-	cd example-projects/saas && uv run --active pytest tests/ -v
+	cd example-projects/saas && uv run pytest tests/ -v
 
 # Test all examples
 test-examples: test-shop test-blog test-saas
@@ -67,9 +67,9 @@ dev-setup: install-dev
 test-coverage:
 	@echo "=== Running Tests with Coverage ==="
 	uv run pytest tests/ --cov=fastapi_restly --cov-report=term-missing
-	cd example-projects/shop && uv run --active pytest tests/ --cov=shop --cov-report=term-missing
-	cd example-projects/blog && uv run --active pytest blog/ --cov=blog --cov-report=term-missing
-	cd example-projects/saas && uv run --active pytest tests/ --cov=app --cov-report=term-missing
+	cd example-projects/shop && uv run pytest tests/ --cov=shop --cov-report=term-missing
+	cd example-projects/blog && uv run pytest blog/ --cov=blog --cov-report=term-missing
+	cd example-projects/saas && uv run pytest tests/ --cov=app --cov-report=term-missing
 
 docs:
 	uv run sphinx-build -M html docs site
