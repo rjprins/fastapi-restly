@@ -618,8 +618,13 @@ def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
     if view_cls.tags:
         tags += view_cls.tags
 
+    # Concatenate prefixes defined at each level of the class hierarchy (base → derived).
+    prefix = "".join(c.__dict__["prefix"] for c in reversed(view_cls.mro()) if "prefix" in c.__dict__)
     api_router = fastapi.APIRouter(
-        prefix=view_cls.prefix, tags=tags, responses=view_cls.responses
+        prefix=prefix,
+        tags=tags,
+        responses=view_cls.responses,
+        dependencies=view_cls.dependencies,
     )
 
     # Find all endpoint functions in this class and add them to the router
