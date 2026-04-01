@@ -106,7 +106,9 @@ def test_restly_test_client_error_handling():
         client.get("/test", assert_status_code=404)
 
     error_message = str(exc_info.value)
-    assert "Expected GET to return 404, got 200" in error_message
+    assert "Expected GET" in error_message
+    assert "/test" in error_message
+    assert "to return 404, got 200" in error_message
     assert "Response JSON:" in error_message
 
 

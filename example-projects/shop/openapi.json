@@ -67,9 +67,7 @@
             "required": false,
             "schema": {
               "anyOf": [
-                {
-                  "type": "integer"
-                },
+                {},
                 {
                   "type": "null"
                 }
@@ -91,6 +89,22 @@
                 }
               ],
               "title": "Filter[Email]"
+            }
+          },
+          {
+            "name": "contains[email]",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Contains[Email]"
             }
           }
         ],
@@ -211,12 +225,12 @@
           }
         }
       },
-      "put": {
+      "patch": {
         "tags": [
           "CustomerView"
         ],
-        "summary": "Customerview Put",
-        "operationId": "customerview_put_customers__id__put",
+        "summary": "Customerview Patch",
+        "operationId": "customerview_patch_customers__id__patch",
         "parameters": [
           {
             "name": "id",
@@ -363,9 +377,7 @@
             "required": false,
             "schema": {
               "anyOf": [
-                {
-                  "type": "integer"
-                },
+                {},
                 {
                   "type": "null"
                 }
@@ -387,6 +399,22 @@
                 }
               ],
               "title": "Filter[Name]"
+            }
+          },
+          {
+            "name": "contains[name]",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Contains[Name]"
             }
           },
           {
@@ -511,7 +539,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
+              "type": "string",
+              "format": "uuid",
               "title": "Id"
             }
           }
@@ -542,19 +571,20 @@
           }
         }
       },
-      "put": {
+      "patch": {
         "tags": [
           "ProductView"
         ],
-        "summary": "Productview Put",
-        "operationId": "productview_put_products__id__put",
+        "summary": "Productview Patch",
+        "operationId": "productview_patch_products__id__patch",
         "parameters": [
           {
             "name": "id",
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
+              "type": "string",
+              "format": "uuid",
               "title": "Id"
             }
           }
@@ -607,7 +637,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
+              "type": "string",
+              "format": "uuid",
               "title": "Id"
             }
           }
@@ -694,9 +725,7 @@
             "required": false,
             "schema": {
               "anyOf": [
-                {
-                  "type": "integer"
-                },
+                {},
                 {
                   "type": "null"
                 }
@@ -744,9 +773,7 @@
             "required": false,
             "schema": {
               "anyOf": [
-                {
-                  "type": "integer"
-                },
+                {},
                 {
                   "type": "null"
                 }
@@ -771,14 +798,28 @@
             }
           },
           {
-            "name": "filter[customer_id.id]",
+            "name": "contains[customer.email]",
             "in": "query",
             "required": false,
             "schema": {
               "anyOf": [
                 {
-                  "type": "integer"
+                  "type": "string"
                 },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Contains[Customer.Email]"
+            }
+          },
+          {
+            "name": "filter[customer_id.id]",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {},
                 {
                   "type": "null"
                 }
@@ -803,22 +844,6 @@
                 }
               ],
               "title": "Filter[Products]"
-            }
-          },
-          {
-            "name": "filter[internal_notes]",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Filter[Internal Notes]"
             }
           }
         ],
@@ -939,12 +964,12 @@
           }
         }
       },
-      "put": {
+      "patch": {
         "tags": [
           "OrderView"
         ],
-        "summary": "Orderview Put",
-        "operationId": "orderview_put_orders__id__put",
+        "summary": "Orderview Patch",
+        "operationId": "orderview_patch_orders__id__patch",
         "parameters": [
           {
             "name": "id",
@@ -1044,13 +1069,10 @@
           "email"
         ],
         "title": "CreateCustomerSchema",
-        "description": "Read-only have been fields removed."
+        "description": "Read-only fields have been removed."
       },
       "CreateOrderSchema": {
         "properties": {
-          "customer": {
-            "$ref": "#/components/schemas/CustomerSchema"
-          },
           "customer_id": {
             "$ref": "#/components/schemas/IDSchema_Customer_"
           },
@@ -1064,12 +1086,11 @@
         },
         "type": "object",
         "required": [
-          "customer",
           "customer_id",
           "products"
         ],
         "title": "CreateOrderSchema",
-        "description": "Read-only have been fields removed."
+        "description": "Read-only fields have been removed."
       },
       "CreateProductSchema": {
         "properties": {
@@ -1096,12 +1117,11 @@
           "price"
         ],
         "title": "CreateProductSchema",
-        "description": "Read-only have been fields removed."
+        "description": "Read-only fields have been removed."
       },
       "CustomerSchema": {
         "properties": {
           "id": {
-            "type": "integer",
             "title": "Id",
             "readOnly": true
           },
@@ -1133,7 +1153,6 @@
       "IDSchema_Customer_": {
         "properties": {
           "id": {
-            "type": "integer",
             "title": "Id",
             "readOnly": true
           }
@@ -1147,7 +1166,6 @@
       "IDSchema_Order_": {
         "properties": {
           "id": {
-            "type": "integer",
             "title": "Id",
             "readOnly": true
           }
@@ -1161,7 +1179,6 @@
       "IDSchema_Product_": {
         "properties": {
           "id": {
-            "type": "integer",
             "title": "Id",
             "readOnly": true
           }
@@ -1175,7 +1192,6 @@
       "OrderSchema": {
         "properties": {
           "id": {
-            "type": "integer",
             "title": "Id",
             "readOnly": true
           },
@@ -1192,7 +1208,15 @@
             "readOnly": true
           },
           "customer": {
-            "$ref": "#/components/schemas/CustomerSchema"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CustomerSchema"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "readOnly": true
           },
           "customer_id": {
             "$ref": "#/components/schemas/IDSchema_Customer_"
@@ -1203,11 +1227,6 @@
             },
             "type": "array",
             "title": "Products"
-          },
-          "internal_notes": {
-            "type": "string",
-            "title": "Internal Notes",
-            "readOnly": true
           }
         },
         "type": "object",
@@ -1217,15 +1236,13 @@
           "updated_at",
           "customer",
           "customer_id",
-          "products",
-          "internal_notes"
+          "products"
         ],
         "title": "OrderSchema"
       },
       "ProductSchema": {
         "properties": {
           "id": {
-            "type": "integer",
             "title": "Id",
             "readOnly": true
           },
@@ -1265,8 +1282,7 @@
                 "type": "null"
               }
             ],
-            "title": "Email",
-            "default": "Partial PUT does not support default values"
+            "title": "Email"
           }
         },
         "type": "object",
@@ -1275,17 +1291,6 @@
       },
       "UpdateOrderSchema": {
         "properties": {
-          "customer": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/CustomerSchema"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": "Partial PUT does not support default values"
-          },
           "customer_id": {
             "anyOf": [
               {
@@ -1294,8 +1299,7 @@
               {
                 "type": "null"
               }
-            ],
-            "default": "Partial PUT does not support default values"
+            ]
           },
           "products": {
             "anyOf": [
@@ -1309,8 +1313,7 @@
                 "type": "null"
               }
             ],
-            "title": "Products",
-            "default": "Partial PUT does not support default values"
+            "title": "Products"
           }
         },
         "type": "object",
@@ -1328,8 +1331,7 @@
                 "type": "null"
               }
             ],
-            "title": "Name",
-            "default": "Partial PUT does not support default values"
+            "title": "Name"
           },
           "price": {
             "anyOf": [
@@ -1340,8 +1342,7 @@
                 "type": "null"
               }
             ],
-            "title": "Price",
-            "default": "Partial PUT does not support default values"
+            "title": "Price"
           },
           "orders": {
             "anyOf": [
@@ -1355,8 +1356,7 @@
                 "type": "null"
               }
             ],
-            "title": "Orders",
-            "default": "Partial PUT does not support default values"
+            "title": "Orders"
           }
         },
         "type": "object",

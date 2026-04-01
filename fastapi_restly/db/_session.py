@@ -1,4 +1,5 @@
-from typing import Annotated, Any, AsyncIterator, Iterator, cast
+from collections.abc import AsyncIterator, Callable, Iterator
+from typing import Annotated, Any, cast
 
 from fastapi import Depends
 from sqlalchemy import Engine, create_engine
@@ -7,7 +8,6 @@ from sqlalchemy.ext.asyncio import AsyncSession as SA_AsyncSession
 from sqlalchemy.orm import Session as SA_Session
 from sqlalchemy.orm import sessionmaker
 
-from .._settings import settings
 from ._globals import fr_globals
 
 try:
@@ -26,28 +26,16 @@ else:
     json_serializer = orjson_serializer
 
 
-def setup_async_database_connection(
+def _setup_async_database_connection(
     async_database_url: str | None = None,
     *,
     async_engine: AsyncEngine | None = None,
     async_make_session: async_sessionmaker | None = None,
 ) -> async_sessionmaker:
-    """Create and set an async session maker. Returns the session maker."""
-    if (
-        async_database_url is None
-        and async_engine is None
-        and async_make_session is None
-    ):
-        async_database_url = settings.async_database_url
-
     if not async_make_session:
         if not async_engine:
-            if not async_database_url:
-                raise Exception(
-                    "set_sessionmaker() requires either `async_database_url`, `async_engine`, or `async_make_session` as argument"
-                )
             async_engine = create_async_engine(
-                async_database_url,
+                async_database_url,  # type: ignore[arg-type]
                 json_serializer=json_serializer,
                 json_deserializer=json_deserializer,
             )
@@ -57,29 +45,19 @@ def setup_async_database_connection(
 
     fr_globals.async_database_url = async_database_url
     fr_globals.async_make_session = async_make_session
-    if async_database_url:
-        settings.async_database_url = async_database_url
     return async_make_session
 
 
-def setup_database_connection(
+def _setup_database_connection(
     database_url: str | None = None,
     *,
     engine: Engine | None = None,
     make_session: sessionmaker | None = None,
 ) -> sessionmaker:
-    """Create and set a sync session maker. Returns the session maker."""
-    if database_url is None and engine is None and make_session is None:
-        database_url = settings.database_url
-
     if make_session is None:
         if engine is None:
-            if not database_url:
-                raise Exception(
-                    "setup_database_connection() requires either `database_url`, `engine`, or `make_session` as argument"
-                )
             engine = create_engine(
-                database_url,
+                database_url,  # type: ignore[arg-type]
                 json_serializer=json_serializer,
                 json_deserializer=json_deserializer,
             )
@@ -87,9 +65,46 @@ def setup_database_connection(
 
     fr_globals.database_url = database_url
     fr_globals.make_session = make_session
-    if database_url:
-        settings.database_url = database_url
     return make_session
+
+
+def configure(
+    *,
+    async_database_url: str | None = None,
+    async_engine: AsyncEngine | None = None,
+    async_make_session: async_sessionmaker | None = None,
+    database_url: str | None = None,
+    engine: Engine | None = None,
+    make_session: sessionmaker | None = None,
+    session_generator: Callable[[], AsyncIterator[SA_AsyncSession]] | None = None,
+    sync_session_generator: Callable[[], Iterator[SA_Session]] | None = None,
+) -> None:
+    """Configure FastAPI-Restly. Call once at startup.
+
+    Pass async parameters (``async_database_url``, ``async_engine``, or
+    ``async_make_session``) to enable async support, sync parameters
+    (``database_url``, ``engine``, or ``make_session``) for sync support,
+    or both if your application uses both.
+
+    Use ``session_generator`` / ``sync_session_generator`` to plug in a
+    custom session factory instead of the built-in one.
+    """
+    if async_database_url is not None or async_engine is not None or async_make_session is not None:
+        _setup_async_database_connection(
+            async_database_url=async_database_url,
+            async_engine=async_engine,
+            async_make_session=async_make_session,
+        )
+    if database_url is not None or engine is not None or make_session is not None:
+        _setup_database_connection(
+            database_url=database_url,
+            engine=engine,
+            make_session=make_session,
+        )
+    if session_generator is not None:
+        fr_globals.session_generator = session_generator
+    if sync_session_generator is not None:
+        fr_globals.sync_session_generator = sync_session_generator
 
 
 def activate_savepoint_only_mode(
@@ -102,6 +117,11 @@ def activate_savepoint_only_mode(
     https://docs.sqlalchemy.org/en/20/orm/session_transaction.html#session-external-transaction
     """
     engine = _get_sync_engine(make_session)
+
+    # Check if already activated (look for the marker attribute we set)
+    if hasattr(engine.connect, "_original_connect"):
+        return  # Already activated, skip
+
     original_connect = engine.connect
 
     def _begin_on_connect():
@@ -126,9 +146,29 @@ def deactivate_savepoint_only_mode(
     engine = _get_sync_engine(make_session)
     _begin_on_connect = cast(Any, engine.connect)
     if hasattr(_begin_on_connect, "_original_connect"):
+        # Restore the original connect that was saved by activate_savepoint_only_mode
         engine.connect = _begin_on_connect._original_connect
+    # If engine was never activated, there is nothing to restore; this is safe to call
 
     make_session.configure(join_transaction_mode=None)
+
+
+def get_async_engine() -> AsyncEngine:
+    """Return the async engine registered via configure()."""
+    if fr_globals.async_make_session is None:
+        raise RuntimeError(
+            "Call fr.configure() before using get_async_engine()."
+        )
+    return fr_globals.async_make_session.kw["bind"]
+
+
+def get_engine() -> Engine:
+    """Return the sync engine registered via configure()."""
+    if fr_globals.make_session is None:
+        raise RuntimeError(
+            "Call fr.configure() before using get_engine()."
+        )
+    return fr_globals.make_session.kw["bind"]
 
 
 def _get_sync_engine(make_session: async_sessionmaker | sessionmaker) -> Engine:
@@ -140,8 +180,8 @@ def _get_sync_engine(make_session: async_sessionmaker | sessionmaker) -> Engine:
 
 async def async_generate_session() -> AsyncIterator[SA_AsyncSession]:
     """FastAPI dependency for async database session."""
-    if settings.session_generator is not None:
-        async for session in settings.session_generator():
+    if fr_globals.session_generator is not None:
+        async for session in fr_globals.session_generator():
             yield session
         return
 
@@ -150,7 +190,11 @@ async def async_generate_session() -> AsyncIterator[SA_AsyncSession]:
     async with fr_globals.async_make_session() as session:
         yield session
         if session.is_active:
-            await session.commit()
+            try:
+                await session.commit()
+            except Exception:
+                await session.rollback()
+                raise
 
 
 AsyncSessionDep = Annotated[SA_AsyncSession, Depends(async_generate_session)]
@@ -158,14 +202,18 @@ AsyncSessionDep = Annotated[SA_AsyncSession, Depends(async_generate_session)]
 
 def generate_session() -> Iterator[SA_Session]:
     """FastAPI dependency for sync database session."""
-    if settings.sync_session_generator is not None:
-        yield from settings.sync_session_generator()
+    if fr_globals.sync_session_generator is not None:
+        yield from fr_globals.sync_session_generator()
         return
 
     with fr_globals.make_session() as session:
         yield session
         if session.is_active:
-            session.commit()
+            try:
+                session.commit()
+            except Exception:
+                session.rollback()
+                raise
 
 
 SessionDep = Annotated[SA_Session, Depends(generate_session)]

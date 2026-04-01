@@ -184,24 +184,11 @@ For generated CRUD endpoints:
 | `fr.Session` | Deprecated alias for `FRSession`. |
 | `fr.AsyncSessionDep` | FastAPI `Depends`-compatible async session dependency. |
 | `fr.SessionDep` | FastAPI `Depends`-compatible sync session dependency. |
-| `fr.setup_async_database_connection(async_engine)` | Configure the framework with an async SQLAlchemy engine. |
-| `fr.setup_database_connection(engine)` | Configure the framework with a sync SQLAlchemy engine. |
+| `fr.configure(async_database_url=..., ...)` | Configure the framework. Accepts async/sync URLs, engines, or session makers. |
 | `fr.activate_savepoint_only_mode()` | Wrap the session in a savepoint so test data never commits. |
 | `fr.deactivate_savepoint_only_mode()` | Restore normal session behavior. |
 | `fr.use_fr_globals(globals_obj)` | Context manager that swaps the global state for test isolation. |
 | `fr.get_fr_globals()` | Return the current `FRGlobals` instance (engine, session factory, etc.). |
-
-### Settings
-
-`fr.settings` is a `pydantic-settings` instance that reads from environment variables
-prefixed with `FASTAPI_RESTLY_`:
-
-| Setting | Env var | Default |
-|---|---|---|
-| `async_database_url` | `FASTAPI_RESTLY_ASYNC_DATABASE_URL` | `sqlite+aiosqlite:///:memory:` |
-| `database_url` | `FASTAPI_RESTLY_DATABASE_URL` | `sqlite+pysqlite:///:memory:` |
-| `session_generator` | — | `None` (use built-in generator) |
-| `sync_session_generator` | — | `None` (use built-in generator) |
 
 ## Minimal Example
 
@@ -213,7 +200,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.orm import Mapped
 
 engine = create_async_engine("sqlite+aiosqlite:///app.db")
-fr.setup_async_database_connection(async_engine=engine)
+fr.configure(async_engine=engine)
 app = FastAPI()
 
 class User(fr.IDBase):

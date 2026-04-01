@@ -5,3 +5,4 @@ Models API
    :members:
    :undoc-members:
    :show-inheritance:
+   :exclude-members: utc_now, underscore, CASCADE_ALL_ASYNC, CASCADE_ALL_DELETE_ORPHAN_ASYNC, PlainTimestampsMixin, TableNameMixin

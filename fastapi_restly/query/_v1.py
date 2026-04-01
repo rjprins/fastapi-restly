@@ -1,9 +1,8 @@
 import functools
 from collections import defaultdict
-from types import UnionType
-from typing import Any, Callable, Iterator, Optional, Union, cast, get_args, get_origin
+from typing import Any, Callable, Iterator, Optional, cast
 
-from ._shared import _escape_like_value
+from ._shared import _escape_like_value, _unwrap_optional_annotation
 
 import pydantic
 import sqlalchemy
@@ -100,26 +99,20 @@ def _iter_fields_including_nested(
 
 def _is_string_field(field: FieldInfo) -> bool:
     """Check if a field is a string type."""
-    annotation = field.annotation
-
-    # Handle Optional[str] (i.e., Union[str, None]) — both new-style (str | None)
-    # and typing.Optional[str] / typing.Union[str, None]
-    origin = get_origin(annotation)
-    if origin in (UnionType, Union):
-        args = get_args(annotation)
-        non_none_args = [arg for arg in args if arg is not type(None)]
-        if len(non_none_args) == 1:
-            annotation = non_none_args[0]
-
+    annotation = _unwrap_optional_annotation(field.annotation)
     return annotation is str
 
 
 def apply_pagination(query_params: QueryParams, select_query: Select) -> Select:
     limit = _get_int(query_params, "limit")
     if limit is not None:
+        if limit < 0:
+            raise HTTPException(400, "Invalid value for URL query parameter limit: must be non-negative")
         select_query = select_query.limit(limit)
     offset = _get_int(query_params, "offset")
     if offset is not None:
+        if offset < 0:
+            raise HTTPException(400, "Invalid value for URL query parameter offset: must be non-negative")
         select_query = select_query.offset(offset)
     return select_query
 
@@ -356,15 +349,7 @@ def _get_nested_schema(field: FieldInfo | None) -> SchemaType | None:
     if field is None:
         return None
 
-    annotation = field.annotation
-
-    # Handle Optional[NestedModel] (i.e., Union[NestedModel, None])
-    origin = get_origin(annotation)
-    if origin in (UnionType, Union):
-        args = get_args(annotation)
-        non_none_args = [arg for arg in args if arg is not type(None)]
-        if len(non_none_args) == 1:
-            annotation = non_none_args[0]
+    annotation = _unwrap_optional_annotation(field.annotation)
 
     if isinstance(annotation, type) and issubclass(annotation, pydantic.BaseModel):
         return annotation

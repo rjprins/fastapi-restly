@@ -1,3 +1,5 @@
+import json
+
 import httpx
 from fastapi.testclient import TestClient
 
@@ -20,43 +22,63 @@ class RestlyTestClient(TestClient):
         # Raise AssertionError with detailed error message
         try:
             response_content = response.json()
-            content_str = f"Response JSON: {response_content}"
+        except (ValueError, TypeError, json.JSONDecodeError):
+            response_content = response.content.decode(errors="ignore")
+
+        content_str_raw = str(response_content)
+        if len(content_str_raw) > 1000:
+            content_str_raw = content_str_raw[:1000] + "...(truncated)"
+        content_str = f"Response JSON: {content_str_raw}"
+
+        # Safe method/URL extraction
+        try:
+            method = response.request.method.upper()
+            url = str(response.request.url)
+            request_info = f"{method} {url}"
         except Exception:
-            content_str = (
-                f"Response content: {response.content.decode(errors='ignore')}"
-            )
-        # TODO: Make this more robust: response.request can fail
+            request_info = "(request info unavailable)"
+
         raise AssertionError(
-            f"Expected {response.request.method.upper()} to return {expected_code}, got {status_code}\n"
+            f"Expected {request_info} to return {expected_code}, got {status_code}\n"
             f"{content_str}"
         )
 
-    def get(self, *args, assert_status_code: int = 200, **kwargs):
+    def get(self, url: str, *, assert_status_code: int | None = 200, **kwargs) -> httpx.Response:
+        """Make a GET request. Asserts the response status code matches `assert_status_code` (default: 200).
+        Pass `assert_status_code=None` to skip the assertion."""
         __tracebackhide__ = True
-        response = super().get(*args, **kwargs)
+        response = super().get(url, **kwargs)
         self.assert_status(response, assert_status_code)
         return response
 
-    def post(self, *args, assert_status_code: int = 201, **kwargs):
+    def post(self, url: str, *, assert_status_code: int | None = 201, **kwargs) -> httpx.Response:
+        """Make a POST request. Asserts the response status code matches `assert_status_code` (default: 201).
+        Pass `assert_status_code=None` to skip the assertion."""
         __tracebackhide__ = True
-        response = super().post(*args, **kwargs)
+        response = super().post(url, **kwargs)
         self.assert_status(response, assert_status_code)
         return response
 
-    def put(self, *args, assert_status_code: int = 200, **kwargs):
+    def put(self, url: str, *, assert_status_code: int | None = 200, **kwargs) -> httpx.Response:
+        """Make a PUT request. Asserts the response status code matches `assert_status_code` (default: 200).
+        Pass `assert_status_code=None` to skip the assertion."""
         __tracebackhide__ = True
-        response = super().put(*args, **kwargs)
+        response = super().put(url, **kwargs)
         self.assert_status(response, assert_status_code)
         return response
 
-    def patch(self, *args, assert_status_code: int = 200, **kwargs):
+    def patch(self, url: str, *, assert_status_code: int | None = 200, **kwargs) -> httpx.Response:
+        """Make a PATCH request. Asserts the response status code matches `assert_status_code` (default: 200).
+        Pass `assert_status_code=None` to skip the assertion."""
         __tracebackhide__ = True
-        response = super().patch(*args, **kwargs)
+        response = super().patch(url, **kwargs)
         self.assert_status(response, assert_status_code)
         return response
 
-    def delete(self, *args, assert_status_code: int = 204, **kwargs):
+    def delete(self, url: str, *, assert_status_code: int | None = 204, **kwargs) -> httpx.Response:
+        """Make a DELETE request. Asserts the response status code matches `assert_status_code` (default: 204).
+        Pass `assert_status_code=None` to skip the assertion."""
         __tracebackhide__ = True
-        response = super().delete(*args, **kwargs)
+        response = super().delete(url, **kwargs)
         self.assert_status(response, assert_status_code)
         return response

@@ -67,9 +67,7 @@
             "required": false,
             "schema": {
               "anyOf": [
-                {
-                  "type": "integer"
-                },
+                {},
                 {
                   "type": "null"
                 }
@@ -323,7 +321,6 @@
       "BlogSchema": {
         "properties": {
           "id": {
-            "type": "integer",
             "title": "Id",
             "readOnly": true
           },

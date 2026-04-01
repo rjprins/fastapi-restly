@@ -21,12 +21,12 @@ from starlette.middleware.cors import CORSMiddleware
 
 import fastapi_restly as fr
 
-fr.setup_async_database_connection(async_database_url="sqlite+aiosqlite:///shop.db")
+fr.configure(async_database_url="sqlite+aiosqlite:///shop.db")
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    engine = fr.FRAsyncSession.kw["bind"]
+    engine = fr.get_async_engine()
     async with engine.connect() as conn:
         await conn.run_sync(fr.DataclassBase.metadata.create_all)
     yield
@@ -90,12 +90,10 @@ class ProductSchema(fr.IDSchema):
 
 
 class OrderSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
-    # Example of embedded schema
-    customer: CustomerSchema
+    # Example of embedded schema — read-only because it's resolved from customer_id
+    customer: fr.ReadOnly[CustomerSchema | None]
     customer_id: fr.IDSchema[Customer]
     products: list[fr.IDSchema[Product]]
-    # Example of field-level read-only using the ReadOnly syntax
-    internal_notes: fr.ReadOnly[str]
 
 
 @fr.include_view(app)
@@ -110,6 +108,7 @@ class ProductView(fr.AsyncAlchemyView):
     prefix = "/products"
     model = Product
     schema = ProductSchema
+    id_type = UUID
 
 
 @fr.include_view(app)

@@ -10,7 +10,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from datetime import datetime
 
 # Setup database
-fr.setup_async_database_connection("sqlite+aiosqlite:///example_v2.db")
+fr.configure(async_database_url="sqlite+aiosqlite:///example_v2.db")
 
 app = FastAPI()
 

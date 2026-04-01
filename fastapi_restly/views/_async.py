@@ -19,15 +19,15 @@ from ._base import BaseAlchemyView, delete, get, patch, post
 
 class AsyncAlchemyView(BaseAlchemyView):
     """
-    AsyncAlchemyView creates a CRUD/REST interface for database objects.
-    Basic usage:
+    AsyncAlchemyView creates an async CRUD/REST interface for database objects.
+    Basic usage::
 
-    class FooView:
-        prefix = "/foo"
-        schema = FooSchema
-        model = Foo
+        class FooView(AsyncAlchemyView):
+            prefix = "/foo"
+            schema = FooSchema
+            model = Foo
 
-    Where `Foo` is a SQLAlchemy model and `FooSchema` a Pydantic model.
+    Where ``Foo`` is a SQLAlchemy model and ``FooSchema`` a Pydantic model.
     """
 
     session: AsyncSessionDep

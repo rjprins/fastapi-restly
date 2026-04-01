@@ -1,14 +1,15 @@
 # Database layer
 from .db import (
     AsyncSessionDep,
-    FRAsyncSession,
-    FRSession,
     SessionDep,
     activate_savepoint_only_mode,
+    async_session,
     deactivate_savepoint_only_mode,
+    get_async_engine,
+    get_engine,
     get_fr_globals,
-    setup_async_database_connection,
-    setup_database_connection,
+    session,
+    configure,
     use_fr_globals,
 )
 
@@ -52,9 +53,6 @@ from .schemas import (
     resolve_ids_to_sqlalchemy_objects,
 )
 
-# Settings
-from ._settings import settings
-
 # Views
 from .views import (
     AlchemyView,
@@ -74,17 +72,20 @@ from .views import (
 )
 
 __all__ = [
-    # Database
-    "FRAsyncSession",
-    "FRSession",
+    # Database — session context managers
+    "async_session",
+    "session",
+    # Database — FastAPI dependencies
     "AsyncSessionDep",
     "SessionDep",
-    # Database utilities
+    # Database — engine access
+    "get_async_engine",
+    "get_engine",
+    # Database — setup & utilities
+    "configure",
     "activate_savepoint_only_mode",
     "deactivate_savepoint_only_mode",
     "get_fr_globals",
-    "setup_async_database_connection",
-    "setup_database_connection",
     "use_fr_globals",
     # Models
     "DataclassBase",
@@ -117,8 +118,6 @@ __all__ = [
     "auto_generate_schema_for_view",
     "create_schema_from_model",
     "resolve_ids_to_sqlalchemy_objects",
-    # Settings
-    "settings",
     # Views
     "AlchemyView",
     "AsyncAlchemyView",

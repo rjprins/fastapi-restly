@@ -1,6 +1,6 @@
 import types
 from datetime import datetime
-from typing import Annotated, Any, Generic, Optional, TypeVar, get_args, get_origin
+from typing import Annotated, Any, Generic, Optional, TypeVar, Union, get_args, get_origin
 
 from fastapi import HTTPException
 import pydantic
@@ -230,13 +230,21 @@ def _is_readonly(field_info: FieldInfo | None) -> bool:
     return readonly_marker in metadata
 
 
+def _is_writeonly(field_info: FieldInfo | None) -> bool:
+    if field_info is None:
+        return False
+    metadata = getattr(field_info, "metadata", None)
+    if not metadata:
+        return False
+    return writeonly_marker in metadata
+
+
 def get_write_only_fields(model_cls: type[pydantic.BaseModel]) -> list[str]:
     """Get all fields from a model annotated as WriteOnly[]"""
     write_only_fields: list[str] = []
     # Get write-only fields from Annotated metadata
     for field_name, field_info in model_cls.model_fields.items():
-        metadata = getattr(field_info, "metadata", None)
-        if metadata and writeonly_marker in metadata:
+        if _is_writeonly(field_info):
             write_only_fields.append(field_name)
     return write_only_fields
 
@@ -246,12 +254,7 @@ def is_field_writeonly(model_cls: pydantic.BaseModel | type[pydantic.BaseModel],
     if isinstance(model_cls, pydantic.BaseModel):
         model_cls = model_cls.__class__
     field_info = model_cls.model_fields.get(field_name)
-    if field_info is None:
-        return False
-    metadata = getattr(field_info, "metadata", None)
-    if not metadata:
-        return False
-    return writeonly_marker in metadata
+    return _is_writeonly(field_info)
 
 
 def create_model_without_read_only_fields(
@@ -340,25 +343,22 @@ class PatchMixin(pydantic.BaseModel):
 
         for field in cls.model_fields.values():
             field.default = None
-            field.annotation = Optional[field.annotation]
+            # Only wrap if not already Optional, to avoid Optional[Optional[T]]
+            annotation = field.annotation
+            if isinstance(annotation, types.UnionType):
+                # Python 3.10+ `X | Y` syntax - check if None is already a member.
+                # Convert to typing.Optional form so FieldInfo.annotation stays compatible.
+                union_args = get_args(annotation)
+                if type(None) not in union_args:
+                    non_none = [a for a in union_args if a is not type(None)]
+                    inner = non_none[0] if len(non_none) == 1 else Union[tuple(non_none)]
+                    field.annotation = Optional[inner]  # type: ignore[assignment]
+            else:
+                origin = getattr(annotation, "__origin__", None)
+                if origin is not Union or type(None) not in get_args(annotation):
+                    field.annotation = Optional[annotation]  # type: ignore[assignment]
 
         cls.model_rebuild(force=True)
-
-
-def _get_writable_field_definitions(
-    model_cls: type[pydantic.BaseModel],
-) -> dict[str, tuple[Any, Any]]:
-    """
-    Return fields from a Pydantic model that are not mentioned in `read_only_fields`.
-    Field definitions are returned in the form suitable for `pydantic.create_model()`.
-    See https://docs.pydantic.dev/latest/api/base_model/#pydantic.create_model
-    """
-    read_only_fields = get_read_only_fields(model_cls)
-    writable_fields: dict[str, tuple[Any, Any]] = {}
-    for field_name, field_info in model_cls.model_fields.items():
-        if field_name not in read_only_fields:
-            writable_fields[field_name] = (field_info.annotation, field_info)
-    return writable_fields
 
 
 def getattrs(obj: Any, *attrs: str, default: Any = None) -> Any:

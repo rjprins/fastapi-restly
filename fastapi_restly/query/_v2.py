@@ -1,9 +1,8 @@
 import functools
-import types
 from collections import defaultdict
-from typing import Any, Callable, Iterator, Optional, Union, cast, get_args, get_origin
+from typing import Any, Callable, Iterator, Optional, cast
 
-from ._shared import _escape_like_value
+from ._shared import _escape_like_value, _unwrap_optional_annotation
 
 import pydantic
 import sqlalchemy
@@ -16,17 +15,6 @@ from sqlalchemy.orm.properties import ColumnProperty
 from starlette.datastructures import QueryParams
 
 SchemaType = type[pydantic.BaseModel]
-
-
-def _unwrap_optional_annotation(annotation: Any) -> Any:
-    origin = get_origin(annotation)
-    if origin not in (types.UnionType, Union):
-        return annotation
-
-    non_none_args = [arg for arg in get_args(annotation) if arg is not type(None)]
-    if len(non_none_args) == 1:
-        return non_none_args[0]
-    return annotation
 
 
 def _is_string_field_v2(field: FieldInfo) -> bool:
@@ -51,6 +39,7 @@ def create_query_param_schema_v2(schema_cls: SchemaType) -> SchemaType:
         # Add range filters
         for suffix in ["__gte", "__lte", "__gt", "__lt"]:
             fields[f"{name}{suffix}"] = (Optional[field_type], None)
+        fields[f"{name}__ne"] = (Optional[field_type], None)
         fields[f"{name}__isnull"] = (Optional[bool], None)
 
         # Add contains filter for string fields
@@ -98,7 +87,11 @@ def apply_pagination_v2(
     Apply pagination using page and page_size parameters.
     """
     page = _get_int_v2(query_params, "page") or 1
+    if page < 1:
+        raise HTTPException(400, "Invalid value for URL query parameter page: must be >= 1")
     page_size = _get_int_v2(query_params, "page_size") or 100
+    if page_size <= 0:
+        raise HTTPException(400, "Invalid value for URL query parameter page_size: must be > 0")
     offset = (page - 1) * page_size
     select_query = select_query.limit(page_size).offset(offset)
     return select_query
@@ -362,7 +355,7 @@ def _apply_suffix_parameters_v2(
 
         # For contains, split by whitespace; for other operators, split by comma
         if op == "contains":
-            split_values = raw_value.split()
+            split_values = [v for v in raw_value.split() if v.strip()]
         else:
             split_values = raw_value.split(",")
         clauses = [_make_where_clause_v2(column, v, op, parser) for v in split_values]

@@ -8,9 +8,8 @@ from fastapi_restly import (
     IDBase,
     IDSchema,
     TimestampsMixin,
+    configure,
     include_view,
-    setup_async_database_connection,
-    settings,
 )
 from fastapi_restly import schemas
 from fastapi_restly import models as sqlbase
@@ -23,8 +22,7 @@ def test_imports_work():
     assert fd.IDSchema is not None
     assert fd.TimestampsMixin is not None
     assert fd.include_view is not None
-    assert fd.setup_async_database_connection is not None
-    assert fd.settings is not None
+    assert fd.configure is not None
     assert fd.DataclassBase is not None
 
 

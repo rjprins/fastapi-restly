@@ -1,5 +1,6 @@
 site/
 build/
+dist/
 *.egg-info/
 *.db
 

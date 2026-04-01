@@ -1,48 +1,38 @@
 from ._globals import FRGlobals, fr_globals, get_fr_globals, use_fr_globals
-from ._proxy import (
-    AsyncSession,
-    AsyncSessionProxy,
-    FRAsyncSession,
-    FRAsyncSessionProxy,
-    FRSession,
-    FRSessionProxy,
-    Session,
-    SessionProxy,
-)
+from ._proxy import async_session, session
 from ._session import (
     AsyncSessionDep,
     SessionDep,
     activate_savepoint_only_mode,
     async_generate_session,
+    configure,
     deactivate_savepoint_only_mode,
     generate_session,
-    setup_async_database_connection,
-    setup_database_connection,
+    get_async_engine,
+    get_engine,
 )
 
 __all__ = [
-    # New names (preferred)
-    "FRAsyncSession",
-    "FRAsyncSessionProxy",
-    "FRSession",
-    "FRSessionProxy",
+    # Session context managers
+    "async_session",
+    "session",
     # Dependencies
     "AsyncSessionDep",
     "SessionDep",
-    # Backwards compatibility (deprecated)
-    "AsyncSession",
-    "AsyncSessionProxy",
-    "Session",
-    "SessionProxy",
-    # Other exports
-    "FRGlobals",
+    # Engine access
+    "get_async_engine",
+    "get_engine",
+    # Setup
+    "configure",
+    # Savepoint mode
     "activate_savepoint_only_mode",
-    "async_generate_session",
     "deactivate_savepoint_only_mode",
+    # Globals
+    "FRGlobals",
     "fr_globals",
     "get_fr_globals",
-    "generate_session",
-    "setup_async_database_connection",
-    "setup_database_connection",
     "use_fr_globals",
+    # Internal generators (for custom session_generator settings)
+    "async_generate_session",
+    "generate_session",
 ]

@@ -69,7 +69,7 @@ class UserView(fr.AsyncAlchemyView):
         return schema.model_validate(user, from_attributes=True).model_dump()
 
     @fr.get("/me", response_model=UserSchema)
-    async def get_current_user(self) -> User:
+    async def get_current_user(self) -> Any:
         """Get current user's profile."""
         from fastapi import HTTPException
 
@@ -78,10 +78,10 @@ class UserView(fr.AsyncAlchemyView):
         user = await self.session.get(User, user_id)
         if not user:
             raise HTTPException(status_code=404, detail="Current user not found")
-        return user
+        return self.to_response_schema(user)
 
     @fr.patch("/me", response_model=UserSchema)
-    async def update_current_user(self, request: UpdateMeRequest) -> User:
+    async def update_current_user(self, request: UpdateMeRequest) -> Any:
         """Update current user's profile."""
         from fastapi import HTTPException
 
@@ -95,4 +95,5 @@ class UserView(fr.AsyncAlchemyView):
         for key, value in data.items():
             setattr(user, key, value)
 
-        return user
+        user = await self.save_object(user)
+        return self.to_response_schema(user)

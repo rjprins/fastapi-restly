@@ -18,7 +18,7 @@ from fastapi import FastAPI
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 
-fr.setup_async_database_connection("sqlite+aiosqlite:///blog.db")
+fr.configure(async_database_url="sqlite+aiosqlite:///blog.db")
 
 
 class Post(fr.IDBase):

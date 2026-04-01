@@ -15,7 +15,7 @@ pytest_plugins = ["fastapi_restly.testing._fixtures"]
 
 @pytest.fixture(autouse=True)
 def setup_async_db():
-    fr.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
+    fr.configure(async_database_url="sqlite+aiosqlite:///:memory:")
 """
     )
 

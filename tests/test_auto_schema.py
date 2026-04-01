@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from httpx import AsyncClient
 from sqlalchemy import ForeignKey
 from sqlalchemy.types import JSON
-from sqlalchemy.orm import Mapped, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from typing import Union, get_args, get_origin
 
 import fastapi_restly as fd
@@ -22,7 +22,7 @@ def test_auto_generated_schema_in_view(client):
     class User(fd.IDBase):
         name: Mapped[str]
         email: Mapped[str]
-        is_active: Mapped[bool] = fd.mapped_column(default=True)
+        is_active: Mapped[bool] = mapped_column(default=True)
 
     # Create view WITHOUT specifying a schema - it should be auto-generated
     @fd.include_view(client.app)
@@ -60,7 +60,7 @@ def test_auto_generated_schema_with_timestamps(client):
     class Product(fd.IDBase, fd.TimestampsMixin):
         name: Mapped[str]
         price: Mapped[float]
-        description: Mapped[str] = fd.mapped_column(default="")
+        description: Mapped[str] = mapped_column(default="")
 
     # Create view without schema
     @fd.include_view(client.app)
@@ -89,8 +89,8 @@ def test_auto_generated_schema_with_defaults(client):
     # Define a model with defaults
     class Category(fd.IDBase):
         name: Mapped[str]
-        description: Mapped[str] = fd.mapped_column(default="No description")
-        is_active: Mapped[bool] = fd.mapped_column(default=True)
+        description: Mapped[str] = mapped_column(default="No description")
+        is_active: Mapped[bool] = mapped_column(default=True)
 
     # Create view without schema
     @fd.include_view(client.app)
@@ -169,7 +169,7 @@ def test_create_schema_from_model_includes_nested_relationship_schema():
         email: Mapped[str]
 
     class Order(fd.IDBase):
-        user_id: Mapped[int] = fd.mapped_column(ForeignKey("user.id"))
+        user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
         user: Mapped[User] = relationship()
 
     schema = fd.create_schema_from_model(Order, include_relationships=True)
@@ -195,7 +195,7 @@ def test_view_auto_schema_excludes_relationship_fields_by_default(client):
         name: Mapped[str]
 
     class Order(fd.IDBase):
-        user_id: Mapped[int] = fd.mapped_column(ForeignKey("user.id"))
+        user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
         user: Mapped[User] = relationship()
 
     @fd.include_view(client.app)
@@ -211,7 +211,7 @@ def test_view_auto_schema_excludes_relationship_fields_by_default(client):
 
 def test_create_schema_from_model_preserves_json_dict_types():
     class Event(fd.IDBase):
-        payload: Mapped[dict] = fd.mapped_column(JSON)
+        payload: Mapped[dict] = mapped_column(JSON)
 
     schema = fd.create_schema_from_model(Event)
 

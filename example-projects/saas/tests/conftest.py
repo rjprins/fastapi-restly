@@ -4,14 +4,13 @@ from pathlib import Path
 
 import app.main  # noqa: F401
 
-from fastapi_restly.db import FRAsyncSession
+from fastapi_restly.db import get_async_engine
 from fastapi_restly.models import DataclassBase
 
 
 async def _create_tables():
     """Create all tables asynchronously."""
-    async_engine = FRAsyncSession.kw["bind"]
-    async with async_engine.begin() as conn:
+    async with get_async_engine().begin() as conn:
         await conn.run_sync(DataclassBase.metadata.create_all)
 
 

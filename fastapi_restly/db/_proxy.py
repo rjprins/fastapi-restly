@@ -1,78 +1,41 @@
-import contextlib
-from sqlalchemy.ext.asyncio import AsyncSession as SA_AsyncSession, async_sessionmaker
-from sqlalchemy.ext.asyncio.session import _AsyncSessionContextManager
-from sqlalchemy.orm import Session as SA_Session, sessionmaker
+from contextlib import asynccontextmanager, contextmanager
+from typing import AsyncIterator, Iterator
+
+from sqlalchemy.ext.asyncio import AsyncSession as SA_AsyncSession
+from sqlalchemy.orm import Session as SA_Session
 
 from ._globals import fr_globals
 
 
-class FRAsyncSessionProxy:
+@asynccontextmanager
+async def async_session() -> AsyncIterator[SA_AsyncSession]:
+    """Open an async database session for use outside of request context.
+
+    Example::
+
+        async with fr.async_session() as session:
+            result = await session.execute(select(User))
     """
-    Proxy for the global async_sessionmaker.
+    if fr_globals.async_make_session is None:
+        raise RuntimeError(
+            "Call fr.configure() before using async_session()."
+        )
+    async with fr_globals.async_make_session() as sess:
+        yield sess
 
-    This enables consistent global imports, for example::
 
-        from fastapi_restly import FRAsyncSession
-        async with FRAsyncSession() as session:
-            ...
+@contextmanager
+def session() -> Iterator[SA_Session]:
+    """Open a sync database session for use outside of request context.
+
+    Example::
+
+        with fr.session() as session:
+            result = session.execute(select(User))
     """
-
-    def __call__(self) -> SA_AsyncSession:
-        return self._get_async_sessionmaker()()
-
-    def begin(self) -> _AsyncSessionContextManager[SA_AsyncSession]:
-        return self._get_async_sessionmaker().begin()
-
-    @property
-    def kw(self) -> dict:
-        return self._get_async_sessionmaker().kw
-
-    def _get_async_sessionmaker(self) -> async_sessionmaker[SA_AsyncSession]:
-        if fr_globals.async_make_session is None:
-            raise RuntimeError(
-                "Sessionmaker 'FRAsyncSession' is not initialized. "
-                "Call setup_async_database_connection() first."
-            )
-        return fr_globals.async_make_session
-
-
-FRAsyncSession = FRAsyncSessionProxy()
-# Backwards compatibility alias (deprecated)
-AsyncSession = FRAsyncSession
-AsyncSessionProxy = FRAsyncSessionProxy
-
-
-class FRSessionProxy:
-    """
-    Proxy for the global sessionmaker.
-
-    This enables consistent global imports, for example::
-
-        from fastapi_restly import FRSession
-        with FRSession() as session:
-            ...
-    """
-
-    def __call__(self) -> SA_Session:
-        return self._get_sessionmaker()()
-
-    def begin(self) -> contextlib.AbstractContextManager[SA_Session]:
-        return self._get_sessionmaker().begin()
-
-    @property
-    def kw(self) -> dict:
-        return self._get_sessionmaker().kw
-
-    def _get_sessionmaker(self) -> sessionmaker[SA_Session]:
-        if fr_globals.make_session is None:
-            raise RuntimeError(
-                "Sessionmaker 'FRSession' is not initialized. "
-                "Call setup_database_connection() first."
-            )
-        return fr_globals.make_session
-
-
-FRSession = FRSessionProxy()
-# Backwards compatibility aliases (deprecated)
-Session = FRSession
-SessionProxy = FRSessionProxy
+    if fr_globals.make_session is None:
+        raise RuntimeError(
+            "Call fr.configure() before using session()."
+        )
+    with fr_globals.make_session() as sess:
+        yield sess

@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession as SA_AsyncSession
 from sqlalchemy.orm import Session as SA_Session
 
 import alembic
+import alembic.command
 import alembic.config
 
 from ..db import activate_savepoint_only_mode, fr_globals, get_fr_globals
@@ -77,9 +78,16 @@ def _shared_connection():
 @pytest_asyncio.fixture
 async def async_session(_shared_connection) -> AsyncIterator[SA_AsyncSession]:
     """
-    Mock async_make_session and sqlalchemy AsyncSession to always return the same
-    session instance. This fixture ensures test isolation by using savepoints via
-    nested transactions. Commits inside the test won't persist to the DB.
+    Pytest fixture providing a database session with savepoint-based isolation.
+
+    Each test runs inside a savepoint. At the end of the test, the savepoint is
+    rolled back, leaving the database clean for the next test.
+
+    NOTE: Calling session.rollback() inside a test rolls back to the last savepoint
+    (created by each patched commit()), NOT to the start of the test. This differs
+    from production behavior. To undo all changes in a test, use session.rollback()
+    after each commit(), but be aware that data added before the last commit() is
+    still visible.
     """
     # Only run if database connections are set up
     if not fr_globals.async_make_session:
@@ -106,8 +114,14 @@ async def async_session(_shared_connection) -> AsyncIterator[SA_AsyncSession]:
 
             mock_sessionmaker = AsyncMock()
             mock_sessionmaker.side_effect = begin_nested
+            # session.begin() is used as a context manager (async with session.begin():)
+            # We need it to also return our savepoint session so explicit transaction
+            # blocks work correctly with our isolation mechanism
             mock_sessionmaker.begin.return_value.__aenter__.side_effect = begin_nested
-            # TODO: begin.return_value.__aexit__ should flush.
+            # FIXME: begin().__aexit__ should flush pending changes to make them visible
+            # within the test, but currently does not. This may cause visibility issues
+            # when using `async with session.begin(): ...` blocks inside tests.
+            # Impact: changes inside explicit begin() blocks may not be visible after exit.
 
             async def passthrough_exit(self, exc_type, exc_value, traceback):
                 await sess.flush()
@@ -132,8 +146,17 @@ async def async_session(_shared_connection) -> AsyncIterator[SA_AsyncSession]:
 
 @pytest.fixture
 def session(_shared_connection) -> Iterator[SA_Session]:
-    """Use this fixture if you want to use the database in tests.
-    TODO: Describe what this function does exactly
+    """
+    Pytest fixture providing a database session with savepoint-based isolation.
+
+    Each test runs inside a savepoint. At the end of the test, the savepoint is
+    rolled back, leaving the database clean for the next test.
+
+    NOTE: Calling session.rollback() inside a test rolls back to the last savepoint
+    (created by each patched commit()), NOT to the start of the test. This differs
+    from production behavior. To undo all changes in a test, use session.rollback()
+    after each commit(), but be aware that data added before the last commit() is
+    still visible.
     """
     # Only run if database connections are set up
     if not fr_globals.make_session:
@@ -147,8 +170,14 @@ def session(_shared_connection) -> Iterator[SA_Session]:
 
         mock_sessionmaker = MagicMock()
         mock_sessionmaker.side_effect = begin_nested
+        # session.begin() is used as a context manager (with session.begin():)
+        # We need it to also return our savepoint session so explicit transaction
+        # blocks work correctly with our isolation mechanism
         mock_sessionmaker.begin.return_value.__enter__.side_effect = begin_nested
-        # TODO: begin.return_value.__exit__ should flush.
+        # FIXME: begin().__exit__ should flush pending changes to make them visible
+        # within the test, but currently does not. This may cause visibility issues
+        # when using `with session.begin(): ...` blocks inside tests.
+        # Impact: changes inside explicit begin() blocks may not be visible after exit.
 
         def passthrough_exit(self, exc_type, exc_value, traceback):
             sess.flush()

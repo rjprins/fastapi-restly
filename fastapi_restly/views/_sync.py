@@ -61,7 +61,7 @@ def update_object(
     return save_object(session, obj)
 
 
-def save_object(session, obj: DeclarativeBase) -> DeclarativeBase:
+def save_object(session: Session, obj: DeclarativeBase) -> DeclarativeBase:
     session.flush()
     session.refresh(obj)
     return obj
@@ -69,15 +69,15 @@ def save_object(session, obj: DeclarativeBase) -> DeclarativeBase:
 
 class AlchemyView(BaseAlchemyView):
     """
-    AlchemyView creates a CRUD/REST interface for database objects.
-    Basic usage:
+    AlchemyView creates a synchronous CRUD/REST interface for database objects.
+    Basic usage::
 
-    class FooView:
-        prefix = "/foo"
-        schema = FooSchema
-        model = Foo
+        class FooView(AlchemyView):
+            prefix = "/foo"
+            schema = FooSchema
+            model = Foo
 
-    Where `Foo` is a SQLAlchemy model and `FooSchema` a Pydantic model.
+    Where ``Foo`` is a SQLAlchemy model and ``FooSchema`` a Pydantic model.
     """
 
     session: SessionDep  # type: ignore[reportIncompatibleVariableOverride]
@@ -101,9 +101,9 @@ class AlchemyView(BaseAlchemyView):
         Accepts a query argument that can be used for narrowing down the selection.
         Feel free to override this method, e.g.:
 
-            def process_index(self, query=None):
+            def process_index(self, query_params, query=None):
                 query = make_my_query()
-                objs = super().process_index(query)
+                objs = super().process_index(query_params, query)
                 return add_my_info(objs)
         """
         if query is None:

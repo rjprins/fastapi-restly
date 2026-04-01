@@ -43,12 +43,12 @@ def reset_metadata():
 
 @pytest.fixture(autouse=True)
 def setup_database_connection():
-    fd.setup_async_database_connection("sqlite+aiosqlite:///:memory:")
+    fd.configure(async_database_url="sqlite+aiosqlite:///:memory:")
 
 
 def create_tables():
     async def create_tables():
-        engine = fd.FRAsyncSession.kw["bind"]
+        engine = fd.get_async_engine()
         async with engine.begin() as conn:
             await conn.run_sync(fd.DataclassBase.metadata.create_all)
 

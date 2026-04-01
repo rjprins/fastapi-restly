@@ -199,7 +199,7 @@ class TaskView(fr.AsyncAlchemyView):
         # Increment version
         task.version += 1
 
-        return task
+        return await self.save_object(task)
 
     @fr.post("/bulk", response_model=BulkResult)
     async def bulk_create(self, request: BulkCreateRequest) -> BulkResult:

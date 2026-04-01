@@ -14,7 +14,7 @@ from sqlalchemy.orm import Mapped
 app = FastAPI()
 
 # Setup database
-fr.setup_async_database_connection("sqlite+aiosqlite:///app.db")
+fr.configure(async_database_url="sqlite+aiosqlite:///app.db")
 
 # Define your models
 class User(fr.IDBase):

@@ -28,7 +28,7 @@ from fastapi import FastAPI
 from sqlalchemy.orm import Mapped
 
 DATABASE_URL = "sqlite+aiosqlite:///app.db"
-fr.setup_async_database_connection(async_database_url=DATABASE_URL)
+fr.configure(async_database_url=DATABASE_URL)
 
 
 @asynccontextmanager

@@ -180,7 +180,7 @@ wheels = [
 
 [[package]]
 name = "fastapi-restly"
-version = "0.5"
+version = "1.0"
 source = { editable = "../../" }
 dependencies = [
     { name = "alembic" },
@@ -206,6 +206,7 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "aiosqlite", specifier = ">=0.21.0" },
+    { name = "furo", specifier = ">=2025.12.19" },
     { name = "ghp-import", specifier = ">=2.1.0" },
     { name = "ipython", specifier = ">=8.36.0" },
     { name = "myst-parser", specifier = ">=4.0.1" },

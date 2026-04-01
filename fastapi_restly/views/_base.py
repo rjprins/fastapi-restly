@@ -272,7 +272,9 @@ def put(path: str, **api_route_kwargs: Any) -> Callable[..., Any]:
 
     Equivalent to::
 
-        @route(path, methods=["PUT"], status_code=200, ... )
+        @route(path, methods=["PUT"], ... )
+
+    No default status code is set; FastAPI will use 200 if none is specified.
     """
     api_route_kwargs.setdefault("methods", ["PUT"])
     return route(path, **api_route_kwargs)
@@ -283,7 +285,9 @@ def patch(path: str, **api_route_kwargs: Any) -> Callable[..., Any]:
 
     Equivalent to::
 
-        @route(path, methods=["PATCH"], status_code=200, ... )
+        @route(path, methods=["PATCH"], ... )
+
+    No default status code is set; FastAPI will use 200 if none is specified.
     """
     api_route_kwargs.setdefault("methods", ["PATCH"])
     return route(path, **api_route_kwargs)
@@ -317,9 +321,9 @@ class BaseAlchemyView(View):
     update_schema: ClassVar[type[BaseSchema]]
     model: ClassVar[type[DeclarativeBase]]
     id_type: ClassVar[type[Any]] = int
-    include_pagination_metadata: ClassVar[bool] = False
+    include_pagination_metadata: ClassVar[bool] = False  # Set True to include count/total in list responses
     exclude_routes: ClassVar[tuple[str, ...]] = ()
-    query_modifier_version: ClassVar[QueryModifierVersion]
+    query_modifier_version: ClassVar[QueryModifierVersion]  # Controls V1 vs V2 query parameter style; defaults to global setting
 
     request: fastapi.Request
 
@@ -424,7 +428,7 @@ class BaseAlchemyView(View):
         # Auto-generate schema if none is provided
         if not hasattr(cls, "schema"):
             if not hasattr(cls, "model"):
-                raise Exception(
+                raise ValueError(
                     f"'{cls.__name__}.model' must be specified to auto-generate schema"
                 )
             cls.schema = auto_generate_schema_for_view(cls, cls.model)
@@ -481,9 +485,11 @@ def _exclude_routes(cls: type[View]):
         # By removing it from the method, the method will no longer be added as a route.
         try:
             view_func = getattr(cls, method_name)
-            del view_func._api_route_args
         except AttributeError:
-            raise AttributeError(f"{method_name!r} is not a route on {cls}")
+            raise AttributeError(f"{method_name!r} is not a route on {cls.__name__}")
+        if not hasattr(view_func, "_api_route_args"):
+            raise AttributeError(f"{method_name!r} is not a route on {cls.__name__}")
+        del view_func._api_route_args
 
 
 def _init_view_cls_and_add_to_router(

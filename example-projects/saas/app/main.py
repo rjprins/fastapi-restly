@@ -17,9 +17,7 @@ from .models import Organization, User, Project, Task, Label, TaskLabel
 from .views import OrganizationView, UserView, ProjectView, TaskView, LabelView, TaskLabelView
 
 # Set up database connection
-fr.setup_async_database_connection(
-    async_database_url="sqlite+aiosqlite:///saas.db"
-)
+fr.configure(async_database_url="sqlite+aiosqlite:///saas.db")
 
 # Create FastAPI app
 app = FastAPI(

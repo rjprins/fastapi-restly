@@ -1,6 +1,6 @@
+from collections.abc import AsyncIterator, Callable, Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
-from typing import Iterator
 
 from sqlalchemy.ext.asyncio import AsyncSession as SA_AsyncSession
 from sqlalchemy.ext.asyncio import async_sessionmaker
@@ -9,10 +9,29 @@ from sqlalchemy.orm import sessionmaker
 
 
 class FRGlobals:
-    async_database_url: str | None = None
-    async_make_session: async_sessionmaker[SA_AsyncSession] | None = None
-    database_url: str | None = None
-    make_session: sessionmaker[SA_Session] | None = None
+    __slots__ = (
+        "async_database_url",
+        "async_make_session",
+        "database_url",
+        "make_session",
+        "session_generator",
+        "sync_session_generator",
+    )
+
+    async_database_url: str | None
+    async_make_session: async_sessionmaker[SA_AsyncSession] | None
+    database_url: str | None
+    make_session: sessionmaker[SA_Session] | None
+    session_generator: Callable[[], AsyncIterator[SA_AsyncSession]] | None
+    sync_session_generator: Callable[[], Iterator[SA_Session]] | None
+
+    def __init__(self) -> None:
+        self.async_database_url = None
+        self.async_make_session = None
+        self.database_url = None
+        self.make_session = None
+        self.session_generator = None
+        self.sync_session_generator = None
 
 
 _default_globals = FRGlobals()

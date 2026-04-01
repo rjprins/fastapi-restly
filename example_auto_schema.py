@@ -12,7 +12,7 @@ from sqlalchemy import ForeignKey
 from datetime import datetime, timezone
 
 # Setup database
-fr.setup_async_database_connection("sqlite+aiosqlite:///example_auto_schema.db")
+fr.configure(async_database_url="sqlite+aiosqlite:///example_auto_schema.db")
 
 app = FastAPI()
 

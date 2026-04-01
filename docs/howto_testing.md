@@ -22,6 +22,8 @@ Override when needed:
 client.patch("/users/999", json={}, assert_status_code=404)
 ```
 
+Pass `assert_status_code=None` to skip the assertion entirely and inspect the response yourself.
+
 ## Pytest Fixtures
 
 ```python
@@ -29,10 +31,29 @@ pytest_plugins = ["fastapi_restly.pytest_fixtures"]
 ```
 
 Useful fixtures include:
-- `app`
-- `client`
-- `session`
-- `async_session`
+
+- `app` — returns a bare `FastAPI()` instance. **You must override this in your own `conftest.py`** to return your actual application, otherwise the `client` fixture wraps an empty app with no routes.
+- `client` — a `RestlyTestClient` wrapping the `app` fixture.
+- `session` — a SQLAlchemy `Session` with savepoint-based isolation.
+- `async_session` — same as `session` but for async code.
+
+Two fixtures run automatically for every test session (you do not need to request them):
+
+- `autouse_alembic_upgrade` — runs `alembic upgrade head` once before the suite starts. If migrations fail, the entire suite is aborted immediately. Skips silently if no `alembic/` directory is found.
+- `autouse_savepoint_only_mode_sessions` — puts session factories into savepoint-only mode so no test data is committed to the database. Skips if no database connections are configured.
+
+A third fixture, `project_root`, is session-scoped and used internally by `autouse_alembic_upgrade` to locate the project directory. It is not autouse.
+
+Example — override `app` in your `conftest.py`:
+
+```python
+import pytest
+from myapp.main import app as myapp
+
+@pytest.fixture
+def app():
+    return myapp
+```
 
 See [pytest Fixtures Reference](pytest_fixtures.md) for the full fixture list and isolation model details.
 
@@ -43,4 +64,3 @@ make test-framework
 make test-examples
 make test-all
 ```
-

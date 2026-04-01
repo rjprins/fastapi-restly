@@ -4,6 +4,7 @@ Schema generation utilities for auto-generating Pydantic schemas from SQLAlchemy
 
 import enum
 import inspect
+import types
 from datetime import date, datetime, time
 from decimal import Decimal
 from typing import Any, Dict, List, Optional, Union, get_args
@@ -68,7 +69,7 @@ def get_relationship_target_model(field: Any) -> Optional[type[DeclarativeBase]]
     if not isinstance(relationship, RelationshipProperty):
         relationship = getattr(field, "property", None)
 
-    if hasattr(relationship, "mapper") and hasattr(relationship.mapper, "class_"):
+    if relationship is not None and hasattr(relationship, "mapper") and hasattr(relationship.mapper, "class_"):
         return relationship.mapper.class_
 
     # Try to get from the type annotation
@@ -121,18 +122,27 @@ def get_model_fields(model_cls: type[DeclarativeBase]) -> Dict[str, Any]:
         actual_type = args[0]
         relationship = mapper.relationships.get(name)
 
+        rel_mapper = getattr(relationship, "mapper", None) if relationship is not None else None
         field_info: Dict[str, Any] = {
             "type": actual_type,
             "is_relationship": relationship is not None,
             "target_model": (
-                relationship.mapper.class_ if relationship is not None else None
+                rel_mapper.class_ if rel_mapper is not None else None
             ),
             "is_optional": False,
             "default": None,
         }
 
         # Check if the field is optional (Union with None or Optional)
-        if hasattr(actual_type, "__origin__"):
+        if isinstance(actual_type, types.UnionType):
+            # Python 3.10+ `str | None` syntax
+            union_args = get_args(actual_type)
+            if type(None) in union_args:
+                field_info["is_optional"] = True
+                non_none_types = [arg for arg in union_args if arg is not type(None)]
+                if non_none_types:
+                    field_info["type"] = non_none_types[0]
+        elif hasattr(actual_type, "__origin__"):
             origin = actual_type.__origin__
             if origin is Union:
                 args = get_args(actual_type)
@@ -222,13 +232,19 @@ def create_schema_from_model(
 
         # Handle relationships
         if field_info["is_relationship"] and field_info["target_model"]:
+            target_model = field_info["target_model"]
+
+            # Skip self-referential relationship to avoid infinite recursion
+            if target_model is model_cls:
+                continue
+
             if (
                 hasattr(field_info["type"], "__origin__")
                 and field_info["type"].__origin__ is list
             ):
                 # Many relationship
                 target_schema = create_schema_from_model(
-                    field_info["target_model"],
+                    target_model,
                     include_relationships=False,  # Avoid circular references
                     include_readonly_fields=False,
                 )
@@ -236,7 +252,7 @@ def create_schema_from_model(
             else:
                 # One relationship
                 target_schema = create_schema_from_model(
-                    field_info["target_model"],
+                    target_model,
                     include_relationships=False,  # Avoid circular references
                     include_readonly_fields=False,
                 )

@@ -11,60 +11,208 @@ view.
 Field-level markers are implemented with `typing.Annotated` metadata:
 
 ```python
-class UserSchema(IDSchema):
+class UserSchema(IDSchema[User]):
     id: ReadOnly[int]
     email: str
     password: WriteOnly[str]
 ```
 
-- `ReadOnly[...]` fields are removed from generated create/update input schemas.
-- `WriteOnly[...]` fields are accepted on input and omitted from serialized responses.
+`IDSchema` is generic: `IDSchema[User]` enables a field validator that coerces
+the `id` value to match the SQLAlchemy model's actual primary-key type. Without
+the type parameter the validator is a no-op and `id` stays typed as `Any`.
+
+- `ReadOnly[...]` fields are excluded from generated create/update input schemas.
+- `WriteOnly[...]` fields are accepted on input and excluded from serialized
+  responses. The filtering is done explicitly in `BaseAlchemyView.to_response_schema()`,
+  which skips any field where `is_field_writeonly()` returns `True`. FastAPI's
+  response model serialization does **not** filter them; a custom serialization
+  path that bypasses `to_response_schema()` would expose `WriteOnly` fields.
 
 ### Generated Input Schemas
 
-For a view schema `MySchema`, Restly derives:
+For a view schema `MySchema`, Restly derives two input schemas in
+`before_include_view()`:
 
-- `creation_schema`: removes `ReadOnly[...]` fields
-- `update_schema`: removes `ReadOnly[...]` fields and makes the remaining fields optional
+- `creation_schema`: produced by `create_model_without_read_only_fields()`,
+  which creates a subclass mixing in `OmitReadOnlyMixin` before `MySchema` in
+  the MRO. `OmitReadOnlyMixin.__pydantic_init_subclass__` directly deletes
+  `ReadOnly` entries from `cls.model_fields` and calls `model_rebuild(force=True)`.
+  The subclass still inherits validators from `MySchema` for the fields that
+  remain.
+- `update_schema`: produced by `create_model_with_optional_fields()`, which
+  mixes in both `PatchMixin` and `OmitReadOnlyMixin`. After `OmitReadOnlyMixin`
+  strips the read-only fields, `PatchMixin.__pydantic_init_subclass__` sets
+  `field.default = None` and wraps every remaining annotation in `Optional[...]`.
+  Original field defaults from `MySchema` are **replaced** by `None`, not
+  preserved.
 
-Those derived schemas inherit from the original schema so validators and model
-config continue to apply to writable fields.
+Both derived schemas are stored as class attributes on the view and are frozen
+at registration time (see [Query Modifier Lifecycle](#query-modifier-lifecycle)).
+They can be overridden by declaring `creation_schema` or `update_schema` directly
+on the view class before `include_view()` is called.
 
 ### Auto-Generated Schemas
 
-`create_schema_from_model(...)` inspects SQLAlchemy model annotations and can
-generate nested relationship fields when `include_relationships=True`.
+`create_schema_from_model(model_cls, ...)` walks all `Mapped[...]` annotations
+on the model (including inherited ones) and builds a Pydantic schema. Key
+behaviours:
 
-`auto_generate_schema_for_view(...)` is more conservative: it excludes
-relationship attributes by default and focuses on scalar fields and foreign-key
-columns. This keeps generated CRUD views usable without requiring nested ORM
-loading or nested write payloads.
+- **Base class selection**: The function checks whether the model has fields
+  *named* `id`, `created_at`, and `updated_at` to decide which schema base
+  classes to mix in (`IDSchema`, `TimestampsSchemaMixin`, `BaseSchema`). It does
+  **not** inspect the model's Python inheritance hierarchy; a model with a field
+  accidentally named `id` will receive `IDSchema` as a base.
+- **ReadOnly annotation**: Only three field names are automatically marked
+  `ReadOnly`: `"id"`, `"created_at"`, and `"updated_at"` (controlled by
+  `include_readonly_fields=True`). Any other server-side default or
+  auto-populated column will **not** be marked `ReadOnly` by auto-generation.
+- **Relationship fields**: Included when `include_relationships=True` (the
+  default for `create_schema_from_model`). Relationship fields are set to
+  `Optional` with `default=None` in the generated schema and nested schemas are
+  generated recursively (one level deep, without relationships, to avoid circular
+  references).
+
+`auto_generate_schema_for_view(view_cls, model_cls)` is a thin wrapper that
+calls `create_schema_from_model(model_cls, schema_name, include_relationships=False)`.
+It does not apply any other filtering beyond excluding relationship attributes;
+foreign-key columns appear in the output as ordinary scalar fields.
+
+### SQLAlchemy-to-Pydantic Type Mapping
+
+`convert_sqlalchemy_type_to_pydantic` maps the Python type extracted from each
+`Mapped[T]` annotation to its Pydantic equivalent. Pass-through types (those
+already understood by Pydantic) are returned unchanged:
+
+| SQLAlchemy / Python annotation | Pydantic field type |
+|-------------------------------|---------------------|
+| `str` | `str` |
+| `int` | `int` |
+| `float` | `float` |
+| `bool` | `bool` |
+| `datetime` | `datetime` |
+| `date` | `date` |
+| `time` | `time` |
+| `UUID` | `UUID` |
+| `Decimal` | `Decimal` |
+| `dict` / `dict[str, Any]` | `dict` / `dict[str, Any]` |
+| `list` / `list[T]` | `list` / `list[T]` |
+| `enum.Enum` subclass | same enum subclass |
+| SQLAlchemy `Text`, `String` | `str` |
+| SQLAlchemy `Integer` | `int` |
+| SQLAlchemy `Float` | `float` |
+| SQLAlchemy `Boolean` | `bool` |
+| SQLAlchemy `DateTime` | `datetime` |
+| SQLAlchemy `Date` | `date` |
+| SQLAlchemy `Time` | `time` |
+
+Any type not in this table raises `TypeError` at schema-generation time. For
+custom column types, declare an explicit schema and bypass auto-generation.
+
+## View Classes and Registration
+
+### AsyncAlchemyView and AlchemyView
+
+Both `AsyncAlchemyView` (async) and `AlchemyView` (sync) are public API and
+share the same CRUD structure via their common base `BaseAlchemyView`. The
+choice between them is determined by whether you inject `AsyncSessionDep` or
+`SessionDep`. The async and sync variants have identical endpoint signatures;
+the only difference is that the async variant uses `await` in its process
+methods.
+
+`BaseAlchemyView` exposes several class variables that affect endpoint
+registration and runtime behaviour:
+
+- `schema` — the Pydantic schema class; auto-generated if absent.
+- `creation_schema`, `update_schema` — derived from `schema` if not declared.
+- `model` — the SQLAlchemy model class.
+- `id_type` — Python type for the `{id}` path parameter (default `int`).
+- `exclude_routes` — tuple of method names to suppress (e.g.
+  `exclude_routes = ("delete",)`). Routes listed here have their `_api_route_args`
+  marker removed during `before_include_view()` so FastAPI never registers them.
+- `include_pagination_metadata` — if `True`, the `index` endpoint returns a
+  paginated envelope with `items`, `total`, `page`, `page_size`, `total_pages`,
+  `limit`, and `offset`.
+- `query_modifier_version` — override the global version for this view class.
+
+### include_view()
+
+`include_view()` works in two equivalent forms:
+
+```python
+# Decorator form
+@fr.include_view(app)
+class MyView(fr.AsyncAlchemyView):
+    ...
+
+# Direct call form
+fr.include_view(app, MyView)
+```
+
+Both forms call `before_include_view()` (which generates derived schemas,
+annotates endpoint signatures, and registers the `index_param_schema`), then
+attach an `APIRouter` to `app`.
+
+### Endpoint / Process separation
+
+Every CRUD endpoint delegates to a `process_*` method (`process_index`,
+`process_get`, `process_post`, `process_patch`, `process_delete`). Override
+the `process_*` method to change business logic while keeping the endpoint
+wrapper intact, or override the endpoint method itself (e.g. `index`) to replace
+the full request/response flow.
 
 ## Query Modifier Lifecycle
 
 Query modifiers have two versions:
 
-- `QueryModifierVersion.V1`: `filter[...]`, `sort`, `limit`, `offset`
-- `QueryModifierVersion.V2`: direct fields, `order_by`, `page`, `page_size`
+- `QueryModifierVersion.V1`: JSONAPI-style — `filter[name]=John`, `sort`,
+  `limit`, `offset`
+- `QueryModifierVersion.V2`: standard HTTP — `name=John`, `order_by`, `page`,
+  `page_size`
 
-Views capture the active query modifier version when `@include_view(...)`
-registers them. That captured version is then used for both:
+The active version is stored in a `ContextVar` (`_query_modifier_version`),
+defaulting to V1. `set_query_modifier_version()` calls `.set()` on this
+`ContextVar`, not a plain module-level global. In async frameworks, `ContextVar`
+values are scoped to the current task/context, so calling it at module level
+during application startup (a single-context moment) works as expected, but the
+setting does not propagate into concurrent request contexts automatically.
 
-- generating the query parameter schema
-- applying filtering, sorting, and pagination at runtime
+During `before_include_view()`, two class-level attributes are set (once,
+idempotently):
 
-This means:
+1. `cls.query_modifier_version` — the version read from the `ContextVar` at
+   registration time, stored as a class attribute. Once set, later calls to
+   `set_query_modifier_version()` do not affect already-registered views.
+2. `cls.index_param_schema` — the query-parameter Pydantic schema generated for
+   this view's `index` endpoint. It is generated inside a
+   `use_query_modifier_version(cls.query_modifier_version)` context so the
+   correct V1 or V2 field set is used. Like `query_modifier_version`, it is
+   frozen at registration time.
+
+To use a specific version, either:
 
 - call `set_query_modifier_version(...)` before registering the view, or
-- set `query_modifier_version = QueryModifierVersion.V1|V2` on the view class
+- set `query_modifier_version = QueryModifierVersion.V1|V2` directly on the
+  view class.
+
+## Database Globals and Test Isolation
+
+The database session factories (`async_make_session`, `make_session`) are stored
+on an `FRGlobals` instance. A `ContextVar` (`_fr_globals_ctx`) determines which
+`FRGlobals` object is active in any given context. The module-level `fr_globals`
+is a proxy that delegates attribute access to `get_fr_globals()`, which returns
+the context-local instance if one has been set, or the default instance
+otherwise.
+
+The `use_fr_globals(globals_obj)` context manager swaps in an alternative
+`FRGlobals` during the block and restores the previous one on exit. This is how
+`activate_savepoint_only_mode()` achieves test isolation: it injects a
+savepoint-backed session factory without touching global state visible to other
+concurrent contexts.
 
 ## More Topics
 
 ```{toctree}
 :maxdepth: 1
 
-auto_schema
-custom_endpoints
-existing
 query_modifiers
 ```

@@ -6,12 +6,12 @@ from fastapi import FastAPI
 from sqlalchemy.orm import Mapped
 
 DB_PATH = Path(__file__).resolve().parents[1] / "blog.db"
-fr.setup_async_database_connection(async_database_url=f"sqlite+aiosqlite:///{DB_PATH}")
+fr.configure(async_database_url=f"sqlite+aiosqlite:///{DB_PATH}")
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    engine = fr.FRAsyncSession.kw["bind"]
+    engine = fr.get_async_engine()
     async with engine.begin() as conn:
         await conn.run_sync(fr.DataclassBase.metadata.create_all)
     yield
