@@ -1,13 +1,13 @@
 # FastAPI-Restly
 
-<p align="center">
-  <img src="docs/_static/restly-cat.png" alt="FastAPI-Restly logo" width="200">
-</p>
-
 [![CI](https://github.com/rjprins/fastapi-restly/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/rjprins/fastapi-restly/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue)](https://github.com/rjprins/fastapi-restly/blob/main/pyproject.toml)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/rjprins/fastapi-restly/blob/main/LICENSE)
 [![Coverage](https://rjprins.github.io/fastapi-restly/coverage/badge.svg)](https://rjprins.github.io/fastapi-restly/coverage/)
+
+<p align="center">
+  <img src="docs/_static/restly-cat.png" alt="FastAPI-Restly logo" width="200">
+</p>
 
 > **Warning**: This project is in active development and has not been released on PyPI yet. For installation, please clone the repository and install in development mode.
 
@@ -16,11 +16,13 @@
 FastAPI-Restly helps you build **maintainable CRUD APIs faster** on top of **FastAPI**, **SQLAlchemy 2.0**, and **Pydantic v2**.
 It provides auto-generated endpoints, schemas, and filters while keeping everything extensible or customizable.
 
+FastAPI-Restly implements **true class-based views** — real Python classes that support inheritance and method overrides. Share common behavior across views by subclassing, and override individual CRUD methods without touching the rest.
+
 ## Why FastAPI-Restly?
 
 * **CRUD endpoints in minutes** – Create endpoints for SQLAlchemy models with auto-generated Pydantic schemas.
-* **Maintainable** – Class-based views with dependency injection and inheritance to keep things organized.
-* **Customizable** – Generated endpoints are fully overridable whenever you need custom behavior.
+* **True class-based views** – Real inheritance and method overrides, not just decorator wrappers. Share logic across views by subclassing.
+* **Customizable** – Override any CRUD endpoint or just its business logic, without awkward hacks.
 * **Modern stack** – Built for SQLAlchemy 2.0 and Pydantic v2, with async and sync support.
 * **Filtering, pagination, and sorting** – Two query parameter interfaces (JSONAPI-style and standard HTTP).
 * **Field control** – `ReadOnly` and `WriteOnly` field markers, plus relationship ID resolution via `IDSchema[...]`.

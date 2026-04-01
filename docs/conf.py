@@ -17,14 +17,18 @@ version = ""
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
+
 html_baseurl = "https://rjprins.github.io/fastapi-restly"
 extensions = [
     "myst_parser",
     "sphinx_sitemap",
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
+    "sphinx_copybutton",
+    "sphinx_design",
 ]
 myst_heading_anchors = 3
+myst_enable_extensions = ["colon_fence"]
 
 sys.path.insert(0, os.path.abspath(".."))
 autosummary_generate = True
@@ -41,11 +45,19 @@ exclude_patterns = []
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = "furo"
+html_theme = "pydata_sphinx_theme"
 html_theme_options = {
-    "source_repository": "https://github.com/rjprins/fastapi-restly",
-    "source_branch": "main",
-    "source_directory": "docs/",
+    "github_url": "https://github.com/rjprins/fastapi-restly",
+    "use_edit_page_button": True,
+    "show_toc_level": 2,
+    "navigation_depth": 3,
+    "icon_links": [],
+}
+html_context = {
+    "github_user": "rjprins",
+    "github_repo": "fastapi-restly",
+    "github_version": "main",
+    "doc_path": "docs",
 }
 html_static_path = ["_static"]
 html_logo = "_static/restly-cat.png"

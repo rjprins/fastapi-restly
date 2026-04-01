@@ -1,6 +1,13 @@
 # FastAPI-Restly
 
+[![CI](https://github.com/rjprins/fastapi-restly/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/rjprins/fastapi-restly/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue)](https://github.com/rjprins/fastapi-restly/blob/main/pyproject.toml)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/rjprins/fastapi-restly/blob/main/LICENSE)
+[![Coverage](https://rjprins.github.io/fastapi-restly/coverage/badge.svg)](https://rjprins.github.io/fastapi-restly/coverage/)
+
 FastAPI-Restly (`fr`) is a framework that supplements FastAPI with instant CRUD endpoints, built on SQLAlchemy 2.0 and Pydantic v2.
+
+FastAPI-Restly implements **true class-based views** — real Python classes that support inheritance and method overrides. Share common behavior across views by subclassing, and override individual CRUD methods without touching the rest.
 
 ## Quick Start
 
@@ -48,22 +55,55 @@ serialization control.
 
 ## Features
 
-- **Instant CRUD endpoints** - GET, POST, PATCH, DELETE with zero boilerplate
-- **SQLAlchemy 2.0 support** - Async-first with modern patterns
-- **Pydantic v2 integration** - Full validation and serialization
-- **Automatic schema generation** - Create and update schemas generated automatically
-- **Query modifiers** - Easy filtering, sorting, and pagination
-- **Relationship support** - Handle foreign keys and nested objects
-- **Testing utilities** - Built-in test helpers
+- **Instant CRUD endpoints** — GET, POST, PATCH, DELETE with zero boilerplate
+- **True class-based views** — Real inheritance and method overrides; share logic across views by subclassing
+- **SQLAlchemy 2.0 support** — Async-first with modern patterns
+- **Pydantic v2 integration** — Full validation and serialization
+- **Automatic schema generation** — Create and update schemas generated automatically
+- **Query modifiers** — Easy filtering, sorting, and pagination
+- **Relationship support** — Handle foreign keys and nested objects
+- **Testing utilities** — Built-in test helpers with savepoint isolation
 
 ## Documentation
 
-- [Getting Started](getting_started.md) - Fast path from zero to CRUD API
-- [Tutorial](tutorial.md) - Extended walkthrough and schema usage
-- [How-To Guides](howto.md) - Task-focused recipes for core features
-- [Existing Project Integration](howto_existing_project.md) - Add Restly to a project with its own session management
-- [Technical Details](technical_details.md) - How schema generation works under the hood
-- [API Reference](api_reference.md) - Complete API documentation
+::::{grid} 1 2 2 3
+:gutter: 3
+
+:::{grid-item-card} Getting Started
+:link: getting_started
+:link-type: doc
+
+Fast path from zero to a working CRUD API.
+:::
+
+:::{grid-item-card} Tutorial
+:link: tutorial
+:link-type: doc
+
+Extended walkthrough with a blog API covering schemas, relations, and testing.
+:::
+
+:::{grid-item-card} How-To Guides
+:link: howto
+:link-type: doc
+
+Task-focused recipes: filtering, testing, overrides, custom schemas, and more.
+:::
+
+:::{grid-item-card} Technical Details
+:link: technical_details
+:link-type: doc
+
+Schema generation internals, view registration, and query modifier lifecycle.
+:::
+
+:::{grid-item-card} API Reference
+:link: api_reference
+:link-type: doc
+
+Generated endpoints, all public symbols, query parameters, and autodoc.
+:::
+::::
 
 ## Installation
 
