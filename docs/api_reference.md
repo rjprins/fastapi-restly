@@ -7,7 +7,7 @@ This page documents:
 
 ## Generated CRUD Endpoints
 
-When you register a view with `@fr.include_view(app)`, both `fr.AsyncAlchemyView` and `fr.AlchemyView` expose the same default CRUD surface:
+When you register a view with `@fr.include_view(app)`, both `fr.AsyncRestView` and `fr.RestView` expose the same default CRUD surface:
 
 | Method | Path | Purpose | Default Status |
 |---|---|---|---|
@@ -117,7 +117,7 @@ To disable generated endpoints on a view, use:
 
 ```python
 @fr.include_view(app)
-class UserView(fr.AsyncAlchemyView):
+class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
     exclude_routes = ("delete", "patch")
@@ -177,9 +177,9 @@ For generated CRUD endpoints:
 | Symbol | Description |
 |---|---|
 | `fr.View` | Base class for all class-based views. Subclass this directly when you do not need CRUD — add endpoints with `@fr.get`, `@fr.post`, etc. |
-| `fr.BaseAlchemyView` | Abstract base shared by `AsyncAlchemyView` and `AlchemyView`. Holds all CRUD class attributes and `process_*` hooks. |
-| `fr.AsyncAlchemyView` | Async CRUD view. Use with async SQLAlchemy sessions. |
-| `fr.AlchemyView` | Sync CRUD view. Use with sync SQLAlchemy sessions. |
+| `fr.BaseRestView` | Abstract base shared by `AsyncRestView` and `RestView`. Holds all CRUD class attributes and `process_*` hooks. |
+| `fr.AsyncRestView` | Async CRUD view. Use with async SQLAlchemy sessions. |
+| `fr.RestView` | Sync CRUD view. Use with sync SQLAlchemy sessions. |
 
 `fr.View` class attributes:
 
@@ -205,7 +205,7 @@ For generated CRUD endpoints:
 
 ### View Free Functions
 
-These module-level functions mirror the instance methods on `AsyncAlchemyView` / `AlchemyView` but take an explicit session argument. Use them when you need the same logic outside a view class.
+These module-level functions mirror the instance methods on `AsyncRestView` / `RestView` but take an explicit session argument. Use them when you need the same logic outside a view class.
 
 | Symbol | Description |
 |---|---|
@@ -251,7 +251,7 @@ class User(fr.IDBase):
     name: Mapped[str]
 
 @fr.include_view(app)
-class UserView(fr.AsyncAlchemyView):
+class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
 

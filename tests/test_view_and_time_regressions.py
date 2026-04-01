@@ -10,7 +10,7 @@ from starlette.datastructures import QueryParams
 
 import fastapi_restly as fr
 from fastapi_restly.models._base import utc_now
-from fastapi_restly.views._async import AsyncAlchemyView
+from fastapi_restly.views._async import AsyncRestView
 from fastapi_restly.views._base import get
 
 
@@ -32,7 +32,7 @@ class _DummySession:
         return _DummyScalarResult()
 
 
-class _DummyAsyncView(AsyncAlchemyView):
+class _DummyAsyncView(AsyncRestView):
     prefix = "/dummy"
     model = QueryUser
     schema = QueryUserSchema

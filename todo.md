@@ -21,7 +21,7 @@
 
 1. Ensure everything works as it should: Add more testing
 2. Add a realistic example project with tests
-3. Polish main API points (database init? AlchemyView overrides and symmetry?)
+3. Polish main API points (database init? RestView overrides and symmetry?)
 4. Write a comprehensive tutorial
 5. Add API documentation
 
@@ -61,7 +61,7 @@ Do I want to support "No alembic/just create tables?"
 * Handle mixing query_params and other query parameters
 * Handle inheritance of validators correctly when creating schemas!
 * Look critically at Settings vs FA_Globabls
-* Split common functions from AsyncAlchemyView and AlchemyView into base class
+* Split common functions from AsyncRestView and RestView into base class
 * Document pytest_fixtures and how shared sync_connection works between session and async_session
   as well as document savepoint mechanics and limitations.
 * Do multi python versions tests. From 3.10 upwards.

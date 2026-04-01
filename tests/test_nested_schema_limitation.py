@@ -35,7 +35,7 @@ def test_nested_schema_limitation_demonstration(client):
         postal_code: Mapped[str]
 
     @fr.include_view(client.app)
-    class UserView(fr.AsyncAlchemyView):
+    class UserView(fr.AsyncRestView):
         prefix = "/users"
         model = User
         schema = UserSchema
@@ -79,7 +79,7 @@ def test_working_flattened_approach(client):
         postal_code: Mapped[str]
 
     @fr.include_view(client.app)
-    class UserView(fr.AsyncAlchemyView):
+    class UserView(fr.AsyncRestView):
         prefix = "/users"
         model = User
         schema = UserSchema
@@ -140,7 +140,7 @@ def test_deeply_nested_schema_limitation(client):
         industry: Mapped[str]
 
     @fr.include_view(client.app)
-    class EmployeeView(fr.AsyncAlchemyView):
+    class EmployeeView(fr.AsyncRestView):
         prefix = "/employees"
         model = Employee
         schema = EmployeeSchema

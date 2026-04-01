@@ -22,7 +22,7 @@ def test_get_requests_return_aliases(client):
         phone_number: str = Field(alias="phoneNumber")
 
     @fr.include_view(client.app)
-    class UserView(fr.AsyncAlchemyView):
+    class UserView(fr.AsyncRestView):
         prefix = "/users"
         model = User
         schema = UserSchema
@@ -74,7 +74,7 @@ def test_post_requests_accept_aliases(client):
         is_active: bool = Field(alias="isActive")
 
     @fr.include_view(client.app)
-    class ProductView(fr.AsyncAlchemyView):
+    class ProductView(fr.AsyncRestView):
         prefix = "/products"
         model = Product
         schema = ProductSchema
@@ -114,7 +114,7 @@ def test_put_requests_accept_aliases(client):
         author_name: str = Field(alias="authorName")
 
     @fr.include_view(client.app)
-    class ArticleView(fr.AsyncAlchemyView):
+    class ArticleView(fr.AsyncRestView):
         prefix = "/articles"
         model = Article
         schema = ArticleSchema
@@ -174,7 +174,7 @@ def test_query_modifiers_with_aliases(client):
         registration_date: str = Field(alias="registrationDate")
 
     @fr.include_view(client.app)
-    class CustomerView(fr.AsyncAlchemyView):
+    class CustomerView(fr.AsyncRestView):
         prefix = "/customers"
         model = Customer
         schema = CustomerSchema
@@ -227,7 +227,7 @@ def test_validation_with_aliases(client):
         user_email: str = Field(alias="userEmail", pattern=r"^[^@]+@[^@]+\.[^@]+$")
 
     @fr.include_view(client.app)
-    class UserView(fr.AsyncAlchemyView):
+    class UserView(fr.AsyncRestView):
         prefix = "/users"
         model = User
         schema = UserSchema
@@ -287,7 +287,7 @@ def test_optional_fields_with_aliases(client):
         profile_website: str | None = Field(alias="profileWebsite", default=None)
 
     @fr.include_view(client.app)
-    class ProfileView(fr.AsyncAlchemyView):
+    class ProfileView(fr.AsyncRestView):
         prefix = "/profiles"
         model = Profile
         schema = ProfileSchema
@@ -320,7 +320,7 @@ def test_auto_generated_schema_works_without_aliases(client):
         author_name: Mapped[str]
 
     @fr.include_view(client.app)
-    class CommentView(fr.AsyncAlchemyView):
+    class CommentView(fr.AsyncRestView):
         prefix = "/comments"
         model = Comment
 
@@ -362,7 +362,7 @@ def test_complex_alias_scenarios(client):
         order_status: str = Field(alias="orderStatus")
 
     @fr.include_view(client.app)
-    class OrderView(fr.AsyncAlchemyView):
+    class OrderView(fr.AsyncRestView):
         prefix = "/orders"
         model = Order
         schema = OrderSchema
@@ -410,7 +410,7 @@ def test_documentation_example(client):
         phone_number: str = Field(alias="phoneNumber")
 
     @fr.include_view(client.app)
-    class UserView(fr.AsyncAlchemyView):
+    class UserView(fr.AsyncRestView):
         prefix = "/users"
         model = User
         schema = UserSchema

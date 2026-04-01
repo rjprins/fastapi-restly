@@ -30,7 +30,7 @@ fr.set_query_modifier_version(fr.QueryModifierVersion.V2)
 
 # Create view with v2 query modifiers
 @fr.include_view(app)
-class UserView(fr.AsyncAlchemyView):
+class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
 

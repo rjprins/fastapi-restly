@@ -19,7 +19,7 @@ def test_writeonly_fields_are_excluded_from_post_get_and_list(client):
         password: str
 
     @fr.include_view(client.app)
-    class UserView(fr.AsyncAlchemyView):
+    class UserView(fr.AsyncRestView):
         prefix = "/users"
         model = User
         schema = UserSchema

@@ -50,7 +50,7 @@ class User(fr.IDBase):
 
 
 @fr.include_view(app)
-class UserView(fr.AsyncAlchemyView):
+class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
 ```
@@ -107,7 +107,7 @@ class UserSchema(fr.IDSchema):
 
 
 @fr.include_view(app)
-class UserView(fr.AsyncAlchemyView):
+class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
     schema = UserSchema

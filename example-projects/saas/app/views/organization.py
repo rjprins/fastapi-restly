@@ -7,7 +7,7 @@ from ..schemas import OrganizationSchema
 from ..schemas.organization import OrganizationCreateSchema, OrganizationUpdateSchema
 
 
-class OrganizationView(fr.AsyncAlchemyView):
+class OrganizationView(fr.AsyncRestView):
     """CRUD endpoints for organizations.
 
     Demonstrates using different schemas per operation:

@@ -15,7 +15,7 @@ def test_plain_id_base_works_with_generated_async_crud(client):
         name: str
 
     @fr.include_view(client.app)
-    class PlainProductView(fr.AsyncAlchemyView):
+    class PlainProductView(fr.AsyncRestView):
         prefix = "/plain-products"
         model = PlainProduct
         schema = PlainProductSchema

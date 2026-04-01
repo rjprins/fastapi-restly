@@ -8,7 +8,7 @@ as class attributes. It uses the same mechanics as the class based
 view decorator from fastapi-utils.
 (https://fastapi-utils.davidmontague.xyz/user-guide/class-based-views/)
 
-AsyncAlchemyView:
+AsyncRestView:
 Provides default reading and writing functions on the database using
 SQLAlchemy models.
 """
@@ -209,7 +209,7 @@ def include_view(
     Can be used as a decorator::
 
         @include_view(app)
-        class MyView(AsyncAlchemyView):
+        class MyView(AsyncRestView):
             ...
 
     Or as a function::
@@ -305,12 +305,12 @@ def delete(path: str, **api_route_kwargs: Any) -> Callable[..., Any]:
     return route(path, **api_route_kwargs)
 
 
-class BaseAlchemyView(View):
+class BaseRestView(View):
     """
-    Base class for AlchemyView implementations.
+    Base class for RestView implementations.
 
-    This class contains the common functionality shared between AsyncAlchemyView
-    and AlchemyView, including schema definitions, model configuration, and
+    This class contains the common functionality shared between AsyncRestView
+    and RestView, including schema definitions, model configuration, and
     common CRUD operation logic.
     """
 
@@ -521,10 +521,10 @@ def _copy_all_parent_class_endpoints_into_this_subclass(view_cls: type[View]):
     with a new copy directly on view_cls . This allows us to change the
     annotations on these endpoints without affecting the parent endpoints.
 
-    For example, FooView.get() delegates to AsyncAlchemyView.get() if it is not
+    For example, FooView.get() delegates to AsyncRestView.get() if it is not
     overridden (this is called implicit delegation through method resolution). And if
     we add the annotation that FooView.get() returns FooSchema but do not make a copy
-    then AsyncAlchemyView.get() and all other subclasses will get the FooSchema
+    then AsyncRestView.get() and all other subclasses will get the FooSchema
     annotation as well.
     """
     for endpoint in _get_all_parent_endpoints(view_cls):

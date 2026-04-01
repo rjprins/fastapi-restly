@@ -75,9 +75,9 @@ class User(fr.IDBase):
 
 
 # Create instant CRUD endpoints with auto-generated schema.
-# Use AlchemyView instead of AsyncAlchemyView for sync SQLAlchemy.
+# Use RestView instead of AsyncRestView for sync SQLAlchemy.
 @fr.include_view(app)
-class UserView(fr.AsyncAlchemyView):
+class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
     # Schema is auto-generated from the model!
@@ -113,7 +113,7 @@ class UserSchema(fr.IDSchema):
     internal_id: fr.ReadOnly[str]
 
 @fr.include_view(app)
-class UserView(fr.AsyncAlchemyView):
+class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
     schema = UserSchema  # Use custom schema
@@ -190,7 +190,7 @@ Add extra endpoints using `@fr.get`, `@fr.post`, `@fr.put`, `@fr.patch`, `@fr.de
 
 ```python
 @fr.include_view(app)
-class UserView(fr.AsyncAlchemyView):
+class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
     schema = UserSchema
@@ -212,7 +212,7 @@ Disable any of the default CRUD endpoints with `exclude_routes`:
 
 ```python
 @fr.include_view(app)
-class UserView(fr.AsyncAlchemyView):
+class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
     exclude_routes = ("delete",)  # Names: "index", "get", "post", "patch", "delete"
@@ -224,7 +224,7 @@ Set `include_pagination_metadata = True` to wrap list responses with count and p
 
 ```python
 @fr.include_view(app)
-class UserView(fr.AsyncAlchemyView):
+class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
     include_pagination_metadata = True

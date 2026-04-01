@@ -48,28 +48,28 @@ class Order(fr.IDBase):
 
 # Create views with auto-generated schemas
 @fr.include_view(app)
-class UserView(fr.AsyncAlchemyView):
+class UserView(fr.AsyncRestView):
     """User view with auto-generated schema."""
     prefix = "/users"
     model = User
     # No schema specified - will be auto-generated!
 
 @fr.include_view(app)
-class CategoryView(fr.AsyncAlchemyView):
+class CategoryView(fr.AsyncRestView):
     """Category view with auto-generated schema."""
     prefix = "/categories"
     model = Category
     # No schema specified - will be auto-generated!
 
 @fr.include_view(app)
-class ProductView(fr.AsyncAlchemyView):
+class ProductView(fr.AsyncRestView):
     """Product view with auto-generated schema."""
     prefix = "/products"
     model = Product
     # No schema specified - will be auto-generated!
 
 @fr.include_view(app)
-class OrderView(fr.AsyncAlchemyView):
+class OrderView(fr.AsyncRestView):
     """Order view with auto-generated schema."""
     prefix = "/orders"
     model = Order

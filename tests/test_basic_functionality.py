@@ -23,7 +23,7 @@ def test_basic_crud_operations(client):
 
     # Create a view
     @fr.include_view(client.app)
-    class ProductView(fr.AsyncAlchemyView):
+    class ProductView(fr.AsyncRestView):
         prefix = "/products"
         model = Product
         schema = ProductSchema
@@ -89,13 +89,13 @@ def test_put_request_with_non_existing_id(client):
 
     # Create views
     @fr.include_view(client.app)
-    class UserView(fr.AsyncAlchemyView):
+    class UserView(fr.AsyncRestView):
         prefix = "/users"
         model = User
         schema = UserSchema
 
     @fr.include_view(client.app)
-    class BlogView(fr.AsyncAlchemyView):
+    class BlogView(fr.AsyncRestView):
         prefix = "/blogs"
         model = Blog
         schema = BlogSchema
@@ -161,7 +161,7 @@ def test_plain_foreign_key_fields_serialize_as_scalars(client):
         assignee_id: int | None = None
 
     @fr.include_view(client.app)
-    class TaskView(fr.AsyncAlchemyView):
+    class TaskView(fr.AsyncRestView):
         prefix = "/tasks"
         model = Task
         schema = TaskSchema
@@ -191,7 +191,7 @@ def test_list_endpoint(client):
 
     # Create a view
     @fr.include_view(client.app)
-    class CategoryView(fr.AsyncAlchemyView):
+    class CategoryView(fr.AsyncRestView):
         prefix = "/categories"
         model = Category
         schema = CategorySchema

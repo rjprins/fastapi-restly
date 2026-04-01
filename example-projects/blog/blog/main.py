@@ -30,7 +30,7 @@ class BlogSchema(fr.IDSchema):
 
 
 @fr.include_view(app)
-class BlogView(fr.AsyncAlchemyView):
+class BlogView(fr.AsyncRestView):
     prefix = "/blogs"
     model = Blog
     schema = BlogSchema

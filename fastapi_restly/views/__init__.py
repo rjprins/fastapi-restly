@@ -1,6 +1,6 @@
-from ._async import AsyncAlchemyView
+from ._async import AsyncRestView
 from ._base import (
-    BaseAlchemyView,
+    BaseRestView,
     View,
     delete,
     get,
@@ -10,12 +10,12 @@ from ._base import (
     put,
     route,
 )
-from ._sync import AlchemyView, make_new_object, save_object, update_object
+from ._sync import RestView, make_new_object, save_object, update_object
 
 __all__ = [
-    "AlchemyView",
-    "AsyncAlchemyView",
-    "BaseAlchemyView",
+    "RestView",
+    "AsyncRestView",
+    "BaseRestView",
     "View",
     "delete",
     "get",

@@ -44,7 +44,7 @@ class ProjectStats(BaseModel):
     overdue_count: int = 0  # Would need due_date field to implement
 
 
-class ProjectView(fr.AsyncAlchemyView):
+class ProjectView(fr.AsyncRestView):
     """CRUD endpoints for projects.
 
     Demonstrates tenant isolation by filtering to current org.

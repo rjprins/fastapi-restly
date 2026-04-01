@@ -25,7 +25,7 @@ class UUIDSchema(BaseModel):
     name: str
 
 
-class UUIDView(fr.AsyncAlchemyView):
+class UUIDView(fr.AsyncRestView):
     prefix = "/uuid-models"
     model = UUIDModel
     schema = UUIDSchema
@@ -75,14 +75,14 @@ def test_idschema_accepts_uuid_relation_ids(client):
         author_id: fr.IDSchema[Author]
 
     @fr.include_view(client.app)
-    class AuthorView(fr.AsyncAlchemyView):
+    class AuthorView(fr.AsyncRestView):
         prefix = "/uuid-authors"
         model = Author
         schema = AuthorSchema
         id_type = UUID
 
     @fr.include_view(client.app)
-    class ArticleView(fr.AsyncAlchemyView):
+    class ArticleView(fr.AsyncRestView):
         prefix = "/uuid-articles"
         model = Article
         schema = ArticleSchema

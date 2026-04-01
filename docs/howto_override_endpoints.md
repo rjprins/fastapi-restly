@@ -18,7 +18,7 @@ Override any `process_*` method to change how a specific CRUD operation works. T
 import fastapi_restly as fr
 
 @fr.include_view(app)
-class UserView(fr.AsyncAlchemyView):
+class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
     schema = UserSchema
@@ -29,7 +29,7 @@ class UserView(fr.AsyncAlchemyView):
         return await self.save_object(obj)
 ```
 
-`self.make_new_object(schema_obj)` and `self.save_object(obj)` are instance methods on `AsyncAlchemyView` (session-aware). They differ from the package-level free functions `fr.make_new_object(session, ...)` and `fr.save_object(session, ...)`, which take an explicit `session` argument.
+`self.make_new_object(schema_obj)` and `self.save_object(obj)` are instance methods on `AsyncRestView` (session-aware). They differ from the package-level free functions `fr.make_new_object(session, ...)` and `fr.save_object(session, ...)`, which take an explicit `session` argument.
 
 ## Add a Custom Route
 
@@ -37,7 +37,7 @@ Use `@fr.get`, `@fr.post`, `@fr.put`, `@fr.patch`, `@fr.delete`, or `@fr.route` 
 
 ```python
 @fr.include_view(app)
-class UserView(fr.AsyncAlchemyView):
+class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
     schema = UserSchema
@@ -56,7 +56,7 @@ Use `@fr.post` (or `@fr.patch`, `@fr.delete`) for explicit state-change actions 
 
 ```python
 @fr.include_view(app)
-class OrderView(fr.AsyncAlchemyView):
+class OrderView(fr.AsyncRestView):
     prefix = "/orders"
     model = Order
     schema = OrderSchema
@@ -75,7 +75,7 @@ Set `exclude_routes` to a tuple of route names to suppress specific generated en
 
 ```python
 @fr.include_view(app)
-class UserView(fr.AsyncAlchemyView):
+class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
     exclude_routes = ("delete",)

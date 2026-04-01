@@ -51,7 +51,7 @@ class TestOneToManyRelationships:
             addresses: List[AddressSchema1]
 
         @fr.include_view(client.app)
-        class UserView1(fr.AsyncAlchemyView):
+        class UserView1(fr.AsyncRestView):
             prefix = "/users1"
             model = User1
             schema = UserSchema1
@@ -115,7 +115,7 @@ class TestOneToManyRelationships:
             addresses: List[AddressSchema]
 
         @fr.include_view(client.app)
-        class UserView2(fr.AsyncAlchemyView):
+        class UserView2(fr.AsyncRestView):
             prefix = "/users"
             model = User2
             schema = UserSchema
@@ -192,7 +192,7 @@ class TestOneToOneRelationships:
             profile: ProfileSchema3
 
         @fr.include_view(client.app)
-        class UserView3(fr.AsyncAlchemyView):
+        class UserView3(fr.AsyncRestView):
             prefix = "/users3"
             model = User3
             schema = UserSchema3
@@ -251,7 +251,7 @@ class TestOneToOneRelationships:
             profile: ProfileSchema4
 
         @fr.include_view(client.app)
-        class UserView4(fr.AsyncAlchemyView):
+        class UserView4(fr.AsyncRestView):
             prefix = "/users4"
             model = User4
             schema = UserSchema4
@@ -330,7 +330,7 @@ class TestManyToManyRelationships:
             groups: List[GroupSchema5]
 
         @fr.include_view(client.app)
-        class UserView5(fr.AsyncAlchemyView):
+        class UserView5(fr.AsyncRestView):
             prefix = "/users5"
             model = User5
             schema = UserSchema5
@@ -438,7 +438,7 @@ class TestDeeplyNestedRelationships:
             departments: List[DepartmentSchema6]
 
         @fr.include_view(client.app)
-        class CompanyView6(fr.AsyncAlchemyView):
+        class CompanyView6(fr.AsyncRestView):
             prefix = "/companies6"
             model = Company6
             schema = CompanySchema6
@@ -518,7 +518,7 @@ class TestRelationshipWithReadOnlyFields:
             created_at: ReadOnly[datetime]
 
         @fr.include_view(client.app)
-        class UserView7(fr.AsyncAlchemyView):
+        class UserView7(fr.AsyncRestView):
             prefix = "/users7"
             model = User7
             schema = UserSchema7

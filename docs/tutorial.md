@@ -125,14 +125,14 @@ app = FastAPI(lifespan=lifespan)
 
 
 @fr.include_view(app)
-class PostView(fr.AsyncAlchemyView):
+class PostView(fr.AsyncRestView):
     prefix = "/posts"
     model = Post
     schema = PostSchema
 
 
 @fr.include_view(app)
-class CommentView(fr.AsyncAlchemyView):
+class CommentView(fr.AsyncRestView):
     prefix = "/comments"
     model = Comment
     schema = CommentSchema
@@ -161,7 +161,7 @@ The `prefix` value must include the leading slash (e.g. `"/posts"`, not `"posts"
 To disable specific endpoints, set `exclude_routes`:
 
 ```python
-class PostView(fr.AsyncAlchemyView):
+class PostView(fr.AsyncRestView):
     prefix = "/posts"
     model = Post
     schema = PostSchema
@@ -222,7 +222,7 @@ fr.set_query_modifier_version(fr.QueryModifierVersion.V2)
 To switch per-view:
 
 ```python
-class PostView(fr.AsyncAlchemyView):
+class PostView(fr.AsyncRestView):
     prefix = "/posts"
     model = Post
     schema = PostSchema

@@ -23,7 +23,7 @@ class User(fr.IDBase):
 
 # Create instant CRUD endpoints
 @fr.include_view(app)
-class UserView(fr.AsyncAlchemyView):
+class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
 ```
@@ -36,7 +36,7 @@ class UserSchema(fr.IDSchema):
     email: str
 
 @fr.include_view(app)
-class UserView(fr.AsyncAlchemyView):
+class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
     schema = UserSchema

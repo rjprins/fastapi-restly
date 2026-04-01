@@ -155,7 +155,7 @@ class TestNestedSchemaSerialization:
             postal_code: Mapped[str]
 
         @fr.include_view(client.app)
-        class UserView(fr.AsyncAlchemyView):
+        class UserView(fr.AsyncRestView):
             prefix = "/users"
             model = User
             schema = UserSchema
@@ -221,7 +221,7 @@ class TestNestedSchemaSerialization:
             industry: Mapped[str]
 
         @fr.include_view(client.app)
-        class EmployeeView(fr.AsyncAlchemyView):
+        class EmployeeView(fr.AsyncRestView):
             prefix = "/employees"
             model = Employee
             schema = EmployeeSchema
@@ -274,7 +274,7 @@ class TestNestedSchemaSerialization:
             city: Mapped[str]
 
         @fr.include_view(client.app)
-        class UserView(fr.AsyncAlchemyView):
+        class UserView(fr.AsyncRestView):
             prefix = "/users"
             model = User
             schema = UserSchema

@@ -14,15 +14,15 @@ from ..schemas import (
     get_writable_inputs,
     is_readonly_field,
 )
-from ._base import BaseAlchemyView, delete, get, patch, post
+from ._base import BaseRestView, delete, get, patch, post
 
 
-class AsyncAlchemyView(BaseAlchemyView):
+class AsyncRestView(BaseRestView):
     """
-    AsyncAlchemyView creates an async CRUD/REST interface for database objects.
+    AsyncRestView creates an async CRUD/REST interface for database objects.
     Basic usage::
 
-        class FooView(AsyncAlchemyView):
+        class FooView(AsyncRestView):
             prefix = "/foo"
             schema = FooSchema
             model = Foo

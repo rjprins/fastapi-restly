@@ -36,7 +36,7 @@ class UserSchema(fr.IDSchema):
 
 ```python
 @fr.include_view(app)
-class UserView(fr.AsyncAlchemyView):
+class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
     schema = UserSchema

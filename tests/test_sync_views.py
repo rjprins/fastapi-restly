@@ -104,7 +104,7 @@ def test_sync_object_helpers_handle_readonly_and_relationship_inputs(sync_db):
         assert updated_assignment.owner_id == replacement_author.id
 
 
-def test_sync_alchemy_view_crud_and_pagination(sync_db):
+def test_sync_rest_view_crud_and_pagination(sync_db):
     engine, _make_session = sync_db
 
     class Customer(fr.PlainIDBase):
@@ -130,7 +130,7 @@ def test_sync_alchemy_view_crud_and_pagination(sync_db):
         quantity: int
         customer_id: int
 
-    class OrderView(fr.AlchemyView):
+    class OrderView(fr.RestView):
         prefix = "/sync-orders"
         model = Order
         schema = OrderSchema

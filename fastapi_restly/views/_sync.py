@@ -14,7 +14,7 @@ from ..schemas import (
     is_readonly_field,
     resolve_ids_to_sqlalchemy_objects,
 )
-from ._base import BaseAlchemyView, delete, get, patch, post
+from ._base import BaseRestView, delete, get, patch, post
 
 T = TypeVar("T", bound=DeclarativeBase)
 
@@ -73,12 +73,12 @@ def save_object(session: Session, obj: DeclarativeBase) -> DeclarativeBase:
     return obj
 
 
-class AlchemyView(BaseAlchemyView):
+class RestView(BaseRestView):
     """
-    AlchemyView creates a synchronous CRUD/REST interface for database objects.
+    RestView creates a synchronous CRUD/REST interface for database objects.
     Basic usage::
 
-        class FooView(AlchemyView):
+        class FooView(RestView):
             prefix = "/foo"
             schema = FooSchema
             model = Foo

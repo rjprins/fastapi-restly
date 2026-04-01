@@ -28,7 +28,7 @@ def test_auto_generated_schema_in_view(client):
 
     # Create view WITHOUT specifying a schema - it should be auto-generated
     @fr.include_view(client.app)
-    class UserView(fr.AsyncAlchemyView):
+    class UserView(fr.AsyncRestView):
         prefix = "/users"
         model = User
         # No schema specified - should be auto-generated!
@@ -66,7 +66,7 @@ def test_auto_generated_schema_with_timestamps(client):
 
     # Create view without schema
     @fr.include_view(client.app)
-    class ProductView(fr.AsyncAlchemyView):
+    class ProductView(fr.AsyncRestView):
         prefix = "/products"
         model = Product
         # No schema specified - should be auto-generated!
@@ -96,7 +96,7 @@ def test_auto_generated_schema_with_defaults(client):
 
     # Create view without schema
     @fr.include_view(client.app)
-    class CategoryView(fr.AsyncAlchemyView):
+    class CategoryView(fr.AsyncRestView):
         prefix = "/categories"
         model = Category
         # No schema specified - should be auto-generated!
@@ -124,7 +124,7 @@ def test_auto_generated_schema_crud_operations(client):
 
     # Create view without schema
     @fr.include_view(client.app)
-    class ItemView(fr.AsyncAlchemyView):
+    class ItemView(fr.AsyncRestView):
         prefix = "/items"
         model = Item
         # No schema specified - should be auto-generated!
@@ -201,7 +201,7 @@ def test_view_auto_schema_excludes_relationship_fields_by_default(client):
         user: Mapped[User] = relationship()
 
     @fr.include_view(client.app)
-    class OrderView(fr.AsyncAlchemyView):
+    class OrderView(fr.AsyncRestView):
         prefix = "/orders"
         model = Order
 

@@ -31,7 +31,7 @@ class TestWriteOnlyAPIBasicBehavior:
             secret_token: Mapped[str]
 
         @fr.include_view(client.app)
-        class UserView(fr.AsyncAlchemyView):
+        class UserView(fr.AsyncRestView):
             prefix = "/users"
             model = WriteOnlyUserGet
             schema = UserSchema
@@ -79,7 +79,7 @@ class TestWriteOnlyAPIBasicBehavior:
             password: Mapped[str]
 
         @fr.include_view(client.app)
-        class UserView(fr.AsyncAlchemyView):
+        class UserView(fr.AsyncRestView):
             prefix = "/users"
             model = WriteOnlyUserPost
             schema = UserSchema
@@ -120,7 +120,7 @@ class TestWriteOnlyAPIBasicBehavior:
             password: Mapped[str]
 
         @fr.include_view(client.app)
-        class UserView(fr.AsyncAlchemyView):
+        class UserView(fr.AsyncRestView):
             prefix = "/users"
             model = WriteOnlyUserPatch
             schema = UserSchema
@@ -173,7 +173,7 @@ class TestWriteOnlyAPIBasicBehavior:
             password: Mapped[str]
 
         @fr.include_view(client.app)
-        class UserView(fr.AsyncAlchemyView):
+        class UserView(fr.AsyncRestView):
             prefix = "/users"
             model = WriteOnlyUserList
             schema = UserSchema
@@ -228,7 +228,7 @@ class TestWriteOnlyWithMixedFields:
             secret_token: Mapped[str]
 
         @fr.include_view(client.app)
-        class UserView(fr.AsyncAlchemyView):
+        class UserView(fr.AsyncRestView):
             prefix = "/users"
             model = WriteOnlyUserMixed
             schema = UserSchema
@@ -300,7 +300,7 @@ class TestWriteOnlyWithAliases:
             secret_token: Mapped[str]
 
         @fr.include_view(client.app)
-        class UserView(fr.AsyncAlchemyView):
+        class UserView(fr.AsyncRestView):
             prefix = "/users"
             model = WriteOnlyUserAlias
             schema = UserSchema

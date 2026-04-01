@@ -36,7 +36,7 @@ with use_query_modifier_version(QueryModifierVersion.V2):
 ```python
 import fastapi_restly as fr
 
-class UserView(fr.AsyncAlchemyView):
+class UserView(fr.AsyncRestView):
     query_modifier_version = fr.QueryModifierVersion.V2
     ...
 ```
@@ -339,7 +339,7 @@ modifiers:
 import sqlalchemy
 import fastapi_restly as fr
 
-class UserView(fr.AsyncAlchemyView):
+class UserView(fr.AsyncRestView):
     ...
 
     async def process_index(self, query_params, query=None):

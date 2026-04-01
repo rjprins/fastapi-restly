@@ -6,7 +6,7 @@ from ..models import Label, TaskLabel
 from ..schemas import LabelSchema, TaskLabelSchema
 
 
-class LabelView(fr.AsyncAlchemyView):
+class LabelView(fr.AsyncRestView):
     """CRUD for labels (organization-scoped)."""
 
     prefix = "/labels"
@@ -14,7 +14,7 @@ class LabelView(fr.AsyncAlchemyView):
     schema = LabelSchema
 
 
-class TaskLabelView(fr.AsyncAlchemyView):
+class TaskLabelView(fr.AsyncRestView):
     """CRUD for task-label associations with metadata."""
 
     prefix = "/task-labels"

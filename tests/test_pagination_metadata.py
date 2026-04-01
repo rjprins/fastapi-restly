@@ -13,7 +13,7 @@ def test_index_response_defaults_to_plain_list(client):
         name: str
 
     @fr.include_view(client.app)
-    class ProductView(fr.AsyncAlchemyView):
+    class ProductView(fr.AsyncRestView):
         prefix = "/products"
         model = Product
         schema = ProductSchema
@@ -38,7 +38,7 @@ def test_index_can_return_pagination_metadata(client):
         name: str
 
     @fr.include_view(client.app)
-    class ProductView(fr.AsyncAlchemyView):
+    class ProductView(fr.AsyncRestView):
         prefix = "/products"
         model = ProductWithMeta
         schema = ProductWithMetaSchema
@@ -69,7 +69,7 @@ def test_v2_pagination_metadata_reports_effective_defaults(client):
         name: str
 
     @fr.include_view(client.app)
-    class PaginatedItemView(fr.AsyncAlchemyView):
+    class PaginatedItemView(fr.AsyncRestView):
         prefix = "/paginated-items"
         model = PaginatedItem
         schema = PaginatedItemSchema

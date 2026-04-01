@@ -97,14 +97,14 @@ class OrderSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
 
 
 @fr.include_view(app)
-class CustomerView(fr.AsyncAlchemyView):
+class CustomerView(fr.AsyncRestView):
     prefix = "/customers"
     model = Customer
     schema = CustomerSchema
 
 
 @fr.include_view(app)
-class ProductView(fr.AsyncAlchemyView):
+class ProductView(fr.AsyncRestView):
     prefix = "/products"
     model = Product
     schema = ProductSchema
@@ -112,7 +112,7 @@ class ProductView(fr.AsyncAlchemyView):
 
 
 @fr.include_view(app)
-class OrderView(fr.AsyncAlchemyView):
+class OrderView(fr.AsyncRestView):
     prefix = "/orders"
     model = Order
     schema = OrderSchema

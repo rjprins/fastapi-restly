@@ -55,9 +55,9 @@ from .schemas import (
 
 # Views
 from .views import (
-    AlchemyView,
-    AsyncAlchemyView,
-    BaseAlchemyView,
+    RestView,
+    AsyncRestView,
+    BaseRestView,
     View,
     delete,
     get,
@@ -119,9 +119,9 @@ __all__ = [
     "create_schema_from_model",
     "resolve_ids_to_sqlalchemy_objects",
     # Views
-    "AlchemyView",
-    "AsyncAlchemyView",
-    "BaseAlchemyView",
+    "RestView",
+    "AsyncRestView",
+    "BaseRestView",
     "View",
     "delete",
     "get",

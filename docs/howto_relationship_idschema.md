@@ -46,7 +46,7 @@ class ArticleSchema(fr.IDSchema):
 
 ```python
 @fr.include_view(app)
-class ArticleView(fr.AsyncAlchemyView):
+class ArticleView(fr.AsyncRestView):
     prefix = "/articles"
     model = Article
     schema = ArticleSchema

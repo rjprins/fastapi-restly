@@ -5,7 +5,7 @@
 If your project already manages its own database sessions, configure
 FastAPI-Restly to use them instead of its built-in session factory.
 
-For async views (`AsyncAlchemyView`), pass an async generator to
+For async views (`AsyncRestView`), pass an async generator to
 `fr.configure()`:
 
 ```python
@@ -20,7 +20,7 @@ async def my_get_db() -> AsyncIterator[AsyncSession]:
 fr.configure(session_generator=my_get_db)
 ```
 
-For sync views (`AlchemyView`), pass a sync generator:
+For sync views (`RestView`), pass a sync generator:
 
 ```python
 from typing import Iterator
@@ -65,7 +65,7 @@ class World(AppBase):
 
 
 @fr.include_view(app)
-class WorldView(fr.AsyncAlchemyView):
+class WorldView(fr.AsyncRestView):
     prefix = "/world"
     model = World
 ```

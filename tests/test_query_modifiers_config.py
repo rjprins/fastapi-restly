@@ -211,7 +211,7 @@ class TestIntegration:
             name: Mapped[str]
 
         @fr.include_view(client.app)
-        class UserView(fr.AsyncAlchemyView):
+        class UserView(fr.AsyncRestView):
             prefix = "/users"
             model = User
 

@@ -23,7 +23,7 @@ class UpdateMeRequest(BaseModel):
     email: str | None = None
 
 
-class UserView(fr.AsyncAlchemyView):
+class UserView(fr.AsyncRestView):
     """CRUD endpoints for users.
 
     Demonstrates field-level permissions: salary is only visible to HR role.

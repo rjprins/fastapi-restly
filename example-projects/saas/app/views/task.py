@@ -58,7 +58,7 @@ VALID_TRANSITIONS = {
 }
 
 
-class TaskView(fr.AsyncAlchemyView):
+class TaskView(fr.AsyncRestView):
     """CRUD endpoints for tasks.
 
     Demonstrates row-level permissions: users can only see tasks
