@@ -54,6 +54,9 @@ jobs:
 
   coverage:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -83,6 +86,7 @@ jobs:
         with:
           files: ./coverage.xml
           fail_ci_if_error: false
+          use_oidc: true
 
   build:
     runs-on: ubuntu-latest
