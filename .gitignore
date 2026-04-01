@@ -10,3 +10,6 @@ htmlcov/
 
 # Dolt database files (added by bd init)
 .dolt/
+
+# Beads internal backup snapshots are local runtime state, not repo content.
+.beads/backup/
