@@ -114,10 +114,10 @@ custom column types, declare an explicit schema and bypass auto-generation.
 
 Both `AsyncAlchemyView` (async) and `AlchemyView` (sync) are public API and
 share the same CRUD structure via their common base `BaseAlchemyView`. The
-choice between them is determined by whether you inject `AsyncSessionDep` or
-`SessionDep`. The async and sync variants have identical endpoint signatures;
-the only difference is that the async variant uses `await` in its process
-methods.
+choice between them is determined by which class you subclass — `AsyncAlchemyView`
+hardcodes `session: AsyncSessionDep` and `AlchemyView` hardcodes `session: SessionDep`.
+The async and sync variants have identical endpoint signatures; the only difference
+is that the async variant uses `await` in its process methods.
 
 `BaseAlchemyView` exposes several class variables that affect endpoint
 registration and runtime behaviour:

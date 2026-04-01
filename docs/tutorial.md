@@ -115,7 +115,7 @@ detail, including list relations.
 ```python
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    engine = fr.FRAsyncSession.kw["bind"]
+    engine = fr.get_async_engine()
     async with engine.begin() as conn:
         await conn.run_sync(fr.DataclassBase.metadata.create_all)
     yield

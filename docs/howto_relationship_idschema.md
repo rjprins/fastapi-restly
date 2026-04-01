@@ -24,7 +24,7 @@ class Author(fr.IDBase):
 class Article(fr.IDBase):
     title: Mapped[str]
     author_id: Mapped[int] = mapped_column(ForeignKey("author.id"))
-    author: Mapped["Author"] = relationship()
+    author: Mapped["Author"] = relationship(default=None, init=False)
 ```
 
 `fr.IDBase` is the convenience alias built on `fr.DataclassBase`, so it still auto-generates the table name from the class name (`Author` → `author`, `Article` → `article`). That is why `ForeignKey("author.id")` is correct here.

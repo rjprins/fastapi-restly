@@ -83,6 +83,6 @@ Valid values are: `"index"`, `"get"`, `"post"`, `"patch"`, `"delete"`. Passing a
 
 ## Choosing Between `@fr.route` and the Shorthand Decorators
 
-Prefer `@fr.get`, `@fr.post`, `@fr.patch`, and `@fr.delete` for most endpoints — they set sensible default status codes and HTTP methods automatically.
+Prefer `@fr.get`, `@fr.post`, `@fr.patch`, and `@fr.delete` for most endpoints — they set the HTTP method automatically, and `@fr.get` (200), `@fr.post` (201), and `@fr.delete` (204) also set default status codes. `@fr.patch` and `@fr.put` do not set a default; FastAPI uses 200.
 
 Use `@fr.route(path, methods=[...], ...)` only when you need full manual control over route options (for example, to register a single path under multiple HTTP methods, or to set non-standard response codes).

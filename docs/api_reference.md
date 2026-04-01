@@ -36,7 +36,7 @@ Notes:
 
 ### V2 (HTTP-style)
 - Filtering: `?name=John&created_at__gte=2024-01-01`
-  - Suffixes: `__gte`, `__lte`, `__gt`, `__lt`, `__isnull`, `__contains` (string fields only)
+  - Suffixes: `__gte`, `__lte`, `__gt`, `__lt`, `__ne`, `__isnull`, `__contains` (string fields only)
   - OR-values: `?id=1,2,3` (comma-separated values are OR'd together)
   - For aliased schemas, use the **alias name** as the query parameter, not the Python field name.
 - Contains: `?name__contains=john` (multiple space-separated words are AND'd: all must be contained)
@@ -180,13 +180,13 @@ For generated CRUD endpoints:
 |---|---|
 | `fr.FRAsyncSession` | Global async session proxy. Use as a FastAPI dependency or call directly in tests. |
 | `fr.FRSession` | Global sync session proxy. |
-| `fr.AsyncSession` | Deprecated alias for `FRAsyncSession`. |
-| `fr.Session` | Deprecated alias for `FRSession`. |
 | `fr.AsyncSessionDep` | FastAPI `Depends`-compatible async session dependency. |
 | `fr.SessionDep` | FastAPI `Depends`-compatible sync session dependency. |
-| `fr.configure(async_database_url=..., ...)` | Configure the framework. Accepts async/sync URLs, engines, or session makers. |
-| `fr.activate_savepoint_only_mode()` | Wrap the session in a savepoint so test data never commits. |
-| `fr.deactivate_savepoint_only_mode()` | Restore normal session behavior. |
+| `fr.configure(async_database_url=..., ...)` | Configure the framework. Accepts async/sync URLs, engines, session makers, or custom session generators. |
+| `fr.get_async_engine()` | Return the configured `AsyncEngine` instance. |
+| `fr.get_engine()` | Return the configured sync `Engine` instance. |
+| `fr.activate_savepoint_only_mode(make_session)` | Wrap the session in a savepoint so test data never commits. Requires the session maker as argument. |
+| `fr.deactivate_savepoint_only_mode(make_session)` | Restore normal session behavior. |
 | `fr.use_fr_globals(globals_obj)` | Context manager that swaps the global state for test isolation. |
 | `fr.get_fr_globals()` | Return the current `FRGlobals` instance (engine, session factory, etc.). |
 

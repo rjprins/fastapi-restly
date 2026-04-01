@@ -47,13 +47,12 @@ import fastapi_restly as fr
 from fastapi import FastAPI
 from sqlalchemy.orm import Mapped
 
-# Setup database — capture the return value to access the engine later
-make_session = fr.setup_async_database_connection("sqlite+aiosqlite:///app.db")
+fr.configure(async_database_url="sqlite+aiosqlite:///app.db")
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    engine = make_session.kw["bind"]
+    engine = fr.get_async_engine()
     async with engine.begin() as conn:
         await conn.run_sync(fr.DataclassBase.metadata.create_all)  # dev/SQLite only
     yield
@@ -245,9 +244,10 @@ Check out the [example projects](example-projects/) for complete applications:
 ```python
 # conftest.py
 import fastapi_restly as fr
-from fastapi_restly.testing import *  # exports app, client, async_session, session fixtures
 
-make_session = fr.setup_async_database_connection("sqlite+aiosqlite:///test.db")
+pytest_plugins = ["fastapi_restly.pytest_fixtures"]
+
+fr.configure(async_database_url="sqlite+aiosqlite:///test.db")
 ```
 
 `RestlyTestClient` automatically asserts the expected HTTP status code on every call (`200` for GET, `201` for POST, `204` for DELETE, etc.) and raises a descriptive `AssertionError` with the response body on failure — no manual status checks needed.
@@ -264,7 +264,7 @@ def test_create_and_fetch_user(client):
     assert data["name"] == "John"
 ```
 
-Pass `assert_status_code=None` to skip automatic assertion when you intentionally expect an error response.
+Pass `assert_status_code=None` to skip the assertion and inspect the response yourself.
 
 ## Configuration
 
@@ -272,13 +272,13 @@ Pass `assert_status_code=None` to skip automatic assertion when you intentionall
 
 ```python
 # Async SQLite
-fr.setup_async_database_connection("sqlite+aiosqlite:///app.db")
+fr.configure(async_database_url="sqlite+aiosqlite:///app.db")
 
 # Async PostgreSQL
-fr.setup_async_database_connection("postgresql+asyncpg://user:pass@localhost/db")
+fr.configure(async_database_url="postgresql+asyncpg://user:pass@localhost/db")
 
 # Sync SQLite
-fr.setup_database_connection("sqlite:///app.db")
+fr.configure(database_url="sqlite:///app.db")
 ```
 
 ## Contributing

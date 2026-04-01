@@ -33,7 +33,7 @@ fr.configure(async_database_url=DATABASE_URL)
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    engine = fr.FRAsyncSession.kw["bind"]
+    engine = fr.get_async_engine()
     async with engine.begin() as conn:
         await conn.run_sync(fr.DataclassBase.metadata.create_all)
     yield
@@ -90,7 +90,7 @@ For `prefix = "/users"`, generated endpoints are:
 
 Update semantics are `PATCH` (partial update).
 
-You can filter results using query parameters. For example, `GET /users/?name=Jane` returns only users named Jane. See [Query Modifiers](query_modifiers.md) for the full filter syntax.
+You can filter results using query parameters. For example, `GET /users/?filter[name]=Jane` returns only users named Jane (V1 syntax; see [Query Modifiers](query_modifiers.md) for V1 and V2 filter syntax).
 
 ## 5. Add an Explicit Schema (Optional)
 
@@ -124,12 +124,12 @@ Choose explicit schemas when you need:
 from fastapi.testclient import TestClient
 from main import app
 
-client = TestClient(app)
-res = client.post("/users/", json={"name": "Jane", "email": "jane@example.com"})
-assert res.status_code == 201
+with TestClient(app) as client:
+    res = client.post("/users/", json={"name": "Jane", "email": "jane@example.com"})
+    assert res.status_code == 201
 ```
 
-`TestClient` handles the async lifespan automatically, so the database tables are created before the first request. For test isolation (rolling back test data between tests), see the [Testing](api_reference.md) utilities in `fastapi_restly.testing`.
+Use `TestClient` as a context manager so the async lifespan fires and creates the database tables before the first request. For test isolation (rolling back test data between tests), see the [Testing](howto_testing.md) guide.
 
 ## Next Steps
 
