@@ -121,7 +121,7 @@ wheels = [
 [[package]]
 name = "fastapi-restly"
 version = "1.0"
-source = { directory = "../../" }
+source = { editable = "../../" }
 dependencies = [
     { name = "alembic" },
     { name = "fastapi" },
@@ -682,7 +682,7 @@ requires-dist = [
     { name = "aiosqlite", specifier = ">=0.21.0" },
     { name = "alembic", specifier = ">=1.15.2" },
     { name = "fastapi", specifier = ">=0.115.12" },
-    { name = "fastapi-restly", directory = "../../" },
+    { name = "fastapi-restly", editable = "../../" },
     { name = "httpx", marker = "extra == 'dev'", specifier = ">=0.28.1" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.3.5" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.24.0" },
