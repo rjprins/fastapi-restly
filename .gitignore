@@ -4,6 +4,7 @@ dist/
 *.egg-info/
 *.db
 .coverage
+coverage.json
 coverage.xml
 htmlcov/
 

@@ -5,7 +5,7 @@
 </p>
 
 [![CI](https://github.com/rjprins/fastapi-restly/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/rjprins/fastapi-restly/actions/workflows/ci.yml)
-[![Coverage](https://codecov.io/gh/rjprins/fastapi-restly/graph/badge.svg)](https://codecov.io/gh/rjprins/fastapi-restly)
+[![Coverage](https://rjprins.github.io/fastapi-restly/coverage/badge.svg)](https://rjprins.github.io/fastapi-restly/coverage/)
 
 > **Warning**: This project is in active development and has not been released on PyPI yet. For installation, please clone the repository and install in development mode.
 

@@ -1,4 +1,4 @@
-.PHONY: test test-framework test-examples test-all clean install-dev lint pre-commit-install pre-commit-run docs docs-serve docs-push
+.PHONY: test test-framework test-examples test-all clean install-dev lint pre-commit-install pre-commit-run docs docs-serve docs-push build-pages pages-push
 
 # Default target
 all: test-all
@@ -75,7 +75,18 @@ docs:
 docs-serve:
 	uv run sphinx-autobuild docs site
 
-docs-push: docs
+build-pages:
+	rm -rf site/html htmlcov
+	uv run pytest tests/ --cov=fastapi_restly --cov-report=term-missing --cov-report=xml --cov-report=json:coverage.json --cov-report=html
+	uv run sphinx-build -M html docs site
+	mkdir -p site/html/coverage
+	cp -rf htmlcov/. site/html/coverage/
+	uv run python scripts/render_coverage_badge.py coverage.json site/html/coverage/badge.svg site/html/coverage/summary.json
+
+docs-push: build-pages
+	uv run ghp-import --no-history --no-jekyll --push site/html
+
+pages-push: build-pages
 	uv run ghp-import --no-history --no-jekyll --push site/html
 
 # Help
@@ -98,3 +109,5 @@ help:
 	@echo "  dev-setup       - Setup development environment"
 	@echo "  docs            - Build documentation"
 	@echo "  serve-docs      - Autobuild and serve documentation"
+	@echo "  build-pages     - Build docs plus coverage assets for GitHub Pages"
+	@echo "  pages-push      - Publish docs plus coverage assets to gh-pages"

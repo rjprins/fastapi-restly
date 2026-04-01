@@ -24,6 +24,7 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
 ]
+myst_heading_anchors = 3
 
 sys.path.insert(0, os.path.abspath(".."))
 autosummary_generate = True
