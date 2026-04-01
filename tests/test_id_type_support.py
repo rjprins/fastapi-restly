@@ -4,17 +4,17 @@ from uuid import UUID, uuid4
 from fastapi import FastAPI, Response
 from pydantic import BaseModel
 from sqlalchemy import ForeignKey, Uuid
-from sqlalchemy.orm import Mapped, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 import fastapi_restly as fr
 
 from .conftest import create_tables
 
 
-class UUIDModel(fr.Base):
+class UUIDModel(fr.DataclassBase):
     __tablename__ = "uuid_model"
 
-    id: Mapped[UUID] = fr.mapped_column(
+    id: Mapped[UUID] = mapped_column(
         Uuid, primary_key=True, default_factory=uuid4
     )
     name: Mapped[str]
@@ -51,17 +51,17 @@ def test_view_id_type_controls_openapi_path_parameter():
 
 
 def test_idschema_accepts_uuid_relation_ids(client):
-    class Author(fr.Base):
+    class Author(fr.DataclassBase):
         __tablename__ = "uuid_author"
 
-        id: Mapped[UUID] = fr.mapped_column(
+        id: Mapped[UUID] = mapped_column(
             Uuid, primary_key=True, default_factory=uuid4
         )
         name: Mapped[str]
 
     class Article(fr.IDBase):
         title: Mapped[str]
-        author_id: Mapped[UUID] = fr.mapped_column(
+        author_id: Mapped[UUID] = mapped_column(
             Uuid, ForeignKey("uuid_author.id")
         )
         author: Mapped[Author] = relationship()

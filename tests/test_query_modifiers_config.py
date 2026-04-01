@@ -22,11 +22,11 @@ from fastapi_restly.query import (
     apply_query_modifiers,
     create_query_param_schema,
 )
-from fastapi_restly.models import Base
+from fastapi_restly.models import DataclassBase
 from .conftest import create_tables
 
 
-class TestModel(Base):
+class TestModel(DataclassBase):
     __tablename__ = "test_model_config"
     
     id: Mapped[int] = mapped_column(primary_key=True)

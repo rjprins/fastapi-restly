@@ -33,7 +33,7 @@ class Widget(fr.IDBase):
 @pytest.mark.asyncio
 async def test_async_session_without_sync_sessionmaker(async_session):
     conn = await async_session.connection()
-    await conn.run_sync(fr.Base.metadata.create_all)
+    await conn.run_sync(fr.DataclassBase.metadata.create_all)
 
     widget = Widget(name="alpha")
     async_session.add(widget)

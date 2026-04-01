@@ -20,10 +20,10 @@ from fastapi_restly.query._v2 import (
     _iter_fields_including_nested_v2,
     _parse_value_v2,
 )
-from fastapi_restly.models import Base
+from fastapi_restly.models import DataclassBase
 
 
-class TestModel(Base):
+class TestModel(DataclassBase):
     __tablename__ = "test_model_aliases"
     
     id: Mapped[int] = mapped_column(primary_key=True)

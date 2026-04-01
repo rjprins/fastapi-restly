@@ -1,43 +1,128 @@
 # Tutorial
 
-This tutorial builds a small blog API and shows the most common FastAPI-Restly patterns.
+This tutorial builds a small blog API with two related models and shows the most common
+FastAPI-Restly patterns. It assumes you have already read [Getting Started](getting_started.md).
 
-If you want the shortest path first, start with [Getting Started](getting_started.md).
+This tutorial uses explicit schemas for clarity. For faster scaffolding, you can omit
+`schema = ...` on a view and let FastAPI-Restly auto-generate it from the model.
+See [Auto-Generated Schemas](technical_details.md#auto-generated-schemas).
 
-This tutorial uses explicit schemas for clarity. For faster scaffolding, you can
-omit `schema = ...` on a view and let FastAPI-Restly auto-generate it from the model.
+---
 
-## Blog API Example
+## Models
 
 ```python
-import asyncio
 import fastapi_restly as fr
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from sqlalchemy import ForeignKey
-from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.orm import Mapped, mapped_column
 
-engine = create_async_engine("sqlite+aiosqlite:///blog.db")
-fr.setup_async_database_connection(async_engine=engine)
-app = FastAPI()
+fr.setup_async_database_connection("sqlite+aiosqlite:///blog.db")
+
 
 class Post(fr.IDBase):
     title: Mapped[str]
     content: Mapped[str]
     published: Mapped[bool] = mapped_column(default=False)
 
+
 class Comment(fr.IDBase):
     content: Mapped[str]
     post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
+```
 
+### Table naming
+
+`IDBase` automatically derives table names from the class name using snake_case conversion:
+`Post` becomes `"post"`, `Comment` becomes `"comment"`, `BlogPost` would become `"blog_post"`.
+This is why `ForeignKey("post.id")` is the correct reference for `Post.id`.
+
+### IDBase and dataclass semantics
+
+`IDBase` uses SQLAlchemy's `MappedAsDataclass`. Always pass fields as keyword arguments:
+
+```python
+Post(title="Hello", content="World", published=False)  # correct
+```
+
+The `id` column is excluded from `__init__` automatically — you do not pass it.
+
+---
+
+## Schemas
+
+```python
 class PostSchema(fr.IDSchema):
     title: str
     content: str
     published: bool
 
+
 class CommentSchema(fr.IDSchema):
     content: str
     post_id: fr.IDSchema[Post]
+```
+
+### What IDSchema provides
+
+`fr.IDSchema` is a Pydantic base class that adds a read-only `id` field to your schema.
+Because `id` is `ReadOnly`, it appears in responses but is ignored when creating or updating
+records. You do not need to declare `id` yourself.
+
+### IDSchema as a field type
+
+`post_id: fr.IDSchema[Post]` is a special convention for foreign-key fields. Instead of
+sending a plain integer, the API accepts and returns a small envelope:
+
+```json
+{ "id": 1 }
+```
+
+So a `POST /comments/` request body looks like:
+
+```json
+{
+  "content": "Great post!",
+  "post_id": {"id": 1}
+}
+```
+
+And a response looks like:
+
+```json
+{
+  "id": 7,
+  "content": "Great post!",
+  "post_id": {"id": 1}
+}
+```
+
+The `_id` suffix on the field name is what triggers this behaviour: the view machinery
+extracts the integer from `{"id": N}` and stores it in the `post_id` column, and it also
+validates that a `Post` with that `id` exists (returning 404 if not).
+
+If you prefer a plain `int` field and want to skip the envelope and the existence check,
+declare `post_id: int` in your schema instead.
+
+See [How-To: Work with Foreign Keys Using IDSchema](howto_relationship_idschema.md) for more
+detail, including list relations.
+
+---
+
+## App setup
+
+```python
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    engine = fr.FRAsyncSession.kw["bind"]
+    async with engine.begin() as conn:
+        await conn.run_sync(fr.DataclassBase.metadata.create_all)
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
+
 
 @fr.include_view(app)
 class PostView(fr.AsyncAlchemyView):
@@ -45,48 +130,74 @@ class PostView(fr.AsyncAlchemyView):
     model = Post
     schema = PostSchema
 
+
 @fr.include_view(app)
 class CommentView(fr.AsyncAlchemyView):
     prefix = "/comments"
     model = Comment
     schema = CommentSchema
-
-
-async def init_models() -> None:
-    async with engine.begin() as conn:
-        await conn.run_sync(fr.Base.metadata.create_all)
-
-
-asyncio.run(init_models())
 ```
 
-## Generated Endpoints
+Tables are created inside a FastAPI `lifespan` context manager so they are initialised
+after the event loop starts. This is safe with both `uvicorn` and testing tools.
+For production projects, use Alembic migrations instead of `create_all`.
 
-For each view, FastAPI-Restly generates:
+---
 
-- `GET /{prefix}/`
-- `POST /{prefix}/`
-- `GET /{prefix}/{id}`
-- `PATCH /{prefix}/{id}`
-- `DELETE /{prefix}/{id}`
+## Generated endpoints
 
-## Read-Only and Write-Only Fields
+For each view, FastAPI-Restly generates five endpoints. With `prefix = "/posts"`:
+
+| Method   | Path          | Action         |
+|----------|---------------|----------------|
+| `GET`    | `/posts/`     | List all posts |
+| `POST`   | `/posts/`     | Create a post  |
+| `GET`    | `/posts/{id}` | Get one post   |
+| `PATCH`  | `/posts/{id}` | Update a post  |
+| `DELETE` | `/posts/{id}` | Delete a post  |
+
+The `prefix` value must include the leading slash (e.g. `"/posts"`, not `"posts"`).
+
+To disable specific endpoints, set `exclude_routes`:
 
 ```python
-class UserSchema(fr.IDSchema):
-    name: str
-    email: str
-    password: fr.WriteOnly[str]
-    internal_id: fr.ReadOnly[str]
+class PostView(fr.AsyncAlchemyView):
+    prefix = "/posts"
+    model = Post
+    schema = PostSchema
+    exclude_routes = ("delete",)  # disables DELETE /posts/{id}
 ```
 
-Behavior:
-- `ReadOnly` fields are ignored for writes and included in responses.
-- `WriteOnly` fields are accepted in writes and hidden in responses.
+---
 
-## Querying Lists
+## Read-only and write-only fields
 
-Use query modifiers on list endpoints:
+Say you want to add an author token that is stored on creation but never returned, and a
+`slug` field that is computed server-side and must not be writable:
+
+```python
+class PostSchema(fr.IDSchema):
+    title: str
+    content: str
+    published: bool
+    author_token: fr.WriteOnly[str]  # accepted on create/update, hidden in responses
+    slug: fr.ReadOnly[str]           # returned in responses, ignored on create/update
+```
+
+- `ReadOnly` fields appear in responses but are ignored on create and update.
+- `WriteOnly` fields are accepted on create and update but never returned in responses.
+
+`id` on `IDSchema` is already `ReadOnly`, which is why it appears in responses without
+being part of the create/update body.
+
+---
+
+## Querying lists
+
+FastAPI-Restly supports two query parameter styles. Each view uses one style,
+configured globally or per-view with `query_modifier_version`.
+
+**V1 (default) — JSONAPI-style filters:**
 
 ```text
 GET /posts/?filter[published]=true
@@ -94,29 +205,77 @@ GET /posts/?sort=-id
 GET /posts/?limit=10&offset=0
 ```
 
-Or V2 style:
+**V2 — direct field names with operator suffixes:**
 
 ```text
 GET /posts/?published=true&order_by=-id&page=1&page_size=10
+GET /posts/?title__contains=hello
 ```
+
+V1 and V2 are separate systems; you cannot mix their parameters in the same request.
+To switch globally:
+
+```python
+fr.set_query_modifier_version(fr.QueryModifierVersion.V2)
+```
+
+To switch per-view:
+
+```python
+class PostView(fr.AsyncAlchemyView):
+    prefix = "/posts"
+    model = Post
+    schema = PostSchema
+    query_modifier_version = fr.QueryModifierVersion.V2
+```
+
+See [Query Modifiers](query_modifiers.md) for the full list of filters and operators.
+
+---
 
 ## Testing
 
+FastAPI-Restly provides `RestlyTestClient`, a thin wrapper around FastAPI's `TestClient`
+that asserts sensible default status codes and gives clear failure messages.
+
 ```python
-from fastapi.testclient import TestClient
+from fastapi_restly.testing import RestlyTestClient
 
-client = TestClient(app)
+client = RestlyTestClient(app)
 
-create = client.post("/posts/", json={"title": "Hello", "content": "World", "published": False})
-assert create.status_code == 201
+post = client.post("/posts/", json={"title": "Hello", "content": "World", "published": False})
+# Automatically asserts status 201
 
-items = client.get("/posts/")
-assert items.status_code == 200
+item = client.get(f"/posts/{post.json()['id']}")
+# Automatically asserts status 200
 ```
 
-## Next Steps
+For test isolation, use the `async_session` or `session` pytest fixtures. These wrap each
+test in a database savepoint so changes never persist between tests:
 
+```python
+# conftest.py
+pytest_plugins = ["fastapi_restly.pytest_fixtures"]
+```
+
+```python
+# test_posts.py
+def test_create_post(client):
+    resp = client.post("/posts/", json={"title": "Hi", "content": "...", "published": False})
+    assert resp.json()["title"] == "Hi"
+    # Database changes are rolled back automatically after this test
+```
+
+See [How-To: Testing](howto_testing.md) and [Pytest Fixtures](pytest_fixtures.md) for the
+full setup and savepoint details.
+
+---
+
+## Next steps
+
+- [Auto-Generated Schemas](technical_details.md#auto-generated-schemas) — skip writing schemas for simple models
+- [Query Modifiers](query_modifiers.md) — full filter and sort reference
+- [How-To: Foreign Keys with IDSchema](howto_relationship_idschema.md) — list relations and nested objects
+- [How-To: Testing](howto_testing.md) — savepoint isolation and test fixtures
+- [How-To: Override Endpoints](howto_override_endpoints.md) — customise individual CRUD handlers
 - [API Reference](api_reference.md)
-- [Query Modifiers](query_modifiers.md)
-- [Technical Details](technical_details.md)
-

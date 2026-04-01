@@ -1,9 +1,9 @@
 import enum
+import re
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import Enum, func, select
-from sqlalchemy.exc import NoResultFound
+from sqlalchemy import Enum, func
 from sqlalchemy.orm import (
     DeclarativeBase,
     Mapped,
@@ -28,7 +28,7 @@ def utc_now() -> datetime:
 
 class TimestampsMixin(MappedAsDataclass, kw_only=True):
     """
-    Mixin to add created_at and updated_at timestamps (UTC-aware).
+    Dataclass mixin adding UTC-aware created_at and updated_at timestamps.
     """
 
     created_at: Mapped[datetime] = mapped_column(
@@ -40,10 +40,14 @@ class TimestampsMixin(MappedAsDataclass, kw_only=True):
 
 
 class IDMixin(MappedAsDataclass, kw_only=True):
+    """Dataclass mixin adding an auto-incrementing integer `id` primary key."""
+
     id: Mapped[int] = mapped_column(init=False, primary_key=True)
 
 
 class TableNameMixin:
+    """Mixin that auto-generates snake_case table names from class names."""
+
     @declared_attr
     @classmethod
     def __tablename__(cls) -> Any:
@@ -51,15 +55,21 @@ class TableNameMixin:
 
 
 def underscore(name: str) -> str:
-    result = []
-    for i, c in enumerate(name):
-        if c.isupper() and i > 0 and not name[i - 1].isupper():
-            result.append("_")
-        result.append(c.lower())
-    return "".join(result)
+    """Convert CamelCase class name to snake_case table name.
+
+    Handles acronyms correctly: HTTPServer -> http_server, XMLParser -> xml_parser.
+    """
+    # Insert underscore before an uppercase letter that follows a lowercase letter
+    s1 = re.sub(r'([a-z0-9])([A-Z])', r'\1_\2', name)
+    # Insert underscore before an uppercase letter that is followed by a lowercase letter
+    # (handles the end of an acronym: "HTTPServer" -> "HTTP_Server")
+    s2 = re.sub(r'([A-Z]+)([A-Z][a-z])', r'\1_\2', s1)
+    return s2.lower()
 
 
-class Base(TableNameMixin, MappedAsDataclass, DeclarativeBase, kw_only=True):
+class DataclassBase(TableNameMixin, MappedAsDataclass, DeclarativeBase, kw_only=True):
+    """SQLAlchemy declarative base with dataclass semantics."""
+
     type_annotation_map = {
         # native_enum=False so enums are persisted as strings in the
         # database, not as Postgres TYPE objects. This prevents
@@ -67,48 +77,15 @@ class Base(TableNameMixin, MappedAsDataclass, DeclarativeBase, kw_only=True):
         enum.Enum: Enum(enum.Enum, native_enum=False, length=64)
     }
 
-    @classmethod
-    def get_one_or_create(cls, session, **kwargs):
-        """
-        Sync version. Do a database select for the given keyword arguments.
-        The arguments must uniquely select a row.
-        If no matching row/object is found, create a new object and
-        return it. For async sessions, use async_get_one_or_create.
-        """
-        select_query = select(cls).filter_by(**kwargs)
-        results = session.scalars(select_query)
-        try:
-            return results.one()
-        except NoResultFound:
-            new_instance = cls(**kwargs)
-            session.add(new_instance)
-            session.flush()
-            return new_instance
+class IDBase(IDMixin, DataclassBase):
+    """Convenience base: DataclassBase + integer `id` primary key."""
 
-    @classmethod
-    async def async_get_one_or_create(cls, session, **kwargs):
-        """
-        Async version. Do a database select for the given keyword arguments.
-        The arguments must uniquely select a row.
-        If no matching row/object is found, create a new object and
-        return it. Requires an async session. For sync sessions, use get_one_or_create.
-        """
-        select_query = select(cls).filter_by(**kwargs)
-        results = await session.scalars(select_query)
-        try:
-            return results.one()
-        except NoResultFound:
-            new_instance = cls(**kwargs)
-            session.add(new_instance)
-            await session.flush()
-            return new_instance
-
-
-class IDBase(IDMixin, Base):
     __abstract__ = True
 
 
 class IDStampsBase(TimestampsMixin, IDBase):
+    """Convenience base: IDBase + `created_at` / `updated_at` timestamps."""
+
     __abstract__ = True
 
 
@@ -124,12 +101,14 @@ class PlainTimestampsMixin:
 
 
 class PlainIDMixin:
+    """Non-dataclass mixin adding an auto-incrementing integer `id` primary key."""
+
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
 
 class PlainBase(TableNameMixin, DeclarativeBase):
     """
-    Alternative declarative base without dataclass semantics.
+    Declarative base without dataclass semantics.
     """
 
     type_annotation_map = {
@@ -138,8 +117,12 @@ class PlainBase(TableNameMixin, DeclarativeBase):
 
 
 class PlainIDBase(PlainIDMixin, PlainBase):
+    """Convenience base: PlainBase + integer `id` primary key."""
+
     __abstract__ = True
 
 
 class PlainIDStampsBase(PlainTimestampsMixin, PlainIDBase):
+    """Convenience base: PlainIDBase + `created_at` / `updated_at` timestamps."""
+
     __abstract__ = True

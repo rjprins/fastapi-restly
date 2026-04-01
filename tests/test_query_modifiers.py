@@ -23,10 +23,10 @@ from fastapi_restly.query._v1 import (
     _make_where_clause,
     _is_string_field,
 )
-from fastapi_restly.models import Base
+from fastapi_restly.models import DataclassBase
 
 
-class TestModelV1(Base):
+class TestModelV1(DataclassBase):
     __tablename__ = "test_model_v1"
     
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -50,7 +50,7 @@ class TestNestedSchemaV1(pydantic.BaseModel):
     user: TestSchemaV1
 
 
-class TestNestedModelV1(Base):
+class TestNestedModelV1(DataclassBase):
     __tablename__ = "test_nested_model_v1"
     
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -58,7 +58,7 @@ class TestNestedModelV1(Base):
 
 
 # Test models for relation filtering
-class UserModel(Base):
+class UserModel(DataclassBase):
     __tablename__ = "users"
     
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -69,7 +69,7 @@ class UserModel(Base):
     posts: Mapped[list["PostModel"]] = relationship("PostModel", back_populates="author")
 
 
-class PostModel(Base):
+class PostModel(DataclassBase):
     __tablename__ = "posts"
     
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -310,9 +310,12 @@ class TestApplyFiltering:
 
     def test_apply_filtering_is_not_null(self, select_query, mock_query_params):
         """Test applying filtering with is not null operator."""
-        # Skip this test as the current implementation has issues with null handling
-        # The parser tries to validate None against a string field, which fails
-        pytest.skip("Current implementation has issues with null handling in string fields")
+        query_params = mock_query_params(**{"filter[email]": "!null"})
+        result = apply_filtering(query_params, select_query, TestModelV1, TestSchemaV1)
+
+        # Check that the query has where clause
+        assert hasattr(result, '_where_criteria')
+        assert "IS NOT NULL" in str(result)
 
     def test_apply_filtering_multiple_values(self, select_query, mock_query_params):
         """Test applying filtering with multiple values (OR logic)."""

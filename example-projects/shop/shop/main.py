@@ -9,6 +9,7 @@ This example demonstrates:
 - Custom validation
 """
 
+from contextlib import asynccontextmanager
 from typing import ClassVar
 from uuid import UUID, uuid4
 
@@ -23,7 +24,15 @@ import fastapi_restly as fr
 fr.setup_async_database_connection(async_database_url="sqlite+aiosqlite:///shop.db")
 
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    engine = fr.FRAsyncSession.kw["bind"]
+    async with engine.connect() as conn:
+        await conn.run_sync(fr.DataclassBase.metadata.create_all)
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -45,14 +54,14 @@ class Customer(fr.IDBase):
 # Example of many-to-many
 product_order_table = sa.Table(
     "product_order",
-    fr.Base.metadata,
+    fr.DataclassBase.metadata,
     sa.Column("product_id", sa.ForeignKey("product.id")),
     sa.Column("order_id", sa.ForeignKey("order.id")),
 )
 
 
 # Example with using UUID as primary key
-class Product(fr.Base):
+class Product(fr.DataclassBase):
     id: orm.Mapped[UUID] = orm.mapped_column(primary_key=True, default_factory=uuid4)
     name: orm.Mapped[str]
     price: orm.Mapped[float]

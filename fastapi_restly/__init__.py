@@ -1,12 +1,8 @@
-from sqlalchemy.orm import mapped_column
-
 # Database layer
 from .db import (
-    AsyncSession,
     AsyncSessionDep,
     FRAsyncSession,
     FRSession,
-    Session,
     SessionDep,
     activate_savepoint_only_mode,
     deactivate_savepoint_only_mode,
@@ -18,20 +14,24 @@ from .db import (
 
 # Model base classes
 from .models import (
-    Base,
+    DataclassBase,
     IDBase,
+    IDMixin,
     IDStampsBase,
     PlainBase,
     PlainIDBase,
+    PlainIDMixin,
     PlainIDStampsBase,
+    PlainTimestampsMixin,
     TimestampsMixin,
+    async_get_one_or_create,
+    get_one_or_create,
 )
 
 # Query modifiers
 from .query import (
     QueryModifierVersion,
     apply_query_modifiers,
-    create_query_param_schema,
     get_query_modifier_version,
     set_query_modifier_version,
     use_query_modifier_version,
@@ -49,8 +49,6 @@ from .schemas import (
     TimestampsSchemaMixin,
     auto_generate_schema_for_view,
     create_schema_from_model,
-    get_writable_inputs,
-    is_readonly_field,
     resolve_ids_to_sqlalchemy_objects,
 )
 
@@ -76,14 +74,11 @@ from .views import (
 )
 
 __all__ = [
-    # Database (new names - preferred)
+    # Database
     "FRAsyncSession",
     "FRSession",
     "AsyncSessionDep",
     "SessionDep",
-    # Database (deprecated aliases)
-    "AsyncSession",
-    "Session",
     # Database utilities
     "activate_savepoint_only_mode",
     "deactivate_savepoint_only_mode",
@@ -92,17 +87,21 @@ __all__ = [
     "setup_database_connection",
     "use_fr_globals",
     # Models
-    "Base",
+    "DataclassBase",
     "IDBase",
+    "IDMixin",
     "IDStampsBase",
     "PlainBase",
     "PlainIDBase",
+    "PlainIDMixin",
     "PlainIDStampsBase",
+    "PlainTimestampsMixin",
     "TimestampsMixin",
+    "async_get_one_or_create",
+    "get_one_or_create",
     # Query modifiers
     "QueryModifierVersion",
     "apply_query_modifiers",
-    "create_query_param_schema",
     "get_query_modifier_version",
     "set_query_modifier_version",
     "use_query_modifier_version",
@@ -117,8 +116,6 @@ __all__ = [
     "TimestampsSchemaMixin",
     "auto_generate_schema_for_view",
     "create_schema_from_model",
-    "get_writable_inputs",
-    "is_readonly_field",
     "resolve_ids_to_sqlalchemy_objects",
     # Settings
     "settings",
@@ -131,7 +128,6 @@ __all__ = [
     "get",
     "include_view",
     "make_new_object",
-    "mapped_column",
     "patch",
     "post",
     "put",

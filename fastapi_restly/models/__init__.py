@@ -1,7 +1,7 @@
 from ._base import (
     CASCADE_ALL_ASYNC,
     CASCADE_ALL_DELETE_ORPHAN_ASYNC,
-    Base,
+    DataclassBase,
     IDBase,
     IDMixin,
     IDStampsBase,
@@ -15,11 +15,12 @@ from ._base import (
     underscore,
     utc_now,
 )
+from ._helpers import async_get_one_or_create, get_one_or_create
 
 __all__ = [
-    "Base",
     "CASCADE_ALL_ASYNC",
     "CASCADE_ALL_DELETE_ORPHAN_ASYNC",
+    "DataclassBase",
     "IDBase",
     "IDMixin",
     "IDStampsBase",
@@ -30,6 +31,8 @@ __all__ = [
     "PlainTimestampsMixin",
     "TableNameMixin",
     "TimestampsMixin",
+    "async_get_one_or_create",
+    "get_one_or_create",
     "underscore",
     "utc_now",
 ]

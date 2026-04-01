@@ -22,10 +22,10 @@ from fastapi_restly.query._v2 import (
     _parse_value_v2,
     _make_where_clause_v2,
 )
-from fastapi_restly.models import Base
+from fastapi_restly.models import DataclassBase
 
 
-class TestModel(Base):
+class TestModel(DataclassBase):
     __tablename__ = "test_model"
     
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -49,14 +49,14 @@ class TestNestedSchema(pydantic.BaseModel):
     user: TestSchema
 
 
-class TestNestedModel(Base):
+class TestNestedModel(DataclassBase):
     __tablename__ = "test_nested_model"
     
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(Integer)
 
 
-class UserModelV2(Base):
+class UserModelV2(DataclassBase):
     __tablename__ = "users_v2"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -66,7 +66,7 @@ class UserModelV2(Base):
     posts: Mapped[list["PostModelV2"]] = relationship("PostModelV2", back_populates="author")
 
 
-class PostModelV2(Base):
+class PostModelV2(DataclassBase):
     __tablename__ = "posts_v2"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -90,14 +90,14 @@ class PostSchemaV2(pydantic.BaseModel):
     author: UserSchemaV2
 
 
-class AuditUserModelV2(Base):
+class AuditUserModelV2(DataclassBase):
     __tablename__ = "audit_users_v2"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(50))
 
 
-class AuditLogModelV2(Base):
+class AuditLogModelV2(DataclassBase):
     __tablename__ = "audit_logs_v2"
 
     id: Mapped[int] = mapped_column(primary_key=True)

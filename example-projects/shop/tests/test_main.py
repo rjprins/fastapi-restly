@@ -8,7 +8,8 @@ from shop.main import app
 
 @pytest.fixture
 def client() -> RestlyTestClient:
-    return RestlyTestClient(app)
+    with RestlyTestClient(app) as client:
+        yield client
 
 
 def test_openapi_spec(client):

@@ -21,20 +21,9 @@ It provides auto-generated endpoints, schemas, and filters while keeping everyth
 * **Field control** – `ReadOnly` and `WriteOnly` field markers, plus relationship ID resolution via `IDSchema[...]`.
 * **Testing utilities** – `RestlyTestClient` and savepoint-based isolation fixtures for clean, fast tests.
 
-## Restly Philosophy
+## Philosophy
 
-### Made to Build Apps
-
-Restly is not only a REST framework, it aims to grow with the most common tools web apps need.
-
-### Designed in Layers
-
-Restly is a stack of micro-libraries.
-
-- Each layer adds a step of convenience, but developers can always drop down a layer for deeper customization.
-- Each layer makes deliberate, opinionated choices that higher layers can rely on and extend.
-- The less customization you need, the more you get out-of-the-box — yet full customization never requires awkward hacks.
-- Built on FastAPI, Pydantic, and SQLAlchemy; Restly sticks to patterns provided by those libraries.
+Restly is a stack of micro-libraries. Each layer adds convenience while letting you drop down for deeper control. The less customization you need, the more you get out-of-the-box — full customization never requires awkward hacks. Restly stays close to patterns already provided by FastAPI, Pydantic, and SQLAlchemy.
 
 ## Quick Start
 
@@ -52,39 +41,43 @@ uv sync
 ### Basic Example
 
 ```python
-import asyncio
+from contextlib import asynccontextmanager
+
 import fastapi_restly as fr
 from fastapi import FastAPI
-from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.orm import Mapped
 
-# Setup database
-DATABASE_URL = "sqlite+aiosqlite:///app.db"
-engine = create_async_engine(DATABASE_URL)
-fr.setup_async_database_connection(async_engine=engine)
+# Setup database — capture the return value to access the engine later
+make_session = fr.setup_async_database_connection("sqlite+aiosqlite:///app.db")
 
-app = FastAPI()
 
-# Define your model
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    engine = make_session.kw["bind"]
+    async with engine.begin() as conn:
+        await conn.run_sync(fr.DataclassBase.metadata.create_all)  # dev/SQLite only
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
+
+
+# Define your model — IDBase adds an auto-incrementing integer id.
+# Use IDStampsBase to also get created_at / updated_at timestamps.
 class User(fr.IDBase):
     name: Mapped[str]
     email: Mapped[str]
     age: Mapped[int]
 
-# Create instant CRUD endpoints with auto-generated schema
+
+# Create instant CRUD endpoints with auto-generated schema.
+# Use AlchemyView instead of AsyncAlchemyView for sync SQLAlchemy.
 @fr.include_view(app)
 class UserView(fr.AsyncAlchemyView):
     prefix = "/users"
     model = User
     # Schema is auto-generated from the model!
 
-
-async def init_models() -> None:
-    async with engine.begin() as conn:
-        await conn.run_sync(fr.Base.metadata.create_all)
-
-
-asyncio.run(init_models())
 
 # That's it! You now have a fully functional API with:
 # - GET /users/ - List all users, comes with complete filtering and pagination
@@ -124,7 +117,7 @@ class UserView(fr.AsyncAlchemyView):
 
 ### Query Modifiers
 
-FastAPI-Restly currently supports two query parameter interfaces:
+FastAPI-Restly supports two query parameter interfaces:
 
 **V1 (JSONAPI-style):**
 ```bash
@@ -155,13 +148,15 @@ GET /users/?page=2&page_size=10
 
 ### Read-Only and Write-Only Fields
 
+`IDSchema` already provides a read-only `id` field, so you don't need to redeclare it unless you want to narrow the type.
+
 ```python
 class UserSchema(fr.IDSchema):
-    id: fr.ReadOnly[UUID]  # Can't be set in requests
+    # id is inherited from IDSchema as ReadOnly[Any]
     name: str
     email: str
-    password: fr.WriteOnly[str]  # Won't appear in responses
-    created_at: fr.ReadOnly[datetime]
+    password: fr.WriteOnly[str]       # Won't appear in responses
+    created_at: fr.ReadOnly[datetime]  # Can't be set in requests
 ```
 
 ### Relationships
@@ -176,11 +171,13 @@ class Order(fr.IDBase):
 
 class OrderSchema(fr.IDSchema):
     customer: CustomerSchema  # Nested object
-    customer_id: fr.IDSchema[Customer]  # Just the related ID, e.g. int or UUID
+    customer_id: fr.IDSchema[Customer]  # Wire format: {"id": 123} — the framework resolves it to the FK value
     total: float
 ```
 
 ### Custom Endpoints
+
+Add extra endpoints using `@fr.get`, `@fr.post`, `@fr.put`, `@fr.patch`, `@fr.delete`, or the generic `@fr.route`. Override `process_*` methods (e.g. `process_index`, `process_get`) to customise built-in CRUD logic without replacing the whole endpoint.
 
 ```python
 @fr.include_view(app)
@@ -191,13 +188,38 @@ class UserView(fr.AsyncAlchemyView):
 
     @fr.get("/{id}/download")
     async def download_user(self, id: int):
-        """Custom endpoint"""
+        """Custom extra endpoint"""
         return {"id": id, "status": "ok"}
 
-    async def process_index(self, query_params):
+    async def process_index(self, query_params, query=None):
         """Override default list behavior"""
         # Custom logic here
-        return await super().process_index(query_params)
+        return await super().process_index(query_params, query=query)
+```
+
+### Excluding Built-in Routes
+
+Disable any of the default CRUD endpoints with `exclude_routes`:
+
+```python
+@fr.include_view(app)
+class UserView(fr.AsyncAlchemyView):
+    prefix = "/users"
+    model = User
+    exclude_routes = ("delete",)  # Names: "index", "get", "post", "patch", "delete"
+```
+
+### Pagination Metadata
+
+Set `include_pagination_metadata = True` to wrap list responses with count and page information:
+
+```python
+@fr.include_view(app)
+class UserView(fr.AsyncAlchemyView):
+    prefix = "/users"
+    model = User
+    include_pagination_metadata = True
+    # Response shape: {"items": [...], "total": N, "page": 1, "page_size": 100, "total_pages": N, ...}
 ```
 
 ## Documentation
@@ -218,27 +240,31 @@ Check out the [example projects](example-projects/) for complete applications:
 
 ## Testing
 
-FastAPI-Restly includes testing utilities with **savepoint-based isolation**, so each test runs inside a database transaction that is rolled back automatically — no test data leaks between tests.
+`fastapi_restly.testing` provides pytest fixtures (`app`, `client`, `async_session`, `session`) with **savepoint-based isolation** — each test runs inside a database transaction that rolls back automatically, so no data leaks between tests. Add them to your project's `conftest.py`:
 
 ```python
+# conftest.py
 import fastapi_restly as fr
-from fastapi_restly.testing import RestlyTestClient
-from fastapi import FastAPI
+from fastapi_restly.testing import *  # exports app, client, async_session, session fixtures
 
-app = FastAPI()
-client = RestlyTestClient(app)
-
-def test_user_crud():
-    # Create user
-    response = client.post("/users/", json={"name": "John", "email": "john@example.com"})
-    assert response.status_code == 201
-
-    # Get user
-    user_id = response.json()["id"]
-    response = client.get(f"/users/{user_id}")
-    assert response.status_code == 200
-    assert response.json()["name"] == "John"
+make_session = fr.setup_async_database_connection("sqlite+aiosqlite:///test.db")
 ```
+
+`RestlyTestClient` automatically asserts the expected HTTP status code on every call (`200` for GET, `201` for POST, `204` for DELETE, etc.) and raises a descriptive `AssertionError` with the response body on failure — no manual status checks needed.
+
+```python
+# test_users.py
+def test_create_and_fetch_user(client):
+    # Raises AssertionError if status != 201
+    response = client.post("/users/", json={"name": "John", "email": "john@example.com"})
+    user_id = response.json()["id"]
+
+    # Raises AssertionError if status != 200
+    data = client.get(f"/users/{user_id}").json()
+    assert data["name"] == "John"
+```
+
+Pass `assert_status_code=None` to skip automatic assertion when you intentionally expect an error response.
 
 ## Configuration
 

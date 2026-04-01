@@ -5,14 +5,14 @@ from pathlib import Path
 import app.main  # noqa: F401
 
 from fastapi_restly.db import FRAsyncSession
-from fastapi_restly.models import Base
+from fastapi_restly.models import DataclassBase
 
 
 async def _create_tables():
     """Create all tables asynchronously."""
     async_engine = FRAsyncSession.kw["bind"]
     async with async_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(DataclassBase.metadata.create_all)
 
 
 # Delete the database file if it exists and create fresh tables

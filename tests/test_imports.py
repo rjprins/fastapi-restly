@@ -4,13 +4,13 @@ import fastapi_restly as fd
 from fastapi_restly import (
     AsyncAlchemyView,
     BaseSchema,
+    DataclassBase,
     IDBase,
     IDSchema,
     TimestampsMixin,
     include_view,
     setup_async_database_connection,
     settings,
-    Base,
 )
 from fastapi_restly import schemas
 from fastapi_restly import models as sqlbase
@@ -25,7 +25,7 @@ def test_imports_work():
     assert fd.include_view is not None
     assert fd.setup_async_database_connection is not None
     assert fd.settings is not None
-    assert fd.Base is not None
+    assert fd.DataclassBase is not None
 
 
 def test_schemas_module():
@@ -39,4 +39,4 @@ def test_sqlbase_module():
     """Test that sqlbase module can be imported."""
     assert sqlbase is not None
     # Test that we can access sqlbase from the module
-    assert hasattr(sqlbase, 'Base')
+    assert hasattr(sqlbase, 'DataclassBase')
