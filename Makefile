@@ -66,10 +66,7 @@ dev-setup: install-dev
 # Run tests with coverage
 test-coverage:
 	@echo "=== Running Tests with Coverage ==="
-	uv run pytest tests/ --cov=fastapi_restly --cov-report=term-missing
-	cd example-projects/shop && uv run pytest tests/ --cov=shop --cov-report=term-missing
-	cd example-projects/blog && uv run pytest blog/ --cov=blog --cov-report=term-missing
-	cd example-projects/saas && uv run pytest tests/ --cov=app --cov-report=term-missing
+	uv run pytest tests/ --cov=fastapi_restly --cov-report=term-missing --cov-report=xml
 
 docs:
 	uv run sphinx-build -M html docs site

@@ -3,6 +3,9 @@ build/
 dist/
 *.egg-info/
 *.db
+.coverage
+coverage.xml
+htmlcov/
 
 # Dolt database files (added by bd init)
 .dolt/
