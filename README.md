@@ -53,6 +53,11 @@ from fastapi import FastAPI
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Mapped
 
+# Create tables — for demo purposes; use Alembic migrations in production
+fr.DataclassBase.metadata.create_all(create_engine("sqlite:///app.db"))
+
+fr.configure(async_database_url="sqlite+aiosqlite:///app.db")
+app = FastAPI()
 
 # Define your model — IDBase adds an auto-incrementing integer id.
 # Use IDStampsBase to also get created_at / updated_at timestamps.
@@ -61,31 +66,23 @@ class User(fr.IDBase):
     email: Mapped[str]
     age: Mapped[int]
 
-
-fr.configure(async_database_url="sqlite+aiosqlite:///app.db")
-# Create tables — for demo purposes; use Alembic migrations in production
-fr.DataclassBase.metadata.create_all(create_engine("sqlite:///app.db"))
-app = FastAPI()
-
-
-# Create instant CRUD endpoints with auto-generated schema.
+# Create CRUD endpoints with auto-generated pydantic schemas.
 # Use RestView instead of AsyncRestView for sync SQLAlchemy.
 @fr.include_view(app)
 class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
-    # Schema is auto-generated from the model!
 
 
 # That's it! You now have a fully functional API with:
-# - GET /users/ - List all users, comes with complete filtering and pagination
+# - GET /users/ - List all users, complete with filtering, sorting and pagination
 # - POST /users/ - Create a user
 # - GET /users/{id} - Get a specific user
 # - PATCH /users/{id} - Partially update a user
 # - DELETE /users/{id} - Delete a user
 ```
 
-Run it:
+Run it with any ASGI server, for example uvicorn (`uv add uvicorn`):
 
 ```bash
 uvicorn main:app --reload
