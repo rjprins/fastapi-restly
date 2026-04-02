@@ -188,7 +188,7 @@ class OrderSchema(fr.IDSchema):
 
 ### Custom Endpoints
 
-Add extra endpoints using `@fr.get`, `@fr.post`, `@fr.put`, `@fr.patch`, `@fr.delete`, or the generic `@fr.route`. Override `process_*` methods (e.g. `process_index`, `process_get`) to customise built-in CRUD logic without replacing the whole endpoint.
+Add extra endpoints using `@fr.get`, `@fr.post`, `@fr.put`, `@fr.patch`, `@fr.delete`, or the generic `@fr.route`. Override `on_*` hooks (e.g. `on_list`, `on_get`) to customise built-in CRUD logic without replacing the whole endpoint.
 
 ```python
 @fr.include_view(app)
@@ -202,10 +202,10 @@ class UserView(fr.AsyncRestView):
         """Custom extra endpoint"""
         return {"id": id, "status": "ok"}
 
-    async def process_index(self, query_params, query=None):
+    async def on_list(self, query_params, query=None):
         """Override default list behavior"""
         # Custom logic here
-        return await super().process_index(query_params, query=query)
+        return await super().on_list(query_params, query=query)
 ```
 
 ### Excluding Built-in Routes

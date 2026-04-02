@@ -90,14 +90,14 @@ class RestView(BaseRestView):
 
     @get("/")
     def index(self, query_params: Any) -> Any:
-        objs = self.process_index(query_params)
+        objs = self.on_list(query_params)
         if not self.include_pagination_metadata:
             return [self.to_response_schema(obj) for obj in objs]
 
         total = self.count_index(query_params)
         return self._build_pagination_payload(query_params, objs, total)
 
-    def process_index(
+    def on_list(
         self,
         query_params: Any,
         query: sqlalchemy.Select[Any] | None = None,
@@ -107,9 +107,9 @@ class RestView(BaseRestView):
         Accepts a query argument that can be used for narrowing down the selection.
         Feel free to override this method, e.g.:
 
-            def process_index(self, query_params, query=None):
+            def on_list(self, query_params, query=None):
                 query = make_my_query()
-                objs = super().process_index(query_params, query)
+                objs = super().on_list(query_params, query)
                 return add_my_info(objs)
         """
         if query is None:
@@ -140,10 +140,10 @@ class RestView(BaseRestView):
 
     @get("/{id}")
     def get(self, id: Any) -> Any:
-        obj = self.process_get(id)
+        obj = self.on_get(id)
         return self.to_response_schema(obj)
 
-    def process_get(self, id: Any) -> Any:
+    def on_get(self, id: Any) -> Any:
         """
         Handle a GET request on "/{id}". This should return a single object.
         Return a 404 if not found.
@@ -159,10 +159,10 @@ class RestView(BaseRestView):
     def post(
         self, schema_obj: BaseSchema
     ) -> Any:  # schema_obj type is set in before_include_view
-        obj = self.process_post(schema_obj)
+        obj = self.on_create(schema_obj)
         return self.to_response_schema(obj)
 
-    def process_post(self, schema_obj: BaseSchema) -> Any:
+    def on_create(self, schema_obj: BaseSchema) -> Any:
         """
         Handle a POST request on "/". This should create a new object.
         Feel free to override this method.
@@ -173,24 +173,24 @@ class RestView(BaseRestView):
 
     @patch("/{id}")
     def patch(self, id: Any, schema_obj: BaseSchema) -> Any:
-        obj = self.process_patch(id, schema_obj)
+        obj = self.on_update(id, schema_obj)
         return self.to_response_schema(obj)
 
-    def process_patch(self, id: Any, schema_obj: BaseSchema) -> Any:
+    def on_update(self, id: Any, schema_obj: BaseSchema) -> Any:
         """
         Handle a PATCH request on "/{id}". This should partially update an existing
         object.
         Feel free to override this method.
         """
-        obj = self.process_get(id)
+        obj = self.on_get(id)
         return self.update_object(obj, schema_obj)
 
     @delete("/{id}")
     def delete(self, id: Any) -> fastapi.Response:
-        return self.process_delete(id)
+        return self.on_delete(id)
 
-    def process_delete(self, id: Any) -> fastapi.Response:
-        obj = self.process_get(id)
+    def on_delete(self, id: Any) -> fastapi.Response:
+        obj = self.on_get(id)
         self.delete_object(obj)
         return fastapi.Response(status_code=204)
 

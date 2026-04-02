@@ -9,7 +9,7 @@ class TaskSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
     """Schema for Task model.
 
     Note: Conditional validation (bugs require severity) is implemented
-    in TaskView.process_post and process_patch rather than here, because
+    in TaskView.on_create and on_update rather than here, because
     schema validators also run during query filtering which causes issues.
     """
 

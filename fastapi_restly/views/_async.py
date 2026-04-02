@@ -34,14 +34,14 @@ class AsyncRestView(BaseRestView):
 
     @get("/")
     async def index(self, query_params: Any) -> Any:
-        objs = await self.process_index(query_params)
+        objs = await self.on_list(query_params)
         if not self.include_pagination_metadata:
             return [self.to_response_schema(obj) for obj in objs]
 
         total = await self.count_index(query_params)
         return self._build_pagination_payload(query_params, objs, total)
 
-    async def process_index(
+    async def on_list(
         self,
         query_params: Any,
         query: sqlalchemy.Select[Any] | None = None,
@@ -51,9 +51,9 @@ class AsyncRestView(BaseRestView):
         Accepts a query argument that can be used for narrowing down the selection.
         Feel free to override this method, e.g.:
 
-            async def process_index(self, query_params, query=None):
+            async def on_list(self, query_params, query=None):
                 query = make_my_query()
-                objs = await super().process_index(query_params, query)
+                objs = await super().on_list(query_params, query)
                 return add_my_info(objs)
         """
         if query is None:
@@ -82,10 +82,10 @@ class AsyncRestView(BaseRestView):
 
     @get("/{id}")
     async def get(self, id: Any) -> Any:
-        obj = await self.process_get(id)
+        obj = await self.on_get(id)
         return self.to_response_schema(obj)
 
-    async def process_get(self, id: Any) -> Any:
+    async def on_get(self, id: Any) -> Any:
         """
         Handle a GET request on "/{id}". This should return a single object.
         Return a 404 if not found.
@@ -101,10 +101,10 @@ class AsyncRestView(BaseRestView):
     async def post(
         self, schema_obj: BaseSchema
     ) -> Any:  # schema_obj type is set in before_include_view
-        obj = await self.process_post(schema_obj)
+        obj = await self.on_create(schema_obj)
         return self.to_response_schema(obj)
 
-    async def process_post(self, schema_obj: BaseSchema) -> Any:
+    async def on_create(self, schema_obj: BaseSchema) -> Any:
         """
         Handle a POST request on "/". This should create a new object.
         Feel free to override this method.
@@ -114,31 +114,31 @@ class AsyncRestView(BaseRestView):
 
     @patch("/{id}")
     async def patch(self, id: Any, schema_obj: BaseSchema) -> Any:
-        obj = await self.process_patch(id, schema_obj)
+        obj = await self.on_update(id, schema_obj)
         return self.to_response_schema(obj)
 
-    async def process_patch(self, id: Any, schema_obj: BaseSchema) -> Any:
+    async def on_update(self, id: Any, schema_obj: BaseSchema) -> Any:
         """
         Handle a PATCH request on "/{id}". This should partially update an existing
         object.
         Feel free to override this method.
         """
-        obj = await self.process_get(id)
+        obj = await self.on_get(id)
         return await self.update_object(obj, schema_obj)
 
     @delete("/{id}")
     async def delete(self, id: Any) -> fastapi.Response:
-        return await self.process_delete(id)
+        return await self.on_delete(id)
 
-    async def process_delete(self, id: Any) -> fastapi.Response:
-        obj = await self.process_get(id)
+    async def on_delete(self, id: Any) -> fastapi.Response:
+        obj = await self.on_get(id)
         await self.delete_object(obj)
         return fastapi.Response(status_code=204)
 
     async def delete_object(self, obj: DeclarativeBase) -> None:
         """
         Handle a DELETE request on "/{id}". This should delete an object from the
-        database. `process_get()` is called first to lookup the object.
+        database. `on_get()` is called first to lookup the object.
         Feel free to override this method.
         """
         await self.session.delete(obj)

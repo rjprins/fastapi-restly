@@ -39,7 +39,7 @@ class _DummyAsyncView(AsyncRestView):
 
 
 @pytest.mark.asyncio
-async def test_async_process_index_uses_validated_query_params(monkeypatch):
+async def test_async_on_list_uses_validated_query_params(monkeypatch):
     captured = {}
 
     def _apply_query_modifiers(first_arg, query, model, schema):
@@ -57,7 +57,7 @@ async def test_async_process_index_uses_validated_query_params(monkeypatch):
     class QueryModel(BaseModel):
         validated: str
 
-    await view.process_index(QueryModel(validated="value"))
+    await view.on_list(QueryModel(validated="value"))
 
     assert isinstance(captured["first_arg"], QueryParams)
     assert captured["first_arg"].get("validated") == "value"

@@ -6,7 +6,7 @@ full Python inheritance model applies:
 
   - Class variables (model, schema, exclude_routes, include_pagination_metadata,
     id_type, dependencies) are inherited and can be overridden per-subclass.
-  - process_* hooks and custom routes defined on a base view are shared by all
+  - on_* hooks and custom routes defined on a base view are shared by all
     subclasses; each subclass can further override and call super().
   - Instance-level FastAPI dependencies declared as annotations on a base class
     are available on all subclasses as self.<name>.
@@ -99,13 +99,13 @@ def test_inherit_model_and_schema(sync_db):
 
 
 # ---------------------------------------------------------------------------
-# 2. process_* override shared across multiple subclasses
+# 2. on_* override shared across multiple subclasses
 # ---------------------------------------------------------------------------
 
 
-def test_process_override_shared_across_subclasses(sync_db):
+def test_hook_override_shared_across_subclasses(sync_db):
     """
-    A process_* override on a base view applies to every subclass.
+    An on_* override on a base view applies to every subclass.
     Two independent views that inherit the same base both exhibit the override.
     """
     engine, _ = sync_db
@@ -122,9 +122,9 @@ def test_process_override_shared_across_subclasses(sync_db):
         model = Tag
         schema = TagSchema
 
-        def process_post(self, schema_obj):
+        def on_create(self, schema_obj):
             call_log.append("audit")
-            return super().process_post(schema_obj)
+            return super().on_create(schema_obj)
 
     class ViewA(AuditBase):
         prefix = "/tags-a"
@@ -151,8 +151,8 @@ def test_process_override_shared_across_subclasses(sync_db):
 # ---------------------------------------------------------------------------
 
 
-def test_super_chain_in_process_override(sync_db):
-    """Subclass can override process_* and call super() to chain with the base."""
+def test_super_chain_in_hook_override(sync_db):
+    """Subclass can override on_* and call super() to chain with the base."""
     engine, _ = sync_db
 
     call_log: list[str] = []
@@ -167,18 +167,18 @@ def test_super_chain_in_process_override(sync_db):
         model = Note
         schema = NoteSchema
 
-        def process_post(self, schema_obj):
+        def on_create(self, schema_obj):
             call_log.append("base_pre")
-            result = super().process_post(schema_obj)
+            result = super().on_create(schema_obj)
             call_log.append("base_post")
             return result
 
     class NoteView(LogBase):
         prefix = "/notes"
 
-        def process_post(self, schema_obj):
+        def on_create(self, schema_obj):
             call_log.append("sub_pre")
-            result = super().process_post(schema_obj)
+            result = super().on_create(schema_obj)
             call_log.append("sub_post")
             return result
 
@@ -384,9 +384,9 @@ def test_instance_level_dependency_inherited(sync_db):
         model = Box
         schema = BoxSchema
 
-        def process_post(self, schema_obj):
+        def on_create(self, schema_obj):
             captured["request_id"] = self.request_id
-            return super().process_post(schema_obj)
+            return super().on_create(schema_obj)
 
     app = FastAPI()
 

@@ -332,7 +332,7 @@ GET /users/?page=2&page_size=50
 
 ## Overriding query logic per view
 
-Override `process_index` to inject a base query before the framework applies query
+Override `on_list` to inject a base query before the framework applies query
 modifiers:
 
 ```python
@@ -342,11 +342,11 @@ import fastapi_restly as fr
 class UserView(fr.AsyncRestView):
     ...
 
-    async def process_index(self, query_params, query=None):
+    async def on_list(self, query_params, query=None):
         query = sqlalchemy.select(self.model).where(self.model.active.is_(True))
-        return await super().process_index(query_params, query=query)
+        return await super().on_list(query_params, query=query)
 ```
 
-`super().process_index(query_params, query=query)` passes your base query into the
+`super().on_list(query_params, query=query)` passes your base query into the
 normal modifier pipeline, so all the filter/sort/paginate parameters still work on
 top of your pre-filtered result set.

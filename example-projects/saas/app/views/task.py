@@ -74,7 +74,7 @@ class TaskView(fr.AsyncRestView):
         """Get current user ID from auth context (placeholder for real auth)."""
         return CURRENT_USER_ID
 
-    async def process_index(self, query_params, query=None):
+    async def on_list(self, query_params, query=None):
         """Override to filter tasks by row-level permissions."""
         if query is None:
             query = select(self.model)
@@ -85,9 +85,9 @@ class TaskView(fr.AsyncRestView):
             # User can see tasks assigned to them
             query = query.where(Task.assignee_id == current_user)
 
-        return await super().process_index(query_params, query)
+        return await super().on_list(query_params, query)
 
-    async def process_get(self, id: int):
+    async def on_get(self, id: int):
         """Override to verify row-level access for single resource."""
         from fastapi import HTTPException
 
@@ -139,7 +139,7 @@ class TaskView(fr.AsyncRestView):
                 detail="severity is required for bug tasks"
             )
 
-    async def process_post(self, schema_obj):
+    async def on_create(self, schema_obj):
         """Override to check if project is archived before creating task."""
         from fastapi import HTTPException
 
@@ -162,9 +162,9 @@ class TaskView(fr.AsyncRestView):
         # Validate cross-resource constraints
         await self._validate_cross_resource(data)
 
-        return await super().process_post(schema_obj)
+        return await super().on_create(schema_obj)
 
-    async def process_patch(self, id: int, schema_obj):
+    async def on_update(self, id: int, schema_obj):
         """Override to implement optimistic locking via version field."""
         from fastapi import HTTPException
 

@@ -4,12 +4,12 @@ FastAPI-Restly views are plain Python classes. There are no decorator wrappers o
 
 ## Share a CRUD override across multiple views
 
-Override any `process_*` hook on a base class and every subclass picks it up automatically:
+Override any `on_*` hook on a base class and every subclass picks it up automatically:
 
 ```python
 class AuditBase(fr.RestView):
-    def process_post(self, schema_obj):
-        obj = super().process_post(schema_obj)
+    def on_create(self, schema_obj):
+        obj = super().on_create(schema_obj)
         audit_log.record("created", obj)
         return obj
 
@@ -30,12 +30,12 @@ class OrderView(AuditBase):
 
 ## Call super() to layer overrides
 
-A subclass can override `process_*` and call `super()` to build on top of the base implementation rather than replace it:
+A subclass can override an `on_*` hook and call `super()` to build on top of the base implementation rather than replace it:
 
 ```python
 class AuditBase(fr.RestView):
-    def process_post(self, schema_obj):
-        obj = super().process_post(schema_obj)
+    def on_create(self, schema_obj):
+        obj = super().on_create(schema_obj)
         audit_log.record("created", obj)
         return obj
 
@@ -45,12 +45,12 @@ class OrderView(AuditBase):
     model = Order
     schema = OrderSchema
 
-    def process_post(self, schema_obj):
+    def on_create(self, schema_obj):
         schema_obj.created_by = current_user()
-        return super().process_post(schema_obj)
+        return super().on_create(schema_obj)
 ```
 
-The call chain is `OrderView.process_post` → `AuditBase.process_post` → `RestView.process_post`. All three layers run in order.
+The call chain is `OrderView.on_create` → `AuditBase.on_create` → `RestView.on_create`. All three layers run in order.
 
 ## Inherit a shared dependency
 
@@ -63,9 +63,9 @@ from fastapi import Depends
 class AuthBase(fr.RestView):
     current_user: Annotated[User, Depends(get_current_user)]
 
-    def process_post(self, schema_obj):
+    def on_create(self, schema_obj):
         schema_obj.owner_id = self.current_user.id
-        return super().process_post(schema_obj)
+        return super().on_create(schema_obj)
 
 @fr.include_view(app)
 class NoteView(AuthBase):

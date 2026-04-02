@@ -60,7 +60,7 @@ class ProjectView(fr.AsyncRestView):
         """Get current org ID from auth context (placeholder for real auth)."""
         return CURRENT_ORG_ID
 
-    async def process_index(self, query_params, query=None):
+    async def on_list(self, query_params, query=None):
         """Override to filter by org and soft-delete status."""
         # Check if include_deleted is requested via raw query params
         include_deleted = self.request.query_params.get("include_deleted", "false").lower() == "true"
@@ -76,9 +76,9 @@ class ProjectView(fr.AsyncRestView):
         if not include_deleted:
             query = query.where(Project.deleted_at.is_(None))
 
-        return await super().process_index(query_params, query)
+        return await super().on_list(query_params, query)
 
-    async def process_get(self, id: int):
+    async def on_get(self, id: int):
         """Override to verify org access for single resource."""
         from fastapi import HTTPException
 

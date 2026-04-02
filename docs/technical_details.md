@@ -153,11 +153,11 @@ Both forms call `before_include_view()` (which generates derived schemas,
 annotates endpoint signatures, and registers the `index_param_schema`), then
 attach an `APIRouter` to `app`.
 
-### Endpoint / Process separation
+### Endpoint / Hook separation
 
-Every CRUD endpoint delegates to a `process_*` method (`process_index`,
-`process_get`, `process_post`, `process_patch`, `process_delete`). Override
-the `process_*` method to change business logic while keeping the endpoint
+Every CRUD endpoint delegates to an `on_*` hook (`on_list`,
+`on_get`, `on_create`, `on_update`, `on_delete`). Override
+the `on_*` hook to change business logic while keeping the endpoint
 wrapper intact, or override the endpoint method itself (e.g. `index`) to replace
 the full request/response flow.
 
@@ -177,7 +177,7 @@ If you declare a nested input field like `address: AddressSchema` on a write
 schema, the default CRUD implementation will pass that nested Pydantic object
 through to the SQLAlchemy model constructor or attribute setter, which usually
 does not match the ORM model shape. Use a flattened schema or override
-`process_post()` / `process_patch()` to transform the payload first.
+`on_create()` / `on_update()` to transform the payload first.
 
 (query-modifier-lifecycle)=
 ## Query Modifier Lifecycle

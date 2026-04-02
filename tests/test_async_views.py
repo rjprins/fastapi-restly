@@ -197,8 +197,8 @@ def test_async_rest_view_crud_and_pagination():
     asyncio.run(run())
 
 
-def test_async_process_index_with_custom_query():
-    """Call process_index with an explicit query to cover the query-is-not-None branch."""
+def test_async_on_list_with_custom_query():
+    """Call on_list with an explicit query to cover the query-is-not-None branch."""
 
     class Widget(fr.IDBase):
         name: Mapped[str]
@@ -231,7 +231,7 @@ def test_async_process_index_with_custom_query():
 
             # Pass an explicit custom query (covers the query-is-not-None branch)
             custom_query = sqlalchemy.select(Widget).where(Widget.active == True)  # noqa: E712
-            results = await view.process_index({}, query=custom_query)
+            results = await view.on_list({}, query=custom_query)
 
             assert len(results) == 2
             assert all(w.active for w in results)

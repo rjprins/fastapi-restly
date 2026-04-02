@@ -1865,7 +1865,7 @@ class TestTenantIsolation:
     """Test tenant isolation (org scoping) for projects."""
 
     def test_tenant_isolation_filters_list(self, client):
-        """Test that process_index filters by current org when set."""
+        """Test that on_list filters by current org when set."""
         import app.views.project as project_view
 
         # Create two orgs
@@ -1914,7 +1914,7 @@ class TestTenantIsolation:
             project_view.CURRENT_ORG_ID = None  # Reset
 
     def test_tenant_isolation_blocks_get_other_org(self, client):
-        """Test that process_get returns 404 for other org's resources."""
+        """Test that on_get returns 404 for other org's resources."""
         import app.views.project as project_view
 
         # Create two orgs
@@ -1948,7 +1948,7 @@ class TestTenantIsolation:
             project_view.CURRENT_ORG_ID = None  # Reset
 
     def test_tenant_isolation_allows_own_org(self, client):
-        """Test that process_get allows access to own org's resources."""
+        """Test that on_get allows access to own org's resources."""
         import app.views.project as project_view
 
         # Create org
@@ -2075,7 +2075,7 @@ class TestRowLevelPermissions:
     """Test row-level permissions (filter results by user permissions)."""
 
     def test_row_level_filters_task_list(self, client):
-        """Test that process_index filters tasks by current user."""
+        """Test that on_list filters tasks by current user."""
         import app.views.task as task_view
 
         # Create org, users, and project
@@ -2136,7 +2136,7 @@ class TestRowLevelPermissions:
             task_view.CURRENT_USER_ID = None  # Reset
 
     def test_row_level_blocks_get_other_user_task(self, client):
-        """Test that process_get returns 404 for other user's tasks."""
+        """Test that on_get returns 404 for other user's tasks."""
         import app.views.task as task_view
 
         # Create org, users, and project
@@ -2182,7 +2182,7 @@ class TestRowLevelPermissions:
             task_view.CURRENT_USER_ID = None  # Reset
 
     def test_row_level_allows_own_task(self, client):
-        """Test that process_get allows access to user's own tasks."""
+        """Test that on_get allows access to user's own tasks."""
         import app.views.task as task_view
 
         # Create org, user, and project
