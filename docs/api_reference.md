@@ -222,8 +222,8 @@ These module-level functions mirror the instance methods on `AsyncRestView` / `R
 | `fr.configure(async_database_url=..., ...)` | Configure the framework. Accepts async/sync URLs, engines, session makers, or custom session generators. |
 | `fr.get_async_engine()` | Return the configured `AsyncEngine` instance. |
 | `fr.get_engine()` | Return the configured sync `Engine` instance. |
-| `fr.activate_savepoint_only_mode(make_session)` | Wrap the session in a savepoint so test data never commits. Requires the session maker as argument. |
-| `fr.deactivate_savepoint_only_mode(make_session)` | Restore normal session behavior. |
+| `fr.activate_savepoint_only_mode(make_session)` | **Intended for tests.** Wraps the session factory in a savepoint so test data never commits to the database. Each test rolls back instantly without touching the real data. Requires the session maker as argument. |
+| `fr.deactivate_savepoint_only_mode(make_session)` | Restore normal session behavior after testing. |
 | `fr.use_fr_globals(globals_obj)` | Context manager that swaps the global state for test isolation. |
 | `fr.get_fr_globals()` | Return the current `FRGlobals` instance (engine, session factory, etc.). |
 

@@ -111,9 +111,12 @@ def activate_savepoint_only_mode(
     make_session: async_sessionmaker | sessionmaker,
 ) -> None:
     """
-    When `savepoint_only_mode` is enabled, any changes to the database will not be
-    committed. This is done with "create_savepoint" mode and a wrapper on
-    engine.connect() that begins the transaction before the Session can use it.
+    Intended for use in tests. Puts the session factory into savepoint-only mode so
+    that no test data is ever committed to the database. Each test can roll back
+    instantly by closing the session, leaving the database clean for the next test.
+
+    This is done with "create_savepoint" mode and a wrapper on engine.connect() that
+    begins the outer transaction before the Session can use it.
     https://docs.sqlalchemy.org/en/20/orm/session_transaction.html#session-external-transaction
     """
     engine = _get_sync_engine(make_session)
