@@ -53,13 +53,6 @@ from fastapi import FastAPI
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Mapped
 
-fr.configure(async_database_url="sqlite+aiosqlite:///app.db")
-
-# Create tables — dev/SQLite only; use Alembic migrations in production
-fr.DataclassBase.metadata.create_all(create_engine("sqlite:///app.db"))
-
-app = FastAPI()
-
 
 # Define your model — IDBase adds an auto-incrementing integer id.
 # Use IDStampsBase to also get created_at / updated_at timestamps.
@@ -67,6 +60,12 @@ class User(fr.IDBase):
     name: Mapped[str]
     email: Mapped[str]
     age: Mapped[int]
+
+
+fr.configure(async_database_url="sqlite+aiosqlite:///app.db")
+# Create tables — for demo purposes; use Alembic migrations in production
+fr.DataclassBase.metadata.create_all(create_engine("sqlite:///app.db"))
+app = FastAPI()
 
 
 # Create instant CRUD endpoints with auto-generated schema.
@@ -85,6 +84,14 @@ class UserView(fr.AsyncRestView):
 # - PATCH /users/{id} - Partially update a user
 # - DELETE /users/{id} - Delete a user
 ```
+
+Run it:
+
+```bash
+uvicorn main:app --reload
+```
+
+Then open **http://127.0.0.1:8000/docs** for the interactive Swagger UI.
 
 The framework automatically generates the Pydantic schema from your SQLAlchemy model, so you don't need to write any schema definitions!
 
