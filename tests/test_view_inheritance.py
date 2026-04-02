@@ -29,7 +29,6 @@ from sqlalchemy.pool import StaticPool
 import fastapi_restly as fr
 from fastapi_restly.db import fr_globals
 
-
 # ---------------------------------------------------------------------------
 # Shared fixture
 # ---------------------------------------------------------------------------

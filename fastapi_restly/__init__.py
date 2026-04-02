@@ -55,9 +55,9 @@ from .schemas import (
 
 # Views
 from .views import (
-    RestView,
     AsyncRestView,
     BaseRestView,
+    RestView,
     View,
     delete,
     get,
