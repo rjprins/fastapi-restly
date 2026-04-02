@@ -346,5 +346,3 @@ class TestWriteOnlyWithAliases:
         assert "secretKey" not in user
         assert "password" not in user
         assert "secret_token" not in user
-
-
