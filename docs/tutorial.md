@@ -286,9 +286,9 @@ keys. If you need a nested request shape, flatten it in the schema or override `
 
 ## Next steps
 
+- **[Part 2: Customizing Views](tutorial_customizing.md)** — override hooks, add custom routes, and share behaviour with base classes
 - [Auto-Generated Schemas](technical_details.md#auto-generated-schemas) — skip writing schemas for simple models
 - [How-To: Filter, Sort, and Paginate Lists](howto_query_modifiers.md) — full filter and sort reference
 - [How-To: Foreign Keys with IDSchema](howto_relationship_idschema.md) — list relations and nested objects
 - [How-To: Testing](howto_testing.md) — savepoint isolation and test fixtures
-- [How-To: Override Endpoints](howto_override_endpoints.md) — customise individual CRUD handlers
 - [API Reference](api_reference.md)

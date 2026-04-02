@@ -64,7 +64,7 @@ def update_object(
                 setattr(obj, relation_name, value)
             continue
         setattr(obj, field_name, value)
-    return save_object(session, obj)
+    return obj
 
 
 def save_object(session: Session, obj: DeclarativeBase) -> DeclarativeBase:
@@ -183,7 +183,8 @@ class RestView(BaseRestView):
         Feel free to override this method.
         """
         obj = self.on_get(id)
-        return self.update_object(obj, schema_obj)
+        obj = self.update_object(obj, schema_obj)
+        return self.save_object(obj)
 
     @delete("/{id}")
     def delete(self, id: Any) -> fastapi.Response:

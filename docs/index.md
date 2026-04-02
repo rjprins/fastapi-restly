@@ -81,25 +81,11 @@ serialization control.
 Fast path from zero to a working CRUD API.
 :::
 
-:::{grid-item-card} Tutorial
-:link: tutorial
+:::{grid-item-card} User Guide
+:link: user_guide
 :link-type: doc
 
-Extended walkthrough with a blog API covering schemas, relations, and testing.
-:::
-
-:::{grid-item-card} How-To Guides
-:link: howto
-:link-type: doc
-
-Task-focused recipes: filtering, testing, overrides, custom schemas, and more.
-:::
-
-:::{grid-item-card} Technical Details
-:link: technical_details
-:link-type: doc
-
-Schema generation internals, view registration, and query modifier lifecycle.
+Tutorial walkthroughs and in-depth topic guides covering every framework feature.
 :::
 
 :::{grid-item-card} API Reference
@@ -132,8 +118,6 @@ uv run pytest
 :hidden:
 
 getting_started
-tutorial
-howto
-technical_details
+user_guide
 api_reference
 ```

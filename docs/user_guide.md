@@ -1,6 +1,39 @@
-# How-To Guides
+# User Guide
 
-Task-focused guides for common FastAPI-Restly workflows.
+In-depth coverage of every FastAPI-Restly feature. Start with the tutorial if you
+are new to the framework; jump to any topic guide if you are looking for something
+specific.
+
+---
+
+## Tutorial
+
+A walkthrough that builds a complete blog API from scratch, introducing the core
+patterns progressively.
+
+::::{grid} 1 2 2 2
+:gutter: 3
+
+:::{grid-item-card} Part 1: Building a CRUD API
+:link: tutorial
+:link-type: doc
+
+Models, schemas, generated endpoints, read/write field control, querying lists,
+and testing.
+:::
+
+:::{grid-item-card} Part 2: Customizing Views
+:link: tutorial_customizing
+:link-type: doc
+
+Override hooks, low-level object helpers, custom routes, and shared base classes.
+:::
+
+::::
+
+---
+
+## Topic Guides
 
 ::::{grid} 1 2 2 2
 :gutter: 3
@@ -16,14 +49,15 @@ Define schemas with field aliases, write-only fields, and read-only computed fie
 :link: howto_override_endpoints
 :link-type: doc
 
-Customize `process_*` hooks and add custom routes alongside generated CRUD.
+Customize `on_*` hooks and add custom routes alongside generated CRUD.
 :::
 
 :::{grid-item-card} Share Behaviour with Base Views
 :link: howto_inheritance
 :link-type: doc
 
-Use Python inheritance to share CRUD overrides, dependencies, URL prefixes, and access control across multiple views.
+Use Python inheritance to share CRUD overrides, dependencies, URL prefixes, and
+access control across multiple views.
 :::
 
 :::{grid-item-card} Filter, Sort, and Paginate
@@ -60,12 +94,22 @@ Full fixture reference with isolation model details and async test setup.
 
 Plug FastAPI-Restly into a project that already manages its own sessions.
 :::
+
+:::{grid-item-card} Technical Details
+:link: technical_details
+:link-type: doc
+
+Schema generation internals, view registration, and query modifier lifecycle.
+:::
+
 ::::
 
 ```{toctree}
 :maxdepth: 1
 :hidden:
 
+tutorial
+tutorial_customizing
 howto_custom_schema
 howto_override_endpoints
 howto_inheritance
@@ -74,4 +118,5 @@ howto_relationship_idschema
 howto_testing
 pytest_fixtures
 howto_existing_project
+technical_details
 ```

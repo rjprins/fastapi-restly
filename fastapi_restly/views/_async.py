@@ -124,7 +124,8 @@ class AsyncRestView(BaseRestView):
         Feel free to override this method.
         """
         obj = await self.on_get(id)
-        return await self.update_object(obj, schema_obj)
+        obj = await self.update_object(obj, schema_obj)
+        return await self.save_object(obj)
 
     @delete("/{id}")
     async def delete(self, id: Any) -> fastapi.Response:
@@ -189,7 +190,7 @@ class AsyncRestView(BaseRestView):
                     setattr(obj, relation_name, value)
                 continue
             setattr(obj, field_name, value)
-        return await self.save_object(obj)
+        return obj
 
     async def save_object(self, obj: DeclarativeBase) -> DeclarativeBase:
         """

@@ -90,7 +90,7 @@ uvicorn main:app --reload
 
 Then open **http://127.0.0.1:8000/docs** for the interactive Swagger UI.
 
-The framework automatically generates the Pydantic schema from your SQLAlchemy model, so you don't need to write any schema definitions!
+The framework automatically generates the Pydantic schema from your SQLAlchemy model, so you don't need to write schema definitions, unless you specifically want to.
 
 ### Auto-schema vs Explicit schema
 
@@ -233,10 +233,7 @@ class UserView(fr.AsyncRestView):
 ## Documentation
 
 - **[Getting Started](https://rjprins.github.io/fastapi-restly/getting_started.html)** - Fast path from zero to a working API
-- **[Tutorial](https://rjprins.github.io/fastapi-restly/tutorial.html)** - Get started with FastAPI-Restly
-- **[How-To Guides](https://rjprins.github.io/fastapi-restly/howto.html)** - Recipes for common framework tasks
-- **[Existing Project Integration](https://rjprins.github.io/fastapi-restly/howto_existing_project.html)** - Add Restly to a project with its own session management
-- **[Technical Details](https://rjprins.github.io/fastapi-restly/technical_details.html)** - Learn how the framework works
+- **[User Guide](https://rjprins.github.io/fastapi-restly/user_guide.html)** - Tutorial walkthroughs and in-depth topic guides
 - **[API Reference](https://rjprins.github.io/fastapi-restly/api_reference.html)** - Complete API documentation
 
 ## Examples
