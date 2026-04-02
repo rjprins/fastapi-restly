@@ -13,6 +13,7 @@ Provides default reading and writing functions on the database using
 SQLAlchemy models.
 """
 
+import dataclasses
 import functools
 import inspect
 import types
@@ -53,6 +54,19 @@ from ..schemas import (
     create_model_without_read_only_fields,
     is_field_writeonly,
 )
+
+
+def _accepts_init_kwarg(model_cls: type, attr_name: str) -> bool:
+    """Return True if attr_name can be passed as a keyword argument to model_cls.__init__.
+
+    Non-dataclass models (DeclarativeBase subclasses using mapped_column) accept all
+    kwargs. Dataclass-based models may have fields with init=False, in which case
+    passing the attribute to __init__ raises TypeError.
+    """
+    if not dataclasses.is_dataclass(model_cls):
+        return True
+    dc_fields = {f.name: f for f in dataclasses.fields(model_cls)}
+    return attr_name not in dc_fields or dc_fields[attr_name].init
 
 
 def _unwrap_optional_annotation(annotation: Any) -> Any:

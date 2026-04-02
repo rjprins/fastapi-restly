@@ -14,7 +14,7 @@ from ..schemas import (
     get_writable_inputs,
     is_readonly_field,
 )
-from ._base import BaseRestView, delete, get, patch, post
+from ._base import BaseRestView, _accepts_init_kwarg, delete, get, patch, post
 
 
 class AsyncRestView(BaseRestView):
@@ -164,7 +164,7 @@ class AsyncRestView(BaseRestView):
             if isinstance(value, DeclarativeBase) and field_name.endswith("_id"):
                 data[field_name] = value.id
                 relation_name = field_name[:-3]
-                if hasattr(self.model, relation_name):
+                if hasattr(self.model, relation_name) and _accepts_init_kwarg(self.model, relation_name):
                     data[relation_name] = value
                 continue
             data[field_name] = value

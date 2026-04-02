@@ -9,11 +9,12 @@ import fastapi_restly as fr
 from ..models import User, UserRole
 from ..schemas import UserSchema
 from ..schemas.user import UserFullSchema, UserPublicSchema
+from ._base import TenantBase
 
-# Simulating a "current user" - in real apps this would come from auth
-CURRENT_USER_ID = 1  # Would be set by auth middleware
-# Simulating current user's role - in real apps would come from JWT/session
-CURRENT_USER_ROLE: UserRole | None = None  # Set to enable field-level permissions
+# Set by tests to simulate field-level permissions without real auth middleware.
+_TEST_USER_ROLE: "UserRole | None" = None
+# Set by tests to simulate the currently authenticated user.
+_TEST_USER_ID: int | None = None
 
 
 class UpdateMeRequest(BaseModel):
@@ -23,24 +24,27 @@ class UpdateMeRequest(BaseModel):
     email: str | None = None
 
 
-class UserView(fr.AsyncRestView):
+class UserView(TenantBase):
     """CRUD endpoints for users.
 
+    Inherits from TenantBase for the auth dependency and audit save_object.
     Demonstrates field-level permissions: salary is only visible to HR role.
-    Set CURRENT_USER_ROLE = UserRole.HR to see salary field.
     """
 
     prefix = "/users"
     model = User
     schema = UserSchema
 
-    def _get_current_user_role(self) -> UserRole | None:
-        """Get current user's role from auth context (placeholder for real auth)."""
-        return CURRENT_USER_ROLE
+    def _current_user_role(self) -> UserRole | None:
+        """Return the current user's role.
+
+        In production: set by auth middleware via ``request.state.user_role``.
+        In tests: controlled via the module-level ``_TEST_USER_ROLE`` variable.
+        """
+        return getattr(self.request.state, "user_role", None) or _TEST_USER_ROLE
 
     def _can_see_salary(self) -> bool:
-        """Check if current user can see salary fields."""
-        role = self._get_current_user_role()
+        role = self._current_user_role()
         return role in (UserRole.HR, UserRole.OWNER)
 
     @fr.get("/{id}/with-permissions", response_model=dict)
@@ -73,9 +77,8 @@ class UserView(fr.AsyncRestView):
         """Get current user's profile."""
         from fastapi import HTTPException
 
-        # In real apps, get user ID from auth context
-        user_id = CURRENT_USER_ID
-        user = await self.session.get(User, user_id)
+        user_id = getattr(self.request.state, "user_id", None) or _TEST_USER_ID
+        user = await self.session.get(User, user_id) if user_id else None
         if not user:
             raise HTTPException(status_code=404, detail="Current user not found")
         return self.to_response_schema(user)
@@ -85,8 +88,8 @@ class UserView(fr.AsyncRestView):
         """Update current user's profile."""
         from fastapi import HTTPException
 
-        user_id = CURRENT_USER_ID
-        user = await self.session.get(User, user_id)
+        user_id = getattr(self.request.state, "user_id", None) or _TEST_USER_ID
+        user = await self.session.get(User, user_id) if user_id else None
         if not user:
             raise HTTPException(status_code=404, detail="Current user not found")
 

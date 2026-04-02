@@ -14,7 +14,7 @@ from ..schemas import (
     is_readonly_field,
     resolve_ids_to_sqlalchemy_objects,
 )
-from ._base import BaseRestView, delete, get, patch, post
+from ._base import BaseRestView, _accepts_init_kwarg, delete, get, patch, post
 
 T = TypeVar("T", bound=DeclarativeBase)
 
@@ -37,7 +37,7 @@ def make_new_object(
         if isinstance(value, DeclarativeBase) and field_name.endswith("_id"):
             data[field_name] = value.id
             relation_name = field_name[:-3]
-            if hasattr(model_cls, relation_name):
+            if hasattr(model_cls, relation_name) and _accepts_init_kwarg(model_cls, relation_name):
                 data[relation_name] = value
             continue
         data[field_name] = value

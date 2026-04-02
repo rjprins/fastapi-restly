@@ -464,19 +464,21 @@ class TestLabelCRUD:
         )
         label_id = response.json()["id"]
 
-        # Add label to task with metadata (who added it)
+        # Add label to task using IDSchema[T] envelope format: {"id": N}
+        # task_id and label_id use fr.IDSchema[T] — the framework validates the
+        # referenced row exists and resolves it to the FK value automatically.
         response = client.post(
             "/task-labels/",
             json={
-                "task_id": task_id,
-                "label_id": label_id,
+                "task_id": {"id": task_id},
+                "label_id": {"id": label_id},
                 "added_by_id": user_id,
             },
         )
         task_label = response.json()
 
-        assert task_label["task_id"] == task_id
-        assert task_label["label_id"] == label_id
+        assert task_label["task_id"] == {"id": task_id}
+        assert task_label["label_id"] == {"id": label_id}
         assert task_label["added_by_id"] == user_id
 
 
@@ -807,7 +809,7 @@ class TestSoftDelete:
 
         # Should not appear in list by default
         response = client.get("/projects/")
-        projects = response.json()
+        projects = response.json()["items"]
         project_ids = [p["id"] for p in projects]
         assert project_id not in project_ids
 
@@ -837,14 +839,14 @@ class TestSoftDelete:
 
         # List without include_deleted
         response = client.get("/projects/")
-        projects = response.json()
+        projects = response.json()["items"]
         project_ids = [p["id"] for p in projects]
         assert active_id in project_ids
         assert deleted_id not in project_ids
 
         # List with include_deleted=true
         response = client.get("/projects/?include_deleted=true")
-        projects = response.json()
+        projects = response.json()["items"]
         project_ids = [p["id"] for p in projects]
         assert active_id in project_ids
         assert deleted_id in project_ids
@@ -875,7 +877,7 @@ class TestSoftDelete:
 
         # Should appear in list again
         response = client.get("/projects/")
-        projects = response.json()
+        projects = response.json()["items"]
         project_ids = [p["id"] for p in projects]
         assert project_id in project_ids
 
@@ -1124,7 +1126,9 @@ class TestMeEndpoints:
     """Test /users/me endpoints for self-service."""
 
     def test_get_me(self, client):
-        """Test GET /users/me returns current user (user ID 1)."""
+        """Test GET /users/me returns current user."""
+        import app.views.user as user_view
+
         # Create org and user
         response = client.post(
             "/organizations/",
@@ -1132,7 +1136,6 @@ class TestMeEndpoints:
         )
         org_id = response.json()["id"]
 
-        # Create the user that will be ID 1 (simulated "current user")
         response = client.post(
             "/users/",
             json={
@@ -1143,30 +1146,50 @@ class TestMeEndpoints:
         )
         created_user_id = response.json()["id"]
 
-        # Get /me - returns user ID 1 (which may or may not be the one we just created)
-        response = client.get("/users/me")
-        me = response.json()
+        user_view._TEST_USER_ID = created_user_id
+        try:
+            response = client.get("/users/me")
+            me = response.json()
 
-        # Just verify we get a valid user response
-        assert "id" in me
-        assert "email" in me
-        assert "name" in me
+            assert me["id"] == created_user_id
+            assert "email" in me
+            assert "name" in me
+        finally:
+            user_view._TEST_USER_ID = None
 
     def test_update_me(self, client):
         """Test PATCH /users/me updates current user's profile."""
-        # First, get current user (created by previous test or this one)
-        response = client.get("/users/me", assert_status_code=200)
-        original = response.json()
+        import app.views.user as user_view
 
-        # Update via /me
-        response = client.patch(
-            "/users/me",
-            json={"name": "Updated Name"},
+        # Create org and user
+        response = client.post(
+            "/organizations/",
+            json={"name": "Me Update Org", "slug": "me-update-org"},
         )
-        updated = response.json()
+        org_id = response.json()["id"]
 
-        assert updated["name"] == "Updated Name"
-        assert updated["email"] == original["email"]  # Email unchanged
+        response = client.post(
+            "/users/",
+            json={
+                "email": "update-me@example.com",
+                "name": "Before Update",
+                "organization_id": org_id,
+            },
+        )
+        user_id = response.json()["id"]
+
+        user_view._TEST_USER_ID = user_id
+        try:
+            response = client.patch(
+                "/users/me",
+                json={"name": "Updated Name"},
+            )
+            updated = response.json()
+
+            assert updated["name"] == "Updated Name"
+            assert updated["email"] == "update-me@example.com"
+        finally:
+            user_view._TEST_USER_ID = None
 
 
 class TestReportingEndpoints:
@@ -1866,7 +1889,7 @@ class TestTenantIsolation:
 
     def test_tenant_isolation_filters_list(self, client):
         """Test that on_list filters by current org when set."""
-        import app.views.project as project_view
+        import app.views._base as project_view
 
         # Create two orgs
         response = client.post(
@@ -1895,27 +1918,27 @@ class TestTenantIsolation:
         org2_project_id = response.json()["id"]
 
         # Without tenant isolation, both projects visible
-        project_view.CURRENT_ORG_ID = None
+        project_view._TEST_ORG_ID = None
         response = client.get("/projects/")
-        all_projects = response.json()
+        all_projects = response.json()["items"]
         all_ids = [p["id"] for p in all_projects]
         assert org1_project_id in all_ids
         assert org2_project_id in all_ids
 
         # With tenant isolation for org1, only org1 projects visible
-        project_view.CURRENT_ORG_ID = org1_id
+        project_view._TEST_ORG_ID = org1_id
         try:
             response = client.get("/projects/")
-            filtered_projects = response.json()
+            filtered_projects = response.json()["items"]
             filtered_ids = [p["id"] for p in filtered_projects]
             assert org1_project_id in filtered_ids
             assert org2_project_id not in filtered_ids
         finally:
-            project_view.CURRENT_ORG_ID = None  # Reset
+            project_view._TEST_ORG_ID = None  # Reset
 
     def test_tenant_isolation_blocks_get_other_org(self, client):
         """Test that on_get returns 404 for other org's resources."""
-        import app.views.project as project_view
+        import app.views._base as project_view
 
         # Create two orgs
         response = client.post(
@@ -1938,18 +1961,18 @@ class TestTenantIsolation:
         org2_project_id = response.json()["id"]
 
         # With tenant isolation for org1, can't access org2's project
-        project_view.CURRENT_ORG_ID = org1_id
+        project_view._TEST_ORG_ID = org1_id
         try:
             response = client.get(
                 f"/projects/{org2_project_id}",
                 assert_status_code=404,
             )
         finally:
-            project_view.CURRENT_ORG_ID = None  # Reset
+            project_view._TEST_ORG_ID = None  # Reset
 
     def test_tenant_isolation_allows_own_org(self, client):
         """Test that on_get allows access to own org's resources."""
-        import app.views.project as project_view
+        import app.views._base as project_view
 
         # Create org
         response = client.post(
@@ -1966,109 +1989,13 @@ class TestTenantIsolation:
         project_id = response.json()["id"]
 
         # With tenant isolation for same org, can access project
-        project_view.CURRENT_ORG_ID = org_id
+        project_view._TEST_ORG_ID = org_id
         try:
             response = client.get(f"/projects/{project_id}")
             project = response.json()
             assert project["id"] == project_id
         finally:
-            project_view.CURRENT_ORG_ID = None  # Reset
-
-
-class TestSparseFieldsets:
-    """Test sparse fieldsets (?fields=id,name) for limiting response fields."""
-
-    def test_sparse_fields_basic(self, client):
-        """Test that ?fields limits response to specified fields."""
-        # Create org and project
-        response = client.post(
-            "/organizations/",
-            json={"name": "Sparse Test Org", "slug": "sparse-test-org"},
-        )
-        org_id = response.json()["id"]
-
-        response = client.post(
-            "/projects/",
-            json={
-                "name": "Sparse Project",
-                "description": "A description",
-                "organization_id": org_id,
-            },
-        )
-        project_id = response.json()["id"]
-
-        # Request only id and name fields
-        response = client.get("/projects/sparse?fields=id,name")
-        projects = response.json()
-
-        # Find our project
-        our_project = next((p for p in projects if p.get("id") == project_id), None)
-        assert our_project is not None
-
-        # Should only have id and name
-        assert set(our_project.keys()) == {"id", "name"}
-        assert our_project["name"] == "Sparse Project"
-
-    def test_sparse_fields_multiple(self, client):
-        """Test requesting multiple specific fields."""
-        # Create org and project
-        response = client.post(
-            "/organizations/",
-            json={"name": "Multi Sparse Org", "slug": "multi-sparse-org"},
-        )
-        org_id = response.json()["id"]
-
-        response = client.post(
-            "/projects/",
-            json={
-                "name": "Multi Sparse Project",
-                "description": "Description here",
-                "organization_id": org_id,
-            },
-        )
-        project_id = response.json()["id"]
-
-        # Request id, name, description, status
-        response = client.get("/projects/sparse?fields=id,name,description,status")
-        projects = response.json()
-
-        our_project = next((p for p in projects if p.get("id") == project_id), None)
-        assert our_project is not None
-
-        # Should have exactly these fields
-        assert set(our_project.keys()) == {"id", "name", "description", "status"}
-        assert our_project["description"] == "Description here"
-        assert our_project["status"] == "active"
-
-    def test_sparse_fields_without_param_returns_all(self, client):
-        """Test that without ?fields param, all fields are returned."""
-        # Create org and project
-        response = client.post(
-            "/organizations/",
-            json={"name": "All Fields Org", "slug": "all-fields-org"},
-        )
-        org_id = response.json()["id"]
-
-        response = client.post(
-            "/projects/",
-            json={"name": "All Fields Project", "organization_id": org_id},
-        )
-        project_id = response.json()["id"]
-
-        # Request without fields param
-        response = client.get("/projects/sparse")
-        projects = response.json()
-
-        our_project = next((p for p in projects if p.get("id") == project_id), None)
-        assert our_project is not None
-
-        # Should have all standard fields
-        assert "id" in our_project
-        assert "name" in our_project
-        assert "description" in our_project
-        assert "status" in our_project
-        assert "organization_id" in our_project
-        assert "created_at" in our_project
+            project_view._TEST_ORG_ID = None  # Reset
 
 
 class TestRowLevelPermissions:
@@ -2117,7 +2044,7 @@ class TestRowLevelPermissions:
         user2_task_id = response.json()["id"]
 
         # Without row-level permissions, all tasks visible
-        task_view.CURRENT_USER_ID = None
+        task_view._TEST_USER_ID = None
         response = client.get("/tasks/")
         all_tasks = response.json()
         all_ids = [t["id"] for t in all_tasks]
@@ -2125,7 +2052,7 @@ class TestRowLevelPermissions:
         assert user2_task_id in all_ids
 
         # With row-level permissions for user1, only user1's tasks visible
-        task_view.CURRENT_USER_ID = user1_id
+        task_view._TEST_USER_ID = user1_id
         try:
             response = client.get("/tasks/")
             filtered_tasks = response.json()
@@ -2133,7 +2060,7 @@ class TestRowLevelPermissions:
             assert user1_task_id in filtered_ids
             assert user2_task_id not in filtered_ids
         finally:
-            task_view.CURRENT_USER_ID = None  # Reset
+            task_view._TEST_USER_ID = None  # Reset
 
     def test_row_level_blocks_get_other_user_task(self, client):
         """Test that on_get returns 404 for other user's tasks."""
@@ -2172,14 +2099,14 @@ class TestRowLevelPermissions:
         user2_task_id = response.json()["id"]
 
         # User1 cannot access user2's task
-        task_view.CURRENT_USER_ID = user1_id
+        task_view._TEST_USER_ID = user1_id
         try:
             response = client.get(
                 f"/tasks/{user2_task_id}",
                 assert_status_code=404,
             )
         finally:
-            task_view.CURRENT_USER_ID = None  # Reset
+            task_view._TEST_USER_ID = None  # Reset
 
     def test_row_level_allows_own_task(self, client):
         """Test that on_get allows access to user's own tasks."""
@@ -2212,13 +2139,13 @@ class TestRowLevelPermissions:
         task_id = response.json()["id"]
 
         # User can access own task
-        task_view.CURRENT_USER_ID = user_id
+        task_view._TEST_USER_ID = user_id
         try:
             response = client.get(f"/tasks/{task_id}")
             task = response.json()
             assert task["id"] == task_id
         finally:
-            task_view.CURRENT_USER_ID = None  # Reset
+            task_view._TEST_USER_ID = None  # Reset
 
 
 class TestFieldLevelPermissions:
@@ -2248,7 +2175,7 @@ class TestFieldLevelPermissions:
         user_id = response.json()["id"]
 
         # Set current role to HR
-        user_view.CURRENT_USER_ROLE = UserRole.HR
+        user_view._TEST_USER_ROLE = UserRole.HR
         try:
             response = client.get(f"/users/{user_id}/with-permissions")
             user = response.json()
@@ -2257,7 +2184,7 @@ class TestFieldLevelPermissions:
             assert "salary" in user
             assert user["salary"] == 75000
         finally:
-            user_view.CURRENT_USER_ROLE = None  # Reset
+            user_view._TEST_USER_ROLE = None  # Reset
 
     def test_member_cannot_see_salary(self, client):
         """Test that member role cannot see salary field."""
@@ -2283,7 +2210,7 @@ class TestFieldLevelPermissions:
         user_id = response.json()["id"]
 
         # Set current role to MEMBER
-        user_view.CURRENT_USER_ROLE = UserRole.MEMBER
+        user_view._TEST_USER_ROLE = UserRole.MEMBER
         try:
             response = client.get(f"/users/{user_id}/with-permissions")
             user = response.json()
@@ -2291,7 +2218,7 @@ class TestFieldLevelPermissions:
             # Member cannot see salary (not in public schema)
             assert "salary" not in user
         finally:
-            user_view.CURRENT_USER_ROLE = None  # Reset
+            user_view._TEST_USER_ROLE = None  # Reset
 
     def test_owner_can_see_salary(self, client):
         """Test that owner role can also see salary field."""
@@ -2317,7 +2244,7 @@ class TestFieldLevelPermissions:
         user_id = response.json()["id"]
 
         # Set current role to OWNER
-        user_view.CURRENT_USER_ROLE = UserRole.OWNER
+        user_view._TEST_USER_ROLE = UserRole.OWNER
         try:
             response = client.get(f"/users/{user_id}/with-permissions")
             user = response.json()
@@ -2326,7 +2253,7 @@ class TestFieldLevelPermissions:
             assert "salary" in user
             assert user["salary"] == 100000
         finally:
-            user_view.CURRENT_USER_ROLE = None  # Reset
+            user_view._TEST_USER_ROLE = None  # Reset
 
     def test_no_role_cannot_see_salary(self, client):
         """Test that without a role set, salary is hidden."""
@@ -2351,7 +2278,7 @@ class TestFieldLevelPermissions:
         user_id = response.json()["id"]
 
         # Ensure no role is set
-        user_view.CURRENT_USER_ROLE = None
+        user_view._TEST_USER_ROLE = None
         try:
             response = client.get(f"/users/{user_id}/with-permissions")
             user = response.json()
@@ -2359,4 +2286,4 @@ class TestFieldLevelPermissions:
             # No role means no salary access
             assert "salary" not in user
         finally:
-            user_view.CURRENT_USER_ROLE = None  # Reset
+            user_view._TEST_USER_ROLE = None  # Reset

@@ -3,33 +3,23 @@
 from datetime import datetime, timezone
 from typing import Any
 
+import sqlalchemy as sa
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 import fastapi_restly as fr
+from fastapi_restly.query import apply_query_modifiers, use_query_modifier_version
 
 from ..models import Project, ProjectStatus, Task, TaskPriority, TaskStatus, TaskType
 from ..schemas import ProjectSchema, TaskSchema
-
-# Simulated current org from auth context - in real apps, get from JWT/session
-CURRENT_ORG_ID: int | None = None  # Set to enable tenant isolation
-
-
-def filter_fields(data: dict[str, Any], fields: list[str] | None) -> dict[str, Any]:
-    """Filter a dict to only include specified fields.
-
-    Used for sparse fieldsets (?fields=id,name).
-    """
-    if fields is None:
-        return data
-    return {k: v for k, v in data.items() if k in fields}
+from ._base import TenantBase
 
 
 class CloneRequest(BaseModel):
     """Request body for cloning a project."""
 
-    new_name: str | None = None  # If not provided, append " (Copy)"
+    new_name: str | None = None
     include_tasks: bool = True
 
 
@@ -41,121 +31,112 @@ class ProjectStats(BaseModel):
     in_progress_count: int
     done_count: int
     completion_percent: float
-    overdue_count: int = 0  # Would need due_date field to implement
 
 
-class ProjectView(fr.AsyncRestView):
+class ProjectView(TenantBase):
     """CRUD endpoints for projects.
 
-    Demonstrates tenant isolation by filtering to current org.
-    Set CURRENT_ORG_ID to enable org scoping.
+    Demonstrates:
+    - Inheriting TenantBase (class-level auth dependency + audit save_object)
+    - include_pagination_metadata with a custom count_index
+    - update_object override to make organization_id immutable after creation
+    - Soft delete via a custom @fr.delete route (exclude_routes removes the
+      generated one, giving full control over the HTTP contract)
     """
 
     prefix = "/projects"
     model = Project
     schema = ProjectSchema
-    exclude_routes = ["delete"]  # Use soft delete instead
+    include_pagination_metadata = True
+    exclude_routes = ["delete"]  # replaced by soft_delete below
 
-    def _get_current_org_id(self) -> int | None:
-        """Get current org ID from auth context (placeholder for real auth)."""
-        return CURRENT_ORG_ID
+    def _base_query(self, include_deleted: bool = False) -> sa.Select:
+        """Build the base query with tenant and soft-delete filters applied.
 
-    async def on_list(self, query_params, query=None):
-        """Override to filter by org and soft-delete status."""
-        # Check if include_deleted is requested via raw query params
-        include_deleted = self.request.query_params.get("include_deleted", "false").lower() == "true"
-
-        if query is None:
-            query = select(self.model)
-
-        # Tenant isolation: filter by current org if set
-        current_org = self._get_current_org_id()
-        if current_org is not None:
-            query = query.where(Project.organization_id == current_org)
-
+        Shared by on_list and count_index so both see the same row set.
+        """
+        query = sa.select(Project)
+        org_id = self._current_org_id()
+        if org_id is not None:
+            query = query.where(Project.organization_id == org_id)
         if not include_deleted:
             query = query.where(Project.deleted_at.is_(None))
+        return query
 
-        return await super().on_list(query_params, query)
+    async def on_list(self, query_params, query=None):
+        include_deleted = (
+            self.request.query_params.get("include_deleted", "false").lower() == "true"
+        )
+        return await super().on_list(query_params, query=self._base_query(include_deleted))
+
+    async def count_index(self, query_params):
+        """Count with the same tenant and soft-delete filters as on_list.
+
+        Must be overridden whenever on_list restricts the base query, so that
+        pagination totals stay accurate when include_pagination_metadata = True.
+        """
+        include_deleted = (
+            self.request.query_params.get("include_deleted", "false").lower() == "true"
+        )
+        base = self._base_query(include_deleted)
+        query_params_obj = self._to_query_params(query_params)
+        with use_query_modifier_version(self.get_query_modifier_version()):
+            filtered = apply_query_modifiers(
+                query_params_obj, base, self.model, self.schema
+            )
+        filtered = filtered.order_by(None).limit(None).offset(None)
+        count_q = select(func.count()).select_from(filtered.subquery())
+        return int(await self.session.scalar(count_q) or 0)
 
     async def on_get(self, id: int):
-        """Override to verify org access for single resource."""
         from fastapi import HTTPException
 
         project = await self.session.get(Project, id)
         if project is None:
             raise HTTPException(404)
-
-        # Tenant isolation: verify org access
-        current_org = self._get_current_org_id()
-        if current_org is not None and project.organization_id != current_org:
-            # Return 404 (not 403) to avoid leaking existence of other org's data
+        org_id = self._current_org_id()
+        if org_id is not None and project.organization_id != org_id:
             raise HTTPException(404, detail="Project not found")
-
         return project
 
-    @fr.get("/sparse", response_model=list[dict])
-    async def list_sparse(self) -> list[dict]:
-        """List projects with sparse fieldsets support.
+    async def update_object(self, obj, schema_obj):
+        """Reject any attempt to move a project to a different organization.
 
-        Query params:
-        - fields: Comma-separated list of fields to include (e.g., ?fields=id,name)
-
-        Example: GET /projects/sparse?fields=id,name,status
+        Overriding update_object is the right place to guard fields that should
+        be immutable after creation — here we raise 400 if the PATCH body
+        contains an organization_id that differs from the current one.
         """
-        # Get requested fields from query params
-        fields_param = self.request.query_params.get("fields")
-        requested_fields: list[str] | None = None
-        if fields_param:
-            requested_fields = [f.strip() for f in fields_param.split(",")]
-
-        # Build query with tenant isolation and soft delete filtering
-        query = select(Project)
-        current_org = self._get_current_org_id()
-        if current_org is not None:
-            query = query.where(Project.organization_id == current_org)
-
-        include_deleted = self.request.query_params.get("include_deleted", "false").lower() == "true"
-        if not include_deleted:
-            query = query.where(Project.deleted_at.is_(None))
-
-        result = await self.session.scalars(query)
-        projects = list(result.all())
-
-        # Convert to dicts and filter fields
-        output = []
-        for project in projects:
-            # Use from_attributes=True for SQLAlchemy model conversion
-            project_dict = ProjectSchema.model_validate(
-                project, from_attributes=True
-            ).model_dump()
-            output.append(filter_fields(project_dict, requested_fields))
-
-        return output
+        import fastapi
+        new_org = getattr(schema_obj, "organization_id", None)
+        if new_org is not None and new_org != obj.organization_id:
+            raise fastapi.HTTPException(400, "Cannot move a project to a different organization")
+        return await super().update_object(obj, schema_obj)
 
     @fr.delete("/{id}", status_code=200, response_model=ProjectSchema)
     async def soft_delete(self, id: int) -> Project:
-        """Soft delete a project (sets deleted_at instead of actually deleting)."""
+        """Soft delete: sets deleted_at instead of removing the row.
+
+        Uses a custom @fr.delete route (with exclude_routes removing the
+        generated one) to return 200 + the updated object rather than 204.
+        """
+        from fastapi import HTTPException
+
         project = await self.session.get(Project, id)
         if not project:
-            from fastapi import HTTPException
             raise HTTPException(status_code=404, detail="Project not found")
-
         project.deleted_at = datetime.now(timezone.utc)
         return project
 
     @fr.post("/{id}/restore", response_model=ProjectSchema)
     async def restore(self, id: int) -> Project:
         """Restore a soft-deleted project."""
+        from fastapi import HTTPException
+
         project = await self.session.get(Project, id)
         if not project:
-            from fastapi import HTTPException
             raise HTTPException(status_code=404, detail="Project not found")
-
         if project.deleted_at is None:
-            from fastapi import HTTPException
             raise HTTPException(status_code=400, detail="Project is not deleted")
-
         project.deleted_at = None
         return project
 
@@ -167,19 +148,16 @@ class ProjectView(fr.AsyncRestView):
         project = await self.session.get(Project, id)
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
-
         if project.status == ProjectStatus.ARCHIVED:
             raise HTTPException(status_code=400, detail="Project is already archived")
-
         project.status = ProjectStatus.ARCHIVED
         return project
 
     @fr.post("/{id}/clone", response_model=ProjectSchema)
     async def clone_project(self, id: int, request: CloneRequest) -> Project:
         """Clone a project with all its tasks."""
-        from sqlalchemy import select
+        from fastapi import HTTPException
 
-        # Load original project with tasks
         query = (
             select(Project)
             .where(Project.id == id)
@@ -187,23 +165,19 @@ class ProjectView(fr.AsyncRestView):
         )
         result = await self.session.execute(query)
         original = result.scalar_one_or_none()
-
         if not original:
-            from fastapi import HTTPException
             raise HTTPException(status_code=404, detail="Project not found")
 
-        # Create new project
         new_name = request.new_name or f"{original.name} (Copy)"
         new_project = Project(
             name=new_name,
             description=original.description,
-            status=ProjectStatus.ACTIVE,  # Always start as active
+            status=ProjectStatus.ACTIVE,
             organization_id=original.organization_id,
         )
         self.session.add(new_project)
-        await self.session.flush()  # Get new project ID
+        await self.session.flush()
 
-        # Clone tasks if requested
         if request.include_tasks:
             for task in original.tasks:
                 new_task = Task(
@@ -213,7 +187,6 @@ class ProjectView(fr.AsyncRestView):
                     priority=task.priority,
                     task_type=task.task_type,
                     project_id=new_project.id,
-                    # Don't copy: assignee_id, parent_id (subtask hierarchy)
                     severity=task.severity,
                     steps_to_reproduce=task.steps_to_reproduce,
                     story_points=task.story_points,
@@ -225,69 +198,52 @@ class ProjectView(fr.AsyncRestView):
 
     @fr.get("/{id}/stats", response_model=ProjectStats)
     async def get_project_stats(self, id: int) -> ProjectStats:
-        """Get statistics for a project."""
+        """Get task statistics for a project."""
         from fastapi import HTTPException
 
         project = await self.session.get(Project, id)
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
 
-        # Count tasks by status
-        todo_query = select(func.count()).where(
-            Task.project_id == id, Task.status == TaskStatus.TODO
-        )
-        in_progress_query = select(func.count()).where(
-            Task.project_id == id, Task.status == TaskStatus.IN_PROGRESS
-        )
-        done_query = select(func.count()).where(
-            Task.project_id == id, Task.status == TaskStatus.DONE
-        )
-
-        todo = await self.session.scalar(todo_query) or 0
-        in_progress = await self.session.scalar(in_progress_query) or 0
-        done = await self.session.scalar(done_query) or 0
+        todo = await self.session.scalar(
+            select(func.count()).where(Task.project_id == id, Task.status == TaskStatus.TODO)
+        ) or 0
+        in_progress = await self.session.scalar(
+            select(func.count()).where(Task.project_id == id, Task.status == TaskStatus.IN_PROGRESS)
+        ) or 0
+        done = await self.session.scalar(
+            select(func.count()).where(Task.project_id == id, Task.status == TaskStatus.DONE)
+        ) or 0
         total = todo + in_progress + done
-
-        completion = (done / total * 100) if total > 0 else 0.0
+        completion = round(done / total * 100, 1) if total > 0 else 0.0
 
         return ProjectStats(
             total_tasks=total,
             todo_count=todo,
             in_progress_count=in_progress,
             done_count=done,
-            completion_percent=round(completion, 1),
+            completion_percent=completion,
         )
 
-    # Nested routes for tasks within a project
     @fr.get("/{id}/tasks", response_model=list[TaskSchema])
     async def list_project_tasks(self, id: int) -> list[Task]:
         """List all tasks for a specific project."""
         from fastapi import HTTPException
 
-        # Verify project exists
         project = await self.session.get(Project, id)
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
-
-        query = select(Task).where(Task.project_id == id)
-        result = await self.session.scalars(query)
+        result = await self.session.scalars(select(Task).where(Task.project_id == id))
         return list(result.all())
 
     @fr.post("/{id}/tasks", response_model=TaskSchema, status_code=201)
-    async def create_project_task(
-        self,
-        id: int,
-        request: "TaskCreateRequest",
-    ) -> Task:
+    async def create_project_task(self, id: int, request: "TaskCreateRequest") -> Task:
         """Create a task within a project (auto-sets project_id)."""
         from fastapi import HTTPException
 
-        # Verify project exists
         project = await self.session.get(Project, id)
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
-
-        # Check if project is archived
         if project.status == ProjectStatus.ARCHIVED:
             raise HTTPException(status_code=400, detail="Cannot create tasks in an archived project")
 
@@ -306,7 +262,7 @@ class ProjectView(fr.AsyncRestView):
 
 
 class TaskCreateRequest(BaseModel):
-    """Request body for creating a task via nested route."""
+    """Request body for creating a task via the nested /projects/{id}/tasks route."""
 
     title: str
     description: str = ""

@@ -7,9 +7,10 @@ import fastapi_restly as fr
 
 from ..models import Task, TaskPriority, TaskStatus, TaskType
 from ..schemas import TaskSchema
+from ._base import TenantBase
 
-# Simulated current user from auth context - in real apps, get from JWT/session
-CURRENT_USER_ID: int | None = None  # Set to enable row-level permissions
+# Set by tests to simulate row-level permissions without real auth middleware.
+_TEST_USER_ID: int | None = None
 
 
 class TaskCreateSchema(BaseModel):
@@ -58,51 +59,46 @@ VALID_TRANSITIONS = {
 }
 
 
-class TaskView(fr.AsyncRestView):
+class TaskView(TenantBase):
     """CRUD endpoints for tasks.
 
-    Demonstrates row-level permissions: users can only see tasks
-    assigned to them OR tasks in projects they have access to.
-    Set CURRENT_USER_ID to enable row-level filtering.
+    Demonstrates row-level permissions: users can only see tasks assigned to
+    them. In production, ``request.state.user_id`` is set by auth middleware.
+
+    Inherits from TenantBase for the auth dependency and audit save_object.
     """
 
     prefix = "/tasks"
     model = Task
     schema = TaskSchema
 
-    def _get_current_user_id(self) -> int | None:
-        """Get current user ID from auth context (placeholder for real auth)."""
-        return CURRENT_USER_ID
+    def _current_user_id(self) -> int | None:
+        """Return the current user ID.
+
+        In production: set by auth middleware via ``request.state.user_id``.
+        In tests: controlled via the module-level ``_TEST_USER_ID`` variable.
+        """
+        return getattr(self.request.state, "user_id", None) or _TEST_USER_ID
 
     async def on_list(self, query_params, query=None):
-        """Override to filter tasks by row-level permissions."""
-        if query is None:
-            query = select(self.model)
-
-        # Row-level permissions: filter to tasks assigned to user
-        current_user = self._get_current_user_id()
+        """Filter tasks to those assigned to the current user."""
+        current_user = self._current_user_id()
         if current_user is not None:
-            # User can see tasks assigned to them
+            if query is None:
+                query = select(self.model)
             query = query.where(Task.assignee_id == current_user)
-
         return await super().on_list(query_params, query)
 
     async def on_get(self, id: int):
-        """Override to verify row-level access for single resource."""
+        """Verify row-level access: only the assignee can fetch the task."""
         from fastapi import HTTPException
 
         task = await self.session.get(Task, id)
         if task is None:
             raise HTTPException(404)
-
-        # Row-level permissions: verify user can access this task
-        current_user = self._get_current_user_id()
-        if current_user is not None:
-            # Only allow if assigned to user
-            if task.assignee_id != current_user:
-                # Return 404 to avoid leaking existence
-                raise HTTPException(404, detail="Task not found")
-
+        current_user = self._current_user_id()
+        if current_user is not None and task.assignee_id != current_user:
+            raise HTTPException(404, detail="Task not found")
         return task
 
     async def _validate_cross_resource(self, data: dict) -> None:
