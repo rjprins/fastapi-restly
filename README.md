@@ -48,24 +48,17 @@ uv sync
 ### Basic Example
 
 ```python
-from contextlib import asynccontextmanager
-
 import fastapi_restly as fr
 from fastapi import FastAPI
+from sqlalchemy import create_engine
 from sqlalchemy.orm import Mapped
 
 fr.configure(async_database_url="sqlite+aiosqlite:///app.db")
 
+# Create tables — dev/SQLite only; use Alembic migrations in production
+fr.DataclassBase.metadata.create_all(create_engine("sqlite:///app.db"))
 
-@asynccontextmanager
-async def lifespan(_app: FastAPI):
-    engine = fr.get_async_engine()
-    async with engine.begin() as conn:
-        await conn.run_sync(fr.DataclassBase.metadata.create_all)  # dev/SQLite only
-    yield
-
-
-app = FastAPI(lifespan=lifespan)
+app = FastAPI()
 
 
 # Define your model — IDBase adds an auto-incrementing integer id.
