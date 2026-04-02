@@ -23,25 +23,17 @@ make install-dev
 Create `main.py`:
 
 ```python
-from contextlib import asynccontextmanager
-
 import fastapi_restly as fr
 from fastapi import FastAPI
+from sqlalchemy import create_engine
 from sqlalchemy.orm import Mapped
 
-DATABASE_URL = "sqlite+aiosqlite:///app.db"
-fr.configure(async_database_url=DATABASE_URL)
+fr.configure(async_database_url="sqlite+aiosqlite:///app.db")
 
+# Create tables — for dev/SQLite only; use Alembic migrations in production
+fr.DataclassBase.metadata.create_all(create_engine("sqlite:///app.db"))
 
-@asynccontextmanager
-async def lifespan(_app: FastAPI):
-    engine = fr.get_async_engine()
-    async with engine.begin() as conn:
-        await conn.run_sync(fr.DataclassBase.metadata.create_all)
-    yield
-
-
-app = FastAPI(lifespan=lifespan)
+app = FastAPI()
 
 
 class User(fr.IDBase):
@@ -133,7 +125,7 @@ with TestClient(app) as client:
     assert res.status_code == 201
 ```
 
-Use `TestClient` as a context manager so the async lifespan fires and creates the database tables before the first request. For test isolation (rolling back test data between tests), see the [Testing](howto_testing.md) guide.
+For test isolation (rolling back test data between tests), see the [Testing](howto_testing.md) guide.
 
 ## Next Steps
 
