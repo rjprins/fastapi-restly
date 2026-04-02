@@ -29,6 +29,32 @@ class Article(fr.IDBase):
 
 `fr.IDBase` is the convenience alias built on `fr.DataclassBase`, so it still auto-generates the table name from the class name (`Author` → `author`, `Article` → `article`). That is why `ForeignKey("author.id")` is correct here.
 
+### Why `init=False` and `default=None` are required
+
+`fr.IDBase` uses SQLAlchemy's `MappedAsDataclass`, which auto-generates an `__init__` from the model's field declarations. Any attribute that is not marked `init=False` becomes a constructor parameter.
+
+Relationship attributes should **not** be constructor parameters — SQLAlchemy loads them lazily from the database via the foreign key column. If you omit `init=False`, SQLAlchemy will expect the related object to be passed directly to `Article(...)`, which is not how FK-based construction works.
+
+`default=None` is the companion requirement: without a default value, the generated `__init__` would require the relationship as a positional argument, making it impossible to construct the object at all.
+
+The correct declaration is always:
+
+```python
+author: Mapped["Author"] = relationship(default=None, init=False)
+```
+
+### Plain (non-dataclass) models
+
+If you use `fr.PlainBase` / `fr.PlainIDBase` instead of `fr.IDBase`, the dataclass constraint does not apply. Plain models use SQLAlchemy's traditional declarative style and accept any keyword arguments in `__init__`, so `init=False` is not needed:
+
+```python
+class Article(fr.PlainIDBase):
+    __tablename__ = "article"
+    title: Mapped[str]
+    author_id: Mapped[int] = mapped_column(ForeignKey("author.id"))
+    author: Mapped["Author"] = relationship()  # no init=False needed
+```
+
 ## Schema Setup
 
 ```python
@@ -70,4 +96,5 @@ The view looks up the `Author` with `id=1` and raises `404` if it does not exist
 - The `id` inside the `{"id": 1}` payload is the foreign key value provided by the client, not the article's own primary key.
 - FastAPI-Restly resolves `author_id` to an `Author` ORM instance before creating or updating the object.
 - Both the FK column (`author_id`) and the relationship (`author`) are kept in sync on write, provided the `author` relationship exists on the model.
+- On dataclass-based models, the framework detects `init=False` on the relationship attribute and skips passing it to `__init__`. The FK column is still set, so SQLAlchemy will populate the relationship on the next access.
 - Missing related IDs return `404`.
