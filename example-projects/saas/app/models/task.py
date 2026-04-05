@@ -1,10 +1,40 @@
 """Task model belonging to a project."""
 
 from enum import Enum
+from typing import Any
 
 from sqlalchemy import ForeignKey, Integer, orm
+from sqlalchemy.types import TypeDecorator
 
 import fastapi_restly as fr
+
+
+class IntEnumType(TypeDecorator):
+    """Store an IntEnum as a plain INTEGER column, returning the enum on load.
+
+    SQLAlchemy's default Enum type stores values as strings (by name), which
+    breaks integer sorting. Specifying Integer directly keeps the right SQL
+    type but loses the Python-side conversion back to the enum. This decorator
+    combines both: INTEGER storage in the database and TaskPriority instances
+    in Python.
+    """
+
+    impl = Integer
+    cache_ok = True
+
+    def __init__(self, enum_class: type[Enum], *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.enum_class = enum_class
+
+    def process_bind_param(self, value: Any, dialect: Any) -> int | None:
+        if isinstance(value, self.enum_class):
+            return int(value)
+        return value
+
+    def process_result_value(self, value: Any, dialect: Any) -> Enum | None:
+        if value is not None:
+            return self.enum_class(value)
+        return value
 
 
 class TaskStatus(str, Enum):
@@ -41,7 +71,7 @@ class Task(fr.IDStampsBase):
     description: orm.Mapped[str] = orm.mapped_column(default="")
     status: orm.Mapped[TaskStatus] = orm.mapped_column(default=TaskStatus.TODO)
     priority: orm.Mapped[TaskPriority] = orm.mapped_column(
-        Integer, default=TaskPriority.MEDIUM
+        IntEnumType(TaskPriority), default=TaskPriority.MEDIUM
     )
     task_type: orm.Mapped[TaskType] = orm.mapped_column(default=TaskType.TASK)
 
