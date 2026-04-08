@@ -62,6 +62,7 @@ serialization control.
 
 - **Instant CRUD endpoints** — GET, POST, PATCH, DELETE with zero boilerplate
 - **True class-based views** — Real inheritance and method overrides; share logic across views by subclassing
+- **React Admin ready** — `AsyncReactAdminView` speaks `ra-data-simple-rest` out of the box; no custom data provider needed
 - **SQLAlchemy 2.0 support** — Async-first with modern patterns
 - **Pydantic v2 integration** — Full validation and serialization
 - **Automatic schema generation** — Create and update schemas generated automatically
@@ -94,6 +95,13 @@ Tutorial walkthroughs and in-depth topic guides covering every framework feature
 
 Generated endpoints, all public symbols, query parameters, and autodoc.
 :::
+
+:::{grid-item-card} About
+:link: about
+:link-type: doc
+
+History, design goals, and why this framework exists.
+:::
 ::::
 
 ## Installation
@@ -120,4 +128,5 @@ uv run pytest
 getting_started
 user_guide
 api_reference
+about
 ```
