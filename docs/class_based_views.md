@@ -235,6 +235,22 @@ class UserView(fr.AsyncRestView):
         return await self.save_object(user)
 ```
 
+When the derivation should fire on every insert regardless of which view
+created the row (audit stamps, slug derivation, denormalised counters),
+prefer a SQLAlchemy `before_insert` mapper event listener instead:
+
+```python
+from sqlalchemy import event
+
+@event.listens_for(Article, "before_insert")
+def _set_slug(mapper, connection, target):
+    target.slug = slugify(target.title)
+```
+
+See SQLAlchemy's [mapper events
+documentation](https://docs.sqlalchemy.org/en/20/orm/events.html#mapper-events)
+for the full event API.
+
 Everything else — listing, retrieval, update, delete, schema generation,
 pagination — keeps working unchanged. See
 [Override Endpoints](howto_override_endpoints.md) for the full list of hooks
