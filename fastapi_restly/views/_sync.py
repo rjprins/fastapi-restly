@@ -1,4 +1,5 @@
-from typing import Any, Sequence, TypeVar
+from collections.abc import Sequence
+from typing import Any, TypeVar
 
 import fastapi
 import sqlalchemy
@@ -14,7 +15,19 @@ from ..schemas import (
     is_readonly_field,
     resolve_ids_to_sqlalchemy_objects,
 )
-from ._base import BaseRestView, _accepts_init_kwarg, delete, get, patch, post
+from ._base import (
+    BaseRestView,
+    CreateSchemaT,
+    IdT,
+    ModelT,
+    SchemaT,
+    UpdateSchemaT,
+    _accepts_init_kwarg,
+    delete,
+    get,
+    patch,
+    post,
+)
 
 T = TypeVar("T", bound=DeclarativeBase)
 
@@ -73,7 +86,7 @@ def save_object(session: Session, obj: DeclarativeBase) -> DeclarativeBase:
     return obj
 
 
-class RestView(BaseRestView):
+class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT]):
     """
     RestView creates a synchronous CRUD/REST interface for database objects.
     Basic usage::
@@ -101,7 +114,7 @@ class RestView(BaseRestView):
         self,
         query_params: Any,
         query: sqlalchemy.Select[Any] | None = None,
-    ) -> Sequence[Any]:
+    ) -> Sequence[ModelT]:
         """
         Handle a GET request on "/". This should return a list of objects.
         Accepts a query argument that can be used for narrowing down the selection.
@@ -143,7 +156,7 @@ class RestView(BaseRestView):
         obj = self.on_get(id)
         return self.to_response_schema(obj)
 
-    def on_get(self, id: Any) -> Any:
+    def on_get(self, id: IdT) -> ModelT:
         """
         Handle a GET request on "/{id}". This should return a single object.
         Return a 404 if not found.
@@ -162,7 +175,7 @@ class RestView(BaseRestView):
         obj = self.on_create(schema_obj)
         return self.to_response_schema(obj)
 
-    def on_create(self, schema_obj: BaseSchema) -> Any:
+    def on_create(self, schema_obj: CreateSchemaT) -> ModelT:
         """
         Handle a POST request on "/". This should create a new object.
         Feel free to override this method.
@@ -176,7 +189,7 @@ class RestView(BaseRestView):
         obj = self.on_update(id, schema_obj)
         return self.to_response_schema(obj)
 
-    def on_update(self, id: Any, schema_obj: BaseSchema) -> Any:
+    def on_update(self, id: IdT, schema_obj: UpdateSchemaT) -> ModelT:
         """
         Handle a PATCH request on "/{id}". This should partially update an existing
         object.
@@ -190,12 +203,12 @@ class RestView(BaseRestView):
     def delete(self, id: Any) -> fastapi.Response:
         return self.on_delete(id)
 
-    def on_delete(self, id: Any) -> fastapi.Response:
+    def on_delete(self, id: IdT) -> fastapi.Response:
         obj = self.on_get(id)
         self.delete_object(obj)
         return fastapi.Response(status_code=204)
 
-    def delete_object(self, obj: DeclarativeBase) -> None:
+    def delete_object(self, obj: ModelT) -> None:
         """
         Delete an object from the database.
         Feel free to override this method.
@@ -203,7 +216,7 @@ class RestView(BaseRestView):
         self.session.delete(obj)
         self.session.flush()
 
-    def make_new_object(self, schema_obj: BaseSchema) -> DeclarativeBase:
+    def make_new_object(self, schema_obj: CreateSchemaT) -> ModelT:
         """
         Create a new object from a schema object.
         Feel free to override this method.
@@ -212,14 +225,14 @@ class RestView(BaseRestView):
             self.session, self.model, schema_obj, self.schema
         )
 
-    def update_object(self, obj: DeclarativeBase, schema_obj: BaseSchema) -> DeclarativeBase:
+    def update_object(self, obj: ModelT, schema_obj: UpdateSchemaT) -> ModelT:
         """
         Update an existing object with data from a schema object.
         Feel free to override this method.
         """
         return update_object(self.session, obj, schema_obj, self.schema)
 
-    def save_object(self, obj: DeclarativeBase) -> DeclarativeBase:
+    def save_object(self, obj: ModelT) -> ModelT:
         """
         Save an object to the database.
         Feel free to override this method.

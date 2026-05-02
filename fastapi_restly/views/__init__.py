@@ -10,12 +10,15 @@ from ._base import (
     put,
     route,
 )
+from ._react_admin import AsyncReactAdminView, ReactAdminView
 from ._sync import RestView, make_new_object, save_object, update_object
 
 __all__ = [
     "RestView",
     "AsyncRestView",
     "BaseRestView",
+    "AsyncReactAdminView",
+    "ReactAdminView",
     "View",
     "delete",
     "get",

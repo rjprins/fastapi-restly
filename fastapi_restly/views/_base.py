@@ -24,9 +24,10 @@ from typing import (
     Any,
     Callable,
     ClassVar,
+    Generic,
     Sequence,
-    TypeVar,
     Union,
+    cast,
     get_args,
     get_origin,
     get_type_hints,
@@ -39,6 +40,7 @@ from pydantic import create_model
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.orm import DeclarativeBase, selectinload
 from starlette.datastructures import QueryParams
+from typing_extensions import TypeVar
 
 from ..query import (
     QueryModifierVersion,
@@ -54,6 +56,13 @@ from ..schemas import (
     create_model_without_read_only_fields,
     is_field_writeonly,
 )
+from ._openapi import _register_for_resource_ref
+
+ModelT = TypeVar("ModelT", bound=DeclarativeBase, default=DeclarativeBase)
+SchemaT = TypeVar("SchemaT", bound=BaseSchema, default=BaseSchema)
+CreateSchemaT = TypeVar("CreateSchemaT", bound=BaseSchema, default=BaseSchema)
+UpdateSchemaT = TypeVar("UpdateSchemaT", bound=BaseSchema, default=BaseSchema)
+IdT = TypeVar("IdT", default=int)
 
 
 def _accepts_init_kwarg(model_cls: type, attr_name: str) -> bool:
@@ -319,7 +328,9 @@ def delete(path: str, **api_route_kwargs: Any) -> Callable[..., Any]:
     return route(path, **api_route_kwargs)
 
 
-class BaseRestView(View):
+class BaseRestView(
+    View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT]
+):
     """
     Base class for RestView implementations.
 
@@ -328,16 +339,18 @@ class BaseRestView(View):
     common CRUD operation logic.
     """
 
-    schema: ClassVar[type[BaseSchema]]
+    schema: ClassVar[type[SchemaT]]
     # If 'creation_schema' is not defined it will be created from 'schema'
     # using `create_model_without_read_only_fields()`.
-    creation_schema: ClassVar[type[BaseSchema]]
-    update_schema: ClassVar[type[BaseSchema]]
-    model: ClassVar[type[DeclarativeBase]]
-    id_type: ClassVar[type[Any]] = int
+    creation_schema: ClassVar[type[CreateSchemaT]]
+    update_schema: ClassVar[type[UpdateSchemaT]]
+    model: ClassVar[type[ModelT]]
+    id_type: ClassVar[type[IdT]] = int
     include_pagination_metadata: ClassVar[bool] = False  # Set True to include count/total in list responses
     exclude_routes: ClassVar[tuple[str, ...]] = ()
     query_modifier_version: ClassVar[QueryModifierVersion]  # Controls V1 vs V2 query parameter style; defaults to global setting
+    index_param_schema: ClassVar[type[pydantic.BaseModel]]
+    pagination_response_schema: ClassVar[type[pydantic.BaseModel]]
 
     request: fastapi.Request
 
@@ -347,10 +360,10 @@ class BaseRestView(View):
     def get_relationship_loader_options(self) -> list[Any]:
         return _build_relationship_loader_options(self.model, self.schema)
 
-    def to_response_schema(self, obj: Any) -> BaseSchema:
+    def to_response_schema(self, obj: ModelT | SchemaT) -> SchemaT:
         """Serialize an ORM object to the configured response schema."""
         if isinstance(obj, self.schema):
-            return obj
+            return cast(SchemaT, obj)
 
         # Build a payload using canonical field names. Alias rendering happens
         # when FastAPI serializes the response model.
@@ -368,7 +381,7 @@ class BaseRestView(View):
 
         # model_construct intentionally bypasses validation so response-only
         # omissions (for example WriteOnly fields) don't trigger required errors.
-        return self.schema.model_construct(**payload)
+        return cast(SchemaT, self.schema.model_construct(**payload))
 
     @staticmethod
     def _to_query_params(query_params: Any) -> QueryParams:
@@ -445,7 +458,7 @@ class BaseRestView(View):
                 raise ValueError(
                     f"'{cls.__name__}.model' must be specified to auto-generate schema"
                 )
-            cls.schema = auto_generate_schema_for_view(cls, cls.model)
+            cls.schema = cast(type[SchemaT], auto_generate_schema_for_view(cls, cls.model))
 
         if not hasattr(cls, "query_modifier_version"):
             cls.query_modifier_version = get_query_modifier_version()
@@ -453,9 +466,15 @@ class BaseRestView(View):
             with use_query_modifier_version(cls.query_modifier_version):
                 cls.index_param_schema = create_query_param_schema(cls.schema)
         if not hasattr(cls, "creation_schema"):
-            cls.creation_schema = create_model_without_read_only_fields(cls.schema)
+            cls.creation_schema = cast(
+                type[CreateSchemaT],
+                create_model_without_read_only_fields(cls.schema),
+            )
         if not hasattr(cls, "update_schema"):
-            cls.update_schema = create_model_with_optional_fields(cls.schema)
+            cls.update_schema = cast(
+                type[UpdateSchemaT],
+                create_model_with_optional_fields(cls.schema),
+            )
 
         response_schema = cls.schema
 
@@ -526,6 +545,7 @@ def _init_view_cls_and_add_to_router(
     view_cls.before_include_view()
     _init_class_based_view(view_cls)
     api_router = _init_api_router(view_cls)
+    _register_for_resource_ref(parent_router, view_cls)
     parent_router.include_router(api_router)
 
 

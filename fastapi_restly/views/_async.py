@@ -1,4 +1,5 @@
-from typing import Any, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 import fastapi
 import sqlalchemy
@@ -14,10 +15,24 @@ from ..schemas import (
     get_writable_inputs,
     is_readonly_field,
 )
-from ._base import BaseRestView, _accepts_init_kwarg, delete, get, patch, post
+from ._base import (
+    BaseRestView,
+    CreateSchemaT,
+    IdT,
+    ModelT,
+    SchemaT,
+    UpdateSchemaT,
+    _accepts_init_kwarg,
+    delete,
+    get,
+    patch,
+    post,
+)
 
 
-class AsyncRestView(BaseRestView):
+class AsyncRestView(
+    BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT]
+):
     """
     AsyncRestView creates an async CRUD/REST interface for database objects.
     Basic usage::
@@ -45,7 +60,7 @@ class AsyncRestView(BaseRestView):
         self,
         query_params: Any,
         query: sqlalchemy.Select[Any] | None = None,
-    ) -> Sequence[Any]:
+    ) -> Sequence[ModelT]:
         """
         Handle a GET request on "/". This should return a list of objects.
         Accepts a query argument that can be used for narrowing down the selection.
@@ -85,7 +100,7 @@ class AsyncRestView(BaseRestView):
         obj = await self.on_get(id)
         return self.to_response_schema(obj)
 
-    async def on_get(self, id: Any) -> Any:
+    async def on_get(self, id: IdT) -> ModelT:
         """
         Handle a GET request on "/{id}". This should return a single object.
         Return a 404 if not found.
@@ -104,7 +119,7 @@ class AsyncRestView(BaseRestView):
         obj = await self.on_create(schema_obj)
         return self.to_response_schema(obj)
 
-    async def on_create(self, schema_obj: BaseSchema) -> Any:
+    async def on_create(self, schema_obj: CreateSchemaT) -> ModelT:
         """
         Handle a POST request on "/". This should create a new object.
         Feel free to override this method.
@@ -117,7 +132,7 @@ class AsyncRestView(BaseRestView):
         obj = await self.on_update(id, schema_obj)
         return self.to_response_schema(obj)
 
-    async def on_update(self, id: Any, schema_obj: BaseSchema) -> Any:
+    async def on_update(self, id: IdT, schema_obj: UpdateSchemaT) -> ModelT:
         """
         Handle a PATCH request on "/{id}". This should partially update an existing
         object.
@@ -131,12 +146,12 @@ class AsyncRestView(BaseRestView):
     async def delete(self, id: Any) -> fastapi.Response:
         return await self.on_delete(id)
 
-    async def on_delete(self, id: Any) -> fastapi.Response:
+    async def on_delete(self, id: IdT) -> fastapi.Response:
         obj = await self.on_get(id)
         await self.delete_object(obj)
         return fastapi.Response(status_code=204)
 
-    async def delete_object(self, obj: DeclarativeBase) -> None:
+    async def delete_object(self, obj: ModelT) -> None:
         """
         Handle a DELETE request on "/{id}". This should delete an object from the
         database. `on_get()` is called first to lookup the object.
@@ -145,7 +160,7 @@ class AsyncRestView(BaseRestView):
         await self.session.delete(obj)
         await self.session.flush()
 
-    async def make_new_object(self, schema_obj: BaseSchema) -> DeclarativeBase:
+    async def make_new_object(self, schema_obj: CreateSchemaT) -> ModelT:
         """
         Create a new object from a schema object.
         Feel free to override this method.
@@ -173,7 +188,7 @@ class AsyncRestView(BaseRestView):
         self.session.add(obj)
         return obj
 
-    async def update_object(self, obj: DeclarativeBase, schema_obj: BaseSchema) -> DeclarativeBase:
+    async def update_object(self, obj: ModelT, schema_obj: UpdateSchemaT) -> ModelT:
         """
         Update an existing object with data from a schema object.
         Feel free to override this method.
@@ -192,7 +207,7 @@ class AsyncRestView(BaseRestView):
             setattr(obj, field_name, value)
         return obj
 
-    async def save_object(self, obj: DeclarativeBase) -> DeclarativeBase:
+    async def save_object(self, obj: ModelT) -> ModelT:
         """
         Save an object to the database.
         Feel free to override this method.

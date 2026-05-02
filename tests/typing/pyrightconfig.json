@@ -1,0 +1,18 @@
+{
+  "include": [
+    "*.py"
+  ],
+  "exclude": [
+    "__pycache__"
+  ],
+  "typeCheckingMode": "strict",
+  "reportMissingTypeStubs": false,
+  "executionEnvironments": [
+    {
+      "root": ".",
+      "extraPaths": [
+        "../.."
+      ]
+    }
+  ]
+}

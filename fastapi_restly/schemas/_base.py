@@ -1,15 +1,6 @@
 import types
 from datetime import datetime
-from typing import (
-    Annotated,
-    Any,
-    Generic,
-    Optional,
-    TypeVar,
-    Union,
-    get_args,
-    get_origin,
-)
+from typing import Annotated, Any, Generic, Optional, Union, get_args, get_origin
 
 import pydantic
 from fastapi import HTTPException
@@ -19,6 +10,7 @@ from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio.session import AsyncSession as SA_AsyncSession
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm.session import Session as SA_Session
+from typing_extensions import TypeVar
 
 
 class BaseSchema(pydantic.BaseModel):
@@ -51,7 +43,11 @@ class TimestampsSchemaMixin(pydantic.BaseModel):
     updated_at: ReadOnly[datetime]
 
 
-SQLAlchemyModel = TypeVar("SQLAlchemyModel", bound=DeclarativeBase)
+SQLAlchemyModel = TypeVar(
+    "SQLAlchemyModel",
+    bound=DeclarativeBase,
+    default=DeclarativeBase,
+)
 
 
 class IDSchema(BaseSchema, Generic[SQLAlchemyModel]):
@@ -113,6 +109,30 @@ class IDSchema(BaseSchema, Generic[SQLAlchemyModel]):
 
 class IDStampsSchema(TimestampsSchemaMixin, IDSchema):
     pass
+
+
+class FlatIDSchema(IDSchema[SQLAlchemyModel], Generic[SQLAlchemyModel]):
+    """Like IDSchema but serializes as a plain scalar instead of {"id": N}.
+
+    Accepts both plain scalars and {"id": N} on input.
+    Outputs the raw id value on serialization.
+
+    Use this instead of IDSchema for relationship list fields when you want
+    React Admin compatibility without a custom data provider:
+
+        products: list[FlatIDSchema[Product]]  # serializes as ["uuid1", "uuid2"]
+    """
+
+    @pydantic.model_validator(mode="before")
+    @classmethod
+    def _coerce_scalar(cls, v: Any) -> Any:
+        if not isinstance(v, dict):
+            return {"id": v}
+        return v
+
+    @pydantic.model_serializer
+    def _serialize_flat(self) -> Any:
+        return self.id
 
 
 async def async_resolve_ids_to_sqlalchemy_objects(

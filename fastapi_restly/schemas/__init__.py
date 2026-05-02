@@ -1,5 +1,6 @@
 from ._base import (
     BaseSchema,
+    FlatIDSchema,
     IDSchema,
     IDStampsSchema,
     OmitReadOnlyMixin,
@@ -36,6 +37,7 @@ from ._generator import (
 
 __all__ = [
     "BaseSchema",
+    "FlatIDSchema",
     "IDSchema",
     "IDStampsSchema",
     "OmitReadOnlyMixin",

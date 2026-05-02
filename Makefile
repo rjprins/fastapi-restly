@@ -1,4 +1,4 @@
-.PHONY: test test-framework test-examples test-all clean install-dev lint pre-commit-install pre-commit-run docs docs-serve docs-push build-pages pages-push
+.PHONY: test test-framework test-typing test-examples test-all clean install-dev lint pre-commit-install pre-commit-run docs docs-serve docs-push build-pages pages-push
 
 # Default target
 all: test-all
@@ -18,6 +18,10 @@ pre-commit-run:
 
 lint:
 	uv run ruff check .
+
+test-typing:
+	@echo "=== Testing Typing Compatibility Fixtures ==="
+	uv run --with pyright pyright -p tests/typing/pyrightconfig.json
 
 # Test the main framework
 test-framework:
@@ -43,7 +47,7 @@ test-saas:
 test-examples: test-shop test-blog test-saas
 
 # Test everything
-test-all: test-framework test-examples
+test-all: test-framework test-typing test-examples
 	@echo "=== All Tests Complete ==="
 
 # Quick test (just framework)
@@ -93,6 +97,7 @@ pages-push: build-pages
 help:
 	@echo "Available commands:"
 	@echo "  test-framework  - Test the main FastAPI-Restly framework"
+	@echo "  test-typing     - Run Pyright on consumer typing fixtures"
 	@echo "  test-shop       - Test the shop example"
 	@echo "  test-blog       - Test the blog example"
 	@echo "  test-saas       - Test the SaaS example"
