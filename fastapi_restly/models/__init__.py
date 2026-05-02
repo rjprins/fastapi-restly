@@ -17,6 +17,11 @@ from ._base import (
 )
 from ._helpers import async_get_one_or_create, get_one_or_create
 
+# Public API for ``fastapi_restly.models``.
+#
+# ``TableNameMixin``, ``underscore`` and ``utc_now`` remain importable for
+# backwards compatibility but are framework internals (the Sphinx docs
+# already exclude them) and may move in a future release.
 __all__ = [
     "CASCADE_ALL_ASYNC",
     "CASCADE_ALL_DELETE_ORPHAN_ASYNC",
@@ -29,10 +34,7 @@ __all__ = [
     "PlainIDStampsBase",
     "PlainIDMixin",
     "PlainTimestampsMixin",
-    "TableNameMixin",
     "TimestampsMixin",
     "async_get_one_or_create",
     "get_one_or_create",
-    "underscore",
-    "utc_now",
 ]

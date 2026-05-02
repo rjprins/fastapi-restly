@@ -58,7 +58,6 @@ from .schemas import (
 from .views import (
     AsyncReactAdminView,
     AsyncRestView,
-    BaseRestView,
     ReactAdminView,
     RestView,
     View,
@@ -74,6 +73,12 @@ from .views import (
     update_object,
 )
 
+# Public API surface for fastapi-restly.
+#
+# Anything not listed here is considered internal and may change without
+# warning. Submodule ``__init__.py`` files have their own (narrower)
+# ``__all__`` lists for submodule-level imports such as
+# ``from fastapi_restly.schemas import ReadOnly``.
 __all__ = [
     # Database — session context managers
     "async_session",
@@ -125,7 +130,6 @@ __all__ = [
     # Views
     "RestView",
     "AsyncRestView",
-    "BaseRestView",
     "AsyncReactAdminView",
     "ReactAdminView",
     "View",

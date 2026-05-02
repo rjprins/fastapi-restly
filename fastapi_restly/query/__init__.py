@@ -20,24 +20,19 @@ from ._v2 import (
     create_query_param_schema_v2,
 )
 
+# Public API for ``fastapi_restly.query``.
+#
+# The version-specific implementations (``apply_filtering``,
+# ``apply_filtering_v2``, ``apply_query_modifiers_v1`` etc.) and the
+# ``QueryModifierInterface`` plumbing remain importable for advanced users
+# who want to bypass the version-aware dispatcher, but they are not part of
+# the supported public API. Prefer the version-agnostic
+# ``apply_query_modifiers`` / ``create_query_param_schema`` entry points.
 __all__ = [
-    "QueryModifierInterface",
     "QueryModifierVersion",
-    "apply_filtering",
-    "apply_filtering_v2",
-    "apply_pagination",
-    "apply_pagination_v2",
     "apply_query_modifiers",
-    "apply_query_modifiers_v1",
-    "apply_query_modifiers_v2",
-    "apply_sorting",
-    "apply_sorting_v2",
     "create_query_param_schema",
-    "create_query_param_schema_v1",
-    "create_query_param_schema_v2",
-    "get_query_modifier_interface",
     "get_query_modifier_version",
-    "get_query_param_schema_creator",
     "set_query_modifier_version",
     "use_query_modifier_version",
 ]

@@ -12,11 +12,17 @@ from ._session import (
     get_engine,
 )
 
+# Public API for ``fastapi_restly.db``.
+#
+# ``async_generate_session`` and ``generate_session`` remain importable for
+# advanced users (and existing tests) who plug a custom session generator
+# into ``fr_globals``, but they are not part of the supported public API
+# and may move into a private module in a future release.
 __all__ = [
     # Session context managers
     "async_session",
     "session",
-    # Dependencies
+    # FastAPI dependencies
     "AsyncSessionDep",
     "SessionDep",
     # Engine access
@@ -32,7 +38,4 @@ __all__ = [
     "fr_globals",
     "get_fr_globals",
     "use_fr_globals",
-    # Internal generators (for custom session_generator settings)
-    "async_generate_session",
-    "generate_session",
 ]
