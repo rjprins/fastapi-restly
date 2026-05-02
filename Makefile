@@ -36,7 +36,7 @@ test-shop:
 # Test blog example
 test-blog:
 	@echo "=== Testing Blog Example ==="
-	cd example-projects/blog && uv run pytest blog/ -v
+	cd example-projects/blog && uv run pytest tests/ -v
 
 # Test saas example
 test-saas:

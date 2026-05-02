@@ -4,19 +4,19 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fastapi-restly"
-version = "1.0"
+version = "0.1.0"
 description = "A REST Framework for FastAPI"
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "MIT" }
+license = "MIT"
 authors = [
     { name = "Rutger Prins", email = "rutgerprins@gmail.com" },
 ]
+keywords = ["fastapi", "rest", "crud", "sqlalchemy", "pydantic", "api", "framework"]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 3 - Alpha",
     "Framework :: FastAPI",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -26,6 +26,7 @@ classifiers = [
     "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
 ]
 dependencies = [
+    "aiosqlite>=0.21.0",
     "alembic>=1.15.2",
     "fastapi>=0.115.12",
     "httpx>=0.28.1",
@@ -35,9 +36,30 @@ dependencies = [
     "sqlalchemy[asyncio]>=2.0.41",
 ]
 
+[project.optional-dependencies]
+docs = [
+    "ghp-import>=2.1.0",
+    "myst-parser>=4.0.1",
+    "pydata-sphinx-theme>=0.16.0",
+    "sphinx>=8.1.3",
+    "sphinx-autobuild>=2024.10.3",
+    "sphinx-copybutton>=0.5.2",
+    "sphinx-design>=0.6.0",
+    "sphinx-sitemap>=2.9.0",
+]
+test = [
+    "pytest>=8.3.5",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=6.1.1",
+]
+
 [project.urls]
 Homepage = "https://github.com/rjprins/fastapi-restly"
 Repository = "https://github.com/rjprins/fastapi-restly"
+Source = "https://github.com/rjprins/fastapi-restly"
+Documentation = "https://rjprins.github.io/fastapi-restly/"
+Issues = "https://github.com/rjprins/fastapi-restly/issues"
+Changelog = "https://github.com/rjprins/fastapi-restly/blob/main/CHANGELOG.md"
 
 [dependency-groups]
 dev = [
@@ -86,3 +108,6 @@ split-on-trailing-comma = false
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["fastapi_restly", "fastapi_restly.*"]
+
+[tool.setuptools.package-data]
+fastapi_restly = ["py.typed"]

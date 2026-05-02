@@ -1,15 +1,24 @@
-site/
+# Build artifacts
 build/
 dist/
+site/
+htmlcov/
 *.egg-info/
-*.db
-.coverage
+docs/_build/
+
+# Test artifacts
+.pytest_cache/
 coverage.json
 coverage.xml
-htmlcov/
+.coverage
 
-# Dolt database files (added by bd init)
-.dolt/
+# Local databases
+*.db
+saas.db
+shop.db
 
-# Beads internal backup snapshots are local runtime state, not repo content.
-.beads/backup/
+# Environments
+.venv/
+.envrc
+
+
