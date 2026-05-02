@@ -8,6 +8,10 @@ permissions:
   contents: write
   id-token: write
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   publish:
     runs-on: ubuntu-latest
@@ -23,8 +27,13 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+
       - name: Build package
-        run: pipx run build
+        run: uv build
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/

@@ -4,13 +4,19 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    paths:
+      - "docs/**"
+      - "fastapi_restly/**"
+      - "Makefile"
+      - ".github/workflows/pages.yml"
   workflow_dispatch:
 
 permissions:
   contents: write
 
 concurrency:
-  group: pages
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -35,4 +41,5 @@ jobs:
         run: make build-pages
 
       - name: Publish to gh-pages
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: uv run ghp-import --no-history --no-jekyll --push site/html
