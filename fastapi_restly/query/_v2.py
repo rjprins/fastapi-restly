@@ -1,10 +1,12 @@
 import functools
+import warnings
 from collections import defaultdict
-from typing import Any, Callable, Iterator, Optional, cast
+from typing import Annotated, Any, Callable, Iterator, Optional, cast
 
 import pydantic
 import sqlalchemy
 from fastapi import HTTPException
+from pydantic import Field
 from pydantic.fields import FieldInfo
 from sqlalchemy import ColumnElement, Select
 from sqlalchemy.orm import DeclarativeBase
@@ -16,6 +18,20 @@ from ._shared import _escape_like_value, _unwrap_optional_annotation
 
 SchemaType = type[pydantic.BaseModel]
 
+#: Default ``page_size`` applied to V2 list endpoints when the client does
+#: not send one. Override per-view via :attr:`BaseRestView.default_page_size`.
+DEFAULT_PAGE_SIZE = 25
+
+#: Maximum ``page_size`` accepted by V2 list endpoints. Values above this
+#: are rejected with a 422 by the FastAPI Pydantic-Query validation layer.
+#: Override per-view via :attr:`BaseRestView.max_page_size`.
+MAX_PAGE_SIZE = 1000
+
+#: Reserved query-parameter names produced by the V2 schema. Filter columns
+#: literally named one of these would shadow pagination/sort and are skipped
+#: with a warning at schema-creation time.
+_V2_RESERVED_NAMES = frozenset({"page", "page_size", "order_by"})
+
 
 def _is_string_field_v2(field: FieldInfo) -> bool:
     """Check if a field is a string type."""
@@ -23,17 +39,45 @@ def _is_string_field_v2(field: FieldInfo) -> bool:
     return annotation is str
 
 
-def create_query_param_schema_v2(schema_cls: SchemaType) -> SchemaType:
+def create_query_param_schema_v2(
+    schema_cls: SchemaType,
+    *,
+    default_page_size: int = DEFAULT_PAGE_SIZE,
+    max_page_size: int = MAX_PAGE_SIZE,
+) -> SchemaType:
     """
     Create a pydantic model class that describes and validates all possible query parameters
     for the v2 interface (direct field names, __gte, __lte, etc.).
+
+    ``page`` and ``page_size`` are validated by Pydantic with bounds
+    (`page >= 1`, `1 <= page_size <= max_page_size`); out-of-range values
+    produce a standard 422 response from FastAPI.
+
+    Args:
+        schema_cls: The response schema whose fields drive the available
+            filter parameters (direct field names, ``__gte``/``__lte`` etc.).
+        default_page_size: Default value for the ``page_size`` parameter.
+            Defaults to :data:`DEFAULT_PAGE_SIZE`.
+        max_page_size: Upper bound (inclusive) for the ``page_size``
+            parameter. Defaults to :data:`MAX_PAGE_SIZE`.
     """
-    fields = {
-        "page": (Optional[int], None),
-        "page_size": (Optional[int], None),
+    fields: dict[str, Any] = {
+        "page": (Annotated[int, Field(ge=1)], 1),
+        "page_size": (
+            Annotated[int, Field(ge=1, le=max_page_size)],
+            default_page_size,
+        ),
         "order_by": (Optional[str], None),
     }
     for name, field in _iter_fields_including_nested_v2(schema_cls):
+        if name in _V2_RESERVED_NAMES:
+            warnings.warn(
+                f"V2 query schema for {schema_cls.__name__!r} skipping field "
+                f"{name!r} because it collides with a reserved pagination/sort "
+                "parameter. Add a Pydantic alias to expose it as a filter.",
+                stacklevel=2,
+            )
+            continue
         field_type = _get_field_type_for_schema(field)
         fields[name] = (Optional[field_type], None)
         # Add range filters
@@ -52,13 +96,19 @@ def create_query_param_schema_v2(schema_cls: SchemaType) -> SchemaType:
 
 
 def apply_query_modifiers_v2(
-    query_params: QueryParams,
+    params: pydantic.BaseModel | QueryParams,
     select_query: Select[Any],
     model: type[DeclarativeBase],
     schema_cls: SchemaType,
 ) -> Select[Any]:
     """
-    Apply pagination, sorting, and filtering through URL query parameters on a SQL query.
+    Apply pagination, sorting, and filtering on a SQL query using the
+    already-validated V2 query parameters.
+
+    ``params`` is normally an instance of the schema returned by
+    :func:`create_query_param_schema_v2`. Passing a raw
+    :class:`~starlette.datastructures.QueryParams` is still supported for
+    callers that build the query parameters programmatically.
 
     Uses a more standard interface::
 
@@ -74,24 +124,38 @@ def apply_query_modifiers_v2(
         # Contains (string fields)
         name__contains=john&email__contains=example
     """
+    query_params = _coerce_to_query_params_v2(params)
     select_query = apply_filtering_v2(query_params, select_query, model, schema_cls)
     select_query = apply_sorting_v2(query_params, select_query, model, schema_cls)
     select_query = apply_pagination_v2(query_params, select_query)
     return select_query
 
 
+def _coerce_to_query_params_v2(
+    params: pydantic.BaseModel | QueryParams,
+) -> QueryParams:
+    """Normalise either a validated Pydantic model or a raw QueryParams to QueryParams."""
+    if isinstance(params, QueryParams):
+        return params
+    if isinstance(params, pydantic.BaseModel):
+        dumped = params.model_dump(exclude_none=True, by_alias=True, mode="json")
+        return QueryParams({k: str(v) for k, v in dumped.items()})
+    return QueryParams(params)
+
+
 def apply_pagination_v2(
     query_params: QueryParams, select_query: Select[Any]
 ) -> Select[Any]:
     """
-    Apply pagination using page and page_size parameters.
+    Apply pagination using ``page`` and ``page_size`` parameters.
+
+    Range and type checks are enforced by the Pydantic query schema returned
+    by :func:`create_query_param_schema_v2`. When ``page`` / ``page_size`` are
+    absent (raw QueryParams built by hand) sensible defaults are applied
+    (``page=1``, ``page_size=DEFAULT_PAGE_SIZE``).
     """
     page = _get_int_v2(query_params, "page") or 1
-    if page < 1:
-        raise HTTPException(400, "Invalid value for URL query parameter page: must be >= 1")
-    page_size = _get_int_v2(query_params, "page_size") or 100
-    if page_size <= 0:
-        raise HTTPException(400, "Invalid value for URL query parameter page_size: must be > 0")
+    page_size = _get_int_v2(query_params, "page_size") or DEFAULT_PAGE_SIZE
     offset = (page - 1) * page_size
     select_query = select_query.limit(page_size).offset(offset)
     return select_query
@@ -121,6 +185,14 @@ def _iter_fields_including_nested_v2(
 
 
 def _get_int_v2(query_params: QueryParams, param_name: str) -> Optional[int]:
+    """Read an integer query parameter, returning ``None`` if absent.
+
+    Range and type checks for the validated parameters (``page`` /
+    ``page_size``) are enforced by the Pydantic schema returned by
+    :func:`create_query_param_schema_v2`. This helper is kept for callers
+    that build raw :class:`QueryParams` and only does the basic
+    string-to-int conversion.
+    """
     value = query_params.get(param_name)
     if not value:
         return None

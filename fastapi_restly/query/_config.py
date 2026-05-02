@@ -9,7 +9,7 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from enum import Enum
 from functools import lru_cache
-from typing import Any, Callable, Protocol
+from typing import Any, Callable, Protocol, Union
 
 import pydantic
 from sqlalchemy import Select
@@ -17,6 +17,7 @@ from sqlalchemy.orm import DeclarativeBase
 from starlette.datastructures import QueryParams
 
 SchemaType = type[pydantic.BaseModel]
+ParamsType = Union[pydantic.BaseModel, QueryParams]
 
 
 class QueryModifierVersion(Enum):
@@ -31,7 +32,7 @@ class QueryModifierInterface(Protocol):
 
     def apply_query_modifiers(
         self,
-        query_params: QueryParams,
+        params: ParamsType,
         select_query: Select[Any],
         model: type[DeclarativeBase],
         schema_cls: SchemaType,
@@ -44,19 +45,19 @@ class _FunctionQueryModifierInterface:
     def __init__(
         self,
         apply_fn: Callable[
-            [QueryParams, Select[Any], type[DeclarativeBase], SchemaType], Select[Any]
+            [ParamsType, Select[Any], type[DeclarativeBase], SchemaType], Select[Any]
         ],
     ):
         self._apply_fn = apply_fn
 
     def apply_query_modifiers(
         self,
-        query_params: QueryParams,
+        params: ParamsType,
         select_query: Select[Any],
         model: type[DeclarativeBase],
         schema_cls: SchemaType,
     ) -> Select[Any]:
-        return self._apply_fn(query_params, select_query, model, schema_cls)
+        return self._apply_fn(params, select_query, model, schema_cls)
 
 
 class V1Interface(_FunctionQueryModifierInterface):
@@ -75,7 +76,7 @@ _query_modifier_version: ContextVar[QueryModifierVersion] = ContextVar(
 
 @lru_cache(maxsize=1)
 def _resolve_v1_apply() -> Callable[
-    [QueryParams, Select[Any], type[DeclarativeBase], SchemaType], Select[Any]
+    [ParamsType, Select[Any], type[DeclarativeBase], SchemaType], Select[Any]
 ]:
     from ._v1 import apply_query_modifiers
 
@@ -84,7 +85,7 @@ def _resolve_v1_apply() -> Callable[
 
 @lru_cache(maxsize=1)
 def _resolve_v2_apply() -> Callable[
-    [QueryParams, Select[Any], type[DeclarativeBase], SchemaType], Select[Any]
+    [ParamsType, Select[Any], type[DeclarativeBase], SchemaType], Select[Any]
 ]:
     from ._v2 import apply_query_modifiers_v2
 
@@ -160,7 +161,7 @@ def get_query_param_schema_creator() -> Callable[[SchemaType], SchemaType]:
 
 # Convenience functions that delegate to the configured version's implementation
 def apply_query_modifiers(
-    query_params: QueryParams,
+    params: ParamsType,
     select_query: Select[Any],
     model: type[DeclarativeBase],
     schema_cls: SchemaType,
@@ -170,10 +171,17 @@ def apply_query_modifiers(
 
     This is a convenience function that delegates to the appropriate implementation
     based on the global configuration.
+
+    ``params`` is the validated Pydantic query-parameter model (the schema
+    returned by :func:`create_query_param_schema`). A raw
+    :class:`~starlette.datastructures.QueryParams` is also accepted for
+    backwards compatibility, but new callers should pass the validated
+    instance so that pagination bounds checking happens at the FastAPI
+    boundary.
     """
     interface = get_query_modifier_interface()
     return interface.apply_query_modifiers(
-        query_params, select_query, model, schema_cls
+        params, select_query, model, schema_cls
     )
 
 

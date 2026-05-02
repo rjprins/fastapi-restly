@@ -116,13 +116,17 @@ class AsyncRestView(
                 query = make_my_query()
                 objs = await super().on_list(query_params, query)
                 return add_my_info(objs)
+
+        ``query_params`` is the validated query-parameter Pydantic model
+        injected by FastAPI; pagination bounds (``limit`` / ``page`` / etc.)
+        have already been validated by the schema returned from
+        :func:`fastapi_restly.query.create_query_param_schema`.
         """
         if query is None:
             query = sqlalchemy.select(self.model)
         loader_options = self.get_relationship_loader_options()
         if loader_options:
             query = query.options(*loader_options)
-        query_params = self._to_query_params(query_params)
 
         with use_query_modifier_version(self.get_query_modifier_version()):
             query = apply_query_modifiers(
@@ -132,7 +136,6 @@ class AsyncRestView(
         return scalar_result.all()
 
     async def count_index(self, query_params: Any) -> int:
-        query_params = self._to_query_params(query_params)
         with use_query_modifier_version(self.get_query_modifier_version()):
             filtered_query = apply_query_modifiers(
                 query_params, sqlalchemy.select(self.model), self.model, self.schema

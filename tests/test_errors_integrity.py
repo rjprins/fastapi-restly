@@ -1,15 +1,13 @@
 """Tests for IntegrityError / unique-constraint / FK violation scenarios (I2).
 
-These tests pin the framework's behavior when the database raises an
-IntegrityError mid-request. Currently the framework does NOT translate
-IntegrityError into a 409 — the exception propagates and FastAPI returns
-a 500. These tests document that, so a future translation layer breaks
-the test deliberately.
+The framework installs a default exception handler that translates
+SQLAlchemy ``IntegrityError`` into HTTP 409 Conflict (with a clean JSON
+body). These tests pin that behavior end-to-end. Users can opt out via
+``fr.configure(install_default_exception_handlers=False)`` — the
+``test_exception_handlers.py`` suite covers that path.
 """
 
-import pytest
 from sqlalchemy import ForeignKey, UniqueConstraint
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 import fastapi_restly as fr
@@ -21,14 +19,10 @@ from .conftest import create_tables
 # ---------------------------------------------------------------------------
 
 
-def test_post_duplicate_unique_column_raises_integrity_error(client):
-    """POSTing two records with the same unique value: the second raises
-    IntegrityError. The framework currently does not translate this to 409.
-
-    Documented contract: SQLAlchemy's IntegrityError propagates from the
-    request and the test client receives it as a raised exception (because
-    TestClient re-raises server exceptions by default).
-    """
+def test_post_duplicate_unique_column_returns_409(client):
+    """POSTing two records with the same unique value: the second triggers
+    a SQLAlchemy ``IntegrityError`` which the framework's default handler
+    translates to HTTP 409 with a clean JSON body."""
 
     class UserUnique(fr.IDBase):
         username: Mapped[str] = mapped_column(unique=True)
@@ -52,17 +46,19 @@ def test_post_duplicate_unique_column_raises_integrity_error(client):
     )
     assert response.status_code == 201
 
-    # Second insert with same username raises IntegrityError.
-    # TestClient re-raises by default, so we need pytest.raises.
-    with pytest.raises(IntegrityError) as exc_info:
-        client.post(
-            "/unique-users/",
-            json={"username": "alice", "email": "alice2@example.com"},
-        )
-    assert "UNIQUE" in str(exc_info.value).upper()
+    # Second insert with same username is now translated to 409.
+    response = client.post(
+        "/unique-users/",
+        json={"username": "alice", "email": "alice2@example.com"},
+        assert_status_code=409,
+    )
+    assert response.status_code == 409
+    body = response.json()
+    assert "detail" in body
+    assert "unique" in body["detail"].lower()
 
 
-def test_post_duplicate_explicit_unique_constraint_raises_integrity_error(client):
+def test_post_duplicate_explicit_unique_constraint_returns_409(client):
     """Same as above but using an explicit table-level UniqueConstraint."""
 
     class Coupon(fr.IDBase):
@@ -87,8 +83,13 @@ def test_post_duplicate_explicit_unique_constraint_raises_integrity_error(client
     )
     assert response.status_code == 201
 
-    with pytest.raises(IntegrityError):
-        client.post("/coupons/", json={"code": "SAVE10", "campaign": "spring"})
+    response = client.post(
+        "/coupons/",
+        json={"code": "SAVE10", "campaign": "spring"},
+        assert_status_code=409,
+    )
+    assert response.status_code == 409
+    assert "unique" in response.json()["detail"].lower()
 
 
 # ---------------------------------------------------------------------------
@@ -96,9 +97,9 @@ def test_post_duplicate_explicit_unique_constraint_raises_integrity_error(client
 # ---------------------------------------------------------------------------
 
 
-def test_patch_to_duplicate_unique_value_raises_integrity_error(client):
+def test_patch_to_duplicate_unique_value_returns_409(client):
     """Updating a record to use a username that already exists violates the
-    unique constraint. Same propagation: IntegrityError."""
+    unique constraint and is translated to 409."""
 
     class Account(fr.IDBase):
         username: Mapped[str] = mapped_column(unique=True)
@@ -117,8 +118,13 @@ def test_patch_to_duplicate_unique_value_raises_integrity_error(client):
     a = client.post("/accounts/", json={"username": "alice"}).json()
     client.post("/accounts/", json={"username": "bob"}).json()
 
-    with pytest.raises(IntegrityError):
-        client.patch(f"/accounts/{a['id']}", json={"username": "bob"})
+    response = client.patch(
+        f"/accounts/{a['id']}",
+        json={"username": "bob"},
+        assert_status_code=409,
+    )
+    assert response.status_code == 409
+    assert "unique" in response.json()["detail"].lower()
 
 
 # ---------------------------------------------------------------------------
@@ -160,7 +166,7 @@ def test_post_with_invalid_fk_via_plain_int_raises_integrity_error(client):
     response = client.post("/pets/", json={"name": "Rex", "owner_id": 9999})
     # Pin the current behavior: this currently succeeds (no FK enforcement).
     # If the framework later turns on PRAGMA foreign_keys, this becomes an
-    # IntegrityError and the test breaks deliberately.
+    # IntegrityError translated to 409, and the test breaks deliberately.
     assert response.status_code == 201
     assert response.json()["owner_id"] == 9999
 

@@ -1,13 +1,14 @@
 from collections.abc import AsyncIterator, Callable, Iterator
 from typing import Annotated, Any, cast
 
-from fastapi import Depends
+from fastapi import Depends, FastAPI
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker, create_async_engine
 from sqlalchemy.ext.asyncio import AsyncSession as SA_AsyncSession
 from sqlalchemy.orm import Session as SA_Session
 from sqlalchemy.orm import sessionmaker
 
+from .._exceptions import register_default_exception_handlers
 from ._globals import fr_globals
 
 try:
@@ -69,6 +70,7 @@ def _setup_database_connection(
 
 
 def configure(
+    app: FastAPI | None = None,
     *,
     async_database_url: str | None = None,
     async_engine: AsyncEngine | None = None,
@@ -78,6 +80,7 @@ def configure(
     make_session: sessionmaker | None = None,
     session_generator: Callable[[], AsyncIterator[SA_AsyncSession]] | None = None,
     sync_session_generator: Callable[[], Iterator[SA_Session]] | None = None,
+    install_default_exception_handlers: bool = True,
 ) -> None:
     """Configure FastAPI-Restly. Call once at startup.
 
@@ -88,6 +91,13 @@ def configure(
 
     Use ``session_generator`` / ``sync_session_generator`` to plug in a
     custom session factory instead of the built-in one.
+
+    Pass your :class:`FastAPI` ``app`` to install fastapi-restly's default
+    exception handlers (currently: a translator that turns SQLAlchemy
+    :class:`~sqlalchemy.exc.IntegrityError` into HTTP 409 Conflict). Set
+    ``install_default_exception_handlers=False`` to opt out. If you do not
+    pass ``app`` here, the handlers are registered the first time a view is
+    mounted via :func:`fastapi_restly.include_view` instead.
     """
     if async_database_url is not None or async_engine is not None or async_make_session is not None:
         _setup_async_database_connection(
@@ -105,6 +115,8 @@ def configure(
         fr_globals.session_generator = session_generator
     if sync_session_generator is not None:
         fr_globals.sync_session_generator = sync_session_generator
+    if app is not None and install_default_exception_handlers:
+        register_default_exception_handlers(app)
 
 
 def activate_savepoint_only_mode(

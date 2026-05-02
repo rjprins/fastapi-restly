@@ -78,16 +78,17 @@ def test_v2_pagination_metadata_reports_effective_defaults(client):
 
     create_tables()
 
-    for i in range(105):
+    total_items = fr.DEFAULT_PAGE_SIZE + 5
+    for i in range(total_items):
         client.post("/paginated-items/", json={"name": f"Item {i}"})
 
     response = client.get("/paginated-items/")
     payload = response.json()
 
-    assert payload["total"] == 105
+    assert payload["total"] == total_items
     assert payload["page"] == 1
-    assert payload["page_size"] == 100
+    assert payload["page_size"] == fr.DEFAULT_PAGE_SIZE
     assert payload["total_pages"] == 2
-    assert payload["limit"] == 100
+    assert payload["limit"] == fr.DEFAULT_PAGE_SIZE
     assert payload["offset"] == 0
-    assert len(payload["items"]) == 100
+    assert len(payload["items"]) == fr.DEFAULT_PAGE_SIZE

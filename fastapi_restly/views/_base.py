@@ -64,12 +64,17 @@ from sqlalchemy.orm import DeclarativeBase, selectinload
 from starlette.datastructures import QueryParams
 from typing_extensions import TypeVar
 
+from .._exceptions import register_default_exception_handlers
 from ..query import (
+    DEFAULT_LIMIT,
+    DEFAULT_PAGE_SIZE,
+    MAX_LIMIT,
+    MAX_PAGE_SIZE,
     QueryModifierVersion,
-    create_query_param_schema,
     get_query_modifier_version,
     use_query_modifier_version,
 )
+from ..query._config import get_query_param_schema_creator
 from ..schemas import (
     BaseSchema,
     IDSchema,
@@ -283,15 +288,23 @@ def _build_relationship_loader_options(
 
 class View:
     """
-    A View that combined with `include_view()` will produce class-based views.
-    Almost exactly like the @cbv decorator from fastapi-utils:
-    https://fastapi-utils.davidmontague.xyz/user-guide/class-based-views/
+    Class-based view primitive for FastAPI.
+
+    Group related endpoints on a class, share dependencies and metadata via
+    class attributes, and let subclasses override individual handlers. Routes
+    are bound at :func:`include_view` time, not at class-definition time, so
+    subclassing works the way Python developers expect: override a method on
+    a subclass and the override is what runs.
+
+    Most users will subclass :class:`RestView` or :class:`AsyncRestView`,
+    which extend ``View`` with CRUD scaffolding. Use ``View`` directly for
+    grouped non-CRUD endpoints (auth flows, custom RPC routes, etc.).
     """
 
     prefix: ClassVar[str]
     tags: ClassVar[list[str] | None] = None  # View class name will be added by default
     dependencies: ClassVar[list[Any] | None] = None
-    responses: ClassVar[dict[int, Any]] = {404: {"description": "Not found"}}
+    responses: ClassVar[dict[int, Any]] = {}
 
     @classmethod
     def before_include_view(cls):
@@ -432,6 +445,8 @@ class BaseRestView(
     common CRUD operation logic.
     """
 
+    responses: ClassVar[dict[int, Any]] = {404: {"description": "Not found"}}
+
     schema: ClassVar[type[SchemaT]]
     # If 'creation_schema' is not defined it will be created from 'schema'
     # using `create_model_without_read_only_fields()`.
@@ -442,6 +457,14 @@ class BaseRestView(
     include_pagination_metadata: ClassVar[bool] = False  # Set True to include count/total in list responses
     exclude_routes: ClassVar[tuple[str, ...]] = ()
     query_modifier_version: ClassVar[QueryModifierVersion]  # Controls V1 vs V2 query parameter style; defaults to global setting
+    #: Default ``limit`` for V1 list endpoints. Override per-view.
+    default_limit: ClassVar[int] = DEFAULT_LIMIT
+    #: Maximum ``limit`` accepted on V1 list endpoints. Above this returns 422.
+    max_limit: ClassVar[int] = MAX_LIMIT
+    #: Default ``page_size`` for V2 list endpoints. Override per-view.
+    default_page_size: ClassVar[int] = DEFAULT_PAGE_SIZE
+    #: Maximum ``page_size`` accepted on V2 list endpoints. Above this returns 422.
+    max_page_size: ClassVar[int] = MAX_PAGE_SIZE
     index_param_schema: ClassVar[type[pydantic.BaseModel]]
     pagination_response_schema: ClassVar[type[pydantic.BaseModel]]
 
@@ -522,7 +545,7 @@ class BaseRestView(
         )
         if uses_v2_pagination or "page" in params or "page_size" in params:
             page = int(params.get("page", "1"))
-            page_size = int(params.get("page_size", "100"))
+            page_size = int(params.get("page_size", str(self.default_page_size)))
             payload["page"] = page
             payload["page_size"] = page_size
             payload["total_pages"] = ceil(total / page_size) if page_size > 0 else 0
@@ -557,7 +580,19 @@ class BaseRestView(
             cls.query_modifier_version = get_query_modifier_version()
         if not hasattr(cls, "index_param_schema"):
             with use_query_modifier_version(cls.query_modifier_version):
-                cls.index_param_schema = create_query_param_schema(cls.schema)
+                creator = get_query_param_schema_creator()
+            if cls.query_modifier_version == QueryModifierVersion.V2:
+                cls.index_param_schema = creator(
+                    cls.schema,
+                    default_page_size=cls.default_page_size,
+                    max_page_size=cls.max_page_size,
+                )
+            else:
+                cls.index_param_schema = creator(
+                    cls.schema,
+                    default_limit=cls.default_limit,
+                    max_limit=cls.max_limit,
+                )
         if not hasattr(cls, "creation_schema"):
             cls.creation_schema = cast(
                 type[CreateSchemaT],
@@ -643,6 +678,11 @@ def _init_view_cls_and_add_to_router(
     api_router = _init_api_router(view_cls)
     _register_for_resource_ref(parent_router, view_cls)
     parent_router.include_router(api_router)
+    # Fallback registration for users who skip ``fr.configure(app=...)``.
+    # ``register_default_exception_handlers`` is idempotent and only acts on
+    # FastAPI apps (it ignores nested APIRouter parents).
+    if isinstance(parent_router, fastapi.FastAPI):
+        register_default_exception_handlers(parent_router)
 
 
 def _prepare_view_class(view_cls: type[View]) -> None:

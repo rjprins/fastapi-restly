@@ -1,10 +1,12 @@
 import functools
+import warnings
 from collections import defaultdict
-from typing import Any, Callable, Iterator, Optional, cast
+from typing import Annotated, Any, Callable, Iterator, Optional, cast
 
 import pydantic
 import sqlalchemy
 from fastapi import HTTPException
+from pydantic import Field
 from pydantic.fields import FieldInfo
 from sqlalchemy import ColumnElement, Select
 from sqlalchemy.orm import DeclarativeBase
@@ -16,19 +18,58 @@ from ._shared import _escape_like_value, _unwrap_optional_annotation
 
 SchemaType = type[pydantic.BaseModel]
 
+#: Default ``limit`` applied to V1 list endpoints when the client does not
+#: send one. Override per-view via :attr:`BaseRestView.default_limit`.
+DEFAULT_LIMIT = 100
 
-def create_query_param_schema(schema_cls: SchemaType) -> SchemaType:
+#: Maximum ``limit`` accepted by V1 list endpoints. Values above this are
+#: rejected with a 422 by the FastAPI Pydantic-Query validation layer.
+#: Override per-view via :attr:`BaseRestView.max_limit`.
+MAX_LIMIT = 1000
+
+#: Reserved query-parameter names produced by the V1 schema. Filter columns
+#: literally named one of these would shadow pagination/sort and are skipped
+#: with a warning at schema-creation time.
+_V1_RESERVED_NAMES = frozenset({"limit", "offset", "sort"})
+
+
+def create_query_param_schema(
+    schema_cls: SchemaType,
+    *,
+    default_limit: int = DEFAULT_LIMIT,
+    max_limit: int = MAX_LIMIT,
+) -> SchemaType:
     """
     Create a pydantic model class that describes and validates all possible query parameters.
+
+    ``limit`` and ``offset`` are validated by Pydantic with the bounds shown
+    above (`ge=0`, `le=max_limit`); out-of-range values produce a standard
+    422 response from FastAPI rather than a manual 400.
+
+    Args:
+        schema_cls: The response schema whose fields drive the available
+            ``filter[...]`` / ``contains[...]`` parameters.
+        default_limit: Default value for the ``limit`` parameter. Defaults to
+            :data:`DEFAULT_LIMIT`.
+        max_limit: Upper bound (inclusive) for the ``limit`` parameter.
+            Defaults to :data:`MAX_LIMIT`.
     """
-    fields = {
-        "limit": (int | None, None),
-        "offset": (int | None, None),
+    fields: dict[str, Any] = {
+        "limit": (Annotated[int, Field(ge=0, le=max_limit)], default_limit),
+        "offset": (Annotated[int, Field(ge=0)], 0),
         "sort": (str | None, None),
     }
     for name, field in _iter_fields_including_nested(schema_cls):
-        filter = f"filter[{name}]"
-        fields[filter] = (Optional[field.annotation], None)
+        if name in _V1_RESERVED_NAMES:
+            warnings.warn(
+                f"V1 query schema for {schema_cls.__name__!r} skipping field "
+                f"{name!r} because it collides with a reserved pagination/sort "
+                "parameter. Add a Pydantic alias to expose it as a filter.",
+                stacklevel=2,
+            )
+            continue
+        filter_key = f"filter[{name}]"
+        fields[filter_key] = (Optional[field.annotation], None)
 
         # Add contains parameter for string fields
         if _is_string_field(field):
@@ -45,13 +86,23 @@ def create_query_param_schema(schema_cls: SchemaType) -> SchemaType:
 
 
 def apply_query_modifiers(
-    query_params: QueryParams,
+    params: pydantic.BaseModel | QueryParams,
     select_query: Select,
     model: type[DeclarativeBase],
     schema_cls: SchemaType,
 ) -> Select:
     """
-    Apply pagination, sorting, and filtering through URL query parameters on a SQL query.
+    Apply pagination, sorting, and filtering on a SQL query using the
+    already-validated query parameters.
+
+    ``params`` is normally an instance of the schema returned by
+    :func:`create_query_param_schema`, i.e. the FastAPI-validated query
+    parameters for the current request, with the configured default
+    pagination already applied. A raw
+    :class:`~starlette.datastructures.QueryParams` is still accepted for
+    callers that build the query parameters programmatically; in that
+    case ``limit`` / ``offset`` are only applied when present in the
+    QueryParams.
 
     Roughly follows JSONAPI query parameter families:
     https://jsonapi.org/format/#query-parameters-families
@@ -79,10 +130,24 @@ def apply_query_modifiers(
         # Case-insensitive contains
         contains[name]=john&contains[email]=example
     """
+    query_params = _coerce_to_query_params(params)
     select_query = apply_pagination(query_params, select_query)
     select_query = apply_sorting(query_params, select_query, model)
     select_query = apply_filtering(query_params, select_query, model, schema_cls)
     return select_query
+
+
+def _coerce_to_query_params(
+    params: pydantic.BaseModel | QueryParams,
+) -> QueryParams:
+    """Normalise either a validated Pydantic model or a raw QueryParams to QueryParams."""
+    if isinstance(params, QueryParams):
+        return params
+    if isinstance(params, pydantic.BaseModel):
+        dumped = params.model_dump(exclude_none=True, by_alias=True, mode="json")
+        return QueryParams({k: str(v) for k, v in dumped.items()})
+    # Best-effort fallback for dicts and other mapping-like inputs.
+    return QueryParams(params)
 
 
 def _iter_fields_including_nested(
@@ -104,15 +169,18 @@ def _is_string_field(field: FieldInfo) -> bool:
 
 
 def apply_pagination(query_params: QueryParams, select_query: Select) -> Select:
+    """Apply ``limit`` and ``offset`` from ``query_params`` to ``select_query``.
+
+    Range and type checks are enforced by the Pydantic query schema returned
+    by :func:`create_query_param_schema`; this helper simply applies whatever
+    integer values are present. When the parameters are absent (raw
+    :class:`QueryParams` built by hand) no clause is applied.
+    """
     limit = _get_int(query_params, "limit")
     if limit is not None:
-        if limit < 0:
-            raise HTTPException(400, "Invalid value for URL query parameter limit: must be non-negative")
         select_query = select_query.limit(limit)
     offset = _get_int(query_params, "offset")
     if offset is not None:
-        if offset < 0:
-            raise HTTPException(400, "Invalid value for URL query parameter offset: must be non-negative")
         select_query = select_query.offset(offset)
     return select_query
 

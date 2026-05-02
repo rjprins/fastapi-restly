@@ -40,6 +40,13 @@ class _DummyAsyncView(AsyncRestView):
 
 @pytest.mark.asyncio
 async def test_async_on_list_uses_validated_query_params(monkeypatch):
+    """``on_list`` forwards the FastAPI-validated Pydantic model to the
+    query-modifier dispatcher rather than the raw request query string.
+
+    Pinned because raw ``request.query_params`` could contain unvalidated
+    values (e.g. invalid pagination bounds) that would silently bypass our
+    Pydantic Query schema.
+    """
     captured = {}
 
     def _apply_query_modifiers(first_arg, query, model, schema):
@@ -57,11 +64,13 @@ async def test_async_on_list_uses_validated_query_params(monkeypatch):
     class QueryModel(BaseModel):
         validated: str
 
-    await view.on_list(QueryModel(validated="value"))
+    params = QueryModel(validated="value")
+    await view.on_list(params)
 
-    assert isinstance(captured["first_arg"], QueryParams)
-    assert captured["first_arg"].get("validated") == "value"
-    assert captured["first_arg"].get("raw") is None
+    # The validated Pydantic model is passed through verbatim — the modifier
+    # is responsible for unpacking it. The raw request query params must not
+    # be consulted.
+    assert captured["first_arg"] is params
 
 
 def test_utc_now_is_timezone_aware_utc():

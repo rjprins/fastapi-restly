@@ -9,9 +9,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Per-view pagination configuration via class attributes on `BaseRestView`:
+  `default_limit` / `max_limit` for V1 and `default_page_size` /
+  `max_page_size` for V2. The corresponding module-level defaults
+  (`DEFAULT_LIMIT=100`, `MAX_LIMIT=1000`, `DEFAULT_PAGE_SIZE=25`,
+  `MAX_PAGE_SIZE=1000`) are exported from `fastapi_restly` and
+  `fastapi_restly.query`.
+- `create_query_param_schema` / `create_query_param_schema_v1` /
+  `create_query_param_schema_v2` now accept `default_limit` / `max_limit`
+  (V1) and `default_page_size` / `max_page_size` (V2) keyword arguments so
+  callers can override the bounds.
+
 ### Changed
 
+- SQLAlchemy `IntegrityError` (unique-constraint, FK, not-null,
+  check-constraint violations) is now translated to HTTP 409 Conflict with a
+  clean JSON body instead of bubbling as a 500 Internal Server Error. Opt
+  out via `fr.configure(install_default_exception_handlers=False)` or by
+  registering your own handler for `IntegrityError` before calling
+  `configure`. **Breaking** for clients that depended on a 500 response in
+  these scenarios.
+- **Breaking:** Pagination validation moved into the auto-generated
+  query-parameter Pydantic schema. `limit` / `offset` (V1) and `page` /
+  `page_size` (V2) are now constrained with `Field(ge=..., le=...)` and
+  validated by FastAPI's standard Query layer. Out-of-range values now
+  return a consistent **422** with the standard FastAPI validation
+  envelope where the framework previously returned **400** with a single
+  `detail` string. This affects: V1 `limit < 0` / `offset < 0` /
+  `limit > MAX_LIMIT`, V2 `page < 1` / `page_size < 1` /
+  `page_size > MAX_PAGE_SIZE`, and V1 non-integer `limit` (already 422
+  via Pydantic's int parsing — now consistently 422 across all bad
+  pagination inputs).
+- **Breaking:** `apply_query_modifiers` (and the V1 / V2 implementations)
+  now accept the validated query-parameter Pydantic model instance as
+  their first argument instead of a raw `QueryParams`. Custom modifiers
+  built on top of these helpers continue to work because raw
+  `QueryParams` is still accepted as a fallback, but new code should pass
+  the validated model so pagination bounds are enforced at the FastAPI
+  boundary.
+- View subclasses with a filter column literally named `limit` / `offset`
+  / `sort` (V1) or `page` / `page_size` / `order_by` (V2) now skip that
+  filter (emitting a `UserWarning` at schema-creation time) instead of
+  silently shadowing pagination. Use a Pydantic alias to expose the
+  column under a different name.
+- The default `page_size` for V2 list endpoints is now **25** (was 100).
+  Override per-view via `default_page_size` if the previous default is
+  important to you.
+
 ### Fixed
+
+- V2 `page=0` and `page_size=0` no longer slip past validation as falsy
+  values: previously `_get_int_v2(...) or 1` silently coerced zero to one
+  in the SQL while the metadata payload echoed the user's zero and
+  produced a negative `offset`. Both inputs now return a 422 with the
+  field name in the validation error.
+- V1 negative `limit` / `offset` and V1 non-integer `limit` are now
+  rejected with the same 422 error format. Previously the two paths
+  produced different error envelopes (manual `HTTPException(400)` vs.
+  Pydantic's 422).
 
 ### Removed
 
