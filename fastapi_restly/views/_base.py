@@ -11,6 +11,27 @@ view decorator from fastapi-utils.
 AsyncRestView:
 Provides default reading and writing functions on the database using
 SQLAlchemy models.
+
+Pyright/static-typing notes
+---------------------------
+This module contains a small number of pyright errors that are accepted
+limitations of SQLAlchemy 2.0's typing model and Python's
+``ClassVar[GenericT]`` rule, namely:
+
+- ``ClassVar[type[SchemaT]]`` etc. (lines ~414-420): pyright (correctly per
+  PEP 526) reports ``"ClassVar" type cannot include type variables``. These
+  generic class attributes carry no runtime cost; the alternative would be
+  ``type[SchemaT]`` without ``ClassVar``, which makes them per-instance.
+- ``Cannot access attribute "id" for class "DeclarativeBase"``: SQLAlchemy's
+  base does not declare ``id`` (subclasses add it via ``IDMixin``). We use
+  ``getattr(model, "id")`` to access it generically.
+- ``Cannot access attribute "index"/"get"/"post"/...``: these attributes are
+  populated by ``before_include_view`` at class-construction time, so static
+  type checkers cannot see them.
+
+These warnings only surface when consumers run pyright with
+``useLibraryCodeForTypes = true``. They do not appear in the framework's CI
+typing gate (which checks ``tests/typing/``, the consumer-facing fixtures).
 """
 
 import dataclasses
@@ -25,6 +46,7 @@ from typing import (
     Callable,
     ClassVar,
     Generic,
+    Iterator,
     Sequence,
     Union,
     cast,
@@ -54,7 +76,9 @@ from ..schemas import (
     auto_generate_schema_for_view,
     create_model_with_optional_fields,
     create_model_without_read_only_fields,
+    get_writable_inputs,
     is_field_writeonly,
+    is_readonly_field,
 )
 from ._openapi import _register_for_resource_ref
 
@@ -76,6 +100,75 @@ def _accepts_init_kwarg(model_cls: type, attr_name: str) -> bool:
         return True
     dc_fields = {f.name: f for f in dataclasses.fields(model_cls)}
     return attr_name not in dc_fields or dc_fields[attr_name].init
+
+
+def iter_creatable_fields(
+    schema_obj: BaseSchema,
+    schema_cls: type[BaseSchema] | None = None,
+) -> Iterator[tuple[str, Any]]:
+    """Iterate over (field_name, value) pairs that should be used to construct a new
+    ORM object from ``schema_obj``.
+
+    Fields marked as ``ReadOnly`` are skipped. Unlike :func:`get_writable_inputs`,
+    this also includes fields that were not explicitly provided, so that
+    schema-level defaults end up on the new object.
+    """
+    if schema_cls is None:
+        schema_cls = schema_obj.__class__
+    for field_name, value in schema_obj:
+        if is_readonly_field(schema_cls, field_name):
+            continue
+        yield field_name, value
+
+
+def build_create_kwargs(
+    model_cls: type[DeclarativeBase],
+    schema_obj: BaseSchema,
+    schema_cls: type[BaseSchema] | None = None,
+) -> dict[str, Any]:
+    """Translate ``schema_obj`` fields into kwargs for ``model_cls(**kwargs)``.
+
+    Shared by sync and async ``make_new_object``. Assumes any nested ``IDSchema``
+    references on ``schema_obj`` have already been resolved (sync vs async).
+    """
+    data: dict[str, Any] = {}
+    for field_name, value in iter_creatable_fields(schema_obj, schema_cls):
+        if isinstance(value, IDSchema) and field_name.endswith("_id"):
+            data[field_name] = value.id
+            continue
+        if isinstance(value, DeclarativeBase) and field_name.endswith("_id"):
+            data[field_name] = value.id
+            relation_name = field_name[:-3]
+            if hasattr(model_cls, relation_name) and _accepts_init_kwarg(
+                model_cls, relation_name
+            ):
+                data[relation_name] = value
+            continue
+        data[field_name] = value
+    return data
+
+
+def apply_update_to_object(
+    obj: DeclarativeBase,
+    schema_obj: BaseSchema,
+    schema_cls: type[BaseSchema] | None = None,
+) -> None:
+    """Apply writable inputs from ``schema_obj`` onto ``obj`` in place.
+
+    Shared by sync and async ``update_object``. Assumes any nested ``IDSchema``
+    references on ``schema_obj`` have already been resolved (sync vs async).
+    """
+    for field_name, value in get_writable_inputs(schema_obj, schema_cls).items():
+        if isinstance(value, IDSchema) and field_name.endswith("_id"):
+            setattr(obj, field_name, value.id)
+            continue
+        if isinstance(value, DeclarativeBase) and field_name.endswith("_id"):
+            setattr(obj, field_name, value.id)
+            relation_name = field_name[:-3]
+            if hasattr(obj, relation_name):
+                setattr(obj, relation_name, value)
+            continue
+        setattr(obj, field_name, value)
 
 
 def _unwrap_optional_annotation(annotation: Any) -> Any:
@@ -539,14 +632,33 @@ def _init_view_cls_and_add_to_router(
 
     Most of the hacks here are to set the correct annotations on (inherited) class
     methods.
+
+    The class-level preparation (copying parent endpoints, renaming, annotating,
+    schema generation, dataclass-style __init__) only runs once per View class —
+    subsequent calls to ``include_view()`` reuse the prepared class and only
+    construct a fresh APIRouter to mount on the new parent. This makes
+    registering the same view on multiple routers safe.
     """
+    _prepare_view_class(view_cls)
+    api_router = _init_api_router(view_cls)
+    _register_for_resource_ref(parent_router, view_cls)
+    parent_router.include_router(api_router)
+
+
+def _prepare_view_class(view_cls: type[View]) -> None:
+    """Run the one-time class-level setup for a View.
+
+    Guarded by the ``_fr_initialised`` marker (stored in ``__dict__`` so it is
+    not inherited from a parent class that was registered separately). Calling
+    this multiple times is a no-op after the first run.
+    """
+    if view_cls.__dict__.get("_fr_initialised", False):
+        return
     _copy_all_parent_class_endpoints_into_this_subclass(view_cls)
     _init_all_endpoints(view_cls)
     view_cls.before_include_view()
     _init_class_based_view(view_cls)
-    api_router = _init_api_router(view_cls)
-    _register_for_resource_ref(parent_router, view_cls)
-    parent_router.include_router(api_router)
+    view_cls._fr_initialised = True  # type: ignore[attr-defined]
 
 
 def _copy_all_parent_class_endpoints_into_this_subclass(view_cls: type[View]):

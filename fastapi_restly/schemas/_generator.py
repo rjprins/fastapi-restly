@@ -7,13 +7,15 @@ import inspect
 import types
 from datetime import date, datetime, time
 from decimal import Decimal
-from typing import Any, Dict, List, Optional, Union, get_args
+from typing import Any, Union, get_args
 from uuid import UUID
 
+import pydantic
+from pydantic import Field
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.orm import DeclarativeBase, Mapped, RelationshipProperty
 
-from ._base import BaseSchema, IDSchema, TimestampsSchemaMixin
+from ._base import BaseSchema, IDSchema, ReadOnly, TimestampsSchemaMixin
 
 
 def get_sqlalchemy_field_type(field: Any) -> Any:
@@ -51,7 +53,7 @@ def is_relationship_field(field: Any) -> bool:
     return isinstance(getattr(field, "property", None), RelationshipProperty)
 
 
-def get_relationship_target_model(field: Any) -> Optional[type[DeclarativeBase]]:
+def get_relationship_target_model(field: Any) -> type[DeclarativeBase] | None:
     """
     Get the target model class for a relationship field.
 
@@ -76,7 +78,7 @@ def get_relationship_target_model(field: Any) -> Optional[type[DeclarativeBase]]
     if hasattr(field, "type"):
         target_type = field.type
         if hasattr(target_type, "__origin__") and target_type.__origin__ is list:
-            # Handle List[Model] case
+            # Handle list[Model] case
             args = get_args(target_type)
             if args:
                 return args[0]
@@ -86,7 +88,7 @@ def get_relationship_target_model(field: Any) -> Optional[type[DeclarativeBase]]
     return None
 
 
-def get_model_fields(model_cls: type[DeclarativeBase]) -> Dict[str, Any]:
+def get_model_fields(model_cls: type[DeclarativeBase]) -> dict[str, Any]:
     """
     Extract field information from a SQLAlchemy model.
 
@@ -96,7 +98,7 @@ def get_model_fields(model_cls: type[DeclarativeBase]) -> Dict[str, Any]:
     Returns:
         Dictionary mapping field names to their types and metadata
     """
-    fields: Dict[str, Any] = {}
+    fields: dict[str, Any] = {}
 
     mapper = sa_inspect(model_cls)
 
@@ -123,7 +125,7 @@ def get_model_fields(model_cls: type[DeclarativeBase]) -> Dict[str, Any]:
         relationship = mapper.relationships.get(name)
 
         rel_mapper = getattr(relationship, "mapper", None) if relationship is not None else None
-        field_info: Dict[str, Any] = {
+        field_info: dict[str, Any] = {
             "type": actual_type,
             "is_relationship": relationship is not None,
             "target_model": (
@@ -170,7 +172,7 @@ def get_model_fields(model_cls: type[DeclarativeBase]) -> Dict[str, Any]:
 
 def create_schema_from_model(
     model_cls: type[DeclarativeBase],
-    schema_name: Optional[str] = None,
+    schema_name: str | None = None,
     include_relationships: bool = True,
     include_readonly_fields: bool = True,
 ) -> type[BaseSchema]:
@@ -193,7 +195,7 @@ def create_schema_from_model(
     model_fields = get_model_fields(model_cls)
 
     # Determine base classes - start with the most specific ones
-    bases: List[type] = []
+    bases: list[type] = []
 
     # Check if model has timestamp fields (inherits from TimestampsMixin)
     has_timestamps = "created_at" in model_fields and "updated_at" in model_fields
@@ -209,8 +211,8 @@ def create_schema_from_model(
     bases.append(BaseSchema)
 
     # Create field definitions for the schema
-    field_definitions: Dict[str, Any] = {}
-    read_only_fields: List[str] = []
+    field_definitions: dict[str, Any] = {}
+    read_only_fields: list[str] = []
 
     for field_name, field_info in model_fields.items():
         # Skip relationships if not requested
@@ -248,7 +250,7 @@ def create_schema_from_model(
                     include_relationships=False,  # Avoid circular references
                     include_readonly_fields=False,
                 )
-                pydantic_type = List[target_schema]
+                pydantic_type = list[target_schema]
             else:
                 # One relationship
                 target_schema = create_schema_from_model(
@@ -259,31 +261,24 @@ def create_schema_from_model(
                 pydantic_type = target_schema
 
             if field_info["is_optional"]:
-                pydantic_type = Optional[pydantic_type]
+                pydantic_type = pydantic_type | None
 
         # Add field to definitions - use proper Pydantic field format
         # Don't include SQLAlchemy defaults as they're not JSON-serializable
         if field_info["is_optional"]:
-            from pydantic import Field
-
             field_definitions[field_name] = (pydantic_type, Field(default=None))
         else:
             field_definitions[field_name] = (pydantic_type, ...)
 
     # Apply ReadOnly annotation to read-only fields
-    if read_only_fields:
-        from ._base import ReadOnly
-
-        for field_name in read_only_fields:
-            if field_name in field_definitions:
-                original_type, field_info = field_definitions[field_name]
-                # Apply ReadOnly annotation to the type
-                field_definitions[field_name] = (ReadOnly[original_type], field_info)
+    for field_name in read_only_fields:
+        if field_name in field_definitions:
+            original_type, field_info = field_definitions[field_name]
+            # Apply ReadOnly annotation to the type
+            field_definitions[field_name] = (ReadOnly[original_type], field_info)
 
     # Create the schema class using pydantic.create_model
-    import pydantic
-
-    schema_cls = pydantic.create_model(  # type: ignore
+    schema_cls = pydantic.create_model(  # type: ignore[call-overload]
         schema_name,
         __doc__=f"Auto-generated schema for {model_cls.__name__}",
         __base__=tuple(bases),
@@ -355,15 +350,13 @@ def convert_sqlalchemy_type_to_pydantic(
 
     # Handle optional types
     if is_optional:
-        from typing import Optional
-
-        pydantic_type = Optional[pydantic_type]
+        pydantic_type = pydantic_type | None
 
     return pydantic_type
 
 
 def auto_generate_schema_for_view(
-    view_cls: type, model_cls: type[DeclarativeBase], schema_name: Optional[str] = None
+    view_cls: type, model_cls: type[DeclarativeBase], schema_name: str | None = None
 ) -> type[BaseSchema]:
     """
     Auto-generate a schema for a view class if none is specified.

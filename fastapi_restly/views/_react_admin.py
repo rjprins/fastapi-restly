@@ -9,7 +9,7 @@ Implements the ra-data-simple-rest wire contract for list:
 - Content-Range: items 0-24/315
 """
 import json
-from typing import Any, Sequence
+from typing import Any, ClassVar, Sequence
 
 import fastapi
 import sqlalchemy
@@ -20,6 +20,11 @@ from ..schemas import BaseSchema
 from ._async import AsyncRestView
 from ._base import _annotate, get, put
 from ._sync import RestView
+
+#: Default page size used when the react-admin client does not send a `range`
+#: query parameter. Override per-view via :attr:`ReactAdminMixin.default_page_size`.
+DEFAULT_REACT_ADMIN_PAGE_SIZE = 25
+
 
 # ---------------------------------------------------------------------------
 # Query parsing helpers (standalone, analogous to _v1.py / _v2.py)
@@ -50,16 +55,19 @@ def parse_react_admin_sort(sort_raw: str | None) -> tuple[str, str] | None:
     return field, direction
 
 
-def parse_react_admin_range(range_raw: str | None) -> tuple[int, int]:
+def parse_react_admin_range(
+    range_raw: str | None,
+    default_page_size: int = DEFAULT_REACT_ADMIN_PAGE_SIZE,
+) -> tuple[int, int]:
     """
     Parse a react-admin range query parameter.
 
     Expected: '[0,24]' (both inclusive).
-    Returns (start, end). Defaults to (0, 99) if absent.
+    Returns (start, end). Defaults to (0, default_page_size - 1) if absent.
     Raises HTTPException 400 on malformed input.
     """
     if not range_raw:
-        return 0, 99
+        return 0, default_page_size - 1
     try:
         parsed = json.loads(range_raw)
     except json.JSONDecodeError:
@@ -196,7 +204,22 @@ class ReactAdminMixin:
     Shared transport helpers for react-admin views.
 
     Override these methods to customize the ra-data-simple-rest contract.
+
+    Set :attr:`default_page_size` on a subclass to change the implicit page
+    size used when the client does not send a ``range`` query parameter.
+
+    Note: this is a bare mixin that is always combined with ``RestView`` or
+    ``AsyncRestView``. The inherited ``session``/``model``/``schema``/etc.
+    attributes come from those bases at runtime. Static type checkers cannot
+    see that relationship through a bare mixin, which yields a handful of
+    ``reportAttributeAccessIssue`` errors when checking this module in
+    isolation. They are accepted as a documented limitation of the mixin
+    pattern; users importing ``ReactAdminView`` / ``AsyncReactAdminView``
+    directly do not see them because the resolved MRO has the attributes.
     """
+
+    #: Implicit page size when no ``range`` parameter is sent. Override per-view.
+    default_page_size: ClassVar[int] = DEFAULT_REACT_ADMIN_PAGE_SIZE
 
     def get_react_admin_range_unit(self) -> str:
         """Return the unit string used in the Content-Range header."""
@@ -208,7 +231,9 @@ class ReactAdminMixin:
         """Parse sort, range, and filter from the current request query string."""
         params = self.request.query_params
         sort = parse_react_admin_sort(params.get("sort"))
-        start, end = parse_react_admin_range(params.get("range"))
+        start, end = parse_react_admin_range(
+            params.get("range"), default_page_size=self.default_page_size
+        )
         filters = parse_react_admin_filter(params.get("filter"))
         return sort, (start, end), filters
 

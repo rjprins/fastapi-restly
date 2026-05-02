@@ -8,13 +8,7 @@ from sqlalchemy.orm import DeclarativeBase, Session
 
 from ..db import SessionDep
 from ..query import apply_query_modifiers, use_query_modifier_version
-from ..schemas import (
-    BaseSchema,
-    IDSchema,
-    get_writable_inputs,
-    is_readonly_field,
-    resolve_ids_to_sqlalchemy_objects,
-)
+from ..schemas import BaseSchema, resolve_ids_to_sqlalchemy_objects
 from ._base import (
     BaseRestView,
     CreateSchemaT,
@@ -22,7 +16,8 @@ from ._base import (
     ModelT,
     SchemaT,
     UpdateSchemaT,
-    _accepts_init_kwarg,
+    apply_update_to_object,
+    build_create_kwargs,
     delete,
     get,
     patch,
@@ -38,22 +33,14 @@ def make_new_object(
     schema_obj: BaseSchema,
     schema_cls: type[BaseSchema] | None = None,
 ) -> T:
+    """Create a new instance of ``model_cls`` from ``schema_obj`` and add it to
+    ``session``. Read-only fields and any unset fields' defaults are handled by
+    the shared helper. The session is not flushed here.
+
+    See also: :func:`async_make_new_object` for the async equivalent.
+    """
     resolve_ids_to_sqlalchemy_objects(session, schema_obj)
-    # Filter out read-only fields when creating the object
-    data = {}
-    for field_name, value in schema_obj:
-        if schema_cls is not None and is_readonly_field(schema_cls, field_name):
-            continue
-        if isinstance(value, IDSchema) and field_name.endswith("_id"):
-            data[field_name] = value.id
-            continue
-        if isinstance(value, DeclarativeBase) and field_name.endswith("_id"):
-            data[field_name] = value.id
-            relation_name = field_name[:-3]
-            if hasattr(model_cls, relation_name) and _accepts_init_kwarg(model_cls, relation_name):
-                data[relation_name] = value
-            continue
-        data[field_name] = value
+    data = build_create_kwargs(model_cls, schema_obj, schema_cls)
     obj = model_cls(**data)
     session.add(obj)
     return obj
@@ -65,22 +52,22 @@ def update_object(
     schema_obj: BaseSchema,
     schema_cls: type[BaseSchema] | None = None,
 ) -> DeclarativeBase:
+    """Apply writable inputs from ``schema_obj`` onto ``obj``. Only fields the
+    caller explicitly set are applied; read-only fields are skipped.
+
+    See also: :func:`async_update_object` for the async equivalent.
+    """
     resolve_ids_to_sqlalchemy_objects(session, schema_obj)
-    for field_name, value in get_writable_inputs(schema_obj, schema_cls).items():
-        if isinstance(value, IDSchema) and field_name.endswith("_id"):
-            setattr(obj, field_name, value.id)
-            continue
-        if isinstance(value, DeclarativeBase) and field_name.endswith("_id"):
-            setattr(obj, field_name, value.id)
-            relation_name = field_name[:-3]
-            if hasattr(obj, relation_name):
-                setattr(obj, relation_name, value)
-            continue
-        setattr(obj, field_name, value)
+    apply_update_to_object(obj, schema_obj, schema_cls)
     return obj
 
 
 def save_object(session: Session, obj: DeclarativeBase) -> DeclarativeBase:
+    """Flush the session and refresh ``obj`` so its server-side defaults and
+    generated columns (PKs, timestamps, etc.) are populated.
+
+    See also: :func:`async_save_object` for the async equivalent.
+    """
     session.flush()
     session.refresh(obj)
     return obj

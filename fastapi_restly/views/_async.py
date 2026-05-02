@@ -1,20 +1,15 @@
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, TypeVar
 
 import fastapi
 import sqlalchemy
 from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import DeclarativeBase
 
 from ..db import AsyncSessionDep
 from ..query import apply_query_modifiers, use_query_modifier_version
-from ..schemas import (
-    BaseSchema,
-    IDSchema,
-    async_resolve_ids_to_sqlalchemy_objects,
-    get_writable_inputs,
-    is_readonly_field,
-)
+from ..schemas import BaseSchema, async_resolve_ids_to_sqlalchemy_objects
 from ._base import (
     BaseRestView,
     CreateSchemaT,
@@ -22,12 +17,63 @@ from ._base import (
     ModelT,
     SchemaT,
     UpdateSchemaT,
-    _accepts_init_kwarg,
+    apply_update_to_object,
+    build_create_kwargs,
     delete,
     get,
     patch,
     post,
 )
+
+T = TypeVar("T", bound=DeclarativeBase)
+
+
+async def async_make_new_object(
+    session: AsyncSession,
+    model_cls: type[T],
+    schema_obj: BaseSchema,
+    schema_cls: type[BaseSchema] | None = None,
+) -> T:
+    """Async equivalent of :func:`fastapi_restly.views.make_new_object`.
+
+    Create a new instance of ``model_cls`` from ``schema_obj`` and add it to
+    ``session``. Read-only fields and any unset fields' defaults are handled by
+    the shared helper. The session is not flushed here.
+    """
+    await async_resolve_ids_to_sqlalchemy_objects(session, schema_obj)
+    data = build_create_kwargs(model_cls, schema_obj, schema_cls)
+    obj = model_cls(**data)
+    session.add(obj)
+    return obj
+
+
+async def async_update_object(
+    session: AsyncSession,
+    obj: DeclarativeBase,
+    schema_obj: BaseSchema,
+    schema_cls: type[BaseSchema] | None = None,
+) -> DeclarativeBase:
+    """Async equivalent of :func:`fastapi_restly.views.update_object`.
+
+    Apply writable inputs from ``schema_obj`` onto ``obj``. Only fields the
+    caller explicitly set are applied; read-only fields are skipped.
+    """
+    await async_resolve_ids_to_sqlalchemy_objects(session, schema_obj)
+    apply_update_to_object(obj, schema_obj, schema_cls)
+    return obj
+
+
+async def async_save_object(
+    session: AsyncSession, obj: DeclarativeBase
+) -> DeclarativeBase:
+    """Async equivalent of :func:`fastapi_restly.views.save_object`.
+
+    Flush the session and refresh ``obj`` so its server-side defaults and
+    generated columns (PKs, timestamps, etc.) are populated.
+    """
+    await session.flush()
+    await session.refresh(obj)
+    return obj
 
 
 class AsyncRestView(
@@ -165,53 +211,22 @@ class AsyncRestView(
         Create a new object from a schema object.
         Feel free to override this method.
         """
-        await async_resolve_ids_to_sqlalchemy_objects(self.session, schema_obj)
-
-        # Filter out read-only fields when creating the object
-        data = {}
-        for field_name, value in schema_obj:
-            is_readonly = is_readonly_field(self.schema, field_name)
-            if is_readonly:
-                continue
-            if isinstance(value, IDSchema) and field_name.endswith("_id"):
-                data[field_name] = value.id
-                continue
-            if isinstance(value, DeclarativeBase) and field_name.endswith("_id"):
-                data[field_name] = value.id
-                relation_name = field_name[:-3]
-                if hasattr(self.model, relation_name) and _accepts_init_kwarg(self.model, relation_name):
-                    data[relation_name] = value
-                continue
-            data[field_name] = value
-
-        obj = self.model(**data)
-        self.session.add(obj)
-        return obj
+        return await async_make_new_object(
+            self.session, self.model, schema_obj, self.schema
+        )
 
     async def update_object(self, obj: ModelT, schema_obj: UpdateSchemaT) -> ModelT:
         """
         Update an existing object with data from a schema object.
         Feel free to override this method.
         """
-        await async_resolve_ids_to_sqlalchemy_objects(self.session, schema_obj)
-        for field_name, value in get_writable_inputs(schema_obj, self.schema).items():
-            if isinstance(value, IDSchema) and field_name.endswith("_id"):
-                setattr(obj, field_name, value.id)
-                continue
-            if isinstance(value, DeclarativeBase) and field_name.endswith("_id"):
-                setattr(obj, field_name, value.id)
-                relation_name = field_name[:-3]
-                if hasattr(obj, relation_name):
-                    setattr(obj, relation_name, value)
-                continue
-            setattr(obj, field_name, value)
-        return obj
+        return await async_update_object(  # type: ignore[return-value]
+            self.session, obj, schema_obj, self.schema
+        )
 
     async def save_object(self, obj: ModelT) -> ModelT:
         """
         Save an object to the database.
         Feel free to override this method.
         """
-        await self.session.flush()
-        await self.session.refresh(obj)
-        return obj
+        return await async_save_object(self.session, obj)  # type: ignore[return-value]

@@ -60,9 +60,11 @@ class IDSchema(BaseSchema, Generic[SQLAlchemyModel]):
 
     @classmethod
     def _get_sql_model_annotation(cls) -> type[DeclarativeBase] | None:
+        # `__pydantic_generic_metadata__` is set on parameterised subclasses;
+        # on the bare `IDSchema` class the "args" tuple may be missing or empty.
         try:
             sql_model = cls.__pydantic_generic_metadata__["args"][0]
-        except Exception:
+        except (KeyError, IndexError, TypeError):
             return None
         return sql_model if isinstance(sql_model, type) else None
 
@@ -83,9 +85,13 @@ class IDSchema(BaseSchema, Generic[SQLAlchemyModel]):
                     return args[0]
             return annotation
 
+        # Fallback: ask the SA mapper. `python_type` raises NotImplementedError
+        # for column types without a Python equivalent (e.g. some user types),
+        # and accessing `__mapper__` may fail with AttributeError if the class
+        # has not been mapped yet.
         try:
             return sql_model.__mapper__.primary_key[0].type.python_type
-        except Exception:
+        except (AttributeError, NotImplementedError, IndexError):
             return None
 
     @pydantic.field_validator("id", mode="before", check_fields=False)
@@ -96,7 +102,7 @@ class IDSchema(BaseSchema, Generic[SQLAlchemyModel]):
             return value
         return pydantic.TypeAdapter(id_type).validate_python(value)
 
-    def get_sql_model_annotation(self) -> SQLAlchemyModel | None:
+    def get_sql_model_annotation(self) -> type[SQLAlchemyModel] | None:
         """
         Return the annotation on IDSchema when used as:
 
@@ -104,7 +110,9 @@ class IDSchema(BaseSchema, Generic[SQLAlchemyModel]):
 
         This property will return "Foo".
         """
-        return self._get_sql_model_annotation()
+        # The runtime introspection returns the bound type; cast through the
+        # generic parameter so callers see the concrete model class.
+        return self._get_sql_model_annotation()  # type: ignore[return-value]
 
 
 class IDStampsSchema(TimestampsSchemaMixin, IDSchema):
@@ -308,6 +316,16 @@ def create_model_without_read_only_fields(
 class OmitReadOnlyMixin(pydantic.BaseModel):
     """
     Mixin for pydantic models that removes all fields marked as ReadOnly.
+
+    Implementation note: this mutates ``cls.model_fields`` in place and then
+    calls ``model_rebuild(force=True)`` to regenerate the validator/serializer.
+    Pydantic v2 does not officially document mutation of ``model_fields`` as
+    a supported customisation hook, but this approach has been stable since
+    pydantic 2.0 and works on the pinned minimum (``pydantic>=2.11.4``). If
+    a future pydantic release freezes the dict, switch to constructing a new
+    model via ``pydantic.create_model(...)`` over the kept fields. The
+    regression test ``tests/test_pydantic_model_fields_mutation.py`` exercises
+    this contract on the currently-installed pydantic.
     """
 
     @classmethod
@@ -364,6 +382,13 @@ class PatchMixin(pydantic.BaseModel):
     """
     A mixin for pydantic classes that makes all fields optional and replaces defaults
     with None.
+
+    Implementation note: like :class:`OmitReadOnlyMixin` this mutates
+    ``cls.model_fields`` (specifically ``FieldInfo.default`` and
+    ``FieldInfo.annotation``) and then calls ``model_rebuild(force=True)``.
+    This relies on pydantic v2 keeping ``FieldInfo`` mutable; verified on the
+    pinned ``pydantic>=2.11.4`` minimum and exercised by
+    ``tests/test_pydantic_model_fields_mutation.py``.
     """
 
     @classmethod

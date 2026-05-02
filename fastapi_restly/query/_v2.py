@@ -97,7 +97,7 @@ def apply_pagination_v2(
     return select_query
 
 
-def _get_field_type_for_schema(field: FieldInfo) -> type:
+def _get_field_type_for_schema(field: FieldInfo) -> Any:
     annotation = _unwrap_optional_annotation(field.annotation)
     if annotation is Any:
         return Any

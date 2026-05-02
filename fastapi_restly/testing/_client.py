@@ -3,6 +3,10 @@ import json
 import httpx
 from fastapi.testclient import TestClient
 
+# httpx accepts either a string or a `httpx.URL` for request URLs. The base
+# class' `URLTypes` alias is private, so we replicate the public union here.
+URLTypes = httpx.URL | str
+
 
 class RestlyTestClient(TestClient):
     """Custom TestClient that automatically checks response codes and provides clear error messages."""
@@ -43,7 +47,7 @@ class RestlyTestClient(TestClient):
             f"{content_str}"
         )
 
-    def get(self, url: str, *, assert_status_code: int | None = 200, **kwargs) -> httpx.Response:
+    def get(self, url: URLTypes, *, assert_status_code: int | None = 200, **kwargs) -> httpx.Response:
         """Make a GET request. Asserts the response status code matches `assert_status_code` (default: 200).
         Pass `assert_status_code=None` to skip the assertion."""
         __tracebackhide__ = True
@@ -51,7 +55,7 @@ class RestlyTestClient(TestClient):
         self.assert_status(response, assert_status_code)
         return response
 
-    def post(self, url: str, *, assert_status_code: int | None = 201, **kwargs) -> httpx.Response:
+    def post(self, url: URLTypes, *, assert_status_code: int | None = 201, **kwargs) -> httpx.Response:
         """Make a POST request. Asserts the response status code matches `assert_status_code` (default: 201).
         Pass `assert_status_code=None` to skip the assertion."""
         __tracebackhide__ = True
@@ -59,7 +63,7 @@ class RestlyTestClient(TestClient):
         self.assert_status(response, assert_status_code)
         return response
 
-    def put(self, url: str, *, assert_status_code: int | None = 200, **kwargs) -> httpx.Response:
+    def put(self, url: URLTypes, *, assert_status_code: int | None = 200, **kwargs) -> httpx.Response:
         """Make a PUT request. Asserts the response status code matches `assert_status_code` (default: 200).
         Pass `assert_status_code=None` to skip the assertion."""
         __tracebackhide__ = True
@@ -67,7 +71,7 @@ class RestlyTestClient(TestClient):
         self.assert_status(response, assert_status_code)
         return response
 
-    def patch(self, url: str, *, assert_status_code: int | None = 200, **kwargs) -> httpx.Response:
+    def patch(self, url: URLTypes, *, assert_status_code: int | None = 200, **kwargs) -> httpx.Response:
         """Make a PATCH request. Asserts the response status code matches `assert_status_code` (default: 200).
         Pass `assert_status_code=None` to skip the assertion."""
         __tracebackhide__ = True
@@ -75,7 +79,7 @@ class RestlyTestClient(TestClient):
         self.assert_status(response, assert_status_code)
         return response
 
-    def delete(self, url: str, *, assert_status_code: int | None = 204, **kwargs) -> httpx.Response:
+    def delete(self, url: URLTypes, *, assert_status_code: int | None = 204, **kwargs) -> httpx.Response:
         """Make a DELETE request. Asserts the response status code matches `assert_status_code` (default: 204).
         Pass `assert_status_code=None` to skip the assertion."""
         __tracebackhide__ = True

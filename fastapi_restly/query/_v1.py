@@ -40,7 +40,7 @@ def create_query_param_schema(schema_cls: SchemaType) -> SchemaType:
         # fields[match] = (Optional[field.annotation], None)
 
     schema_name = "QueryParam" + schema_cls.__name__
-    query_param_schema = pydantic.create_model(schema_name, **fields)
+    query_param_schema = pydantic.create_model(schema_name, **fields)  # type: ignore[call-overload]
     return query_param_schema
 
 
