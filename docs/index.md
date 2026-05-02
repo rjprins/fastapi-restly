@@ -12,7 +12,7 @@
 
 FastAPI-Restly (`fr`) is a framework that supplements FastAPI with instant CRUD endpoints, built on SQLAlchemy 2.0 and Pydantic v2.
 
-FastAPI-Restly implements **true class-based views** — real Python classes that support inheritance and method overrides. Share common behavior across views by subclassing, and override individual CRUD methods without touching the rest.
+FastAPI-Restly implements **true class-based views** — real Python classes that support inheritance and method overrides. Share common behavior across views by subclassing, and override individual CRUD methods without touching the rest. See [Class-Based Views](class_based_views.md) for why this is the heart of the framework.
 
 ## Quick Start
 
@@ -87,6 +87,13 @@ serialization control.
 Fast path from zero to a working CRUD API.
 :::
 
+:::{grid-item-card} Class-Based Views
+:link: class_based_views
+:link-type: doc
+
+The heart of the framework — how subclassable views unlock everything else.
+:::
+
 :::{grid-item-card} User Guide
 :link: user_guide
 :link-type: doc
@@ -131,6 +138,7 @@ uv run pytest
 :hidden:
 
 getting_started
+class_based_views
 user_guide
 api_reference
 about
