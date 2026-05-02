@@ -5,113 +5,81 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [3.0.0] - 2026-05-02
+
+First public release of FastAPI-Restly. The major version reflects the
+project's history — two prior production versions, across three companies,
+over nearly ten years of use — not a series of public breaking changes. See
+`docs/about.md` for the longer history.
 
 ### Added
 
-- Per-view pagination configuration via class attributes on `BaseRestView`:
-  `default_limit` / `max_limit` for V1 and `default_page_size` /
-  `max_page_size` for V2. The corresponding module-level defaults
-  (`DEFAULT_LIMIT=100`, `MAX_LIMIT=1000`, `DEFAULT_PAGE_SIZE=25`,
-  `MAX_PAGE_SIZE=1000`) are exported from `fastapi_restly` and
-  `fastapi_restly.query`.
-- `create_query_param_schema` / `create_query_param_schema_v1` /
-  `create_query_param_schema_v2` now accept `default_limit` / `max_limit`
-  (V1) and `default_page_size` / `max_page_size` (V2) keyword arguments so
-  callers can override the bounds.
-
-### Changed
-
-- SQLAlchemy `IntegrityError` (unique-constraint, FK, not-null,
-  check-constraint violations) is now translated to HTTP 409 Conflict with a
-  clean JSON body instead of bubbling as a 500 Internal Server Error. Opt
-  out via `fr.configure(install_default_exception_handlers=False)` or by
-  registering your own handler for `IntegrityError` before calling
-  `configure`. **Breaking** for clients that depended on a 500 response in
-  these scenarios.
-- **Breaking:** Pagination validation moved into the auto-generated
-  query-parameter Pydantic schema. `limit` / `offset` (V1) and `page` /
-  `page_size` (V2) are now constrained with `Field(ge=..., le=...)` and
-  validated by FastAPI's standard Query layer. Out-of-range values now
-  return a consistent **422** with the standard FastAPI validation
-  envelope where the framework previously returned **400** with a single
-  `detail` string. This affects: V1 `limit < 0` / `offset < 0` /
-  `limit > MAX_LIMIT`, V2 `page < 1` / `page_size < 1` /
-  `page_size > MAX_PAGE_SIZE`, and V1 non-integer `limit` (already 422
-  via Pydantic's int parsing — now consistently 422 across all bad
-  pagination inputs).
-- **Breaking:** `apply_query_modifiers` (and the V1 / V2 implementations)
-  now accept the validated query-parameter Pydantic model instance as
-  their first argument instead of a raw `QueryParams`. Custom modifiers
-  built on top of these helpers continue to work because raw
-  `QueryParams` is still accepted as a fallback, but new code should pass
-  the validated model so pagination bounds are enforced at the FastAPI
-  boundary.
-- View subclasses with a filter column literally named `limit` / `offset`
-  / `sort` (V1) or `page` / `page_size` / `order_by` (V2) now skip that
-  filter (emitting a `UserWarning` at schema-creation time) instead of
-  silently shadowing pagination. Use a Pydantic alias to expose the
-  column under a different name.
-- The default `page_size` for V2 list endpoints is now **25** (was 100).
-  Override per-view via `default_page_size` if the previous default is
-  important to you.
-
-### Fixed
-
-- V2 `page=0` and `page_size=0` no longer slip past validation as falsy
-  values: previously `_get_int_v2(...) or 1` silently coerced zero to one
-  in the SQL while the metadata payload echoed the user's zero and
-  produced a negative `offset`. Both inputs now return a 422 with the
-  field name in the validation error.
-- V1 negative `limit` / `offset` and V1 non-integer `limit` are now
-  rejected with the same 422 error format. Previously the two paths
-  produced different error envelopes (manual `HTTPException(400)` vs.
-  Pydantic's 422).
-
-### Removed
-
-## [0.1.0] - 2026-05-02
-
-Initial public release of FastAPI-Restly.
-
-### Added
-
-- Initial public release on GitHub.
 - Async and sync class-based REST views (`AsyncRestView`, `RestView`) with
   auto-generated CRUD endpoints (list / get / create / update / delete).
-- Class-based view system with `@route()`, `@get()`, `@post()`, `@put()`,
-  `@delete()` decorators and `@fr.include_view(app)` for registration.
+- Class-based view primitive (`View`) with `@route()`, `@get()`, `@post()`,
+  `@put()`, `@patch()`, `@delete()` decorators and `@fr.include_view(app)`
+  for registration. Subclassing works as expected: routes resolve through
+  the subclass's method dictionary, so overrides are picked up.
+- React Admin compatibility layer (`AsyncReactAdminView`, `ReactAdminView`)
+  speaking the `ra-data-simple-rest` wire contract.
 - Automatic Pydantic v2 schema generation from SQLAlchemy 2.0 models via
   `create_schema_from_model()`.
-- `ReadOnly[T]` and `WriteOnly[T]` field markers to control which fields are
-  excluded from create/update inputs or from responses.
-- Two pluggable query parameter systems:
-  - V1 (JSONAPI-style: `filter[name]=John`)
-  - V2 (standard HTTP: `name=John`) including `contains[]` / `__contains`
-    operators and alias support.
-- Endpoint/hook separation: CRUD endpoints delegate to `on_list`, `on_get`,
-  `on_create`, `on_update`, `on_delete` for clean override of business logic.
-- View inheritance with prefix concatenation and dependency wiring.
-- SQLAlchemy 2.0 base classes and mixins: `Base`, `IDBase`, `IDStampsBase`,
-  `TimestampsMixin`.
-- Single-call configuration via `fr.configure()` (replaces earlier
-  `setup_async_database_connection` / `setup_database_connection` /
-  `fr.settings`).
-- Session dependencies (`AsyncSessionDep`, `SessionDep`) and global state via
-  `fr_globals`.
-- Pytest fixtures and utilities for testing with savepoint-based isolation
-  (`activate_savepoint_only_mode()`), plus `DingTestClient` that asserts
-  response status codes.
-- Experimental React Admin compatibility layer: typed React Admin view support
-  and an example shop admin UI.
-- Documentation site built with Sphinx and `pydata-sphinx-theme`, including
-  Getting Started, User Guide, How-To guides (typing, React Admin, view
-  inheritance, endpoint overrides), and API reference. Published to GitHub
-  Pages alongside coverage reports.
-- Continuous integration with a Python 3.11 - 3.14 test matrix (3.14 marked
-  experimental), framework coverage reporting via Codecov (OIDC), and
-  pre-commit hooks.
-- Example projects (`shop`, `saas`) demonstrating real-world usage patterns.
+- `ReadOnly[T]` and `WriteOnly[T]` field markers to control which fields
+  are excluded from create/update inputs or from responses.
+- `IDSchema[T]` / `FlatIDSchema[T]` generic schemas plus
+  `OmitReadOnlyMixin` / `PatchMixin` schema transforms.
+- Two pluggable query parameter dialects:
+  - **V1** (JSONAPI-style: `filter[name]=John`, `filter[id]=1,2,3`,
+    `filter[age]=>=18`, `filter[deleted_at]=null`, `contains[name]=john`).
+  - **V2** (standard HTTP: `name=John`, `age__gte=18`,
+    `deleted_at__isnull=true`, `name__contains=john`). Operator suffixes
+    are dispatched per column type — booleans get equality / `__ne` /
+    `__isnull` only; orderable types get the full comparison family;
+    string types additionally get `__contains`.
+- Endpoint/hook separation: CRUD endpoints delegate to `on_list`,
+  `on_get`, `on_create`, `on_update`, `on_delete`. Override the hook for
+  business logic, the route method for full HTTP control.
+- CRUD utility methods on every view (`make_new_object`, `update_object`,
+  `save_object`, `delete_object`) plus matching free functions
+  (`fr.make_new_object`, `fr.update_object`, `fr.save_object`,
+  `fr.async_make_new_object`, `fr.async_update_object`,
+  `fr.async_save_object`) for use from custom routes and services.
+- SQLAlchemy 2.0 base classes and mixins: `DataclassBase`, `IDBase`,
+  `IDStampsBase`, `IDMixin`, `TimestampsMixin`, plus the `Plain*` family
+  for projects that don't want dataclass-style models.
+- `get_one_or_create` / `async_get_one_or_create` model helpers.
+- Single-call configuration via `fr.configure()` accepting async/sync
+  URLs, engines, session makers, or custom session generators.
+- Session dependencies (`AsyncSessionDep`, `SessionDep`) and global state
+  accessor (`get_fr_globals`, `use_fr_globals`).
+- Per-view pagination configuration: `default_limit` / `max_limit` (V1)
+  and `default_page_size` / `max_page_size` (V2). Defaults are
+  *unlimited* — endpoints return every matching row unless the client
+  asks for pagination or the view sets a default.
+- Pagination-metadata response envelope opt-in via
+  `include_pagination_metadata = True` on a view.
+- Pagination/sort bounds (`limit`, `offset`, `page`, `page_size`) are
+  validated by the auto-generated query-parameter Pydantic schema, so
+  out-of-range values come back as standard 422 responses with the
+  FastAPI validation envelope.
+- Repeated query parameters (V1 `filter[created_at]=>=...&filter[created_at]=<...`,
+  V2 `name__contains=hi&name__contains=ho`) are preserved as multiple
+  AND'd predicates instead of being collapsed to one value.
+- SQLAlchemy `IntegrityError` (unique-constraint, FK, not-null,
+  check-constraint violations) is translated to HTTP 409 Conflict with a
+  clean JSON body. Opt out via
+  `fr.configure(install_default_exception_handlers=False)` or by
+  registering your own handler before calling `configure`.
+- `fastapi_restly.testing` pytest fixtures and `RestlyTestClient` for
+  savepoint-isolated tests with response-status assertions.
+- Documentation site (Sphinx, pydata-sphinx-theme): Getting Started,
+  User Guide, How-To guides (query modifiers, view inheritance, endpoint
+  overrides, React Admin, typing), and API reference. Published to
+  GitHub Pages alongside coverage reports.
+- Continuous integration matrix on Python 3.10–3.14 with separate
+  lint / typing / coverage / docs jobs and pre-commit hooks.
+- Example projects under `example-projects/`: `shop` (e-commerce CRUD),
+  `blog` (minimal single-resource), and `saas` (multi-tenant project
+  management with auth, audit stamps, and custom action routes).
 
-[Unreleased]: https://github.com/rjprins/fastapi-restly/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/rjprins/fastapi-restly/releases/tag/v0.1.0
+[3.0.0]: https://github.com/rjprins/fastapi-restly/releases/tag/v3.0.0

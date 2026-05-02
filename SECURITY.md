@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-fastapi-restly is currently in alpha (`0.1.x`). Only the latest `0.1.x` release receives security updates.
+Only the latest released version of fastapi-restly receives security updates.
 
 ## Reporting a Vulnerability
 

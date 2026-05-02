@@ -3,7 +3,6 @@
 [![CI](https://github.com/rjprins/fastapi-restly/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/rjprins/fastapi-restly/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue)](https://github.com/rjprins/fastapi-restly/blob/main/pyproject.toml)
 [![License](https://img.shields.io/github/license/rjprins/fastapi-restly)](https://github.com/rjprins/fastapi-restly/blob/main/LICENSE)
-[![Status: Alpha](https://img.shields.io/badge/status-alpha-orange.svg)](CHANGELOG.md)
 [![Coverage](https://rjprins.github.io/fastapi-restly/coverage/badge.svg)](https://rjprins.github.io/fastapi-restly/coverage/)
 
 <p align="center">
@@ -12,7 +11,7 @@
 
 **Build maintainable CRUD APIs on FastAPI, SQLAlchemy 2.0, and Pydantic v2 — with real class-based views.**
 
-> **Status:** `0.1.0` — alpha. APIs may shift before `1.0`; see the [Changelog](CHANGELOG.md). Not yet on PyPI:
+> **Status:** `3.0.0` — first public release. See the [Changelog](CHANGELOG.md). Not yet on PyPI:
 > ```bash
 > pip install git+https://github.com/rjprins/fastapi-restly.git
 > ```

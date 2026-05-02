@@ -28,7 +28,7 @@ What actually happened. Include the full traceback if there is one.
 
 ## Environment
 
-- fastapi-restly version: (e.g. `0.1.0`)
+- fastapi-restly version: (e.g. `3.0.0`)
 - Python version: (e.g. `3.12.7`)
 - FastAPI version:
 - SQLAlchemy version:
