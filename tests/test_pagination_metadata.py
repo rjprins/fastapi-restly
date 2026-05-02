@@ -61,7 +61,9 @@ def test_index_can_return_pagination_metadata(client):
     assert payload["total_pages"] is None
 
 
-def test_v2_pagination_metadata_reports_effective_defaults(client):
+def test_v2_pagination_metadata_returns_all_items_when_no_page_size(client):
+    """V2 default is unlimited: omitting ``page_size`` returns every row."""
+
     class PaginatedItem(fr.IDBase):
         name: str
 
@@ -78,7 +80,7 @@ def test_v2_pagination_metadata_reports_effective_defaults(client):
 
     create_tables()
 
-    total_items = fr.query.DEFAULT_PAGE_SIZE + 5
+    total_items = 30
     for i in range(total_items):
         client.post("/paginated-items/", json={"name": f"Item {i}"})
 
@@ -86,9 +88,43 @@ def test_v2_pagination_metadata_reports_effective_defaults(client):
     payload = response.json()
 
     assert payload["total"] == total_items
-    assert payload["page"] == 1
-    assert payload["page_size"] == fr.query.DEFAULT_PAGE_SIZE
-    assert payload["total_pages"] == 2
-    assert payload["limit"] == fr.query.DEFAULT_PAGE_SIZE
-    assert payload["offset"] == 0
-    assert len(payload["items"]) == fr.query.DEFAULT_PAGE_SIZE
+    assert payload["page"] is None
+    assert payload["page_size"] is None
+    assert payload["total_pages"] is None
+    assert payload["limit"] is None
+    assert payload["offset"] is None
+    assert len(payload["items"]) == total_items
+
+
+def test_v2_pagination_metadata_reports_explicit_page_size(client):
+    """When the client passes ``page_size`` the metadata reflects it."""
+
+    class PaginatedThing(fr.IDBase):
+        name: str
+
+    class PaginatedThingSchema(fr.IDSchema):
+        name: str
+
+    @fr.include_view(client.app)
+    class PaginatedThingView(fr.AsyncRestView):
+        prefix = "/paginated-things"
+        model = PaginatedThing
+        schema = PaginatedThingSchema
+        include_pagination_metadata = True
+        query_modifier_version = fr.QueryModifierVersion.V2
+
+    create_tables()
+
+    for i in range(7):
+        client.post("/paginated-things/", json={"name": f"Item {i}"})
+
+    response = client.get("/paginated-things/?page_size=3&page=2")
+    payload = response.json()
+
+    assert payload["total"] == 7
+    assert payload["page"] == 2
+    assert payload["page_size"] == 3
+    assert payload["total_pages"] == 3
+    assert payload["limit"] == 3
+    assert payload["offset"] == 3
+    assert len(payload["items"]) == 3

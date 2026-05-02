@@ -1,4 +1,7 @@
+import datetime as _dt
+import decimal as _decimal
 import functools
+import uuid as _uuid
 import warnings
 from collections import defaultdict
 from typing import Annotated, Any, Callable, Iterator, Optional, cast
@@ -19,8 +22,10 @@ from ._shared import _escape_like_value, _unwrap_optional_annotation
 SchemaType = type[pydantic.BaseModel]
 
 #: Default ``page_size`` applied to V2 list endpoints when the client does
-#: not send one. Override per-view via :attr:`BaseRestView.default_page_size`.
-DEFAULT_PAGE_SIZE = 25
+#: not send one. ``None`` disables the implicit cap (lists return every
+#: matching row and ``page`` is ignored). Override per-view via
+#: :attr:`BaseRestView.default_page_size`.
+DEFAULT_PAGE_SIZE: int | None = None
 
 #: Maximum ``page_size`` accepted by V2 list endpoints. Values above this
 #: are rejected with a 422 by the FastAPI Pydantic-Query validation layer.
@@ -39,10 +44,43 @@ def _is_string_field_v2(field: FieldInfo) -> bool:
     return annotation is str
 
 
+# Types that support SQL ``<``/``<=``/``>``/``>=`` comparisons. Booleans
+# deliberately *don't* — ordering booleans is rarely meaningful and emitting
+# ``WHERE active >= true`` raises ``sqlalchemy.exc.ArgumentError`` at query
+# time, which would otherwise surface to the client as a 500.
+_ORDERABLE_TYPES: tuple[type, ...] = (
+    int,
+    float,
+    _decimal.Decimal,
+    _dt.date,
+    _dt.datetime,
+    _dt.time,
+    _dt.timedelta,
+    str,
+)
+
+
+def _supports_range_operators(field: FieldInfo) -> bool:
+    annotation = _unwrap_optional_annotation(field.annotation)
+    if annotation is bool:
+        return False
+    if not isinstance(annotation, type):
+        # Generic / Annotated / unresolved — be permissive; the parser layer
+        # still rejects bad values with a 400.
+        return True
+    if issubclass(annotation, bool):
+        return False
+    if issubclass(annotation, _ORDERABLE_TYPES):
+        return True
+    if issubclass(annotation, _uuid.UUID):
+        return False
+    return False
+
+
 def create_query_param_schema_v2(
     schema_cls: SchemaType,
     *,
-    default_page_size: int = DEFAULT_PAGE_SIZE,
+    default_page_size: int | None = DEFAULT_PAGE_SIZE,
     max_page_size: int = MAX_PAGE_SIZE,
 ) -> SchemaType:
     """
@@ -57,14 +95,15 @@ def create_query_param_schema_v2(
         schema_cls: The response schema whose fields drive the available
             filter parameters (direct field names, ``__gte``/``__lte`` etc.).
         default_page_size: Default value for the ``page_size`` parameter.
-            Defaults to :data:`DEFAULT_PAGE_SIZE`.
+            ``None`` (the default) means "no implicit page size" — omitting
+            ``page_size`` returns every matching row and ``page`` is ignored.
         max_page_size: Upper bound (inclusive) for the ``page_size``
             parameter. Defaults to :data:`MAX_PAGE_SIZE`.
     """
     fields: dict[str, Any] = {
         "page": (Annotated[int, Field(ge=1)], 1),
         "page_size": (
-            Annotated[int, Field(ge=1, le=max_page_size)],
+            Annotated[Optional[int], Field(ge=1, le=max_page_size)],
             default_page_size,
         ),
         "order_by": (Optional[str], None),
@@ -78,17 +117,25 @@ def create_query_param_schema_v2(
                 stacklevel=2,
             )
             continue
-        field_type = _get_field_type_for_schema(field)
-        fields[name] = (Optional[field_type], None)
-        # Add range filters
-        for suffix in ["__gte", "__lte", "__gt", "__lt"]:
-            fields[f"{name}{suffix}"] = (Optional[field_type], None)
-        fields[f"{name}__ne"] = (Optional[field_type], None)
+        # Type filter parameters as ``Optional[list[str]]`` (rather than the
+        # column's true type) so FastAPI/Starlette preserve repeated query
+        # parameters as a list and downstream ``_parse_value_v2`` can perform
+        # the actual type coercion. ``__isnull`` stays a scalar bool because
+        # repeating it makes no sense.
+        fields[name] = (Optional[list[str]], None)
+        fields[f"{name}__ne"] = (Optional[list[str]], None)
         fields[f"{name}__isnull"] = (Optional[bool], None)
+
+        # Range operators only make sense on orderable types. Emitting them
+        # for booleans would let ``?active__gte=true`` fall through to
+        # SQLAlchemy and raise ``ArgumentError`` (HTTP 500).
+        if _supports_range_operators(field):
+            for suffix in ["__gte", "__lte", "__gt", "__lt"]:
+                fields[f"{name}{suffix}"] = (Optional[list[str]], None)
 
         # Add contains filter for string fields
         if _is_string_field_v2(field):
-            fields[f"{name}__contains"] = (Optional[str], None)
+            fields[f"{name}__contains"] = (Optional[list[str]], None)
 
     schema_name = "QueryParamV2" + schema_cls.__name__
     query_param_schema = pydantic.create_model(schema_name, **fields)  # type: ignore
@@ -134,12 +181,23 @@ def apply_query_modifiers_v2(
 def _coerce_to_query_params_v2(
     params: pydantic.BaseModel | QueryParams,
 ) -> QueryParams:
-    """Normalise either a validated Pydantic model or a raw QueryParams to QueryParams."""
+    """Normalise either a validated Pydantic model or a raw QueryParams to QueryParams.
+
+    When a dumped field is a list (e.g. a repeated ``name__contains``), each
+    element is expanded to its own ``(key, value)`` tuple so that
+    ``QueryParams.multi_items()`` later returns the original repeated values.
+    """
     if isinstance(params, QueryParams):
         return params
     if isinstance(params, pydantic.BaseModel):
         dumped = params.model_dump(exclude_none=True, by_alias=True, mode="json")
-        return QueryParams({k: str(v) for k, v in dumped.items()})
+        items: list[tuple[str, str]] = []
+        for key, value in dumped.items():
+            if isinstance(value, list):
+                items.extend((key, str(item)) for item in value)
+            else:
+                items.append((key, str(value)))
+        return QueryParams(items)
     return QueryParams(params)
 
 
@@ -150,12 +208,13 @@ def apply_pagination_v2(
     Apply pagination using ``page`` and ``page_size`` parameters.
 
     Range and type checks are enforced by the Pydantic query schema returned
-    by :func:`create_query_param_schema_v2`. When ``page`` / ``page_size`` are
-    absent (raw QueryParams built by hand) sensible defaults are applied
-    (``page=1``, ``page_size=DEFAULT_PAGE_SIZE``).
+    by :func:`create_query_param_schema_v2`. When ``page_size`` is absent or
+    ``None`` no LIMIT/OFFSET is applied — every matching row is returned.
     """
+    page_size = _get_int_v2(query_params, "page_size")
+    if page_size is None:
+        return select_query
     page = _get_int_v2(query_params, "page") or 1
-    page_size = _get_int_v2(query_params, "page_size") or DEFAULT_PAGE_SIZE
     offset = (page - 1) * page_size
     select_query = select_query.limit(page_size).offset(offset)
     return select_query

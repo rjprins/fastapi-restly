@@ -457,12 +457,14 @@ class BaseRestView(
     include_pagination_metadata: ClassVar[bool] = False  # Set True to include count/total in list responses
     exclude_routes: ClassVar[tuple[str, ...]] = ()
     query_modifier_version: ClassVar[QueryModifierVersion]  # Controls V1 vs V2 query parameter style; defaults to global setting
-    #: Default ``limit`` for V1 list endpoints. Override per-view.
-    default_limit: ClassVar[int] = DEFAULT_LIMIT
+    #: Default ``limit`` for V1 list endpoints. ``None`` means "no implicit
+    #: cap" (the framework default). Override per-view.
+    default_limit: ClassVar[int | None] = DEFAULT_LIMIT
     #: Maximum ``limit`` accepted on V1 list endpoints. Above this returns 422.
     max_limit: ClassVar[int] = MAX_LIMIT
-    #: Default ``page_size`` for V2 list endpoints. Override per-view.
-    default_page_size: ClassVar[int] = DEFAULT_PAGE_SIZE
+    #: Default ``page_size`` for V2 list endpoints. ``None`` means "no
+    #: implicit cap" (the framework default). Override per-view.
+    default_page_size: ClassVar[int | None] = DEFAULT_PAGE_SIZE
     #: Maximum ``page_size`` accepted on V2 list endpoints. Above this returns 422.
     max_page_size: ClassVar[int] = MAX_PAGE_SIZE
     index_param_schema: ClassVar[type[pydantic.BaseModel]]
@@ -544,8 +546,17 @@ class BaseRestView(
             self.get_query_modifier_version() == QueryModifierVersion.V2
         )
         if uses_v2_pagination or "page" in params or "page_size" in params:
+            page_size_raw = params.get("page_size")
+            if page_size_raw is None and self.default_page_size is None:
+                # Unlimited V2: no implicit cap and the client did not ask for
+                # one. Leave page/page_size/total_pages as None.
+                return payload
             page = int(params.get("page", "1"))
-            page_size = int(params.get("page_size", str(self.default_page_size)))
+            page_size = int(
+                page_size_raw
+                if page_size_raw is not None
+                else self.default_page_size
+            )
             payload["page"] = page
             payload["page_size"] = page_size
             payload["total_pages"] = ceil(total / page_size) if page_size > 0 else 0

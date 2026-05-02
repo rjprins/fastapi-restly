@@ -19,8 +19,9 @@ from ._shared import _escape_like_value, _unwrap_optional_annotation
 SchemaType = type[pydantic.BaseModel]
 
 #: Default ``limit`` applied to V1 list endpoints when the client does not
-#: send one. Override per-view via :attr:`BaseRestView.default_limit`.
-DEFAULT_LIMIT = 100
+#: send one. ``None`` disables the implicit cap entirely (lists return every
+#: matching row). Override per-view via :attr:`BaseRestView.default_limit`.
+DEFAULT_LIMIT: int | None = None
 
 #: Maximum ``limit`` accepted by V1 list endpoints. Values above this are
 #: rejected with a 422 by the FastAPI Pydantic-Query validation layer.
@@ -36,7 +37,7 @@ _V1_RESERVED_NAMES = frozenset({"limit", "offset", "sort"})
 def create_query_param_schema(
     schema_cls: SchemaType,
     *,
-    default_limit: int = DEFAULT_LIMIT,
+    default_limit: int | None = DEFAULT_LIMIT,
     max_limit: int = MAX_LIMIT,
 ) -> SchemaType:
     """
@@ -49,13 +50,14 @@ def create_query_param_schema(
     Args:
         schema_cls: The response schema whose fields drive the available
             ``filter[...]`` / ``contains[...]`` parameters.
-        default_limit: Default value for the ``limit`` parameter. Defaults to
-            :data:`DEFAULT_LIMIT`.
+        default_limit: Default value for the ``limit`` parameter. ``None``
+            (the default) means "no implicit limit" — omitting ``limit``
+            returns every matching row.
         max_limit: Upper bound (inclusive) for the ``limit`` parameter.
             Defaults to :data:`MAX_LIMIT`.
     """
     fields: dict[str, Any] = {
-        "limit": (Annotated[int, Field(ge=0, le=max_limit)], default_limit),
+        "limit": (Annotated[Optional[int], Field(ge=0, le=max_limit)], default_limit),
         "offset": (Annotated[int, Field(ge=0)], 0),
         "sort": (str | None, None),
     }
@@ -69,12 +71,18 @@ def create_query_param_schema(
             )
             continue
         filter_key = f"filter[{name}]"
-        fields[filter_key] = (Optional[field.annotation], None)
+        # Type as ``Optional[list[str]]`` rather than the column's true type so
+        # that (a) FastAPI/Starlette preserve repeated query parameters as a
+        # list rather than collapsing to a single value, and (b) operator
+        # prefixes (``>=``, ``!``, ``null``, comma-separated OR-lists, ...)
+        # reach ``_parse_value`` for downstream validation. Type coercion
+        # against ``field.annotation`` happens inside ``_parse_value``.
+        fields[filter_key] = (Optional[list[str]], None)
 
         # Add contains parameter for string fields
         if _is_string_field(field):
             contains = f"contains[{name}]"
-            fields[contains] = (Optional[str], None)
+            fields[contains] = (Optional[list[str]], None)
 
         # TODO: Implement matching as OR-filters
         # match = f"match[{name}]"
@@ -140,12 +148,25 @@ def apply_query_modifiers(
 def _coerce_to_query_params(
     params: pydantic.BaseModel | QueryParams,
 ) -> QueryParams:
-    """Normalise either a validated Pydantic model or a raw QueryParams to QueryParams."""
+    """Normalise either a validated Pydantic model or a raw QueryParams to QueryParams.
+
+    When a dumped field is a list (e.g. a repeated ``filter[name]``), each
+    element is expanded to its own ``(key, value)`` tuple so that
+    ``QueryParams.multi_items()`` later returns the original repeated values.
+    Collapsing the list to a single comma-joined string would silently merge
+    repeated parameters and break AND-on-same-field semantics.
+    """
     if isinstance(params, QueryParams):
         return params
     if isinstance(params, pydantic.BaseModel):
         dumped = params.model_dump(exclude_none=True, by_alias=True, mode="json")
-        return QueryParams({k: str(v) for k, v in dumped.items()})
+        items: list[tuple[str, str]] = []
+        for key, value in dumped.items():
+            if isinstance(value, list):
+                items.extend((key, str(item)) for item in value)
+            else:
+                items.append((key, str(value)))
+        return QueryParams(items)
     # Best-effort fallback for dicts and other mapping-like inputs.
     return QueryParams(params)
 

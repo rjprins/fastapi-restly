@@ -196,13 +196,12 @@ class TestCreateQueryParamSchemaV2:
 
 class TestApplyPaginationV2:
     def test_apply_pagination_v2_defaults(self, select_query, mock_query_params):
-        """Test pagination with default values."""
+        """Without ``page_size`` no LIMIT/OFFSET is applied (V2 default unlimited)."""
         params = mock_query_params()
         result = apply_pagination_v2(params, select_query)
 
-        # Should apply default page=1, page_size=100
-        assert "LIMIT :param_1" in str(result)
-        assert "OFFSET :param_2" in str(result)
+        assert "LIMIT" not in str(result)
+        assert "OFFSET" not in str(result)
 
     def test_apply_pagination_v2_custom_values(self, select_query, mock_query_params):
         """Test pagination with custom values."""
@@ -214,8 +213,8 @@ class TestApplyPaginationV2:
         assert "OFFSET :param_2" in str(result)  # (2-1) * 25
 
     def test_apply_pagination_v2_invalid_page(self, select_query, mock_query_params):
-        """Test pagination with invalid page value."""
-        params = mock_query_params(page="invalid")
+        """Invalid ``page`` is rejected — but only when pagination is engaged."""
+        params = mock_query_params(page="invalid", page_size="10")
 
         with pytest.raises(HTTPException) as exc_info:
             apply_pagination_v2(params, select_query)

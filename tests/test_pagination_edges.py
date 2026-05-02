@@ -83,7 +83,7 @@ def test_v1_empty_result_with_metadata(client):
 
 
 def test_v2_empty_result_with_metadata(client):
-    """V2 with empty data: total=0, page=1, total_pages should be 0 (no pages of data)."""
+    """V2 with no implicit page size: total=0, items=[], page/page_size left None."""
     _setup_v2_view(client, include_metadata=True)
 
     response = client.get("/widgets-v2/")
@@ -92,8 +92,24 @@ def test_v2_empty_result_with_metadata(client):
 
     assert payload["total"] == 0
     assert payload["items"] == []
+    # Default V2 is unlimited — no implicit page applied.
+    assert payload["page"] is None
+    assert payload["page_size"] is None
+    assert payload["total_pages"] is None
+
+
+def test_v2_empty_result_with_metadata_explicit_page_size(client):
+    """When ``page_size`` is provided explicitly the metadata is populated."""
+    _setup_v2_view(client, include_metadata=True)
+
+    response = client.get("/widgets-v2/?page_size=10")
+    assert response.status_code == 200
+    payload = response.json()
+
+    assert payload["total"] == 0
+    assert payload["items"] == []
     assert payload["page"] == 1
-    assert payload["page_size"] == fr.query.DEFAULT_PAGE_SIZE
+    assert payload["page_size"] == 10
     # total_pages is the ceiling of total/page_size; 0/N = 0.
     assert payload["total_pages"] == 0
 
