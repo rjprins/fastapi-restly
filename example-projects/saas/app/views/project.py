@@ -51,9 +51,9 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
     - ``TenantScopedMixin`` — adds ``organization_id`` filter to reads,
       stamps it on writes from auth context.
     - ``TenantBase`` — auth dep, audit ``save_object`` seam, ``_emit``
-      outbox helper, ``_base_query`` seam consumed by the mixins above.
+      outbox helper, ``build_base_query`` seam consumed by the mixins above.
 
-    Each mixin's ``_base_query`` calls ``super()._base_query()``, so the
+    Each mixin's ``build_base_query`` calls ``super().build_base_query()``, so the
     tenant + soft-delete WHERE clauses compose without either mixin
     knowing the other exists. The same chain feeds both ``on_list`` and
     ``count_index`` (defined on TenantBase), so pagination totals stay
