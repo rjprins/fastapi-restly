@@ -44,8 +44,8 @@ Notes:
   - `%`, `_`, and `\\` are escaped before building the SQL `ILIKE`
 - Sorting: `?order_by=name,-created_at`
 - Pagination: `?page=2&page_size=10`
-  - **Always applied:** even with no pagination params, V2 applies `LIMIT 100 OFFSET 0` by default.
-  - Defaults: `page=1`, `page_size=100`.
+  - **Opt-in.** Omitting `page_size` returns every matching row (no implicit cap).
+  - Set `default_page_size` on the view class to enable pagination by default.
 
 Relation-filtering caveat for V2:
 - The relation segment must still use the schema/model field name
@@ -79,19 +79,19 @@ on a view to return metadata together with the list items:
 {
   "items": [],
   "total": 123,
-  "page": 1,
-  "page_size": 100,
-  "total_pages": 2,
-  "limit": 100,
-  "offset": 0
+  "page": 2,
+  "page_size": 50,
+  "total_pages": 3,
+  "limit": 50,
+  "offset": 50
 }
 ```
 
-`page`, `page_size`, and `total_pages` are populated when:
-- The view uses the V2 query interface (always), or
-- A V1 view receives `?page=` or `?page_size=` as query parameters.
-
-Otherwise on V1 views, those three fields stay `null` and `limit`/`offset` reflect the V1 `?limit=`/`?offset=` parameters if present.
+`page`, `page_size`, and `total_pages` are populated when the request was
+actually paginated — that is, when the client sent `?page=` / `?page_size=`
+(V2) or `?limit=` / `?offset=` (V1), or when the view sets a non-`None`
+`default_page_size` / `default_limit`. When pagination is not engaged the
+fields stay `null` and only `total` reflects the full result count.
 
 ## Endpoint Decorators
 
@@ -205,6 +205,10 @@ For generated CRUD endpoints:
 | `include_pagination_metadata` | `ClassVar[bool]` | Set `True` to return the paginated metadata envelope. Defaults to `False`. |
 | `exclude_routes` | `ClassVar[tuple[str, ...]]` | Route names to suppress. |
 | `query_modifier_version` | `ClassVar[QueryModifierVersion]` | Per-view query style override. Defaults to the global setting at registration time. |
+| `default_limit` | `ClassVar[int \| None]` | Default `?limit=` for V1 list endpoints. `None` (the default) means "no implicit cap" — every matching row is returned. |
+| `max_limit` | `ClassVar[int]` | Upper bound for `?limit=` on V1 list endpoints. Values above are rejected with 422. Defaults to `1000`. |
+| `default_page_size` | `ClassVar[int \| None]` | Default `?page_size=` for V2 list endpoints. `None` (the default) means "no implicit cap" — every matching row is returned. |
+| `max_page_size` | `ClassVar[int]` | Upper bound for `?page_size=` on V2 list endpoints. Values above are rejected with 422. Defaults to `1000`. |
 
 ### View Instance Methods
 
@@ -215,9 +219,9 @@ methods to reuse the framework's plumbing.
 | Method | Description |
 |---|---|
 | `self.to_response_schema(obj)` | Serialise an ORM object to the configured response schema, applying alias rules and stripping `WriteOnly` fields. Returns a Pydantic model instance. |
-| `self.make_new_object(schema_obj, schema_cls=None)` | Async on `AsyncRestView`, sync on `RestView`. Build a new model instance from a schema, resolve any `*_id: IDSchema[...]` fields against the database, add it to `self.session`, flush, and return the persisted object. |
-| `self.update_object(obj, schema_obj, schema_cls=None)` | Apply the schema's writable fields to an existing object, resolve FK fields, flush, and return the object. |
-| `self.save_object(obj)` | Flush the session and refresh `obj` from the database, then return it. Override to inject behaviour right before/after a write. |
+| `self.make_new_object(schema_obj, schema_cls=None)` | Async on `AsyncRestView`, sync on `RestView`. Build a new model instance from a schema, resolve any `*_id: IDSchema[...]` fields against the database, and add it to `self.session`. **Does not flush** — call `self.save_object(obj)` afterwards to persist. |
+| `self.update_object(obj, schema_obj, schema_cls=None)` | Apply the schema's writable fields to an existing object and resolve FK fields. **Does not flush** — call `self.save_object(obj)` afterwards to persist. |
+| `self.save_object(obj)` | Flush the session and refresh `obj` from the database, then return it. This is where writes actually hit the database; call it explicitly after `make_new_object` / `update_object` or after mutating an object in an `on_*` hook. |
 | `self.delete_object(obj)` | Delete `obj` via the session and flush. |
 | `self.count_index(query_params)` | Return the total row count for the current list query (after filters, before pagination). Called by the default `index` only when `include_pagination_metadata = True`; available for use in replacement routes regardless. |
 
@@ -227,9 +231,9 @@ These module-level functions mirror the instance methods on `AsyncRestView` / `R
 
 | Symbol | Description |
 |---|---|
-| `fr.make_new_object(session, model_cls, schema_obj, schema_cls=None)` | Create a new model instance from a schema, resolve FK `IDSchema` fields, add to session, and return the object. |
-| `fr.update_object(session, obj, schema_obj, schema_cls=None)` | Apply schema fields to an existing ORM object, resolve FK fields, flush, and return the object. |
-| `fr.save_object(session, obj)` | Flush the session and refresh `obj` from the database, then return it. |
+| `fr.make_new_object(session, model_cls, schema_obj, schema_cls=None)` | Create a new model instance from a schema, resolve FK `IDSchema` fields, add to session, and return the object. **Does not flush** — call `fr.save_object(session, obj)` afterwards. |
+| `fr.update_object(session, obj, schema_obj, schema_cls=None)` | Apply schema fields to an existing ORM object and resolve FK fields. **Does not flush** — call `fr.save_object(session, obj)` afterwards. |
+| `fr.save_object(session, obj)` | Flush the session and refresh `obj` from the database, then return it. This is where writes actually hit the database. |
 
 ### Database
 

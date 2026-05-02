@@ -130,14 +130,15 @@ Produces `ORDER BY created_at DESC, name ASC`.
 
 ### Pagination
 
-Use `limit` and `offset` to page through results. Both are optional — omitting them
-returns all matching rows (no automatic pagination in V1).
+Use `limit` and `offset` to page through results. Both are optional — omitting
+them returns all matching rows (no automatic pagination in V1). Set
+`default_limit` on the view class if you want an implicit cap.
 
 ```text
 GET /users/?limit=20&offset=40
 ```
 
-Negative values return HTTP 400.
+Negative values return HTTP 422.
 
 ### Relation filtering
 
@@ -174,10 +175,10 @@ GET /users/?limit=20&offset=0
 V2 uses direct field names and double-underscore suffixes for operators, similar to
 Django or other mainstream frameworks.
 
-> **Always-on pagination:** V2 always paginates. If you supply no `page` or
-> `page_size` parameters, V2 defaults to `page=1, page_size=100`, adding
-> `LIMIT 100 OFFSET 0` to every query. V1 does not paginate unless you explicitly
-> pass `limit`/`offset`.
+> **Pagination is opt-in.** Like V1, V2 returns every matching row when no
+> `page_size` is supplied. Pass `page_size` (and optionally `page`) to enable
+> pagination, or set `default_page_size` on the view class if you want every
+> request to be paginated by default.
 
 ### Filtering
 
@@ -244,8 +245,9 @@ GET /users/?order_by=-created_at,name
 GET /users/?page=2&page_size=50
 ```
 
-`page` is 1-based. `page_size` must be > 0. When omitted, defaults are `page=1` and
-`page_size=100`.
+`page` is 1-based. `page_size` must be > 0. When `page_size` is omitted, the
+endpoint returns every matching row (no implicit cap). To enforce a default
+page size, set `default_page_size` on the view class.
 
 ### Alias support
 
@@ -323,7 +325,7 @@ GET /users/?page=2&page_size=50
 | Not null | `?filter[x]=!null` | `?x__isnull=false` |
 | Contains | `?contains[email]=ex` | `?email__contains=ex` |
 | Sort | `?sort=-id` | `?order_by=-id` |
-| Pagination | `?limit=20&offset=0` *(optional)* | `?page=1&page_size=100` *(always applied)* |
+| Pagination | `?limit=20&offset=0` *(opt-in)* | `?page=1&page_size=10` *(opt-in)* |
 | OR values | `?filter[id]=1,2,3` | `?id=1,2,3` |
 | AND contains | `?contains[n]=a b` | `?n__contains=a b` |
 | Relation filter | `?filter[user.name]=Alice` | `?user.name=Alice` |

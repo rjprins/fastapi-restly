@@ -175,6 +175,7 @@ common error envelope. Express that once and inherit:
 
 ```python
 import fastapi_restly as fr
+import sqlalchemy
 from fastapi import Depends
 
 async def require_logged_in(user_id: int = Depends(get_current_user_id)) -> int:
@@ -184,9 +185,12 @@ class TenantScopedView(fr.AsyncRestView):
     """Internal base — never registered directly."""
     dependencies = [Depends(require_logged_in)]
 
-    async def on_query(self, query):
-        # automatic tenant filtering for every list/get
-        return query.where(self.model.tenant_id == self.request.state.tenant_id)
+    async def on_list(self, query_params, query=None):
+        # automatic tenant filtering for every list
+        if query is None:
+            query = sqlalchemy.select(self.model)
+        query = query.where(self.model.tenant_id == self.request.state.tenant_id)
+        return await super().on_list(query_params, query=query)
 
 
 @fr.include_view(app)
@@ -209,8 +213,8 @@ resource and you get the auth + scoping behaviour for free.
 ## Override a single method
 
 `AsyncRestView` and `RestView` are designed so you can replace any one piece
-without touching the rest. Override the hook (`on_get`, `on_create`,
-`on_update`, `on_delete`, `on_query`) for business-logic changes that should
+without touching the rest. Override the hook (`on_list`, `on_get`,
+`on_create`, `on_update`, `on_delete`) for business-logic changes that should
 fire on both the generated route and any custom callers; override the
 endpoint method itself (`get`, `post`, `patch`, `delete`, `index`) when you
 want full control of the HTTP layer.
@@ -223,10 +227,12 @@ class UserView(fr.AsyncRestView):
     schema = UserSchema
 
     async def on_create(self, schema_obj: UserCreate) -> User:
-        # hash the password before save_object runs
-        user = await super().on_create(schema_obj)
+        # Compose the create flow yourself so the password hash is written
+        # *before* save_object flushes. Calling super().on_create() and
+        # mutating after would lose the change — the row is already saved.
+        user = await self.make_new_object(schema_obj)
         user.password_hash = hash_password(schema_obj.password)
-        return user
+        return await self.save_object(user)
 ```
 
 Everything else — listing, retrieval, update, delete, schema generation,
