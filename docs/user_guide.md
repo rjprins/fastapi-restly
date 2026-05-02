@@ -45,11 +45,25 @@ Override hooks, low-level object helpers, custom routes, and shared base classes
 Define schemas with field aliases, write-only fields, and read-only computed fields.
 :::
 
+:::{grid-item-card} Type Annotations
+:link: howto_typing
+:link-type: doc
+
+Use `IDSchema`, optional view generics, and typed `on_*` hooks without fighting the framework.
+:::
+
 :::{grid-item-card} Override Endpoints
 :link: howto_override_endpoints
 :link-type: doc
 
-Customize `on_*` hooks and add custom routes alongside generated CRUD.
+Customize `on_*` hooks, replace generated routes, and add custom routes alongside generated CRUD.
+:::
+
+:::{grid-item-card} React Admin Integration
+:link: howto_react_admin
+:link-type: doc
+
+Use `AsyncReactAdminView` to get a backend that `ra-data-simple-rest` connects to out of the box.
 :::
 
 :::{grid-item-card} Share Behaviour with Base Views
@@ -111,7 +125,9 @@ Schema generation internals, view registration, and query modifier lifecycle.
 tutorial
 tutorial_customizing
 howto_custom_schema
+howto_typing
 howto_override_endpoints
+howto_react_admin
 howto_inheritance
 howto_query_modifiers
 howto_relationship_idschema

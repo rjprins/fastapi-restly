@@ -23,6 +23,7 @@ FastAPI-Restly implements **true class-based views** — real Python classes tha
 * **CRUD endpoints in minutes** – Create endpoints for SQLAlchemy models with auto-generated Pydantic schemas.
 * **True class-based views** – Real inheritance and method overrides, not just decorator wrappers. Share logic across views by subclassing.
 * **Customizable** – Override any CRUD endpoint or just its business logic, without awkward hacks.
+* **React Admin ready** – `AsyncReactAdminView` speaks the `ra-data-simple-rest` wire contract out of the box. Connect react-admin without writing a custom data provider.
 * **Modern stack** – Built for SQLAlchemy 2.0 and Pydantic v2, with async and sync support.
 * **Filtering, pagination, and sorting** – Two query parameter interfaces (JSONAPI-style and standard HTTP).
 * **Field control** – `ReadOnly` and `WriteOnly` field markers, plus relationship ID resolution via `IDSchema[...]`.
@@ -43,6 +44,16 @@ cd fastapi-restly
 
 # Install project dependencies
 uv sync
+```
+
+### Typing Compatibility
+
+Restly keeps a small set of consumer-facing typing fixtures in
+[`tests/typing/`](tests/typing). These are checked
+with Pyright to catch editor regressions in normal framework usage.
+
+```bash
+make test-typing
 ```
 
 ### Basic Example
@@ -204,6 +215,32 @@ class UserView(fr.AsyncRestView):
         # Custom logic here
         return await super().on_list(query_params, query=query)
 ```
+
+### React Admin Integration
+
+Use `AsyncReactAdminView` instead of `AsyncRestView` to get a backend that
+[react-admin](https://marmelab.com/react-admin/) with
+[`ra-data-simple-rest`](https://github.com/marmelab/react-admin/tree/master/packages/ra-data-simple-rest)
+connects to out of the box — no custom data provider needed:
+
+```python
+@fr.include_view(app)
+class ProductView(fr.AsyncReactAdminView):
+    prefix = "/products"
+    model = Product
+    schema = ProductSchema
+```
+
+The view speaks the `ra-data-simple-rest` wire contract:
+
+- **List** — translates `sort=["name","ASC"]`, `range=[0,24]`, and
+  `filter={"name":"foo"}` into SQL and returns a plain JSON array with a
+  `Content-Range: items 0-24/315` header.
+- **All other CRUD** — `GET /{id}`, `POST /`, `PATCH /{id}`, and
+  `DELETE /{id}` work unchanged.
+
+See [React Admin Integration](https://rjprins.github.io/fastapi-restly/howto_react_admin.html)
+in the docs for CORS setup and customization options.
 
 ### Excluding Built-in Routes
 

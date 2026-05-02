@@ -19,15 +19,15 @@ Understanding the call chain helps you pick the right layer to override.
 
 ```
 GET /{id}
-  └─ get()              ← FastAPI endpoint (avoid overriding)
+  └─ get()              ← HTTP contract (replace to change; see below)
        └─ on_get(id)    ← business-logic hook — override here
 ```
 
 ```
 GET /
-  └─ index()                       ← FastAPI endpoint (avoid overriding)
-       └─ on_list(query_params)    ← business-logic hook — override here
-       └─ count_index(query_params) ← only called when include_pagination_metadata = True
+  └─ index()                        ← HTTP contract (replace to change; see below)
+       └─ on_list(query_params)      ← business-logic hook — override here
+       └─ count_index(query_params)  ← only called when include_pagination_metadata = True
 ```
 
 ### Write path
@@ -55,9 +55,10 @@ DELETE /{id}
 
 **General rule:** prefer overriding `on_*` hooks for business logic and
 `make_new_object` / `update_object` / `save_object` / `delete_object` for
-lower-level structural changes. Override the raw endpoint methods (`get`,
-`post`, etc.) only when you need to change the HTTP contract itself (status
-code, response shape).
+lower-level structural changes. When you need to change the HTTP contract
+itself — status code, response shape, headers, or query parameter semantics —
+replace the raw endpoint method; see
+[Replace a generated route](#replace-a-generated-route) below.
 
 ---
 
@@ -291,6 +292,162 @@ class OrderView(fr.AsyncRestView):
         order = await self.save_object(order)
         return {"id": order.id, "archived": order.archived}
 ```
+
+---
+
+## Replace a generated route
+
+The `on_*` hooks let you change what happens *inside* a generated route while
+leaving its HTTP contract intact. Sometimes you need more than that: a
+different response shape, custom response headers, a non-standard status code,
+or completely different query parameter semantics. In those cases you can
+replace the generated route itself.
+
+To replace a route, define a method with the same name as the generated route
+and add a route decorator to it:
+
+```python
+@fr.include_view(app)
+class OrderView(fr.AsyncRestView):
+    prefix = "/orders"
+    model = Order
+    schema = OrderSchema
+
+    @fr.delete("/{id}", status_code=200)
+    async def delete(self, id: int):
+        obj = await self.on_get(id)
+        serialized = self.to_response_schema(obj).model_dump(mode="json")
+        await self.delete_object(obj)
+        return serialized
+```
+
+The route decorator is required. When the framework initialises a view it
+checks whether each standard route is already defined directly on the class.
+If it finds `delete` with a route decorator, it uses that version and skips
+the one from `AsyncRestView`. All other generated routes (`GET /`,
+`GET /{id}`, `POST /`, `PATCH /{id}`) remain unchanged.
+
+### Route replacement vs hook override
+
+These two are easy to conflate:
+
+| Technique | How | When to use |
+|---|---|---|
+| Override an `on_*` hook | `async def on_create(self, ...)` — no decorator | Change business logic; keep the HTTP contract |
+| Replace a route | `@fr.delete("/{id}") async def delete(self, ...)` — with decorator | Change the HTTP contract: status code, response shape, headers, query params |
+
+Use hooks for the common case. Route replacement is for the cases where you
+genuinely need to renegotiate what the endpoint looks like on the wire.
+
+### What remains available inside a replacement
+
+A replacement is a full view method. Everything the parent view provides is
+still on `self`:
+
+- `self.session`, `self.request`, `self.model`, `self.schema`
+- All `on_*` hooks — call them to reuse existing business logic without
+  re-implementing it
+- `self.to_response_schema(obj)` — serialise an ORM object to the configured
+  Pydantic schema
+- `self.make_new_object`, `self.update_object`, `self.save_object`,
+  `self.delete_object`
+
+The example above delegates the 404 check to `self.on_get(id)` and the
+database removal to `self.delete_object(obj)`. Only the HTTP response layer
+changes.
+
+### Example: return the deleted record
+
+The default `DELETE /{id}` returns `204 No Content`. Some API contracts
+(for instance `ra-data-simple-rest` for react-admin) expect the deleted record
+back as JSON:
+
+```python
+@fr.include_view(app)
+class ProductView(fr.AsyncRestView):
+    prefix = "/products"
+    model = Product
+    schema = ProductSchema
+
+    @fr.delete("/{id}", status_code=200)
+    async def delete(self, id: int):
+        obj = await self.on_get(id)
+        serialized = self.to_response_schema(obj).model_dump(mode="json")
+        await self.delete_object(obj)
+        return serialized
+```
+
+The four other generated routes are unaffected.
+
+### Example: replace the list endpoint
+
+Replace `index` to take full control of how the list is returned — for
+instance to add custom response headers. Note that the replacement takes no
+`query_params` argument; the framework's automatic query parameter injection
+only applies to the standard generated `index`. Read query parameters directly
+from `self.request.query_params` if you need them:
+
+```python
+import fastapi
+import json
+
+@fr.include_view(app)
+class ProductView(fr.AsyncRestView):
+    prefix = "/products"
+    model = Product
+    schema = ProductSchema
+
+    @fr.get("/")
+    async def index(self):
+        items = await self.on_list({})
+        total = await self.count_index({})
+        serialized = [
+            self.to_response_schema(obj).model_dump(mode="json") for obj in items
+        ]
+        return fastapi.Response(
+            content=json.dumps(serialized),
+            media_type="application/json",
+            headers={"X-Total-Count": str(total)},
+        )
+```
+
+### Share a replacement across views with a mixin
+
+If several views need the same changed contract, put the replacement in a
+mixin. Python's method resolution order ensures the mixin's version is picked
+up before the standard one:
+
+```python
+class DeleteReturnsObjectMixin:
+    @fr.delete("/{id}", status_code=200)
+    async def delete(self, id):
+        obj = await self.on_get(id)
+        serialized = self.to_response_schema(obj).model_dump(mode="json")
+        await self.delete_object(obj)
+        return serialized
+
+
+@fr.include_view(app)
+class ProductView(DeleteReturnsObjectMixin, fr.AsyncRestView):
+    prefix = "/products"
+    model = Product
+    schema = ProductSchema
+
+
+@fr.include_view(app)
+class OrderView(DeleteReturnsObjectMixin, fr.AsyncRestView):
+    prefix = "/orders"
+    model = Order
+    schema = OrderSchema
+```
+
+Both views now return the deleted record as JSON. All other generated routes
+behave normally on both.
+
+This mixin pattern is also how `fr.AsyncReactAdminView` and `fr.ReactAdminView`
+are implemented internally: `ReactAdminMixin` replaces `index` with one that
+speaks the `ra-data-simple-rest` wire contract, and the two concrete view
+classes are thin subclasses that add only the async/sync distinction.
 
 ---
 
