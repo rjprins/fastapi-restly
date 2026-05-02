@@ -16,6 +16,7 @@
     "react-dom": "^18.3.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@types/node": "^20.10.7",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",

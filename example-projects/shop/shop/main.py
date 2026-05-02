@@ -48,7 +48,7 @@ app.add_middleware(
 # This includes an id primary key
 class Customer(fr.IDBase):
     email: orm.Mapped[str]
-    orders: orm.Mapped[list["Order"]] = orm.relationship(default_factory=list)
+    orders: orm.Mapped[list["Order"]] = orm.relationship(default_factory=list, lazy="selectin")
 
 
 # Example of many-to-many
@@ -66,7 +66,8 @@ class Product(fr.DataclassBase):
     name: orm.Mapped[str]
     price: orm.Mapped[float]
     orders: orm.Mapped[list["Order"]] = orm.relationship(
-        secondary=product_order_table, back_populates="products"
+        secondary=product_order_table, back_populates="products", lazy="selectin",
+        default_factory=list,
     )
 
 
@@ -74,37 +75,36 @@ class Product(fr.DataclassBase):
 class Order(fr.IDBase, fr.TimestampsMixin):
     customer_id: orm.Mapped[int] = orm.mapped_column(sa.ForeignKey(Customer.id))
     products: orm.Mapped[list[Product]] = orm.relationship(
-        secondary=product_order_table, back_populates="orders"
+        secondary=product_order_table, back_populates="orders", lazy="selectin"
     )
 
 
 class CustomerSchema(fr.IDSchema):
     email: str
+    orders: fr.ReadOnly[list[fr.FlatIDSchema[Order]]] = []
 
 
 class ProductSchema(fr.IDSchema):
     name: str
     price: float
-    # Example with one-to-many id list
-    orders: list[fr.IDSchema[Order]] = []
+    orders: fr.ReadOnly[list[fr.FlatIDSchema[Order]]] = []
 
 
 class OrderSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
-    # Example of embedded schema — read-only because it's resolved from customer_id
     customer: fr.ReadOnly[CustomerSchema | None]
-    customer_id: fr.IDSchema[Customer]
-    products: list[fr.IDSchema[Product]]
+    customer_id: int
+    products: list[fr.FlatIDSchema[Product]]
 
 
 @fr.include_view(app)
-class CustomerView(fr.AsyncRestView):
+class CustomerView(fr.AsyncReactAdminView):
     prefix = "/customers"
     model = Customer
     schema = CustomerSchema
 
 
 @fr.include_view(app)
-class ProductView(fr.AsyncRestView):
+class ProductView(fr.AsyncReactAdminView):
     prefix = "/products"
     model = Product
     schema = ProductSchema
@@ -112,7 +112,7 @@ class ProductView(fr.AsyncRestView):
 
 
 @fr.include_view(app)
-class OrderView(fr.AsyncRestView):
+class OrderView(fr.AsyncReactAdminView):
     prefix = "/orders"
     model = Order
     schema = OrderSchema
