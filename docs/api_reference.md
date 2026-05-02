@@ -18,7 +18,7 @@ When you register a view with `@fr.include_view(app)`, both `fr.AsyncRestView` a
 | `DELETE` | `/{prefix}/{id}` | Delete resource | `204` |
 
 Notes:
-- Update semantics are `PATCH` (partial update), not `PUT`.
+- Update semantics are `PATCH` (partial update), not `PUT`. (`AsyncReactAdminView` / `ReactAdminView` additionally expose `PUT /{id}` to match `ra-data-simple-rest`; see [How-To: React Admin Integration](howto_react_admin.md).)
 - `GET /{id}` and `DELETE /{id}` return `404` when the object is not found.
 - Read-only schema fields are ignored on create/update.
 - `*_id: IDSchema[Model]` inputs are resolved to SQLAlchemy objects and validated against the database. The nested `id` accepts the related primary-key type, such as `int` or `UUID`.
@@ -66,8 +66,9 @@ Views capture the active query-modifier version when they are registered with
 set `query_modifier_version = fr.QueryModifierVersion.V2` on the view class directly
 for explicit per-view behavior.
 
-`fr.create_query_param_schema(schema_cls)` is context-sensitive: it creates a V1 or V2
-query-parameter schema depending on the currently active version.
+`fastapi_restly.query.create_query_param_schema(schema_cls)` is context-sensitive: it creates a V1 or V2
+query-parameter schema depending on the currently active version. (It is not exposed at the top level —
+import it from `fastapi_restly.query`.)
 
 ## Optional Pagination Metadata
 
@@ -153,8 +154,8 @@ For generated CRUD endpoints:
 | `fr.PlainTimestampsMixin` | Non-dataclass mixin adding `created_at` / `updated_at` to a `PlainBase` subclass. |
 | `fr.get_one_or_create(model, session, **kwargs)` | Return the unique matching row or create it using a sync SQLAlchemy session. |
 | `fr.async_get_one_or_create(model, session, **kwargs)` | Async variant of `get_one_or_create`. |
-| `fr.CASCADE_ALL_ASYNC` | Cascade string for use with `relationship(cascade=...)` in async SQLAlchemy models. Equivalent to `"save-update, merge, delete, expunge"`. SQLAlchemy's default `"all"` includes `"refresh-expire"` which is incompatible with async sessions. |
-| `fr.CASCADE_ALL_DELETE_ORPHAN_ASYNC` | Like `CASCADE_ALL_ASYNC` but also includes `"delete-orphan"`. |
+| `fastapi_restly.models.CASCADE_ALL_ASYNC` | Cascade string for use with `relationship(cascade=...)` in async SQLAlchemy models. Equivalent to `"save-update, merge, delete, expunge"`. SQLAlchemy's default `"all"` includes `"refresh-expire"` which is incompatible with async sessions. Import from `fastapi_restly.models` (not exposed at the top level). |
+| `fastapi_restly.models.CASCADE_ALL_DELETE_ORPHAN_ASYNC` | Like `CASCADE_ALL_ASYNC` but also includes `"delete-orphan"`. |
 
 ### Schema Classes and Utilities
 
@@ -162,6 +163,7 @@ For generated CRUD endpoints:
 |---|---|
 | `fr.BaseSchema` | Base Pydantic model with `from_attributes=True`. All schemas should inherit from this. |
 | `fr.IDSchema[Model]` | Generic schema that serializes only the `id` of a related model. Used for FK inputs. |
+| `fr.FlatIDSchema[Model]` | Variant of `IDSchema` that serializes as the raw `id` scalar instead of a `{"id": ...}` object (and also accepts a raw scalar on input). Use this for relationship list fields in response schemas to match React Admin / `ra-data-simple-rest` defaults — for example, `products: list[fr.FlatIDSchema[Product]]` serializes as `[1, 2, 3]` rather than `[{"id": 1}, ...]`. |
 | `fr.IDStampsSchema` | Combines `IDSchema` with read-only `created_at` / `updated_at` fields. |
 | `fr.TimestampsSchemaMixin` | Pydantic mixin adding read-only `created_at` / `updated_at` fields to a schema. |
 | `fr.ReadOnly[T]` | Type annotation marker. Fields annotated `ReadOnly[T]` are excluded from create/update inputs. |
@@ -177,9 +179,10 @@ For generated CRUD endpoints:
 | Symbol | Description |
 |---|---|
 | `fr.View` | Base class for all class-based views. Subclass this directly when you do not need CRUD — add endpoints with `@fr.get`, `@fr.post`, etc. |
-| `fr.BaseRestView` | Abstract base shared by `AsyncRestView` and `RestView`. Holds all CRUD class attributes and `process_*` hooks. |
 | `fr.AsyncRestView` | Async CRUD view. Use with async SQLAlchemy sessions. |
 | `fr.RestView` | Sync CRUD view. Use with sync SQLAlchemy sessions. |
+| `fr.AsyncReactAdminView` | Async CRUD view that speaks the `ra-data-simple-rest` wire contract used by [react-admin](https://marmelab.com/react-admin/). See [How-To: React Admin Integration](howto_react_admin.md). |
+| `fr.ReactAdminView` | Sync variant of `AsyncReactAdminView`. |
 
 `fr.View` class attributes:
 
@@ -202,6 +205,21 @@ For generated CRUD endpoints:
 | `include_pagination_metadata` | `ClassVar[bool]` | Set `True` to return the paginated metadata envelope. Defaults to `False`. |
 | `exclude_routes` | `ClassVar[tuple[str, ...]]` | Route names to suppress. |
 | `query_modifier_version` | `ClassVar[QueryModifierVersion]` | Per-view query style override. Defaults to the global setting at registration time. |
+
+### View Instance Methods
+
+Methods available on every `AsyncRestView` / `RestView` instance (inherited from
+the internal abstract CRUD base). Use these inside `on_*` hooks or custom route
+methods to reuse the framework's plumbing.
+
+| Method | Description |
+|---|---|
+| `self.to_response_schema(obj)` | Serialise an ORM object to the configured response schema, applying alias rules and stripping `WriteOnly` fields. Returns a Pydantic model instance. |
+| `self.make_new_object(schema_obj, schema_cls=None)` | Async on `AsyncRestView`, sync on `RestView`. Build a new model instance from a schema, resolve any `*_id: IDSchema[...]` fields against the database, add it to `self.session`, flush, and return the persisted object. |
+| `self.update_object(obj, schema_obj, schema_cls=None)` | Apply the schema's writable fields to an existing object, resolve FK fields, flush, and return the object. |
+| `self.save_object(obj)` | Flush the session and refresh `obj` from the database, then return it. Override to inject behaviour right before/after a write. |
+| `self.delete_object(obj)` | Delete `obj` via the session and flush. |
+| `self.count_index(query_params)` | Return the total row count for the current list query (after filters, before pagination). Called by the default `index` only when `include_pagination_metadata = True`; available for use in replacement routes regardless. |
 
 ### View Free Functions
 

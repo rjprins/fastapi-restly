@@ -23,7 +23,8 @@ the type parameter the validator is a no-op and `id` stays typed as `Any`.
 
 - `ReadOnly[...]` fields are excluded from generated create/update input schemas.
 - `WriteOnly[...]` fields are accepted on input and excluded from serialized
-  responses. The filtering is done explicitly in `BaseRestView.to_response_schema()`,
+  responses. The filtering is done explicitly in `to_response_schema()` (a method
+  on `AsyncRestView` / `RestView`, defined on the internal abstract base they share),
   which skips any field where `is_field_writeonly()` returns `True`. FastAPI's
   response model serialization does **not** filter them; a custom serialization
   path that bypasses `to_response_schema()` would expose `WriteOnly` fields.
@@ -114,14 +115,15 @@ custom column types, declare an explicit schema and bypass auto-generation.
 ### AsyncRestView and RestView
 
 Both `AsyncRestView` (async) and `RestView` (sync) are public API and
-share the same CRUD structure via their common base `BaseRestView`. The
-choice between them is determined by which class you subclass — `AsyncRestView`
-hardcodes `session: AsyncSessionDep` and `RestView` hardcodes `session: SessionDep`.
-The async and sync variants have identical endpoint signatures; the only difference
-is that the async variant uses `await` in its process methods.
+share the same CRUD structure via an internal abstract base class (not exposed
+as `fr.*`). The choice between them is determined by which class you subclass —
+`AsyncRestView` hardcodes `session: AsyncSessionDep` and `RestView` hardcodes
+`session: SessionDep`. The async and sync variants have identical endpoint
+signatures; the only difference is that the async variant uses `await` in its
+process methods.
 
-`BaseRestView` exposes several class variables that affect endpoint
-registration and runtime behaviour:
+Both views expose several class variables that affect endpoint registration and
+runtime behaviour:
 
 - `schema` — the Pydantic schema class; auto-generated if absent.
 - `creation_schema`, `update_schema` — derived from `schema` if not declared.
@@ -165,7 +167,7 @@ the full request/response flow.
 
 Nested schemas serve two different roles in Restly today:
 
-- **Response serialization**: supported. `BaseRestView` recursively builds
+- **Response serialization**: supported. The CRUD views recursively build
   `selectinload(...)` options for nested relationship fields in the response
   schema, so related objects can be serialized efficiently and with aliases.
 - **Create/update payloads**: not supported in the general case. The default
@@ -229,10 +231,7 @@ The `use_fr_globals(globals_obj)` context manager swaps in an alternative
 savepoint-backed session factory without touching global state visible to other
 concurrent contexts.
 
-## More Topics
+## See Also
 
-```{toctree}
-:maxdepth: 1
-
-query_modifiers
-```
+- [How-To: Filter, Sort, and Paginate Lists](howto_query_modifiers.md) — full
+  V1 / V2 query-parameter reference.

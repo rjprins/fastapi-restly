@@ -122,7 +122,7 @@ Returns a `RestlyTestClient` wrapping the `app` fixture. Automatically asserts s
 | `patch`  | `200`                   |
 | `delete` | `204`                   |
 
-> **Note:** `put` is available on `RestlyTestClient` but `AsyncRestView` and `RestView` do not generate a `PUT` endpoint. Use `put` only if you add a custom PUT route to your view.
+> **Note:** `put` is available on `RestlyTestClient`. `AsyncRestView` and `RestView` do not generate a `PUT` endpoint by default, but `AsyncReactAdminView` / `ReactAdminView` do (to match `ra-data-simple-rest`). Use `put` against any of those views, or against a custom PUT route you add yourself.
 
 Override the expected code when testing error paths:
 

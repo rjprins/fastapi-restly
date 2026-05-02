@@ -44,7 +44,7 @@ PATCH /{id}
        └─ on_update(id, schema_obj)
             └─ on_get(id)            ← reuses the same 404 logic
             └─ update_object(obj, schema_obj)
-                 └─ save_object(obj)
+            └─ save_object(obj)      ← low-level hook — override to add side effects
 
 DELETE /{id}
   └─ delete()

@@ -373,7 +373,6 @@ from fastapi import Depends
 from sqlalchemy import create_engine, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 
-fr.DataclassBase.metadata.create_all(create_engine("sqlite:///blog.db"))
 fr.configure(async_database_url="sqlite+aiosqlite:///blog.db")
 
 app = fastapi.FastAPI()
@@ -393,6 +392,10 @@ class Comment(fr.IDBase):
     content: Mapped[str]
     post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
     author_id: Mapped[int | None] = mapped_column(default=None)
+
+
+# Create tables — must run AFTER model classes are declared so they're registered on the metadata.
+fr.DataclassBase.metadata.create_all(create_engine("sqlite:///blog.db"))
 
 
 # --- Schemas ---

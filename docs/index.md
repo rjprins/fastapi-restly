@@ -21,6 +21,7 @@ FastAPI-Restly implements **true class-based views** — real Python classes tha
 ```python
 import fastapi_restly as fr
 from fastapi import FastAPI
+from sqlalchemy import create_engine
 from sqlalchemy.orm import Mapped
 
 app = FastAPI()
@@ -32,6 +33,10 @@ fr.configure(async_database_url="sqlite+aiosqlite:///app.db")
 class User(fr.IDBase):
     name: Mapped[str]
     email: Mapped[str]
+
+# Create tables — for dev/SQLite only; use Alembic migrations in production.
+# Must run AFTER models are declared so they're registered on the metadata.
+fr.DataclassBase.metadata.create_all(create_engine("sqlite:///app.db"))
 
 # Create instant CRUD endpoints
 @fr.include_view(app)

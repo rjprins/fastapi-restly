@@ -2,70 +2,42 @@
 
 [![CI](https://github.com/rjprins/fastapi-restly/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/rjprins/fastapi-restly/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue)](https://github.com/rjprins/fastapi-restly/blob/main/pyproject.toml)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/rjprins/fastapi-restly/blob/main/LICENSE)
+[![License](https://img.shields.io/github/license/rjprins/fastapi-restly)](https://github.com/rjprins/fastapi-restly/blob/main/LICENSE)
+[![Status: Alpha](https://img.shields.io/badge/status-alpha-orange.svg)](CHANGELOG.md)
 [![Coverage](https://rjprins.github.io/fastapi-restly/coverage/badge.svg)](https://rjprins.github.io/fastapi-restly/coverage/)
 
 <p align="center">
   <img src="docs/_static/restly-cat.png" alt="FastAPI-Restly logo" width="200">
 </p>
 
-> **Warning**: This project is in active development and has not been released on PyPI yet. For installation, please clone the repository and install in development mode.
+**Build maintainable CRUD APIs on FastAPI, SQLAlchemy 2.0, and Pydantic v2 — with real class-based views.**
 
-**Documentation:** https://rjprins.github.io/fastapi-restly/
+> **Status:** `0.1.0` — alpha. APIs may shift before `1.0`; see the [Changelog](CHANGELOG.md). Not yet on PyPI:
+> ```bash
+> pip install git+https://github.com/rjprins/fastapi-restly.git
+> ```
 
-FastAPI-Restly helps you build **maintainable CRUD APIs faster** on top of **FastAPI**, **SQLAlchemy 2.0**, and **Pydantic v2**.
-It provides auto-generated endpoints, schemas, and filters while keeping everything extensible or customizable.
-
-FastAPI-Restly implements **true class-based views** — real Python classes that support inheritance and method overrides. Share common behavior across views by subclassing, and override individual CRUD methods without touching the rest.
+**Docs:** <https://rjprins.github.io/fastapi-restly/> · **[Changelog](CHANGELOG.md)** · **[Contributing](CONTRIBUTING.md)** · **[Security](SECURITY.md)** · **[Code of Conduct](CODE_OF_CONDUCT.md)** · **[Examples](example-projects/)**
 
 ## Why FastAPI-Restly?
 
-* **CRUD endpoints in minutes** – Create endpoints for SQLAlchemy models with auto-generated Pydantic schemas.
-* **True class-based views** – Real inheritance and method overrides, not just decorator wrappers. Share logic across views by subclassing.
-* **Customizable** – Override any CRUD endpoint or just its business logic, without awkward hacks.
-* **React Admin ready** – `AsyncReactAdminView` speaks the `ra-data-simple-rest` wire contract out of the box. Connect react-admin without writing a custom data provider.
-* **Modern stack** – Built for SQLAlchemy 2.0 and Pydantic v2, with async and sync support.
-* **Filtering, pagination, and sorting** – Two query parameter interfaces (JSONAPI-style and standard HTTP).
-* **Field control** – `ReadOnly` and `WriteOnly` field markers, plus relationship ID resolution via `IDSchema[...]`.
-* **Testing utilities** – `RestlyTestClient` and savepoint-based isolation fixtures for clean, fast tests.
+The differentiator is **true class-based views**. You subclass `RestView` / `AsyncRestView` and override hooks like `on_get`, `on_create`, or `save_object` — CRUD logic is *methods you can swap*, not opaque generated functions. Share behavior across views via inheritance the way you would with any Python class.
 
-## Philosophy
+* **CRUD endpoints in minutes** — auto-generates Pydantic schemas from your SQLAlchemy models.
+* **Override anything** — replace an endpoint, or just its business logic, without awkward hacks.
+* **React Admin ready** — `AsyncReactAdminView` speaks the `ra-data-simple-rest` wire contract, no custom data provider needed.
+* **Modern stack** — SQLAlchemy 2.0, Pydantic v2, async and sync support.
+* **Filtering, pagination, sorting** — JSONAPI-style and standard HTTP query interfaces.
+* **Field control** — `ReadOnly` / `WriteOnly` markers, plus relationship ID resolution via `IDSchema[...]`.
+* **Testing utilities** — `RestlyTestClient` and savepoint-based isolation fixtures.
 
-Restly is a stack of micro-libraries. Each layer adds convenience while letting you drop down for deeper control. The less customization you need, the more you get out-of-the-box — full customization never requires awkward hacks. Restly stays close to patterns already provided by FastAPI, Pydantic, and SQLAlchemy.
-
-## Quick Start
-
-### Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/rjprins/fastapi-restly.git
-cd fastapi-restly
-
-# Install project dependencies
-uv sync
-```
-
-### Typing Compatibility
-
-Restly keeps a small set of consumer-facing typing fixtures in
-[`tests/typing/`](tests/typing). These are checked
-with Pyright to catch editor regressions in normal framework usage.
-
-```bash
-make test-typing
-```
-
-### Basic Example
+## Quickstart
 
 ```python
 import fastapi_restly as fr
 from fastapi import FastAPI
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Mapped
-
-# Create tables — for demo purposes; use Alembic migrations in production
-fr.DataclassBase.metadata.create_all(create_engine("sqlite:///app.db"))
 
 fr.configure(async_database_url="sqlite+aiosqlite:///app.db")
 app = FastAPI()
@@ -77,7 +49,11 @@ class User(fr.IDBase):
     email: Mapped[str]
     age: Mapped[int]
 
-# Create CRUD endpoints with auto-generated pydantic schemas.
+# Create tables — for demo purposes; use Alembic migrations in production.
+# Must run AFTER model declaration so the table is registered on the metadata.
+fr.DataclassBase.metadata.create_all(create_engine("sqlite:///app.db"))
+
+# Create CRUD endpoints with auto-generated Pydantic schemas.
 # Use RestView instead of AsyncRestView for sync SQLAlchemy.
 @fr.include_view(app)
 class UserView(fr.AsyncRestView):
@@ -86,96 +62,112 @@ class UserView(fr.AsyncRestView):
 
 
 # That's it! You now have a fully functional API with:
-# - GET /users/ - List all users, complete with filtering, sorting and pagination
-# - POST /users/ - Create a user
-# - GET /users/{id} - Get a specific user
-# - PATCH /users/{id} - Partially update a user
-# - DELETE /users/{id} - Delete a user
+# - GET    /users/      — list with filtering, sorting, pagination
+# - POST   /users/      — create
+# - GET    /users/{id}  — read one
+# - PATCH  /users/{id}  — partial update
+# - DELETE /users/{id}  — delete
 ```
 
-Run it with any ASGI server, for example uvicorn (`uv add uvicorn`):
+Run it with any ASGI server (`uv add uvicorn`):
 
 ```bash
 uvicorn main:app --reload
 ```
 
-Then open **http://127.0.0.1:8000/docs** for the interactive Swagger UI.
+Then open <http://127.0.0.1:8000/docs> for the interactive Swagger UI.
 
-The framework automatically generates the Pydantic schema from your SQLAlchemy model, so you don't need to write schema definitions, unless you specifically want to.
+## How does it compare?
 
-### Auto-schema vs Explicit schema
+[`fastapi-crudrouter`](https://github.com/awtkns/fastapi-crudrouter) and [`fastcrud`](https://github.com/igorbenav/fastcrud) generate CRUD **functions** and register them on a router. FastAPI-Restly generates CRUD **methods on a class you can subclass**.
 
-Use **auto-schema** when speed matters most (prototyping, internal tools, simple models).
-Use an **explicit schema** when contract stability and control matter most (public APIs, custom validation, aliases, strict response shapes).
+| | fastapi-crudrouter | fastcrud | **fastapi-restly** |
+|---|---|---|---|
+| Style | Router factory | Router factory | **Class-based views** |
+| Customize an endpoint | Replace the route | Replace the route | Override `on_get` / `on_create` / `save_object`, or replace the route |
+| Share behavior across resources | Wrapper functions | Wrapper functions | **Subclass a base view** |
+| Schema generation | Optional | Optional | Optional (auto from model) |
+| SQLAlchemy 2.0 / Pydantic v2 | Partial | Yes | **Yes, native** |
+| React Admin wire contract | No | No | **Built-in (`AsyncReactAdminView`)** |
 
-## Advanced Features
+If you want a router that drops in and disappears, the CRUD-router libraries are a good fit. If you want a small object-oriented layer where every operation is a hookable method, that's Restly.
 
-### Manual Schema Definition
+## Philosophy
 
-If you need custom validation or field aliases, you can define schemas manually:
+Restly is a stack of micro-libraries. Each layer adds convenience while letting you drop down for deeper control. The less customization you need, the more you get out-of-the-box — full customization never requires awkward hacks. Restly stays close to patterns already provided by FastAPI, Pydantic, and SQLAlchemy.
+
+## Installation (development)
+
+```bash
+git clone https://github.com/rjprins/fastapi-restly.git
+cd fastapi-restly
+uv sync
+```
+
+### Typing compatibility
+
+Restly keeps consumer-facing typing fixtures in [`tests/typing/`](tests/typing) checked with Pyright to catch editor regressions:
+
+```bash
+make test-typing
+```
+
+## Advanced features
+
+### Manual schema definition
+
+For custom validation or field aliases:
 
 ```python
 class UserSchema(fr.IDSchema):
     name: str
     email: str
     age: int
-    # Field-level read-only
     internal_id: fr.ReadOnly[str]
 
 @fr.include_view(app)
 class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
-    schema = UserSchema  # Use custom schema
+    schema = UserSchema
 ```
 
-### Query Modifiers
+Use **auto-schema** for prototypes and internal tools. Use an **explicit schema** when contract stability and validation control matter (public APIs, aliases, strict response shapes).
 
-FastAPI-Restly supports two query parameter interfaces:
+### Query modifiers
+
+Two interfaces:
 
 **V1 (JSONAPI-style):**
 ```bash
-# Filtering
 GET /users/?filter[name]=John&filter[age]=>21
-
-# Sorting
 GET /users/?sort=name,-created_at
-
-# Pagination
 GET /users/?limit=10&offset=20
-
-# Contains search
 GET /users/?contains[name]=john
 ```
 
-**V2 (Standard HTTP):**
+**V2 (standard HTTP):**
 ```bash
-# Filtering
 GET /users/?name=John&email__contains=example
-
-# Sorting
 GET /users/?order_by=name,-created_at
-
-# Pagination
 GET /users/?page=2&page_size=10
 ```
 
 Notes:
-- V1 query parameters use schema field names, not aliases.
-- V2 query parameters use schema aliases for flat fields. If `populate_by_name=True` is enabled, flat fields also accept the Python field name.
-- For V2 relation filters, keep the relation path segment as the schema/model field name and only use aliases for nested fields. Example: `author.authorName=Alice`, not `writer.authorName=Alice`.
+- V1 uses schema field names, not aliases.
+- V2 uses schema aliases for flat fields. With `populate_by_name=True`, flat fields also accept the Python field name.
+- V2 relation filters keep the relation segment as the schema/model field name and only use aliases for nested fields. Example: `author.authorName=Alice`, not `writer.authorName=Alice`.
 
-### Read-Only and Write-Only Fields
+### Read-only and write-only fields
 
-`IDSchema` already provides a read-only `id` field, so you don't need to redeclare it unless you want to narrow the type.
+`IDSchema` already provides a read-only `id`, so don't redeclare it unless you need to narrow the type.
 
 ```python
 class UserSchema(fr.IDSchema):
-    # id is inherited from IDSchema as ReadOnly[Any]
     name: str
     email: str
-    password: fr.WriteOnly[str]       # Won't appear in responses
-    created_at: fr.ReadOnly[datetime]  # Can't be set in requests
+    password: fr.WriteOnly[str]        # never appears in responses
+    created_at: fr.ReadOnly[datetime]  # cannot be set in requests
 ```
 
 ### Relationships
@@ -189,14 +181,14 @@ class Order(fr.IDBase):
     total: Mapped[float]
 
 class OrderSchema(fr.IDSchema):
-    customer: CustomerSchema  # Nested object
-    customer_id: fr.IDSchema[Customer]  # Wire format: {"id": 123} — the framework resolves it to the FK value
+    customer: CustomerSchema             # nested object
+    customer_id: fr.IDSchema[Customer]   # wire format: {"id": 123} — resolved to FK
     total: float
 ```
 
-### Custom Endpoints
+### Custom endpoints and hooks
 
-Add extra endpoints using `@fr.get`, `@fr.post`, `@fr.put`, `@fr.patch`, `@fr.delete`, or the generic `@fr.route`. Override `on_*` hooks (e.g. `on_list`, `on_get`) to customise built-in CRUD logic without replacing the whole endpoint.
+Add endpoints with `@fr.get`, `@fr.post`, `@fr.put`, `@fr.patch`, `@fr.delete`, or the generic `@fr.route`. Override `on_*` hooks (`on_list`, `on_get`, `on_create`, ...) to customise built-in CRUD logic without replacing the endpoint.
 
 ```python
 @fr.include_view(app)
@@ -207,21 +199,16 @@ class UserView(fr.AsyncRestView):
 
     @fr.get("/{id}/download")
     async def download_user(self, id: int):
-        """Custom extra endpoint"""
         return {"id": id, "status": "ok"}
 
     async def on_list(self, query_params, query=None):
-        """Override default list behavior"""
         # Custom logic here
         return await super().on_list(query_params, query=query)
 ```
 
-### React Admin Integration
+### React Admin integration
 
-Use `AsyncReactAdminView` instead of `AsyncRestView` to get a backend that
-[react-admin](https://marmelab.com/react-admin/) with
-[`ra-data-simple-rest`](https://github.com/marmelab/react-admin/tree/master/packages/ra-data-simple-rest)
-connects to out of the box — no custom data provider needed:
+Use `AsyncReactAdminView` to get a backend that [react-admin](https://marmelab.com/react-admin/) with [`ra-data-simple-rest`](https://github.com/marmelab/react-admin/tree/master/packages/ra-data-simple-rest) connects to out of the box:
 
 ```python
 @fr.include_view(app)
@@ -233,30 +220,22 @@ class ProductView(fr.AsyncReactAdminView):
 
 The view speaks the `ra-data-simple-rest` wire contract:
 
-- **List** — translates `sort=["name","ASC"]`, `range=[0,24]`, and
-  `filter={"name":"foo"}` into SQL and returns a plain JSON array with a
-  `Content-Range: items 0-24/315` header.
-- **All other CRUD** — `GET /{id}`, `POST /`, `PATCH /{id}`, and
-  `DELETE /{id}` work unchanged.
+- **List** — translates `sort=["name","ASC"]`, `range=[0,24]`, and `filter={"name":"foo"}` into SQL and returns a JSON array with a `Content-Range: items 0-24/315` header.
+- **All other CRUD** — `GET /{id}`, `POST /`, `PATCH /{id}`, `DELETE /{id}` work unchanged.
 
-See [React Admin Integration](https://rjprins.github.io/fastapi-restly/howto_react_admin.html)
-in the docs for CORS setup and customization options.
+See [React Admin Integration](https://rjprins.github.io/fastapi-restly/howto_react_admin.html) in the docs for CORS setup and customization.
 
-### Excluding Built-in Routes
-
-Disable any of the default CRUD endpoints with `exclude_routes`:
+### Excluding built-in routes
 
 ```python
 @fr.include_view(app)
 class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
-    exclude_routes = ("delete",)  # Names: "index", "get", "post", "patch", "delete"
+    exclude_routes = ("delete",)  # names: "index", "get", "post", "patch", "delete"
 ```
 
-### Pagination Metadata
-
-Set `include_pagination_metadata = True` to wrap list responses with count and page information:
+### Pagination metadata
 
 ```python
 @fr.include_view(app)
@@ -264,26 +243,12 @@ class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
     include_pagination_metadata = True
-    # Response shape: {"items": [...], "total": N, "page": 1, "page_size": 100, "total_pages": N, ...}
+    # Response: {"items": [...], "total": N, "page": 1, "page_size": 100, "total_pages": N, ...}
 ```
-
-## Documentation
-
-- **[Getting Started](https://rjprins.github.io/fastapi-restly/getting_started.html)** - Fast path from zero to a working API
-- **[User Guide](https://rjprins.github.io/fastapi-restly/user_guide.html)** - Tutorial walkthroughs and in-depth topic guides
-- **[API Reference](https://rjprins.github.io/fastapi-restly/api_reference.html)** - Complete API documentation
-
-## Examples
-
-Check out the [example projects](example-projects/) for complete applications:
-
-- **[Shop](example-projects/shop/)** - E-commerce API with products, orders, and customers
-- **[Blog](example-projects/blog/)** - Minimal blog with a single `Blog` model
-- **[SaaS](example-projects/saas/)** - Multi-tenant project management API
 
 ## Testing
 
-`fastapi_restly.testing` provides pytest fixtures (`app`, `client`, `async_session`, `session`) with **savepoint-based isolation** — each test runs inside a database transaction that rolls back automatically, so no data leaks between tests. Add them to your project's `conftest.py`:
+`fastapi_restly.testing` provides pytest fixtures (`app`, `client`, `async_session`, `session`) with **savepoint-based isolation** — each test runs inside a transaction that rolls back automatically, so no data leaks between tests. Add to your `conftest.py`:
 
 ```python
 # conftest.py
@@ -294,7 +259,7 @@ pytest_plugins = ["fastapi_restly.pytest_fixtures"]
 fr.configure(async_database_url="sqlite+aiosqlite:///test.db")
 ```
 
-`RestlyTestClient` automatically asserts the expected HTTP status code on every call (`200` for GET, `201` for POST, `204` for DELETE, etc.) and raises a descriptive `AssertionError` with the response body on failure — no manual status checks needed.
+`RestlyTestClient` automatically asserts the expected HTTP status (`200` for GET, `201` for POST, `204` for DELETE, ...) and raises a descriptive `AssertionError` with the response body on failure:
 
 ```python
 # test_users.py
@@ -312,8 +277,6 @@ Pass `assert_status_code=None` to skip the assertion and inspect the response yo
 
 ## Configuration
 
-### Database Setup
-
 ```python
 # Async SQLite
 fr.configure(async_database_url="sqlite+aiosqlite:///app.db")
@@ -325,10 +288,24 @@ fr.configure(async_database_url="postgresql+asyncpg://user:pass@localhost/db")
 fr.configure(database_url="sqlite:///app.db")
 ```
 
+## Documentation
+
+- **[Getting Started](https://rjprins.github.io/fastapi-restly/getting_started.html)** — fast path from zero to a working API
+- **[User Guide](https://rjprins.github.io/fastapi-restly/user_guide.html)** — tutorial walkthroughs and topic guides
+- **[API Reference](https://rjprins.github.io/fastapi-restly/api_reference.html)** — complete API docs
+
+## Examples
+
+Complete applications under [`example-projects/`](example-projects/):
+
+- **[Shop](example-projects/shop/)** — e-commerce API with products, orders, customers
+- **[Blog](example-projects/blog/)** — minimal blog with a single `Blog` model
+- **[SaaS](example-projects/saas/)** — multi-tenant project management API
+
 ## Contributing
 
-We welcome contributions through pull requests and issue discussions.
+Pull requests and issue discussions welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, coding standards, and the test workflow. By participating you agree to the [Code of Conduct](CODE_OF_CONDUCT.md). Security issues: see [SECURITY.md](SECURITY.md).
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT — see [LICENSE](LICENSE).

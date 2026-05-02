@@ -21,7 +21,8 @@ set_query_modifier_version(QueryModifierVersion.V2)
 
 `use_query_modifier_version` is a context manager that temporarily switches the active
 version and resets it on exit. It is mainly useful in tests and when calling low-level
-helpers like `create_query_param_schema(...)` or `apply_query_modifiers(...)` directly.
+helpers like `fastapi_restly.query.create_query_param_schema(...)` or
+`fr.apply_query_modifiers(...)` directly.
 Already-registered views keep the version they captured during `@fr.include_view(...)`.
 
 ```python

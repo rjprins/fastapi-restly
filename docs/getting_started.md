@@ -30,15 +30,17 @@ from sqlalchemy.orm import Mapped
 
 fr.configure(async_database_url="sqlite+aiosqlite:///app.db")
 
-# Create tables — for dev/SQLite only; use Alembic migrations in production
-fr.DataclassBase.metadata.create_all(create_engine("sqlite:///app.db"))
-
 app = FastAPI()
 
 
 class User(fr.IDBase):
     name: Mapped[str]
     email: Mapped[str]
+
+
+# Create tables — for dev/SQLite only; use Alembic migrations in production.
+# Must run AFTER the model classes are declared so they are registered on the metadata.
+fr.DataclassBase.metadata.create_all(create_engine("sqlite:///app.db"))
 
 
 @fr.include_view(app)
