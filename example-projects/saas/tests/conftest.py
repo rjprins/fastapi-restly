@@ -1,30 +1,15 @@
-# Import app.main to set up database connection before fixtures run
-import asyncio
-from pathlib import Path
-
-import app.main  # noqa: F401  -- registers fr.configure() before fixtures run
+# Import app.main to register views and call fr.configure() before fixtures run.
+import app.main  # noqa: F401
 import pytest
-from app.main import app as saas_app
 
 import fastapi_restly as fr
 
 pytest_plugins = ["fastapi_restly.pytest_fixtures"]
 
 
-async def _create_tables():
-    """Create all tables asynchronously."""
+@pytest.fixture(autouse=True)
+async def use_in_memory_database():
+    """Switch to a fresh in-memory SQLite database for each test."""
+    fr.configure(async_database_url="sqlite+aiosqlite:///:memory:")
     async with fr.get_async_engine().begin() as conn:
         await conn.run_sync(fr.DataclassBase.metadata.create_all)
-
-
-# Delete the database file if it exists and create fresh tables
-db_file = Path("saas.db")
-if db_file.exists():
-    db_file.unlink()
-
-asyncio.run(_create_tables())
-
-
-@pytest.fixture
-def app():
-    return saas_app

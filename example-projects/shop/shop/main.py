@@ -1,22 +1,21 @@
 """
 Shop example for FastAPI-Restly.
 
-This example demonstrates:
-- Custom endpoints
-- Custom filtering
-- Custom sorting
-- Custom pagination
-- Custom validation
+This example demonstrates auto-generated CRUD with React-Admin-compatible
+endpoints, integer/UUID primary keys, timestamp mixins, and one-to-many and
+many-to-many relationships -- all driven by the framework's defaults with no
+custom endpoints, filters, or schema overrides.
+
+For an example showcasing customization (custom endpoints, hooks, validation,
+authorization), see ``example-projects/saas``.
 """
 
 from contextlib import asynccontextmanager
-from typing import ClassVar
 from uuid import UUID, uuid4
 
 import sqlalchemy as sa
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from sqlalchemy import orm
-from sqlalchemy.dialects.postgresql import UUID as POSTGRES_UUID
 from starlette.middleware.cors import CORSMiddleware
 
 import fastapi_restly as fr

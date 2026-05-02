@@ -18,12 +18,16 @@ dependencies = [
 where = ["."]
 include = ["blog"]
 
+[tool.pytest.ini_options]
+pythonpath = ["."]
+
 [tool.uv.sources]
 fastapi-restly = { path = "../../", editable = true }
 
 [dependency-groups]
 dev = [
     "pytest>=8.3.5",
+    "pytest-asyncio>=0.24.0",
     "httpx>=0.28.1",
     "ipython>=8.37.0",
 ]

@@ -6,15 +6,9 @@ requires-python = ">=3.10"
 dependencies = [
     "fastapi>=0.115.12",
     "fastapi-restly",
+    "uvicorn[standard]>=0.32.1",
     "sqlalchemy[asyncio]>=2.0.41",
     "aiosqlite>=0.21.0",
-]
-
-[project.optional-dependencies]
-dev = [
-    "pytest>=8.3.5",
-    "pytest-asyncio",
-    "httpx>=0.28.1",
 ]
 
 [tool.pytest.ini_options]

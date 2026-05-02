@@ -1,8 +1,21 @@
 # test-admin
 
-## Installation
+A React Admin frontend for the FastAPI-Restly `shop` example. Demonstrates
+that `AsyncReactAdminView` is wire-compatible with
+[`ra-data-simple-rest`](https://github.com/marmelab/react-admin/tree/master/packages/ra-data-simple-rest)
+out of the box -- no custom data provider needed.
 
-Install the application dependencies by running:
+## Prerequisites
+
+The shop API server must be running. From the repo root:
+
+```sh
+cd example-projects/shop
+uv sync
+uv run uvicorn shop.main:app --reload --port 8001
+```
+
+## Installation
 
 ```sh
 npm install
@@ -10,22 +23,50 @@ npm install
 
 ## Development
 
-Start the application in development mode by running:
-
 ```sh
 npm run dev
 ```
 
-## Production
+This starts Vite on http://localhost:5173 and proxies API calls to whatever
+URL is configured in `.env`.
 
-Build the application in production mode by running:
+## Production build
 
 ```sh
 npm run build
 ```
 
-## DataProvider
+## Type checking
 
-The included data provider use [ra-data-simple-rest](https://github.com/marmelab/react-admin/tree/master/packages/ra-data-simple-rest). It fits REST APIs using simple GET parameters for filters and sorting. This is the dialect used for instance in [FakeRest](https://github.com/marmelab/FakeRest).
+```sh
+npm run type-check
+```
 
-You'll find an `.env` file at the project root that includes a `VITE_JSON_SERVER_URL` variable. Set it to the URL of your backend.
+Runs `tsc -p tsconfig.app.json --noEmit` against the `src/` tree.
+
+## End-to-end tests
+
+A Playwright suite lives under `e2e/`. With both the API server and the Vite
+dev server running:
+
+```sh
+npx playwright test
+```
+
+## Configuration
+
+The data provider URL is read from the `VITE_API_URL` environment variable in
+`.env` (defaulting to `http://localhost:8001` if unset). Update `.env` to
+point the UI at a different backend.
+
+## Why this works without a custom data provider
+
+`ra-data-simple-rest` expects:
+
+- List endpoints to return a plain JSON array
+- A `Content-Range` response header for pagination
+- Query params `?range=[0,9]&sort=["name","ASC"]&filter={...}`
+
+`AsyncReactAdminView` (and its sync counterpart) implements exactly that
+contract. See `tests/test_react_admin.py` in the shop project for a compact
+spec of the wire contract.

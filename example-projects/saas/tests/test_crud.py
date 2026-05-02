@@ -1119,7 +1119,7 @@ class TestNestedRoutes:
 
     def test_nested_route_with_nonexistent_project(self, client):
         """Test that nested routes return 404 for nonexistent project."""
-        response = client.get("/projects/99999/tasks", assert_status_code=404)
+        client.get("/projects/99999/tasks", assert_status_code=404)
 
 
 class TestMeEndpoints:

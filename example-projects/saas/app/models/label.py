@@ -1,7 +1,5 @@
 """Label model and TaskLabel association."""
 
-from datetime import datetime
-
 from sqlalchemy import ForeignKey, orm
 
 import fastapi_restly as fr

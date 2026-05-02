@@ -1,14 +1,10 @@
 import json
-from pathlib import Path
-
-from fastapi.testclient import TestClient
 
 from blog.main import app
+from fastapi.testclient import TestClient
 
-root = Path(__file__).parent.parent
 
-
-def test_openapi_spec():
+def test_openapi_spec(tmp_path):
     with TestClient(app) as client:
         response = client.get("/openapi.json")
         spec = response.json()
@@ -23,8 +19,12 @@ def test_openapi_spec():
             "PATCH /blogs/{id}",
             "DELETE /blogs/{id}",
         ]
-        with open(root / "openapi.json", "w") as fp:
-            json.dump(response.json(), fp, indent=2)
+        # Snapshot the spec to a temp dir for inspection during the test run only.
+        # Writing to the project directory would create spurious git diffs.
+        snapshot = tmp_path / "openapi.json"
+        with open(snapshot, "w") as fp:
+            json.dump(spec, fp, indent=2)
+        assert snapshot.exists()
 
 
 def test_get_blog_listing():

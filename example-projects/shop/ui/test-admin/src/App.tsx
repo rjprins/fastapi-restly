@@ -14,6 +14,7 @@ import {
   Show,
   SimpleShowLayout,
   Create,
+  Edit,
   SimpleForm,
   TextInput,
   NumberInput,
@@ -24,7 +25,9 @@ import {
 import { Layout } from "./Layout";
 import simpleRestProvider from 'ra-data-simple-rest';
 
-const dataProvider = simpleRestProvider('http://localhost:8001');
+const dataProvider = simpleRestProvider(
+  import.meta.env.VITE_API_URL ?? 'http://localhost:8001'
+);
 
 // ---------------------------------------------------------------------------
 // Customers
@@ -168,7 +171,7 @@ const OrderCreate = () => (
 
 export const App = () => (
   <Admin layout={Layout} dataProvider={dataProvider}>
-    <Resource name="customers" list={CustomerList} create={CustomerCreate} edit={EditGuesser} show={CustomerShow} />
+    <Resource name="customers" list={CustomerList} create={CustomerCreate} edit={CustomerEdit} show={CustomerShow} />
     <Resource name="products"  list={ProductList}  create={ProductCreate}  edit={EditGuesser} show={ProductShow} />
     <Resource name="orders"    list={OrderList}    create={OrderCreate}    edit={EditGuesser} show={OrderShow} />
   </Admin>

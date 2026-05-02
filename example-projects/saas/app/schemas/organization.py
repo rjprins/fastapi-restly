@@ -6,8 +6,6 @@ from pydantic import BaseModel, field_validator
 
 import fastapi_restly as fr
 
-from ..models import Organization
-
 
 class OrganizationSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
     """Schema for Organization model."""
