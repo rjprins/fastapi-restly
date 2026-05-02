@@ -93,7 +93,7 @@ def test_v2_empty_result_with_metadata(client):
     assert payload["total"] == 0
     assert payload["items"] == []
     assert payload["page"] == 1
-    assert payload["page_size"] == fr.DEFAULT_PAGE_SIZE
+    assert payload["page_size"] == fr.query.DEFAULT_PAGE_SIZE
     # total_pages is the ceiling of total/page_size; 0/N = 0.
     assert payload["total_pages"] == 0
 
@@ -194,18 +194,18 @@ def test_v1_offset_past_end_with_metadata(client):
 
 
 def test_v1_very_large_limit_is_capped_at_max(client):
-    """V1 caps ``limit`` at :data:`fr.MAX_LIMIT`. Anything above is 422."""
+    """V1 caps ``limit`` at :data:`fr.query.MAX_LIMIT`. Anything above is 422."""
     _setup_v1_view(client, include_metadata=True)
     for i in range(5):
         client.post("/widgets/", json={"name": f"W{i}"})
 
     response = client.get(
-        f"/widgets/?limit={fr.MAX_LIMIT + 1}", assert_status_code=422
+        f"/widgets/?limit={fr.query.MAX_LIMIT + 1}", assert_status_code=422
     )
     assert response.status_code == 422
 
     # The maximum value is accepted.
-    response = client.get(f"/widgets/?limit={fr.MAX_LIMIT}")
+    response = client.get(f"/widgets/?limit={fr.query.MAX_LIMIT}")
     assert response.status_code == 200
     payload = response.json()
     assert payload["total"] == 5
@@ -232,7 +232,7 @@ def test_v1_per_view_max_limit_override_propagates_to_schema(client):
     assert le_meta.le == 5000
 
     # Values above the framework default but below the per-view max pass.
-    response = client.get(f"/big-widgets/?limit={fr.MAX_LIMIT + 100}")
+    response = client.get(f"/big-widgets/?limit={fr.query.MAX_LIMIT + 100}")
     assert response.status_code == 200
 
 
@@ -305,13 +305,13 @@ def test_v2_page_out_of_range_returns_empty_items(client):
 
 
 def test_v2_very_large_page_size_is_capped_at_max(client):
-    """V2 caps ``page_size`` at :data:`fr.MAX_PAGE_SIZE`. Anything above is 422."""
+    """V2 caps ``page_size`` at :data:`fr.query.MAX_PAGE_SIZE`. Anything above is 422."""
     _setup_v2_view(client, include_metadata=True)
     for i in range(3):
         client.post("/widgets-v2/", json={"name": f"X{i}"})
 
     response = client.get(
-        f"/widgets-v2/?page_size={fr.MAX_PAGE_SIZE + 1}", assert_status_code=422
+        f"/widgets-v2/?page_size={fr.query.MAX_PAGE_SIZE + 1}", assert_status_code=422
     )
     assert response.status_code == 422
     body = response.json()
@@ -340,5 +340,5 @@ def test_v2_per_view_max_page_size_override_propagates_to_schema(client):
     assert page_size_field.default == 500
 
     # Values above the framework default but below the per-view max pass.
-    response = client.get(f"/big-items/?page_size={fr.MAX_PAGE_SIZE + 100}")
+    response = client.get(f"/big-items/?page_size={fr.query.MAX_PAGE_SIZE + 100}")
     assert response.status_code == 200
