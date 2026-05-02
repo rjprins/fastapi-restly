@@ -58,6 +58,8 @@ from typing import (
 
 import fastapi
 import pydantic
+from fastapi import BackgroundTasks, Request, Response, WebSocket
+from fastapi.params import Depends as _DependsMarker
 from pydantic import create_model
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.orm import DeclarativeBase, selectinload
@@ -856,6 +858,18 @@ def _annotate_self(view_cls: type[View], endpoint: Callable) -> None:
     endpoint.__signature__ = sig.replace(parameters=new_params)  # type: ignore[attr-defined]
 
 
+# Bare-typed annotations FastAPI special-cases for parameter injection
+# (no ``Depends(...)`` marker required). Treated alongside ``Depends``-
+# marked annotations as DI-wired class attributes; everything else is
+# left as plain typing.
+_FASTAPI_SPECIAL_INJECTABLE: tuple[type, ...] = (
+    Request,
+    Response,
+    BackgroundTasks,
+    WebSocket,
+)
+
+
 def _init_class_based_view(view_cls: type[View]) -> None:
     """
     Note: Copied (MIT license) and adjusted from: https://github.com/dmontagu/fastapi-utils/blob/master/fastapi_utils/cbv.py
@@ -875,10 +889,46 @@ def _init_class_based_view(view_cls: type[View]) -> None:
         if x.kind
         not in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD)
     ]
-    dependency_names: list[str] = []
-    for name, annotation in get_type_hints(view_cls, include_extras=True).items():
-        if get_origin(annotation) is ClassVar:
+    # Marker-based DI with MRO-aware shadowing: walk the MRO from the
+    # base classes upward and pick, for each name, an annotation that
+    # either carries a ``Depends(...)`` marker or names one of FastAPI's
+    # bare-injectable special types (``Request`` / ``Response`` etc.).
+    # A *plain* annotation on a more-derived class (e.g. a mixin
+    # declaring ``session: AsyncSession`` for static-typing purposes)
+    # does NOT shadow a marker-bearing annotation from a base — the
+    # framework prefers wiring fidelity over the most-derived hint.
+    # Without this rule, any plain annotation a mixin adds would
+    # silently break dependency injection.
+    di_annotations: dict[str, Any] = {}
+    for cls in reversed(view_cls.__mro__):
+        try:
+            cls_hints = get_type_hints(cls, include_extras=True)
+        except Exception:
             continue
+        for name, annotation in cls_hints.items():
+            if get_origin(annotation) is ClassVar:
+                continue
+            metadata = getattr(annotation, "__metadata__", ())
+            has_depends_marker = any(
+                isinstance(m, _DependsMarker) for m in metadata
+            )
+            underlying = (
+                annotation
+                if get_origin(annotation) is not Annotated
+                else (get_args(annotation)[0] if get_args(annotation) else annotation)
+            )
+            is_special_type = (
+                inspect.isclass(underlying)
+                and issubclass(underlying, _FASTAPI_SPECIAL_INJECTABLE)
+            )
+            if has_depends_marker or is_special_type:
+                # Marker-bearing annotation wins, regardless of MRO position.
+                di_annotations[name] = annotation
+            # Plain annotations are silently ignored — they neither set
+            # nor clear an entry in di_annotations.
+
+    dependency_names: list[str] = []
+    for name, annotation in di_annotations.items():
         dependency_names.append(name)
         default_value = getattr(view_cls, name, inspect.Parameter.empty)
         new_parameters.append(
