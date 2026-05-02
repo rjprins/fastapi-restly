@@ -210,30 +210,45 @@ For generated CRUD endpoints:
 | `default_page_size` | `ClassVar[int \| None]` | Default `?page_size=` for V2 list endpoints. `None` (the default) means "no implicit cap" — every matching row is returned. |
 | `max_page_size` | `ClassVar[int]` | Upper bound for `?page_size=` on V2 list endpoints. Values above are rejected with 422. Defaults to `1000`. |
 
+### CRUD Utility Free Functions
+
+These module-level functions are the primitive surface for building and
+persisting ORM objects from schemas. Use them anywhere you have a session
+— inside `on_*` hooks, in custom routes, in services, or in test setup.
+Each variant exists in both sync and async form, matching the session
+type you have on hand.
+
+| Symbol | Description |
+|---|---|
+| `fr.make_new_object(session, model_cls, schema_obj, schema_cls=None)` | Build a new `model_cls` instance from `schema_obj`, resolve any `*_id: IDSchema[...]` fields against the database, and add the object to `session`. **Does not flush.** Call `fr.save_object(session, obj)` afterwards to persist. |
+| `fr.update_object(session, obj, schema_obj, schema_cls=None)` | Apply the schema's writable fields onto an existing ORM `obj` and resolve FK fields. **Does not flush.** Call `fr.save_object(session, obj)` afterwards to persist. |
+| `fr.save_object(session, obj)` | Flush the session and refresh `obj` so server-side defaults and generated columns (PKs, timestamps) are populated. Returns `obj`. This is where writes actually hit the database. |
+| `fr.async_make_new_object(session, model_cls, schema_obj, schema_cls=None)` | Async equivalent of `fr.make_new_object`. Pass an `AsyncSession`. |
+| `fr.async_update_object(session, obj, schema_obj, schema_cls=None)` | Async equivalent of `fr.update_object`. |
+| `fr.async_save_object(session, obj)` | Async equivalent of `fr.save_object`. |
+
 ### View Instance Methods
 
-Methods available on every `AsyncRestView` / `RestView` instance (inherited from
-the internal abstract CRUD base). Use these inside `on_*` hooks or custom route
-methods to reuse the framework's plumbing.
+Every `AsyncRestView` / `RestView` instance exposes ergonomic wrappers
+around the free functions above. The wrappers bind `self.session`,
+`self.model`, and `self.schema` so the dominant case
+(`self.make_new_object(schema_obj)`) doesn't have to thread them
+explicitly. The async/sync split is implicit: `AsyncRestView.make_new_object`
+calls `async_make_new_object` under the hood, `RestView.make_new_object`
+calls the sync version.
+
+Use these inside `on_*` hooks or custom route methods. When you need to
+work with a model that isn't `self.model` (e.g. creating a sibling row
+in a custom endpoint) reach for the free functions instead.
 
 | Method | Description |
 |---|---|
 | `self.to_response_schema(obj)` | Serialise an ORM object to the configured response schema, applying alias rules and stripping `WriteOnly` fields. Returns a Pydantic model instance. |
-| `self.make_new_object(schema_obj, schema_cls=None)` | Async on `AsyncRestView`, sync on `RestView`. Build a new model instance from a schema, resolve any `*_id: IDSchema[...]` fields against the database, and add it to `self.session`. **Does not flush** — call `self.save_object(obj)` afterwards to persist. |
-| `self.update_object(obj, schema_obj, schema_cls=None)` | Apply the schema's writable fields to an existing object and resolve FK fields. **Does not flush** — call `self.save_object(obj)` afterwards to persist. |
-| `self.save_object(obj)` | Flush the session and refresh `obj` from the database, then return it. This is where writes actually hit the database; call it explicitly after `make_new_object` / `update_object` or after mutating an object in an `on_*` hook. |
-| `self.delete_object(obj)` | Delete `obj` via the session and flush. |
+| `self.make_new_object(schema_obj, schema_cls=None)` | Wraps `fr.make_new_object` / `fr.async_make_new_object` against `self.session`, `self.model`, `self.schema`. **Does not flush** — call `self.save_object(obj)` afterwards. |
+| `self.update_object(obj, schema_obj, schema_cls=None)` | Wraps `fr.update_object` / `fr.async_update_object`. **Does not flush** — call `self.save_object(obj)` afterwards. |
+| `self.save_object(obj)` | Wraps `fr.save_object` / `fr.async_save_object` against `self.session`. Flush + refresh; this is where writes actually hit the database. |
+| `self.delete_object(obj)` | Delete `obj` via `self.session` and flush. |
 | `self.count_index(query_params)` | Return the total row count for the current list query (after filters, before pagination). Called by the default `index` only when `include_pagination_metadata = True`; available for use in replacement routes regardless. |
-
-### View Free Functions
-
-These module-level functions mirror the instance methods on `AsyncRestView` / `RestView` but take an explicit session argument. Use them when you need the same logic outside a view class.
-
-| Symbol | Description |
-|---|---|
-| `fr.make_new_object(session, model_cls, schema_obj, schema_cls=None)` | Create a new model instance from a schema, resolve FK `IDSchema` fields, add to session, and return the object. **Does not flush** — call `fr.save_object(session, obj)` afterwards. |
-| `fr.update_object(session, obj, schema_obj, schema_cls=None)` | Apply schema fields to an existing ORM object and resolve FK fields. **Does not flush** — call `fr.save_object(session, obj)` afterwards. |
-| `fr.save_object(session, obj)` | Flush the session and refresh `obj` from the database, then return it. This is where writes actually hit the database. |
 
 ### Database
 
