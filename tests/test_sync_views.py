@@ -8,7 +8,7 @@ from sqlalchemy.pool import StaticPool
 
 import fastapi_restly as fr
 from fastapi_restly.db import fr_globals
-from fastapi_restly.views._sync import make_new_object, update_object
+from fastapi_restly.views._sync import make_new_object, save_object, update_object
 
 
 @pytest.fixture
@@ -102,6 +102,65 @@ def test_sync_object_helpers_handle_readonly_and_relationship_inputs(sync_db):
             AssignmentSchema(owner_id=fr.IDSchema(id=replacement_author.id)),
         )
         assert updated_assignment.owner_id == replacement_author.id
+
+
+def test_sync_save_object_flushes_and_refreshes(sync_db):
+    """save_object should flush the session so server-generated defaults like
+    autoincrement PKs are populated on the returned object."""
+    engine, make_session = sync_db
+
+    class Widget(fr.IDBase):
+        name: Mapped[str]
+
+    class WidgetSchema(fr.IDSchema):
+        id: fr.ReadOnly[int]
+        name: str
+
+    fr.DataclassBase.metadata.create_all(engine)
+
+    with make_session() as session:
+        obj = make_new_object(
+            session, Widget, WidgetSchema(id=0, name="gizmo"), WidgetSchema
+        )
+        # Before save_object the PK should not be assigned.
+        assert obj.id is None or obj.id == 0
+        saved = save_object(session, obj)
+        assert saved is obj
+        assert isinstance(saved.id, int)
+        assert saved.id > 0
+        assert saved.name == "gizmo"
+
+
+def test_sync_update_object_only_applies_set_fields(sync_db):
+    """update_object should ignore fields the caller did not explicitly set,
+    matching get_writable_inputs semantics — i.e. PATCH partial-update behaviour."""
+    engine, make_session = sync_db
+
+    class Item(fr.IDBase):
+        name: Mapped[str]
+        notes: Mapped[str]
+
+    class ItemSchema(fr.IDSchema):
+        id: fr.ReadOnly[int]
+        name: str
+        notes: str
+
+    UpdateItemSchema = fr.schemas.create_model_with_optional_fields(ItemSchema)
+
+    fr.DataclassBase.metadata.create_all(engine)
+
+    with make_session() as session:
+        item = make_new_object(
+            session, Item, ItemSchema(id=0, name="orig", notes="keep"), ItemSchema
+        )
+        save_object(session, item)
+
+        # Only ``name`` is set in the partial payload; ``notes`` is unset and
+        # should not be overwritten.
+        partial = UpdateItemSchema(name="renamed")
+        update_object(session, item, partial, ItemSchema)
+        assert item.name == "renamed"
+        assert item.notes == "keep"
 
 
 def test_sync_rest_view_crud_and_pagination(sync_db):

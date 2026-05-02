@@ -8,6 +8,11 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 import fastapi_restly as fr
+from fastapi_restly.views._async import (
+    async_make_new_object,
+    async_save_object,
+    async_update_object,
+)
 
 
 def _make_engine_and_session():
@@ -106,6 +111,135 @@ def test_async_object_helpers_handle_readonly_and_relationship_inputs():
         await engine.dispose()
 
     asyncio.run(run())
+
+
+def test_async_free_functions_handle_readonly_and_relationship_inputs():
+    """Mirror of test_sync_object_helpers_handle_readonly_and_relationship_inputs
+    but exercising the module-level async_make_new_object / async_update_object
+    / async_save_object free functions instead of the view methods."""
+
+    class Author(fr.IDBase):
+        name: Mapped[str]
+
+    class Article(fr.IDBase):
+        title: Mapped[str]
+        author_id: Mapped[int] = mapped_column(ForeignKey("author.id"))
+        author: Mapped[Author] = relationship(default=None)
+
+    class Assignment(fr.IDBase):
+        owner_id: Mapped[int]
+
+    class ArticleSchema(fr.IDSchema):
+        id: fr.ReadOnly[int]
+        title: str
+        author_id: fr.IDSchema[Author]
+
+    class AssignmentSchema(fr.BaseSchema):
+        owner_id: fr.IDSchema
+
+    async def run():
+        engine, make_session = _make_engine_and_session()
+        async with engine.begin() as conn:
+            await conn.run_sync(fr.DataclassBase.metadata.create_all)
+
+        async with make_session() as session:
+            original_author = Author(name="Alice")
+            replacement_author = Author(name="Bob")
+            session.add_all([original_author, replacement_author])
+            await session.flush()
+
+            create_payload = ArticleSchema(
+                id=999,
+                title="Draft",
+                author_id={"id": original_author.id},
+            )
+            article = await async_make_new_object(
+                session, Article, create_payload, ArticleSchema
+            )
+            saved = await async_save_object(session, article)
+            assert saved is article
+            assert article.id != 999
+            assert isinstance(article.id, int)
+            assert article.author_id == original_author.id
+
+            update_payload = ArticleSchema(
+                id=12345,
+                title="Published",
+                author_id={"id": replacement_author.id},
+            )
+            await async_update_object(session, article, update_payload, ArticleSchema)
+            assert article.title == "Published"
+            assert article.author_id == replacement_author.id
+            assert article.author.id == replacement_author.id
+
+            # Bare IDSchema (no model annotation) should still resolve via .id.
+            assignment = await async_make_new_object(
+                session,
+                Assignment,
+                AssignmentSchema(owner_id=fr.IDSchema(id=original_author.id)),
+            )
+            await session.flush()
+            assert assignment.owner_id == original_author.id
+
+            await async_update_object(
+                session,
+                assignment,
+                AssignmentSchema(owner_id=fr.IDSchema(id=replacement_author.id)),
+            )
+            assert assignment.owner_id == replacement_author.id
+
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_async_update_object_only_applies_set_fields():
+    """async_update_object should ignore fields the caller did not explicitly
+    set, matching get_writable_inputs / PATCH partial-update semantics."""
+
+    class Item(fr.IDBase):
+        name: Mapped[str]
+        notes: Mapped[str]
+
+    class ItemSchema(fr.IDSchema):
+        id: fr.ReadOnly[int]
+        name: str
+        notes: str
+
+    UpdateItemSchema = fr.schemas.create_model_with_optional_fields(ItemSchema)
+
+    async def run():
+        engine, make_session = _make_engine_and_session()
+        async with engine.begin() as conn:
+            await conn.run_sync(fr.DataclassBase.metadata.create_all)
+
+        async with make_session() as session:
+            item = await async_make_new_object(
+                session,
+                Item,
+                ItemSchema(id=0, name="orig", notes="keep"),
+                ItemSchema,
+            )
+            await async_save_object(session, item)
+
+            partial = UpdateItemSchema(name="renamed")
+            await async_update_object(session, item, partial, ItemSchema)
+            assert item.name == "renamed"
+            assert item.notes == "keep"
+
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_async_free_functions_importable_from_views_package():
+    """Sanity check that the async free functions are exposed from
+    ``fastapi_restly.views`` (mirroring the sync helpers)."""
+    import fastapi_restly.views as fv
+
+    assert fv.async_make_new_object is async_make_new_object
+    assert fv.async_save_object is async_save_object
+    assert fv.async_update_object is async_update_object
 
 
 def test_async_rest_view_crud_and_pagination():

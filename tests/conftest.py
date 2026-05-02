@@ -44,6 +44,12 @@ def reset_metadata():
 
 @pytest.fixture(autouse=True)
 def setup_database_connection():
+    # Clear any sticky state left behind by previous tests (e.g. tests that
+    # plug a custom ``session_generator`` / ``sync_session_generator`` into
+    # ``fr_globals`` and don't tear them down).
+    fr_globals.session_generator = None
+    fr_globals.sync_session_generator = None
+    fr_globals.make_session = None
     fr.configure(async_database_url="sqlite+aiosqlite:///:memory:")
 
 

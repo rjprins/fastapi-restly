@@ -488,88 +488,44 @@ class TestParseValueV2:
         assert exc_info.value.status_code == 400
 
 
+def _sql_v2(query) -> str:
+    return str(query.compile(compile_kwargs={"literal_binds": True}))
+
+
 class TestMakeWhereClauseV2:
+    """Test _make_where_clause_v2 by compiling real SQL — mirrors the V1 pattern."""
+
     def test_make_where_clause_v2_equals(self):
-        """Test creating equals where clause."""
-        column = Mock()
-        parser = Mock(return_value="John")
-
-        result = _make_where_clause_v2(column, "John", "eq", parser)
-
-        parser.assert_called_once_with("John")
-        # Check that the result is a comparison operation
-        assert result is not None
+        clause = _make_where_clause_v2(TestModel.name, "John", "eq", str)
+        assert "name = 'John'" in _sql_v2(sqlalchemy.select(TestModel).where(clause))
 
     def test_make_where_clause_v2_greater_than(self):
-        """Test creating greater than where clause."""
-        column = Mock()
-        parser = Mock(return_value=25)
-
-        # Configure the mock to return a comparison object
-        comparison_mock = Mock()
-        column.__gt__ = Mock(return_value=comparison_mock)
-
-        result = _make_where_clause_v2(column, "25", "gt", parser)
-
-        parser.assert_called_once_with("25")
-        column.__gt__.assert_called_once_with(25)
-        assert result == comparison_mock
+        clause = _make_where_clause_v2(TestModel.age, "25", "gt", int)
+        assert "age > 25" in _sql_v2(sqlalchemy.select(TestModel).where(clause))
 
     def test_make_where_clause_v2_greater_than_equal(self):
-        """Test creating greater than or equal where clause."""
-        column = Mock()
-        parser = Mock(return_value=25)
-
-        # Configure the mock to return a comparison object
-        comparison_mock = Mock()
-        column.__ge__ = Mock(return_value=comparison_mock)
-
-        result = _make_where_clause_v2(column, "25", "gte", parser)
-
-        parser.assert_called_once_with("25")
-        column.__ge__.assert_called_once_with(25)
-        assert result == comparison_mock
+        clause = _make_where_clause_v2(TestModel.age, "18", "gte", int)
+        assert "age >= 18" in _sql_v2(sqlalchemy.select(TestModel).where(clause))
 
     def test_make_where_clause_v2_less_than(self):
-        """Test creating less than where clause."""
-        column = Mock()
-        parser = Mock(return_value=25)
-
-        # Configure the mock to return a comparison object
-        comparison_mock = Mock()
-        column.__lt__ = Mock(return_value=comparison_mock)
-
-        result = _make_where_clause_v2(column, "25", "lt", parser)
-
-        parser.assert_called_once_with("25")
-        column.__lt__.assert_called_once_with(25)
-        assert result == comparison_mock
+        clause = _make_where_clause_v2(TestModel.age, "30", "lt", int)
+        assert "age < 30" in _sql_v2(sqlalchemy.select(TestModel).where(clause))
 
     def test_make_where_clause_v2_less_than_equal(self):
-        """Test creating less than or equal where clause."""
-        column = Mock()
-        parser = Mock(return_value=25)
-
-        # Configure the mock to return a comparison object
-        comparison_mock = Mock()
-        column.__le__ = Mock(return_value=comparison_mock)
-
-        result = _make_where_clause_v2(column, "25", "lte", parser)
-
-        parser.assert_called_once_with("25")
-        column.__le__.assert_called_once_with(25)
-        assert result == comparison_mock
+        clause = _make_where_clause_v2(TestModel.age, "65", "lte", int)
+        assert "age <= 65" in _sql_v2(sqlalchemy.select(TestModel).where(clause))
 
     def test_make_where_clause_v2_not_equals(self):
-        """Test creating not equals where clause."""
-        column = Mock()
-        parser = Mock(return_value="John")
+        clause = _make_where_clause_v2(TestModel.name, "John", "ne", str)
+        assert "name != 'John'" in _sql_v2(sqlalchemy.select(TestModel).where(clause))
 
-        result = _make_where_clause_v2(column, "John", "ne", parser)
-
-        parser.assert_called_once_with("John")
-        # Check that the result is a comparison operation
-        assert result is not None
+    def test_make_where_clause_v2_contains(self):
+        """contains operator should compile to ILIKE with wildcards."""
+        clause = _make_where_clause_v2(TestModel.name, "oh", "contains", str)
+        sql = _sql_v2(sqlalchemy.select(TestModel).where(clause))
+        # SQLite renders ILIKE as LIKE LOWER(...)
+        assert "%oh%" in sql or "%%oh%%" in sql
+        assert "lower" in sql.lower() or "like" in sql.lower()
 
 
 class TestGetFieldTypeForSchema:

@@ -1,4 +1,5 @@
 import enum
+import types
 from datetime import date, datetime, time
 from typing import Any, Optional, Union, get_args, get_origin
 from unittest.mock import patch
@@ -271,7 +272,7 @@ def test_schema_generator_helpers_cover_relationships_defaults_and_type_conversi
 
     customer_schema = create_schema_from_model(Customer, include_relationships=True)
     orders_annotation = customer_schema.model_fields["orders"].annotation
-    if get_origin(orders_annotation) is Union:
+    if get_origin(orders_annotation) in (Union, types.UnionType):
         list_annotation = next(
             arg for arg in get_args(orders_annotation) if arg is not type(None)
         )

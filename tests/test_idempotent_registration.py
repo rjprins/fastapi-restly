@@ -1,0 +1,285 @@
+"""
+Tests for idempotent View registration.
+
+A View class can be safely registered on multiple parent routers (e.g. mounting
+the same view under two different prefixes for back-compat, or registering on
+both an admin app and a public app). The class-level preparation (schema
+generation, endpoint annotation, dataclass __init__ setup) runs only once and
+is reused across registrations; each registration produces its own APIRouter
+mounted on the target parent.
+
+Without the idempotency guard in ``_init_view_cls_and_add_to_router``,
+registering the same View twice would:
+
+* Re-rename endpoints (``post`` → ``fooview_post`` → ``fooview_fooview_post``),
+  yielding endpoint name collisions and broken signatures.
+* Re-run ``_annotate`` on already-modified signatures.
+* Re-trip ``_exclude_routes``: ``del view_func._api_route_args`` raises
+  AttributeError on the second run, since the attribute was already removed.
+* Risk corrupting the first registration's class attributes (``cls.schema``,
+  ``cls.creation_schema``, ``cls.update_schema``, ``cls.index_param_schema``,
+  ``cls.query_modifier_version``, ``cls.pagination_response_schema``).
+"""
+
+from collections.abc import Iterator
+
+import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Mapped, sessionmaker
+from sqlalchemy.pool import StaticPool
+
+import fastapi_restly as fr
+from fastapi_restly.db import fr_globals
+
+
+@pytest.fixture
+def sync_db() -> Iterator[tuple]:
+    """Configure an in-memory SQLite engine for sync RestView tests."""
+    original_database_url = fr_globals.database_url
+    original_make_session = fr_globals.make_session
+    original_sync_session_generator = fr_globals.sync_session_generator
+
+    engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    make_session = sessionmaker(bind=engine, expire_on_commit=False)
+    fr.configure(make_session=make_session)
+
+    try:
+        yield engine, make_session
+    finally:
+        fr_globals.database_url = original_database_url
+        fr_globals.make_session = original_make_session
+        fr_globals.sync_session_generator = original_sync_session_generator
+        engine.dispose()
+
+
+def test_view_registered_on_two_apps_both_work(sync_db):
+    """Register the same View on two separate FastAPI apps (e.g. an admin
+    surface and a public surface) sharing the same backing model.
+
+    Both registrations must answer end-to-end and persist into the same table.
+    """
+    engine, _ = sync_db
+
+    class Gadget(fr.IDBase):
+        name: Mapped[str]
+
+    class GadgetSchema(fr.IDSchema):
+        name: str
+
+    class GadgetView(fr.RestView):
+        prefix = "/gadgets"
+        model = Gadget
+        schema = GadgetSchema
+
+    app_a = FastAPI()
+    app_b = FastAPI()
+
+    fr.include_view(app_a, GadgetView)
+    fr.include_view(app_b, GadgetView)
+
+    fr.DataclassBase.metadata.create_all(engine)
+
+    client_a = TestClient(app_a)
+    client_b = TestClient(app_b)
+
+    # Both registrations accept POSTs.
+    resp = client_a.post("/gadgets/", json={"name": "alpha"})
+    assert resp.status_code == 201, resp.text
+    assert resp.json()["name"] == "alpha"
+
+    resp = client_b.post("/gadgets/", json={"name": "beta"})
+    assert resp.status_code == 201, resp.text
+    assert resp.json()["name"] == "beta"
+
+    # Both registrations list — and they see the same rows because they share
+    # the underlying SQLAlchemy table.
+    items_a = client_a.get("/gadgets/").json()
+    items_b = client_b.get("/gadgets/").json()
+    names_a = sorted(item["name"] for item in items_a)
+    names_b = sorted(item["name"] for item in items_b)
+    assert names_a == names_b == ["alpha", "beta"]
+
+
+def test_view_mounted_under_two_prefixes_via_subapp(sync_db):
+    """Register a View on two sub-apps mounted under different prefixes within
+    a single root app — a realistic back-compat pattern (``/v1`` and ``/v2``).
+    """
+    engine, _ = sync_db
+
+    class Gizmo(fr.IDBase):
+        name: Mapped[str]
+
+    class GizmoSchema(fr.IDSchema):
+        name: str
+
+    class GizmoView(fr.RestView):
+        prefix = "/gizmos"
+        model = Gizmo
+        schema = GizmoSchema
+
+    sub_v1 = FastAPI()
+    sub_v2 = FastAPI()
+    fr.include_view(sub_v1, GizmoView)
+    fr.include_view(sub_v2, GizmoView)
+
+    root = FastAPI()
+    root.mount("/v1", sub_v1)
+    root.mount("/v2", sub_v2)
+
+    fr.DataclassBase.metadata.create_all(engine)
+
+    client = TestClient(root)
+    resp = client.post("/v1/gizmos/", json={"name": "one"})
+    assert resp.status_code == 201, resp.text
+    resp = client.post("/v2/gizmos/", json={"name": "two"})
+    assert resp.status_code == 201, resp.text
+
+    names_v1 = sorted(item["name"] for item in client.get("/v1/gizmos/").json())
+    names_v2 = sorted(item["name"] for item in client.get("/v2/gizmos/").json())
+    assert names_v1 == names_v2 == ["one", "two"]
+
+
+def test_class_attributes_are_not_corrupted_by_second_registration():
+    """The schema/creation_schema/update_schema/index_param_schema generated by
+    ``before_include_view`` survive a second registration unchanged.
+
+    Before the idempotency guard, ``_init_all_endpoints`` would re-rename
+    endpoints (e.g. ``widgetview_post`` → ``widgetview_widgetview_post``),
+    corrupting the first registration's routing.
+    """
+
+    class Widget(fr.IDBase):
+        title: Mapped[str]
+
+    class WidgetSchema(fr.IDSchema):
+        title: str
+
+    class WidgetView(fr.RestView):
+        prefix = "/widgets"
+        model = Widget
+        schema = WidgetSchema
+
+    app_a = FastAPI()
+    fr.include_view(app_a, WidgetView)
+
+    # Snapshot the class attributes set by before_include_view.
+    snapshot = {
+        "schema": WidgetView.schema,
+        "creation_schema": WidgetView.creation_schema,
+        "update_schema": WidgetView.update_schema,
+        "index_param_schema": WidgetView.index_param_schema,
+        "query_modifier_version": WidgetView.query_modifier_version,
+    }
+    # Snapshot endpoint names: _init_all_endpoints prefixes with the lowercased
+    # class name, so e.g. WidgetView.post.__name__ == "widgetview_post". A
+    # second registration would prepend the prefix again.
+    endpoint_names = {
+        name: getattr(WidgetView, name).__name__
+        for name in ("index", "get", "post", "patch", "delete")
+    }
+
+    # Second registration on a different parent must not error or mutate.
+    app_b = FastAPI()
+    fr.include_view(app_b, WidgetView)
+
+    # All snapshot attributes must be the exact same objects.
+    for attr, value in snapshot.items():
+        assert getattr(WidgetView, attr) is value, (
+            f"{attr} was replaced on the View class by the second registration"
+        )
+
+    # Endpoint names must not have been re-prefixed.
+    for name, original_name in endpoint_names.items():
+        assert getattr(WidgetView, name).__name__ == original_name, (
+            f"endpoint {name!r} was renamed by the second registration: "
+            f"{original_name!r} → {getattr(WidgetView, name).__name__!r}"
+        )
+
+
+def test_exclude_routes_does_not_crash_on_second_registration(sync_db):
+    """``_exclude_routes`` removes ``_api_route_args`` from listed methods.
+
+    Without the idempotency guard, a second registration would re-enter
+    ``_exclude_routes`` and find the attribute already removed, raising
+    AttributeError before the route would even mount.
+    """
+    engine, _ = sync_db
+
+    class Token(fr.IDBase):
+        name: Mapped[str]
+
+    class TokenSchema(fr.IDSchema):
+        name: str
+
+    class TokenView(fr.RestView):
+        prefix = "/tokens"
+        model = Token
+        schema = TokenSchema
+        exclude_routes = ("delete",)
+
+    app_a = FastAPI()
+    app_b = FastAPI()
+
+    fr.include_view(app_a, TokenView)
+    # This is the call that previously raised AttributeError.
+    fr.include_view(app_b, TokenView)
+
+    fr.DataclassBase.metadata.create_all(engine)
+
+    # GET works on both, DELETE is excluded on both (404/405).
+    client_a = TestClient(app_a)
+    client_b = TestClient(app_b)
+    assert client_a.get("/tokens/").status_code == 200
+    assert client_b.get("/tokens/").status_code == 200
+    assert client_a.delete("/tokens/1").status_code in (404, 405)
+    assert client_b.delete("/tokens/1").status_code in (404, 405)
+
+
+def test_subclass_of_registered_base_still_registers_independently(sync_db):
+    """The idempotency marker is stored in ``cls.__dict__``, so a subclass of
+    an already-registered base still goes through its own initialisation.
+
+    Without ``__dict__.get`` semantics, subclasses would inherit the marker
+    from the base and skip their own setup, so their endpoints would never be
+    annotated/registered.
+    """
+    engine, _ = sync_db
+
+    class Knob(fr.IDBase):
+        label: Mapped[str]
+
+    class KnobSchema(fr.IDSchema):
+        label: str
+
+    # Base view registered first…
+    class KnobBase(fr.RestView):
+        prefix = "/knobs"
+        model = Knob
+        schema = KnobSchema
+
+    app_a = FastAPI()
+    fr.include_view(app_a, KnobBase)
+
+    # …then a subclass with its own prefix is registered separately.
+    class FancyKnobView(KnobBase):
+        prefix = "/fancy-knobs"
+
+    app_b = FastAPI()
+    fr.include_view(app_b, FancyKnobView)
+
+    fr.DataclassBase.metadata.create_all(engine)
+
+    client_a = TestClient(app_a)
+    client_b = TestClient(app_b)
+
+    resp = client_a.post("/knobs/", json={"label": "plain"})
+    assert resp.status_code == 201, resp.text
+    # FancyKnobView's prefix concatenates with the inherited "/knobs" base.
+    resp = client_b.post("/knobs/fancy-knobs/", json={"label": "fancy"})
+    assert resp.status_code == 201, resp.text
