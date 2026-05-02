@@ -1,5 +1,6 @@
 """Task view."""
 
+import fastapi
 from pydantic import BaseModel
 from sqlalchemy import select
 
@@ -8,6 +9,7 @@ import fastapi_restly as fr
 from ..models import Task, TaskPriority, TaskStatus, TaskType
 from ..schemas import TaskSchema
 from ._base import TenantBase
+from ._mixins import AuditStampedMixin, SoftDeleteMixin
 
 # Set by tests to simulate row-level permissions without real auth middleware.
 _TEST_USER_ID: int | None = None
@@ -59,13 +61,15 @@ VALID_TRANSITIONS = {
 }
 
 
-class TaskView(TenantBase):
+class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
     """CRUD endpoints for tasks.
 
-    Demonstrates row-level permissions: users can only see tasks assigned to
-    them. In production, ``request.state.user_id`` is set by auth middleware.
-
-    Inherits from TenantBase for the auth dependency and audit save_object.
+    Mixin-composed: soft delete + audit stamps. Tenant scope is *not*
+    applied here — task scoping is by ``assignee_id`` (a row-level
+    permission, not a tenant filter), implemented in ``on_get`` /
+    ``on_list`` below. Demonstrates that views with non-tenant-aligned
+    access models still benefit from the soft-delete + audit mixins,
+    and that mixin composition is a la carte.
     """
 
     prefix = "/tasks"
@@ -80,22 +84,38 @@ class TaskView(TenantBase):
         """
         return getattr(self.request.state, "user_id", None) or _TEST_USER_ID
 
+    async def delete_object(self, obj):
+        """Decrement the parent project's story-point rollup before delete."""
+        from ..models import Project
+
+        if obj.story_points:
+            project = await self.session.get(Project, obj.project_id)
+            if project is not None:
+                project.total_story_points -= obj.story_points
+        await super().delete_object(obj)
+
     async def on_list(self, query_params, query=None):
-        """Filter tasks to those assigned to the current user."""
-        current_user = self._current_user_id()
-        if current_user is not None:
-            if query is None:
-                query = select(self.model)
-            query = query.where(Task.assignee_id == current_user)
+        """Filter tasks to those assigned to the current user.
+
+        Admin requests bypass this filter — they see every task regardless
+        of assignee. The tenant + soft-delete filters from the mixin chain
+        also short-circuit on admin (see ``_is_admin`` on TenantBase).
+        """
+        if not self._is_admin():
+            current_user = self._current_user_id()
+            if current_user is not None:
+                if query is None:
+                    query = select(self.model)
+                query = query.where(Task.assignee_id == current_user)
         return await super().on_list(query_params, query)
 
     async def on_get(self, id: int):
         """Verify row-level access: only the assignee can fetch the task."""
         from fastapi import HTTPException
 
-        task = await self.session.get(Task, id)
-        if task is None:
-            raise HTTPException(404)
+        task = await super().on_get(id)
+        if self._is_admin():
+            return task
         current_user = self._current_user_id()
         if current_user is not None and task.assignee_id != current_user:
             raise HTTPException(404, detail="Task not found")
@@ -136,7 +156,15 @@ class TaskView(TenantBase):
             )
 
     async def on_create(self, schema_obj):
-        """Override to check if project is archived before creating task."""
+        """Validate, build, save, and bump the parent's story-point rollup.
+
+        The denormalized ``Project.total_story_points`` field is kept in
+        sync here rather than in a SQLAlchemy event because (a) the math
+        depends on the schema's optional ``story_points`` field and (b)
+        we want the rollup to live in the same transaction as the task
+        write. Both the task insert and the project update flush together
+        when ``save_object`` is called.
+        """
         from fastapi import HTTPException
 
         from ..models import Project, ProjectStatus
@@ -158,58 +186,145 @@ class TaskView(TenantBase):
         # Validate cross-resource constraints
         await self._validate_cross_resource(data)
 
-        return await super().on_create(schema_obj)
+        task = await self.make_new_object(schema_obj)
+        if task.story_points and project:
+            project.total_story_points += task.story_points
+        return await self.save_object(task)
 
     async def on_update(self, id: int, schema_obj):
-        """Override to implement optimistic locking via version field."""
+        """Optimistic locking + reroll the parent's story-point rollup.
+
+        Pattern from the matrix's "update related object based on updated
+        object" row: capture old value before mutation, apply the update,
+        then propagate the delta to the related row inside the same
+        transaction. ``save_object`` at the end flushes both rows together.
+
+        Also illustrates the NOT_SET-style sentinel pattern: this view uses
+        ``model_dump(exclude_unset=True)`` so a ``None`` *that the client
+        explicitly sent* clears the field, while a missing key leaves it
+        alone. (The Brenntag ``NOT_SET`` sentinel exists for the rarer
+        case where ``None`` itself is a meaningful explicit value, distinct
+        from "not provided" — that requires a custom marker, which we don't
+        need with the explicit-vs-omitted distinction Pydantic gives us.)
+        """
         from fastapi import HTTPException
 
-        task = await self.session.get(Task, id)
-        if not task:
-            raise HTTPException(status_code=404, detail="Task not found")
+        from ..models import Project
 
-        # Check version for optimistic locking
-        data = schema_obj.model_dump(exclude_unset=True)
-        if "version" in data:
-            if data["version"] != task.version:
-                raise HTTPException(
-                    status_code=409,
-                    detail=f"Conflict: expected version {data['version']}, but current version is {task.version}"
-                )
+        # on_get enforces row-level access (assignee match) and 404s.
+        task = await self.on_get(id)
 
-        # Cross-resource validation for assignee change
-        # Use existing task's project_id if not being changed
-        validation_data = {
-            "project_id": data.get("project_id", task.project_id),
-            "assignee_id": data.get("assignee_id"),
-        }
-        if validation_data["assignee_id"] is not None:
-            await self._validate_cross_resource(validation_data)
+        # Check version for optimistic locking before applying the update.
+        client_version = getattr(schema_obj, "version", None)
+        if (
+            client_version is not None
+            and "version" in schema_obj.model_fields_set
+            and client_version != task.version
+        ):
+            raise HTTPException(
+                status_code=409,
+                detail=f"Conflict: expected version {client_version}, but current version is {task.version}",
+            )
 
-        # Update fields
-        for key, value in data.items():
-            if key not in ("id", "created_at", "updated_at", "version"):
-                setattr(task, key, value)
+        # Cross-resource validation for assignee change.
+        sent = schema_obj.model_dump(exclude_unset=True)
+        if sent.get("assignee_id") is not None:
+            await self._validate_cross_resource({
+                "project_id": sent.get("project_id", task.project_id),
+                "assignee_id": sent["assignee_id"],
+            })
 
-        # Increment version
-        task.version += 1
+        old_points = task.story_points or 0
+        old_project_id = task.project_id
+
+        # Apply writable fields via the framework helper (skips ReadOnly,
+        # respects exclude_unset semantics from the wire). Then bump version
+        # explicitly — if the client sent a version it was already validated
+        # above, and we always want server-side increment.
+        task = await self.update_object(task, schema_obj)
+        task.version = (client_version if client_version is not None else task.version) + 1
+
+        # Propagate story-point delta to the (possibly new) parent project.
+        new_points = task.story_points or 0
+        if old_points or new_points:
+            if old_project_id == task.project_id:
+                project = await self.session.get(Project, task.project_id)
+                if project is not None:
+                    project.total_story_points += new_points - old_points
+            else:
+                old_project = await self.session.get(Project, old_project_id)
+                new_project = await self.session.get(Project, task.project_id)
+                if old_project is not None:
+                    old_project.total_story_points -= old_points
+                if new_project is not None:
+                    new_project.total_story_points += new_points
 
         return await self.save_object(task)
 
+    @fr.post("/import-csv", response_model=BulkResult)
+    async def import_csv(
+        self,
+        project_id: int = fastapi.Form(...),  # noqa: B008
+        file: fastapi.UploadFile = fastapi.File(...),  # noqa: B008
+    ) -> BulkResult:
+        """Parse a CSV of tasks and bulk-create them.
+
+        Demonstrates "Bulk import/update from spreadsheet" from the matrix —
+        a custom route because (a) the input is multipart not JSON, and
+        (b) the response is a per-row success/failure report rather than
+        a list of created objects.
+
+        Each row is fed through ``on_create`` via ``TaskCreateSchema``, so
+        every row inherits the same validation chain and rollup as
+        ``POST /tasks/``. Pydantic surfaces field errors per row.
+        """
+        import csv
+        import io
+
+        if not file.filename:
+            raise fastapi.HTTPException(422, "filename is required")
+        raw = await file.read()
+        try:
+            reader = csv.DictReader(io.StringIO(raw.decode("utf-8")))
+        except UnicodeDecodeError as exc:
+            raise fastapi.HTTPException(422, str(exc)) from exc
+
+        success = 0
+        failed = 0
+        errors: list[str] = []
+        for row_no, row in enumerate(reader, start=2):  # row 1 is the header
+            try:
+                schema_obj = TaskCreateSchema(
+                    title=(row.get("title") or "").strip(),
+                    description=row.get("description") or "",
+                    project_id=project_id,
+                )
+                if not schema_obj.title:
+                    raise ValueError("title is required")
+                await self.on_create(schema_obj)
+                success += 1
+            except Exception as exc:  # noqa: BLE001 — surface per-row error
+                failed += 1
+                errors.append(f"row {row_no}: {exc}")
+        return BulkResult(success=success, failed=failed, errors=errors)
+
     @fr.post("/bulk", response_model=BulkResult)
     async def bulk_create(self, request: BulkCreateRequest) -> BulkResult:
-        """Create multiple tasks at once."""
+        """Create multiple tasks at once.
+
+        Delegates each item to ``on_create`` so the same archived-project
+        guard, conditional-field validation, cross-resource validation, and
+        story-point rollup that apply to ``POST /tasks/`` apply per row.
+        """
         success = 0
         failed = 0
         errors: list[str] = []
 
         for item in request.items:
             try:
-                task = Task(**item.model_dump())
-                self.session.add(task)
-                await self.session.flush()
+                await self.on_create(item)
                 success += 1
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 — surface per-row error
                 failed += 1
                 errors.append(f"Failed to create task '{item.title}': {e!s}")
 
@@ -217,21 +332,30 @@ class TaskView(TenantBase):
 
     @fr.post("/bulk-delete", response_model=BulkResult)
     async def bulk_delete(self, request: BulkDeleteRequest) -> BulkResult:
-        """Delete multiple tasks by IDs."""
+        """Delete multiple tasks by IDs.
+
+        Uses ``on_get`` per id so each delete inherits the row-level access
+        check (only the assignee may see/touch the task). on_get raises
+        404 for both "missing" and "not yours", which we catch and report.
+        """
+        from fastapi import HTTPException
+
         success = 0
         failed = 0
         errors: list[str] = []
 
         for task_id in request.ids:
             try:
-                task = await self.session.get(Task, task_id)
-                if task:
-                    await self.session.delete(task)
-                    success += 1
-                else:
-                    failed += 1
+                task = await self.on_get(task_id)
+                await self.delete_object(task)
+                success += 1
+            except HTTPException as exc:
+                failed += 1
+                if exc.status_code == 404:
                     errors.append(f"Task {task_id} not found")
-            except Exception as e:
+                else:
+                    errors.append(f"Failed to delete task {task_id}: {exc.detail}")
+            except Exception as e:  # noqa: BLE001
                 failed += 1
                 errors.append(f"Failed to delete task {task_id}: {e!s}")
 
@@ -242,10 +366,7 @@ class TaskView(TenantBase):
         """Move task from TODO to IN_PROGRESS."""
         from fastapi import HTTPException
 
-        task = await self.session.get(Task, id)
-        if not task:
-            raise HTTPException(status_code=404, detail="Task not found")
-
+        task = await self.on_get(id)
         if task.status != TaskStatus.TODO:
             raise HTTPException(
                 status_code=400,
@@ -261,10 +382,7 @@ class TaskView(TenantBase):
         """Move task from IN_PROGRESS to DONE."""
         from fastapi import HTTPException
 
-        task = await self.session.get(Task, id)
-        if not task:
-            raise HTTPException(status_code=404, detail="Task not found")
-
+        task = await self.on_get(id)
         if task.status != TaskStatus.IN_PROGRESS:
             raise HTTPException(
                 status_code=400,
@@ -280,10 +398,7 @@ class TaskView(TenantBase):
         """Reopen a completed task back to IN_PROGRESS."""
         from fastapi import HTTPException
 
-        task = await self.session.get(Task, id)
-        if not task:
-            raise HTTPException(status_code=404, detail="Task not found")
-
+        task = await self.on_get(id)
         if task.status != TaskStatus.DONE:
             raise HTTPException(
                 status_code=400,

@@ -1,5 +1,7 @@
 """Task schema."""
 
+from datetime import datetime
+
 import fastapi_restly as fr
 
 from ..models import TaskPriority, TaskStatus, TaskType
@@ -32,3 +34,8 @@ class TaskSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
 
     # Optimistic locking
     version: int = 1
+
+    # Stamped server-side by SoftDeleteMixin / AuditStampedMixin on TaskView.
+    deleted_at: fr.ReadOnly[datetime | None] = None
+    created_by_id: fr.ReadOnly[int | None] = None
+    updated_by_id: fr.ReadOnly[int | None] = None

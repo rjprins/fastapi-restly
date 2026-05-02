@@ -19,11 +19,13 @@ from fastapi import FastAPI
 import fastapi_restly as fr
 
 from .views import (
+    CountryView,
     LabelView,
     OrganizationView,
     ProjectView,
     TaskLabelView,
     TaskView,
+    UploadView,
     UserView,
 )
 
@@ -55,6 +57,8 @@ fr.include_view(app, ProjectView)
 fr.include_view(app, TaskView)
 fr.include_view(app, LabelView)
 fr.include_view(app, TaskLabelView)
+fr.include_view(app, UploadView)
+fr.include_view(app, CountryView)
 
 
 # Health check endpoint

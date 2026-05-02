@@ -6,10 +6,12 @@ from pydantic import BaseModel
 
 import fastapi_restly as fr
 
+from ..auth import hash_password, verify_password
 from ..models import User, UserRole
 from ..schemas import UserSchema
 from ..schemas.user import UserFullSchema, UserPublicSchema
 from ._base import TenantBase
+from ._mixins import AuditStampedMixin, SoftDeleteMixin, TenantScopedMixin
 
 # Set by tests to simulate field-level permissions without real auth middleware.
 _TEST_USER_ROLE: "UserRole | None" = None
@@ -24,11 +26,33 @@ class UpdateMeRequest(BaseModel):
     email: str | None = None
 
 
-class UserView(TenantBase):
+class ChangePasswordRequest(BaseModel):
+    """Request body for the change-password action.
+
+    The action route exists because changing a password has different
+    inputs from a generic PATCH: it needs the *current* password as
+    proof-of-possession, and the new password is not part of the
+    public ``User`` representation.
+    """
+
+    current_password: str
+    new_password: str
+
+
+class UserView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantBase):
     """CRUD endpoints for users.
 
-    Inherits from TenantBase for the auth dependency and audit save_object.
-    Demonstrates field-level permissions: salary is only visible to HR role.
+    Mixin-composed: tenant scope (filter + stamp), audit stamps, soft
+    delete — all delivered by the chain. The view body retains only the
+    user-specific concerns: password hashing, field-level permissions,
+    /me routes, and change-password.
+
+    The ``on_create`` override below is the canonical illustration of the
+    "rewrite from scratch using the helpers" pattern from
+    ``rut-notes/discussion_save_object.md``: build the ORM object via
+    ``self.make_new_object`` (which transparently runs through the mixin
+    chain to stamp tenant + audit fields), mutate the password, then
+    flush+refresh via ``save_object``.
     """
 
     prefix = "/users"
@@ -47,6 +71,51 @@ class UserView(TenantBase):
         role = self._current_user_role()
         return role in (UserRole.HR, UserRole.OWNER)
 
+    async def on_create(self, schema_obj):
+        """Hash the plaintext password before the row is persisted.
+
+        Canonical "rewrite using helpers" pattern (option B' from
+        ``rut-notes/discussion_save_object.md``):
+
+        DO NOT do this::
+
+            user = await super().on_create(schema_obj)   # already flushed
+            user.password = hash_password(...)           # in-memory only
+            return user                                  # plaintext on disk
+
+        DO this — build the row with the helpers, mutate, then save::
+
+            user = await self.make_new_object(schema_obj)
+            user.password = hash_password(schema_obj.password)
+            return await self.save_object(user)
+        """
+        user = await self.make_new_object(schema_obj)
+        if schema_obj.password:
+            user.password = hash_password(schema_obj.password)
+        return await self.save_object(user)
+
+    @fr.post("/{id}/change-password", response_model=UserSchema)
+    async def change_password(self, id: int, request: ChangePasswordRequest) -> Any:
+        """Change a user's password.
+
+        Action route rather than PATCH because the request contract is
+        different (proof-of-possession via ``current_password``, no public
+        body fields). Calls ``on_get`` for the fetch+404 (so any row-level
+        access checks layered into ``on_get`` apply here too) and uses
+        ``save_object`` as a utility for the final flush+refresh.
+        """
+        from fastapi import HTTPException
+
+        user = await self.on_get(id)
+        if not verify_password(request.current_password, user.password):
+            raise HTTPException(403, "Current password is incorrect")
+        if not request.new_password:
+            raise HTTPException(422, "new_password is required")
+
+        user.password = hash_password(request.new_password)
+        user = await self.save_object(user)
+        return self.to_response_schema(user)
+
     @fr.get("/{id}/with-permissions", response_model=dict)
     async def get_user_with_field_permissions(self, id: int) -> dict[str, Any]:
         """Get a user with field-level permissions applied.
@@ -56,11 +125,7 @@ class UserView(TenantBase):
 
         Example: GET /users/1/with-permissions
         """
-        from fastapi import HTTPException
-
-        user = await self.session.get(User, id)
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
+        user = await self.on_get(id)
 
         # Select schema based on viewer's role
         if self._can_see_salary():
@@ -78,25 +143,23 @@ class UserView(TenantBase):
         from fastapi import HTTPException
 
         user_id = getattr(self.request.state, "user_id", None) or _TEST_USER_ID
-        user = await self.session.get(User, user_id) if user_id else None
-        if not user:
+        if not user_id:
             raise HTTPException(status_code=404, detail="Current user not found")
+        user = await self.on_get(user_id)
         return self.to_response_schema(user)
 
     @fr.patch("/me", response_model=UserSchema)
     async def update_current_user(self, request: UpdateMeRequest) -> Any:
-        """Update current user's profile."""
+        """Update current user's profile.
+
+        Delegates to ``on_update`` so this action route follows the exact
+        same path as ``PATCH /users/{id}``: any future ``on_update`` override
+        (validation, auditing, side-effects) applies here automatically.
+        """
         from fastapi import HTTPException
 
         user_id = getattr(self.request.state, "user_id", None) or _TEST_USER_ID
-        user = await self.session.get(User, user_id) if user_id else None
-        if not user:
+        if not user_id:
             raise HTTPException(status_code=404, detail="Current user not found")
-
-        # Update only provided fields
-        data = request.model_dump(exclude_unset=True)
-        for key, value in data.items():
-            setattr(user, key, value)
-
-        user = await self.save_object(user)
+        user = await self.on_update(user_id, request)
         return self.to_response_schema(user)

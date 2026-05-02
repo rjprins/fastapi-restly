@@ -1,5 +1,6 @@
 """Project view."""
 
+import re
 from datetime import datetime, timezone
 
 import sqlalchemy as sa
@@ -13,6 +14,13 @@ from fastapi_restly.query import apply_query_modifiers, use_query_modifier_versi
 from ..models import Project, ProjectStatus, Task, TaskPriority, TaskStatus, TaskType
 from ..schemas import ProjectSchema, TaskSchema
 from ._base import TenantBase
+from ._mixins import AuditStampedMixin, SoftDeleteMixin, TenantScopedMixin
+
+
+def _slugify(text: str) -> str:
+    """Lowercase, hyphenated slug — adequate for the example."""
+    text = re.sub(r"[^a-zA-Z0-9]+", "-", text).strip("-").lower()
+    return text or "project"
 
 
 class CloneRequest(BaseModel):
@@ -32,15 +40,29 @@ class ProjectStats(BaseModel):
     completion_percent: float
 
 
-class ProjectView(TenantBase):
+class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantBase):
     """CRUD endpoints for projects.
 
-    Demonstrates:
-    - Inheriting TenantBase (class-level auth dependency + audit save_object)
-    - include_pagination_metadata with a custom count_index
-    - update_object override to make organization_id immutable after creation
-    - Soft delete via a custom @fr.delete route (exclude_routes removes the
-      generated one, giving full control over the HTTP contract)
+    Mixin composition (left → right via MRO):
+    - ``SoftDeleteMixin`` — hides ``deleted_at`` rows; ``delete_object``
+      sets the timestamp instead of removing the row.
+    - ``AuditStampedMixin`` — stamps ``created_by_id`` / ``updated_by_id``
+      via ``make_new_object`` / ``update_object`` (pre-flush, no trap).
+    - ``TenantScopedMixin`` — adds ``organization_id`` filter to reads,
+      stamps it on writes from auth context.
+    - ``TenantBase`` — auth dep, audit ``save_object`` seam, ``_emit``
+      outbox helper, ``_base_query`` seam consumed by the mixins above.
+
+    Each mixin's ``_base_query`` calls ``super()._base_query()``, so the
+    tenant + soft-delete WHERE clauses compose without either mixin
+    knowing the other exists. The same chain feeds both ``on_list`` and
+    ``count_index`` (defined on TenantBase), so pagination totals stay
+    aligned with list results — the matrix's "row-based access for
+    GET /" + "count must use same filter" pair, satisfied by inheritance.
+
+    The view itself only contains *project-specific* logic: slug
+    derivation, the response-only ``can_edit`` decoration, the
+    immutability check on update, and the project-level outbox events.
     """
 
     prefix = "/projects"
@@ -49,54 +71,80 @@ class ProjectView(TenantBase):
     include_pagination_metadata = True
     exclude_routes = ["delete"]  # replaced by soft_delete below
 
-    def _base_query(self, include_deleted: bool = False) -> sa.Select:
-        """Build the base query with tenant and soft-delete filters applied.
-
-        Shared by on_list and count_index so both see the same row set.
-        """
-        query = sa.select(Project)
-        org_id = self._current_org_id()
-        if org_id is not None:
-            query = query.where(Project.organization_id == org_id)
-        if not include_deleted:
-            query = query.where(Project.deleted_at.is_(None))
-        return query
-
-    async def on_list(self, query_params, query=None):
-        include_deleted = (
-            self.request.query_params.get("include_deleted", "false").lower() == "true"
-        )
-        return await super().on_list(query_params, query=self._base_query(include_deleted))
-
-    async def count_index(self, query_params):
-        """Count with the same tenant and soft-delete filters as on_list.
-
-        Must be overridden whenever on_list restricts the base query, so that
-        pagination totals stay accurate when include_pagination_metadata = True.
-        """
-        include_deleted = (
-            self.request.query_params.get("include_deleted", "false").lower() == "true"
-        )
-        base = self._base_query(include_deleted)
-        query_params_obj = self._to_query_params(query_params)
-        with use_query_modifier_version(self.get_query_modifier_version()):
-            filtered = apply_query_modifiers(
-                query_params_obj, base, self.model, self.schema
-            )
-        filtered = filtered.order_by(None).limit(None).offset(None)
-        count_q = select(func.count()).select_from(filtered.subquery())
-        return int(await self.session.scalar(count_q) or 0)
-
     async def on_get(self, id: int):
-        from fastapi import HTTPException
-
-        project = await self.session.get(Project, id)
-        if project is None:
-            raise HTTPException(404)
-        org_id = self._current_org_id()
-        if org_id is not None and project.organization_id != org_id:
-            raise HTTPException(404, detail="Project not found")
+        # The mixins enforce tenant scope + soft-delete filtering already.
+        # Here we only do project-specific decoration.
+        project = await super().on_get(id)
+        project.can_edit = self._can_edit(project)
         return project
+
+    def _can_edit(self, project: Project) -> bool:
+        """Whether the current user may edit this project.
+
+        Stand-in policy: only members of the same org. In production this
+        would consult the user's role from request.state.
+        """
+        org_id = self._current_org_id()
+        return org_id is None or project.organization_id == org_id
+
+    async def on_create(self, schema_obj):
+        """Slug derivation + outbox emit on top of the mixin chain.
+
+        ``self.make_new_object`` runs through ``AuditStampedMixin`` (stamps
+        created_by/updated_by) and ``TenantScopedMixin`` (stamps
+        organization_id) — neither lives in this method. We only do the
+        project-specific bits: slug uniqueness probe and the outbox event.
+        """
+        project = await self.make_new_object(schema_obj)
+        project.slug = await self._unique_slug(
+            project.slug or _slugify(project.name), project.organization_id
+        )
+        project = await self.save_object(project)
+        self._emit("project.created", project, {"name": project.name, "slug": project.slug})
+        return project
+
+    async def on_update(self, id: int, schema_obj):
+        """Slug regen if name changed + status-transition outbox event.
+
+        Audit-stamping (``updated_by_id``) is provided by
+        ``AuditStampedMixin.update_object``; tenant-scope enforcement comes
+        from ``TenantScopedMixin.on_get``. This method only contains the
+        project-specific slug + transition-event logic.
+        """
+        project = await self.on_get(id)
+        old_name, old_status = project.name, project.status
+        project = await self.update_object(project, schema_obj)
+        if project.name != old_name and not getattr(schema_obj, "slug", None):
+            project.slug = await self._unique_slug(
+                _slugify(project.name), project.organization_id, exclude_id=id
+            )
+        project = await self.save_object(project)
+        if project.status != old_status:
+            self._emit(
+                "project.status_changed",
+                project,
+                {"from": old_status.value, "to": project.status.value},
+            )
+        return project
+
+    async def _unique_slug(
+        self, base: str, org_id: int, exclude_id: int | None = None
+    ) -> str:
+        """Find a slug that doesn't collide with an existing project in this org."""
+        candidate = base
+        n = 1
+        while True:
+            q = sa.select(Project.id).where(
+                Project.slug == candidate,
+                Project.organization_id == org_id,
+            )
+            if exclude_id is not None:
+                q = q.where(Project.id != exclude_id)
+            existing = await self.session.scalar(q)
+            if existing is None:
+                return candidate
+            n += 1
+            candidate = f"{base}-{n}"
 
     async def update_object(self, obj, schema_obj):
         """Reject any attempt to move a project to a different organization.
@@ -115,25 +163,31 @@ class ProjectView(TenantBase):
     async def soft_delete(self, id: int) -> Project:
         """Soft delete: sets deleted_at instead of removing the row.
 
-        Uses a custom @fr.delete route (with exclude_routes removing the
-        generated one) to return 200 + the updated object rather than 204.
+        The actual ``deleted_at`` flip lives in
+        ``SoftDeleteMixin.delete_object``. This route exists only because
+        the matrix's "Return deleted record instead of 204" use-case
+        requires a 200 + body contract — that's a route-level HTTP
+        decision, not a behavior change.
         """
-        from fastapi import HTTPException
-
-        project = await self.session.get(Project, id)
-        if not project:
-            raise HTTPException(status_code=404, detail="Project not found")
-        project.deleted_at = datetime.now(timezone.utc)
+        project = await self.on_get(id)
+        await self.delete_object(project)
         return project
 
     @fr.post("/{id}/restore", response_model=ProjectSchema)
     async def restore(self, id: int) -> Project:
-        """Restore a soft-deleted project."""
+        """Restore a soft-deleted project.
+
+        Bypasses the mixin's ``deleted_at IS NULL`` filter explicitly —
+        we *want* to find a deleted row here. Tenant scope still applies.
+        """
         from fastapi import HTTPException
 
         project = await self.session.get(Project, id)
-        if not project:
-            raise HTTPException(status_code=404, detail="Project not found")
+        if project is None:
+            raise HTTPException(404)
+        org_id = self._current_org_id()
+        if org_id is not None and project.organization_id != org_id:
+            raise HTTPException(404, detail="Project not found")
         if project.deleted_at is None:
             raise HTTPException(status_code=400, detail="Project is not deleted")
         project.deleted_at = None
@@ -144,9 +198,7 @@ class ProjectView(TenantBase):
         """Archive a project (prevents new task creation)."""
         from fastapi import HTTPException
 
-        project = await self.session.get(Project, id)
-        if not project:
-            raise HTTPException(status_code=404, detail="Project not found")
+        project = await self.on_get(id)
         if project.status == ProjectStatus.ARCHIVED:
             raise HTTPException(status_code=400, detail="Project is already archived")
         project.status = ProjectStatus.ARCHIVED
@@ -154,8 +206,15 @@ class ProjectView(TenantBase):
 
     @fr.post("/{id}/clone", response_model=ProjectSchema)
     async def clone_project(self, id: int, request: CloneRequest) -> Project:
-        """Clone a project with all its tasks."""
-        from fastapi import HTTPException
+        """Clone a project with all its tasks.
+
+        Calls ``on_get`` first to enforce tenant scope and 404, then
+        re-queries with ``selectinload`` to eager-load the tasks. Cleaner
+        as a single ``on_get`` if/when it grows a ``loader_options``
+        argument; for now, two queries is the honest cost.
+        """
+        # Tenant + 404 check via the canonical hook.
+        await self.on_get(id)
 
         query = (
             select(Project)
@@ -163,21 +222,23 @@ class ProjectView(TenantBase):
             .options(selectinload(Project.tasks))
         )
         result = await self.session.execute(query)
-        original = result.scalar_one_or_none()
-        if not original:
-            raise HTTPException(status_code=404, detail="Project not found")
+        original = result.scalar_one()
 
-        new_name = request.new_name or f"{original.name} (Copy)"
-        new_project = Project(
-            name=new_name,
+        # Build the cloned project via on_create so slug/audit/outbox-emit
+        # all happen exactly as for a normal POST. We synthesize a
+        # ProjectSchema as the input — anything unset there falls back to
+        # schema defaults.
+        new_schema = ProjectSchema.model_construct(
+            name=request.new_name or f"{original.name} (Copy)",
             description=original.description,
             status=ProjectStatus.ACTIVE,
             organization_id=original.organization_id,
         )
-        self.session.add(new_project)
-        await self.session.flush()
+        new_project = await self.on_create(new_schema)
 
         if request.include_tasks:
+            from fastapi_restly.views import async_save_object
+
             for task in original.tasks:
                 new_task = Task(
                     title=task.title,
@@ -192,17 +253,17 @@ class ProjectView(TenantBase):
                     acceptance_criteria=task.acceptance_criteria,
                 )
                 self.session.add(new_task)
+                if new_task.story_points:
+                    new_project.total_story_points += new_task.story_points
+            await async_save_object(self.session, new_project)
 
         return new_project
 
     @fr.get("/{id}/stats", response_model=ProjectStats)
     async def get_project_stats(self, id: int) -> ProjectStats:
         """Get task statistics for a project."""
-        from fastapi import HTTPException
-
-        project = await self.session.get(Project, id)
-        if not project:
-            raise HTTPException(status_code=404, detail="Project not found")
+        # on_get enforces tenant scope and 404s — get the access check for free.
+        await self.on_get(id)
 
         todo = await self.session.scalar(
             select(func.count()).where(Task.project_id == id, Task.status == TaskStatus.TODO)
@@ -227,22 +288,25 @@ class ProjectView(TenantBase):
     @fr.get("/{id}/tasks", response_model=list[TaskSchema])
     async def list_project_tasks(self, id: int) -> list[Task]:
         """List all tasks for a specific project."""
-        from fastapi import HTTPException
-
-        project = await self.session.get(Project, id)
-        if not project:
-            raise HTTPException(status_code=404, detail="Project not found")
+        await self.on_get(id)
         result = await self.session.scalars(select(Task).where(Task.project_id == id))
         return list(result.all())
 
     @fr.post("/{id}/tasks", response_model=TaskSchema, status_code=201)
     async def create_project_task(self, id: int, request: "TaskCreateRequest") -> Task:
-        """Create a task within a project (auto-sets project_id)."""
+        """Create a task within a project (auto-sets project_id).
+
+        Builds the Task directly because ``self.make_new_object`` is bound
+        to ``self.model`` (Project, not Task) — it would build the wrong
+        type. ``async_save_object`` is the framework's flush+refresh helper
+        and keeps the row's autogenerated columns populated for the
+        response.
+        """
         from fastapi import HTTPException
 
-        project = await self.session.get(Project, id)
-        if not project:
-            raise HTTPException(status_code=404, detail="Project not found")
+        from fastapi_restly.views import async_save_object
+
+        project = await self.on_get(id)
         if project.status == ProjectStatus.ARCHIVED:
             raise HTTPException(status_code=400, detail="Cannot create tasks in an archived project")
 
@@ -256,8 +320,9 @@ class ProjectView(TenantBase):
             assignee_id=request.assignee_id,
         )
         self.session.add(task)
-        await self.session.flush()
-        return task
+        if task.story_points:
+            project.total_story_points += task.story_points
+        return await async_save_object(self.session, task)
 
 
 class TaskCreateRequest(BaseModel):

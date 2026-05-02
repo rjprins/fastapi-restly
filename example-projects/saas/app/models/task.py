@@ -1,5 +1,6 @@
 """Task model belonging to a project."""
 
+from datetime import datetime
 from enum import Enum
 from typing import Any
 
@@ -86,6 +87,16 @@ class Task(fr.IDStampsBase):
     # Optimistic locking
     version: orm.Mapped[int] = orm.mapped_column(default=1)
 
+    # Soft-delete + audit columns. SoftDeleteMixin / AuditStampedMixin
+    # on TaskView fill these in; the view body never touches them.
+    deleted_at: orm.Mapped[datetime | None] = orm.mapped_column(default=None)
+    created_by_id: orm.Mapped[int | None] = orm.mapped_column(
+        ForeignKey("user.id"), default=None
+    )
+    updated_by_id: orm.Mapped[int | None] = orm.mapped_column(
+        ForeignKey("user.id"), default=None
+    )
+
     # Foreign keys
     project_id: orm.Mapped[int] = orm.mapped_column(ForeignKey("project.id"))
     assignee_id: orm.Mapped[int | None] = orm.mapped_column(
@@ -103,6 +114,10 @@ class Task(fr.IDStampsBase):
     assignee: orm.Mapped["User | None"] = orm.relationship(  # noqa: F821
         back_populates="assigned_tasks",
         init=False,
+        # Multiple FKs from Task → User now exist (assignee_id +
+        # created_by_id + updated_by_id from AuditStampedMixin); pin the
+        # relationship to the assignee FK so SQLAlchemy can disambiguate.
+        foreign_keys="Task.assignee_id",
     )
     parent: orm.Mapped["Task | None"] = orm.relationship(
         back_populates="subtasks",

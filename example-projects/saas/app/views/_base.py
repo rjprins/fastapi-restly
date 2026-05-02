@@ -5,6 +5,10 @@ Demonstrates:
 - ``save_object`` override to run a side effect after every write
 - A shared ``_current_org_id()`` helper that reads from request state,
   used by subclasses to scope list/get operations to the current tenant
+- ``_emit()`` helper that writes outbox events in the same transaction
+  as the business write (use-cases: send email / fire webhook / invalidate
+  cache after create/update). The worker that reads the outbox table and
+  delivers the side-effect is out of scope for the example.
 
 Inheritance and prefix concatenation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -23,8 +27,11 @@ update every route::
 from typing import Any, ClassVar
 
 import fastapi
+import sqlalchemy as sa
+from sqlalchemy import func, select
 
 import fastapi_restly as fr
+from fastapi_restly.query import apply_query_modifiers, use_query_modifier_version
 
 # Set by tests to simulate tenant isolation without real auth middleware.
 # In production, request.state.org_id is set by your auth middleware instead.
@@ -53,6 +60,35 @@ class TenantBase(fr.AsyncRestView):
     # Applied to every route registered by this view and all subclasses.
     dependencies: ClassVar[list[Any]] = [fastapi.Depends(check_api_key)]
 
+    # ------------------------------------------------------------------
+    # Shared base-query seam.
+    # ------------------------------------------------------------------
+    # Both ``on_list`` and ``count_index`` route through ``_base_query``
+    # so subclass mixins can layer WHERE clauses (tenant scope, soft
+    # delete) by overriding ``_base_query`` cooperatively via
+    # ``super()._base_query()``. Without this seam, the mixin would
+    # have to duplicate the count_index implementation just to add
+    # one extra ``where``. (See the (b) "aggregate query" gap in the
+    # hooks-design notes.)
+    def _base_query(self) -> sa.Select:
+        return sa.select(self.model)
+
+    async def on_list(self, query_params, query=None):
+        if query is None:
+            query = self._base_query()
+        return await super().on_list(query_params, query)
+
+    async def count_index(self, query_params) -> int:
+        base = self._base_query()
+        query_params_obj = self._to_query_params(query_params)
+        with use_query_modifier_version(self.get_query_modifier_version()):
+            filtered = apply_query_modifiers(
+                query_params_obj, base, self.model, self.schema
+            )
+        filtered = filtered.order_by(None).limit(None).offset(None)
+        count_q = select(func.count()).select_from(filtered.subquery())
+        return int(await self.session.scalar(count_q) or 0)
+
     def _current_org_id(self) -> int | None:
         """Return the current tenant's org ID.
 
@@ -61,6 +97,25 @@ class TenantBase(fr.AsyncRestView):
         Returns ``None`` when neither is set (all rows visible, no scoping).
         """
         return getattr(self.request.state, "org_id", None) or _TEST_ORG_ID
+
+    def _is_admin(self) -> bool:
+        """Whether the current request bypasses tenant + row scoping.
+
+        Admin requests skip the ``WHERE organization_id = ...`` clause in
+        ``TenantScopedMixin._base_query`` and any per-row scope check on
+        the concrete view (see ``TaskView.on_get`` for an assignee-scope
+        example). The mixins consult this predicate cooperatively, so an
+        admin request sees all rows across all tenants by simply having
+        the flag set — no separate route tree, no second base view.
+
+        Trade-off this surfaces: the bypass is *runtime*, not class-time.
+        That keeps the route tree simple but couples every read scope to
+        an ``if not self._is_admin():`` guard. The matrix's alternative
+        ("admin views opt into a different base query") would mean a
+        parallel ``AdminProjectView`` etc. — see commentary in the
+        hooks-design findings doc.
+        """
+        return bool(getattr(self.request.state, "is_admin", False))
 
     async def save_object(self, obj):
         """Flush, refresh, then emit an audit event.
@@ -73,3 +128,32 @@ class TenantBase(fr.AsyncRestView):
         # In production: publish to an audit log or event bus.
         # await audit_bus.emit("saved", model=type(obj).__name__, id=obj.id)
         return obj
+
+    def _emit(
+        self,
+        event_type: str,
+        aggregate: Any,
+        payload: dict[str, Any] | None = None,
+    ) -> None:
+        """Write an outbox row in the current session.
+
+        Call this *after* ``save_object`` so ``aggregate.id`` is populated.
+        The session has flushed but not committed; the outbox row joins
+        the same transaction and either both end up in the database or
+        neither does.
+
+        DO NOT replace this with a direct ``await email_service.send(...)``
+        call before commit: if the transaction rolls back the email still
+        goes out, and you've leaked information about a row that doesn't
+        exist. The outbox is the durable boundary.
+        """
+        from ..models import OutboxEvent
+
+        self.session.add(
+            OutboxEvent(
+                event_type=event_type,
+                aggregate_type=type(aggregate).__name__,
+                aggregate_id=getattr(aggregate, "id", 0) or 0,
+                payload=payload or {},
+            )
+        )
