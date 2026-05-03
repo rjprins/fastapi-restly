@@ -1,5 +1,7 @@
 # Tutorial
 
+Run `uv sync` first; see [Getting Started](getting_started.md) for installation.
+
 This tutorial builds a small blog API with two related models and shows the most common
 FastAPI-Restly patterns. It assumes you have already read [Getting Started](getting_started.md).
 
