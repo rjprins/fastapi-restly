@@ -135,7 +135,8 @@ If a client supplies both sides independently, Restly validates that they match:
 ```
 
 Conflicting references, such as `"author_id": 1` with `"author": {"id": 2}`,
-return `422`.
+return `422`. Explicit `null` also participates in this check: `author_id: 1`
+with `author: null` is a conflict, while omitting `author` entirely is not.
 
 ### Plain Models
 

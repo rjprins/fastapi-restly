@@ -181,13 +181,26 @@ def _add_assignment(target: dict[str, Any], field_name: str | None, value: Any) 
         target[field_name] = value
 
 
-def _reference_identity(value: Any) -> tuple[type[Any] | None, Any] | None:
+_EXPLICIT_NULL_REF = object()
+
+
+def _reference_identity(value: Any) -> tuple[type[Any] | None, Any] | object | None:
+    if value is None:
+        return _EXPLICIT_NULL_REF
     if isinstance(value, DeclarativeBase):
         return type(value), getattr(value, "id", None)
     if isinstance(value, IDSchema):
         sql_model = value.get_sql_model_annotation()
         return sql_model, value.id
     return None
+
+
+def _reference_identity_detail(identity: object) -> Any:
+    if identity is _EXPLICIT_NULL_REF:
+        return None
+    if isinstance(identity, tuple) and len(identity) == 2:
+        return identity[1]
+    return identity
 
 
 def validate_resolved_reference_consistency(
@@ -225,16 +238,15 @@ def validate_resolved_reference_consistency(
         if fk_identity is None or relation_identity is None:
             continue
 
-        fk_model, fk_id = fk_identity
-        relation_model, relation_id = relation_identity
-        if fk_model == relation_model and fk_id == relation_id:
+        if fk_identity == relation_identity:
             continue
 
         raise fastapi.HTTPException(
             status_code=422,
             detail=(
                 f"Conflicting references for {fk_field} and {relation_field}: "
-                f"{fk_id!r} != {relation_id!r}"
+                f"{_reference_identity_detail(fk_identity)!r} != "
+                f"{_reference_identity_detail(relation_identity)!r}"
             ),
         )
 

@@ -181,7 +181,9 @@ Nested schemas serve two different roles in Restly today:
   resolved reference, Restly may pass the FK scalar, the relationship object, or
   both when both dataclass fields are required; both values are derived from the
   same row. If the client explicitly supplies both fields, Restly validates that
-  they refer to the same row before construction/update.
+  they refer to the same row before construction/update. Explicit `null` is
+  treated as an intentional "no row" value for that consistency check; omitted
+  optional fields are ignored.
 
 If you declare a nested input field like `address: AddressSchema` on a write
 schema, the default CRUD implementation will pass that nested Pydantic object

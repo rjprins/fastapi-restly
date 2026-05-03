@@ -8,7 +8,10 @@ from sqlalchemy.pool import StaticPool
 
 import fastapi_restly as fr
 from fastapi_restly.db import fr_globals
-from fastapi_restly.views._base import build_create_plan
+from fastapi_restly.views._base import (
+    build_create_plan,
+    validate_resolved_reference_consistency,
+)
 from fastapi_restly.views._sync import make_new_object, save_object, update_object
 
 
@@ -254,6 +257,11 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
         author_id: fr.IDRef[Dd8SyncAuthor]
         author: fr.IDSchema[Dd8SyncAuthor]
 
+    class OptionalBothReferenceSchema(fr.BaseSchema):
+        title: str
+        author_id: fr.IDRef[Dd8SyncAuthor] | None = None
+        author: fr.IDSchema[Dd8SyncAuthor] | None = None
+
     class PlainFKSchema(fr.BaseSchema):
         title: str
         author_id: fr.IDRef[Dd8SyncPlainAuthor]
@@ -303,6 +311,53 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
         assert both_init_plan.kwargs["author_id"] == first.id
         assert "author" not in both_init_plan.kwargs
         assert both_init_plan.post_assignments["author"] is first
+
+        def validate_optional_payload(
+            fields_set: set[str],
+            *,
+            author_id=...,
+            author=...,
+        ):
+            values = {"title": "optional"}
+            if author_id is not ...:
+                values["author_id"] = author_id
+            if author is not ...:
+                values["author"] = author
+            payload = OptionalBothReferenceSchema.model_construct(
+                _fields_set=fields_set,
+                **values,
+            )
+            validate_resolved_reference_consistency(
+                Dd8SyncRelationshipFirstArticle,
+                payload,
+                OptionalBothReferenceSchema,
+            )
+
+        validate_optional_payload({"title", "author"}, author=first)
+        validate_optional_payload({"title", "author_id"}, author_id=first)
+        validate_optional_payload({"title", "author"}, author=None)
+        validate_optional_payload({"title", "author_id"}, author_id=None)
+        validate_optional_payload(
+            {"title", "author_id", "author"}, author_id=None, author=None
+        )
+        validate_optional_payload(
+            {"title", "author_id", "author"}, author_id=first, author=first
+        )
+        with pytest.raises(HTTPException) as mismatch_exc:
+            validate_optional_payload(
+                {"title", "author_id", "author"}, author_id=first, author=second
+            )
+        assert mismatch_exc.value.status_code == 422
+        with pytest.raises(HTTPException) as fk_row_relation_null_exc:
+            validate_optional_payload(
+                {"title", "author_id", "author"}, author_id=first, author=None
+            )
+        assert fk_row_relation_null_exc.value.status_code == 422
+        with pytest.raises(HTTPException) as fk_null_relation_row_exc:
+            validate_optional_payload(
+                {"title", "author_id", "author"}, author_id=None, author=first
+            )
+        assert fk_null_relation_row_exc.value.status_code == 422
 
         with pytest.raises(ValueError, match="Cannot infer a single local FK"):
             build_create_plan(
