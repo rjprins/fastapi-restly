@@ -335,21 +335,27 @@ GET /users/?page=2&page_size=50
 
 ## Overriding query logic per view
 
-Override `on_list` to inject a base query before the framework applies query
-modifiers:
+Override `build_list_query` to inject a base query before the framework
+applies query modifiers. Both `on_list` and `count_index` consult this
+seam, so the filter applies to listing **and** the pagination total
+without further plumbing:
 
 ```python
-import sqlalchemy
 import fastapi_restly as fr
 
 class UserView(fr.AsyncRestView):
     ...
 
-    async def on_list(self, query_params, query=None):
-        query = sqlalchemy.select(self.model).where(self.model.active.is_(True))
-        return await super().on_list(query_params, query=query)
+    def build_list_query(self):
+        return super().build_list_query().where(self.model.active.is_(True))
 ```
 
-`super().on_list(query_params, query=query)` passes your base query into the
-normal modifier pipeline, so all the filter/sort/paginate parameters still work on
-top of your pre-filtered result set.
+Calling `super().build_list_query()` and chaining `.where(...)` composes
+cleanly with any base-class or mixin filter. See
+[Composing views with mixins](howto_compose_views_with_mixins.md) for the
+multi-layer pattern.
+
+`on_list` still accepts an optional `query` argument for the rare case
+where the custom query intentionally should *not* affect `count_index`
+— for example, a list-only result decoration that needs a different
+join shape than the count. Reach for `build_list_query` first.

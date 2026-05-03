@@ -79,14 +79,14 @@ Calling `self.on_get(id)` reuses the same 404 logic as the GET endpoint.
 If you later override `on_get` (for example, to add tenant scoping), `on_update`
 picks up that change automatically.
 
-### on_list — filter results to the current user
+### build_list_query — filter results to the current user
 
 The most common real-world override: restrict the list to rows the caller is
-allowed to see.
+allowed to see. `build_list_query` is the seam both `on_list` and `count_index`
+consult, so a single override keeps the listed rows and the pagination total
+in sync.
 
 ```python
-import sqlalchemy as sa
-
 @fr.include_view(app)
 class PostView(fr.AsyncRestView):
     prefix = "/posts"
@@ -94,23 +94,15 @@ class PostView(fr.AsyncRestView):
     schema = PostSchema
     include_pagination_metadata = True
 
-    def _author_query(self):
+    def build_list_query(self):
         user_id = self.request.state.user_id
-        return sa.select(Post).where(Post.author_id == user_id)
-
-    async def on_list(self, query_params, query=None):
-        return await super().on_list(query_params, query=self._author_query())
-
-    async def count_index(self, query_params):
-        from sqlalchemy import func, select
-        count_q = select(func.count()).select_from(self._author_query().subquery())
-        return int(await self.session.scalar(count_q) or 0)
+        return super().build_list_query().where(Post.author_id == user_id)
 ```
 
-`on_list` accepts an optional `query` argument — a SQLAlchemy `Select` statement
-that is passed to the query modifier pipeline (filters, sorting, pagination) before
-execution. Override `count_index` alongside `on_list` whenever `include_pagination_metadata`
-is enabled, so the total count stays accurate.
+Calling `super().build_list_query()` and chaining `.where(...)` composes cleanly
+with any base-class or mixin filter. Reach for an `on_list` override only when
+you need to do work beyond a `WHERE` clause — see
+[Override Endpoints](howto_override_endpoints.md#scope-filter-the-list-endpoint).
 
 ### on_delete — require explicit confirmation
 

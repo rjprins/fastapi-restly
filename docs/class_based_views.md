@@ -175,7 +175,6 @@ common error envelope. Express that once and inherit:
 
 ```python
 import fastapi_restly as fr
-import sqlalchemy
 from fastapi import Depends
 
 async def require_logged_in(user_id: int = Depends(get_current_user_id)) -> int:
@@ -185,12 +184,12 @@ class TenantScopedView(fr.AsyncRestView):
     """Internal base — never registered directly."""
     dependencies = [Depends(require_logged_in)]
 
-    async def on_list(self, query_params, query=None):
-        # automatic tenant filtering for every list
-        if query is None:
-            query = sqlalchemy.select(self.model)
-        query = query.where(self.model.tenant_id == self.request.state.tenant_id)
-        return await super().on_list(query_params, query=query)
+    def build_list_query(self):
+        # automatic tenant filtering for every list — and every pagination total,
+        # because count_index consults the same seam.
+        return super().build_list_query().where(
+            self.model.tenant_id == self.request.state.tenant_id
+        )
 
 
 @fr.include_view(app)
@@ -208,7 +207,10 @@ class CustomerView(TenantScopedView):
 ```
 
 Two views, one shared dependency, one shared filter. Add a new tenant-scoped
-resource and you get the auth + scoping behaviour for free.
+resource and you get the auth + scoping behaviour for free. For more
+elaborate compositions — soft delete, audit stamps, permission scoping
+layered together — see
+[Composing views with mixins](howto_compose_views_with_mixins.md).
 
 ## Override a single method
 
@@ -255,6 +257,49 @@ Everything else — listing, retrieval, update, delete, schema generation,
 pagination — keeps working unchanged. See
 [Override Endpoints](howto_override_endpoints.md) for the full list of hooks
 and the call chain.
+
+## Dependency injection on class attributes
+
+A class attribute on a view is wired as a FastAPI dependency only when its
+annotation either:
+
+- carries an `Annotated[..., Depends(...)]` marker, or
+- names one of FastAPI's bare-injectable special types (`Request`,
+  `Response`, `BackgroundTasks`, `WebSocket`).
+
+This matches the rule FastAPI itself applies to function parameters. A
+plain annotation like `model: type[Foo]` is *not* wired — it's just a
+type hint, safe to add for documentation or static-checker purposes.
+
+```python
+from fastapi import Request
+from typing import Annotated
+
+class UserView(fr.AsyncRestView):
+    # Wired: AsyncSessionDep is Annotated[AsyncSession, Depends(...)].
+    session: fr.AsyncSessionDep
+
+    # Wired: Request is one of FastAPI's bare-injectable specials.
+    request: Request
+
+    # Wired: explicit Depends marker.
+    current_user: Annotated[User, Depends(get_current_user)]
+
+    # NOT wired: plain annotation, just a type hint.
+    model: type[User]
+```
+
+The shipped `AsyncSessionDep` / `SessionDep` aliases carry `Depends`, so
+they keep working unchanged. The `request` attribute on `BaseRestView`
+relies on the special-type rule. Any custom dependency declared on a view
+class must use the `Annotated[X, Depends(...)]` form unless it's one of
+the bare-injectable types.
+
+This rule is what makes mixins safe to write: a mixin can declare what it
+requires from its host class (`session`, `request`, helper methods)
+without accidentally shadowing the host's wiring. See
+[Composing views with mixins](howto_compose_views_with_mixins.md) for the
+mixin pattern.
 
 ## When to use `View` directly
 

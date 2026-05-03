@@ -74,6 +74,15 @@ Use Python inheritance to share CRUD overrides, dependencies, URL prefixes, and
 access control across multiple views.
 :::
 
+:::{grid-item-card} Compose Views with Mixins
+:link: howto_compose_views_with_mixins
+:link-type: doc
+
+Layer cross-cutting concerns — tenant scoping, soft delete, audit stamping —
+through cooperative mixins. Includes the rule for when to layer in a mixin vs.
+write logic in `on_create` / `on_update`.
+:::
+
 :::{grid-item-card} Filter, Sort, and Paginate
 :link: howto_query_modifiers
 :link-type: doc
@@ -129,6 +138,7 @@ howto_typing
 howto_override_endpoints
 howto_react_admin
 howto_inheritance
+howto_compose_views_with_mixins
 howto_query_modifiers
 howto_relationship_idschema
 howto_testing

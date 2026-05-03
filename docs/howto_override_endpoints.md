@@ -27,7 +27,9 @@ GET /{id}
 GET /
   └─ index()                        ← HTTP contract (replace to change; see below)
        └─ on_list(query_params)      ← business-logic hook — override here
+       │    └─ build_list_query()    ← WHERE-clause seam shared with count_index
        └─ count_index(query_params)  ← only called when include_pagination_metadata = True
+            └─ build_list_query()    ← same seam — overriding once filters list and total
 ```
 
 ### Write path
@@ -132,8 +134,9 @@ from sqlalchemy.orm import selectinload
 ## Scope-filter the list endpoint
 
 The most common real-world override: restrict `GET /` to rows owned by the
-current user. You need to override **both** `on_list` and `count_index`
-so that pagination totals stay accurate.
+current user. The single seam for this is `build_list_query`, which both
+`on_list` and `count_index` consult — override it once and pagination
+totals stay aligned with the listed rows.
 
 ```python
 import sqlalchemy as sa
@@ -145,23 +148,33 @@ class DocumentView(fr.AsyncRestView):
     schema = DocumentSchema
     include_pagination_metadata = True
 
-    def _owner_query(self):
+    def build_list_query(self):
         user_id = self.request.state.user_id
-        return sa.select(Document).where(Document.owner_id == user_id)
+        return super().build_list_query().where(Document.owner_id == user_id)
+```
 
+Calling `super().build_list_query()` and chaining `.where(...)` composes
+cleanly with any base-class or mixin filter. For multi-tenant scoping,
+soft-delete hiding, or permission-based visibility, this is the seam to
+reach for.
+
+If you need `on_list` to also do work *beyond* a `WHERE` clause —
+post-query result decoration, pre-query joins, eager-loading tweaks —
+override `on_list` itself and use its optional `query` argument:
+
+```python
     async def on_list(self, query_params, query=None):
-        return await super().on_list(query_params, query=self._owner_query())
-
-    async def count_index(self, query_params):
-        from sqlalchemy import func, select
-        filtered = self._owner_query()
-        count_q = select(func.count()).select_from(filtered.subquery())
-        return int(await self.session.scalar(count_q) or 0)
+        objs = await super().on_list(query_params, query)
+        for obj in objs:
+            obj._display_name = derive_display_name(obj)
+        return objs
 ```
 
 `on_list` accepts an optional `query` argument — a SQLAlchemy `Select`
-statement. Pass it to restrict the result set before query modifiers (filters,
-sorting, pagination) are applied on top.
+statement. Pass it to restrict the result set before query modifiers
+(filters, sorting, pagination) are applied on top. A `query` passed this
+way is *not* shared with `count_index`, so reach for `build_list_query`
+instead whenever the filter should also apply to pagination totals.
 
 ---
 
@@ -170,6 +183,21 @@ sorting, pagination) are applied on top.
 When the change you need applies to *all* writes (both create and update), it
 is cleaner to override the low-level hooks rather than duplicate logic in
 `on_create` and `on_update`.
+
+Two rules apply to `make_new_object` / `update_object` overrides:
+
+- **Per-view application logic** (password hashing, slug derivation,
+  status-transition events) belongs in `on_create` / `on_update`,
+  written from scratch using the
+  [CRUD utility helpers](api_reference.md#crud-utility-free-functions).
+  Layering it through `make_new_object` creates ordering surprises and
+  hides where the create flow lives.
+- **Structural cross-cutting concerns** that only stamp server-controlled
+  fields (audit IDs, tenant IDs, soft-delete timestamps) *are* the right
+  fit for these hooks, layered through mixins.
+  See [Composing views with mixins](howto_compose_views_with_mixins.md)
+  for the pattern, the discriminator between the two rules, and the
+  three reusable mixins from the SaaS example.
 
 ### `save_object` — send a notification after every write
 

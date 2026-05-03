@@ -248,7 +248,8 @@ in a custom endpoint) reach for the free functions instead.
 | `self.update_object(obj, schema_obj, schema_cls=None)` | Wraps `fr.update_object` / `fr.async_update_object`. **Does not flush** — call `self.save_object(obj)` afterwards. |
 | `self.save_object(obj)` | Wraps `fr.save_object` / `fr.async_save_object` against `self.session`. Flush + refresh; this is where writes actually hit the database. |
 | `self.delete_object(obj)` | Delete `obj` via `self.session` and flush. |
-| `self.count_index(query_params)` | Return the total row count for the current list query (after filters, before pagination). Called by the default `index` only when `include_pagination_metadata = True`; available for use in replacement routes regardless. |
+| `self.build_list_query()` | Return the base SQLAlchemy `Select` used by both `on_list` and `count_index`. Defaults to `sqlalchemy.select(self.model)`. Override to add `WHERE` clauses that should apply to listing **and** its pagination total — tenant scoping, soft-delete filtering, permission-based row visibility. Call `super().build_list_query()` and chain `.where(...)` to compose with base-class or mixin filters. See [Composing views with mixins](howto_compose_views_with_mixins.md). |
+| `self.count_index(query_params)` | Return the total row count for the current list query (after filters, before pagination). Called by the default `index` only when `include_pagination_metadata = True`; available for use in replacement routes regardless. Consults `build_list_query()` so list and count stay in sync. |
 
 ### Database
 
