@@ -2,36 +2,42 @@
 
 import asyncio
 
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 import fastapi_restly as fr
 
 
-def test_plain_id_base_works_with_generated_async_crud(client):
-    class PlainProduct(fr.PlainIDBase):
+def test_custom_declarative_base_works_with_generated_async_crud(client):
+    class Base(DeclarativeBase):
+        pass
+
+    class Product(Base):
+        __tablename__ = "declarative_product"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
         name: Mapped[str] = mapped_column()
 
-    class PlainProductSchema(fr.IDSchema):
+    class ProductSchema(fr.IDSchema):
         name: str
 
     @fr.include_view(client.app)
-    class PlainProductView(fr.AsyncRestView):
-        prefix = "/plain-products"
-        model = PlainProduct
-        schema = PlainProductSchema
+    class ProductView(fr.AsyncRestView):
+        prefix = "/declarative-products"
+        model = Product
+        schema = ProductSchema
 
-    async def create_plain_tables():
+    async def create_tables():
         engine = fr.get_async_engine()
         async with engine.begin() as conn:
-            await conn.run_sync(fr.PlainBase.metadata.create_all)
+            await conn.run_sync(Base.metadata.create_all)
 
-    asyncio.run(create_plain_tables())
+    asyncio.run(create_tables())
 
-    create_response = client.post("/plain-products/", json={"name": "Widget"})
+    create_response = client.post("/declarative-products/", json={"name": "Widget"})
     assert create_response.status_code == 201
     created = create_response.json()
     assert created["name"] == "Widget"
 
-    get_response = client.get(f"/plain-products/{created['id']}")
+    get_response = client.get(f"/declarative-products/{created['id']}")
     assert get_response.status_code == 200
     assert get_response.json()["name"] == "Widget"

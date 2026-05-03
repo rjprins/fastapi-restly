@@ -152,16 +152,17 @@ For generated CRUD endpoints:
 | `fr.IDBase` | Convenience alias combining `DataclassBase` with an auto-incrementing integer `id` primary key. |
 | `fr.IDStampsBase` | Extends `IDBase` with `created_at` / `updated_at` timestamps (UTC-aware). |
 | `fr.TimestampsMixin` | Dataclass mixin adding `created_at` / `updated_at` to any `DataclassBase` subclass. |
-| `fr.PlainBase` | Alternative declarative base without dataclass semantics. |
-| `fr.PlainIDBase` | Convenience alias combining `PlainBase` with an auto-incrementing integer `id` primary key. |
-| `fr.PlainIDStampsBase` | Extends `PlainIDBase` with `created_at` / `updated_at` timestamps. |
 | `fr.IDMixin` | Dataclass mixin adding integer `id` to a custom `DataclassBase` subclass. |
-| `fr.PlainIDMixin` | Non-dataclass mixin adding integer `id` to a `PlainBase` subclass. |
-| `fr.PlainTimestampsMixin` | Non-dataclass mixin adding `created_at` / `updated_at` to a `PlainBase` subclass. |
 | `fr.get_one_or_create(model, session, **kwargs)` | Return the unique matching row or create it using a sync SQLAlchemy session. |
 | `fr.async_get_one_or_create(model, session, **kwargs)` | Async variant of `get_one_or_create`. |
 | `fastapi_restly.models.CASCADE_ALL_ASYNC` | Cascade string for use with `relationship(cascade=...)` in async SQLAlchemy models. Equivalent to `"save-update, merge, delete, expunge"`. SQLAlchemy's default `"all"` includes `"refresh-expire"` which is incompatible with async sessions. Import from `fastapi_restly.models` (not exposed at the top level). |
 | `fastapi_restly.models.CASCADE_ALL_DELETE_ORPHAN_ASYNC` | Like `CASCADE_ALL_ASYNC` but also includes `"delete-orphan"`. |
+
+FastAPI-Restly also works with ordinary SQLAlchemy declarative models that
+inherit from your own `sqlalchemy.orm.DeclarativeBase`. Use `fr.IDBase` when you
+want Restly's dataclass-oriented convenience base; bring your own SQLAlchemy
+base when you prefer standard declarative constructor semantics or are adding
+Restly to an existing model layer.
 
 ### Schema Classes and Utilities
 
@@ -329,7 +330,7 @@ fr.configure(app=app, async_database_url="sqlite+aiosqlite:///app.db")
 
 - Nested schemas are supported for **responses** and relation filtering, including nested aliases
 - Full nested schemas are **not** supported for create/update payloads by the default CRUD flow; write payloads must map directly to model fields, or use model-aware reference fields such as `*_id: IDRef[Model]` and relationship fields typed as `IDSchema[Model]`
-- `fr.PlainBase` / `fr.PlainIDBase` models work with generated CRUD views
+- Ordinary SQLAlchemy `DeclarativeBase` models work with generated CRUD views
 - UUID and other non-`int` primary keys are supported through `id_type`, `IDRef[Model]`, and `IDSchema[Model]`
 
 ## Minimal Example

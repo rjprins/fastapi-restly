@@ -7,19 +7,27 @@ from uuid import UUID, uuid4
 
 from fastapi import FastAPI
 from sqlalchemy import ForeignKey, Uuid
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 import fastapi_restly as fr
 
 app = FastAPI()
 
 
-class Account(fr.PlainBase):
+class Base(DeclarativeBase):
+    pass
+
+
+class Account(Base):
+    __tablename__ = "account"
+
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
     name: Mapped[str]
 
 
-class Project(fr.PlainBase):
+class Project(Base):
+    __tablename__ = "project"
+
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
     title: Mapped[str]
     account_id: Mapped[UUID] = mapped_column(

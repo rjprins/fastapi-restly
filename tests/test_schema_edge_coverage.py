@@ -8,7 +8,7 @@ import pytest
 from fastapi import HTTPException
 from sqlalchemy import ForeignKey, create_engine
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import Mapped, Session, mapped_column, relationship
+from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, relationship
 from sqlalchemy.pool import StaticPool
 from sqlalchemy.types import Boolean, Date, DateTime, Float, Integer, String, Text, Time
 
@@ -391,7 +391,10 @@ def test_schema_generator_helpers_cover_relationships_defaults_and_type_conversi
     assert "customer" not in view_schema.model_fields
     assert "customer_id" in view_schema.model_fields
 
-    class NoIdModel(fr.PlainBase):
+    class DeclarativeModelBase(DeclarativeBase):
+        pass
+
+    class NoIdModel(DeclarativeModelBase):
         __tablename__ = "no_id_model"
 
         slug: Mapped[str] = mapped_column(primary_key=True)

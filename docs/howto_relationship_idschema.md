@@ -138,15 +138,23 @@ Conflicting references, such as `"author_id": 1` with `"author": {"id": 2}`,
 return `422`. Explicit `null` also participates in this check: `author_id: 1`
 with `author: null` is a conflict, while omitting `author` entirely is not.
 
-### Plain Models
+### Standard SQLAlchemy Declarative Models
 
-If you use `fr.PlainBase` / `fr.PlainIDBase`, the dataclass constructor rules do
-not apply:
+If you use a normal SQLAlchemy `DeclarativeBase`, the dataclass constructor
+rules do not apply:
 
 ```python
-class Article(fr.PlainIDBase):
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+class Article(Base):
     __tablename__ = "article"
 
+    id: Mapped[int] = mapped_column(primary_key=True)
     title: Mapped[str]
     author_id: Mapped[int] = mapped_column(ForeignKey("author.id"))
     author: Mapped["Author"] = relationship()

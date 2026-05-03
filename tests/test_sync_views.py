@@ -3,7 +3,14 @@ from collections.abc import Iterator
 import pytest
 from fastapi import HTTPException
 from sqlalchemy import ForeignKey, ForeignKeyConstraint, create_engine
-from sqlalchemy.orm import Mapped, Session, mapped_column, relationship, sessionmaker
+from sqlalchemy.orm import (
+    DeclarativeBase,
+    Mapped,
+    Session,
+    mapped_column,
+    relationship,
+    sessionmaker,
+)
 from sqlalchemy.pool import StaticPool
 
 import fastapi_restly as fr
@@ -171,6 +178,9 @@ def test_sync_update_object_only_applies_set_fields(sync_db):
 def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db):
     engine, make_session = sync_db
 
+    class DeclarativeModelBase(DeclarativeBase):
+        pass
+
     class Dd8SyncAuthor(fr.IDBase):
         name: Mapped[str]
 
@@ -210,19 +220,21 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
         author_id: Mapped[int] = mapped_column(ForeignKey("dd8_sync_author.id"))
         author: Mapped[Dd8SyncAuthor] = relationship(default=None, init=False)
 
-    class Dd8SyncPlainAuthor(fr.PlainIDBase):
-        __tablename__ = "dd8_sync_plain_author"
+    class Dd8SyncDeclarativeAuthor(DeclarativeModelBase):
+        __tablename__ = "dd8_sync_declarative_author"
 
+        id: Mapped[int] = mapped_column(primary_key=True)
         name: Mapped[str]
 
-    class Dd8SyncPlainArticle(fr.PlainIDBase):
-        __tablename__ = "dd8_sync_plain_article"
+    class Dd8SyncDeclarativeArticle(DeclarativeModelBase):
+        __tablename__ = "dd8_sync_declarative_article"
 
+        id: Mapped[int] = mapped_column(primary_key=True)
         title: Mapped[str]
         author_id: Mapped[int] = mapped_column(
-            ForeignKey("dd8_sync_plain_author.id")
+            ForeignKey("dd8_sync_declarative_author.id")
         )
-        author: Mapped[Dd8SyncPlainAuthor] = relationship()
+        author: Mapped[Dd8SyncDeclarativeAuthor] = relationship()
 
     class Dd8SyncCompositeParent(fr.DataclassBase):
         __tablename__ = "dd8_sync_composite_parent"
@@ -263,22 +275,22 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
         author_id: fr.IDRef[Dd8SyncAuthor] | None = None
         author: fr.IDSchema[Dd8SyncAuthor] | None = None
 
-    class PlainFKSchema(fr.BaseSchema):
+    class DeclarativeFKSchema(fr.BaseSchema):
         title: str
-        author_id: fr.IDRef[Dd8SyncPlainAuthor]
+        author_id: fr.IDRef[Dd8SyncDeclarativeAuthor]
 
     class CompositeRelationshipSchema(fr.BaseSchema):
         title: str
         parent: fr.IDSchema[Dd8SyncCompositeParent]
 
     fr.DataclassBase.metadata.create_all(engine)
-    fr.PlainBase.metadata.create_all(engine)
+    DeclarativeModelBase.metadata.create_all(engine)
 
     with make_session() as session:
         first = Dd8SyncAuthor(name="Alice")
         second = Dd8SyncAuthor(name="Bob")
-        plain = Dd8SyncPlainAuthor(name="Plain Alice")
-        session.add_all([first, second, plain])
+        declarative_author = Dd8SyncDeclarativeAuthor(name="Declarative Alice")
+        session.add_all([first, second, declarative_author])
         session.flush()
 
         for model_cls in (
@@ -427,23 +439,32 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
         assert relation_fallback.author_id == first.id
         assert relation_fallback.author is first
 
-        plain_article = make_new_object(
+        declarative_article = make_new_object(
             session,
-            Dd8SyncPlainArticle,
-            PlainFKSchema(title="plain", author_id=plain.id),
-            PlainFKSchema,
+            Dd8SyncDeclarativeArticle,
+            DeclarativeFKSchema(title="declarative", author_id=declarative_author.id),
+            DeclarativeFKSchema,
         )
-        assert plain_article.author_id == plain.id
-        assert plain_article.author is plain
+        assert declarative_article.author_id == declarative_author.id
+        assert declarative_article.author is declarative_author
 
 
 def test_sync_rest_view_crud_and_pagination(sync_db):
     engine, _make_session = sync_db
 
-    class Customer(fr.PlainIDBase):
+    class Base(DeclarativeBase):
+        pass
+
+    class Customer(Base):
+        __tablename__ = "customer"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
         name: Mapped[str]
 
-    class Order(fr.PlainIDBase):
+    class Order(Base):
+        __tablename__ = "order"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
         item_name: Mapped[str]
         quantity: Mapped[int]
         customer_id: Mapped[int] = mapped_column(ForeignKey("customer.id"))
@@ -471,7 +492,7 @@ def test_sync_rest_view_crud_and_pagination(sync_db):
         update_schema = OrderInputSchema
         include_pagination_metadata = True
 
-    fr.PlainBase.metadata.create_all(engine)
+    Base.metadata.create_all(engine)
 
     with fr.open_session() as session:
         customer = Customer(name="Acme")

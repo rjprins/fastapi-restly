@@ -61,7 +61,7 @@ A few things to note:
 - The table name is derived automatically from the class name (`User` → `user` table).
 - `fr.DataclassBase` is the explicit dataclass-oriented declarative base.
 - `fr.IDBase` is the convenience alias that combines `DataclassBase` with an auto-incrementing integer `id` primary key.
-- If you prefer standard SQLAlchemy declarative style (without dataclass semantics), use `fr.PlainIDBase` instead — both work with the rest of the framework.
+- If you prefer standard SQLAlchemy declarative style (without dataclass semantics), define your own `sqlalchemy.orm.DeclarativeBase` as usual — those models also work with the rest of the framework.
 - With no manual schema, FastAPI-Restly auto-generates one from your model.
 - The lifespan hook creates tables through the same async engine configured for the app. For production, use Alembic migrations instead of `create_all()`.
 

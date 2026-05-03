@@ -1,7 +1,7 @@
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import Mapped, Session, mapped_column
+from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 
 import fastapi_restly as fr
 
@@ -21,16 +21,22 @@ def test_get_one_or_create_supports_dataclass_models():
         assert loaded.name == "alpha"
 
 
-def test_get_one_or_create_supports_plain_models():
-    class PlainWidget(fr.PlainIDBase):
+def test_get_one_or_create_supports_custom_declarative_models():
+    class Base(DeclarativeBase):
+        pass
+
+    class Widget(Base):
+        __tablename__ = "widget"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
         name: Mapped[str] = mapped_column(unique=True)
 
     engine = create_engine("sqlite+pysqlite:///:memory:")
-    fr.PlainBase.metadata.create_all(engine)
+    Base.metadata.create_all(engine)
 
     with Session(engine) as session:
-        created = fr.get_one_or_create(PlainWidget, session, name="alpha")
-        loaded = fr.get_one_or_create(PlainWidget, session, name="alpha")
+        created = fr.get_one_or_create(Widget, session, name="alpha")
+        loaded = fr.get_one_or_create(Widget, session, name="alpha")
 
         assert loaded.id == created.id
         assert loaded.name == "alpha"

@@ -13,7 +13,7 @@ pytest_plugins = ["fastapi_restly.testing._fixtures"]
 @pytest.fixture(autouse=True)
 def reset_metadata():
     """Reset global framework state between tests to avoid cross-test leakage."""
-    framework_bases = (fr.DataclassBase, fr.PlainBase)
+    framework_bases = (fr.DataclassBase,)
 
     def _cleanup_registry(base_cls: type) -> None:
         class_registry = base_cls.registry._class_registry  # type: ignore[attr-defined]

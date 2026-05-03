@@ -5,7 +5,7 @@ import sqlalchemy
 from fastapi import HTTPException
 from sqlalchemy import ForeignKey
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 import fastapi_restly as fr
 from fastapi_restly.schemas._base import create_model_with_optional_fields
@@ -345,10 +345,19 @@ def test_async_rest_view_crud_and_pagination():
     """Call AsyncRestView methods directly (no HTTP) to cover get/post/patch/delete
     and include_pagination_metadata=True, mirroring test_sync_views.py."""
 
-    class Customer(fr.PlainIDBase):
+    class Base(DeclarativeBase):
+        pass
+
+    class Customer(Base):
+        __tablename__ = "customer"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
         name: Mapped[str]
 
-    class Order(fr.PlainIDBase):
+    class Order(Base):
+        __tablename__ = "order"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
         item_name: Mapped[str]
         quantity: Mapped[int]
         customer_id: Mapped[int] = mapped_column(ForeignKey("customer.id"))
@@ -379,7 +388,7 @@ def test_async_rest_view_crud_and_pagination():
     async def run():
         engine, make_session = _make_engine_and_session()
         async with engine.begin() as conn:
-            await conn.run_sync(fr.PlainBase.metadata.create_all)
+            await conn.run_sync(Base.metadata.create_all)
 
         async with make_session() as session:
             customer = Customer(name="Acme")
