@@ -181,6 +181,64 @@ def _add_assignment(target: dict[str, Any], field_name: str | None, value: Any) 
         target[field_name] = value
 
 
+def _reference_identity(value: Any) -> tuple[type[Any] | None, Any] | None:
+    if isinstance(value, DeclarativeBase):
+        return type(value), getattr(value, "id", None)
+    if isinstance(value, IDSchema):
+        sql_model = value.get_sql_model_annotation()
+        return sql_model, value.id
+    return None
+
+
+def validate_resolved_reference_consistency(
+    model_cls: type[DeclarativeBase],
+    schema_obj: BaseSchema,
+    schema_cls: type[BaseSchema] | None = None,
+) -> None:
+    """Validate explicitly supplied FK and relationship fields agree.
+
+    IDRef/IDSchema resolution turns model-aware references into ORM objects before
+    object construction/update. If the client supplied both ``author_id`` and
+    ``author`` independently, they must refer to the same row.
+    """
+    if schema_cls is None:
+        schema_cls = schema_obj.__class__
+
+    for fk_field in schema_obj.model_fields_set:
+        if not fk_field.endswith("_id") or not _is_reference_schema_field(
+            schema_cls, fk_field
+        ):
+            continue
+
+        relation_field = fk_field[:-3]
+        if (
+            relation_field not in schema_obj.model_fields_set
+            or not _is_reference_schema_field(schema_cls, relation_field)
+            or not _has_model_attr(model_cls, relation_field)
+        ):
+            continue
+
+        fk_identity = _reference_identity(getattr(schema_obj, fk_field, None))
+        relation_identity = _reference_identity(
+            getattr(schema_obj, relation_field, None)
+        )
+        if fk_identity is None or relation_identity is None:
+            continue
+
+        fk_model, fk_id = fk_identity
+        relation_model, relation_id = relation_identity
+        if fk_model == relation_model and fk_id == relation_id:
+            continue
+
+        raise fastapi.HTTPException(
+            status_code=422,
+            detail=(
+                f"Conflicting references for {fk_field} and {relation_field}: "
+                f"{fk_id!r} != {relation_id!r}"
+            ),
+        )
+
+
 def iter_creatable_fields(
     schema_obj: BaseSchema,
     schema_cls: type[BaseSchema] | None = None,

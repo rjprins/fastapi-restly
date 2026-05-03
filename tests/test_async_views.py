@@ -256,6 +256,11 @@ def test_async_object_helpers_are_dataclass_init_aware_for_resolved_refs():
         title: str
         author: fr.IDSchema[Dd8AsyncAuthor]
 
+    class BothReferenceSchema(fr.BaseSchema):
+        title: str
+        author_id: fr.IDRef[Dd8AsyncAuthor]
+        author: fr.IDSchema[Dd8AsyncAuthor]
+
     async def run():
         engine, make_session = _make_engine_and_session()
         async with engine.begin() as conn:
@@ -284,6 +289,32 @@ def test_async_object_helpers_are_dataclass_init_aware_for_resolved_refs():
             )
             assert article.author_id == second.id
             assert article.author is second
+
+            with pytest.raises(HTTPException) as create_exc:
+                await async_make_new_object(
+                    session,
+                    Dd8AsyncRelationshipFirstArticle,
+                    BothReferenceSchema(
+                        title="conflict",
+                        author_id=first.id,
+                        author={"id": second.id},
+                    ),
+                    BothReferenceSchema,
+                )
+            assert create_exc.value.status_code == 422
+
+            with pytest.raises(HTTPException) as update_exc:
+                await async_update_object(
+                    session,
+                    article,
+                    BothReferenceSchema(
+                        title="conflict",
+                        author_id=first.id,
+                        author={"id": second.id},
+                    ),
+                    BothReferenceSchema,
+                )
+            assert update_exc.value.status_code == 422
 
             fallback = await async_make_new_object(
                 session,

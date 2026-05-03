@@ -204,6 +204,53 @@ def test_post_with_invalid_fk_via_idschema_returns_404(client):
     assert response.status_code == 404
 
 
+def test_post_with_conflicting_explicit_reference_fields_returns_422(client):
+    class Author(fr.IDBase):
+        name: Mapped[str]
+
+    class Article(fr.IDBase):
+        title: Mapped[str]
+        author_id: Mapped[int] = mapped_column(ForeignKey("author.id"))
+        author: Mapped[Author] = relationship(default=None)
+
+    class AuthorSchema(fr.IDSchema):
+        name: str
+
+    class ArticleSchema(fr.IDSchema):
+        title: str
+        author_id: fr.IDRef[Author]
+        author: fr.IDSchema[Author]
+
+    @fr.include_view(client.app)
+    class AuthorView(fr.AsyncRestView):
+        prefix = "/conflict-authors"
+        model = Author
+        schema = AuthorSchema
+
+    @fr.include_view(client.app)
+    class ArticleView(fr.AsyncRestView):
+        prefix = "/conflict-articles"
+        model = Article
+        schema = ArticleSchema
+
+    create_tables()
+
+    first = client.post("/conflict-authors/", json={"name": "Alice"}).json()
+    second = client.post("/conflict-authors/", json={"name": "Bob"}).json()
+
+    response = client.post(
+        "/conflict-articles/",
+        json={
+            "title": "Mismatch",
+            "author_id": first["id"],
+            "author": {"id": second["id"]},
+        },
+        assert_status_code=422,
+    )
+    assert response.status_code == 422
+    assert "Conflicting references" in response.json()["detail"]
+
+
 # ---------------------------------------------------------------------------
 # NOT NULL constraint violation
 # ---------------------------------------------------------------------------

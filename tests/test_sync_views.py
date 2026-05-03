@@ -249,6 +249,11 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
         title: str
         author: fr.IDSchema[Dd8SyncAuthor]
 
+    class BothReferenceSchema(fr.BaseSchema):
+        title: str
+        author_id: fr.IDRef[Dd8SyncAuthor]
+        author: fr.IDSchema[Dd8SyncAuthor]
+
     class PlainFKSchema(fr.BaseSchema):
         title: str
         author_id: fr.IDRef[Dd8SyncPlainAuthor]
@@ -308,6 +313,45 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
                 ),
                 CompositeRelationshipSchema,
             )
+
+        both_explicit = make_new_object(
+            session,
+            Dd8SyncRelationshipFirstArticle,
+            BothReferenceSchema(
+                title="both explicit",
+                author_id=first.id,
+                author={"id": first.id},
+            ),
+            BothReferenceSchema,
+        )
+        assert both_explicit.author_id == first.id
+        assert both_explicit.author is first
+
+        with pytest.raises(HTTPException) as create_exc:
+            make_new_object(
+                session,
+                Dd8SyncRelationshipFirstArticle,
+                BothReferenceSchema(
+                    title="conflict",
+                    author_id=first.id,
+                    author={"id": second.id},
+                ),
+                BothReferenceSchema,
+            )
+        assert create_exc.value.status_code == 422
+
+        with pytest.raises(HTTPException) as update_exc:
+            update_object(
+                session,
+                both_explicit,
+                BothReferenceSchema(
+                    title="conflict",
+                    author_id=first.id,
+                    author={"id": second.id},
+                ),
+                BothReferenceSchema,
+            )
+        assert update_exc.value.status_code == 422
 
         relation_first = make_new_object(
             session,

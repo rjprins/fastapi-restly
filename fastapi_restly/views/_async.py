@@ -24,6 +24,7 @@ from ._base import (
     get,
     patch,
     post,
+    validate_resolved_reference_consistency,
 )
 
 T = TypeVar("T", bound=DeclarativeBase)
@@ -42,6 +43,7 @@ async def async_make_new_object(
     the shared helper. The session is not flushed here.
     """
     await async_resolve_ids_to_sqlalchemy_objects(session, schema_obj)
+    validate_resolved_reference_consistency(model_cls, schema_obj, schema_cls)
     create_plan = build_create_plan(model_cls, schema_obj, schema_cls)
     obj = model_cls(**create_plan.kwargs)
     apply_create_assignments(obj, create_plan.post_assignments)
@@ -63,6 +65,7 @@ async def async_update_object(
     caller explicitly set are applied; read-only fields are skipped.
     """
     await async_resolve_ids_to_sqlalchemy_objects(session, schema_obj)
+    validate_resolved_reference_consistency(type(obj), schema_obj, schema_cls)
     apply_update_to_object(obj, schema_obj, schema_cls)
     return obj
 

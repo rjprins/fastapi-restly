@@ -119,9 +119,23 @@ author: Mapped["Author"] = relationship(default=None)
 ```
 
 In that shape, Restly passes the resolved `Author` object to the constructor and
-keeps `author_id` in sync. If neither side is accepted by the constructor, Restly
-constructs the object first and assigns the FK/relationship afterwards when it
-can do so unambiguously.
+keeps `author_id` in sync. More generally, Restly supplies the constructor
+values your dataclass model requires. For one resolved reference, it may pass the
+FK scalar, the relationship object, or both if both dataclass fields are
+required. When both are supplied by Restly, they are derived from the same
+database row.
+
+If a client supplies both sides independently, Restly validates that they match:
+
+```json
+{
+  "author_id": 1,
+  "author": {"id": 1}
+}
+```
+
+Conflicting references, such as `"author_id": 1` with `"author": {"id": 2}`,
+return `422`.
 
 ### Plain Models
 
@@ -211,7 +225,8 @@ resolver. The difference is the API shape.
 - The `_id` field name triggers FK resolution.
 - A matching SQLAlchemy relationship lets Restly keep the FK column and
   relationship attribute in sync.
-- Dataclass models can be FK-first or relationship-first; Restly chooses the
-  constructor argument that is accepted and avoids passing both for one
-  reference.
+- Dataclass models can be FK-first or relationship-first; Restly supplies the
+  constructor values the model requires from the same resolved row.
+- If both `author_id` and `author` are explicitly provided, they must refer to
+  the same row or the request returns `422`.
 - `IDSchema` as a base class adds the resource's own read-only `id` field.

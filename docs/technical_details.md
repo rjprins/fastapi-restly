@@ -177,8 +177,11 @@ Nested schemas serve two different roles in Restly today:
   special case for foreign keys. When an `IDRef` / `IDSchema` reference has
   been resolved to an ORM object, the helpers inspect the SQLAlchemy mapper and
   dataclass constructor fields so FK-first (`author_id` init-enabled) and
-  relationship-first (`author` init-enabled) declarations both work without
-  passing both values into `__init__`.
+  relationship-first (`author` init-enabled) declarations both work. For one
+  resolved reference, Restly may pass the FK scalar, the relationship object, or
+  both when both dataclass fields are required; both values are derived from the
+  same row. If the client explicitly supplies both fields, Restly validates that
+  they refer to the same row before construction/update.
 
 If you declare a nested input field like `address: AddressSchema` on a write
 schema, the default CRUD implementation will pass that nested Pydantic object
