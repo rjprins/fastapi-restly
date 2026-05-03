@@ -102,6 +102,17 @@ class AsyncRestView(
         total = await self.count_index(query_params)
         return self._build_pagination_payload(query_params, objs, total)
 
+    def build_list_query(self) -> sqlalchemy.Select[Any]:
+        """
+        Return the base SQLAlchemy ``Select`` used by both ``on_list`` and
+        ``count_index``. Override to add ``WHERE`` clauses that should apply
+        to listing *and* its pagination total — e.g. tenant scoping, soft-delete
+        filtering, permission-based row visibility. Call
+        ``super().build_list_query()`` and chain ``.where(...)`` to compose with
+        any base-class or mixin filters.
+        """
+        return sqlalchemy.select(self.model)
+
     async def on_list(
         self,
         query_params: Any,
@@ -121,9 +132,12 @@ class AsyncRestView(
         injected by FastAPI; pagination bounds (``limit`` / ``page`` / etc.)
         have already been validated by the schema returned from
         :func:`fastapi_restly.query.create_query_param_schema`.
+
+        For WHERE-clause-only filtering that should also apply to the
+        pagination total, override :meth:`build_list_query` instead.
         """
         if query is None:
-            query = sqlalchemy.select(self.model)
+            query = self.build_list_query()
         loader_options = self.get_relationship_loader_options()
         if loader_options:
             query = query.options(*loader_options)
@@ -138,7 +152,7 @@ class AsyncRestView(
     async def count_index(self, query_params: Any) -> int:
         with use_query_modifier_version(self.get_query_modifier_version()):
             filtered_query = apply_query_modifiers(
-                query_params, sqlalchemy.select(self.model), self.model, self.schema
+                query_params, self.build_list_query(), self.model, self.schema
             )
         filtered_query = filtered_query.order_by(None).limit(None).offset(None)
         count_query = select(func.count()).select_from(filtered_query.subquery())
