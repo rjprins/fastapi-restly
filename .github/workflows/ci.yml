@@ -168,6 +168,14 @@ jobs:
       - name: Build package
         run: uv build
 
+      - name: Smoke-test wheel
+        run: >-
+          uv run
+          --isolated
+          --no-project
+          --with "$(ls dist/*.whl)"
+          python -c "from importlib.metadata import version; import fastapi_restly; import fastapi_restly.db; import fastapi_restly.schemas; import fastapi_restly.views; print(version('fastapi-restly'))"
+
       - name: Check package
         run: uv run --with twine twine check dist/*
 
