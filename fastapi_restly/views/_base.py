@@ -1085,9 +1085,35 @@ def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
             continue
         endpoint = attr
         path, route_kwargs = endpoint._api_route_args
-        api_router.add_api_route(path, endpoint, **route_kwargs)
+        _add_api_route(api_router, view_cls, path, endpoint, route_kwargs)
 
     return api_router
+
+
+def _add_api_route(
+    api_router: fastapi.APIRouter,
+    view_cls: type[View],
+    path: str,
+    endpoint: Callable,
+    route_kwargs: dict[str, Any],
+) -> None:
+    if _should_add_collection_route_alias(view_cls, path, endpoint):
+        api_router.add_api_route("", endpoint, **route_kwargs)
+        hidden_alias_kwargs = {**route_kwargs, "include_in_schema": False}
+        api_router.add_api_route("/", endpoint, **hidden_alias_kwargs)
+        return
+
+    api_router.add_api_route(path, endpoint, **route_kwargs)
+
+
+def _should_add_collection_route_alias(
+    view_cls: type[View], path: str, endpoint: Callable
+) -> bool:
+    if not issubclass(view_cls, BaseRestView):
+        return False
+    if path != "/":
+        return False
+    return endpoint.__name__.endswith(("_index", "_post"))
 
 
 def _annotate_self(view_cls: type[View], endpoint: Callable) -> None:

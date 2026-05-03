@@ -57,7 +57,8 @@ def test_auto_generated_schema_in_view(client):
     paths = spec["paths"]
 
     # Check that endpoints exist
-    assert "/users/" in paths
+    assert "/users" in paths
+    assert "/users/" not in paths
     assert "/users/{id}" in paths
 
     # Test creating a user

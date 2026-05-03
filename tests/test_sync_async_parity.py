@@ -155,6 +155,36 @@ def test_list_returns_200_and_array(view_client: TestClient):
 
 
 @pytest.mark.parametrize("view_client", ["sync", "async"], indirect=True)
+def test_collection_routes_accept_slash_and_no_slash(view_client: TestClient):
+    no_slash_create = view_client.post(
+        "/gadgets", json={"name": "No slash", "price": 1.0}
+    )
+    slash_create = view_client.post(
+        "/gadgets/", json={"name": "Slash", "price": 2.0}
+    )
+
+    assert no_slash_create.status_code == 201
+    assert slash_create.status_code == 201
+
+    no_slash_list = view_client.get("/gadgets")
+    slash_list = view_client.get("/gadgets/")
+
+    assert no_slash_list.status_code == 200
+    assert slash_list.status_code == 200
+    assert no_slash_list.json() == slash_list.json()
+    assert {item["name"] for item in no_slash_list.json()} == {"No slash", "Slash"}
+
+
+@pytest.mark.parametrize("view_client", ["sync", "async"], indirect=True)
+def test_collection_openapi_uses_no_slash_canonical_path(view_client: TestClient):
+    paths = view_client.app.openapi()["paths"]
+
+    assert "/gadgets" in paths
+    assert "/gadgets/" not in paths
+    assert {"get", "post"} <= set(paths["/gadgets"])
+
+
+@pytest.mark.parametrize("view_client", ["sync", "async"], indirect=True)
 def test_get_existing_returns_200(view_client: TestClient):
     created = view_client.post("/gadgets/", json={"name": "Knob", "price": 1.5}).json()
 
