@@ -29,10 +29,8 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "aiosqlite>=0.21.0",
     "alembic>=1.15.2",
     "fastapi>=0.115.12",
-    "httpx>=0.28.1",
     "orjson>=3.10.18",
     "pydantic>=2.11.4",
     "pydantic-settings>=2.9.1",
@@ -40,6 +38,14 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+standard = [
+    "aiosqlite>=0.21.0",
+    "fastapi[standard]>=0.115.12",
+    "httpx>=0.28.1",
+    "pytest>=8.3.5",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=6.1.1",
+]
 docs = [
     "ghp-import>=2.1.0",
     "myst-parser>=4.0.1",
@@ -50,7 +56,14 @@ docs = [
     "sphinx-design>=0.6.0",
     "sphinx-sitemap>=2.9.0",
 ]
+testing = [
+    "httpx>=0.28.1",
+    "pytest>=8.3.5",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=6.1.1",
+]
 test = [
+    "httpx>=0.28.1",
     "pytest>=8.3.5",
     "pytest-asyncio>=0.24.0",
     "pytest-cov>=6.1.1",
@@ -68,6 +81,7 @@ Changelog = "https://github.com/rjprins/fastapi-restly/blob/main/CHANGELOG.md"
 dev = [
     "aiosqlite>=0.21.0",
     "ghp-import>=2.1.0",
+    "httpx>=0.28.1",
     "ipython>=8.36.0",
     "myst-parser>=4.0.1",
     "pdbpp>=0.11.6",

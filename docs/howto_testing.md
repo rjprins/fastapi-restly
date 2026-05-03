@@ -2,6 +2,14 @@
 
 FastAPI-Restly includes a test client and pytest fixtures for fast endpoint tests.
 
+Install the testing extra before importing these helpers:
+
+```bash
+pip install "fastapi-restly[testing]"
+```
+
+The standard extra also includes the testing dependencies.
+
 ## Client
 
 ```python

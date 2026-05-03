@@ -4,6 +4,14 @@ FastAPI-Restly ships a set of pytest fixtures that handle database setup, transa
 
 ## Setup
 
+Install the testing extra before enabling the plugin:
+
+```bash
+pip install "fastapi-restly[testing]"
+```
+
+The standard extra also includes the testing dependencies.
+
 In your `conftest.py`, register the plugin:
 
 ```python

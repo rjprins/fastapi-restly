@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import subprocess
+import sys
 from pathlib import Path
 from unittest.mock import patch
 
@@ -178,3 +180,36 @@ def test_fixture_exports_and_client_helpers():
     assert exported_fixtures.session is _fixtures.session
     assert "app" in exported_fixtures.__all__
     assert "session" in exported_fixtures.__all__
+
+
+def _run_with_blocked_httpx(import_statement: str) -> subprocess.CompletedProcess[str]:
+    code = f"""
+import builtins
+real_import = builtins.__import__
+
+def blocked_import(name, globals=None, locals=None, fromlist=(), level=0):
+    if name == "httpx" or name.startswith("httpx."):
+        raise ModuleNotFoundError("No module named 'httpx'", name="httpx")
+    return real_import(name, globals, locals, fromlist, level)
+
+builtins.__import__ = blocked_import
+{import_statement}
+"""
+
+    return subprocess.run(
+        [sys.executable, "-c", code], check=False, capture_output=True, text=True
+    )
+
+
+def test_testing_namespace_reports_missing_optional_dependencies():
+    result = _run_with_blocked_httpx("import fastapi_restly.testing")
+
+    assert result.returncode != 0
+    assert 'pip install "fastapi-restly[testing]"' in result.stderr
+
+
+def test_pytest_plugin_reports_missing_optional_dependencies():
+    result = _run_with_blocked_httpx("import fastapi_restly.pytest_fixtures")
+
+    assert result.returncode != 0
+    assert 'pip install "fastapi-restly[testing]"' in result.stderr

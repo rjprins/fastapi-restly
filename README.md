@@ -241,6 +241,12 @@ class UserView(fr.AsyncRestView):
 
 `fastapi_restly.testing` provides pytest fixtures (`app`, `client`, `async_session`, `session`) with **savepoint-based isolation** — each test runs inside a transaction that rolls back automatically, so no data leaks between tests. Add to your `conftest.py`:
 
+Install the testing extra when consuming FastAPI-Restly as a package:
+
+```bash
+pip install "fastapi-restly[testing]"
+```
+
 ```python
 # conftest.py
 import fastapi_restly as fr

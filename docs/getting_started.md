@@ -12,6 +12,17 @@ From the repository root:
 uv sync
 ```
 
+When installing FastAPI-Restly into an application, use the standard extra for the
+docs path:
+
+```bash
+pip install "fastapi-restly[standard]"
+```
+
+The base package intentionally stays small. The standard extra adds FastAPI's
+standard development server dependencies, `aiosqlite` for the async SQLite
+examples, and FastAPI-Restly's testing dependencies.
+
 If you want example project dependencies too:
 
 ```bash
@@ -81,7 +92,7 @@ Default to `AsyncRestView` for new services; it follows FastAPI's async-first gr
 uv run fastapi dev main.py
 ```
 
-> **Note:** `fastapi dev` requires the `fastapi[standard]` extras (`pip install "fastapi[standard]"` or add it to your dependencies). It is not needed for production — only for the development server.
+> **Note:** `fastapi dev` requires FastAPI's standard extras. `fastapi-restly[standard]` includes them. The development server is not needed for production.
 
 Open:
 
