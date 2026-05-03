@@ -373,3 +373,58 @@ def test_async_on_list_with_custom_query():
         await engine.dispose()
 
     asyncio.run(run())
+
+
+def test_async_build_list_query_is_consulted_by_list_and_count():
+    """Both on_list and count_index must route through build_list_query so a
+    single override filters listing AND its pagination total."""
+
+    class Gizmo(fr.IDBase):
+        name: Mapped[str]
+        active: Mapped[bool]
+
+    class GizmoSchema(fr.IDSchema):
+        name: str
+        active: bool
+
+    class GizmoView(fr.AsyncRestView):
+        prefix = "/gizmos"
+        model = Gizmo
+        schema = GizmoSchema
+
+        def build_list_query(self):
+            return super().build_list_query().where(Gizmo.active.is_(True))
+
+    async def run():
+        engine, make_session = _make_engine_and_session()
+        async with engine.begin() as conn:
+            await conn.run_sync(fr.DataclassBase.metadata.create_all)
+
+        async with make_session() as session:
+            session.add_all([
+                Gizmo(name="alpha", active=True),
+                Gizmo(name="beta", active=False),
+                Gizmo(name="gamma", active=True),
+                Gizmo(name="delta", active=False),
+            ])
+            await session.flush()
+
+            view = GizmoView()
+            view.session = session
+
+            # Default build_list_query returns select(self.model).
+            assert str(fr.AsyncRestView.build_list_query(view)) == str(
+                sqlalchemy.select(Gizmo)
+            )
+
+            # Override is consulted by both list and count.
+            results = await view.on_list({})
+            assert len(results) == 2
+            assert all(g.active for g in results)
+
+            total = await view.count_index({})
+            assert total == 2
+
+        await engine.dispose()
+
+    asyncio.run(run())

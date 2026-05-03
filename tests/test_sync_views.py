@@ -256,3 +256,54 @@ def test_sync_rest_view_crud_and_pagination(sync_db):
 
         with pytest.raises(HTTPException):
             view.get(second.id)
+
+
+def test_sync_build_list_query_is_consulted_by_list_and_count(sync_db):
+    """Both on_list and count_index must route through build_list_query so a
+    single override filters listing AND its pagination total."""
+    import sqlalchemy
+
+    engine, make_session = sync_db
+
+    class Gadget(fr.IDBase):
+        name: Mapped[str]
+        active: Mapped[bool]
+
+    class GadgetSchema(fr.IDSchema):
+        name: str
+        active: bool
+
+    class GadgetView(fr.RestView):
+        prefix = "/gadgets"
+        model = Gadget
+        schema = GadgetSchema
+
+        def build_list_query(self):
+            return super().build_list_query().where(Gadget.active.is_(True))
+
+    fr.DataclassBase.metadata.create_all(engine)
+
+    with make_session() as session:
+        session.add_all([
+            Gadget(name="alpha", active=True),
+            Gadget(name="beta", active=False),
+            Gadget(name="gamma", active=True),
+            Gadget(name="delta", active=False),
+        ])
+        session.flush()
+
+        view = GadgetView()
+        view.session = session
+
+        # Default build_list_query returns select(self.model).
+        assert str(fr.RestView.build_list_query(view)) == str(
+            sqlalchemy.select(Gadget)
+        )
+
+        # Override is consulted by both list and count.
+        results = view.on_list({})
+        assert len(results) == 2
+        assert all(g.active for g in results)
+
+        total = view.count_index({})
+        assert total == 2
