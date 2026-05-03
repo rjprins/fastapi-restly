@@ -11,9 +11,7 @@ from collections.abc import Iterator
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Mapped, sessionmaker
-from sqlalchemy.pool import StaticPool
+from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
 from fastapi_restly.db import fr_globals
@@ -40,15 +38,8 @@ def _restore_globals(saved):
 
 
 @pytest.fixture
-def sync_client() -> Iterator[TestClient]:
-    saved = _save_globals()
-    engine = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    make_session = sessionmaker(bind=engine, expire_on_commit=False)
-    fr.configure(make_session=make_session)
+def sync_client(sync_db) -> Iterator[TestClient]:
+    engine, _ = sync_db
 
     class Gadget(fr.IDBase):
         name: Mapped[str]
@@ -67,11 +58,7 @@ def sync_client() -> Iterator[TestClient]:
         schema = GadgetSchema
 
     fr.DataclassBase.metadata.create_all(engine)
-    try:
-        yield TestClient(app)
-    finally:
-        engine.dispose()
-        _restore_globals(saved)
+    yield TestClient(app)
 
 
 @pytest.fixture

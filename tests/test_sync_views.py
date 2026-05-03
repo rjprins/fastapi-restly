@@ -1,49 +1,15 @@
-from collections.abc import Iterator
-
 import pytest
 from fastapi import HTTPException
-from sqlalchemy import ForeignKey, ForeignKeyConstraint, create_engine
-from sqlalchemy.orm import (
-    DeclarativeBase,
-    Mapped,
-    Session,
-    mapped_column,
-    relationship,
-    sessionmaker,
-)
-from sqlalchemy.pool import StaticPool
+from sqlalchemy import ForeignKey, ForeignKeyConstraint
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 import fastapi_restly as fr
-from fastapi_restly.db import fr_globals
 from fastapi_restly.schemas._base import create_model_with_optional_fields
 from fastapi_restly.views._base import (
     build_create_plan,
     validate_resolved_reference_consistency,
 )
 from fastapi_restly.views._sync import make_new_object, save_object, update_object
-
-
-@pytest.fixture
-def sync_db() -> Iterator[tuple[object, sessionmaker[Session]]]:
-    original_database_url = fr_globals.database_url
-    original_make_session = fr_globals.make_session
-    original_sync_session_generator = fr_globals.sync_session_generator
-
-    engine = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    make_session = sessionmaker(bind=engine, expire_on_commit=False)
-    fr.configure(make_session=make_session)
-
-    try:
-        yield engine, make_session
-    finally:
-        fr_globals.database_url = original_database_url
-        fr_globals.make_session = original_make_session
-        fr_globals.sync_session_generator = original_sync_session_generator
-        engine.dispose()
 
 
 def test_sync_object_helpers_handle_readonly_and_relationship_inputs(sync_db):

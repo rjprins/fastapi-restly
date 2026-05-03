@@ -15,9 +15,7 @@ from collections.abc import Iterator
 
 import pytest
 from fastapi import FastAPI
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Mapped, Session, sessionmaker
-from sqlalchemy.pool import StaticPool
+from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
 from fastapi_restly.db import fr_globals
@@ -55,35 +53,15 @@ def _setup_async_item_view(client):
 
 
 # ---------------------------------------------------------------------------
-# Sync setup: separate fixture using a sync sessionmaker bound to in-memory SQLite
+# Sync setup: RestlyTestClient backed by the shared sync SQLite fixture.
 # ---------------------------------------------------------------------------
 
 
 @pytest.fixture
-def sync_client() -> Iterator[RestlyTestClient]:
+def sync_client(sync_db) -> Iterator[RestlyTestClient]:
     """Yield a RestlyTestClient backed by a sync SQLAlchemy session."""
-    original_database_url = fr_globals.database_url
-    original_make_session = fr_globals.make_session
-    original_sync_session_generator = fr_globals.sync_session_generator
-
-    engine = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    make_session = sessionmaker(bind=engine, class_=Session, expire_on_commit=False)
-    fr.configure(make_session=make_session)
-    fr.DataclassBase.metadata.create_all(engine)
-
     app = FastAPI()
-    client = RestlyTestClient(app)
-    try:
-        yield client
-    finally:
-        fr_globals.database_url = original_database_url
-        fr_globals.make_session = original_make_session
-        fr_globals.sync_session_generator = original_sync_session_generator
-        engine.dispose()
+    yield RestlyTestClient(app)
 
 
 def _setup_sync_item_view(client):

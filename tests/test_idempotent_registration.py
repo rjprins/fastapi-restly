@@ -21,41 +21,11 @@ registering the same View twice would:
   ``cls.pagination_response_schema``).
 """
 
-from collections.abc import Iterator
-
-import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Mapped, sessionmaker
-from sqlalchemy.pool import StaticPool
+from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
-from fastapi_restly.db import fr_globals
-
-
-@pytest.fixture
-def sync_db() -> Iterator[tuple]:
-    """Configure an in-memory SQLite engine for sync RestView tests."""
-    original_database_url = fr_globals.database_url
-    original_make_session = fr_globals.make_session
-    original_sync_session_generator = fr_globals.sync_session_generator
-
-    engine = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    make_session = sessionmaker(bind=engine, expire_on_commit=False)
-    fr.configure(make_session=make_session)
-
-    try:
-        yield engine, make_session
-    finally:
-        fr_globals.database_url = original_database_url
-        fr_globals.make_session = original_make_session
-        fr_globals.sync_session_generator = original_sync_session_generator
-        engine.dispose()
 
 
 def test_view_registered_on_two_apps_both_work(sync_db):
