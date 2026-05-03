@@ -1004,6 +1004,35 @@ class TestOptimisticLocking:
 class TestComputedFields:
     """Test computed fields in schemas (via /stats endpoint)."""
 
+    def test_project_response_includes_task_rollups(self, client):
+        """Test that ProjectSchema response-only rollups are populated."""
+        response = client.post(
+            "/organizations/",
+            json={"name": "Response Rollup Org", "slug": "response-rollup-org"},
+        )
+        org_id = response.json()["id"]
+
+        response = client.post(
+            "/projects/",
+            json={"name": "Response Rollup Project", "organization_id": org_id},
+        )
+        project_id = response.json()["id"]
+
+        client.post(
+            "/tasks/",
+            json={"title": "Rollup Todo", "status": "todo", "project_id": project_id},
+        )
+        client.post(
+            "/tasks/",
+            json={"title": "Rollup Done", "status": "done", "project_id": project_id},
+        )
+
+        project = client.get(f"/projects/{project_id}").json()
+
+        assert project["task_count"] == 2
+        assert project["completed_task_count"] == 1
+        assert project["completion_percent"] == 50.0
+
     def test_project_stats_computed_fields(self, client):
         """Test that /projects/{id}/stats returns computed metrics."""
         # Create org and project

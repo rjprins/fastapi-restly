@@ -252,6 +252,32 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
 
         return await self.save_object(task)
 
+    async def _transition_task(
+        self,
+        id: int,
+        source_status: TaskStatus,
+        target_status: TaskStatus,
+        action: str,
+    ) -> Task:
+        if target_status not in VALID_TRANSITIONS.get(source_status, []):
+            raise RuntimeError(
+                f"Invalid task transition definition: {source_status.value} -> {target_status.value}"
+            )
+
+        task = await self.handle_get(id)
+        if task.status != source_status:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"Cannot {action} task with status '{task.status.value}'. "
+                    f"Must be '{source_status.value}'."
+                ),
+            )
+
+        task.status = target_status
+        task.version += 1
+        return task
+
     @fr.post("/import-csv", response_model=BulkResult)
     async def import_csv(
         self,
@@ -353,41 +379,20 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
     @fr.post("/{id}/start", response_model=TaskSchema)
     async def start_task(self, id: int) -> Task:
         """Move task from TODO to IN_PROGRESS."""
-        task = await self.handle_get(id)
-        if task.status != TaskStatus.TODO:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Cannot start task with status '{task.status.value}'. Must be 'todo'."
-            )
-
-        task.status = TaskStatus.IN_PROGRESS
-        task.version += 1
-        return task
+        return await self._transition_task(
+            id, TaskStatus.TODO, TaskStatus.IN_PROGRESS, "start"
+        )
 
     @fr.post("/{id}/complete", response_model=TaskSchema)
     async def complete_task(self, id: int) -> Task:
         """Move task from IN_PROGRESS to DONE."""
-        task = await self.handle_get(id)
-        if task.status != TaskStatus.IN_PROGRESS:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Cannot complete task with status '{task.status.value}'. Must be 'in_progress'."
-            )
-
-        task.status = TaskStatus.DONE
-        task.version += 1
-        return task
+        return await self._transition_task(
+            id, TaskStatus.IN_PROGRESS, TaskStatus.DONE, "complete"
+        )
 
     @fr.post("/{id}/reopen", response_model=TaskSchema)
     async def reopen_task(self, id: int) -> Task:
         """Reopen a completed task back to IN_PROGRESS."""
-        task = await self.handle_get(id)
-        if task.status != TaskStatus.DONE:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Cannot reopen task with status '{task.status.value}'. Must be 'done'."
-            )
-
-        task.status = TaskStatus.IN_PROGRESS
-        task.version += 1
-        return task
+        return await self._transition_task(
+            id, TaskStatus.DONE, TaskStatus.IN_PROGRESS, "reopen"
+        )

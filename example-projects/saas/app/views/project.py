@@ -1,6 +1,7 @@
 """Project view."""
 
 import re
+from collections.abc import Sequence
 from datetime import datetime, timezone
 
 import sqlalchemy as sa
@@ -73,12 +74,37 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
     include_pagination_metadata = True
     exclude_routes = ["delete"]  # replaced by soft_delete below
 
+    async def _decorate_project_response(self, project: Project) -> Project:
+        """Populate transient response fields that are not stored on Project."""
+        project.can_edit = self._can_edit(project)
+        project.task_count = await self.session.scalar(
+            select(func.count()).where(
+                Task.project_id == project.id,
+                Task.deleted_at.is_(None),
+            )
+        ) or 0
+        project.completed_task_count = await self.session.scalar(
+            select(func.count()).where(
+                Task.project_id == project.id,
+                Task.status == TaskStatus.DONE,
+                Task.deleted_at.is_(None),
+            )
+        ) or 0
+        return project
+
+    async def handle_list(
+        self,
+        query_params,
+        query: sa.Select | None = None,
+    ) -> Sequence[Project]:
+        projects = await super().handle_list(query_params, query)
+        return [await self._decorate_project_response(project) for project in projects]
+
     async def handle_get(self, id: int):
         # The mixins enforce tenant scope + soft-delete filtering already.
-        # Here we only do project-specific decoration.
+        # Here we only do project-specific response decoration.
         project = await super().handle_get(id)
-        project.can_edit = self._can_edit(project)
-        return project
+        return await self._decorate_project_response(project)
 
     def _can_edit(self, project: Project) -> bool:
         """Whether the current user may edit this project.
@@ -103,7 +129,7 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
         )
         project = await self.save_object(project)
         self._emit("project.created", project, {"name": project.name, "slug": project.slug})
-        return project
+        return await self._decorate_project_response(project)
 
     async def handle_update(self, id: int, schema_obj):
         """Slug regen if name changed + status-transition outbox event.
@@ -127,7 +153,7 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
                 project,
                 {"from": old_status.value, "to": project.status.value},
             )
-        return project
+        return await self._decorate_project_response(project)
 
     async def _unique_slug(
         self, base: str, org_id: int, exclude_id: int | None = None
@@ -172,7 +198,7 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
         """
         project = await self.handle_get(id)
         await self.delete_object(project)
-        return project
+        return await self._decorate_project_response(project)
 
     @fr.post("/{id}/restore", response_model=ProjectSchema)
     async def restore(self, id: int) -> Project:
@@ -190,7 +216,7 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
         if project.deleted_at is None:
             raise HTTPException(status_code=400, detail="Project is not deleted")
         project.deleted_at = None
-        return project
+        return await self._decorate_project_response(project)
 
     @fr.post("/{id}/archive", response_model=ProjectSchema)
     async def archive_project(self, id: int) -> Project:
@@ -199,7 +225,7 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
         if project.status == ProjectStatus.ARCHIVED:
             raise HTTPException(status_code=400, detail="Project is already archived")
         project.status = ProjectStatus.ARCHIVED
-        return project
+        return await self._decorate_project_response(project)
 
     @fr.post("/{id}/clone", response_model=ProjectSchema)
     async def clone_project(self, id: int, request: CloneRequest) -> Project:
@@ -254,7 +280,7 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
                     new_project.total_story_points += new_task.story_points
             await async_save_object(self.session, new_project)
 
-        return new_project
+        return await self._decorate_project_response(new_project)
 
     @fr.get("/{id}/stats", response_model=ProjectStats)
     async def get_project_stats(self, id: int) -> ProjectStats:
