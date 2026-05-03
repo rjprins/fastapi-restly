@@ -80,6 +80,8 @@ Then open <http://127.0.0.1:8000/docs> for the interactive Swagger UI.
 
 [`fastapi-crudrouter`](https://github.com/awtkns/fastapi-crudrouter) and [`fastcrud`](https://github.com/igorbenav/fastcrud) generate CRUD **functions** and register them on a router. FastAPI-Restly generates CRUD **methods on a class you can subclass**.
 
+Unlike SQLModel, Restly does not ask you to wrap SQLAlchemy and Pydantic into one abstraction. Use explicit schemas when correctness matters, or let Restly derive them when the model/schema boundary is simple.
+
 | | fastapi-crudrouter | fastcrud | **fastapi-restly** |
 |---|---|---|---|
 | Style | Router factory | Router factory | **Class-based views** |
