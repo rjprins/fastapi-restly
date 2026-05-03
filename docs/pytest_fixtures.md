@@ -45,7 +45,7 @@ Runs `alembic upgrade head` once before the test suite starts. Skips silently if
 
 **Scope:** `session` | **Autouse**
 
-Calls `activate_savepoint_only_mode()` on both `async_make_session` and `make_session` (whichever are configured). This puts the session factories into a mode where transactions are never fully committed to the database. Skips if no database connections are configured. See the `Isolation Model` section below.
+Calls `activate_savepoint_only_mode()` on both `async_make_session` and `make_session` (whichever are configured). This wraps engine connections in an outer transaction and configures SQLAlchemy's `join_transaction_mode="create_savepoint"`, so sessions opened inside tests join that transaction via savepoints instead of committing directly to the database. Skips if no database connections are configured. See the `Isolation Model` section below.
 
 This fixture runs once for the entire test session and does not deactivate savepoint mode at teardown — the change is permanent for the process lifetime.
 
@@ -55,7 +55,7 @@ This fixture runs once for the entire test session and does not deactivate savep
 
 **Scope:** `function`
 
-Provides a SQLAlchemy `Session` for use in tests. `session.commit()` is patched to `flush()` + `begin_nested()`, so writes are visible within the test but rolled back after it ends.
+Provides a SQLAlchemy `Session` for use in tests. It runs on a connection whose outer transaction is never committed. `session.commit()` is patched to `flush()` + `begin_nested()`, so writes become visible inside the test while the fixture keeps app-level commits inside nested transactions.
 
 ```python
 def test_user_created(session):
@@ -150,12 +150,13 @@ against the public API/client layer instead of depending on fixture internals.
 
 ## Isolation Model
 
-Both `session` and `async_session` use connection-level transaction isolation so that no test data persists between tests:
+Both `session` and `async_session` use a layered transaction model so that test data is visible during the test but does not persist afterward:
 
-1. A real database connection is opened and a transaction is started (this outer transaction is never committed).
-2. Inside the test, `commit()` is patched to `flush()` + `begin_nested()` — state is visible within the test but no real commit reaches the database.
-3. After the test, the connection is closed without committing, rolling back all changes and restoring the database to its pre-test state.
+1. `activate_savepoint_only_mode()` wraps engine connections so a real database connection starts an outer transaction before a session uses it.
+2. The session factory is configured with `join_transaction_mode="create_savepoint"`, so sessions that join that connection work inside savepoints rather than committing the outer transaction.
+3. The `session` / `async_session` fixtures patch `commit()` to `flush()` + `begin_nested()` — state is visible within the test, and code under test can call `commit()`, but no real commit reaches the database.
+4. After the test, the connection is closed without committing the outer transaction, rolling back all changes and restoring the database to its pre-test state.
 
-The isolation guarantee comes from the outer connection-level transaction never being committed — not from a savepoint established before the test runs. If a test never calls `commit()`, no savepoint is created, but isolation is still maintained.
+So both statements are true: savepoints make in-test commits safe and keep request/session code usable, while the final isolation guarantee comes from the outer connection-level transaction never being committed. If a test never calls `commit()`, it may not create an extra nested savepoint, but isolation is still maintained by the outer transaction.
 
 This eliminates per-test teardown code and avoids the cost of recreating the schema between tests.
