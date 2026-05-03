@@ -23,7 +23,7 @@ from fastapi_restly.query._impl import (
 )
 
 
-class TestModel(DataclassBase):
+class WidgetModel(DataclassBase):
     __tablename__ = "test_model"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -34,7 +34,7 @@ class TestModel(DataclassBase):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
-class TestSchema(pydantic.BaseModel):
+class WidgetSchema(pydantic.BaseModel):
     id: int
     name: str
     age: int
@@ -43,11 +43,11 @@ class TestSchema(pydantic.BaseModel):
     is_active: bool
 
 
-class TestNestedSchema(pydantic.BaseModel):
-    user: TestSchema
+class NestedWidgetSchema(pydantic.BaseModel):
+    user: WidgetSchema
 
 
-class TestNestedModel(DataclassBase):
+class NestedWidgetModel(DataclassBase):
     __tablename__ = "test_nested_model"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -119,7 +119,7 @@ class AuditLogSchema(pydantic.BaseModel):
 
 @pytest.fixture
 def select_query():
-    return sqlalchemy.select(TestModel)
+    return sqlalchemy.select(WidgetModel)
 
 
 @pytest.fixture
@@ -142,10 +142,10 @@ def audit_log_select_query():
 class TestCreateListParamsSchema:
     def test_create_list_params_schema_basic(self):
         """Test creating a query param schema for basic fields."""
-        schema = create_list_params_schema(TestSchema)
+        schema = create_list_params_schema(WidgetSchema)
 
         # Check that the schema was created
-        assert schema.__name__ == "ListParamsTestSchema"
+        assert schema.__name__ == "ListParamsWidgetSchema"
 
         # Check that pagination fields exist
         assert "page" in schema.model_fields
@@ -175,7 +175,7 @@ class TestCreateListParamsSchema:
 
     def test_create_list_params_schema_nested(self):
         """Test creating a query param schema for nested fields."""
-        schema = create_list_params_schema(TestNestedSchema)
+        schema = create_list_params_schema(NestedWidgetSchema)
 
         # Check that nested field filters exist (using dot notation)
         assert "user.name" in schema.model_fields
@@ -184,7 +184,7 @@ class TestCreateListParamsSchema:
     def test_create_list_params_schema_nested_pep604_optional(self):
         """Optional nested schemas using X | None should still expand nested filters."""
         class OptionalNestedSchema(pydantic.BaseModel):
-            user: TestSchema | None = None
+            user: WidgetSchema | None = None
 
         schema = create_list_params_schema(OptionalNestedSchema)
 
@@ -235,7 +235,7 @@ class TestApplySorting:
     def test__apply_sorting_default(self, select_query, mock_query_params):
         """Test sorting with default (no order_by parameter)."""
         params = mock_query_params()
-        result = _apply_sorting(params, select_query, TestModel, TestSchema)
+        result = _apply_sorting(params, select_query, WidgetModel, WidgetSchema)
 
         # Should order by id by default
         assert "ORDER BY test_model.id" in str(result)
@@ -243,21 +243,21 @@ class TestApplySorting:
     def test__apply_sorting_single_field(self, select_query, mock_query_params):
         """Test sorting with single field."""
         params = mock_query_params(order_by="name")
-        result = _apply_sorting(params, select_query, TestModel, TestSchema)
+        result = _apply_sorting(params, select_query, WidgetModel, WidgetSchema)
 
         assert "ORDER BY test_model.name" in str(result)
 
     def test__apply_sorting_descending(self, select_query, mock_query_params):
         """Test sorting with descending order."""
         params = mock_query_params(order_by="-name")
-        result = _apply_sorting(params, select_query, TestModel, TestSchema)
+        result = _apply_sorting(params, select_query, WidgetModel, WidgetSchema)
 
         assert "ORDER BY test_model.name DESC" in str(result)
 
     def test__apply_sorting_multiple_fields(self, select_query, mock_query_params):
         """Test sorting with multiple fields."""
         params = mock_query_params(order_by="name,-age")
-        result = _apply_sorting(params, select_query, TestModel, TestSchema)
+        result = _apply_sorting(params, select_query, WidgetModel, WidgetSchema)
 
         assert "ORDER BY test_model.name ASC, test_model.age DESC" in str(result)
 
@@ -265,7 +265,7 @@ class TestApplySorting:
 class TestApplyFilteringIsNull:
     def test__apply_filtering_isnull_valid_boolean(self, select_query, mock_query_params):
         params = mock_query_params(age__isnull="true")
-        result = _apply_filtering(params, select_query, TestModel, TestSchema)
+        result = _apply_filtering(params, select_query, WidgetModel, WidgetSchema)
 
         assert "test_model.age IS NULL" in str(result)
 
@@ -273,7 +273,7 @@ class TestApplyFilteringIsNull:
         params = mock_query_params(age__isnull="123")
 
         with pytest.raises(HTTPException) as exc_info:
-            _apply_filtering(params, select_query, TestModel, TestSchema)
+            _apply_filtering(params, select_query, WidgetModel, WidgetSchema)
 
         assert exc_info.value.status_code == 400
 
@@ -282,7 +282,7 @@ class TestApplyFilteringIsNull:
         params = mock_query_params(order_by="invalid_field")
 
         with pytest.raises(HTTPException) as exc_info:
-            _apply_sorting(params, select_query, TestModel, TestSchema)
+            _apply_sorting(params, select_query, WidgetModel, WidgetSchema)
 
         assert exc_info.value.status_code == 400
         assert "Invalid attribute" in str(exc_info.value.detail)
@@ -292,77 +292,77 @@ class TestApplyFiltering:
     def test__apply_filtering_equals(self, select_query, mock_query_params):
         """Test filtering with equals operator."""
         params = mock_query_params(name="John")
-        result = _apply_filtering(params, select_query, TestModel, TestSchema)
+        result = _apply_filtering(params, select_query, WidgetModel, WidgetSchema)
 
         assert "WHERE test_model.name = " in str(result)
 
     def test__apply_filtering_greater_than(self, select_query, mock_query_params):
         """Test filtering with greater than operator."""
         params = mock_query_params(age__gt="25")
-        result = _apply_filtering(params, select_query, TestModel, TestSchema)
+        result = _apply_filtering(params, select_query, WidgetModel, WidgetSchema)
 
         assert "WHERE test_model.age > " in str(result)
 
     def test__apply_filtering_greater_than_equal(self, select_query, mock_query_params):
         """Test filtering with greater than or equal operator."""
         params = mock_query_params(age__gte="25")
-        result = _apply_filtering(params, select_query, TestModel, TestSchema)
+        result = _apply_filtering(params, select_query, WidgetModel, WidgetSchema)
 
         assert "WHERE test_model.age >=" in str(result)
 
     def test__apply_filtering_less_than(self, select_query, mock_query_params):
         """Test filtering with less than operator."""
         params = mock_query_params(age__lt="25")
-        result = _apply_filtering(params, select_query, TestModel, TestSchema)
+        result = _apply_filtering(params, select_query, WidgetModel, WidgetSchema)
 
         assert "WHERE test_model.age < " in str(result)
 
     def test__apply_filtering_less_than_equal(self, select_query, mock_query_params):
         """Test filtering with less than or equal operator."""
         params = mock_query_params(age__lte="25")
-        result = _apply_filtering(params, select_query, TestModel, TestSchema)
+        result = _apply_filtering(params, select_query, WidgetModel, WidgetSchema)
 
         assert "WHERE test_model.age <=" in str(result)
 
     def test__apply_filtering_not_equals(self, select_query, mock_query_params):
         """Test filtering with not equals operator."""
         params = mock_query_params(name__ne="John")
-        result = _apply_filtering(params, select_query, TestModel, TestSchema)
+        result = _apply_filtering(params, select_query, WidgetModel, WidgetSchema)
 
         assert "WHERE test_model.name !=" in str(result)
 
     def test__apply_filtering_is_null(self, select_query, mock_query_params):
         """Test filtering with is null operator."""
         params = mock_query_params(email__isnull="true")
-        result = _apply_filtering(params, select_query, TestModel, TestSchema)
+        result = _apply_filtering(params, select_query, WidgetModel, WidgetSchema)
 
         assert "WHERE test_model.email IS NULL" in str(result)
 
     def test__apply_filtering_is_not_null(self, select_query, mock_query_params):
         """Test filtering with is not null operator."""
         params = mock_query_params(email__isnull="false")
-        result = _apply_filtering(params, select_query, TestModel, TestSchema)
+        result = _apply_filtering(params, select_query, WidgetModel, WidgetSchema)
 
         assert "WHERE test_model.email IS NOT NULL" in str(result)
 
     def test__apply_filtering_multiple_values(self, select_query, mock_query_params):
         """Test filtering with multiple values (OR)."""
         params = mock_query_params(name="John,Alice")
-        result = _apply_filtering(params, select_query, TestModel, TestSchema)
+        result = _apply_filtering(params, select_query, WidgetModel, WidgetSchema)
 
         assert "OR" in str(result)
 
     def test__apply_filtering_multiple_filters(self, select_query, mock_query_params):
         """Test filtering with multiple filters (AND)."""
         params = mock_query_params(name="John", age__gte="25")
-        result = _apply_filtering(params, select_query, TestModel, TestSchema)
+        result = _apply_filtering(params, select_query, WidgetModel, WidgetSchema)
 
         assert "AND" in str(result)
 
     def test__apply_filtering_ignore_pagination_params(self, select_query, mock_query_params):
         """Test that pagination parameters are ignored in filtering."""
         params = mock_query_params(page="1", page_size="10", name="John")
-        result = _apply_filtering(params, select_query, TestModel, TestSchema)
+        result = _apply_filtering(params, select_query, WidgetModel, WidgetSchema)
 
         # Should only filter by name, not include pagination in WHERE clause
         assert "WHERE test_model.name = " in str(result)
@@ -373,7 +373,7 @@ class TestApplyFiltering:
         params = mock_query_params(invalid_field="value")
 
         with pytest.raises(HTTPException) as exc_info:
-            _apply_filtering(params, select_query, TestModel, TestSchema)
+            _apply_filtering(params, select_query, WidgetModel, WidgetSchema)
 
         assert exc_info.value.status_code == 400
         assert "Invalid attribute" in str(exc_info.value.detail)
@@ -433,7 +433,7 @@ class TestApplyListParams:
             name="John",
             age__gte="25"
         )
-        result = apply_list_params(params, select_query, TestModel, TestSchema)
+        result = apply_list_params(params, select_query, WidgetModel, WidgetSchema)
 
         # Should have pagination, sorting, and filtering
         assert "LIMIT :param_1" in str(result)
@@ -448,7 +448,7 @@ class TestApplyListParams:
         with patch('fastapi_restly.query._impl._apply_filtering') as mock_filter:
             with patch('fastapi_restly.query._impl._apply_sorting') as mock_sort:
                 with patch('fastapi_restly.query._impl._apply_pagination') as mock_paginate:
-                    apply_list_params(params, select_query, TestModel, TestSchema)
+                    apply_list_params(params, select_query, WidgetModel, WidgetSchema)
 
                     # Check call order
                     mock_filter.assert_called_once()
@@ -459,28 +459,28 @@ class TestApplyListParams:
 class TestParseValue:
     def test_parse_value_string(self):
         """Test parsing string values."""
-        result = _parse_value(TestSchema, "name", "John")
+        result = _parse_value(WidgetSchema, "name", "John")
         assert result == "John"
 
     def test_parse_value_integer(self):
         """Test parsing integer values."""
-        result = _parse_value(TestSchema, "age", "25")
+        result = _parse_value(WidgetSchema, "age", "25")
         assert result == 25
 
     def test_parse_value_boolean(self):
         """Test parsing boolean values."""
-        result = _parse_value(TestSchema, "is_active", "true")
+        result = _parse_value(WidgetSchema, "is_active", "true")
         assert result is True
 
     def test_parse_value_datetime(self):
         """Test parsing datetime values."""
-        result = _parse_value(TestSchema, "created_at", "2024-01-01T00:00:00")
+        result = _parse_value(WidgetSchema, "created_at", "2024-01-01T00:00:00")
         assert isinstance(result, datetime)
 
     def test_parse_value_invalid_field(self):
         """Test parsing with invalid field."""
         with pytest.raises(HTTPException) as exc_info:
-            _parse_value(TestSchema, "invalid_field", "value")
+            _parse_value(WidgetSchema, "invalid_field", "value")
 
         assert exc_info.value.status_code == 400
 
@@ -493,33 +493,33 @@ class TestMakeWhereClause:
     """Test _make_where_clause by compiling real SQL — mirrors the V1 pattern."""
 
     def test_make_where_clause_equals(self):
-        clause = _make_where_clause(TestModel.name, "John", "eq", str)
-        assert "name = 'John'" in _render_sql(sqlalchemy.select(TestModel).where(clause))
+        clause = _make_where_clause(WidgetModel.name, "John", "eq", str)
+        assert "name = 'John'" in _render_sql(sqlalchemy.select(WidgetModel).where(clause))
 
     def test_make_where_clause_greater_than(self):
-        clause = _make_where_clause(TestModel.age, "25", "gt", int)
-        assert "age > 25" in _render_sql(sqlalchemy.select(TestModel).where(clause))
+        clause = _make_where_clause(WidgetModel.age, "25", "gt", int)
+        assert "age > 25" in _render_sql(sqlalchemy.select(WidgetModel).where(clause))
 
     def test_make_where_clause_greater_than_equal(self):
-        clause = _make_where_clause(TestModel.age, "18", "gte", int)
-        assert "age >= 18" in _render_sql(sqlalchemy.select(TestModel).where(clause))
+        clause = _make_where_clause(WidgetModel.age, "18", "gte", int)
+        assert "age >= 18" in _render_sql(sqlalchemy.select(WidgetModel).where(clause))
 
     def test_make_where_clause_less_than(self):
-        clause = _make_where_clause(TestModel.age, "30", "lt", int)
-        assert "age < 30" in _render_sql(sqlalchemy.select(TestModel).where(clause))
+        clause = _make_where_clause(WidgetModel.age, "30", "lt", int)
+        assert "age < 30" in _render_sql(sqlalchemy.select(WidgetModel).where(clause))
 
     def test_make_where_clause_less_than_equal(self):
-        clause = _make_where_clause(TestModel.age, "65", "lte", int)
-        assert "age <= 65" in _render_sql(sqlalchemy.select(TestModel).where(clause))
+        clause = _make_where_clause(WidgetModel.age, "65", "lte", int)
+        assert "age <= 65" in _render_sql(sqlalchemy.select(WidgetModel).where(clause))
 
     def test_make_where_clause_not_equals(self):
-        clause = _make_where_clause(TestModel.name, "John", "ne", str)
-        assert "name != 'John'" in _render_sql(sqlalchemy.select(TestModel).where(clause))
+        clause = _make_where_clause(WidgetModel.name, "John", "ne", str)
+        assert "name != 'John'" in _render_sql(sqlalchemy.select(WidgetModel).where(clause))
 
     def test_make_where_clause_contains(self):
         """contains operator should compile to ILIKE with wildcards."""
-        clause = _make_where_clause(TestModel.name, "oh", "contains", str)
-        sql = _render_sql(sqlalchemy.select(TestModel).where(clause))
+        clause = _make_where_clause(WidgetModel.name, "oh", "contains", str)
+        sql = _render_sql(sqlalchemy.select(WidgetModel).where(clause))
         # SQLite renders ILIKE as LIKE LOWER(...)
         assert "%oh%" in sql or "%%oh%%" in sql
         assert "lower" in sql.lower() or "like" in sql.lower()

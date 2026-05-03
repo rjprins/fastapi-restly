@@ -23,7 +23,7 @@ from fastapi_restly.query._impl import (
 )
 
 
-class TestModel(DataclassBase):
+class AliasModel(DataclassBase):
     __tablename__ = "test_model_aliases"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -34,7 +34,7 @@ class TestModel(DataclassBase):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
-class TestSchemaWithAliases(pydantic.BaseModel):
+class SchemaWithAliases(pydantic.BaseModel):
     id: int
     user_name: str = pydantic.Field(alias="userName")
     user_email: str = pydantic.Field(alias="userEmail")
@@ -43,7 +43,7 @@ class TestSchemaWithAliases(pydantic.BaseModel):
     is_active: bool = pydantic.Field(alias="isActive")
 
 
-class TestSchemaWithPopulateByName(pydantic.BaseModel):
+class SchemaWithPopulateByName(pydantic.BaseModel):
     model_config = pydantic.ConfigDict(populate_by_name=True, from_attributes=True)
 
     id: int
@@ -54,7 +54,7 @@ class TestSchemaWithPopulateByName(pydantic.BaseModel):
     is_active: bool = pydantic.Field(alias="isActive")
 
 
-class TestSchemaWithoutAliases(pydantic.BaseModel):
+class SchemaWithoutAliases(pydantic.BaseModel):
     id: int
     user_name: str
     user_email: str
@@ -65,7 +65,7 @@ class TestSchemaWithoutAliases(pydantic.BaseModel):
 
 @pytest.fixture
 def select_query():
-    return sqlalchemy.select(TestModel)
+    return sqlalchemy.select(AliasModel)
 
 
 @pytest.fixture
@@ -79,10 +79,10 @@ def mock_query_params():
 class TestCreateListParamsSchemaWithAliases:
     def test_create_list_params_schema_with_aliases(self):
         """Test creating a query param schema with aliases."""
-        schema = create_list_params_schema(TestSchemaWithAliases)
+        schema = create_list_params_schema(SchemaWithAliases)
 
         # Check that the schema was created
-        assert schema.__name__ == "ListParamsTestSchemaWithAliases"
+        assert schema.__name__ == "ListParamsSchemaWithAliases"
 
         # Check that pagination fields exist
         assert "page" in schema.model_fields
@@ -106,7 +106,7 @@ class TestCreateListParamsSchemaWithAliases:
 
     def test_create_list_params_schema_without_aliases(self):
         """Test creating a query param schema without aliases."""
-        schema = create_list_params_schema(TestSchemaWithoutAliases)
+        schema = create_list_params_schema(SchemaWithoutAliases)
 
         # Check that field filters use field names
         assert "user_name" in schema.model_fields
@@ -119,7 +119,7 @@ class TestCreateListParamsSchemaWithAliases:
 class TestIterFieldsIncludingNestedWithAliases:
     def test_iter_fields_including_nested_with_aliases(self):
         """Test field iteration with aliases."""
-        fields = list(_iter_fields_including_nested(TestSchemaWithAliases))
+        fields = list(_iter_fields_including_nested(SchemaWithAliases))
 
         # Check that aliases are used
         field_names = [name for name, _ in fields]
@@ -137,7 +137,7 @@ class TestIterFieldsIncludingNestedWithAliases:
 
     def test_iter_fields_including_nested_without_aliases(self):
         """Test field iteration without aliases."""
-        fields = list(_iter_fields_including_nested(TestSchemaWithoutAliases))
+        fields = list(_iter_fields_including_nested(SchemaWithoutAliases))
 
         # Check that field names are used
         field_names = [name for name, _ in fields]
@@ -152,19 +152,19 @@ class TestParseValueWithAliases:
     def test_parse_value_with_aliases(self):
         """Test value parsing with aliases."""
         # Test with alias
-        result = _parse_value(TestSchemaWithAliases, "userName", "John Doe")
+        result = _parse_value(SchemaWithAliases, "userName", "John Doe")
         assert result == "John Doe"
 
         # Test with field name (should fail)
         with pytest.raises(HTTPException) as exc_info:
-            _parse_value(TestSchemaWithAliases, "user_name", "John Doe")
+            _parse_value(SchemaWithAliases, "user_name", "John Doe")
         assert exc_info.value.status_code == 400
 
     def test_parse_value_with_populate_by_name_uses_alias_only(self):
         """``populate_by_name=True`` does NOT extend the list-params URL surface
         with Python field names. The alias is the only public name."""
         # Alias resolves.
-        result = _parse_value(TestSchemaWithPopulateByName, "userName", "John Doe")
+        result = _parse_value(SchemaWithPopulateByName, "userName", "John Doe")
         assert result == "John Doe"
 
         # Python field name is rejected even with populate_by_name=True —
@@ -172,18 +172,18 @@ class TestParseValueWithAliases:
         # parameter, so accepting it via the raw helper would be a
         # contract divergence.
         with pytest.raises(HTTPException) as exc_info:
-            _parse_value(TestSchemaWithPopulateByName, "user_name", "John Doe")
+            _parse_value(SchemaWithPopulateByName, "user_name", "John Doe")
         assert exc_info.value.status_code == 400
 
     def test_parse_value_without_aliases(self):
         """Test value parsing without aliases."""
         # Test with field name
-        result = _parse_value(TestSchemaWithoutAliases, "user_name", "John Doe")
+        result = _parse_value(SchemaWithoutAliases, "user_name", "John Doe")
         assert result == "John Doe"
 
         # Test with non-existent field
         with pytest.raises(HTTPException) as exc_info:
-            _parse_value(TestSchemaWithoutAliases, "userName", "John Doe")
+            _parse_value(SchemaWithoutAliases, "userName", "John Doe")
         assert exc_info.value.status_code == 400
 
 
@@ -191,7 +191,7 @@ class TestApplyFilteringWithAliases:
     def test__apply_filtering_with_aliases(self, select_query, mock_query_params):
         """Test filtering with aliases."""
         params = mock_query_params(userName="John Doe")
-        result = _apply_filtering(params, select_query, TestModel, TestSchemaWithAliases)
+        result = _apply_filtering(params, select_query, AliasModel, SchemaWithAliases)
 
         assert "WHERE test_model_aliases.user_name = " in str(result)
 
@@ -201,26 +201,26 @@ class TestApplyFilteringWithAliases:
         """populate_by_name=True does not change the list-params URL surface."""
         # Alias resolves.
         params = mock_query_params(userName="John Doe")
-        result = _apply_filtering(params, select_query, TestModel, TestSchemaWithPopulateByName)
+        result = _apply_filtering(params, select_query, AliasModel, SchemaWithPopulateByName)
         assert "WHERE test_model_aliases.user_name = " in str(result)
 
         # Python field name is rejected.
         params = mock_query_params(user_name="John Doe")
         with pytest.raises(HTTPException) as exc_info:
-            _apply_filtering(params, select_query, TestModel, TestSchemaWithPopulateByName)
+            _apply_filtering(params, select_query, AliasModel, SchemaWithPopulateByName)
         assert exc_info.value.status_code == 400
 
     def test__apply_filtering_without_aliases(self, select_query, mock_query_params):
         """Test filtering without aliases."""
         params = mock_query_params(user_name="John Doe")
-        result = _apply_filtering(params, select_query, TestModel, TestSchemaWithoutAliases)
+        result = _apply_filtering(params, select_query, AliasModel, SchemaWithoutAliases)
 
         assert "WHERE test_model_aliases.user_name = " in str(result)
 
     def test__apply_filtering_range_filters_with_aliases(self, select_query, mock_query_params):
         """Test range filtering with aliases."""
         params = mock_query_params(age__gte="25", userEmail__isnull="false")
-        result = _apply_filtering(params, select_query, TestModel, TestSchemaWithAliases)
+        result = _apply_filtering(params, select_query, AliasModel, SchemaWithAliases)
 
         assert "WHERE test_model_aliases.age >=" in str(result)
         assert "test_model_aliases.user_email IS NOT NULL" in str(result)
@@ -230,14 +230,14 @@ class TestApplyFilteringWithAliases:
     ):
         """Range filters with populate_by_name=True still use the alias only."""
         params = mock_query_params(age__gte="25", userEmail__isnull="false")
-        result = _apply_filtering(params, select_query, TestModel, TestSchemaWithPopulateByName)
+        result = _apply_filtering(params, select_query, AliasModel, SchemaWithPopulateByName)
         assert "WHERE test_model_aliases.age >=" in str(result)
         assert "test_model_aliases.user_email IS NOT NULL" in str(result)
 
         # Python field name on an aliased field is rejected.
         params = mock_query_params(user_email__isnull="false")
         with pytest.raises(HTTPException) as exc_info:
-            _apply_filtering(params, select_query, TestModel, TestSchemaWithPopulateByName)
+            _apply_filtering(params, select_query, AliasModel, SchemaWithPopulateByName)
         assert exc_info.value.status_code == 400
 
 
@@ -245,7 +245,7 @@ class TestApplySortingWithAliases:
     def test__apply_sorting_with_aliases(self, select_query, mock_query_params):
         """Test sorting with aliases."""
         params = mock_query_params(order_by="userName,-age")
-        result = _apply_sorting(params, select_query, TestModel, TestSchemaWithAliases)
+        result = _apply_sorting(params, select_query, AliasModel, SchemaWithAliases)
 
         assert "ORDER BY test_model_aliases.user_name ASC, test_model_aliases.age DESC" in str(result)
 
@@ -254,19 +254,19 @@ class TestApplySortingWithAliases:
     ):
         """Sorting honours the alias even when populate_by_name=True."""
         params = mock_query_params(order_by="userName,-age")
-        result = _apply_sorting(params, select_query, TestModel, TestSchemaWithPopulateByName)
+        result = _apply_sorting(params, select_query, AliasModel, SchemaWithPopulateByName)
         assert "ORDER BY test_model_aliases.user_name ASC, test_model_aliases.age DESC" in str(result)
 
         # Sorting by the Python field name on an aliased field is rejected.
         params = mock_query_params(order_by="user_name")
         with pytest.raises(HTTPException) as exc_info:
-            _apply_sorting(params, select_query, TestModel, TestSchemaWithPopulateByName)
+            _apply_sorting(params, select_query, AliasModel, SchemaWithPopulateByName)
         assert exc_info.value.status_code == 400
 
     def test__apply_sorting_without_aliases(self, select_query, mock_query_params):
         """Test sorting without aliases."""
         params = mock_query_params(order_by="user_name,-age")
-        result = _apply_sorting(params, select_query, TestModel, TestSchemaWithoutAliases)
+        result = _apply_sorting(params, select_query, AliasModel, SchemaWithoutAliases)
 
         assert "ORDER BY test_model_aliases.user_name ASC, test_model_aliases.age DESC" in str(result)
 
@@ -281,7 +281,7 @@ class TestApplyListParamsWithAliases:
             userName="John Doe",
             age__gte="25"
         )
-        result = apply_list_params(params, select_query, TestModel, TestSchemaWithAliases)
+        result = apply_list_params(params, select_query, AliasModel, SchemaWithAliases)
 
         # Should have pagination, sorting, and filtering
         assert "LIMIT :param_1" in str(result)
@@ -300,7 +300,7 @@ class TestApplyListParamsWithAliases:
             userName="John Doe",
             age__gte="25",
         )
-        result = apply_list_params(params, select_query, TestModel, TestSchemaWithPopulateByName)
+        result = apply_list_params(params, select_query, AliasModel, SchemaWithPopulateByName)
 
         assert "LIMIT :param_1" in str(result)
         assert "OFFSET :param_2" in str(result)
@@ -310,7 +310,7 @@ class TestApplyListParamsWithAliases:
         # Filtering by the Python field name on an aliased field is rejected.
         params = mock_query_params(user_name="John Doe")
         with pytest.raises(HTTPException) as exc_info:
-            apply_list_params(params, select_query, TestModel, TestSchemaWithPopulateByName)
+            apply_list_params(params, select_query, AliasModel, SchemaWithPopulateByName)
         assert exc_info.value.status_code == 400
 
 
