@@ -12,7 +12,7 @@ license = "MIT"
 authors = [
     { name = "Rutger Prins", email = "rutgerprins@gmail.com" },
 ]
-keywords = ["fastapi", "rest", "crud", "sqlalchemy", "pydantic", "api", "framework"]
+keywords = ["fastapi", "rest", "crud", "crud-api", "sqlalchemy", "pydantic", "api", "framework", "react-admin"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Framework :: FastAPI",

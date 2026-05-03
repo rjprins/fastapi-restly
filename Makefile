@@ -1,4 +1,4 @@
-.PHONY: test test-framework test-typing test-examples test-all clean install-dev lint pre-commit-install pre-commit-run docs docs-serve docs-push build-pages pages-push
+.PHONY: test test-framework test-typing test-examples test-all clean install-dev lint pre-commit-install pre-commit-run docs docs-serve docs-push build-pages
 
 # Default target
 all: test-all
@@ -90,9 +90,6 @@ build-pages:
 docs-push: build-pages
 	uv run ghp-import --no-history --no-jekyll --push site/html
 
-pages-push: build-pages
-	uv run ghp-import --no-history --no-jekyll --push site/html
-
 # Help
 help:
 	@echo "Available commands:"
@@ -115,4 +112,4 @@ help:
 	@echo "  docs            - Build documentation"
 	@echo "  serve-docs      - Autobuild and serve documentation"
 	@echo "  build-pages     - Build docs plus coverage assets for GitHub Pages"
-	@echo "  pages-push      - Publish docs plus coverage assets to gh-pages"
+	@echo "  docs-push       - Publish docs plus coverage assets to gh-pages"

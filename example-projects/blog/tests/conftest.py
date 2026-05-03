@@ -18,5 +18,6 @@ def use_in_memory_database():
         poolclass=StaticPool,
     )
     fr.configure(engine=engine)
+    fr.DataclassBase.metadata.create_all(engine)
     yield
     engine.dispose()

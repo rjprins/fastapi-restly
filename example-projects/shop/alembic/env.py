@@ -8,8 +8,7 @@ from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-from fastapi_restly import DataclassBase
-from fastapi_restly.db import fr_globals
+from fastapi_restly import DataclassBase, get_fr_globals
 
 config = context.config
 
@@ -17,6 +16,7 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 target_metadata = DataclassBase.metadata
+globals_ = get_fr_globals()
 
 
 def run_migrations_offline() -> None:
@@ -32,7 +32,7 @@ def run_migrations_offline() -> None:
 
     """
     context.configure(
-        url=fr_globals.async_database_url,
+        url=globals_.async_database_url,
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
@@ -58,7 +58,7 @@ async def run_async_migrations() -> None:
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
-        url=fr_globals.async_database_url,
+        url=globals_.async_database_url,
     )
 
     async with connectable.connect() as connection:

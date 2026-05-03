@@ -91,7 +91,7 @@ make docs-serve
 
 - Code is auto-formatted by `ruff format`; do not hand-format around it.
 - Public functions, methods, and class attributes should be type-hinted.
-  The project supports Python 3.11+ and uses modern typing features.
+  The project supports Python 3.10+ and uses modern typing features.
 - Prefer composition and small modules over deep inheritance.
 - Submodules under `fastapi_restly/` are organized by layer (`views/`,
   `schemas/`, `db/`, `models/`, `query/`, `testing/`). Keep new code in the
