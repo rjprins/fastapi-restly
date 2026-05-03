@@ -6,7 +6,7 @@ endpoints, integer/UUID primary keys, timestamp mixins, and one-to-many and
 many-to-many relationships -- all driven by the framework's defaults with no
 custom endpoints, filters, or schema overrides.
 
-For an example showcasing customization (custom endpoints, hooks, validation,
+For an example showcasing customization (custom endpoints, handlers, validation,
 authorization), see ``example-projects/saas``.
 """
 

@@ -1,7 +1,7 @@
 """Tests for the use-case-matrix patterns from rut-notes/discussion_save_object.md.
 
 These exercise every row of the matrix that the SaaS example covers,
-locking the expected behavior down so future hooks-design experiments
+locking the expected behavior down so future helper/handler design experiments
 have a benchmark to refactor against.
 
 Uses the framework's ``async_session`` fixture (savepoint-isolated

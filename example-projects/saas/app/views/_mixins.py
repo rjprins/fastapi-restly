@@ -3,7 +3,7 @@
 These compose by cooperative ``super()`` chains. Application-layer logic
 in concrete views (``ProjectView.handle_create`` etc.) doesn't have to know
 they exist — the mixins inject their behavior into the right framework
-hook (``make_new_object`` / ``update_object`` for *write-side* stamps,
+helper/handler (``make_new_object`` / ``update_object`` for *write-side* stamps,
 ``build_list_query`` / ``handle_get`` for *read-side* filters).
 
 The discussion in ``rut-notes/discussion_save_object.md`` warned against

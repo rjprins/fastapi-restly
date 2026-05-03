@@ -81,7 +81,7 @@ class TenantBase(fr.AsyncRestView):
         an ``if not self._is_admin():`` guard. The matrix's alternative
         ("admin views opt into a different base query") would mean a
         parallel ``AdminProjectView`` etc. — see commentary in the
-        hooks-design findings doc.
+        helper/handler design findings doc.
         """
         return bool(getattr(self.request.state, "is_admin", False))
 

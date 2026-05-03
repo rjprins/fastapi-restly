@@ -136,7 +136,7 @@ class TaskLabelView(TenantBase):
         # added_by_id stamping isn't auto-applied here because
         # async_make_new_object is the *free function*, not the bound
         # ``self.make_new_object`` method that this view overrides for
-        # the stamp. Worth flagging for the hooks-design discussion.
+        # the stamp. Worth flagging for the helper-design discussion.
         if task_label.added_by_id is None:
             task_label.added_by_id = getattr(self.request.state, "user_id", None)
 

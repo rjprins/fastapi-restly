@@ -182,7 +182,6 @@ class Order(fr.IDBase):
     total: Mapped[float]
 
 class OrderSchema(fr.IDSchema):
-    customer: CustomerSchema             # nested object
     customer_id: fr.IDRef[Customer]      # wire format: 123 — resolved to FK
     total: float
 ```

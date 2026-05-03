@@ -269,7 +269,7 @@ in a custom endpoint) reach for the free functions instead.
 ## Important Limitations and Capabilities
 
 - Nested schemas are supported for **responses** and relation filtering, including nested aliases
-- Nested schemas are **not** supported for create/update payloads; write payloads must still map directly to model fields or use `*_id: IDRef[Model]`
+- Full nested schemas are **not** supported for create/update payloads by the default CRUD flow; write payloads must map directly to model fields, or use model-aware reference fields such as `*_id: IDRef[Model]` and relationship fields typed as `IDSchema[Model]`
 - `fr.PlainBase` / `fr.PlainIDBase` models work with generated CRUD views
 - UUID and other non-`int` primary keys are supported through `id_type`, `IDRef[Model]`, and `IDSchema[Model]`
 

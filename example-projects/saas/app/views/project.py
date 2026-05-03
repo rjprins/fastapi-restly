@@ -236,7 +236,7 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
         as a single ``handle_get`` if/when it grows a ``loader_options``
         argument; for now, two queries is the honest cost.
         """
-        # Tenant + 404 check via the canonical hook.
+        # Tenant + 404 check via the canonical handler.
         await self.handle_get(id)
 
         query = (
