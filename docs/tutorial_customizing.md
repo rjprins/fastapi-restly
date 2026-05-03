@@ -400,7 +400,7 @@ class PostSchema(fr.IDSchema):
 
 class CommentSchema(fr.IDSchema):
     content: str
-    post_id: fr.IDSchema[Post]
+    post_id: fr.IDRef[Post]
 
 
 # --- Shared base ---

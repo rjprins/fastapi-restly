@@ -27,7 +27,7 @@ The differentiator is **true class-based views**. You subclass `RestView` / `Asy
 * **React Admin ready** — `AsyncReactAdminView` speaks the `ra-data-simple-rest` wire contract, no custom data provider needed.
 * **Modern stack** — SQLAlchemy 2.0, Pydantic v2, async and sync support.
 * **Filtering, pagination, sorting** — JSONAPI-style and standard HTTP query interfaces.
-* **Field control** — `ReadOnly` / `WriteOnly` markers, plus relationship ID resolution via `IDSchema[...]`.
+* **Field control** — `ReadOnly` / `WriteOnly` markers, plus scalar foreign-key references via `IDRef[...]`.
 * **Testing utilities** — `RestlyTestClient` and savepoint-based isolation fixtures.
 
 ## Quickstart
@@ -181,7 +181,7 @@ class Order(fr.IDBase):
 
 class OrderSchema(fr.IDSchema):
     customer: CustomerSchema             # nested object
-    customer_id: fr.IDSchema[Customer]   # wire format: {"id": 123} — resolved to FK
+    customer_id: fr.IDRef[Customer]      # wire format: 123 — resolved to FK
     total: float
 ```
 

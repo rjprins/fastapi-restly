@@ -61,7 +61,7 @@ class PostSchema(fr.IDSchema):
 
 class CommentSchema(fr.IDSchema):
     content: str
-    post_id: fr.IDSchema[Post]
+    post_id: fr.IDRef[Post]
 ```
 
 ### What IDSchema provides
@@ -70,13 +70,13 @@ class CommentSchema(fr.IDSchema):
 Because `id` is `ReadOnly`, it appears in responses but is ignored when creating or updating
 records. You do not need to declare `id` yourself.
 
-### IDSchema as a field type
+### Foreign keys with IDRef
 
-`post_id: fr.IDSchema[Post]` is a special convention for foreign-key fields. Instead of
-sending a plain integer, the API accepts and returns a small envelope:
+`post_id: fr.IDRef[Post]` declares a foreign-key reference. The wire format is
+the raw id:
 
 ```json
-{ "id": 1 }
+1
 ```
 
 So a `POST /comments/` request body looks like:
@@ -84,7 +84,7 @@ So a `POST /comments/` request body looks like:
 ```json
 {
   "content": "Great post!",
-  "post_id": {"id": 1}
+  "post_id": 1
 }
 ```
 
@@ -94,19 +94,19 @@ And a response looks like:
 {
   "id": 7,
   "content": "Great post!",
-  "post_id": {"id": 1}
+  "post_id": 1
 }
 ```
 
 The `_id` suffix on the field name is what triggers this behaviour: the view machinery
-extracts the integer from `{"id": N}` and stores it in the `post_id` column, and it also
-validates that a `Post` with that `id` exists (returning 404 if not).
+stores the id in the `post_id` column, and it also validates that a `Post` with
+that `id` exists (returning 404 if not).
 
-If you prefer a plain `int` field and want to skip the envelope and the existence check,
+If you prefer a plain `int` field and want to skip the existence check,
 declare `post_id: int` in your schema instead.
 
-See [How-To: Work with Foreign Keys Using IDSchema](howto_relationship_idschema.md) for more
-detail, including list relations.
+See [How-To: Work with Foreign Keys Using IDRef](howto_relationship_idschema.md)
+for more detail, including list relations and nested relationship objects.
 
 ---
 
@@ -278,7 +278,7 @@ includes nested related objects, Restly eagerly loads those relationships and se
 nested payloads, including aliases.
 
 Nested schemas are **not** supported for create/update payloads. `POST` and `PATCH` inputs must
-still map directly to model attributes or use the `*_id: IDSchema[Model]` pattern for foreign
+still map directly to model attributes or use the `*_id: IDRef[Model]` pattern for foreign
 keys. If you need a nested request shape, flatten it in the schema or override `handle_create` /
 `handle_update` and transform the payload yourself.
 
@@ -289,6 +289,6 @@ keys. If you need a nested request shape, flatten it in the schema or override `
 - **[Part 2: Customizing Views](tutorial_customizing.md)** — override handlers, add custom routes, and share behaviour with base classes
 - [Auto-Generated Schemas](technical_details.md#auto-generated-schemas) — skip writing schemas for simple models
 - [How-To: Filter, Sort, and Paginate Lists](howto_query_modifiers.md) — full filter and sort reference
-- [How-To: Foreign Keys with IDSchema](howto_relationship_idschema.md) — list relations and nested objects
+- [How-To: Foreign Keys with IDRef](howto_relationship_idschema.md) — reference related rows by id
 - [How-To: Testing](howto_testing.md) — savepoint isolation and test fixtures
 - [API Reference](api_reference.md)

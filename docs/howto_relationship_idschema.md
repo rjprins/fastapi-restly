@@ -1,25 +1,25 @@
-# How-To: Work with Foreign Keys Using IDSchema
+# How-To: Work with Foreign Keys Using IDRef
 
-Use `fr.IDSchema[Model]` as a schema field type when you want clients to reference a related object by ID, and have FastAPI-Restly resolve it to a real SQLAlchemy instance automatically.
+Use `fr.IDRef[Model]` for foreign-key fields. The API stays in the common
+scalar-id shape while FastAPI-Restly still validates that the referenced row
+exists.
 
-## Naming Convention
-
-Two requirements must be met for automatic resolution to work:
-
-1. The schema field name must end in `_id` (for example, `author_id`).
-2. The SQLAlchemy model must have a relationship attribute with the same name minus the `_id` suffix (for example, `author`).
-
-When both conditions are met, the view sets both the FK column (`author_id`) and the relationship attribute (`author`) on the new or updated object. If the relationship attribute is absent, only the FK column is set.
+:::{note}
+FastAPI-Restly uses **schema** for Pydantic request/response models and
+**model** for SQLAlchemy ORM models.
+:::
 
 ## Model Setup
 
 ```python
 import fastapi_restly as fr
-from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 
 class Author(fr.IDBase):
     name: Mapped[str]
+
 
 class Article(fr.IDBase):
     title: Mapped[str]
@@ -27,45 +27,40 @@ class Article(fr.IDBase):
     author: Mapped["Author"] = relationship(default=None, init=False)
 ```
 
-`fr.IDBase` is the convenience alias built on `fr.DataclassBase`, so it still auto-generates the table name from the class name (`Author` → `author`, `Article` → `article`). That is why `ForeignKey("author.id")` is correct here.
-
-### Why `init=False` and `default=None` are required
-
-`fr.IDBase` uses SQLAlchemy's `MappedAsDataclass`, which auto-generates an `__init__` from the model's field declarations. Any attribute that is not marked `init=False` becomes a constructor parameter.
-
-Relationship attributes should **not** be constructor parameters — SQLAlchemy loads them lazily from the database via the foreign key column. If you omit `init=False`, SQLAlchemy will expect the related object to be passed directly to `Article(...)`, which is not how FK-based construction works.
-
-`default=None` is the companion requirement: without a default value, the generated `__init__` would require the relationship as a positional argument, making it impossible to construct the object at all.
-
-The correct declaration is always:
-
-```python
-author: Mapped["Author"] = relationship(default=None, init=False)
-```
-
-### Plain (non-dataclass) models
-
-If you use `fr.PlainBase` / `fr.PlainIDBase` instead of `fr.IDBase`, the dataclass constraint does not apply. Plain models use SQLAlchemy's traditional declarative style and accept any keyword arguments in `__init__`, so `init=False` is not needed:
-
-```python
-class Article(fr.PlainIDBase):
-    __tablename__ = "article"
-    title: Mapped[str]
-    author_id: Mapped[int] = mapped_column(ForeignKey("author.id"))
-    author: Mapped["Author"] = relationship()  # no init=False needed
-```
+`fr.IDBase` auto-generates the table name from the class name (`Author` →
+`author`, `Article` → `article`). That is why `ForeignKey("author.id")` is
+correct here.
 
 ## Schema Setup
 
 ```python
-import fastapi_restly as fr
-
 class AuthorSchema(fr.IDSchema):
     name: str
 
+
 class ArticleSchema(fr.IDSchema):
     title: str
-    author_id: fr.IDSchema[Author]
+    author_id: fr.IDRef[Author]
+```
+
+`fr.IDRef[Author]` means "this field references an `Author` row by id." The
+wire format is a plain scalar:
+
+```json
+{
+  "title": "Intro",
+  "author_id": 1
+}
+```
+
+Responses use the same shape:
+
+```json
+{
+  "id": 10,
+  "title": "Intro",
+  "author_id": 1
+}
 ```
 
 ## View Setup
@@ -78,23 +73,128 @@ class ArticleView(fr.AsyncRestView):
     schema = ArticleSchema
 ```
 
-## Request Format
+On create and update, Restly looks up the `Author` with `id=1`. If it does not
+exist, the request returns `404`.
 
-The client sends the related object's primary key wrapped in an object:
+## Naming Convention
+
+Automatic FK resolution needs the schema field name to end in `_id`:
+
+```python
+author_id: fr.IDRef[Author]
+```
+
+If the SQLAlchemy model also has a relationship with the same name minus
+`_id`, Restly keeps the FK column and relationship in sync:
+
+| Schema field | FK column | Relationship |
+|---|---|---|
+| `author_id` | `Article.author_id` | `Article.author` |
+
+If the relationship attribute is absent, Restly still sets the FK column.
+
+## Dataclass Relationship Setup
+
+`fr.IDBase` uses SQLAlchemy's `MappedAsDataclass`, which generates an `__init__`
+from the model fields. Relationship attributes should not be constructor
+parameters; SQLAlchemy loads them through the FK column.
+
+Use `init=False` and `default=None` on relationship attributes:
+
+```python
+author: Mapped["Author"] = relationship(default=None, init=False)
+```
+
+Without `init=False`, the generated constructor expects an `Author` object.
+Without `default=None`, the generated constructor requires the relationship as a
+positional argument.
+
+### Plain Models
+
+If you use `fr.PlainBase` / `fr.PlainIDBase`, the dataclass constructor rules do
+not apply:
+
+```python
+class Article(fr.PlainIDBase):
+    __tablename__ = "article"
+
+    title: Mapped[str]
+    author_id: Mapped[int] = mapped_column(ForeignKey("author.id"))
+    author: Mapped["Author"] = relationship()
+```
+
+## Input Compatibility
+
+`IDRef` accepts both scalar ids and `{"id": ...}` dictionaries on input:
+
+```json
+{ "author_id": 1 }
+```
+
+```json
+{ "author_id": {"id": 1} }
+```
+
+The response shape stays scalar. This is useful when clients or migration code
+already send the dictionary form, but the public API contract should remain an
+identifier field.
+
+## About IDSchema
+
+Most examples inherit from `fr.IDSchema`:
+
+```python
+class ArticleSchema(fr.IDSchema):
+    title: str
+    author_id: fr.IDRef[Author]
+```
+
+As a base class, `IDSchema` is essentially `BaseSchema` with a read-only `id`
+field:
+
+```python
+class IDSchema(fr.BaseSchema):
+    id: fr.ReadOnly[Any]
+```
+
+You can inherit from `fr.BaseSchema` instead if you want every field, including
+`id`, to be explicit in the schema definition:
+
+```python
+class ArticleSchema(fr.BaseSchema):
+    id: fr.ReadOnly[int]
+    title: str
+    author_id: fr.IDRef[Author]
+```
+
+## Nested Relationship Objects
+
+Some clients model relationships as objects. For that shape, annotate the
+relationship field with `fr.IDSchema[Model]`:
+
+```python
+class ArticleSchema(fr.IDSchema):
+    title: str
+    author: fr.IDSchema[Author]
+```
+
+The wire format is:
 
 ```json
 {
   "title": "Intro",
-  "author_id": {"id": 1}
+  "author": {"id": 1}
 }
 ```
 
-The view looks up the `Author` with `id=1` and raises `404` if it does not exist.
+`IDRef` and `IDSchema[Model]` both validate the referenced row and use the same
+resolver. The difference is the API shape.
 
-## Behavior
+## Behavior Summary
 
-- The `id` inside the `{"id": 1}` payload is the foreign key value provided by the client, not the article's own primary key.
-- FastAPI-Restly resolves `author_id` to an `Author` ORM instance before creating or updating the object.
-- Both the FK column (`author_id`) and the relationship (`author`) are kept in sync on write, provided the `author` relationship exists on the model.
-- On dataclass-based models, the framework detects `init=False` on the relationship attribute and skips passing it to `__init__`. The FK column is still set, so SQLAlchemy will populate the relationship on the next access.
+- `IDRef[Model]` uses scalar id wire format on request and response.
 - Missing related IDs return `404`.
+- The `_id` field name triggers FK resolution.
+- A matching SQLAlchemy relationship lets Restly keep the FK column and
+  relationship attribute in sync.
+- `IDSchema` as a base class adds the resource's own read-only `id` field.

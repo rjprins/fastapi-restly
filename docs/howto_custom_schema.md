@@ -1,38 +1,174 @@
-# How-To: Use Custom Schemas and Aliases
+# How-To: Use Schemas and Field Types
 
-Use a custom schema when you need explicit validation, aliases, or read/write field control. If you omit `schema` on a view, FastAPI-Restly generates one automatically from the model — this guide covers the cases where you want full control instead.
+:::{note}
+FastAPI-Restly uses **schema** for Pydantic request/response models and
+**model** for SQLAlchemy ORM models. A `User` model is the database object; a
+`UserSchema` schema is the public API shape.
+:::
 
-## 1. Define Model
+Use explicit schemas when you need a stable public contract: aliases, hidden
+fields, computed read-only fields, or relationship IDs. If you omit `schema` on
+a view, Restly can auto-generate one from the SQLAlchemy model instead.
+
+## BaseSchema
+
+`fr.BaseSchema` is Restly's Pydantic base class. It enables Pydantic's
+`from_attributes=True`, which lets response schemas validate SQLAlchemy ORM
+objects directly.
+
+Use `BaseSchema` when you want to declare every field yourself, including `id`:
 
 ```python
-import fastapi_restly as fr
-from sqlalchemy.orm import Mapped
-
-class User(fr.IDBase):
-    first_name: Mapped[str]
-    email: Mapped[str]
-    password_hash: Mapped[str]
+class UserSchema(fr.BaseSchema):
+    id: int
+    name: str
+    email: str
 ```
 
-## 2. Define Schema
+This keeps the `id` field explicit and visible in the schema definition. You are
+then responsible for marking it read-only if you do not want it accepted in
+create/update payloads.
+
+## IDSchema
+
+Most response schemas inherit from `fr.IDSchema`. It is essentially
+`BaseSchema` with a read-only `id` field added:
+
+```python
+class IDSchema(fr.BaseSchema):
+    id: fr.ReadOnly[Any]
+```
+
+That is why examples usually look like this:
+
+```python
+class UserSchema(fr.IDSchema):
+    name: str
+    email: str
+```
+
+The `id` appears in responses but is excluded from generated POST and PATCH
+input schemas. You do not need to redeclare it unless you want a different type
+or different field metadata.
+
+## Timestamps
+
+Use `fr.TimestampsSchemaMixin` when a schema should include read-only
+`created_at` and `updated_at` fields:
+
+```python
+class UserSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
+    name: str
+```
+
+`fr.IDStampsSchema` combines `IDSchema` and `TimestampsSchemaMixin` in one base:
+
+```python
+class UserSchema(fr.IDStampsSchema):
+    name: str
+```
+
+## ReadOnly and WriteOnly
+
+`fr.ReadOnly[T]` marks a field as response-only. It is removed from create and
+update inputs:
+
+```python
+class UserSchema(fr.IDSchema):
+    name: str
+    created_by_id: fr.ReadOnly[int]
+```
+
+`fr.WriteOnly[T]` marks a field as request-only. It is accepted in create/update
+payloads but stripped from responses:
+
+```python
+class UserSchema(fr.IDSchema):
+    email: str
+    password: fr.WriteOnly[str]
+```
+
+Restly applies both markers when it generates `creation_schema`,
+`update_schema`, and response payloads.
+
+## Aliases
+
+Use normal Pydantic aliases when the API field name differs from the Python or
+database attribute:
 
 ```python
 from pydantic import Field
-import fastapi_restly as fr
+
 
 class UserSchema(fr.IDSchema):
-    # Alias: clients send "firstName", the ORM field is "first_name"
     first_name: str = Field(alias="firstName")
     email: str
-    # WriteOnly: accepted on POST/PATCH but never included in responses
-    password_hash: fr.WriteOnly[str]
 ```
 
-`IDSchema` already provides an `id` field marked `fr.ReadOnly`, so `id` is automatically excluded from POST and PATCH payloads — you do not need to declare it yourself.
+Incoming payloads can use `firstName`, and Restly responses use the alias on
+Restly routes.
 
-`fr.WriteOnly[T]` marks a field as write-only: it is accepted in create and update requests but stripped from all responses.
+## IDRef
 
-## 3. Attach Schema to View
+Use `fr.IDRef[Model]` for foreign-key and identifier-reference fields:
+
+```python
+class ArticleSchema(fr.IDSchema):
+    title: str
+    author_id: fr.IDRef[Author]
+```
+
+The wire format is a scalar id:
+
+```json
+{
+  "title": "Intro",
+  "author_id": 1
+}
+```
+
+Restly validates that the referenced `Author` exists and resolves the id before
+creating or updating the ORM object. See [Foreign Keys with IDRef](howto_relationship_idschema.md)
+for the full model and view setup.
+
+## Nested relationship objects
+
+If a client expects a nested relationship object, use `fr.IDSchema[Model]` as a
+field type:
+
+```python
+class ArticleSchema(fr.IDSchema):
+    title: str
+    author: fr.IDSchema[Author]
+```
+
+The wire format is:
+
+```json
+{
+  "title": "Intro",
+  "author": {"id": 1}
+}
+```
+
+This is useful for clients or integrations that model relationships as objects.
+For ordinary foreign-key fields, use `IDRef`.
+
+## Auto-Generated vs Explicit Schemas
+
+Auto-generated schemas are useful when your database model is already close to
+your API contract:
+
+```python
+@fr.include_view(app)
+class UserView(fr.AsyncRestView):
+    prefix = "/users"
+    model = User
+```
+
+Use explicit schemas when you need aliases, read/write field control,
+relationship references, or a public API shape that intentionally differs from
+the SQLAlchemy model:
 
 ```python
 @fr.include_view(app)
@@ -41,10 +177,3 @@ class UserView(fr.AsyncRestView):
     model = User
     schema = UserSchema
 ```
-
-## What You Get
-
-- Incoming payloads accept the alias key (`firstName`).
-- Responses use the alias key (`firstName`) on Restly routes as well.
-- `id` never appears in POST/PATCH request bodies because it is `ReadOnly` on `IDSchema`.
-- `password_hash` never appears in responses because it is `WriteOnly`.

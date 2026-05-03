@@ -36,7 +36,7 @@ This is the recommended starting point.
 
 ---
 
-## Use `IDSchema` with or without a model type
+## Use `IDSchema` for response schemas
 
 You can subclass `IDSchema` directly:
 
@@ -46,8 +46,9 @@ class UserSchema(fr.IDSchema):
     email: str
 ```
 
-When you want the schema to refer to a specific SQLAlchemy model, you can also
-parameterize it:
+`IDSchema` is the usual base for response schemas because it adds the resource's
+own read-only `id` field. You can parameterize it when you want the schema class
+itself to carry the SQLAlchemy model type:
 
 ```python
 class UserSchema(fr.IDSchema[User]):
@@ -55,17 +56,18 @@ class UserSchema(fr.IDSchema[User]):
     email: str
 ```
 
-For most top-level response schemas, either form is fine.
+For most top-level response schemas, either form is fine. The bare form is the
+recommended starting point.
 
-For relationship ID fields, prefer the model-aware form:
+For foreign-key fields, use `IDRef[RelatedModel]`:
 
 ```python
 class ArticleSchema(fr.IDSchema):
     title: str
-    author_id: fr.IDSchema[User]
+    author_id: fr.IDRef[User]
 ```
 
-That tells Restly which model should be resolved from the `{"id": ...}` payload.
+That tells Restly which model should be resolved from the scalar id payload.
 
 ---
 
@@ -130,7 +132,8 @@ is valuable to you.
 Use the simplest form that gives you the typing help you want:
 
 - **No generics at all** for normal CRUD views
-- **`IDSchema[RelatedModel]`** for relationship ID fields
+- **`IDRef[RelatedModel]`** for foreign-key fields
+- **`IDSchema[RelatedModel]`** only when you intentionally want a nested relationship object field
 - **View generics** only when you want precise `handle_*` handler typing
 
 That keeps everyday usage clean while still allowing stricter typing for
@@ -169,7 +172,7 @@ not understand every detail of that process.
 The practical takeaway is:
 
 - Type checkers are best at the **public contract**: models, schemas, `IDSchema[...]`,
-  class attributes, and `handle_*` handlers.
+  `IDRef[...]`, class attributes, and `handle_*` handlers.
 - Type checkers are less useful for the internal signature-rewriting machinery.
 
 You usually do not need to care about that distinction unless you are modifying
@@ -188,7 +191,8 @@ with Pyright. The repository keeps a dedicated set of consumer typing fixtures u
 ## Summary
 
 - Bare `IDSchema` is supported.
-- `IDSchema[Model]` is preferred for relationship ID fields.
+- `IDRef[Model]` is preferred for foreign-key fields.
+- `IDSchema[Model]` is available for nested relationship-object fields.
 - Bare `RestView` / `AsyncRestView` are the default.
 - Parameterized views are optional and mainly help with `handle_*` handler typing.
 - Custom route methods work well with ordinary Python annotations.

@@ -90,7 +90,7 @@ write logic in `handle_create` / `handle_update`.
 Use V1 (JSONAPI-style) and V2 (HTTP-style) query parameter interfaces.
 :::
 
-:::{grid-item-card} Foreign Keys with IDSchema
+:::{grid-item-card} Foreign Keys with IDRef
 :link: howto_relationship_idschema
 :link-type: doc
 

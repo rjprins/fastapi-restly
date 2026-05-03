@@ -11,15 +11,16 @@ view.
 Field-level markers are implemented with `typing.Annotated` metadata:
 
 ```python
-class UserSchema(IDSchema[User]):
+class UserSchema(IDSchema):
     id: ReadOnly[int]
     email: str
     password: WriteOnly[str]
 ```
 
-`IDSchema` is generic: `IDSchema[User]` enables a field validator that coerces
-the `id` value to match the SQLAlchemy model's actual primary-key type. Without
-the type parameter the validator is a no-op and `id` stays typed as `Any`.
+`IDSchema` is primarily a response-schema base: it is `BaseSchema` with a
+read-only `id` field. `IDRef[Model]` and `IDSchema[Model]` are the model-aware
+reference forms; their validators coerce the `id` value to match the SQLAlchemy
+model's actual primary-key type.
 
 - `ReadOnly[...]` fields are excluded from generated create/update input schemas.
 - `WriteOnly[...]` fields are accepted on input and excluded from serialized
@@ -172,7 +173,7 @@ Nested schemas serve two different roles in Restly today:
   schema, so related objects can be serialized efficiently and with aliases.
 - **Create/update payloads**: not supported in the general case. The default
   `make_new_object()` / `update_object()` flow expects payload keys to map
-  directly to model attributes, with `*_id: IDSchema[Model]` as the supported
+  directly to model attributes, with `*_id: IDRef[Model]` as the usual
   special case for foreign keys.
 
 If you declare a nested input field like `address: AddressSchema` on a write
