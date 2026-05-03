@@ -5,6 +5,12 @@
 If your project already manages its own database sessions, configure
 FastAPI-Restly to use them instead of its built-in session factory.
 
+If you provide custom sessionmakers or generators, make sure their lifecycle and
+session options match the behavior your views rely on. Restly's built-in
+factories intentionally use different autoflush defaults for sync and async
+sessions and keep `expire_on_commit=False` for both; see
+[Session Factory Defaults](technical_details.md#session-factory-defaults).
+
 For async views (`AsyncRestView`), pass an async generator to
 `fr.configure()`:
 

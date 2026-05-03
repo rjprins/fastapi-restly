@@ -232,6 +232,34 @@ The `use_fr_globals(globals_obj)` context manager swaps in an alternative
 savepoint-backed session factory without touching global state visible to other
 concurrent contexts.
 
+## Session Factory Defaults
+
+When `fr.configure()` creates session factories from URLs or engines, Restly
+sets a few SQLAlchemy session options intentionally:
+
+| Factory | Autoflush | Expire on commit |
+|---|---|---|
+| Async `async_sessionmaker` | `False` | `False` |
+| Sync `sessionmaker` | SQLAlchemy default (`True`) | `False` |
+
+`expire_on_commit=False` is used for both sync and async sessions so ORM
+objects remain readable after a route commits. FastAPI response serialization
+and Restly's response-schema conversion read attributes from ORM objects after
+the write path has flushed and refreshed them. If commit expired those
+attributes, serialization could trigger implicit database reads. In async code
+that can fail outside an awaited SQLAlchemy call; in sync code it makes response
+rendering unexpectedly database-dependent.
+
+The autoflush setting is intentionally different. Async sessions disable
+autoflush because autoflush can turn a read operation into an implicit write and
+database I/O must happen at explicit awaited SQLAlchemy boundaries. Restly's
+async CRUD helpers flush explicitly when writes should hit the database. Sync
+sessions keep SQLAlchemy's default autoflush behavior, preserving the usual
+unit-of-work ergonomics where ORM queries see pending in-session changes.
+
+Projects that provide custom sessionmakers or session generators should preserve
+these assumptions unless they deliberately want different behavior.
+
 ## See Also
 
 - [How-To: Filter, Sort, and Paginate Lists](howto_query_modifiers.md) — full
