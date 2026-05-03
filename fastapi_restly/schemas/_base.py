@@ -1,3 +1,4 @@
+import functools
 import types
 from datetime import datetime
 from typing import Annotated, Any, Generic, Optional, Union, get_args, get_origin
@@ -51,6 +52,11 @@ SQLAlchemyModel = TypeVar(
 _IDREF_UNSET = object()
 
 
+@functools.cache
+def _id_type_adapter(id_type: Any) -> pydantic.TypeAdapter[Any]:
+    return pydantic.TypeAdapter(id_type)
+
+
 class IDSchema(BaseSchema, Generic[SQLAlchemyModel]):
     """Generic schema useful for serializing only the id of objects.
     Can be used as IDSchema[MyModel].
@@ -101,7 +107,7 @@ class IDSchema(BaseSchema, Generic[SQLAlchemyModel]):
         id_type = cls._get_sql_model_id_type()
         if id_type in (None, Any):
             return value
-        return pydantic.TypeAdapter(id_type).validate_python(value)
+        return _id_type_adapter(id_type).validate_python(value)
 
     def get_sql_model_annotation(self) -> type[SQLAlchemyModel] | None:
         """

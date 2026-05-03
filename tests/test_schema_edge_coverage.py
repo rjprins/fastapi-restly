@@ -48,6 +48,23 @@ def test_idschema_coerces_primary_key_types_and_preserves_untyped_ids():
     assert untyped.get_sql_model_annotation() is None
 
 
+def test_idschema_reuses_cached_type_adapter_per_id_type():
+    import fastapi_restly.schemas._base as schemas_base
+
+    schemas_base._id_type_adapter.cache_clear()
+
+    class CachedAdapterUser(fr.IDBase):
+        name: Mapped[str]
+
+    with patch.object(
+        schemas_base.pydantic, "TypeAdapter", wraps=schemas_base.pydantic.TypeAdapter
+    ) as type_adapter_spy:
+        for index in range(10):
+            assert fr.IDSchema[CachedAdapterUser](id=str(index)).id == index
+
+    assert type_adapter_spy.call_count == 1
+
+
 def test_idref_accepts_both_wire_forms_and_serializes_as_scalar():
     class IDRefInputUser(fr.IDBase):
         name: Mapped[str]
