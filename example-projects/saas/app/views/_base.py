@@ -27,11 +27,8 @@ update every route::
 from typing import Any, ClassVar
 
 import fastapi
-import sqlalchemy as sa
-from sqlalchemy import func, select
 
 import fastapi_restly as fr
-from fastapi_restly.query import apply_query_modifiers, use_query_modifier_version
 
 # Set by tests to simulate tenant isolation without real auth middleware.
 # In production, request.state.org_id is set by your auth middleware instead.
@@ -60,35 +57,6 @@ class TenantBase(fr.AsyncRestView):
     # Applied to every route registered by this view and all subclasses.
     dependencies: ClassVar[list[Any]] = [fastapi.Depends(check_api_key)]
 
-    # ------------------------------------------------------------------
-    # Shared base-query seam.
-    # ------------------------------------------------------------------
-    # Both ``on_list`` and ``count_index`` route through ``build_base_query``
-    # so subclass mixins can layer WHERE clauses (tenant scope, soft
-    # delete) by overriding ``build_base_query`` cooperatively via
-    # ``super().build_base_query()``. Without this seam, the mixin would
-    # have to duplicate the count_index implementation just to add
-    # one extra ``where``. (See the (b) "aggregate query" gap in the
-    # hooks-design notes.)
-    def build_base_query(self) -> sa.Select:
-        return sa.select(self.model)
-
-    async def on_list(self, query_params, query=None):
-        if query is None:
-            query = self.build_base_query()
-        return await super().on_list(query_params, query)
-
-    async def count_index(self, query_params) -> int:
-        base = self.build_base_query()
-        query_params_obj = self._to_query_params(query_params)
-        with use_query_modifier_version(self.get_query_modifier_version()):
-            filtered = apply_query_modifiers(
-                query_params_obj, base, self.model, self.schema
-            )
-        filtered = filtered.order_by(None).limit(None).offset(None)
-        count_q = select(func.count()).select_from(filtered.subquery())
-        return int(await self.session.scalar(count_q) or 0)
-
     def _current_org_id(self) -> int | None:
         """Return the current tenant's org ID.
 
@@ -102,7 +70,7 @@ class TenantBase(fr.AsyncRestView):
         """Whether the current request bypasses tenant + row scoping.
 
         Admin requests skip the ``WHERE organization_id = ...`` clause in
-        ``TenantScopedMixin.build_base_query`` and any per-row scope check on
+        ``TenantScopedMixin.build_list_query`` and any per-row scope check on
         the concrete view (see ``TaskView.on_get`` for an assignee-scope
         example). The mixins consult this predicate cooperatively, so an
         admin request sees all rows across all tenants by simply having

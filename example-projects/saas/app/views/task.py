@@ -2,7 +2,6 @@
 
 import fastapi
 from pydantic import BaseModel
-from sqlalchemy import select
 
 import fastapi_restly as fr
 
@@ -94,20 +93,21 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
                 project.total_story_points -= obj.story_points
         await super().delete_object(obj)
 
-    async def on_list(self, query_params, query=None):
+    def build_list_query(self):
         """Filter tasks to those assigned to the current user.
 
         Admin requests bypass this filter — they see every task regardless
-        of assignee. The tenant + soft-delete filters from the mixin chain
-        also short-circuit on admin (see ``_is_admin`` on TenantBase).
+        of assignee. Layered through ``build_list_query`` so the same
+        scope feeds both ``on_list`` and ``count_index`` (and composes
+        with ``SoftDeleteMixin.build_list_query`` via ``super()``).
         """
-        if not self._is_admin():
-            current_user = self._current_user_id()
-            if current_user is not None:
-                if query is None:
-                    query = select(self.model)
-                query = query.where(Task.assignee_id == current_user)
-        return await super().on_list(query_params, query)
+        q = super().build_list_query()
+        if self._is_admin():
+            return q
+        current_user = self._current_user_id()
+        if current_user is not None:
+            q = q.where(Task.assignee_id == current_user)
+        return q
 
     async def on_get(self, id: int):
         """Verify row-level access: only the assignee can fetch the task."""

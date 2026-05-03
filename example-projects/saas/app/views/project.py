@@ -51,12 +51,13 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
     - ``TenantScopedMixin`` — adds ``organization_id`` filter to reads,
       stamps it on writes from auth context.
     - ``TenantBase`` — auth dep, audit ``save_object`` seam, ``_emit``
-      outbox helper, ``build_base_query`` seam consumed by the mixins above.
+      outbox helper. The ``build_list_query`` seam consumed by the mixins
+      above lives on ``AsyncRestView`` itself.
 
-    Each mixin's ``build_base_query`` calls ``super().build_base_query()``, so the
+    Each mixin's ``build_list_query`` calls ``super().build_list_query()``, so the
     tenant + soft-delete WHERE clauses compose without either mixin
     knowing the other exists. The same chain feeds both ``on_list`` and
-    ``count_index`` (defined on TenantBase), so pagination totals stay
+    ``count_index`` (defined on ``AsyncRestView``), so pagination totals stay
     aligned with list results — the matrix's "row-based access for
     GET /" + "count must use same filter" pair, satisfied by inheritance.
 
@@ -287,9 +288,26 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
 
     @fr.get("/{id}/tasks", response_model=list[TaskSchema])
     async def list_project_tasks(self, id: int) -> list[Task]:
-        """List all tasks for a specific project."""
+        """List tasks for a specific project, honouring task visibility rules.
+
+        Mirrors the predicates ``TaskView`` applies to ``GET /tasks/``:
+        soft-deleted tasks are hidden (unless ``?include_deleted=true``),
+        and non-admin callers see only tasks assigned to themselves.
+        Tenant scoping is implicit — ``self.on_get(id)`` already verified
+        the project is visible to the caller, and tasks are project-bound.
+        """
         await self.on_get(id)
-        result = await self.session.scalars(select(Task).where(Task.project_id == id))
+        q = select(Task).where(Task.project_id == id)
+        include_deleted = (
+            self.request.query_params.get("include_deleted", "false").lower() == "true"
+        )
+        if not include_deleted:
+            q = q.where(Task.deleted_at.is_(None))
+        if not self._is_admin():
+            user_id = getattr(self.request.state, "user_id", None)
+            if user_id is not None:
+                q = q.where(Task.assignee_id == user_id)
+        result = await self.session.scalars(q)
         return list(result.all())
 
     @fr.post("/{id}/tasks", response_model=TaskSchema, status_code=201)

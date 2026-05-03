@@ -4,7 +4,7 @@ These compose by cooperative ``super()`` chains. Application-layer logic
 in concrete views (``ProjectView.on_create`` etc.) doesn't have to know
 they exist — the mixins inject their behavior into the right framework
 hook (``make_new_object`` / ``update_object`` for *write-side* stamps,
-``build_base_query`` / ``on_get`` for *read-side* filters).
+``build_list_query`` / ``on_get`` for *read-side* filters).
 
 The discussion in ``rut-notes/discussion_save_object.md`` warned against
 overriding ``make_new_object`` to layer *application* logic. The mixins
@@ -53,8 +53,8 @@ class TenantScopedMixin:
         def _current_org_id(self) -> int | None: ...
         def _is_admin(self) -> bool: ...
 
-    def build_base_query(self) -> sa.Select:
-        q = super().build_base_query()  # type: ignore[misc]
+    def build_list_query(self) -> sa.Select:
+        q = super().build_list_query()  # type: ignore[misc]
         if self._is_admin():
             return q
         org_id = self._current_org_id()
@@ -110,8 +110,8 @@ class SoftDeleteMixin:
             == "true"
         )
 
-    def build_base_query(self) -> sa.Select:
-        q = super().build_base_query()  # type: ignore[misc]
+    def build_list_query(self) -> sa.Select:
+        q = super().build_list_query()  # type: ignore[misc]
         if not self._include_deleted() and hasattr(self.model, "deleted_at"):
             q = q.where(self.model.deleted_at.is_(None))
         return q
