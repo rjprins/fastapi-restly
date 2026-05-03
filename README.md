@@ -6,7 +6,7 @@
 [![Coverage](https://rjprins.github.io/fastapi-restly/coverage/badge.svg)](https://rjprins.github.io/fastapi-restly/coverage/)
 
 <p align="center">
-  <img src="docs/_static/restly-cat.png" alt="FastAPI-Restly logo" width="200">
+  <img src="https://raw.githubusercontent.com/rjprins/fastapi-restly/main/docs/_static/restly-cat.png" alt="FastAPI-Restly logo" width="200">
 </p>
 
 **Build maintainable CRUD APIs on FastAPI, SQLAlchemy 2.0, and Pydantic v2 — with real class-based views.**
