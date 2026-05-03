@@ -547,7 +547,7 @@ class View:
     """
 
     prefix: ClassVar[str]
-    tags: ClassVar[list[str] | None] = None  # View class name will be added by default
+    tags: ClassVar[list[str] | None] = None
     dependencies: ClassVar[list[Any] | None] = None
     responses: ClassVar[dict[int, Any]] = {}
 
@@ -1066,12 +1066,9 @@ def _get_all_parent_endpoints(view_cls: type[View]) -> list[Callable]:
 
 
 def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
-    tags: list[str | Enum] = [view_cls.__name__]
-    if view_cls.tags:
-        tags += view_cls.tags
-
     # Concatenate prefixes defined at each level of the class hierarchy (base → derived).
     prefix = "".join(c.__dict__["prefix"] for c in reversed(view_cls.mro()) if "prefix" in c.__dict__)
+    tags = _get_router_tags(view_cls, prefix)
     api_router = fastapi.APIRouter(
         prefix=prefix,
         tags=tags,
@@ -1088,6 +1085,19 @@ def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
         _add_api_route(api_router, view_cls, path, endpoint, route_kwargs)
 
     return api_router
+
+
+def _get_router_tags(view_cls: type[View], prefix: str) -> list[str | Enum]:
+    if view_cls.tags is not None:
+        return list(view_cls.tags)
+    return [_derive_tag_from_prefix(prefix) or view_cls.__name__]
+
+
+def _derive_tag_from_prefix(prefix: str) -> str | None:
+    segments = [segment for segment in prefix.strip("/").split("/") if segment]
+    if not segments:
+        return None
+    return segments[-1].replace("-", " ").replace("_", " ").title()
 
 
 def _add_api_route(
