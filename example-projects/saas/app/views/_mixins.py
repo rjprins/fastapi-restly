@@ -1,10 +1,10 @@
 """Cross-cutting mixins for the SaaS example.
 
 These compose by cooperative ``super()`` chains. Application-layer logic
-in concrete views (``ProjectView.on_create`` etc.) doesn't have to know
+in concrete views (``ProjectView.handle_create`` etc.) doesn't have to know
 they exist — the mixins inject their behavior into the right framework
 hook (``make_new_object`` / ``update_object`` for *write-side* stamps,
-``build_list_query`` / ``on_get`` for *read-side* filters).
+``build_list_query`` / ``handle_get`` for *read-side* filters).
 
 The discussion in ``rut-notes/discussion_save_object.md`` warned against
 overriding ``make_new_object`` to layer *application* logic. The mixins
@@ -62,8 +62,8 @@ class TenantScopedMixin:
             q = q.where(self.model.organization_id == org_id)
         return q
 
-    async def on_get(self, id: Any) -> Any:
-        obj = await super().on_get(id)  # type: ignore[misc]
+    async def handle_get(self, id: Any) -> Any:
+        obj = await super().handle_get(id)  # type: ignore[misc]
         if self._is_admin():
             return obj
         org_id = self._current_org_id()
@@ -116,8 +116,8 @@ class SoftDeleteMixin:
             q = q.where(self.model.deleted_at.is_(None))
         return q
 
-    async def on_get(self, id: Any) -> Any:
-        obj = await super().on_get(id)  # type: ignore[misc]
+    async def handle_get(self, id: Any) -> Any:
+        obj = await super().handle_get(id)  # type: ignore[misc]
         if (
             not self._include_deleted()
             and getattr(obj, "deleted_at", None) is not None

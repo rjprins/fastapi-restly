@@ -72,6 +72,15 @@ def test_relationship_with_idref_gets_x_resource_ref():
     assert props["books"].get("x-resource-ref") == "books"
 
 
+def test_idref_openapi_schema_is_scalar():
+    spec = _build_app().openapi()
+    props = spec["components"]["schemas"]["AuthorSchema"]["properties"]
+    item_ref = props["books"]["items"]["$ref"]
+    item_schema_name = item_ref.removeprefix("#/components/schemas/")
+
+    assert spec["components"]["schemas"][item_schema_name] == {"type": "integer"}
+
+
 def test_nested_schema_relationship_not_annotated():
     """Full nested object (author: AuthorSchema) must not get x-resource-ref."""
     app = _build_app()

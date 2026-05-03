@@ -48,6 +48,7 @@ SQLAlchemyModel = TypeVar(
     bound=DeclarativeBase,
     default=DeclarativeBase,
 )
+_IDREF_UNSET = object()
 
 
 class IDSchema(BaseSchema, Generic[SQLAlchemyModel]):
@@ -133,6 +134,26 @@ class IDRef(IDSchema[SQLAlchemyModel], Generic[SQLAlchemyModel]):
         products: list[IDRef[Product]]  # serializes as ["uuid1", "uuid2"]
     """
 
+    def __init__(self, value: Any = _IDREF_UNSET, **data: Any) -> None:
+        if value is not _IDREF_UNSET:
+            if data:
+                raise TypeError("IDRef accepts either a positional id or keyword fields")
+            data = value if isinstance(value, dict) else {"id": value}
+        super().__init__(**data)
+
+    @classmethod
+    def __get_pydantic_json_schema__(
+        cls,
+        core_schema: Any,
+        handler: pydantic.GetJsonSchemaHandler,
+    ) -> dict[str, Any]:
+        id_type = cls._get_sql_model_id_type()
+        if id_type in (None, Any):
+            return {}
+        return pydantic.TypeAdapter(id_type).json_schema(
+            mode=getattr(handler, "mode", "validation")
+        )
+
     @pydantic.model_validator(mode="before")
     @classmethod
     def _coerce_scalar(cls, v: Any) -> Any:
@@ -142,7 +163,7 @@ class IDRef(IDSchema[SQLAlchemyModel], Generic[SQLAlchemyModel]):
 
     @pydantic.model_serializer
     def _serialize_flat(self) -> Any:
-        return self.id
+        return self.id if hasattr(self, "id") else self
 
 
 async def async_resolve_ids_to_sqlalchemy_objects(

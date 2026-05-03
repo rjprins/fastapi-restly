@@ -56,7 +56,7 @@ async def _async_session():
 
 
 class TestPasswordHashing:
-    """Use-case: hash password on user create — UserView.on_create."""
+    """Use-case: hash password on user create — UserView.handle_create."""
 
     def test_password_is_hashed_at_rest(self, client, org_id):
         """The plaintext from the body must never reach the database column."""
@@ -469,7 +469,7 @@ class TestAdminBypass:
 
     A request with ``request.state.is_admin = True`` short-circuits the
     tenant filter in TenantScopedMixin and the assignee filter in
-    TaskView.on_get / on_list. Demonstrates the runtime-flag design:
+    TaskView.handle_get / handle_list. Demonstrates the runtime-flag design:
     no separate route tree, no parallel base view.
     """
 
@@ -565,13 +565,13 @@ class TestAdminBypass:
 
 
 # ---------------------------------------------------------------------------
-# Sibling-creation custom endpoint + IDSchema behavior
+# Sibling-creation custom endpoint + IDRef behavior
 # ---------------------------------------------------------------------------
 
 
 class TestSiblingCreation:
     """The brenntag permissions.py:188-201 pattern: create a sibling row,
-    then create another row that references it via IDSchema."""
+    then create another row that references it via IDRef."""
 
     def _ctx(self, client):
         from app.views import _base as base_module
@@ -604,25 +604,24 @@ class TestSiblingCreation:
             )
             assert response.status_code == 201
             tl = response.json()
-            # IDSchema serializes as {"id": N} dict on the wire.
-            assert tl["task_id"] == {"id": task_id}
-            assert isinstance(tl["label_id"], dict) and "id" in tl["label_id"]
+            # IDRef serializes as a scalar id on the wire.
+            assert tl["task_id"] == task_id
+            assert isinstance(tl["label_id"], int)
             assert tl["added_by_id"] is None  # no user context set in the test
 
             # Both rows actually exist.
-            label_id = tl["label_id"]["id"]
+            label_id = tl["label_id"]
             label = client.get(f"/labels/{label_id}").json()
             assert label["name"] == "urgent"
             assert label["color"] == "#ff0000"
         finally:
             base_module._TEST_ORG_ID = None
 
-    def test_idschema_resolution_for_freshly_created_sibling(self, client):
-        """The pinned behavior: the framework's IDSchema resolver requires
+    def test_idref_resolution_for_freshly_created_sibling(self, client):
+        """The pinned behavior: the framework's IDRef resolver requires
         the referenced row to have a flushed PK before it can be
         constructed. Without ``await session.flush()`` between the Label
-        insert and the TaskLabel build, the IDSchema dict ``{"id": <None>}``
-        would be invalid.
+        insert and the TaskLabel build, the IDRef value would be invalid.
 
         The route flushes manually for exactly this reason; this test
         verifies the happy path works end-to-end."""
@@ -642,7 +641,7 @@ class TestSiblingCreation:
             assert r2.status_code == 201
             # Different label IDs — each request really created its own
             # row, the resolver isn't returning a stale cached one.
-            assert r1.json()["label_id"]["id"] != r2.json()["label_id"]["id"]
+            assert r1.json()["label_id"] != r2.json()["label_id"]
         finally:
             base_module._TEST_ORG_ID = None
 

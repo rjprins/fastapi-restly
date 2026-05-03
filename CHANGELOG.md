@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Breaking: renamed `FlatIDSchema[T]` to `IDRef[T]`, the scalar FK
+  reference type. `IDRef[T]` exposes scalar request/response JSON Schema and
+  OpenAPI shapes while still accepting `{"id": ...}` input for compatibility.
+  No deprecated `FlatIDSchema` alias is kept for this alpha API rename.
 - Breaking: renamed CRUD operation override points from `on_*` to `handle_*`
   to make clear that these methods are the operation handlers, not passive
   event hooks. The mapping is `on_list` -> `handle_list`,
@@ -37,7 +41,7 @@ over nearly ten years of use — not a series of public breaking changes. See
   `create_schema_from_model()`.
 - `ReadOnly[T]` and `WriteOnly[T]` field markers to control which fields
   are excluded from create/update inputs or from responses.
-- `IDSchema[T]` / `FlatIDSchema[T]` generic schemas plus
+- `IDSchema[T]` / `IDRef[T]` generic schemas plus
   `OmitReadOnlyMixin` / `PatchMixin` schema transforms.
 - Two pluggable query parameter dialects:
   - **V1** (JSONAPI-style: `filter[name]=John`, `filter[id]=1,2,3`,

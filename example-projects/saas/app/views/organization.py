@@ -37,6 +37,6 @@ class OrganizationView(fr.AsyncRestView):
         response: Response,
     ) -> Organization:
         """Create + 201 Created + Location header."""
-        org = await self.on_create(schema_obj)
+        org = await self.handle_create(schema_obj)
         response.headers["Location"] = f"{self.prefix}/{org.id}"
         return org

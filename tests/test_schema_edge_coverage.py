@@ -50,6 +50,105 @@ def test_idschema_coerces_primary_key_types_and_preserves_untyped_ids():
     assert untyped.get_sql_model_annotation() is None
 
 
+def test_idref_accepts_both_wire_forms_and_serializes_as_scalar():
+    class IDRefInputUser(fr.IDBase):
+        name: Mapped[str]
+
+    scalar = fr.IDRef[IDRefInputUser](5)
+    keyword = fr.IDRef[IDRefInputUser](id="6")
+    payload = fr.IDRef[IDRefInputUser]({"id": "7"})
+
+    assert scalar.id == 5
+    assert keyword.id == 6
+    assert payload.id == 7
+    assert scalar.model_dump() == 5
+    assert scalar.model_dump_json() == "5"
+
+
+def test_idref_fields_generate_scalar_json_schema_in_both_modes():
+    class IDRefSchemaUser(fr.IDBase):
+        name: Mapped[str]
+
+    class SchemaWithIDRef(BaseSchema):
+        user_id: fr.IDRef[IDRefSchemaUser]
+
+    validation_schema = SchemaWithIDRef.model_json_schema(mode="validation")
+    serialization_schema = SchemaWithIDRef.model_json_schema(mode="serialization")
+
+    for schema in (validation_schema, serialization_schema):
+        ref = schema["properties"]["user_id"]["$ref"]
+        ref_name = ref.removeprefix("#/$defs/")
+        assert schema["$defs"][ref_name] == {"type": "integer"}
+
+
+def test_idschema_reference_still_serializes_as_nested_dict():
+    class IDSchemaNestedUser(fr.IDBase):
+        name: Mapped[str]
+
+    value = fr.IDSchema[IDSchemaNestedUser](id="5")
+
+    assert value.id == 5
+    assert value.model_dump() == {"id": 5}
+    assert value.model_dump_json() == '{"id":5}'
+
+
+def test_idref_fields_serialize_as_scalars_through_to_response_schema():
+    class ToResponseUser(fr.IDBase):
+        name: Mapped[str]
+
+    class ToResponseTask(fr.IDBase):
+        title: Mapped[str]
+        owner_id: Mapped[int]
+
+    class TaskSchema(fr.IDSchema):
+        title: str
+        owner_id: fr.IDRef[ToResponseUser]
+
+    class TaskView(fr.AsyncRestView):
+        model = ToResponseTask
+        schema = TaskSchema
+
+    task = ToResponseTask(title="Write tests", owner_id=5)
+    task.id = 1
+
+    payload = TaskView().to_response_schema(task).model_dump(mode="json")
+
+    assert payload["owner_id"] == 5
+    assert isinstance(payload["owner_id"], int)
+
+
+def test_idref_fields_serialize_cleanly_through_fastapi_response_model(client):
+    class ResponseModelUser(fr.IDBase):
+        name: Mapped[str]
+
+    class ResponseModelTask(fr.IDBase):
+        title: Mapped[str]
+        owner_id: Mapped[int]
+
+    class TaskSchema(fr.IDSchema):
+        title: str
+        owner_id: fr.IDRef[ResponseModelUser]
+
+    @fr.include_view(client.app)
+    class TaskView(fr.AsyncRestView):
+        prefix = "/idref-response"
+        model = ResponseModelTask
+        schema = TaskSchema
+
+        @fr.post("/make", response_model=TaskSchema)
+        async def make(self):
+            task = ResponseModelTask(title="Write tests", owner_id=5)
+            task.id = 1
+            return self.to_response_schema(task)
+
+    response = client.post("/idref-response/make")
+
+    assert response.status_code == 201
+    task = response.json()
+    assert task["owner_id"] == 5
+    assert isinstance(task["owner_id"], int)
+
+
 def test_resolve_ids_to_sqlalchemy_objects_handles_missing_single_and_list_entries():
     engine = create_engine(
         "sqlite://",
@@ -138,6 +237,38 @@ async def test_async_resolve_ids_to_sqlalchemy_objects_handles_missing_entries()
                         team_id={"id": team.id},
                         teams=[{"id": team.id}, {"id": team.id + 1}],
                     ),
+                )
+    finally:
+        await async_engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_async_resolve_ids_to_sqlalchemy_objects_handles_idref_missing_entries():
+    async_engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+
+    class IDRefResolverTeam(fr.IDBase):
+        name: Mapped[str]
+
+    class TeamRefSchema(BaseSchema):
+        team_id: fr.IDRef[IDRefResolverTeam]
+
+    try:
+        async with async_engine.begin() as conn:
+            await conn.run_sync(fr.DataclassBase.metadata.create_all)
+
+        async with AsyncSession(bind=async_engine, expire_on_commit=False) as session:
+            team = IDRefResolverTeam(name="Core")
+            session.add(team)
+            await session.commit()
+
+            payload = TeamRefSchema(team_id=team.id)
+            await async_resolve_ids_to_sqlalchemy_objects(session, payload)
+            assert isinstance(payload.team_id, IDRefResolverTeam)
+
+            with pytest.raises(HTTPException, match="Id not found for team_id"):
+                await async_resolve_ids_to_sqlalchemy_objects(
+                    session,
+                    TeamRefSchema(team_id=team.id + 1),
                 )
     finally:
         await async_engine.dispose()

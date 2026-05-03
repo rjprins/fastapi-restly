@@ -4,7 +4,7 @@ import sqlalchemy as sa
 from pydantic import BaseModel
 
 import fastapi_restly as fr
-from fastapi_restly.schemas import IDSchema
+from fastapi_restly.schemas import IDRef
 from fastapi_restly.views import async_make_new_object, async_save_object
 
 from ..models import Label, Task, TaskLabel
@@ -75,30 +75,28 @@ class TaskLabelView(TenantBase):
         The brenntag pattern from ``permissions.py:188-201`` — create a
         sibling row if needed, then create another row that references it.
 
-        Two design choices visible in this implementation, both
-        deliberate (and both worth comparing against the IDSchema-based
-        path the framework normally takes):
+        Two design choices visible in this implementation, both deliberate:
 
         1) **Build the Label and flush before constructing the TaskLabel.**
            This is required because the next step uses
            ``async_make_new_object`` with a ``TaskLabelSchema`` that
-           carries ``label_id: IDSchema[Label]`` — and the schema
+           carries ``label_id: IDRef[Label]`` — and the schema
            resolver runs ``select(Label).where(id=...)`` to verify the
            reference. A not-yet-flushed Label has no PK yet, so we
            wouldn't have anything to put in ``label_id``. The flush is
-           the cost of going through the IDSchema path.
+           the cost of going through the resolver path.
 
         2) **Direct ORM construction after flush.** We use
            ``async_make_new_object`` rather than the model constructor
            directly so the framework's writable-field filtering + readonly
            handling apply. The ``TaskLabelSchema`` has ``label_id`` typed
-           as ``IDSchema[Label]`` — the resolver replaces that with the
+           as ``IDRef[Label]`` — the resolver replaces that with the
            Label instance, which the framework then converts back to
            ``label_id = label.id`` via the resolver path.
         """
         from fastapi import HTTPException
 
-        # Tenant scope is enforced via TaskView.on_get-style checks here:
+        # Tenant scope is enforced via TaskView.handle_get-style checks here:
         # we don't go through TaskView, so we re-validate the task fits
         # the current org to avoid a cross-tenant attach.
         task = await self.session.get(Task, request.task_id)
@@ -109,20 +107,20 @@ class TaskLabelView(TenantBase):
             raise HTTPException(400, "Cannot create labels without an org context")
 
         # 1) Build sibling #1 (Label) and flush — needed because the
-        #    next step's IDSchema resolver requires an existing PK.
+        #    next step's IDRef resolver requires an existing PK.
         label = Label(
             name=request.label_name,
             color=request.color,
             organization_id=org_id,
         )
         self.session.add(label)
-        await self.session.flush()  # <-- the IDSchema path's hard requirement
+        await self.session.flush()  # <-- the resolver path's hard requirement
 
-        # 2) Build sibling #2 (TaskLabel) referencing #1 via FlatIDSchema.
-        #    The fields on TaskLabelSchema are typed FlatIDSchema[T] so the
+        # 2) Build sibling #2 (TaskLabel) referencing #1 via IDRef.
+        #    The fields on TaskLabelSchema are typed IDRef[T] so the
         #    wire format is scalar (``"task_id": 5``) but the framework
         #    resolver still verifies the row exists. ``model_construct``
-        #    skips Pydantic validation, so we pass FlatIDSchema instances
+        #    skips Pydantic validation, so we pass IDRef instances
         #    directly rather than scalars — that keeps the resolver path
         #    happy. (Passing a scalar would leave a plain int that the
         #    resolver doesn't recognize, falling through to assignment
@@ -130,8 +128,8 @@ class TaskLabelView(TenantBase):
         #    column is also an int. But that path skips the existence
         #    check, which is the whole point of the type.)
         link_schema = TaskLabelSchema.model_construct(
-            task_id=IDSchema[Task](id=request.task_id),
-            label_id=IDSchema[Label](id=label.id),
+            task_id=IDRef[Task](id=request.task_id),
+            label_id=IDRef[Label](id=label.id),
         )
         task_label = await async_make_new_object(
             self.session, TaskLabel, link_schema
@@ -144,9 +142,6 @@ class TaskLabelView(TenantBase):
             task_label.added_by_id = getattr(self.request.state, "user_id", None)
 
         task_label = await async_save_object(self.session, task_label)
-        # IDSchema requires manual response coercion for custom routes —
-        # FastAPI's ``response_model`` coercion treats ``task_id: IDSchema[Task]``
-        # as expecting a dict on the wire, but the ORM holds a plain int
-        # FK. ``self.to_response_schema`` translates the int into the
-        # ``{"id": N}`` shape (the same path generic CRUD routes use).
-        return self.to_response_schema(task_label)
+        # IDRef serializes as a bare scalar both ways. FastAPI's
+        # response_model coercion handles the ORM int directly.
+        return task_label

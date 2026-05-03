@@ -162,8 +162,9 @@ For generated CRUD endpoints:
 | Symbol | Description |
 |---|---|
 | `fr.BaseSchema` | Base Pydantic model with `from_attributes=True`. All schemas should inherit from this. |
-| `fr.IDSchema[Model]` | Generic schema that serializes only the `id` of a related model. Used for FK inputs. |
-| `fr.FlatIDSchema[Model]` | Variant of `IDSchema` that serializes as the raw `id` scalar instead of a `{"id": ...}` object (and also accepts a raw scalar on input). Use this for relationship list fields in response schemas to match React Admin / `ra-data-simple-rest` defaults — for example, `products: list[fr.FlatIDSchema[Product]]` serializes as `[1, 2, 3]` rather than `[{"id": 1}, ...]`. |
+| `fr.IDSchema` | Response-schema base class that adds the resource's own read-only `id` field. |
+| `fr.IDRef[Model]` | Scalar FK reference type. Wire format is the raw id (`5`) on request and response; dict input (`{"id": 5}`) is also accepted. Use this for typical REST FK fields and React Admin scalar id arrays. |
+| `fr.IDSchema[Model]` | Nested FK reference type. Wire format is `{"id": 5}` on request and response. Use this when clients expect JSON-API / React-Admin-style relationship objects. |
 | `fr.IDStampsSchema` | Combines `IDSchema` with read-only `created_at` / `updated_at` fields. |
 | `fr.TimestampsSchemaMixin` | Pydantic mixin adding read-only `created_at` / `updated_at` fields to a schema. |
 | `fr.ReadOnly[T]` | Type annotation marker. Fields annotated `ReadOnly[T]` are excluded from create/update inputs. |

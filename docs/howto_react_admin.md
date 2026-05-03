@@ -97,23 +97,23 @@ PUT route directly) if you need different write semantics for the two methods.
 
 ---
 
-## Tip: serialize related lists as scalar id arrays with `FlatIDSchema`
+## Tip: serialize related lists as scalar id arrays with `IDRef`
 
 `ra-data-simple-rest` expects `to-many` relationship references in list/get
 responses to be plain id arrays, e.g. `"product_ids": [1, 2, 3]`, not
-`[{"id": 1}, ...]`. Use `fr.FlatIDSchema[Model]` instead of `fr.IDSchema[Model]`
-for relationship list fields on your response schema:
+`[{"id": 1}, ...]`. Use `fr.IDRef[Model]` for relationship list fields on
+your response schema:
 
 ```python
 class OrderSchema(fr.IDSchema[Order]):
     customer_name: str
-    products: list[fr.FlatIDSchema[Product]]  # serializes as [1, 2, 3]
+    products: list[fr.IDRef[Product]]  # serializes as [1, 2, 3]
 ```
 
-`FlatIDSchema` accepts both raw scalars and `{"id": ...}` shapes on input, so
-it doubles as a permissive write-side type for FK lists when paired with a
-custom `handle_create` / `handle_update` that resolves them. For single-FK fields,
-`fr.IDSchema[Model]` remains the right choice.
+`IDRef` accepts both raw scalars and `{"id": ...}` shapes on input, so it
+doubles as a permissive write-side type for FK lists when paired with a custom
+`handle_create` / `handle_update` that resolves them. For relationship objects
+that must stay nested on the wire, use `fr.IDSchema[Model]` instead.
 
 ---
 

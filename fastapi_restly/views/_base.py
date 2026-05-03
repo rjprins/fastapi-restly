@@ -79,6 +79,7 @@ from ..query import (
 from ..query._config import get_query_param_schema_creator
 from ..schemas import (
     BaseSchema,
+    IDRef,
     IDSchema,
     auto_generate_schema_for_view,
     create_model_with_optional_fields,
@@ -194,7 +195,7 @@ def _unwrap_optional_annotation(annotation: Any) -> Any:
 
 def _is_idschema_reference_annotation(annotation: Any) -> bool:
     annotation = _unwrap_optional_annotation(annotation)
-    if annotation is IDSchema:
+    if annotation in (IDSchema, IDRef):
         return True
     if not inspect.isclass(annotation):
         return False
@@ -204,13 +205,15 @@ def _is_idschema_reference_annotation(annotation: Any) -> bool:
     except TypeError:
         return False
     metadata = getattr(annotation, "__pydantic_generic_metadata__", {})
-    return metadata.get("origin") is IDSchema
+    return metadata.get("origin") in (IDSchema, IDRef)
 
 
 def _serialize_idschema_value(annotation: Any, value: Any) -> Any:
     if value is None:
         return None
     id_value = value.id if hasattr(value, "id") else value
+    if inspect.isclass(annotation) and issubclass(annotation, IDRef):
+        return id_value
     if inspect.isclass(annotation) and issubclass(annotation, IDSchema):
         return annotation.model_construct(id=id_value)
     return {"id": id_value}

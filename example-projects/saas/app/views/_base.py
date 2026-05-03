@@ -71,7 +71,7 @@ class TenantBase(fr.AsyncRestView):
 
         Admin requests skip the ``WHERE organization_id = ...`` clause in
         ``TenantScopedMixin.build_list_query`` and any per-row scope check on
-        the concrete view (see ``TaskView.on_get`` for an assignee-scope
+        the concrete view (see ``TaskView.handle_get`` for an assignee-scope
         example). The mixins consult this predicate cooperatively, so an
         admin request sees all rows across all tenants by simply having
         the flag set — no separate route tree, no second base view.
@@ -90,7 +90,7 @@ class TenantBase(fr.AsyncRestView):
 
         Overriding ``save_object`` is the right place for side effects that
         should run after *every* write — both create and update — because
-        both ``on_create`` and ``on_update`` end by calling ``self.save_object``.
+        both ``handle_create`` and ``handle_update`` end by calling ``self.save_object``.
         """
         obj = await super().save_object(obj)
         # In production: publish to an audit log or event bus.

@@ -464,21 +464,21 @@ class TestLabelCRUD:
         )
         label_id = response.json()["id"]
 
-        # Add label to task using IDSchema[T] envelope format: {"id": N}
-        # task_id and label_id use fr.IDSchema[T] — the framework validates the
-        # referenced row exists and resolves it to the FK value automatically.
+        # Add label to task using IDRef[T] scalar wire format. The framework
+        # still validates the referenced rows exist and resolves them to FK
+        # values automatically.
         response = client.post(
             "/task-labels/",
             json={
-                "task_id": {"id": task_id},
-                "label_id": {"id": label_id},
+                "task_id": task_id,
+                "label_id": label_id,
                 "added_by_id": user_id,
             },
         )
         task_label = response.json()
 
-        assert task_label["task_id"] == {"id": task_id}
-        assert task_label["label_id"] == {"id": label_id}
+        assert task_label["task_id"] == task_id
+        assert task_label["label_id"] == label_id
         assert task_label["added_by_id"] == user_id
 
 
@@ -1888,7 +1888,7 @@ class TestTenantIsolation:
     """Test tenant isolation (org scoping) for projects."""
 
     def test_tenant_isolation_filters_list(self, client):
-        """Test that on_list filters by current org when set."""
+        """Test that handle_list filters by current org when set."""
         import app.views._base as project_view
 
         # Create two orgs
@@ -1937,7 +1937,7 @@ class TestTenantIsolation:
             project_view._TEST_ORG_ID = None  # Reset
 
     def test_tenant_isolation_blocks_get_other_org(self, client):
-        """Test that on_get returns 404 for other org's resources."""
+        """Test that handle_get returns 404 for other org's resources."""
         import app.views._base as project_view
 
         # Create two orgs
@@ -1971,7 +1971,7 @@ class TestTenantIsolation:
             project_view._TEST_ORG_ID = None  # Reset
 
     def test_tenant_isolation_allows_own_org(self, client):
-        """Test that on_get allows access to own org's resources."""
+        """Test that handle_get allows access to own org's resources."""
         import app.views._base as project_view
 
         # Create org
@@ -2002,7 +2002,7 @@ class TestRowLevelPermissions:
     """Test row-level permissions (filter results by user permissions)."""
 
     def test_row_level_filters_task_list(self, client):
-        """Test that on_list filters tasks by current user."""
+        """Test that handle_list filters tasks by current user."""
         import app.views.task as task_view
 
         # Create org, users, and project
@@ -2063,7 +2063,7 @@ class TestRowLevelPermissions:
             task_view._TEST_USER_ID = None  # Reset
 
     def test_row_level_blocks_get_other_user_task(self, client):
-        """Test that on_get returns 404 for other user's tasks."""
+        """Test that handle_get returns 404 for other user's tasks."""
         import app.views.task as task_view
 
         # Create org, users, and project
@@ -2109,7 +2109,7 @@ class TestRowLevelPermissions:
             task_view._TEST_USER_ID = None  # Reset
 
     def test_row_level_allows_own_task(self, client):
-        """Test that on_get allows access to user's own tasks."""
+        """Test that handle_get allows access to user's own tasks."""
         import app.views.task as task_view
 
         # Create org, user, and project

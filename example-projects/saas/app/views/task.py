@@ -65,8 +65,8 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
 
     Mixin-composed: soft delete + audit stamps. Tenant scope is *not*
     applied here — task scoping is by ``assignee_id`` (a row-level
-    permission, not a tenant filter), implemented in ``on_get`` /
-    ``on_list`` below. Demonstrates that views with non-tenant-aligned
+    permission, not a tenant filter), implemented in ``handle_get`` /
+    ``handle_list`` below. Demonstrates that views with non-tenant-aligned
     access models still benefit from the soft-delete + audit mixins,
     and that mixin composition is a la carte.
     """
@@ -98,7 +98,7 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
 
         Admin requests bypass this filter — they see every task regardless
         of assignee. Layered through ``build_list_query`` so the same
-        scope feeds both ``on_list`` and ``count_index`` (and composes
+        scope feeds both ``handle_list`` and ``count_index`` (and composes
         with ``SoftDeleteMixin.build_list_query`` via ``super()``).
         """
         q = super().build_list_query()
@@ -109,11 +109,11 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
             q = q.where(Task.assignee_id == current_user)
         return q
 
-    async def on_get(self, id: int):
+    async def handle_get(self, id: int):
         """Verify row-level access: only the assignee can fetch the task."""
         from fastapi import HTTPException
 
-        task = await super().on_get(id)
+        task = await super().handle_get(id)
         if self._is_admin():
             return task
         current_user = self._current_user_id()
@@ -155,7 +155,7 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
                 detail="severity is required for bug tasks"
             )
 
-    async def on_create(self, schema_obj):
+    async def handle_create(self, schema_obj):
         """Validate, build, save, and bump the parent's story-point rollup.
 
         The denormalized ``Project.total_story_points`` field is kept in
@@ -191,7 +191,7 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
             project.total_story_points += task.story_points
         return await self.save_object(task)
 
-    async def on_update(self, id: int, schema_obj):
+    async def handle_update(self, id: int, schema_obj):
         """Optimistic locking + reroll the parent's story-point rollup.
 
         Pattern from the matrix's "update related object based on updated
@@ -211,8 +211,8 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
 
         from ..models import Project
 
-        # on_get enforces row-level access (assignee match) and 404s.
-        task = await self.on_get(id)
+        # handle_get enforces row-level access (assignee match) and 404s.
+        task = await self.handle_get(id)
 
         # Check version for optimistic locking before applying the update.
         client_version = getattr(schema_obj, "version", None)
@@ -274,7 +274,7 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
         (b) the response is a per-row success/failure report rather than
         a list of created objects.
 
-        Each row is fed through ``on_create`` via ``TaskCreateSchema``, so
+        Each row is fed through ``handle_create`` via ``TaskCreateSchema``, so
         every row inherits the same validation chain and rollup as
         ``POST /tasks/``. Pydantic surfaces field errors per row.
         """
@@ -301,7 +301,7 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
                 )
                 if not schema_obj.title:
                     raise ValueError("title is required")
-                await self.on_create(schema_obj)
+                await self.handle_create(schema_obj)
                 success += 1
             except Exception as exc:  # noqa: BLE001 — surface per-row error
                 failed += 1
@@ -312,7 +312,7 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
     async def bulk_create(self, request: BulkCreateRequest) -> BulkResult:
         """Create multiple tasks at once.
 
-        Delegates each item to ``on_create`` so the same archived-project
+        Delegates each item to ``handle_create`` so the same archived-project
         guard, conditional-field validation, cross-resource validation, and
         story-point rollup that apply to ``POST /tasks/`` apply per row.
         """
@@ -322,7 +322,7 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
 
         for item in request.items:
             try:
-                await self.on_create(item)
+                await self.handle_create(item)
                 success += 1
             except Exception as e:  # noqa: BLE001 — surface per-row error
                 failed += 1
@@ -334,8 +334,8 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
     async def bulk_delete(self, request: BulkDeleteRequest) -> BulkResult:
         """Delete multiple tasks by IDs.
 
-        Uses ``on_get`` per id so each delete inherits the row-level access
-        check (only the assignee may see/touch the task). on_get raises
+        Uses ``handle_get`` per id so each delete inherits the row-level access
+        check (only the assignee may see/touch the task). handle_get raises
         404 for both "missing" and "not yours", which we catch and report.
         """
         from fastapi import HTTPException
@@ -346,7 +346,7 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
 
         for task_id in request.ids:
             try:
-                task = await self.on_get(task_id)
+                task = await self.handle_get(task_id)
                 await self.delete_object(task)
                 success += 1
             except HTTPException as exc:
@@ -366,7 +366,7 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
         """Move task from TODO to IN_PROGRESS."""
         from fastapi import HTTPException
 
-        task = await self.on_get(id)
+        task = await self.handle_get(id)
         if task.status != TaskStatus.TODO:
             raise HTTPException(
                 status_code=400,
@@ -382,7 +382,7 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
         """Move task from IN_PROGRESS to DONE."""
         from fastapi import HTTPException
 
-        task = await self.on_get(id)
+        task = await self.handle_get(id)
         if task.status != TaskStatus.IN_PROGRESS:
             raise HTTPException(
                 status_code=400,
@@ -398,7 +398,7 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
         """Reopen a completed task back to IN_PROGRESS."""
         from fastapi import HTTPException
 
-        task = await self.on_get(id)
+        task = await self.handle_get(id)
         if task.status != TaskStatus.DONE:
             raise HTTPException(
                 status_code=400,
