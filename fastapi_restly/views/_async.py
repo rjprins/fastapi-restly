@@ -43,6 +43,8 @@ async def async_make_new_object(
     await async_resolve_ids_to_sqlalchemy_objects(session, schema_obj)
     data = build_create_kwargs(model_cls, schema_obj, schema_cls)
     obj = model_cls(**data)
+    # AsyncSession.add() is synchronous: it only stages the object. Database
+    # I/O happens later at the explicit await session.flush()/refresh() boundary.
     session.add(obj)
     return obj
 
