@@ -6,8 +6,15 @@ from app.main import app
 from app.views._base import get_current_org_id, get_current_user_id
 
 import fastapi_restly as fr
+from fastapi_restly.testing import RestlyTestClient
 
 pytest_plugins = ["fastapi_restly.pytest_fixtures"]
+
+
+@pytest.fixture
+def client() -> RestlyTestClient:
+    """Create a test client backed by the saas FastAPI app."""
+    return RestlyTestClient(app)
 
 
 @pytest.fixture(autouse=True)
