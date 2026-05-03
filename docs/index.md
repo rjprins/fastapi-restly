@@ -80,9 +80,7 @@ History, design goals, and why this framework exists.
 ## Installation
 
 ```bash
-git clone https://github.com/rjprins/fastapi-restly.git
-cd fastapi-restly
-uv sync
+pip install "fastapi-restly[standard]"
 ```
 
 ## Development
@@ -101,6 +99,7 @@ uv run pytest
 getting_started
 class_based_views
 user_guide
+deploying
 api_reference
 about
 ```

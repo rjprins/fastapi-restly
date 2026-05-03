@@ -157,3 +157,4 @@ For test isolation (rolling back test data between tests), see the [Testing](how
 - [API Reference](api_reference.md)
 - [How-To: Filter, Sort, and Paginate Lists](howto_query_modifiers.md)
 - [Tutorial](tutorial.md)
+- [Deploying](deploying.md) — production engine config, Alembic, and a `main.py` template.
