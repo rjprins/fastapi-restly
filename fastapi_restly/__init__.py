@@ -3,13 +3,13 @@ from .db import (
     AsyncSessionDep,
     SessionDep,
     activate_savepoint_only_mode,
-    async_session,
+    async_open_session,
     configure,
     deactivate_savepoint_only_mode,
     get_async_engine,
     get_engine,
     get_fr_globals,
-    session,
+    open_session,
     use_fr_globals,
 )
 
@@ -81,8 +81,8 @@ from .views import (
 # ``from fastapi_restly.schemas import ReadOnly``.
 __all__ = [
     # Database — session context managers
-    "async_session",
-    "session",
+    "async_open_session",
+    "open_session",
     # Database — FastAPI dependencies
     "AsyncSessionDep",
     "SessionDep",

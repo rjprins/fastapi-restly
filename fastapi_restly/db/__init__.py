@@ -1,5 +1,5 @@
 from ._globals import FRGlobals, fr_globals, get_fr_globals, use_fr_globals
-from ._proxy import async_session, session
+from ._proxy import async_open_session, open_session
 from ._session import (
     AsyncSessionDep,
     SessionDep,
@@ -20,8 +20,8 @@ from ._session import (
 # and may move into a private module in a future release.
 __all__ = [
     # Session context managers
-    "async_session",
-    "session",
+    "async_open_session",
+    "open_session",
     # FastAPI dependencies
     "AsyncSessionDep",
     "SessionDep",

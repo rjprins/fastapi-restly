@@ -8,9 +8,11 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
+import fastapi_restly as fr
+import fastapi_restly.db as fr_db
 from fastapi_restly.db._globals import FRGlobals, use_fr_globals
-from fastapi_restly.db._proxy import async_session as proxy_async_session
-from fastapi_restly.db._proxy import session as proxy_session
+from fastapi_restly.db._proxy import async_open_session as proxy_async_open_session
+from fastapi_restly.db._proxy import open_session as proxy_open_session
 from fastapi_restly.db._session import (
     _setup_async_database_connection,
     _setup_database_connection,
@@ -24,13 +26,26 @@ from fastapi_restly.db._session import (
 )
 
 
+def test_public_session_context_manager_exports_use_open_names():
+    assert fr.open_session is fr_db.open_session
+    assert fr.async_open_session is fr_db.async_open_session
+    assert "open_session" in fr.__all__
+    assert "async_open_session" in fr.__all__
+    assert "open_session" in fr_db.__all__
+    assert "async_open_session" in fr_db.__all__
+    assert not hasattr(fr, "session")
+    assert not hasattr(fr, "async_session")
+    assert "session" not in fr.__all__
+    assert "async_session" not in fr.__all__
+
+
 def test_getters_and_sync_proxy_raise_without_configuration():
     with use_fr_globals(FRGlobals()):
         with pytest.raises(RuntimeError, match="Call fr.configure\\(\\)"):
             get_engine()
 
         with pytest.raises(RuntimeError, match="Call fr.configure\\(\\)"):
-            with proxy_session():
+            with proxy_open_session():
                 pass
 
 
@@ -41,11 +56,11 @@ async def test_async_getter_and_proxy_raise_without_configuration():
             get_async_engine()
 
         with pytest.raises(RuntimeError, match="Call fr.configure\\(\\)"):
-            async with proxy_async_session():
+            async with proxy_async_open_session():
                 pass
 
 
-def test_setup_database_connection_creates_sessionmaker_and_proxy_session():
+def test_setup_database_connection_creates_sessionmaker_and_proxy_open_session():
     with use_fr_globals(FRGlobals()):
         make_session = _setup_database_connection(
             "sqlite://",
@@ -58,14 +73,14 @@ def test_setup_database_connection_creates_sessionmaker_and_proxy_session():
 
         assert get_engine() is make_session.kw["bind"]
 
-        with proxy_session() as session:
+        with proxy_open_session() as session:
             assert isinstance(session, Session)
 
         make_session.kw["bind"].dispose()
 
 
 @pytest.mark.asyncio
-async def test_setup_async_database_connection_creates_sessionmaker_and_proxy_session():
+async def test_setup_async_database_connection_creates_sessionmaker_and_proxy_open_session():
     async_engine = create_async_engine("sqlite+aiosqlite:///:memory:")
     try:
         with use_fr_globals(FRGlobals()):
@@ -76,7 +91,7 @@ async def test_setup_async_database_connection_creates_sessionmaker_and_proxy_se
 
             assert get_async_engine() is async_engine
 
-            async with proxy_async_session() as session:
+            async with proxy_async_open_session() as session:
                 assert isinstance(session, AsyncSession)
 
             assert make_session.kw["bind"] is async_engine

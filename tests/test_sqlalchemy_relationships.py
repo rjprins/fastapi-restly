@@ -59,7 +59,7 @@ class TestOneToManyRelationships:
         create_tables()
 
         async def insert_test_data():
-            async with fr.async_session() as session:
+            async with fr.async_open_session() as session:
                 user = User1(name="John Doe", email="john@example.com")
                 address1 = Address1(street="123 Main St", city="Anytown", user=user)
                 address2 = Address1(street="456 Oak Ave", city="Somewhere", user=user)
@@ -124,7 +124,7 @@ class TestOneToManyRelationships:
 
         # Insert test data to actually test aliases
         async def insert_test_data():
-            async with fr.async_session() as session:
+            async with fr.async_open_session() as session:
                 # Create a user first
                 user = User2(name="John Doe", email="john@example.com")
                 session.add(user)
@@ -200,7 +200,7 @@ class TestOneToOneRelationships:
         create_tables()
 
         async def insert_test_data():
-            async with fr.async_session() as session:
+            async with fr.async_open_session() as session:
                 user = User3(name="John Doe", email="john@example.com")
                 profile = Profile3(
                     bio="Backend engineer", website="https://example.com", user=user
@@ -259,7 +259,7 @@ class TestOneToOneRelationships:
         create_tables()
 
         async def insert_test_data():
-            async with fr.async_session() as session:
+            async with fr.async_open_session() as session:
                 user = User4(name="Jane Doe", email="jane@example.com")
                 profile = Profile4(
                     bio="Alias bio", website="https://alias.example.com", user=user
@@ -338,7 +338,7 @@ class TestManyToManyRelationships:
         create_tables()
 
         async def insert_test_data():
-            async with fr.async_session() as session:
+            async with fr.async_open_session() as session:
                 user = User5(name="John Doe", email="john@example.com")
                 group1 = Group5(name="Admins", description="System administrators")
                 group2 = Group5(name="Editors", description="Content editors")
@@ -446,7 +446,7 @@ class TestDeeplyNestedRelationships:
         create_tables()
 
         async def insert_test_data():
-            async with fr.async_session() as session:
+            async with fr.async_open_session() as session:
                 company = Company6(name="Acme Corp")
                 department = Department6(name="Engineering", company=company)
                 employee = Employee6(name="Alice", department=department)
@@ -526,7 +526,7 @@ class TestRelationshipWithReadOnlyFields:
         create_tables()
 
         async def insert_test_data():
-            async with fr.async_session() as session:
+            async with fr.async_open_session() as session:
                 user = User7(name="John Doe", email="john@example.com")
                 address = Address7(
                     street="123 Main St", city="Anytown", user=user

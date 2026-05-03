@@ -9,7 +9,7 @@ fr.configure(database_url="sqlite:///blog.db")
 
 
 def create_tables() -> None:
-    with fr.session() as db_session:
+    with fr.open_session() as db_session:
         fr.DataclassBase.metadata.create_all(bind=db_session.get_bind())
 
 

@@ -82,7 +82,7 @@ def test_inherit_model_and_schema(sync_db):
 
     fr.DataclassBase.metadata.create_all(engine)
 
-    with fr.session() as session:
+    with fr.open_session() as session:
         view = WidgetView()
         view.session = session
 
@@ -133,7 +133,7 @@ def test_handler_override_shared_across_subclasses(sync_db):
 
     fr.DataclassBase.metadata.create_all(engine)
 
-    with fr.session() as session:
+    with fr.open_session() as session:
         view_a = ViewA()
         view_a.session = session
         view_a.post(TagSchema(id=0, label="alpha"))
@@ -183,7 +183,7 @@ def test_super_chain_in_handler_override(sync_db):
 
     fr.DataclassBase.metadata.create_all(engine)
 
-    with fr.session() as session:
+    with fr.open_session() as session:
         view = NoteView()
         view.session = session
         view.post(NoteSchema(id=0, text="hello"))
@@ -257,7 +257,7 @@ def test_inherit_include_pagination_metadata(sync_db):
 
     fr.DataclassBase.metadata.create_all(engine)
 
-    with fr.session() as session:
+    with fr.open_session() as session:
         view = TicketView()
         view.session = session
         view.post(TicketSchema(id=0, title="Bug"))
@@ -304,7 +304,7 @@ def test_inherit_soft_delete_via_delete_object(sync_db):
 
     fr.DataclassBase.metadata.create_all(engine)
 
-    with fr.session() as session:
+    with fr.open_session() as session:
         view = RecordView()
         view.session = session
 

@@ -473,13 +473,13 @@ def test_sync_rest_view_crud_and_pagination(sync_db):
 
     fr.PlainBase.metadata.create_all(engine)
 
-    with fr.session() as session:
+    with fr.open_session() as session:
         customer = Customer(name="Acme")
         session.add(customer)
         session.commit()
         customer_id = customer.id
 
-    with fr.session() as session:
+    with fr.open_session() as session:
         view = OrderView()
         view.session = session
 

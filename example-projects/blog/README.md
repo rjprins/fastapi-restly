@@ -13,7 +13,7 @@ starting point or smoke test.
 - Auto-derived request/response Pydantic schemas when the view omits
   `schema = ...`
 - Sync request sessions through `SessionDep` and standalone sessions through
-  `fr.session()`
+  `fr.open_session()`
 
 ## Run the API server
 
