@@ -41,7 +41,7 @@ from .query import (
 # Schema utilities
 from .schemas import (
     BaseSchema,
-    FlatIDSchema,
+    IDRef,
     IDSchema,
     IDStampsSchema,
     OmitReadOnlyMixin,
@@ -119,7 +119,7 @@ __all__ = [
     "use_query_modifier_version",
     # Schemas
     "BaseSchema",
-    "FlatIDSchema",
+    "IDRef",
     "IDSchema",
     "IDStampsSchema",
     "OmitReadOnlyMixin",

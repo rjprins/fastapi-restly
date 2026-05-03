@@ -1,6 +1,6 @@
-"""Typing fixture: relationships expressed as `FlatIDSchema[Model]`.
+"""Typing fixture: relationships expressed as `IDRef[Model]`.
 
-Verifies that consumer code using `FlatIDSchema` for list-of-relations or
+Verifies that consumer code using `IDRef` for list-of-relations or
 single-relation references stays Pyright-clean.
 """
 from fastapi import FastAPI
@@ -29,9 +29,9 @@ class TagSchema(fr.IDSchema[Tag]):
 class PostSchema(fr.IDSchema[Post]):
     title: str
     # Single relation as a flat scalar id.
-    primary_tag_id: fr.FlatIDSchema[Tag]
+    primary_tag_id: fr.IDRef[Tag]
     # List-of-relation as flat scalar ids (React Admin friendly).
-    related_tags: fr.ReadOnly[list[fr.FlatIDSchema[Tag]]] = []
+    related_tags: fr.ReadOnly[list[fr.IDRef[Tag]]] = []
 
 
 @fr.include_view(app)

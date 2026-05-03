@@ -3,7 +3,7 @@ Internal OpenAPI post-processing: x-resource-ref annotations.
 
 Called automatically by include_view() — no public API.
 
-FK columns and SQLAlchemy relationship fields backed by IDSchema/FlatIDSchema
+FK columns and SQLAlchemy relationship fields backed by IDSchema/IDRef
 are annotated with ``x-resource-ref: "<resource-name>"`` in the generated spec.
 Full nested-object relationships (plain BaseSchema fields) are left untouched.
 """
@@ -90,12 +90,12 @@ def _ensure_patched(app: fastapi.FastAPI | fastapi.APIRouter) -> None:
 
 
 def _is_id_ref_annotation(annotation: Any) -> bool:
-    """Return True if annotation is IDSchema[X], FlatIDSchema[X], or list/Optional thereof.
+    """Return True if annotation is IDSchema[X], IDRef[X], or list/Optional thereof.
 
     Returns False for full nested BaseSchema objects — those are not ID references.
     Concrete user-defined subclasses like ``AuthorSchema(IDSchema)`` return False;
-    only parametrized generics like ``IDSchema[Author]`` or ``FlatIDSchema[Author]``
-    return True, since those represent scalar ID references.
+    only parametrized generics like ``IDSchema[Author]`` or ``IDRef[Author]``
+    return True, since those represent model ID references.
     """
     origin = get_origin(annotation)
 
@@ -112,12 +112,12 @@ def _is_id_ref_annotation(annotation: Any) -> bool:
         args = get_args(annotation)
         return bool(args and _is_id_ref_annotation(args[0]))
 
-    # Check for parametrized IDSchema/FlatIDSchema generics.
-    # In Pydantic v2, IDSchema[Author] and FlatIDSchema[Author] are concrete classes,
+    # Check for parametrized IDSchema/IDRef generics.
+    # In Pydantic v2, IDSchema[Author] and IDRef[Author] are concrete classes,
     # so inspect.isclass() returns True for them too. We distinguish via
     # __pydantic_generic_metadata__["origin"]:
     #   - Parametrized: IDSchema[Author]  → origin = IDSchema
-    #   - Parametrized: FlatIDSchema[Author] → origin = FlatIDSchema
+    #   - Parametrized: IDRef[Author] → origin = IDRef
     #   - User-defined subclass: AuthorSchema(IDSchema) → origin = None (not a parametrization)
     pydantic_meta = getattr(annotation, "__pydantic_generic_metadata__", {})
     origin_cls = pydantic_meta.get("origin")

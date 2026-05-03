@@ -35,7 +35,7 @@ Coverage checklist:
 - [ ] Class-level `dependencies`
 - [ ] Instance dependencies via annotated `Depends`
 - [x] Schema aliases with V2 query modifiers
-- [x] `FlatIDSchema[...]`
+- [x] `IDRef[...]`
 - [x] UUID / non-int primary key flows
 - [ ] Write-only and read-only field markers in consumer schemas
 - [ ] Direct override of built-in `get/post/patch/delete` route methods as a documented pattern

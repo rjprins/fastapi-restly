@@ -80,19 +80,19 @@ class Order(fr.IDBase, fr.TimestampsMixin):
 
 class CustomerSchema(fr.IDSchema):
     email: str
-    orders: fr.ReadOnly[list[fr.FlatIDSchema[Order]]] = []
+    orders: fr.ReadOnly[list[fr.IDRef[Order]]] = []
 
 
 class ProductSchema(fr.IDSchema):
     name: str
     price: float
-    orders: fr.ReadOnly[list[fr.FlatIDSchema[Order]]] = []
+    orders: fr.ReadOnly[list[fr.IDRef[Order]]] = []
 
 
 class OrderSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
     customer: fr.ReadOnly[CustomerSchema | None]
     customer_id: int
-    products: list[fr.FlatIDSchema[Product]]
+    products: list[fr.IDRef[Product]]
 
 
 @fr.include_view(app)

@@ -119,16 +119,18 @@ class IDStampsSchema(TimestampsSchemaMixin, IDSchema):
     pass
 
 
-class FlatIDSchema(IDSchema[SQLAlchemyModel], Generic[SQLAlchemyModel]):
-    """Like IDSchema but serializes as a plain scalar instead of {"id": N}.
+class IDRef(IDSchema[SQLAlchemyModel], Generic[SQLAlchemyModel]):
+    """Reference to a row of T by id.
 
-    Accepts both plain scalars and {"id": N} on input.
-    Outputs the raw id value on serialization.
+    Wire format is the raw id value (e.g. ``5``); accepts both scalars and
+    ``{"id": N}`` dicts on input. The framework validates the referenced row
+    exists and resolves it to the FK column on the way in.
 
-    Use this instead of IDSchema for relationship list fields when you want
-    React Admin compatibility without a custom data provider:
+    Use this for typical REST APIs where you want ``task_id: 5`` on the wire.
+    For JSON-API or React-Admin-style nested wire format ``{"id": N}``, use
+    ``IDSchema[T]`` instead.
 
-        products: list[FlatIDSchema[Product]]  # serializes as ["uuid1", "uuid2"]
+        products: list[IDRef[Product]]  # serializes as ["uuid1", "uuid2"]
     """
 
     @pydantic.model_validator(mode="before")

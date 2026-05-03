@@ -30,7 +30,7 @@ def _build_app():
 
     class AuthorSchema(fr.IDSchema):
         name: str
-        books: fr.ReadOnly[list[fr.FlatIDSchema[Book]]] = []
+        books: fr.ReadOnly[list[fr.IDRef[Book]]] = []
 
     class BookSchema(fr.IDSchema):
         title: str
@@ -66,7 +66,7 @@ def test_fk_column_gets_x_resource_ref():
     assert props["author_id"].get("x-resource-ref") == "authors"
 
 
-def test_relationship_with_flatidschema_gets_x_resource_ref():
+def test_relationship_with_idref_gets_x_resource_ref():
     app = _build_app()
     props = app.openapi()["components"]["schemas"]["AuthorSchema"]["properties"]
     assert props["books"].get("x-resource-ref") == "books"
