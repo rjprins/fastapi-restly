@@ -13,7 +13,7 @@
 
 > **Status:** `3.0.0` — first public release. See the [Changelog](CHANGELOG.md).
 > ```bash
-> pip install fastapi-restly
+> pip install "fastapi-restly[standard]"
 > ```
 
 **Docs:** <https://rjprins.github.io/fastapi-restly/> · **[Changelog](CHANGELOG.md)** · **[Contributing](CONTRIBUTING.md)** · **[Security](SECURITY.md)** · **[Code of Conduct](CODE_OF_CONDUCT.md)** · **[Examples](example-projects/)**
