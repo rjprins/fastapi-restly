@@ -1,6 +1,7 @@
 """Task view."""
 
 import fastapi
+from fastapi import HTTPException
 from pydantic import BaseModel
 
 import fastapi_restly as fr
@@ -111,8 +112,6 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
 
     async def handle_get(self, id: int):
         """Verify row-level access: only the assignee can fetch the task."""
-        from fastapi import HTTPException
-
         task = await super().handle_get(id)
         if self._is_admin():
             return task
@@ -123,8 +122,6 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
 
     async def _validate_cross_resource(self, data: dict) -> None:
         """Validate cross-resource constraints (assignee must be in same org as project)."""
-        from fastapi import HTTPException
-
         from ..models import Project, User
 
         project_id = data.get("project_id")
@@ -143,8 +140,6 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
 
     def _validate_conditional_fields(self, data: dict) -> None:
         """Validate conditional required fields based on task_type."""
-        from fastapi import HTTPException
-
         task_type = data.get("task_type", TaskType.TASK)
         severity = data.get("severity")
 
@@ -165,8 +160,6 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
         write. Both the task insert and the project update flush together
         when ``save_object`` is called.
         """
-        from fastapi import HTTPException
-
         from ..models import Project, ProjectStatus
 
         data = schema_obj.model_dump()
@@ -207,8 +200,6 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
         from "not provided" — that requires a custom marker, which we don't
         need with the explicit-vs-omitted distinction Pydantic gives us.)
         """
-        from fastapi import HTTPException
-
         from ..models import Project
 
         # handle_get enforces row-level access (assignee match) and 404s.
@@ -338,8 +329,6 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
         check (only the assignee may see/touch the task). handle_get raises
         404 for both "missing" and "not yours", which we catch and report.
         """
-        from fastapi import HTTPException
-
         success = 0
         failed = 0
         errors: list[str] = []
@@ -364,8 +353,6 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
     @fr.post("/{id}/start", response_model=TaskSchema)
     async def start_task(self, id: int) -> Task:
         """Move task from TODO to IN_PROGRESS."""
-        from fastapi import HTTPException
-
         task = await self.handle_get(id)
         if task.status != TaskStatus.TODO:
             raise HTTPException(
@@ -380,8 +367,6 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
     @fr.post("/{id}/complete", response_model=TaskSchema)
     async def complete_task(self, id: int) -> Task:
         """Move task from IN_PROGRESS to DONE."""
-        from fastapi import HTTPException
-
         task = await self.handle_get(id)
         if task.status != TaskStatus.IN_PROGRESS:
             raise HTTPException(
@@ -396,8 +381,6 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
     @fr.post("/{id}/reopen", response_model=TaskSchema)
     async def reopen_task(self, id: int) -> Task:
         """Reopen a completed task back to IN_PROGRESS."""
-        from fastapi import HTTPException
-
         task = await self.handle_get(id)
         if task.status != TaskStatus.DONE:
             raise HTTPException(

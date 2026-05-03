@@ -1,6 +1,7 @@
 """Label and TaskLabel views."""
 
 import sqlalchemy as sa
+from fastapi import HTTPException
 from pydantic import BaseModel
 
 import fastapi_restly as fr
@@ -94,8 +95,6 @@ class TaskLabelView(TenantBase):
            Label instance, which the framework then converts back to
            ``label_id = label.id`` via the resolver path.
         """
-        from fastapi import HTTPException
-
         # Tenant scope is enforced via TaskView.handle_get-style checks here:
         # we don't go through TaskView, so we re-validate the task fits
         # the current org to avoid a cross-tenant attach.

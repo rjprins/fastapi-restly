@@ -2,6 +2,7 @@
 
 from typing import Any
 
+from fastapi import HTTPException
 from pydantic import BaseModel
 
 import fastapi_restly as fr
@@ -104,8 +105,6 @@ class UserView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantBase
         access checks layered into ``handle_get`` apply here too) and uses
         ``save_object`` as a utility for the final flush+refresh.
         """
-        from fastapi import HTTPException
-
         user = await self.handle_get(id)
         if not verify_password(request.current_password, user.password):
             raise HTTPException(403, "Current password is incorrect")
@@ -140,8 +139,6 @@ class UserView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantBase
     @fr.get("/me", response_model=UserSchema)
     async def get_current_user(self) -> Any:
         """Get current user's profile."""
-        from fastapi import HTTPException
-
         user_id = getattr(self.request.state, "user_id", None) or _TEST_USER_ID
         if not user_id:
             raise HTTPException(status_code=404, detail="Current user not found")
@@ -156,8 +153,6 @@ class UserView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantBase
         same path as ``PATCH /users/{id}``: any future ``handle_update`` override
         (validation, auditing, side-effects) applies here automatically.
         """
-        from fastapi import HTTPException
-
         user_id = getattr(self.request.state, "user_id", None) or _TEST_USER_ID
         if not user_id:
             raise HTTPException(status_code=404, detail="Current user not found")
