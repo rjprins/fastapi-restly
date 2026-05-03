@@ -4,7 +4,13 @@ pytest_plugins = ["pytester"]
 
 
 def test_async_session_fixture_supports_async_only_projects(pytester: pytest.Pytester):
-    pytester.makefile(".toml", pyproject="")
+    pytester.makefile(
+        ".toml",
+        pyproject="""
+[tool.pytest.ini_options]
+asyncio_default_fixture_loop_scope = "function"
+""",
+    )
     pytester.makeconftest(
         """
 import pytest
