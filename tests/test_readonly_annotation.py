@@ -7,12 +7,14 @@ from fastapi_restly.schemas import (
     BaseSchema,
     ReadOnly,
     WriteOnly,
+    is_field_readonly,
+    is_field_writeonly,
+)
+from fastapi_restly.schemas._base import (
     create_model_with_optional_fields,
     create_model_without_read_only_fields,
     get_read_only_fields,
     get_write_only_fields,
-    is_field_readonly,
-    is_field_writeonly,
     readonly_marker,
     writeonly_marker,
 )

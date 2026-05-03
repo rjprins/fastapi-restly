@@ -18,11 +18,8 @@ from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
 from fastapi_restly.db import fr_globals
-from fastapi_restly.schemas import (
-    BaseSchema,
-    ReadOnly,
-    create_model_without_read_only_fields,
-)
+from fastapi_restly.schemas import BaseSchema, ReadOnly
+from fastapi_restly.schemas._base import create_model_without_read_only_fields
 
 from .conftest import create_tables
 

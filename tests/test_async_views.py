@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 import fastapi_restly as fr
+from fastapi_restly.schemas._base import create_model_with_optional_fields
 from fastapi_restly.views._async import (
     async_make_new_object,
     async_save_object,
@@ -206,7 +207,7 @@ def test_async_update_object_only_applies_set_fields():
         name: str
         notes: str
 
-    UpdateItemSchema = fr.schemas.create_model_with_optional_fields(ItemSchema)
+    UpdateItemSchema = create_model_with_optional_fields(ItemSchema)
 
     async def run():
         engine, make_session = _make_engine_and_session()

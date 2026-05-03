@@ -8,6 +8,7 @@ from sqlalchemy.pool import StaticPool
 
 import fastapi_restly as fr
 from fastapi_restly.db import fr_globals
+from fastapi_restly.schemas._base import create_model_with_optional_fields
 from fastapi_restly.views._base import (
     build_create_plan,
     validate_resolved_reference_consistency,
@@ -149,7 +150,7 @@ def test_sync_update_object_only_applies_set_fields(sync_db):
         name: str
         notes: str
 
-    UpdateItemSchema = fr.schemas.create_model_with_optional_fields(ItemSchema)
+    UpdateItemSchema = create_model_with_optional_fields(ItemSchema)
 
     fr.DataclassBase.metadata.create_all(engine)
 

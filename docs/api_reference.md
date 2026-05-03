@@ -169,8 +169,6 @@ For generated CRUD endpoints:
 | `fr.TimestampsSchemaMixin` | Pydantic mixin adding read-only `created_at` / `updated_at` fields to a schema. |
 | `fr.ReadOnly[T]` | Type annotation marker. Fields annotated `ReadOnly[T]` are excluded from create/update inputs. |
 | `fr.WriteOnly[T]` | Type annotation marker. Fields annotated `WriteOnly[T]` are excluded from responses. |
-| `fr.OmitReadOnlyMixin` | Mixin that strips `ReadOnly` fields from a schema subclass (used by `creation_schema`). |
-| `fr.PatchMixin` | Mixin that makes all writable fields optional with `None` default (used by `update_schema`). |
 | `fr.create_schema_from_model(model)` | Auto-generate a Pydantic schema from a SQLAlchemy model. |
 | `fr.auto_generate_schema_for_view(view_cls, model_cls)` | Generate a schema for a view from its model, excluding relationship fields. Used internally by `include_view`. |
 | `fr.resolve_ids_to_sqlalchemy_objects(session, schema_obj)` | Walk a schema instance, load `IDRef` / `IDSchema` reference fields from the database, and replace them with ORM objects. Called automatically during create/update. |
