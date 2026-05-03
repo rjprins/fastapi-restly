@@ -174,7 +174,11 @@ Nested schemas serve two different roles in Restly today:
 - **Create/update payloads**: not supported in the general case. The default
   `make_new_object()` / `update_object()` flow expects payload keys to map
   directly to model attributes, with `*_id: IDRef[Model]` as the usual
-  special case for foreign keys.
+  special case for foreign keys. When an `IDRef` / `IDSchema` reference has
+  been resolved to an ORM object, the helpers inspect the SQLAlchemy mapper and
+  dataclass constructor fields so FK-first (`author_id` init-enabled) and
+  relationship-first (`author` init-enabled) declarations both work without
+  passing both values into `__init__`.
 
 If you declare a nested input field like `address: AddressSchema` on a write
 schema, the default CRUD implementation will pass that nested Pydantic object

@@ -96,18 +96,32 @@ If the relationship attribute is absent, Restly still sets the FK column.
 ## Dataclass Relationship Setup
 
 `fr.IDBase` uses SQLAlchemy's `MappedAsDataclass`, which generates an `__init__`
-from the model fields. Relationship attributes should not be constructor
-parameters; SQLAlchemy loads them through the FK column.
+from the model fields. Restly's create/update helpers are aware of that
+constructor shape when an `IDRef` / `IDSchema` field has been resolved to an ORM
+object.
 
-Use `init=False` and `default=None` on relationship attributes:
+The common FK-first declaration is still the clearest default:
 
 ```python
+author_id: Mapped[int] = mapped_column(ForeignKey("author.id"))
 author: Mapped["Author"] = relationship(default=None, init=False)
 ```
 
-Without `init=False`, the generated constructor expects an `Author` object.
-Without `default=None`, the generated constructor requires the relationship as a
-positional argument.
+With that model and `author_id: fr.IDRef[Author]`, Restly passes the scalar FK
+where the dataclass constructor accepts it and keeps `author` in sync after
+construction.
+
+If your model is relationship-first, Restly adapts there too:
+
+```python
+author_id: Mapped[int] = mapped_column(ForeignKey("author.id"), init=False)
+author: Mapped["Author"] = relationship(default=None)
+```
+
+In that shape, Restly passes the resolved `Author` object to the constructor and
+keeps `author_id` in sync. If neither side is accepted by the constructor, Restly
+constructs the object first and assigns the FK/relationship afterwards when it
+can do so unambiguously.
 
 ### Plain Models
 
@@ -197,4 +211,7 @@ resolver. The difference is the API shape.
 - The `_id` field name triggers FK resolution.
 - A matching SQLAlchemy relationship lets Restly keep the FK column and
   relationship attribute in sync.
+- Dataclass models can be FK-first or relationship-first; Restly chooses the
+  constructor argument that is accepted and avoids passing both for one
+  reference.
 - `IDSchema` as a base class adds the resource's own read-only `id` field.

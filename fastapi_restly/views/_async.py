@@ -17,8 +17,9 @@ from ._base import (
     ModelT,
     SchemaT,
     UpdateSchemaT,
+    apply_create_assignments,
     apply_update_to_object,
-    build_create_kwargs,
+    build_create_plan,
     delete,
     get,
     patch,
@@ -41,8 +42,9 @@ async def async_make_new_object(
     the shared helper. The session is not flushed here.
     """
     await async_resolve_ids_to_sqlalchemy_objects(session, schema_obj)
-    data = build_create_kwargs(model_cls, schema_obj, schema_cls)
-    obj = model_cls(**data)
+    create_plan = build_create_plan(model_cls, schema_obj, schema_cls)
+    obj = model_cls(**create_plan.kwargs)
+    apply_create_assignments(obj, create_plan.post_assignments)
     # AsyncSession.add() is synchronous: it only stages the object. Database
     # I/O happens later at the explicit await session.flush()/refresh() boundary.
     session.add(obj)

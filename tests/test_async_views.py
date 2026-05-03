@@ -232,6 +232,73 @@ def test_async_update_object_only_applies_set_fields():
     asyncio.run(run())
 
 
+def test_async_object_helpers_are_dataclass_init_aware_for_resolved_refs():
+    class Dd8AsyncAuthor(fr.IDBase):
+        name: Mapped[str]
+
+    class Dd8AsyncRelationshipFirstArticle(fr.IDBase):
+        title: Mapped[str]
+        author_id: Mapped[int] = mapped_column(
+            ForeignKey("dd8_async_author.id"), init=False
+        )
+        author: Mapped[Dd8AsyncAuthor] = relationship(default=None)
+
+    class Dd8AsyncRelationshipFieldFallbackArticle(fr.IDBase):
+        title: Mapped[str]
+        author_id: Mapped[int] = mapped_column(ForeignKey("dd8_async_author.id"))
+        author: Mapped[Dd8AsyncAuthor] = relationship(default=None, init=False)
+
+    class FKSchema(fr.BaseSchema):
+        title: str
+        author_id: fr.IDRef[Dd8AsyncAuthor]
+
+    class RelationshipSchema(fr.BaseSchema):
+        title: str
+        author: fr.IDSchema[Dd8AsyncAuthor]
+
+    async def run():
+        engine, make_session = _make_engine_and_session()
+        async with engine.begin() as conn:
+            await conn.run_sync(fr.DataclassBase.metadata.create_all)
+
+        async with make_session() as session:
+            first = Dd8AsyncAuthor(name="Alice")
+            second = Dd8AsyncAuthor(name="Bob")
+            session.add_all([first, second])
+            await session.flush()
+
+            article = await async_make_new_object(
+                session,
+                Dd8AsyncRelationshipFirstArticle,
+                FKSchema(title="async", author_id=first.id),
+                FKSchema,
+            )
+            assert article.author_id == first.id
+            assert article.author is first
+
+            await async_update_object(
+                session,
+                article,
+                FKSchema(title="updated", author_id=second.id),
+                FKSchema,
+            )
+            assert article.author_id == second.id
+            assert article.author is second
+
+            fallback = await async_make_new_object(
+                session,
+                Dd8AsyncRelationshipFieldFallbackArticle,
+                RelationshipSchema(title="fallback", author={"id": first.id}),
+                RelationshipSchema,
+            )
+            assert fallback.author_id == first.id
+            assert fallback.author is first
+
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
 def test_async_free_functions_importable_from_views_package():
     """Sanity check that the async free functions are exposed from
     ``fastapi_restly.views`` (mirroring the sync helpers)."""

@@ -2,12 +2,13 @@ from collections.abc import Iterator
 
 import pytest
 from fastapi import HTTPException
-from sqlalchemy import ForeignKey, create_engine
+from sqlalchemy import ForeignKey, ForeignKeyConstraint, create_engine
 from sqlalchemy.orm import Mapped, Session, mapped_column, relationship, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 import fastapi_restly as fr
 from fastapi_restly.db import fr_globals
+from fastapi_restly.views._base import build_create_plan
 from fastapi_restly.views._sync import make_new_object, save_object, update_object
 
 
@@ -161,6 +162,179 @@ def test_sync_update_object_only_applies_set_fields(sync_db):
         update_object(session, item, partial, ItemSchema)
         assert item.name == "renamed"
         assert item.notes == "keep"
+
+
+def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db):
+    engine, make_session = sync_db
+
+    class Dd8SyncAuthor(fr.IDBase):
+        name: Mapped[str]
+
+    class Dd8SyncFkFirstArticle(fr.IDBase):
+        title: Mapped[str]
+        author_id: Mapped[int] = mapped_column(ForeignKey("dd8_sync_author.id"))
+        author: Mapped[Dd8SyncAuthor] = relationship(default=None, init=False)
+
+    class Dd8SyncRelationshipFirstArticle(fr.IDBase):
+        title: Mapped[str]
+        author_id: Mapped[int] = mapped_column(
+            ForeignKey("dd8_sync_author.id"), init=False
+        )
+        author: Mapped[Dd8SyncAuthor] = relationship(default=None)
+
+    class Dd8SyncPostAssignArticle(fr.IDBase):
+        title: Mapped[str]
+        author_id: Mapped[int] = mapped_column(
+            ForeignKey("dd8_sync_author.id"), init=False
+        )
+        author: Mapped[Dd8SyncAuthor] = relationship(default=None, init=False)
+
+    class Dd8SyncBothInitArticle(fr.IDBase):
+        title: Mapped[str]
+        author_id: Mapped[int] = mapped_column(ForeignKey("dd8_sync_author.id"))
+        author: Mapped[Dd8SyncAuthor] = relationship(default=None)
+
+    class Dd8SyncRelationshipFieldFirstArticle(fr.IDBase):
+        title: Mapped[str]
+        author_id: Mapped[int] = mapped_column(
+            ForeignKey("dd8_sync_author.id"), init=False
+        )
+        author: Mapped[Dd8SyncAuthor] = relationship(default=None)
+
+    class Dd8SyncRelationshipFieldFallbackArticle(fr.IDBase):
+        title: Mapped[str]
+        author_id: Mapped[int] = mapped_column(ForeignKey("dd8_sync_author.id"))
+        author: Mapped[Dd8SyncAuthor] = relationship(default=None, init=False)
+
+    class Dd8SyncPlainAuthor(fr.PlainIDBase):
+        __tablename__ = "dd8_sync_plain_author"
+
+        name: Mapped[str]
+
+    class Dd8SyncPlainArticle(fr.PlainIDBase):
+        __tablename__ = "dd8_sync_plain_article"
+
+        title: Mapped[str]
+        author_id: Mapped[int] = mapped_column(
+            ForeignKey("dd8_sync_plain_author.id")
+        )
+        author: Mapped[Dd8SyncPlainAuthor] = relationship()
+
+    class Dd8SyncCompositeParent(fr.DataclassBase):
+        __tablename__ = "dd8_sync_composite_parent"
+
+        id1: Mapped[int] = mapped_column(primary_key=True)
+        id2: Mapped[int] = mapped_column(primary_key=True)
+        name: Mapped[str]
+
+    class Dd8SyncCompositeChild(fr.IDBase):
+        __tablename__ = "dd8_sync_composite_child"
+        __table_args__ = (
+            ForeignKeyConstraint(
+                ["parent_id1", "parent_id2"],
+                ["dd8_sync_composite_parent.id1", "dd8_sync_composite_parent.id2"],
+            ),
+        )
+
+        title: Mapped[str]
+        parent_id1: Mapped[int]
+        parent_id2: Mapped[int]
+        parent: Mapped[Dd8SyncCompositeParent] = relationship(default=None)
+
+    class FKSchema(fr.BaseSchema):
+        title: str
+        author_id: fr.IDRef[Dd8SyncAuthor]
+
+    class RelationshipSchema(fr.BaseSchema):
+        title: str
+        author: fr.IDSchema[Dd8SyncAuthor]
+
+    class PlainFKSchema(fr.BaseSchema):
+        title: str
+        author_id: fr.IDRef[Dd8SyncPlainAuthor]
+
+    class CompositeRelationshipSchema(fr.BaseSchema):
+        title: str
+        parent: fr.IDSchema[Dd8SyncCompositeParent]
+
+    fr.DataclassBase.metadata.create_all(engine)
+    fr.PlainBase.metadata.create_all(engine)
+
+    with make_session() as session:
+        first = Dd8SyncAuthor(name="Alice")
+        second = Dd8SyncAuthor(name="Bob")
+        plain = Dd8SyncPlainAuthor(name="Plain Alice")
+        session.add_all([first, second, plain])
+        session.flush()
+
+        for model_cls in (
+            Dd8SyncFkFirstArticle,
+            Dd8SyncRelationshipFirstArticle,
+            Dd8SyncPostAssignArticle,
+        ):
+            article = make_new_object(
+                session,
+                model_cls,
+                FKSchema(title=model_cls.__name__, author_id=first.id),
+                FKSchema,
+            )
+            assert article.author_id == first.id
+            assert article.author is first
+
+            update_object(
+                session,
+                article,
+                FKSchema(title="updated", author_id=second.id),
+                FKSchema,
+            )
+            assert article.author_id == second.id
+            assert article.author is second
+
+        both_init_plan = build_create_plan(
+            Dd8SyncBothInitArticle,
+            FKSchema.model_construct(title="both", author_id=first),
+            FKSchema,
+        )
+        assert both_init_plan.kwargs["author_id"] == first.id
+        assert "author" not in both_init_plan.kwargs
+        assert both_init_plan.post_assignments["author"] is first
+
+        with pytest.raises(ValueError, match="Cannot infer a single local FK"):
+            build_create_plan(
+                Dd8SyncCompositeChild,
+                CompositeRelationshipSchema.model_construct(
+                    title="composite",
+                    parent=Dd8SyncCompositeParent(id1=1, id2=2, name="Composite"),
+                ),
+                CompositeRelationshipSchema,
+            )
+
+        relation_first = make_new_object(
+            session,
+            Dd8SyncRelationshipFieldFirstArticle,
+            RelationshipSchema(title="relation", author={"id": first.id}),
+            RelationshipSchema,
+        )
+        assert relation_first.author_id == first.id
+        assert relation_first.author is first
+
+        relation_fallback = make_new_object(
+            session,
+            Dd8SyncRelationshipFieldFallbackArticle,
+            RelationshipSchema(title="fallback", author={"id": first.id}),
+            RelationshipSchema,
+        )
+        assert relation_fallback.author_id == first.id
+        assert relation_fallback.author is first
+
+        plain_article = make_new_object(
+            session,
+            Dd8SyncPlainArticle,
+            PlainFKSchema(title="plain", author_id=plain.id),
+            PlainFKSchema,
+        )
+        assert plain_article.author_id == plain.id
+        assert plain_article.author is plain
 
 
 def test_sync_rest_view_crud_and_pagination(sync_db):

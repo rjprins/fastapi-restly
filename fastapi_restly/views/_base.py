@@ -110,6 +110,77 @@ def _accepts_init_kwarg(model_cls: type, attr_name: str) -> bool:
     return attr_name not in dc_fields or dc_fields[attr_name].init
 
 
+def _requires_init_kwarg(model_cls: type, attr_name: str) -> bool:
+    if not dataclasses.is_dataclass(model_cls):
+        return False
+    dc_fields = {f.name: f for f in dataclasses.fields(model_cls)}
+    field = dc_fields.get(attr_name)
+    if field is None or not field.init:
+        return False
+    return (
+        field.default is dataclasses.MISSING
+        and field.default_factory is dataclasses.MISSING
+    )
+
+
+@dataclasses.dataclass
+class _CreatePlan:
+    kwargs: dict[str, Any]
+    post_assignments: dict[str, Any]
+
+
+def _has_model_attr(model_cls: type[DeclarativeBase], attr_name: str) -> bool:
+    return hasattr(model_cls, attr_name)
+
+
+def _get_relationship_property(
+    model_cls: type[DeclarativeBase],
+    relation_name: str,
+) -> Any | None:
+    try:
+        mapper = sa_inspect(model_cls)
+    except Exception:
+        return None
+    return mapper.relationships.get(relation_name)
+
+
+def _get_unambiguous_local_fk_name(
+    model_cls: type[DeclarativeBase],
+    relation_name: str,
+) -> str | None:
+    relationship_property = _get_relationship_property(model_cls, relation_name)
+    if relationship_property is None:
+        return None
+
+    if getattr(relationship_property.direction, "name", None) != "MANYTOONE":
+        return None
+
+    local_columns = list(relationship_property.local_columns)
+    if len(local_columns) != 1:
+        column_names = ", ".join(column.key for column in local_columns) or "<none>"
+        raise ValueError(
+            f"Cannot infer a single local FK for relationship "
+            f"{model_cls.__name__}.{relation_name}; found {column_names}. "
+            "Use an explicit custom handler for this relationship."
+        )
+    return local_columns[0].key
+
+
+def _is_reference_schema_field(
+    schema_cls: type[BaseSchema],
+    field_name: str,
+) -> bool:
+    field_info = schema_cls.model_fields.get(field_name)
+    if field_info is None:
+        return False
+    return _is_idschema_reference_annotation(field_info.annotation)
+
+
+def _add_assignment(target: dict[str, Any], field_name: str | None, value: Any) -> None:
+    if field_name:
+        target[field_name] = value
+
+
 def iter_creatable_fields(
     schema_obj: BaseSchema,
     schema_cls: type[BaseSchema] | None = None,
@@ -129,31 +200,141 @@ def iter_creatable_fields(
         yield field_name, value
 
 
-def build_create_kwargs(
+def _add_resolved_reference_to_create_plan(
+    plan: _CreatePlan,
+    model_cls: type[DeclarativeBase],
+    field_name: str,
+    value: DeclarativeBase,
+) -> None:
+    if field_name.endswith("_id"):
+        fk_name = field_name
+        relation_name = field_name[:-3]
+        accepts_relation = _has_model_attr(
+            model_cls, relation_name
+        ) and _accepts_init_kwarg(model_cls, relation_name)
+
+        if (
+            _requires_init_kwarg(model_cls, fk_name)
+            and accepts_relation
+            and _requires_init_kwarg(model_cls, relation_name)
+        ):
+            plan.kwargs[fk_name] = value.id
+            plan.kwargs[relation_name] = value
+            return
+
+        if accepts_relation and _requires_init_kwarg(model_cls, relation_name):
+            plan.kwargs[relation_name] = value
+            if _has_model_attr(model_cls, fk_name):
+                plan.post_assignments[fk_name] = value.id
+            return
+
+        if _accepts_init_kwarg(model_cls, fk_name):
+            plan.kwargs[fk_name] = value.id
+            if _has_model_attr(model_cls, relation_name):
+                plan.post_assignments[relation_name] = value
+            return
+
+        if accepts_relation:
+            plan.kwargs[relation_name] = value
+            plan.post_assignments[fk_name] = value.id
+            return
+
+        if _has_model_attr(model_cls, fk_name):
+            plan.post_assignments[fk_name] = value.id
+        if _has_model_attr(model_cls, relation_name):
+            plan.post_assignments[relation_name] = value
+        return
+
+    relation_name = field_name
+    fk_name = _get_unambiguous_local_fk_name(model_cls, relation_name)
+
+    if _has_model_attr(model_cls, relation_name) and _accepts_init_kwarg(
+        model_cls, relation_name
+    ):
+        plan.kwargs[relation_name] = value
+        _add_assignment(plan.post_assignments, fk_name, value.id)
+        return
+
+    if fk_name and _accepts_init_kwarg(model_cls, fk_name):
+        plan.kwargs[fk_name] = value.id
+        if _has_model_attr(model_cls, relation_name):
+            plan.post_assignments[relation_name] = value
+        return
+
+    if _has_model_attr(model_cls, relation_name):
+        plan.post_assignments[relation_name] = value
+    _add_assignment(plan.post_assignments, fk_name, value.id)
+
+
+def build_create_plan(
     model_cls: type[DeclarativeBase],
     schema_obj: BaseSchema,
     schema_cls: type[BaseSchema] | None = None,
-) -> dict[str, Any]:
+) -> _CreatePlan:
     """Translate ``schema_obj`` fields into kwargs for ``model_cls(**kwargs)``.
 
     Shared by sync and async ``make_new_object``. Assumes any nested ``IDSchema``
     references on ``schema_obj`` have already been resolved (sync vs async).
     """
-    data: dict[str, Any] = {}
+    if schema_cls is None:
+        schema_cls = schema_obj.__class__
+
+    plan = _CreatePlan(kwargs={}, post_assignments={})
     for field_name, value in iter_creatable_fields(schema_obj, schema_cls):
         if isinstance(value, IDSchema) and field_name.endswith("_id"):
-            data[field_name] = value.id
+            if _accepts_init_kwarg(model_cls, field_name):
+                plan.kwargs[field_name] = value.id
+            elif _has_model_attr(model_cls, field_name):
+                plan.post_assignments[field_name] = value.id
             continue
-        if isinstance(value, DeclarativeBase) and field_name.endswith("_id"):
-            data[field_name] = value.id
-            relation_name = field_name[:-3]
-            if hasattr(model_cls, relation_name) and _accepts_init_kwarg(
-                model_cls, relation_name
-            ):
-                data[relation_name] = value
+        if isinstance(value, DeclarativeBase) and _is_reference_schema_field(
+            schema_cls, field_name
+        ):
+            _add_resolved_reference_to_create_plan(plan, model_cls, field_name, value)
             continue
-        data[field_name] = value
-    return data
+
+        if _accepts_init_kwarg(model_cls, field_name):
+            plan.kwargs[field_name] = value
+        elif _has_model_attr(model_cls, field_name):
+            plan.post_assignments[field_name] = value
+    return plan
+
+
+def build_create_kwargs(
+    model_cls: type[DeclarativeBase],
+    schema_obj: BaseSchema,
+    schema_cls: type[BaseSchema] | None = None,
+) -> dict[str, Any]:
+    return build_create_plan(model_cls, schema_obj, schema_cls).kwargs
+
+
+def apply_create_assignments(
+    obj: DeclarativeBase,
+    assignments: dict[str, Any],
+) -> None:
+    for field_name, value in assignments.items():
+        setattr(obj, field_name, value)
+
+
+def _apply_resolved_reference_update(
+    obj: DeclarativeBase,
+    field_name: str,
+    value: DeclarativeBase,
+) -> None:
+    model_cls = type(obj)
+    if field_name.endswith("_id"):
+        setattr(obj, field_name, value.id)
+        relation_name = field_name[:-3]
+        if hasattr(obj, relation_name):
+            setattr(obj, relation_name, value)
+        return
+
+    if hasattr(obj, field_name):
+        setattr(obj, field_name, value)
+
+    fk_name = _get_unambiguous_local_fk_name(model_cls, field_name)
+    if fk_name:
+        setattr(obj, fk_name, value.id)
 
 
 def apply_update_to_object(
@@ -170,11 +351,11 @@ def apply_update_to_object(
         if isinstance(value, IDSchema) and field_name.endswith("_id"):
             setattr(obj, field_name, value.id)
             continue
-        if isinstance(value, DeclarativeBase) and field_name.endswith("_id"):
-            setattr(obj, field_name, value.id)
-            relation_name = field_name[:-3]
-            if hasattr(obj, relation_name):
-                setattr(obj, relation_name, value)
+        if isinstance(value, DeclarativeBase) and _is_reference_schema_field(
+            schema_cls or schema_obj.__class__,
+            field_name,
+        ):
+            _apply_resolved_reference_update(obj, field_name, value)
             continue
         setattr(obj, field_name, value)
 
