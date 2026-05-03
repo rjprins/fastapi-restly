@@ -11,9 +11,9 @@
 
 **Build maintainable CRUD APIs on FastAPI, SQLAlchemy 2.0, and Pydantic v2 — with real class-based views.**
 
-> **Status:** `3.0.0` — first public release. See the [Changelog](CHANGELOG.md). Not yet on PyPI:
+> **Status:** `3.0.0` — first public release. See the [Changelog](CHANGELOG.md).
 > ```bash
-> pip install git+https://github.com/rjprins/fastapi-restly.git
+> pip install fastapi-restly
 > ```
 
 **Docs:** <https://rjprins.github.io/fastapi-restly/> · **[Changelog](CHANGELOG.md)** · **[Contributing](CONTRIBUTING.md)** · **[Security](SECURITY.md)** · **[Code of Conduct](CODE_OF_CONDUCT.md)** · **[Examples](example-projects/)**
