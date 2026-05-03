@@ -3,18 +3,14 @@ from typing import Annotated, get_args, get_origin
 
 import pytest
 
-from fastapi_restly.schemas import (
-    BaseSchema,
-    ReadOnly,
-    WriteOnly,
-    is_field_readonly,
-    is_field_writeonly,
-)
+from fastapi_restly.schemas import BaseSchema, ReadOnly, WriteOnly
 from fastapi_restly.schemas._base import (
     create_model_with_optional_fields,
     create_model_without_read_only_fields,
     get_read_only_fields,
     get_write_only_fields,
+    is_readonly_field,
+    is_writeonly_field,
     readonly_marker,
     writeonly_marker,
 )
@@ -152,8 +148,24 @@ def test_get_write_only_fields():
     assert "email" not in write_only_fields
 
 
-def test_is_field_readonly():
-    """Test that is_field_readonly correctly identifies ReadOnly fields."""
+def test_marker_predicates_are_internal_only():
+    import fastapi_restly as fr
+    import fastapi_restly.schemas as fr_schemas
+
+    for module in (fr, fr_schemas):
+        assert not hasattr(module, "is_field_readonly")
+        assert not hasattr(module, "is_readonly_field")
+        assert not hasattr(module, "is_field_writeonly")
+        assert not hasattr(module, "is_writeonly_field")
+
+    assert "is_field_readonly" not in fr_schemas.__all__
+    assert "is_field_writeonly" not in fr_schemas.__all__
+    assert "is_readonly_field" not in fr_schemas.__all__
+    assert "is_writeonly_field" not in fr_schemas.__all__
+
+
+def test_is_readonly_field():
+    """Test that is_readonly_field correctly identifies ReadOnly fields."""
 
     class TestSchema(BaseSchema):
         id: ReadOnly[int]
@@ -162,19 +174,19 @@ def test_is_field_readonly():
         created_at: ReadOnly[datetime]
 
     # Test ReadOnly fields
-    assert is_field_readonly(TestSchema, "id") is True
-    assert is_field_readonly(TestSchema, "created_at") is True
+    assert is_readonly_field(TestSchema, "id") is True
+    assert is_readonly_field(TestSchema, "created_at") is True
 
     # Test non-ReadOnly fields
-    assert is_field_readonly(TestSchema, "name") is False
-    assert is_field_readonly(TestSchema, "email") is False
+    assert is_readonly_field(TestSchema, "name") is False
+    assert is_readonly_field(TestSchema, "email") is False
 
     # Test non-existent field
-    assert is_field_readonly(TestSchema, "non_existent") is False
+    assert is_readonly_field(TestSchema, "non_existent") is False
 
 
-def test_is_field_writeonly():
-    """Test that is_field_writeonly correctly identifies WriteOnly fields."""
+def test_is_writeonly_field():
+    """Test that is_writeonly_field correctly identifies WriteOnly fields."""
 
     class TestSchema(BaseSchema):
         id: WriteOnly[int]
@@ -183,15 +195,15 @@ def test_is_field_writeonly():
         password: WriteOnly[str]
 
     # Test WriteOnly fields
-    assert is_field_writeonly(TestSchema, "id") is True
-    assert is_field_writeonly(TestSchema, "password") is True
+    assert is_writeonly_field(TestSchema, "id") is True
+    assert is_writeonly_field(TestSchema, "password") is True
 
     # Test non-WriteOnly fields
-    assert is_field_writeonly(TestSchema, "name") is False
-    assert is_field_writeonly(TestSchema, "email") is False
+    assert is_writeonly_field(TestSchema, "name") is False
+    assert is_writeonly_field(TestSchema, "email") is False
 
     # Test non-existent field
-    assert is_field_writeonly(TestSchema, "non_existent") is False
+    assert is_writeonly_field(TestSchema, "non_existent") is False
 
 
 def test_create_model_without_read_only_fields():

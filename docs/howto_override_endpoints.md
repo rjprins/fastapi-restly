@@ -55,6 +55,11 @@ DELETE /{id}
             └─ delete_object(obj)
 ```
 
+`make_new_object` and `update_object` prepare the ORM object but do not flush
+the session. The default create and update handlers both call `save_object`
+afterwards; that explicit save step is where the write is flushed and refreshed
+from the database.
+
 **General rule:** prefer overriding `handle_*` handlers for business logic and
 `make_new_object` / `update_object` / `save_object` / `delete_object` for
 lower-level structural changes. When you need to change the HTTP contract
@@ -96,7 +101,8 @@ async SQLAlchemy session. Both are available in every handler.
         obj = await self.handle_get(id)  # raises 404 if missing
         if obj.locked:
             raise fastapi.HTTPException(409, "Cannot update a locked record")
-        return await self.update_object(obj, schema_obj)
+        obj = await self.update_object(obj, schema_obj)
+        return await self.save_object(obj)
 ```
 
 ### `handle_delete` — require a confirmation header

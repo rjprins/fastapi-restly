@@ -77,19 +77,15 @@ from ..query import (
     use_query_modifier_version,
 )
 from ..query._config import get_query_param_schema_creator
-from ..schemas import (
-    BaseSchema,
-    IDRef,
-    IDSchema,
-    auto_generate_schema_for_view,
-    is_field_writeonly,
-)
+from ..schemas import BaseSchema, IDRef, IDSchema
 from ..schemas._base import (
     create_model_with_optional_fields,
     create_model_without_read_only_fields,
     get_writable_inputs,
     is_readonly_field,
+    is_writeonly_field,
 )
+from ..schemas._generator import auto_generate_schema_for_view
 from ._openapi import _register_for_resource_ref
 
 ModelT = TypeVar("ModelT", bound=DeclarativeBase, default=DeclarativeBase)
@@ -745,7 +741,7 @@ class BaseRestView(
         # when FastAPI serializes the response model.
         payload: dict[str, Any] = {}
         for field_name, field_info in self.schema.model_fields.items():
-            if is_field_writeonly(self.schema, field_name):
+            if is_writeonly_field(self.schema, field_name):
                 continue
             if hasattr(obj, field_name):
                 value = getattr(obj, field_name)

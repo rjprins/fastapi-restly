@@ -223,17 +223,22 @@ class AsyncRestView(
 
     async def delete_object(self, obj: ModelT) -> None:
         """
-        Handle a DELETE request on "/{id}". This should delete an object from the
-        database. `handle_get()` is called first to lookup the object.
-        Feel free to override this method.
+        Delete ``obj`` and flush the session.
+
+        ``handle_delete`` calls ``handle_get`` first, so this method receives an
+        existing object. Override it to change the deletion mechanics, for
+        example to implement soft-delete.
         """
         await self.session.delete(obj)
         await self.session.flush()
 
     async def make_new_object(self, schema_obj: CreateSchemaT) -> ModelT:
         """
-        Create a new object from a schema object.
-        Feel free to override this method.
+        Build a new ORM object from ``schema_obj`` and add it to the session.
+
+        This does not flush. The default ``handle_create`` calls
+        ``save_object`` afterwards; override this method for construction-time
+        changes that must happen before that save boundary.
         """
         return await async_make_new_object(
             self.session, self.model, schema_obj, self.schema
@@ -241,8 +246,11 @@ class AsyncRestView(
 
     async def update_object(self, obj: ModelT, schema_obj: UpdateSchemaT) -> ModelT:
         """
-        Update an existing object with data from a schema object.
-        Feel free to override this method.
+        Apply writable fields from ``schema_obj`` to ``obj``.
+
+        This does not flush. The default ``handle_update`` calls
+        ``save_object`` afterwards; override this method for update-time changes
+        that must happen before that save boundary.
         """
         return await async_update_object(  # type: ignore[return-value]
             self.session, obj, schema_obj, self.schema
@@ -250,7 +258,10 @@ class AsyncRestView(
 
     async def save_object(self, obj: ModelT) -> ModelT:
         """
-        Save an object to the database.
-        Feel free to override this method.
+        Flush the session and refresh ``obj`` from the database.
+
+        This is the explicit persistence boundary used by the default create and
+        update handlers. Override it for behavior that should run after every
+        successful create/update flush.
         """
         return await async_save_object(self.session, obj)  # type: ignore[return-value]

@@ -121,8 +121,8 @@ Override only the guard; let the base class do the rest.
 ## Layer 2 — object helpers
 
 The object helpers sit below the `handle_*` handlers. They handle the mechanics of
-construction, persistence, and removal. Override them when the same change
-applies to **both** create and update, so you don't repeat yourself.
+construction, update, explicit save, and removal. Override them when the same
+change applies to **both** create and update, so you don't repeat yourself.
 
 ```
 handle_create  →  make_new_object(schema_obj)
@@ -135,6 +135,10 @@ handle_update  →  handle_get(id)
 handle_delete  →  handle_get(id)
            →  delete_object(obj)
 ```
+
+`make_new_object` and `update_object` do not flush. They prepare the ORM object;
+`save_object` is the explicit flush/refresh step used by the default create and
+update handlers.
 
 ### save_object — run a side effect after every write
 
@@ -238,6 +242,41 @@ import fastapi
 
 `self.to_response_schema(post)` serializes the ORM object using the view's
 configured response schema, exactly as the standard endpoints do.
+
+---
+
+## Database conflict responses
+
+By default, Restly translates SQLAlchemy `IntegrityError` exceptions raised by
+database constraints into `409 Conflict` responses. This is usually what you
+want for duplicate unique values or invalid foreign-key references, and no
+handler code is needed in normal CRUD views.
+
+If your app needs a different error envelope, register a handler specifically
+for `sqlalchemy.exc.IntegrityError` before calling `fr.configure(app=...)` or
+before registering views with `fr.include_view(app)`:
+
+```python
+from fastapi.responses import JSONResponse
+from sqlalchemy.exc import IntegrityError
+
+@app.exception_handler(IntegrityError)
+async def integrity_error_handler(request, exc):
+    return JSONResponse(
+        status_code=409,
+        content={"error": {"code": "constraint_conflict"}},
+    )
+```
+
+Restly respects that handler and does not replace it. You can also opt out of
+the default handler entirely:
+
+```python
+fr.configure(app=app, install_default_exception_handlers=False)
+```
+
+See [Default Exception Handling](api_reference.md#default-exception-handling)
+for the exact registration behavior.
 
 ---
 

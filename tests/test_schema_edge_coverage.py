@@ -20,8 +20,8 @@ from fastapi_restly.schemas._base import (
     create_model_without_read_only_fields,
     get_writable_inputs,
     getattrs,
-    is_field_writeonly,
     is_readonly_field,
+    is_writeonly_field,
     rebase_with_model_config,
     resolve_ids_to_sqlalchemy_objects,
     set_schema_title,
@@ -282,7 +282,7 @@ def test_schema_helper_utilities_cover_readonly_optional_and_config_rebasing():
         email: str | None = None
 
     assert is_readonly_field(DemoSchema(id=1, password="pw", name="x"), "id") is True
-    assert is_field_writeonly(DemoSchema(id=1, password="pw", name="x"), "password")
+    assert is_writeonly_field(DemoSchema(id=1, password="pw", name="x"), "password")
     assert (
         getattrs(
             type("Nested", (), {"child": type("Leaf", (), {"value": 7})()})(),

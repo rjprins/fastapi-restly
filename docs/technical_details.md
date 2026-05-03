@@ -26,7 +26,7 @@ model's actual primary-key type.
 - `WriteOnly[...]` fields are accepted on input and excluded from serialized
   responses. The filtering is done explicitly in `to_response_schema()` (a method
   on `AsyncRestView` / `RestView`, defined on the internal abstract base they share),
-  which skips any field where `is_field_writeonly()` returns `True`. FastAPI's
+  which skips any field where the internal write-only predicate returns `True`. FastAPI's
   response model serialization does **not** filter them; a custom serialization
   path that bypasses `to_response_schema()` would expose `WriteOnly` fields.
 
@@ -75,10 +75,10 @@ behaviours:
   generated recursively (one level deep, without relationships, to avoid circular
   references).
 
-`auto_generate_schema_for_view(view_cls, model_cls)` is a thin wrapper that
-calls `create_schema_from_model(model_cls, schema_name, include_relationships=False)`.
+When a `RestView` / `AsyncRestView` omits `schema`, the internal view setup calls
+`create_schema_from_model(model_cls, schema_name, include_relationships=False)`.
 It does not apply any other filtering beyond excluding relationship attributes;
-foreign-key columns appear in the output as ordinary scalar fields.
+foreign-key columns appear in the generated schema as ordinary scalar fields.
 
 ### SQLAlchemy-to-Pydantic Type Mapping
 

@@ -219,16 +219,22 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
 
     def delete_object(self, obj: ModelT) -> None:
         """
-        Delete an object from the database.
-        Feel free to override this method.
+        Delete ``obj`` and flush the session.
+
+        ``handle_delete`` calls ``handle_get`` first, so this method receives an
+        existing object. Override it to change the deletion mechanics, for
+        example to implement soft-delete.
         """
         self.session.delete(obj)
         self.session.flush()
 
     def make_new_object(self, schema_obj: CreateSchemaT) -> ModelT:
         """
-        Create a new object from a schema object.
-        Feel free to override this method.
+        Build a new ORM object from ``schema_obj`` and add it to the session.
+
+        This does not flush. The default ``handle_create`` calls
+        ``save_object`` afterwards; override this method for construction-time
+        changes that must happen before that save boundary.
         """
         return make_new_object(
             self.session, self.model, schema_obj, self.schema
@@ -236,14 +242,20 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
 
     def update_object(self, obj: ModelT, schema_obj: UpdateSchemaT) -> ModelT:
         """
-        Update an existing object with data from a schema object.
-        Feel free to override this method.
+        Apply writable fields from ``schema_obj`` to ``obj``.
+
+        This does not flush. The default ``handle_update`` calls
+        ``save_object`` afterwards; override this method for update-time changes
+        that must happen before that save boundary.
         """
         return update_object(self.session, obj, schema_obj, self.schema)
 
     def save_object(self, obj: ModelT) -> ModelT:
         """
-        Save an object to the database.
-        Feel free to override this method.
+        Flush the session and refresh ``obj`` from the database.
+
+        This is the explicit persistence boundary used by the default create and
+        update handlers. Override it for behavior that should run after every
+        successful create/update flush.
         """
         return save_object(self.session, obj)

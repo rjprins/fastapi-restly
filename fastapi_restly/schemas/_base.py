@@ -309,7 +309,9 @@ def get_write_only_fields(model_cls: type[pydantic.BaseModel]) -> list[str]:
     return write_only_fields
 
 
-def is_field_writeonly(model_cls: pydantic.BaseModel | type[pydantic.BaseModel], field_name: str) -> bool:
+def is_writeonly_field(
+    model_cls: pydantic.BaseModel | type[pydantic.BaseModel], field_name: str
+) -> bool:
     """Check if a specific field is marked as writeonly."""
     if isinstance(model_cls, pydantic.BaseModel):
         model_cls = model_cls.__class__

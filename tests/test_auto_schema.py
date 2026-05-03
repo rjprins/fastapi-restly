@@ -12,9 +12,24 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.types import JSON
 
 import fastapi_restly as fr
+import fastapi_restly.schemas as fr_schemas
 from fastapi_restly.db import fr_globals
 
 from .conftest import create_tables
+
+
+def test_create_schema_from_model_is_the_only_public_schema_generator():
+    """The RestView-specific generator wrapper is internal-only."""
+
+    assert hasattr(fr, "create_schema_from_model")
+    assert "create_schema_from_model" in fr.__all__
+    assert hasattr(fr_schemas, "create_schema_from_model")
+    assert "create_schema_from_model" in fr_schemas.__all__
+
+    assert not hasattr(fr, "auto_generate_schema_for_view")
+    assert "auto_generate_schema_for_view" not in fr.__all__
+    assert not hasattr(fr_schemas, "auto_generate_schema_for_view")
+    assert "auto_generate_schema_for_view" not in fr_schemas.__all__
 
 
 def test_auto_generated_schema_in_view(client):

@@ -52,6 +52,37 @@ Relation-filtering caveat for V2:
 - Only nested field segments may use aliases
 - Example: `?author.authorName=Alice` can work, while `?writer.authorName=Alice` does not
 
+### Pagination Caps
+
+Pagination parameter schemas enforce upper bounds through module-level constants in
+`fastapi_restly.query`:
+
+| Constant | Value | Applies To | Rationale |
+|---|---:|---|---|
+| `MAX_LIMIT` | `1000` | V1 `?limit=` | Prevents accidental or abusive very large list responses. |
+| `MAX_PAGE_SIZE` | `1000` | V2 `?page_size=` | Prevents accidental or abusive very large list responses. |
+
+These constants define validation caps, not implicit pagination. V1 still returns
+every matching row when `?limit=` is omitted and `default_limit` is `None`; V2 still
+returns every matching row when `?page_size=` is omitted and `default_page_size` is
+`None`.
+
+Override the cap per view when a specific endpoint should allow larger pages:
+
+```python
+@fr.include_view(app)
+class ExportableItemView(fr.AsyncRestView):
+    prefix = "/items"
+    model = Item
+    schema = ItemSchema
+    query_modifier_version = fr.QueryModifierVersion.V2
+
+    max_page_size = 5000
+```
+
+With this view, `GET /items/?page_size=5000` is valid, while values above `5000`
+are rejected with a `422` validation response.
+
 ### Query Modifier Version Configuration
 
 The active version is controlled via:
@@ -169,8 +200,7 @@ For generated CRUD endpoints:
 | `fr.TimestampsSchemaMixin` | Pydantic mixin adding read-only `created_at` / `updated_at` fields to a schema. |
 | `fr.ReadOnly[T]` | Type annotation marker. Fields annotated `ReadOnly[T]` are excluded from create/update inputs. |
 | `fr.WriteOnly[T]` | Type annotation marker. Fields annotated `WriteOnly[T]` are excluded from responses. |
-| `fr.create_schema_from_model(model)` | Auto-generate a Pydantic schema from a SQLAlchemy model. |
-| `fr.auto_generate_schema_for_view(view_cls, model_cls)` | Generate a schema for a view from its model, excluding relationship fields. Used internally by `include_view`. |
+| `fr.create_schema_from_model(model)` | Auto-generate a Pydantic schema from a SQLAlchemy model. Useful for scaffolding, prototypes, and internal tools; prefer explicit schemas for stable public API contracts. |
 | `fr.resolve_ids_to_sqlalchemy_objects(session, schema_obj)` | Walk a schema instance, load `IDRef` / `IDSchema` reference fields from the database, and replace them with ORM objects. Called automatically during create/update. |
 
 ### View Classes
@@ -211,11 +241,11 @@ For generated CRUD endpoints:
 
 ### CRUD Utility Free Functions
 
-These module-level functions are the primitive surface for building and
-persisting ORM objects from schemas. Use them anywhere you have a session
-— inside `handle_*` handlers, in custom routes, in services, or in test setup.
-Each variant exists in both sync and async form, matching the session
-type you have on hand.
+These module-level functions are the primitive surface for building, updating,
+and explicitly saving ORM objects from schemas. Use them anywhere you have a
+session — inside `handle_*` handlers, in custom routes, in services, or in test
+setup. Each variant exists in both sync and async form, matching the session type
+you have on hand.
 
 | Symbol | Description |
 |---|---|
@@ -263,6 +293,62 @@ in a custom endpoint) reach for the free functions instead.
 | `fr.deactivate_savepoint_only_mode(make_session)` | Restore normal session behavior after testing. |
 | `fr.use_fr_globals(globals_obj)` | Context manager that swaps the global state for test isolation. |
 | `fr.get_fr_globals()` | Return the current `FRGlobals` instance (engine, session factory, etc.). |
+
+### Default Exception Handling
+
+FastAPI-Restly installs a default handler for SQLAlchemy `IntegrityError` on
+FastAPI apps. The handler translates database integrity conflicts — unique
+constraint, foreign-key, not-null, and check-constraint violations — into HTTP
+`409 Conflict` responses using FastAPI's normal error body shape:
+
+```json
+{
+  "detail": "Unique constraint violated on user.email"
+}
+```
+
+The exact `detail` text is best-effort and depends on the database driver. The
+handler recognizes common PostgreSQL SQLSTATE integrity codes and SQLite
+constraint messages; unknown dialects fall back to a generic conflict message.
+
+Registration is automatic in either of these cases:
+
+- `fr.configure(app=app, ...)` is called with the default
+  `install_default_exception_handlers=True`.
+- A view is registered directly on a `FastAPI` app with `fr.include_view(app)`.
+  This fallback covers apps that configure database sessions separately.
+
+Restly only skips this default when the app already has a handler registered
+specifically for `sqlalchemy.exc.IntegrityError`. Other handlers, such as a
+generic `Exception` handler, do not prevent Restly from registering its
+`IntegrityError` handler.
+
+To opt out:
+
+```python
+fr.configure(
+    app=app,
+    async_database_url="sqlite+aiosqlite:///app.db",
+    install_default_exception_handlers=False,
+)
+```
+
+To use your own response format, register your `IntegrityError` handler before
+Restly installs its defaults:
+
+```python
+from fastapi.responses import JSONResponse
+from sqlalchemy.exc import IntegrityError
+
+@app.exception_handler(IntegrityError)
+async def integrity_error_handler(request, exc):
+    return JSONResponse(
+        status_code=409,
+        content={"error": {"code": "constraint_conflict"}},
+    )
+
+fr.configure(app=app, async_database_url="sqlite+aiosqlite:///app.db")
+```
 
 ## Important Limitations and Capabilities
 

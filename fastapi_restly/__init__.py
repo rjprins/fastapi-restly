@@ -47,7 +47,6 @@ from .schemas import (
     ReadOnly,
     TimestampsSchemaMixin,
     WriteOnly,
-    auto_generate_schema_for_view,
     create_schema_from_model,
     resolve_ids_to_sqlalchemy_objects,
 )
@@ -123,7 +122,6 @@ __all__ = [
     "ReadOnly",
     "WriteOnly",
     "TimestampsSchemaMixin",
-    "auto_generate_schema_for_view",
     "create_schema_from_model",
     "resolve_ids_to_sqlalchemy_objects",
     # Views
