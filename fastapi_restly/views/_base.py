@@ -496,6 +496,40 @@ def _get_nested_schema_annotation(annotation: Any) -> type[BaseSchema] | None:
     return None
 
 
+class _OmitWriteOnlyMixin(pydantic.BaseModel):
+    @classmethod
+    def __pydantic_init_subclass__(cls, **kwargs: Any) -> None:
+        super().__pydantic_init_subclass__(**kwargs)
+
+        writeonly_fields = [
+            name
+            for name in cls.model_fields
+            if is_writeonly_field(cls, name)
+        ]
+        for name in writeonly_fields:
+            del cls.model_fields[name]
+
+        cls.model_rebuild(force=True)
+
+
+@functools.cache
+def _create_response_validation_schema(
+    schema_cls: type[BaseSchema],
+) -> type[BaseSchema]:
+    if not any(is_writeonly_field(schema_cls, name) for name in schema_cls.model_fields):
+        return schema_cls
+
+    return type(
+        f"Response{schema_cls.__name__}",
+        (_OmitWriteOnlyMixin, schema_cls),
+        {
+            "__module__": schema_cls.__module__,
+            "__doc__": (schema_cls.__doc__ or "")
+            + "\nWrite-only fields have been removed for response validation.",
+        },
+    )
+
+
 def _build_relationship_loader_options(
     model_cls: type[DeclarativeBase],
     schema_cls: type[BaseSchema],
@@ -778,9 +812,11 @@ class BaseRestView(
             elif field_info.alias and hasattr(obj, field_info.alias):
                 payload[field_name] = getattr(obj, field_info.alias)
 
-        # model_construct intentionally bypasses validation so response-only
-        # omissions (for example WriteOnly fields) don't trigger required errors.
-        return cast(SchemaT, self.schema.model_construct(**payload))
+        response_schema = _create_response_validation_schema(self.schema)
+        return cast(
+            SchemaT,
+            response_schema.model_validate(payload, by_alias=False, by_name=True),
+        )
 
     @staticmethod
     def _to_query_params(query_params: Any) -> QueryParams:

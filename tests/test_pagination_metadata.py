@@ -1,5 +1,7 @@
 """Tests for optional pagination metadata responses."""
 
+from sqlalchemy.orm import Mapped
+
 import fastapi_restly as fr
 
 from .conftest import create_tables
@@ -7,7 +9,7 @@ from .conftest import create_tables
 
 def test_index_response_defaults_to_plain_list(client):
     class Product(fr.IDBase):
-        name: str
+        name: Mapped[str]
 
     class ProductSchema(fr.IDSchema):
         name: str
@@ -34,7 +36,7 @@ def test_pagination_metadata_returns_all_items_when_no_page_size(client):
     """Default is unlimited: omitting ``page_size`` returns every row."""
 
     class PaginatedItem(fr.IDBase):
-        name: str
+        name: Mapped[str]
 
     class PaginatedItemSchema(fr.IDSchema):
         name: str
@@ -66,7 +68,7 @@ def test_pagination_metadata_reports_explicit_page_size(client):
     """When the client passes ``page_size`` the metadata reflects it."""
 
     class PaginatedThing(fr.IDBase):
-        name: str
+        name: Mapped[str]
 
     class PaginatedThingSchema(fr.IDSchema):
         name: str

@@ -390,6 +390,37 @@ The example above delegates the 404 check to `self.handle_get(id)` and the
 database removal to `self.delete_object(obj)`. Only the HTTP response layer
 changes.
 
+### Overriding response serialization
+
+Generated routes call `self.to_response_schema(obj)` before returning ORM
+objects. The default implementation builds a response payload from the configured
+schema, strips `WriteOnly` fields, normalizes relationship id fields, and then
+validates through Pydantic. That means response-side `@field_validator` and
+`@field_serializer` hooks behave the same way they would on an ordinary
+Pydantic response model.
+
+Override `to_response_schema()` when one endpoint family needs a different
+projection, or when you intentionally want a faster path that skips Pydantic
+validation:
+
+```python
+class UserView(fr.AsyncRestView):
+    prefix = "/users"
+    model = User
+    schema = UserSchema
+
+    def to_response_schema(self, obj: User) -> UserSchema:
+        return self.schema.model_construct(
+            id=obj.id,
+            name=obj.name,
+            email=obj.email,
+        )
+```
+
+`model_construct()` is an escape hatch: it bypasses validators and required-field
+checks. Keep the payload aligned with your public response contract, and do not
+include `WriteOnly` fields such as passwords or API tokens.
+
 ### Relationship references in custom routes
 
 Generated `POST` and `PATCH` routes validate the request body before Restly

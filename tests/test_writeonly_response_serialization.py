@@ -1,5 +1,7 @@
 """Regression tests for WriteOnly field exclusion in API responses."""
 
+from sqlalchemy.orm import Mapped
+
 import fastapi_restly as fr
 from fastapi_restly.schemas import WriteOnly
 
@@ -14,9 +16,9 @@ def test_writeonly_fields_are_excluded_from_post_get_and_list(client):
         password: WriteOnly[str]
 
     class User(fr.IDBase):
-        name: str
-        email: str
-        password: str
+        name: Mapped[str]
+        email: Mapped[str]
+        password: Mapped[str]
 
     @fr.include_view(client.app)
     class UserView(fr.AsyncRestView):
