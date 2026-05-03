@@ -1,7 +1,15 @@
 import json
 
-from blog.main import app
+from blog.main import BlogView, app
 from fastapi.testclient import TestClient
+
+import fastapi_restly as fr
+
+
+def test_blog_view_uses_sync_auto_schema():
+    assert issubclass(BlogView, fr.RestView)
+    assert BlogView.schema.__name__ == "BlogViewSchema"
+    assert set(BlogView.schema.model_fields) == {"id", "title"}
 
 
 def test_openapi_spec(tmp_path):

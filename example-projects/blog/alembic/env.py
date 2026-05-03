@@ -1,12 +1,10 @@
-import asyncio
 from logging.config import fileConfig
 
 # Import to register all models in DataclassBase.metadata
 import blog.main
 from alembic import context
 from sqlalchemy import pool
-from sqlalchemy.engine import Connection
-from sqlalchemy.ext.asyncio import async_engine_from_config
+from sqlalchemy.engine import Connection, engine_from_config
 
 from fastapi_restly import DataclassBase
 from fastapi_restly.db import fr_globals
@@ -32,7 +30,7 @@ def run_migrations_offline() -> None:
 
     """
     context.configure(
-        url=fr_globals.async_database_url,
+        url=fr_globals.database_url,
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
@@ -49,28 +47,20 @@ def do_run_migrations(connection: Connection) -> None:
         context.run_migrations()
 
 
-async def run_async_migrations() -> None:
+def run_migrations_online() -> None:
     """
     In this scenario we need to create an Engine and associate a connection with the
     context.
     """
-    connectable = async_engine_from_config(
+    connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
-        url=fr_globals.async_database_url,
+        url=fr_globals.database_url,
     )
 
-    async with connectable.connect() as connection:
-        await connection.run_sync(do_run_migrations)
-
-    await connectable.dispose()
-
-
-def run_migrations_online() -> None:
-    """Run migrations in 'online' mode."""
-
-    asyncio.run(run_async_migrations())
+    with connectable.connect() as connection:
+        do_run_migrations(connection)
 
 
 if context.is_offline_mode():

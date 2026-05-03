@@ -1,16 +1,19 @@
 # Blog Example
 
 The smallest possible FastAPI-Restly example: a single `Blog` model with one
-field, exposed as a full CRUD REST resource via `AsyncRestView`. Use this as
-a starting point or smoke test.
+field, exposed as a full CRUD REST resource via sync `RestView`. Use this as a
+starting point or smoke test.
 
 ## What it demonstrates
 
 - Auto-generated CRUD endpoints (`GET`, `POST`, `PATCH`, `DELETE`) from a
   SQLAlchemy 2.0 dataclass-style model
-- Connecting to an async SQLite database via `fr.configure(...)`
+- Connecting to a sync SQLite database via `fr.configure(...)`
 - Creating tables on startup via the FastAPI `lifespan` hook
-- Auto-derived request/response Pydantic schemas from `fr.IDSchema`
+- Auto-derived request/response Pydantic schemas when the view omits
+  `schema = ...`
+- Sync request sessions through `SessionDep` and standalone sessions through
+  `fr.session()`
 
 ## Run the API server
 
@@ -31,7 +34,7 @@ cd example-projects/blog
 uv run pytest -v
 ```
 
-Tests run against an in-memory SQLite database (see `blog/conftest.py`); they
+Tests run against an in-memory SQLite database (see `tests/conftest.py`); they
 do not touch `blog.db`.
 
 ## Further reading

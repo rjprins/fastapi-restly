@@ -5,14 +5,17 @@ from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
 
-fr.configure(async_database_url="sqlite+aiosqlite:///blog.db")
+fr.configure(database_url="sqlite:///blog.db")
+
+
+def create_tables() -> None:
+    with fr.session() as db_session:
+        fr.DataclassBase.metadata.create_all(bind=db_session.get_bind())
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    engine = fr.get_async_engine()
-    async with engine.begin() as conn:
-        await conn.run_sync(fr.DataclassBase.metadata.create_all)
+    create_tables()
     yield
 
 
@@ -23,12 +26,8 @@ class Blog(fr.IDBase):
     title: Mapped[str]
 
 
-class BlogSchema(fr.IDSchema):
-    title: str
-
-
 @fr.include_view(app)
-class BlogView(fr.AsyncRestView):
+class BlogView(fr.RestView):
     prefix = "/blogs"
     model = Blog
-    schema = BlogSchema
+    session: fr.SessionDep
