@@ -55,7 +55,7 @@ class TestNestedModel(DataclassBase):
 
 
 class UserModel(DataclassBase):
-    __tablename__ = "users_v2"
+    __tablename__ = "relation_users"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(50))
@@ -65,12 +65,12 @@ class UserModel(DataclassBase):
 
 
 class PostModel(DataclassBase):
-    __tablename__ = "posts_v2"
+    __tablename__ = "relation_posts"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     title: Mapped[str] = mapped_column(String(100))
     content: Mapped[str] = mapped_column(String(500))
-    author_id: Mapped[int] = mapped_column(ForeignKey("users_v2.id"))
+    author_id: Mapped[int] = mapped_column(ForeignKey("relation_users.id"))
 
     author: Mapped[UserModel] = relationship("UserModel", back_populates="posts")
 
@@ -89,18 +89,18 @@ class PostSchema(pydantic.BaseModel):
 
 
 class AuditUserModel(DataclassBase):
-    __tablename__ = "audit_users_v2"
+    __tablename__ = "audit_relation_users"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(50))
 
 
 class AuditLogModel(DataclassBase):
-    __tablename__ = "audit_logs_v2"
+    __tablename__ = "audit_logs"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    creator_id: Mapped[int] = mapped_column(ForeignKey("audit_users_v2.id"))
-    updater_id: Mapped[int] = mapped_column(ForeignKey("audit_users_v2.id"))
+    creator_id: Mapped[int] = mapped_column(ForeignKey("audit_relation_users.id"))
+    updater_id: Mapped[int] = mapped_column(ForeignKey("audit_relation_users.id"))
 
     creator: Mapped[AuditUserModel] = relationship(foreign_keys=[creator_id])
     updater: Mapped[AuditUserModel] = relationship(foreign_keys=[updater_id])
@@ -388,9 +388,9 @@ class TestApplyFiltering:
         )
 
         rendered = str(result)
-        assert 'JOIN users_v2 ON users_v2.id = posts_v2.author_id' in rendered
-        assert 'FROM posts_v2, users_v2' not in rendered
-        assert "WHERE users_v2.name = " in rendered
+        assert 'JOIN relation_users ON relation_users.id = relation_posts.author_id' in rendered
+        assert 'FROM relation_posts, relation_users' not in rendered
+        assert "WHERE relation_users.name = " in rendered
 
     def test__apply_filtering_relation_field_handles_ambiguous_foreign_keys(
         self, audit_log_select_query, mock_query_params
@@ -402,10 +402,10 @@ class TestApplyFiltering:
 
         rendered = str(result)
         assert (
-            "JOIN audit_users_v2 ON audit_users_v2.id = audit_logs_v2.creator_id"
+            "JOIN audit_relation_users ON audit_relation_users.id = audit_logs.creator_id"
             in rendered
         )
-        assert "WHERE audit_users_v2.name = " in rendered
+        assert "WHERE audit_relation_users.name = " in rendered
 
     def test__apply_sorting_relation_field_handles_ambiguous_foreign_keys(
         self, audit_log_select_query, mock_query_params
@@ -417,10 +417,10 @@ class TestApplyFiltering:
 
         rendered = str(result)
         assert (
-            "JOIN audit_users_v2 ON audit_users_v2.id = audit_logs_v2.creator_id"
+            "JOIN audit_relation_users ON audit_relation_users.id = audit_logs.creator_id"
             in rendered
         )
-        assert "ORDER BY audit_users_v2.name ASC, audit_logs_v2.id DESC" in rendered
+        assert "ORDER BY audit_relation_users.name ASC, audit_logs.id DESC" in rendered
 
 
 class TestApplyListParams:
@@ -485,7 +485,7 @@ class TestParseValue:
         assert exc_info.value.status_code == 400
 
 
-def _sql_v2(query) -> str:
+def _render_sql(query) -> str:
     return str(query.compile(compile_kwargs={"literal_binds": True}))
 
 
@@ -494,32 +494,32 @@ class TestMakeWhereClause:
 
     def test_make_where_clause_equals(self):
         clause = _make_where_clause(TestModel.name, "John", "eq", str)
-        assert "name = 'John'" in _sql_v2(sqlalchemy.select(TestModel).where(clause))
+        assert "name = 'John'" in _render_sql(sqlalchemy.select(TestModel).where(clause))
 
     def test_make_where_clause_greater_than(self):
         clause = _make_where_clause(TestModel.age, "25", "gt", int)
-        assert "age > 25" in _sql_v2(sqlalchemy.select(TestModel).where(clause))
+        assert "age > 25" in _render_sql(sqlalchemy.select(TestModel).where(clause))
 
     def test_make_where_clause_greater_than_equal(self):
         clause = _make_where_clause(TestModel.age, "18", "gte", int)
-        assert "age >= 18" in _sql_v2(sqlalchemy.select(TestModel).where(clause))
+        assert "age >= 18" in _render_sql(sqlalchemy.select(TestModel).where(clause))
 
     def test_make_where_clause_less_than(self):
         clause = _make_where_clause(TestModel.age, "30", "lt", int)
-        assert "age < 30" in _sql_v2(sqlalchemy.select(TestModel).where(clause))
+        assert "age < 30" in _render_sql(sqlalchemy.select(TestModel).where(clause))
 
     def test_make_where_clause_less_than_equal(self):
         clause = _make_where_clause(TestModel.age, "65", "lte", int)
-        assert "age <= 65" in _sql_v2(sqlalchemy.select(TestModel).where(clause))
+        assert "age <= 65" in _render_sql(sqlalchemy.select(TestModel).where(clause))
 
     def test_make_where_clause_not_equals(self):
         clause = _make_where_clause(TestModel.name, "John", "ne", str)
-        assert "name != 'John'" in _sql_v2(sqlalchemy.select(TestModel).where(clause))
+        assert "name != 'John'" in _render_sql(sqlalchemy.select(TestModel).where(clause))
 
     def test_make_where_clause_contains(self):
         """contains operator should compile to ILIKE with wildcards."""
         clause = _make_where_clause(TestModel.name, "oh", "contains", str)
-        sql = _sql_v2(sqlalchemy.select(TestModel).where(clause))
+        sql = _render_sql(sqlalchemy.select(TestModel).where(clause))
         # SQLite renders ILIKE as LIKE LOWER(...)
         assert "%oh%" in sql or "%%oh%%" in sql
         assert "lower" in sql.lower() or "like" in sql.lower()

@@ -9,7 +9,7 @@ This example is a complete showcase of FastAPI-Restly customization patterns:
 - Enum fields (role, status, priority, task type)
 - Custom create/update schemas with validation
 - Custom endpoints alongside auto-generated CRUD
-- V1 (JSONAPI-style) and V2 (standard HTTP) query modifiers
+- List-params filtering, sorting, and pagination on every CRUD view
 """
 
 from contextlib import asynccontextmanager

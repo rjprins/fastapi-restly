@@ -27,7 +27,7 @@ DEFAULT_REACT_ADMIN_PAGE_SIZE = 25
 
 
 # ---------------------------------------------------------------------------
-# Query parsing helpers (standalone, analogous to _v1.py / _v2.py)
+# Query parsing helpers (standalone, analogous to query/_impl.py)
 # ---------------------------------------------------------------------------
 
 
