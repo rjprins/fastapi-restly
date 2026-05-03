@@ -87,7 +87,7 @@ write logic in `handle_create` / `handle_update`.
 :link: howto_query_modifiers
 :link-type: doc
 
-Use V1 (JSONAPI-style) and V2 (HTTP-style) query parameter interfaces.
+Filter, sort, and paginate list endpoints using URL query parameters.
 :::
 
 :::{grid-item-card} Foreign Keys with IDRef
@@ -122,7 +122,7 @@ Plug FastAPI-Restly into a project that already manages its own sessions.
 :link: technical_details
 :link-type: doc
 
-Schema generation internals, view registration, and query modifier lifecycle.
+Schema generation internals, view registration, and list-parameters lifecycle.
 :::
 
 ::::

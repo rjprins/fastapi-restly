@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import DeclarativeBase
 
 from ..db import AsyncSessionDep
-from ..query import apply_query_modifiers, use_query_modifier_version
+from ..query import apply_list_params
 from ..schemas import BaseSchema, async_resolve_ids_to_sqlalchemy_objects
 from ._base import (
     BaseRestView,
@@ -102,6 +102,7 @@ class AsyncRestView(
 
     @get("/")
     async def index(self, query_params: Any) -> Any:
+        self._reject_unknown_query_params()
         objs = await self.handle_list(query_params)
         if not self.include_pagination_metadata:
             return [self.to_response_schema(obj) for obj in objs]
@@ -136,9 +137,9 @@ class AsyncRestView(
                 return add_my_info(objs)
 
         ``query_params`` is the validated query-parameter Pydantic model
-        injected by FastAPI; pagination bounds (``limit`` / ``page`` / etc.)
+        injected by FastAPI; pagination bounds (``page`` / ``page_size``)
         have already been validated by the schema returned from
-        :func:`fastapi_restly.query.create_query_param_schema`.
+        :func:`fastapi_restly.query.create_list_params_schema`.
 
         For WHERE-clause-only filtering that should also apply to the
         pagination total, override :meth:`build_list_query` instead.
@@ -149,18 +150,14 @@ class AsyncRestView(
         if loader_options:
             query = query.options(*loader_options)
 
-        with use_query_modifier_version(self.get_query_modifier_version()):
-            query = apply_query_modifiers(
-                query_params, query, self.model, self.schema
-            )
+        query = apply_list_params(query_params, query, self.model, self.schema)
         scalar_result = await self.session.scalars(query)
         return scalar_result.all()
 
     async def count_index(self, query_params: Any) -> int:
-        with use_query_modifier_version(self.get_query_modifier_version()):
-            filtered_query = apply_query_modifiers(
-                query_params, self.build_list_query(), self.model, self.schema
-            )
+        filtered_query = apply_list_params(
+            query_params, self.build_list_query(), self.model, self.schema
+        )
         filtered_query = filtered_query.order_by(None).limit(None).offset(None)
         count_query = select(func.count()).select_from(filtered_query.subquery())
         return int(await self.session.scalar(count_query) or 0)

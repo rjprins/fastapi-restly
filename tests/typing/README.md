@@ -27,14 +27,13 @@ Coverage checklist:
 - [x] `handle_*` handler overrides
 - [x] View options: `include_pagination_metadata`
 - [x] View options: `exclude_routes`
-- [x] View options: `query_modifier_version = QueryModifierVersion.V2`
 - [x] `AsyncReactAdminView`
 - [ ] `ReactAdminView` sync variant
 - [ ] Inherited view configuration from base classes
 - [ ] Prefix concatenation across inherited views
 - [ ] Class-level `dependencies`
 - [ ] Instance dependencies via annotated `Depends`
-- [x] Schema aliases with V2 query modifiers
+- [x] Schema aliases with list-params filtering
 - [x] `IDRef[...]`
 - [x] UUID / non-int primary key flows
 - [ ] Write-only and read-only field markers in consumer schemas

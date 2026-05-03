@@ -6,7 +6,6 @@ import pytest
 
 import fastapi_restly as fr
 from fastapi_restly.db import fr_globals
-from fastapi_restly.query import QueryModifierVersion, set_query_modifier_version
 
 pytest_plugins = ["fastapi_restly.testing._fixtures"]
 
@@ -34,12 +33,10 @@ def reset_metadata():
     for base_cls in framework_bases:
         _cleanup_registry(base_cls)
         base_cls.metadata.clear()
-    set_query_modifier_version(QueryModifierVersion.V1)
     yield
     for base_cls in framework_bases:
         _cleanup_registry(base_cls)
         base_cls.metadata.clear()
-    set_query_modifier_version(QueryModifierVersion.V1)
 
 
 @pytest.fixture(autouse=True)

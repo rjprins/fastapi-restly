@@ -1,186 +1,35 @@
 # How-To: Filter, Sort, and Paginate Lists
 
-List endpoints (`GET /{prefix}/`) support query modifiers out of the box. Two query
-modifier styles are available: V1 (JSONAPI-inspired, the default) and V2 (standard
-HTTP-style). Choose one style per project and configure it globally or per view.
+List endpoints (`GET /{prefix}/`) support filtering, sorting, and
+pagination through URL query parameters out of the box. Filter parameters
+are derived from the response schema; sort and pagination use a fixed set
+of names.
+
+> **Pagination is opt-in.** Lists return every matching row when no
+> `page_size` is supplied. Pass `page_size` (and optionally `page`) to
+> enable pagination, or set `default_page_size` on the view class if you
+> want every request to be paginated by default.
+>
+> **For public or production endpoints, set `default_page_size` and
+> `max_page_size` explicitly.** The framework default of "no implicit
+> cap" is intentionally honest about what the SQL does, but is not
+> the safest production posture — a missing `page_size` will scan the
+> entire table.
+>
+> **Unknown query keys are rejected with 422.** Filters are narrowing
+> controls — a typo or unsupported operator silently ignored could
+> widen the result set. Generated list endpoints validate the request
+> against the schema's declared parameters and reject anything else.
+> If a view consumes a custom query parameter outside the schema
+> (e.g. `?include_deleted=true`), declare it on the view:
+> ```python
+> class UserView(fr.AsyncRestView):
+>     extra_query_params = ("include_deleted",)
+> ```
 
 ---
 
-## Choosing a Version
-
-### Global configuration
-
-```python
-from fastapi_restly import QueryModifierVersion, set_query_modifier_version
-
-# Call before @fr.include_view(...) so the generated query schema stays aligned.
-set_query_modifier_version(QueryModifierVersion.V2)
-```
-
-### Temporary override (context manager)
-
-`use_query_modifier_version` is a context manager that temporarily switches the active
-version and resets it on exit. It is mainly useful in tests and when calling low-level
-helpers like `fastapi_restly.query.create_query_param_schema(...)` or
-`fr.apply_query_modifiers(...)` directly.
-Already-registered views keep the version they captured during `@fr.include_view(...)`.
-
-```python
-from fastapi_restly import QueryModifierVersion, use_query_modifier_version
-
-with use_query_modifier_version(QueryModifierVersion.V2):
-    ...  # V2 is active only inside this block
-```
-
-### Per-view fixed version
-
-```python
-import fastapi_restly as fr
-
-class UserView(fr.AsyncRestView):
-    query_modifier_version = fr.QueryModifierVersion.V2
-    ...
-```
-
----
-
-## V1 Style (default)
-
-V1 follows a JSONAPI-inspired convention: filter fields are bracketed and operators
-are embedded in the value.
-
-### Filtering
-
-The `filter[field]` parameter accepts a value with an optional operator prefix. The
-operator is the leading character(s) of the value — not part of the URL syntax:
-
-| Operator | Value prefix | SQL equivalent | Full example |
-|---|---|---|---|
-| Equals | *(none)* | `field = 'value'` | `?filter[status]=active` |
-| Not equals | `!` | `field != 'value'` | `?filter[status]=!inactive` |
-| Greater than | `>` | `field > value` | `?filter[age]=>18` |
-| Less than | `<` | `field < value` | `?filter[age]=<65` |
-| Greater or equal | `>=` | `field >= value` | `?filter[age]=>=18` |
-| Less or equal | `<=` | `field <= value` | `?filter[age]=<=64` |
-| Is null | `null` | `field IS NULL` | `?filter[deleted_at]=null` |
-| Is not null | `!null` | `field IS NOT NULL` | `?filter[deleted_at]=!null` |
-
-Values are validated against the Pydantic schema field type. An invalid value returns
-HTTP 400.
-
-#### OR logic with comma-separated values
-
-Multiple comma-separated values in a single `filter[field]` parameter are combined
-with OR:
-
-```text
-GET /users/?filter[id]=1,2,3
-```
-
-Produces `WHERE id = 1 OR id = 2 OR id = 3`. This is equivalent to an `IN` filter.
-
-#### Multiple filters on the same field
-
-Repeat the parameter to add AND conditions:
-
-```text
-GET /users/?filter[created_at]=>=2024-01-01&filter[created_at]=<2025-01-01
-```
-
-Produces `WHERE created_at >= '2024-01-01' AND created_at < '2025-01-01'`.
-
-### Contains (case-insensitive substring search)
-
-The `contains[field]` parameter performs a case-insensitive `ILIKE '%value%'` search.
-It is only available for string fields.
-
-```text
-GET /users/?contains[email]=example
-```
-
-#### AND logic with whitespace-separated terms
-
-Multiple words in a single `contains[field]` value are split on whitespace and
-combined with AND — each word must appear somewhere in the field:
-
-```text
-GET /users/?contains[name]=john doe
-```
-
-Produces `WHERE name ILIKE '%john%' AND name ILIKE '%doe%'`. This is intentionally
-different from the comma OR logic in `filter[...]`.
-
-Literal `%`, `_`, and `\` characters are escaped before building the SQL `ILIKE`, so
-contains searches behave like literal substring matching rather than wildcard matching.
-
-### Sorting
-
-Use the `sort` parameter with comma-separated field names. Prefix a field name with
-`-` for descending order:
-
-```text
-GET /users/?sort=-created_at,name
-```
-
-Produces `ORDER BY created_at DESC, name ASC`.
-
-> **Default ordering:** When no `sort` parameter is given and the model has an `id`
-> column, V1 automatically applies `ORDER BY id ASC`. Models without an `id` column
-> return results in an unspecified order.
-
-### Pagination
-
-Use `limit` and `offset` to page through results. Both are optional — omitting
-them returns all matching rows (no automatic pagination in V1). Set
-`default_limit` on the view class if you want an implicit cap.
-
-```text
-GET /users/?limit=20&offset=40
-```
-
-Negative values return HTTP 422.
-
-### Relation filtering
-
-Filtering on a related model's field uses dot notation:
-
-```text
-GET /orders/?filter[user.name]=Alice
-```
-
-This automatically joins the `user` table and filters on `user.name`. The relation
-must be defined on both the SQLAlchemy model (as a `relationship`) and the Pydantic
-schema (as a nested schema field). Optional nested schemas (`UserSchema | None`) and
-deep nesting (`filter[blog.author.name]=Alice`) are supported. Lists of nested
-schemas (`list[UserSchema]`) are **not** supported.
-
-### Quick reference
-
-```text
-GET /users/?filter[name]=John
-GET /users/?filter[id]=1,2,3
-GET /users/?filter[age]=>=18&filter[age]=<65
-GET /users/?filter[deleted_at]=null
-GET /users/?filter[status]=!inactive
-GET /users/?contains[email]=example
-GET /users/?contains[name]=john doe
-GET /users/?sort=-id,name
-GET /users/?limit=20&offset=0
-```
-
----
-
-## V2 Style
-
-V2 uses direct field names and double-underscore suffixes for operators, similar to
-Django or other mainstream frameworks.
-
-> **Pagination is opt-in.** Like V1, V2 returns every matching row when no
-> `page_size` is supplied. Pass `page_size` (and optionally `page`) to enable
-> pagination, or set `default_page_size` on the view class if you want every
-> request to be paginated by default.
-
-### Filtering
+## Filtering
 
 Plain equality uses the bare field name:
 
@@ -201,105 +50,164 @@ Suffixes add other operators:
 | `__contains` | `field ILIKE '%value%'` | `?email__contains=example` |
 | `__isnull` | `field IS NULL` / `IS NOT NULL` | `?deleted_at__isnull=true` |
 
-`__isnull` accepts a boolean value (`true` or `false`), **not** the string `"null"`.
+`__isnull` accepts a boolean value (`true` or `false`), not the string
+`"null"`.
 
-#### OR logic with comma-separated values
+Range operators (`__gte`/`__lte`/`__gt`/`__lt`) are only generated for
+orderable column types — they're omitted for booleans and UUIDs.
+`__contains` is only generated for string fields.
 
-Comma-separated values in a plain equality filter are combined with OR:
+### Comma logic on bare equality
+
+Comma-separated values in a plain equality filter are OR-combined:
 
 ```text
 GET /users/?status=active,pending
 ```
 
-Produces `WHERE status = 'active' OR status = 'pending'`.
+Produces `WHERE status = 'active' OR status = 'pending'`. Equivalent to
+SQL `IN`.
 
-#### AND logic with whitespace-separated terms (contains)
+### Comma logic on `__ne` (NOT IN)
 
-Like V1, `__contains` splits on whitespace and ANDs the terms:
+Comma-separated values in `__ne` are AND-combined — the row must differ
+from every listed value:
 
 ```text
-GET /users/?name__contains=john doe
+GET /users/?status__ne=archived,deleted
+```
+
+Produces `WHERE status != 'archived' AND status != 'deleted'`. Equivalent
+to SQL `NOT IN`.
+
+### AND-combining multiple `__contains` terms
+
+The precise form is to repeat the parameter — each predicate becomes its
+own ILIKE clause and they are AND-combined:
+
+```text
+GET /users/?name__contains=john&name__contains=doe
 ```
 
 Produces `WHERE name ILIKE '%john%' AND name ILIKE '%doe%'`.
 
-> **Comma vs. space:** For both V1 and V2, comma means OR on equality filters
-> (`?id=1,2,3`), and space means AND on contains (`?name__contains=john doe`).
-> These are intentionally opposite and apply consistently across both versions.
+As a convenience, whitespace inside one `__contains` value is also
+AND-split. `?name__contains=john%20doe` is equivalent to the form above.
+Prefer repeated parameters when you control the URL — they are
+unambiguous and survive any client/server quoting changes.
 
-### Sorting
+Literal `%`, `_`, and `\` characters are escaped before building the SQL
+`ILIKE`, so contains searches behave like literal substring matching
+rather than wildcard matching.
 
-Use the `order_by` parameter with comma-separated field names. Prefix with `-` for
-descending:
+### Multiple filters on the same field
+
+Repeat the parameter to add AND conditions:
+
+```text
+GET /users/?created_at__gte=2024-01-01&created_at__lt=2025-01-01
+```
+
+Produces `WHERE created_at >= '2024-01-01' AND created_at < '2025-01-01'`.
+
+---
+
+## Sorting
+
+Use the `order_by` parameter with comma-separated field names. Prefix
+with `-` for descending:
 
 ```text
 GET /users/?order_by=-created_at,name
 ```
 
-> **Default ordering:** When no `order_by` parameter is given and the model has an
-> `id` column, V2 automatically applies `ORDER BY id ASC`, same as V1.
+> **Default ordering:** When no `order_by` parameter is given and the
+> model has an `id` column, the framework automatically applies
+> `ORDER BY id ASC`. Models without an `id` column return results in an
+> unspecified order.
 
-### Pagination
+---
+
+## Pagination
 
 ```text
 GET /users/?page=2&page_size=50
 ```
 
-`page` is 1-based. `page_size` must be > 0. When `page_size` is omitted, the
-endpoint returns every matching row (no implicit cap). To enforce a default
-page size, set `default_page_size` on the view class.
+`page` is 1-based. `page_size` must be `>= 1` and `<= max_page_size`
+(default 1000). When `page_size` is omitted, the endpoint returns every
+matching row (no implicit cap). To enforce a default page size, set
+`default_page_size` on the view class:
 
-### Alias support
+```python
+class UserView(fr.AsyncRestView):
+    default_page_size = 25
+    max_page_size = 200
+```
 
-For flat fields, V2 query parameter names follow the Pydantic schema field **aliases**.
-If a schema field defines `alias="userName"`, the query parameter key is `userName`,
-not `user_name`:
+Out-of-range pagination values produce a standard `422` response from
+FastAPI.
+
+---
+
+## Alias support
+
+Query parameter keys follow the Pydantic schema field's **public name**:
+the alias when one is declared, the Python field name otherwise. The
+public name is the only name the URL surface accepts. ``populate_by_name``
+controls how Pydantic parses request bodies; it does **not** extend the
+list-params URL contract with extra Python-name aliases.
 
 ```python
 class UserSchema(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
-
     user_name: Annotated[str, Field(alias="userName")]
 ```
 
 ```text
-GET /users/?userName=Alice        # uses the alias — always works
-GET /users/?user_name=Alice       # works only if populate_by_name=True
+GET /users/?userName=Alice        # supported
+GET /users/?user_name=Alice       # rejected — Python name is not exposed
 ```
 
-When `populate_by_name=True` is set on the schema config, both the alias and the
-field name are accepted as query parameters for flat fields.
+If you want a different URL key, change the alias.
 
-### Relation filtering
+---
 
-V2 uses the same dot notation as V1:
+## Relation filtering
+
+Filtering on a related model's field uses dot notation:
 
 ```text
 GET /orders/?user.name=Alice
 GET /orders/?user.name__contains=ali
 ```
 
-The same requirements apply: the relation must be defined in both the SQLAlchemy
-model and the Pydantic schema. For aliased nested fields, only the **nested field**
-segment uses the alias. The relation segment itself must still use the schema/model
-field name.
+The relation must be defined on both the SQLAlchemy model (as a
+`relationship`) and the Pydantic schema (as a nested schema field).
+Optional nested schemas (`UserSchema | None`) and deep nesting
+(`?blog.author.name=Alice`) are supported. Lists of nested schemas
+(`list[UserSchema]`) are not.
 
-Example:
+Aliases apply to **every** segment of the dotted path — both the
+relation field and the nested column. The list-params keys always follow
+the response schema's public names:
 
 ```python
 class AuthorSchema(BaseModel):
     name: str = Field(alias="authorName")
 
 class ArticleSchema(BaseModel):
-    author: AuthorSchema
+    author: AuthorSchema = Field(alias="writer")
 ```
 
 ```text
-GET /articles/?author.authorName=Alice   # supported
-GET /articles/?writer.authorName=Alice   # not supported
+GET /articles/?writer.authorName=Alice    # supported (aliased segments)
+GET /articles/?author.name=Alice          # not exposed — canonical names
+                                          # are not part of the public contract
 ```
 
-### Quick reference
+---
+
+## Quick reference
 
 ```text
 GET /users/?name=John
@@ -314,30 +222,11 @@ GET /users/?page=2&page_size=50
 
 ---
 
-## V1 vs V2 at a glance
-
-| Feature | V1 | V2 |
-|---|---|---|
-| Equality | `?filter[name]=John` | `?name=John` |
-| Range (≥) | `?filter[age]=>=18` | `?age__gte=18` |
-| Not equals | `?filter[status]=!inactive` | `?field__ne=value` *(see note)* |
-| Null check | `?filter[x]=null` | `?x__isnull=true` |
-| Not null | `?filter[x]=!null` | `?x__isnull=false` |
-| Contains | `?contains[email]=ex` | `?email__contains=ex` |
-| Sort | `?sort=-id` | `?order_by=-id` |
-| Pagination | `?limit=20&offset=0` *(opt-in)* | `?page=1&page_size=10` *(opt-in)* |
-| OR values | `?filter[id]=1,2,3` | `?id=1,2,3` |
-| AND contains | `?contains[n]=a b` | `?n__contains=a b` |
-| Relation filter | `?filter[user.name]=Alice` | `?user.name=Alice` |
-| Default order | `ORDER BY id` (if id exists) | `ORDER BY id` (if id exists) |
-
----
-
 ## Overriding query logic per view
 
 Override `build_list_query` to inject a base query before the framework
-applies query modifiers. Both `handle_list` and `count_index` consult this
-seam, so the filter applies to listing **and** the pagination total
+applies the URL parameters. Both `handle_list` and `count_index` consult
+this seam, so the filter applies to listing **and** the pagination total
 without further plumbing:
 
 ```python
@@ -355,7 +244,7 @@ cleanly with any base-class or mixin filter. See
 [Composing views with mixins](howto_compose_views_with_mixins.md) for the
 multi-layer pattern.
 
-`handle_list` still accepts an optional `query` argument for the rare case
-where the custom query intentionally should *not* affect `count_index`
-— for example, a list-only result decoration that needs a different
-join shape than the count. Reach for `build_list_query` first.
+`handle_list` still accepts an optional `query` argument for the rare
+case where the custom query intentionally should *not* affect
+`count_index` — for example, a list-only result decoration that needs a
+different join shape than the count. Reach for `build_list_query` first.

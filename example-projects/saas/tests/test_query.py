@@ -83,7 +83,7 @@ class TestFiltering:
         setup_test_data(client)
 
         # Filter for todo tasks
-        response = client.get("/tasks/?filter[status]=todo")
+        response = client.get("/tasks/?status=todo")
         tasks = response.json()
 
         assert all(t["status"] == "todo" for t in tasks)
@@ -94,7 +94,7 @@ class TestFiltering:
         setup_test_data(client)
 
         # Filter for critical priority
-        response = client.get("/tasks/?filter[priority]=1")
+        response = client.get("/tasks/?priority=1")
         tasks = response.json()
 
         assert all(t["priority"] == 1 for t in tasks)
@@ -105,7 +105,7 @@ class TestFiltering:
         setup_test_data(client)
 
         # Filter for admins
-        response = client.get("/users/?filter[role]=admin")
+        response = client.get("/users/?role=admin")
         users = response.json()
 
         assert all(u["role"] == "admin" for u in users)
@@ -119,7 +119,7 @@ class TestSorting:
         """Test sorting tasks by priority ascending."""
         setup_test_data(client)
 
-        response = client.get("/tasks/?sort=priority")
+        response = client.get("/tasks/?order_by=priority")
         tasks = response.json()
 
         priorities = [t["priority"] for t in tasks]
@@ -129,7 +129,7 @@ class TestSorting:
         """Test sorting tasks by priority descending."""
         setup_test_data(client)
 
-        response = client.get("/tasks/?sort=-priority")
+        response = client.get("/tasks/?order_by=-priority")
         tasks = response.json()
 
         priorities = [t["priority"] for t in tasks]
@@ -139,7 +139,7 @@ class TestSorting:
         """Test sorting users by name."""
         setup_test_data(client)
 
-        response = client.get("/users/?sort=name")
+        response = client.get("/users/?order_by=name")
         users = response.json()
 
         names = [u["name"] for u in users]
@@ -149,38 +149,27 @@ class TestSorting:
 class TestPagination:
     """Test pagination query parameters."""
 
-    def test_limit(self, client):
-        """Test limiting results."""
+    def test_page_size_caps_results(self, client):
+        """``page_size`` limits the number of results."""
         setup_test_data(client)
 
-        response = client.get("/tasks/?limit=2")
+        response = client.get("/tasks/?page_size=2")
         tasks = response.json()
 
         assert len(tasks) == 2
 
-    def test_offset(self, client):
-        """Test offset pagination."""
+    def test_page_size_and_page(self, client):
+        """``page_size`` + ``page`` gives offset-based pagination."""
         setup_test_data(client)
 
-        # Get all tasks sorted
-        response = client.get("/tasks/?sort=title")
-        all_tasks = response.json()
+        response = client.get("/tasks/?order_by=title&page_size=2")
+        first_page = response.json()
+        response = client.get("/tasks/?order_by=title&page_size=2&page=2")
+        second_page = response.json()
 
-        # Get with offset
-        response = client.get("/tasks/?sort=title&offset=2")
-        offset_tasks = response.json()
-
-        assert offset_tasks[0]["title"] == all_tasks[2]["title"]
-
-    def test_limit_and_offset(self, client):
-        """Test combined limit and offset."""
-        setup_test_data(client)
-
-        # Get page 2 (2 items per page)
-        response = client.get("/tasks/?sort=title&limit=2&offset=2")
-        tasks = response.json()
-
-        assert len(tasks) == 2
+        assert len(first_page) == 2
+        assert len(second_page) >= 1
+        assert first_page[0]["title"] != second_page[0]["title"]
 
 
 class TestCombinedQueries:
@@ -190,7 +179,7 @@ class TestCombinedQueries:
         """Test filtering and sorting together."""
         setup_test_data(client)
 
-        response = client.get("/tasks/?filter[status]=todo&sort=-priority")
+        response = client.get("/tasks/?status=todo&order_by=-priority")
         tasks = response.json()
 
         # All should be todo
@@ -203,19 +192,15 @@ class TestCombinedQueries:
         """Test filter, sort, and pagination together."""
         setup_test_data(client)
 
-        response = client.get("/tasks/?filter[status]=in_progress&sort=title&limit=1")
+        response = client.get("/tasks/?status=in_progress&order_by=title&page_size=1")
         tasks = response.json()
 
         assert len(tasks) == 1
         assert tasks[0]["status"] == "in_progress"
 
 
-class TestV2QueryModifiers:
-    """Test V2 (direct field name) query parameter style on LabelView.
-
-    LabelView sets query_modifier_version = QueryModifierVersion.V2, so it
-    accepts ``name=urgent`` instead of the V1 ``filter[name]=urgent``.
-    """
+class TestLabelFiltering:
+    """Filter and sort behaviour against ``LabelView``."""
 
     def _setup_labels(self, client):
         unique = str(uuid.uuid4())[:8]
@@ -230,8 +215,8 @@ class TestV2QueryModifiers:
         client.post("/labels/", json={"name": "bug", "color": "#0000ff", "organization_id": org_id})
         return org_id
 
-    def test_v2_filter_by_name(self, client):
-        """V2 filter: ?name=urgent returns only labels named 'urgent'."""
+    def test_filter_by_name(self, client):
+        """Filter: ?name=urgent returns only labels named 'urgent'."""
         self._setup_labels(client)
 
         response = client.get("/labels/?name=urgent")
@@ -240,8 +225,8 @@ class TestV2QueryModifiers:
         assert all(lb["name"] == "urgent" for lb in labels)
         assert len(labels) >= 1
 
-    def test_v2_sort_by_name(self, client):
-        """V2 sort: ?order_by=name returns labels sorted alphabetically."""
+    def test_sort_by_name(self, client):
+        """Sort: ?order_by=name returns labels sorted alphabetically."""
         self._setup_labels(client)
 
         response = client.get("/labels/?order_by=name")
@@ -250,8 +235,8 @@ class TestV2QueryModifiers:
         names = [lb["name"] for lb in labels]
         assert names == sorted(names)
 
-    def test_v2_pagination(self, client):
-        """V2 pagination: ?page=1&page_size=2 returns at most 2 items."""
+    def test_pagination(self, client):
+        """Pagination: ?page=1&page_size=2 returns at most 2 items."""
         self._setup_labels(client)
 
         response = client.get("/labels/?page_size=2&page=1")
@@ -259,8 +244,8 @@ class TestV2QueryModifiers:
 
         assert len(labels) <= 2
 
-    def test_v2_filter_composes_with_tenant_scope(self, client):
-        """LabelView's V2 filters compose with TenantScopedMixin."""
+    def test_filter_composes_with_tenant_scope(self, client):
+        """LabelView's filters compose with TenantScopedMixin."""
         import app.views._base as base_view
 
         org1 = client.post(

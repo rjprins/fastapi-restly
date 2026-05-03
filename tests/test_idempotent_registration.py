@@ -18,7 +18,7 @@ registering the same View twice would:
   AttributeError on the second run, since the attribute was already removed.
 * Risk corrupting the first registration's class attributes (``cls.schema``,
   ``cls.creation_schema``, ``cls.update_schema``, ``cls.index_param_schema``,
-  ``cls.query_modifier_version``, ``cls.pagination_response_schema``).
+  ``cls.pagination_response_schema``).
 """
 
 from collections.abc import Iterator
@@ -174,7 +174,6 @@ def test_class_attributes_are_not_corrupted_by_second_registration():
         "creation_schema": WidgetView.creation_schema,
         "update_schema": WidgetView.update_schema,
         "index_param_schema": WidgetView.index_param_schema,
-        "query_modifier_version": WidgetView.query_modifier_version,
     }
     # Snapshot endpoint names: _init_all_endpoints prefixes with the lowercased
     # class name, so e.g. WidgetView.post.__name__ == "widgetview_post". A

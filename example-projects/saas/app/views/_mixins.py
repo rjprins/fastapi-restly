@@ -104,6 +104,10 @@ class SoftDeleteMixin:
         session: AsyncSession
         model: type[DeclarativeBase]
 
+    # Allow the ``?include_deleted=true`` escape hatch through the strict
+    # unknown-query-param guard on the index endpoint.
+    extra_query_params = ("include_deleted",)
+
     def _include_deleted(self) -> bool:
         return (
             self.request.query_params.get("include_deleted", "false").lower()

@@ -1,4 +1,4 @@
-"""Test query modifiers v1 functionality."""
+"""Tests for the list-params query layer (filtering, sorting, pagination)."""
 
 from datetime import datetime
 from typing import Any, Optional, Union
@@ -8,27 +8,23 @@ import pydantic
 import pytest
 import sqlalchemy
 from fastapi import HTTPException
-from pydantic.fields import FieldInfo
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from starlette.datastructures import QueryParams
 
 from fastapi_restly.models import DataclassBase
-from fastapi_restly.query._v1 import (
-    _get_int,
-    _is_string_field,
+from fastapi_restly.query import apply_list_params, create_list_params_schema
+from fastapi_restly.query._impl import (
+    _apply_filtering,
+    _apply_pagination,
+    _apply_sorting,
     _make_where_clause,
     _parse_value,
-    apply_filtering,
-    apply_pagination,
-    apply_query_modifiers,
-    apply_sorting,
-    create_query_param_schema,
 )
 
 
-class TestModelV1(DataclassBase):
-    __tablename__ = "test_model_v1"
+class TestModel(DataclassBase):
+    __tablename__ = "test_model"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(50))
@@ -38,7 +34,7 @@ class TestModelV1(DataclassBase):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
-class TestSchemaV1(pydantic.BaseModel):
+class TestSchema(pydantic.BaseModel):
     id: int
     name: str
     age: int
@@ -47,38 +43,35 @@ class TestSchemaV1(pydantic.BaseModel):
     is_active: bool
 
 
-class TestNestedSchemaV1(pydantic.BaseModel):
-    user: TestSchemaV1
+class TestNestedSchema(pydantic.BaseModel):
+    user: TestSchema
 
 
-class TestNestedModelV1(DataclassBase):
-    __tablename__ = "test_nested_model_v1"
+class TestNestedModel(DataclassBase):
+    __tablename__ = "test_nested_model"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(Integer)
 
 
-# Test models for relation filtering
 class UserModel(DataclassBase):
-    __tablename__ = "users"
+    __tablename__ = "users_v2"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(50))
     email: Mapped[str] = mapped_column(String(100))
 
-    # Relationship
     posts: Mapped[list["PostModel"]] = relationship("PostModel", back_populates="author")
 
 
 class PostModel(DataclassBase):
-    __tablename__ = "posts"
+    __tablename__ = "posts_v2"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     title: Mapped[str] = mapped_column(String(100))
     content: Mapped[str] = mapped_column(String(500))
-    author_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    author_id: Mapped[int] = mapped_column(ForeignKey("users_v2.id"))
 
-    # Relationship
     author: Mapped[UserModel] = relationship("UserModel", back_populates="posts")
 
 
@@ -95,14 +88,38 @@ class PostSchema(pydantic.BaseModel):
     author: UserSchema
 
 
+class AuditUserModel(DataclassBase):
+    __tablename__ = "audit_users_v2"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(50))
+
+
+class AuditLogModel(DataclassBase):
+    __tablename__ = "audit_logs_v2"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    creator_id: Mapped[int] = mapped_column(ForeignKey("audit_users_v2.id"))
+    updater_id: Mapped[int] = mapped_column(ForeignKey("audit_users_v2.id"))
+
+    creator: Mapped[AuditUserModel] = relationship(foreign_keys=[creator_id])
+    updater: Mapped[AuditUserModel] = relationship(foreign_keys=[updater_id])
+
+
+class AuditUserSchema(pydantic.BaseModel):
+    id: int
+    name: str
+
+
+class AuditLogSchema(pydantic.BaseModel):
+    id: int
+    creator: AuditUserSchema
+    updater: AuditUserSchema
+
+
 @pytest.fixture
 def select_query():
-    return sqlalchemy.select(TestModelV1)
-
-
-@pytest.fixture
-def post_select_query():
-    return sqlalchemy.select(PostModel)
+    return sqlalchemy.select(TestModel)
 
 
 @pytest.fixture
@@ -112,412 +129,397 @@ def mock_query_params():
     return _create_params
 
 
-class TestCreateQueryParamSchema:
-    def test_create_query_param_schema_basic(self):
+@pytest.fixture
+def post_select_query():
+    return sqlalchemy.select(PostModel)
+
+
+@pytest.fixture
+def audit_log_select_query():
+    return sqlalchemy.select(AuditLogModel)
+
+
+class TestCreateListParamsSchema:
+    def test_create_list_params_schema_basic(self):
         """Test creating a query param schema for basic fields."""
-        schema = create_query_param_schema(TestSchemaV1)
+        schema = create_list_params_schema(TestSchema)
 
         # Check that the schema was created
-        assert schema.__name__ == "QueryParamTestSchemaV1"
+        assert schema.__name__ == "ListParamsTestSchema"
 
         # Check that pagination fields exist
-        assert "limit" in schema.model_fields
-        assert "offset" in schema.model_fields
-        assert "sort" in schema.model_fields
+        assert "page" in schema.model_fields
+        assert "page_size" in schema.model_fields
+        assert "order_by" in schema.model_fields
 
-        # Check that filter fields exist
-        assert "filter[name]" in schema.model_fields
-        assert "filter[age]" in schema.model_fields
-        assert "filter[email]" in schema.model_fields
+        # Check that field filters exist
+        assert "name" in schema.model_fields
+        assert "age" in schema.model_fields
+        assert "email" in schema.model_fields
 
-        # Check that contains fields exist for string fields
-        assert "contains[name]" in schema.model_fields
-        assert "contains[email]" in schema.model_fields
-        assert "contains[created_at]" not in schema.model_fields  # datetime field
-        assert "contains[age]" not in schema.model_fields  # int field
+        # Check that range filters exist
+        assert "age__gte" in schema.model_fields
+        assert "age__lte" in schema.model_fields
+        assert "age__gt" in schema.model_fields
+        assert "age__lt" in schema.model_fields
+        assert "age__isnull" in schema.model_fields
 
-    def test_create_query_param_schema_nested(self):
+        # Check that boolean filters exist
+        assert "is_active__isnull" in schema.model_fields
+        isnull_annotation = schema.model_fields["age__isnull"].annotation
+        schema_types = {
+            item["type"]
+            for item in pydantic.TypeAdapter(isnull_annotation).json_schema()["anyOf"]
+        }
+        assert schema_types == {"boolean", "null"}
+
+    def test_create_list_params_schema_nested(self):
         """Test creating a query param schema for nested fields."""
-        schema = create_query_param_schema(TestNestedSchemaV1)
+        schema = create_list_params_schema(TestNestedSchema)
 
-        # Check that nested filter fields exist
-        assert "filter[user.name]" in schema.model_fields
-        assert "filter[user.age]" in schema.model_fields
+        # Check that nested field filters exist (using dot notation)
+        assert "user.name" in schema.model_fields
+        assert "user.age__gte" in schema.model_fields
 
-        # Check that nested contains fields exist for string fields
-        assert "contains[user.name]" in schema.model_fields
-        assert "contains[user.email]" in schema.model_fields
-        assert "contains[user.age]" not in schema.model_fields  # int field
+    def test_create_list_params_schema_nested_pep604_optional(self):
+        """Optional nested schemas using X | None should still expand nested filters."""
+        class OptionalNestedSchema(pydantic.BaseModel):
+            user: TestSchema | None = None
 
-    def test_create_query_param_schema_with_relations(self):
-        """Test creating a query param schema for models with relations."""
-        schema = create_query_param_schema(PostSchema)
+        schema = create_list_params_schema(OptionalNestedSchema)
 
-        # Check that relation filter fields exist
-        assert "filter[author.name]" in schema.model_fields
-        assert "filter[author.email]" in schema.model_fields
-
-        # Check that relation contains fields exist for string fields
-        assert "contains[author.name]" in schema.model_fields
-        assert "contains[author.email]" in schema.model_fields
-
-
-def _sql(query) -> str:
-    return str(query.compile(compile_kwargs={"literal_binds": True}))
+        assert "user.name" in schema.model_fields
+        assert "user.email__contains" in schema.model_fields
 
 
 class TestApplyPagination:
-    def test_apply_pagination_with_limit(self, select_query, mock_query_params):
-        result = apply_pagination(mock_query_params(limit="10"), select_query)
-        assert "LIMIT 10" in _sql(result)
+    def test__apply_pagination_defaults(self, select_query, mock_query_params):
+        """Without ``page_size`` no LIMIT/OFFSET is applied (default is unlimited)."""
+        params = mock_query_params()
+        result = _apply_pagination(params, select_query)
 
-    def test_apply_pagination_with_offset(self, select_query, mock_query_params):
-        result = apply_pagination(mock_query_params(offset="20"), select_query)
-        assert "OFFSET 20" in _sql(result)
+        assert "LIMIT" not in str(result)
+        assert "OFFSET" not in str(result)
 
-    def test_apply_pagination_with_both(self, select_query, mock_query_params):
-        result = apply_pagination(mock_query_params(limit="10", offset="20"), select_query)
-        sql = _sql(result)
-        assert "LIMIT 10" in sql
-        assert "OFFSET 20" in sql
+    def test__apply_pagination_custom_values(self, select_query, mock_query_params):
+        """Test pagination with custom values."""
+        params = mock_query_params(page="2", page_size="25")
+        result = _apply_pagination(params, select_query)
 
-    def test_apply_pagination_no_params(self, select_query, mock_query_params):
-        result = apply_pagination(mock_query_params(), select_query)
-        sql = _sql(result).upper()
-        assert "LIMIT" not in sql
-        assert "OFFSET" not in sql
+        # Should apply page=2, page_size=25
+        assert "LIMIT :param_1" in str(result)
+        assert "OFFSET :param_2" in str(result)  # (2-1) * 25
 
-    def test_apply_pagination_invalid_limit(self, select_query, mock_query_params):
+    def test__apply_pagination_invalid_page(self, select_query, mock_query_params):
+        """Invalid ``page`` is rejected — but only when pagination is engaged."""
+        params = mock_query_params(page="invalid", page_size="10")
+
         with pytest.raises(HTTPException) as exc_info:
-            apply_pagination(mock_query_params(limit="invalid"), select_query)
-        assert exc_info.value.status_code == 400
-        assert "limit" in str(exc_info.value.detail)
+            _apply_pagination(params, select_query)
 
-    def test_apply_pagination_invalid_offset(self, select_query, mock_query_params):
-        with pytest.raises(HTTPException) as exc_info:
-            apply_pagination(mock_query_params(offset="invalid"), select_query)
         assert exc_info.value.status_code == 400
-        assert "offset" in str(exc_info.value.detail)
+        assert "not an integer" in str(exc_info.value.detail)
+
+    def test__apply_pagination_invalid_page_size(self, select_query, mock_query_params):
+        """Test pagination with invalid page_size value."""
+        params = mock_query_params(page_size="invalid")
+
+        with pytest.raises(HTTPException) as exc_info:
+            _apply_pagination(params, select_query)
+
+        assert exc_info.value.status_code == 400
+        assert "not an integer" in str(exc_info.value.detail)
 
 
 class TestApplySorting:
-    def test_apply_sorting_default(self, select_query, mock_query_params):
-        """Default sort applies ORDER BY id."""
-        result = apply_sorting(mock_query_params(), select_query, TestModelV1)
-        sql = str(result)
-        assert "ORDER BY" in sql.upper()
-        assert "id" in sql
+    def test__apply_sorting_default(self, select_query, mock_query_params):
+        """Test sorting with default (no order_by parameter)."""
+        params = mock_query_params()
+        result = _apply_sorting(params, select_query, TestModel, TestSchema)
 
-    def test_apply_sorting_single_field(self, select_query, mock_query_params):
-        result = apply_sorting(mock_query_params(sort="name"), select_query, TestModelV1)
-        sql = str(result)
-        assert "ORDER BY" in sql.upper()
-        assert "name" in sql
+        # Should order by id by default
+        assert "ORDER BY test_model.id" in str(result)
 
-    def test_apply_sorting_descending(self, select_query, mock_query_params):
-        result = apply_sorting(mock_query_params(sort="-name"), select_query, TestModelV1)
-        sql = str(result).upper()
-        assert "ORDER BY" in sql
-        assert "DESC" in sql
+    def test__apply_sorting_single_field(self, select_query, mock_query_params):
+        """Test sorting with single field."""
+        params = mock_query_params(order_by="name")
+        result = _apply_sorting(params, select_query, TestModel, TestSchema)
 
-    def test_apply_sorting_multiple_fields(self, select_query, mock_query_params):
-        result = apply_sorting(mock_query_params(sort="name,-age"), select_query, TestModelV1)
-        sql = str(result)
-        assert "name" in sql
-        assert "age" in sql
-        assert "DESC" in sql.upper()
+        assert "ORDER BY test_model.name" in str(result)
 
-    def test_apply_sorting_invalid_field(self, select_query, mock_query_params):
+    def test__apply_sorting_descending(self, select_query, mock_query_params):
+        """Test sorting with descending order."""
+        params = mock_query_params(order_by="-name")
+        result = _apply_sorting(params, select_query, TestModel, TestSchema)
+
+        assert "ORDER BY test_model.name DESC" in str(result)
+
+    def test__apply_sorting_multiple_fields(self, select_query, mock_query_params):
+        """Test sorting with multiple fields."""
+        params = mock_query_params(order_by="name,-age")
+        result = _apply_sorting(params, select_query, TestModel, TestSchema)
+
+        assert "ORDER BY test_model.name ASC, test_model.age DESC" in str(result)
+
+
+class TestApplyFilteringIsNull:
+    def test__apply_filtering_isnull_valid_boolean(self, select_query, mock_query_params):
+        params = mock_query_params(age__isnull="true")
+        result = _apply_filtering(params, select_query, TestModel, TestSchema)
+
+        assert "test_model.age IS NULL" in str(result)
+
+    def test__apply_filtering_isnull_rejects_invalid_values(self, select_query, mock_query_params):
+        params = mock_query_params(age__isnull="123")
+
         with pytest.raises(HTTPException) as exc_info:
-            apply_sorting(mock_query_params(sort="invalid_field"), select_query, TestModelV1)
+            _apply_filtering(params, select_query, TestModel, TestSchema)
+
+        assert exc_info.value.status_code == 400
+
+    def test__apply_sorting_invalid_field(self, select_query, mock_query_params):
+        """Test sorting with invalid field."""
+        params = mock_query_params(order_by="invalid_field")
+
+        with pytest.raises(HTTPException) as exc_info:
+            _apply_sorting(params, select_query, TestModel, TestSchema)
+
         assert exc_info.value.status_code == 400
         assert "Invalid attribute" in str(exc_info.value.detail)
 
 
 class TestApplyFiltering:
-    def test_apply_filtering_equals(self, select_query, mock_query_params):
-        result = apply_filtering(
-            mock_query_params(**{"filter[name]": "John"}), select_query, TestModelV1, TestSchemaV1
-        )
-        assert "name = 'John'" in _sql(result)
+    def test__apply_filtering_equals(self, select_query, mock_query_params):
+        """Test filtering with equals operator."""
+        params = mock_query_params(name="John")
+        result = _apply_filtering(params, select_query, TestModel, TestSchema)
 
-    def test_apply_filtering_greater_than(self, select_query, mock_query_params):
-        result = apply_filtering(
-            mock_query_params(**{"filter[age]": ">25"}), select_query, TestModelV1, TestSchemaV1
-        )
-        assert "age > 25" in _sql(result)
+        assert "WHERE test_model.name = " in str(result)
 
-    def test_apply_filtering_less_than(self, select_query, mock_query_params):
-        result = apply_filtering(
-            mock_query_params(**{"filter[age]": "<30"}), select_query, TestModelV1, TestSchemaV1
-        )
-        assert "age < 30" in _sql(result)
+    def test__apply_filtering_greater_than(self, select_query, mock_query_params):
+        """Test filtering with greater than operator."""
+        params = mock_query_params(age__gt="25")
+        result = _apply_filtering(params, select_query, TestModel, TestSchema)
 
-    def test_apply_filtering_not_equals(self, select_query, mock_query_params):
-        result = apply_filtering(
-            mock_query_params(**{"filter[name]": "!John"}), select_query, TestModelV1, TestSchemaV1
-        )
-        sql = _sql(result)
-        assert "name != 'John'" in sql
+        assert "WHERE test_model.age > " in str(result)
 
-    def test_apply_filtering_is_null(self, select_query, mock_query_params):
-        result = apply_filtering(
-            mock_query_params(**{"filter[email]": "null"}), select_query, TestModelV1, TestSchemaV1
-        )
-        assert "IS NULL" in _sql(result).upper()
+    def test__apply_filtering_greater_than_equal(self, select_query, mock_query_params):
+        """Test filtering with greater than or equal operator."""
+        params = mock_query_params(age__gte="25")
+        result = _apply_filtering(params, select_query, TestModel, TestSchema)
 
-    def test_apply_filtering_is_not_null(self, select_query, mock_query_params):
-        result = apply_filtering(
-            mock_query_params(**{"filter[email]": "!null"}), select_query, TestModelV1, TestSchemaV1
-        )
-        assert "IS NOT NULL" in _sql(result).upper()
+        assert "WHERE test_model.age >=" in str(result)
 
-    def test_apply_filtering_multiple_values(self, select_query, mock_query_params):
-        """Multiple comma-separated values become OR clauses."""
-        result = apply_filtering(
-            mock_query_params(**{"filter[age]": "25,30,35"}), select_query, TestModelV1, TestSchemaV1
-        )
-        sql = _sql(result)
-        assert "25" in sql and "30" in sql and "35" in sql
+    def test__apply_filtering_less_than(self, select_query, mock_query_params):
+        """Test filtering with less than operator."""
+        params = mock_query_params(age__lt="25")
+        result = _apply_filtering(params, select_query, TestModel, TestSchema)
 
-    def test_apply_filtering_multiple_filters(self, select_query, mock_query_params):
-        """Multiple filter params are ANDed together."""
-        result = apply_filtering(
-            mock_query_params(**{"filter[name]": "John", "filter[age]": "25"}),
-            select_query, TestModelV1, TestSchemaV1,
-        )
-        sql = _sql(result)
-        assert "name = 'John'" in sql
-        assert "age = 25" in sql
+        assert "WHERE test_model.age < " in str(result)
 
-    def test_apply_filtering_invalid_field(self, select_query, mock_query_params):
+    def test__apply_filtering_less_than_equal(self, select_query, mock_query_params):
+        """Test filtering with less than or equal operator."""
+        params = mock_query_params(age__lte="25")
+        result = _apply_filtering(params, select_query, TestModel, TestSchema)
+
+        assert "WHERE test_model.age <=" in str(result)
+
+    def test__apply_filtering_not_equals(self, select_query, mock_query_params):
+        """Test filtering with not equals operator."""
+        params = mock_query_params(name__ne="John")
+        result = _apply_filtering(params, select_query, TestModel, TestSchema)
+
+        assert "WHERE test_model.name !=" in str(result)
+
+    def test__apply_filtering_is_null(self, select_query, mock_query_params):
+        """Test filtering with is null operator."""
+        params = mock_query_params(email__isnull="true")
+        result = _apply_filtering(params, select_query, TestModel, TestSchema)
+
+        assert "WHERE test_model.email IS NULL" in str(result)
+
+    def test__apply_filtering_is_not_null(self, select_query, mock_query_params):
+        """Test filtering with is not null operator."""
+        params = mock_query_params(email__isnull="false")
+        result = _apply_filtering(params, select_query, TestModel, TestSchema)
+
+        assert "WHERE test_model.email IS NOT NULL" in str(result)
+
+    def test__apply_filtering_multiple_values(self, select_query, mock_query_params):
+        """Test filtering with multiple values (OR)."""
+        params = mock_query_params(name="John,Alice")
+        result = _apply_filtering(params, select_query, TestModel, TestSchema)
+
+        assert "OR" in str(result)
+
+    def test__apply_filtering_multiple_filters(self, select_query, mock_query_params):
+        """Test filtering with multiple filters (AND)."""
+        params = mock_query_params(name="John", age__gte="25")
+        result = _apply_filtering(params, select_query, TestModel, TestSchema)
+
+        assert "AND" in str(result)
+
+    def test__apply_filtering_ignore_pagination_params(self, select_query, mock_query_params):
+        """Test that pagination parameters are ignored in filtering."""
+        params = mock_query_params(page="1", page_size="10", name="John")
+        result = _apply_filtering(params, select_query, TestModel, TestSchema)
+
+        # Should only filter by name, not include pagination in WHERE clause
+        assert "WHERE test_model.name = " in str(result)
+        assert "page" not in str(result).lower()
+
+    def test__apply_filtering_invalid_field(self, select_query, mock_query_params):
+        """Test filtering with invalid field."""
+        params = mock_query_params(invalid_field="value")
+
         with pytest.raises(HTTPException) as exc_info:
-            apply_filtering(
-                mock_query_params(**{"filter[invalid]": "value"}), select_query, TestModelV1, TestSchemaV1
-            )
+            _apply_filtering(params, select_query, TestModel, TestSchema)
+
         assert exc_info.value.status_code == 400
         assert "Invalid attribute" in str(exc_info.value.detail)
 
-
-class TestApplyContainsFiltering:
-    def test_apply_filtering_contains_single(self, select_query, mock_query_params):
-        result = apply_filtering(
-            mock_query_params(**{"contains[name]": "john"}), select_query, TestModelV1, TestSchemaV1
+    def test__apply_filtering_relation_field_uses_join(
+        self, post_select_query, mock_query_params
+    ):
+        """Relation filtering should join through the relationship instead of cross joining."""
+        params = mock_query_params(**{"author.name": "Alice"})
+        result = _apply_filtering(
+            params, post_select_query, PostModel, PostSchema
         )
-        sql = _sql(result).upper()
-        assert "LIKE" in sql
-        assert "JOHN" in sql
 
-    def test_apply_filtering_contains_multiple(self, select_query, mock_query_params):
-        """Space-separated values become multiple LIKE OR clauses."""
-        result = apply_filtering(
-            mock_query_params(**{"contains[name]": "john jane"}), select_query, TestModelV1, TestSchemaV1
+        rendered = str(result)
+        assert 'JOIN users_v2 ON users_v2.id = posts_v2.author_id' in rendered
+        assert 'FROM posts_v2, users_v2' not in rendered
+        assert "WHERE users_v2.name = " in rendered
+
+    def test__apply_filtering_relation_field_handles_ambiguous_foreign_keys(
+        self, audit_log_select_query, mock_query_params
+    ):
+        params = mock_query_params(**{"creator.name": "Alice"})
+        result = _apply_filtering(
+            params, audit_log_select_query, AuditLogModel, AuditLogSchema
         )
-        sql = _sql(result).upper()
-        assert "LIKE" in sql
-        assert "JOHN" in sql
-        assert "JANE" in sql
 
-    def test_apply_filtering_contains_with_filters(self, select_query, mock_query_params):
-        result = apply_filtering(
-            mock_query_params(**{"contains[name]": "john", "filter[age]": "25"}),
-            select_query, TestModelV1, TestSchemaV1,
+        rendered = str(result)
+        assert (
+            "JOIN audit_users_v2 ON audit_users_v2.id = audit_logs_v2.creator_id"
+            in rendered
         )
-        sql = _sql(result)
-        assert "LIKE" in sql.upper()
-        assert "age = 25" in sql
+        assert "WHERE audit_users_v2.name = " in rendered
 
-    def test_apply_filtering_contains_invalid_field(self, select_query, mock_query_params):
-        with pytest.raises(HTTPException) as exc_info:
-            apply_filtering(
-                mock_query_params(**{"contains[invalid]": "value"}), select_query, TestModelV1, TestSchemaV1
-            )
-        assert exc_info.value.status_code == 400
-        assert "Invalid attribute" in str(exc_info.value.detail)
-
-
-class TestApplyQueryModifiers:
-    def test_apply_query_modifiers_full(self, select_query, mock_query_params):
-        """All modifiers (pagination, sort, filter, contains) applied together."""
-        result = apply_query_modifiers(
-            mock_query_params(
-                limit="10", offset="20", sort="name,-age",
-                **{"filter[name]": "John", "contains[email]": "example"},
-            ),
-            select_query, TestModelV1, TestSchemaV1,
+    def test__apply_sorting_relation_field_handles_ambiguous_foreign_keys(
+        self, audit_log_select_query, mock_query_params
+    ):
+        params = mock_query_params(order_by="creator.name,-id")
+        result = _apply_sorting(
+            params, audit_log_select_query, AuditLogModel, AuditLogSchema
         )
-        sql = _sql(result)
-        assert "LIMIT 10" in sql
-        assert "OFFSET 20" in sql
-        assert "ORDER BY" in sql.upper()
-        assert "name = 'John'" in sql
 
-    def test_apply_query_modifiers_order(self, select_query, mock_query_params):
-        result = apply_query_modifiers(
-            mock_query_params(limit="10", sort="name", **{"filter[name]": "John"}),
-            select_query, TestModelV1, TestSchemaV1,
+        rendered = str(result)
+        assert (
+            "JOIN audit_users_v2 ON audit_users_v2.id = audit_logs_v2.creator_id"
+            in rendered
         )
-        sql = _sql(result)
-        assert "LIMIT 10" in sql
-        assert "ORDER BY" in sql.upper()
-        assert "name = 'John'" in sql
+        assert "ORDER BY audit_users_v2.name ASC, audit_logs_v2.id DESC" in rendered
 
 
-class TestRelationFiltering:
-    """Test filtering and sorting on relation fields in query modifiers v1."""
-
-    def test_apply_filtering_on_relation_field(self, post_select_query, mock_query_params):
-        """Filtering on author.name adds a JOIN and WHERE clause referencing the users table."""
-        result = apply_filtering(
-            mock_query_params(**{"filter[author.name]": "John"}), post_select_query, PostModel, PostSchema
+class TestApplyListParams:
+    def test_apply_list_params_full(self, select_query, mock_query_params):
+        """Test applying all query modifiers together."""
+        params = mock_query_params(
+            page="2",
+            page_size="25",
+            order_by="name,-age",
+            name="John",
+            age__gte="25"
         )
-        sql = _sql(result)
-        assert "JOIN" in sql.upper()
-        assert "name = 'John'" in sql
+        result = apply_list_params(params, select_query, TestModel, TestSchema)
 
-    def test_apply_filtering_on_relation_field_contains(self, post_select_query, mock_query_params):
-        """Contains filter on a relation field adds a JOIN and LIKE clause."""
-        result = apply_filtering(
-            mock_query_params(**{"contains[author.name]": "john"}), post_select_query, PostModel, PostSchema
-        )
-        sql = _sql(result).upper()
-        assert "JOIN" in sql
-        assert "LIKE" in sql
+        # Should have pagination, sorting, and filtering
+        assert "LIMIT :param_1" in str(result)
+        assert "OFFSET :param_2" in str(result)
+        assert "ORDER BY test_model.name ASC, test_model.age DESC" in str(result)
+        assert "WHERE" in str(result)
 
-    def test_apply_sorting_on_relation_field(self, post_select_query, mock_query_params):
-        """Sorting on author.name adds a JOIN and ORDER BY clause."""
-        result = apply_sorting(mock_query_params(sort="author.name"), post_select_query, PostModel)
-        sql = str(result).upper()
-        assert "ORDER BY" in sql
-        assert "JOIN" in sql
+    def test_apply_list_params_order(self, select_query, mock_query_params):
+        """Test that filtering is applied before sorting and pagination."""
+        params = mock_query_params(name="John", order_by="age", page="1")
 
-    def test_apply_filtering_multiple_relation_filters(self, post_select_query, mock_query_params):
-        """Multiple relation + direct filters produce JOIN and multiple WHERE conditions."""
-        result = apply_filtering(
-            mock_query_params(**{"filter[author.name]": "John", "filter[title]": "Test"}),
-            post_select_query, PostModel, PostSchema,
-        )
-        sql = _sql(result)
-        assert "JOIN" in sql.upper()
-        assert "name = 'John'" in sql
-        assert "title = 'Test'" in sql
+        with patch('fastapi_restly.query._impl._apply_filtering') as mock_filter:
+            with patch('fastapi_restly.query._impl._apply_sorting') as mock_sort:
+                with patch('fastapi_restly.query._impl._apply_pagination') as mock_paginate:
+                    apply_list_params(params, select_query, TestModel, TestSchema)
 
-    def test_apply_filtering_relation_field_email(self, post_select_query, mock_query_params):
-        """Filtering on a different relation field (author.email) also adds JOIN."""
-        result = apply_filtering(
-            mock_query_params(**{"filter[author.email]": "john@example.com"}),
-            post_select_query, PostModel, PostSchema,
-        )
-        sql = _sql(result)
-        assert "JOIN" in sql.upper()
-        assert "john@example.com" in sql
+                    # Check call order
+                    mock_filter.assert_called_once()
+                    mock_sort.assert_called_once()
+                    mock_paginate.assert_called_once()
 
 
 class TestParseValue:
     def test_parse_value_string(self):
         """Test parsing string values."""
-        result = _parse_value(TestSchemaV1, "name", "John")
+        result = _parse_value(TestSchema, "name", "John")
         assert result == "John"
 
     def test_parse_value_integer(self):
         """Test parsing integer values."""
-        result = _parse_value(TestSchemaV1, "age", "25")
+        result = _parse_value(TestSchema, "age", "25")
         assert result == 25
 
     def test_parse_value_boolean(self):
         """Test parsing boolean values."""
-        result = _parse_value(TestSchemaV1, "is_active", "true")
+        result = _parse_value(TestSchema, "is_active", "true")
         assert result is True
 
     def test_parse_value_datetime(self):
         """Test parsing datetime values."""
-        result = _parse_value(TestSchemaV1, "created_at", "2024-01-01T00:00:00")
+        result = _parse_value(TestSchema, "created_at", "2024-01-01T00:00:00")
         assert isinstance(result, datetime)
 
     def test_parse_value_invalid_field(self):
-        """Test parsing value with invalid field raises an exception."""
-        with pytest.raises(Exception):
-            _parse_value(TestSchemaV1, "invalid", "value")
+        """Test parsing with invalid field."""
+        with pytest.raises(HTTPException) as exc_info:
+            _parse_value(TestSchema, "invalid_field", "value")
 
-    def test_parse_value_relation_field(self):
-        """Test parsing value for a relation field."""
-        result = _parse_value(PostSchema, "author.name", "John")
-        assert result == "John"
+        assert exc_info.value.status_code == 400
+
+
+def _sql_v2(query) -> str:
+    return str(query.compile(compile_kwargs={"literal_binds": True}))
 
 
 class TestMakeWhereClause:
-    """Test _make_where_clause using real SQLAlchemy model attributes."""
+    """Test _make_where_clause by compiling real SQL — mirrors the V1 pattern."""
 
     def test_make_where_clause_equals(self):
-        clause = _make_where_clause(TestModelV1.name, "John", str)
-        assert "name = 'John'" in _sql(sqlalchemy.select(TestModelV1).where(clause))
+        clause = _make_where_clause(TestModel.name, "John", "eq", str)
+        assert "name = 'John'" in _sql_v2(sqlalchemy.select(TestModel).where(clause))
 
     def test_make_where_clause_greater_than(self):
-        clause = _make_where_clause(TestModelV1.age, ">25", int)
-        assert "age > 25" in _sql(sqlalchemy.select(TestModelV1).where(clause))
-
-    def test_make_where_clause_less_than(self):
-        clause = _make_where_clause(TestModelV1.age, "<30", int)
-        assert "age < 30" in _sql(sqlalchemy.select(TestModelV1).where(clause))
+        clause = _make_where_clause(TestModel.age, "25", "gt", int)
+        assert "age > 25" in _sql_v2(sqlalchemy.select(TestModel).where(clause))
 
     def test_make_where_clause_greater_than_equal(self):
-        clause = _make_where_clause(TestModelV1.age, ">=18", int)
-        assert "age >= 18" in _sql(sqlalchemy.select(TestModelV1).where(clause))
+        clause = _make_where_clause(TestModel.age, "18", "gte", int)
+        assert "age >= 18" in _sql_v2(sqlalchemy.select(TestModel).where(clause))
+
+    def test_make_where_clause_less_than(self):
+        clause = _make_where_clause(TestModel.age, "30", "lt", int)
+        assert "age < 30" in _sql_v2(sqlalchemy.select(TestModel).where(clause))
 
     def test_make_where_clause_less_than_equal(self):
-        clause = _make_where_clause(TestModelV1.age, "<=65", int)
-        assert "age <= 65" in _sql(sqlalchemy.select(TestModelV1).where(clause))
+        clause = _make_where_clause(TestModel.age, "65", "lte", int)
+        assert "age <= 65" in _sql_v2(sqlalchemy.select(TestModel).where(clause))
 
     def test_make_where_clause_not_equals(self):
-        clause = _make_where_clause(TestModelV1.name, "!John", str)
-        assert "name != 'John'" in _sql(sqlalchemy.select(TestModelV1).where(clause))
+        clause = _make_where_clause(TestModel.name, "John", "ne", str)
+        assert "name != 'John'" in _sql_v2(sqlalchemy.select(TestModel).where(clause))
 
-    def test_make_where_clause_is_null(self):
-        null_parser = lambda x: None if x == "null" else x
-        clause = _make_where_clause(TestModelV1.email, "null", null_parser)
-        assert "IS NULL" in _sql(sqlalchemy.select(TestModelV1).where(clause)).upper()
-
-
-class TestIsStringField:
-    def test_is_string_field_simple(self):
-        """Test string field detection for simple string."""
-        field = Mock(spec=FieldInfo)
-        field.annotation = str
-        assert _is_string_field(field) is True
-
-    def test_is_string_field_optional(self):
-        """Test string field detection for Optional[str]."""
-        field = Mock(spec=FieldInfo)
-        field.annotation = Optional[str]
-        assert _is_string_field(field) is True
-
-    def test_is_string_field_non_string(self):
-        """Test string field detection for non-string field."""
-        field = Mock(spec=FieldInfo)
-        field.annotation = int
-        assert _is_string_field(field) is False
-
-    def test_is_string_field_optional_non_string(self):
-        """Test string field detection for Optional[int]."""
-        field = Mock(spec=FieldInfo)
-        field.annotation = Optional[int]
-        assert _is_string_field(field) is False
-
-
-class TestGetInt:
-    def test_get_int_valid(self):
-        """Test getting integer from valid string."""
-        result = _get_int(QueryParams({"limit": "10"}), "limit")
-        assert result == 10
-
-    def test_get_int_none(self):
-        """Test getting integer when parameter is absent."""
-        assert _get_int(QueryParams({}), "limit") is None
-
-    def test_get_int_invalid(self):
-        """Test getting integer from invalid string raises 400."""
-        with pytest.raises(HTTPException) as exc_info:
-            _get_int(QueryParams({"limit": "invalid"}), "limit")
-
-        assert exc_info.value.status_code == 400
-        assert "limit" in str(exc_info.value.detail)
+    def test_make_where_clause_contains(self):
+        """contains operator should compile to ILIKE with wildcards."""
+        clause = _make_where_clause(TestModel.name, "oh", "contains", str)
+        sql = _sql_v2(sqlalchemy.select(TestModel).where(clause))
+        # SQLite renders ILIKE as LIKE LOWER(...)
+        assert "%oh%" in sql or "%%oh%%" in sql
+        assert "lower" in sql.lower() or "like" in sql.lower()

@@ -572,7 +572,7 @@ class TestPolymorphicTasks:
         client.post("/tasks/", json={"title": "Task 1", "task_type": "task", "project_id": project_id})
 
         # Filter by bug type
-        response = client.get("/tasks/?filter[task_type]=bug")
+        response = client.get("/tasks/?task_type=bug")
         bugs = response.json()
 
         # All returned should be bugs
@@ -725,7 +725,7 @@ class TestProjectClone:
         assert cloned["id"] != project_id
 
         # Verify tasks were cloned
-        response = client.get(f"/tasks/?filter[project_id]={cloned['id']}")
+        response = client.get(f"/tasks/?project_id={cloned['id']}")
         cloned_tasks = response.json()
         assert len(cloned_tasks) == 3
 
@@ -778,7 +778,7 @@ class TestProjectClone:
         cloned = response.json()
 
         # Verify no tasks were cloned
-        response = client.get(f"/tasks/?filter[project_id]={cloned['id']}")
+        response = client.get(f"/tasks/?project_id={cloned['id']}")
         cloned_tasks = response.json()
         assert len(cloned_tasks) == 0
 

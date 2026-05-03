@@ -67,16 +67,7 @@ from starlette.datastructures import QueryParams
 from typing_extensions import TypeVar
 
 from .._exceptions import register_default_exception_handlers
-from ..query import (
-    DEFAULT_LIMIT,
-    DEFAULT_PAGE_SIZE,
-    MAX_LIMIT,
-    MAX_PAGE_SIZE,
-    QueryModifierVersion,
-    get_query_modifier_version,
-    use_query_modifier_version,
-)
-from ..query._config import get_query_param_schema_creator
+from ..query import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, create_list_params_schema
 from ..schemas import BaseSchema, IDRef, IDSchema
 from ..schemas._base import (
     create_model_with_optional_fields,
@@ -710,27 +701,63 @@ class BaseRestView(
     id_type: ClassVar[type[IdT]] = int
     include_pagination_metadata: ClassVar[bool] = False  # Set True to include count/total in list responses
     exclude_routes: ClassVar[tuple[str, ...]] = ()
-    query_modifier_version: ClassVar[QueryModifierVersion]  # Controls V1 vs V2 query parameter style; defaults to global setting
-    #: Default ``limit`` for V1 list endpoints. ``None`` means "no implicit
+    #: Extra query-parameter keys to allow on the index endpoint in addition
+    #: to those derived from the response schema. Use this when a view
+    #: intentionally consumes a custom query parameter (e.g. an
+    #: ``?include_deleted=true`` escape hatch on a soft-delete mixin) that
+    #: isn't a filter on a schema field. Without this, the strict
+    #: unknown-key guard would reject the request with 422.
+    extra_query_params: ClassVar[tuple[str, ...]] = ()
+    #: Default ``page_size`` for list endpoints. ``None`` means "no implicit
     #: cap" (the framework default). Override per-view.
-    default_limit: ClassVar[int | None] = DEFAULT_LIMIT
-    #: Maximum ``limit`` accepted on V1 list endpoints. Above this returns 422.
-    max_limit: ClassVar[int] = MAX_LIMIT
-    #: Default ``page_size`` for V2 list endpoints. ``None`` means "no
-    #: implicit cap" (the framework default). Override per-view.
     default_page_size: ClassVar[int | None] = DEFAULT_PAGE_SIZE
-    #: Maximum ``page_size`` accepted on V2 list endpoints. Above this returns 422.
+    #: Maximum ``page_size`` accepted on list endpoints. Above this returns 422.
     max_page_size: ClassVar[int] = MAX_PAGE_SIZE
     index_param_schema: ClassVar[type[pydantic.BaseModel]]
     pagination_response_schema: ClassVar[type[pydantic.BaseModel]]
 
     request: fastapi.Request
 
-    def get_query_modifier_version(self) -> QueryModifierVersion:
-        return getattr(self, "query_modifier_version", get_query_modifier_version())
-
     def get_relationship_loader_options(self) -> list[Any]:
         return _build_relationship_loader_options(self.model, self.schema)
+
+    def _reject_unknown_query_params(self) -> None:
+        """Reject any query-string key that isn't part of ``index_param_schema``.
+
+        FastAPI flattens ``Annotated[index_param_schema, Query()]`` into named
+        query parameters; unknown keys are silently ignored at that layer,
+        which would let typoed filters or unsupported operators (e.g.
+        ``active__gte=true`` on a boolean column where the schema does not
+        emit a range operator) widen the result set without telling the
+        caller. We treat unknown keys as a validation error instead, mirroring
+        FastAPI's 422 envelope shape so the response is consistent with
+        bound-violation errors.
+
+        No-op when there's no live request (programmatic ``view.index(...)``
+        calls outside an HTTP request) — there's no URL surface to validate
+        and the in-process caller is responsible for what they pass.
+        """
+        request = getattr(self, "request", None)
+        if request is None:
+            return
+        index_schema = getattr(self, "index_param_schema", None)
+        if index_schema is None:
+            return
+        allowed = set(index_schema.model_fields) | set(self.extra_query_params)
+        sent = set(request.query_params.keys())
+        unknown = sent - allowed
+        if not unknown:
+            return
+        detail = [
+            {
+                "type": "extra_forbidden",
+                "loc": ["query", key],
+                "msg": f"Unknown query parameter {key!r}",
+                "input": request.query_params.get(key),
+            }
+            for key in sorted(unknown)
+        ]
+        raise fastapi.HTTPException(status_code=422, detail=detail)
 
     def to_response_schema(self, obj: ModelT | SchemaT) -> SchemaT:
         """Serialize an ORM object to the configured response schema."""
@@ -779,8 +806,6 @@ class BaseRestView(
             page=(int | None, None),
             page_size=(int | None, None),
             total_pages=(int | None, None),
-            limit=(int | None, None),
-            offset=(int | None, None),
         )
 
     def _build_pagination_payload(
@@ -793,35 +818,19 @@ class BaseRestView(
             "page": None,
             "page_size": None,
             "total_pages": None,
-            "limit": None,
-            "offset": None,
         }
-        uses_v2_pagination = (
-            self.get_query_modifier_version() == QueryModifierVersion.V2
-        )
-        if uses_v2_pagination or "page" in params or "page_size" in params:
-            page_size_raw = params.get("page_size")
-            if page_size_raw is None and self.default_page_size is None:
-                # Unlimited V2: no implicit cap and the client did not ask for
-                # one. Leave page/page_size/total_pages as None.
-                return payload
-            page = int(params.get("page", "1"))
-            page_size = int(
-                page_size_raw
-                if page_size_raw is not None
-                else self.default_page_size
-            )
-            payload["page"] = page
-            payload["page_size"] = page_size
-            payload["total_pages"] = ceil(total / page_size) if page_size > 0 else 0
-            payload["limit"] = page_size
-            payload["offset"] = (page - 1) * page_size
+        page_size_raw = params.get("page_size")
+        if page_size_raw is None and self.default_page_size is None:
+            # No implicit cap and the client did not ask for one. Leave
+            # page/page_size/total_pages as None.
             return payload
-
-        if "limit" in params:
-            payload["limit"] = int(params["limit"])
-        if "offset" in params:
-            payload["offset"] = int(params["offset"])
+        page = int(params.get("page", "1"))
+        page_size = int(
+            page_size_raw if page_size_raw is not None else self.default_page_size
+        )
+        payload["page"] = page
+        payload["page_size"] = page_size
+        payload["total_pages"] = ceil(total / page_size) if page_size > 0 else 0
         return payload
 
     @classmethod
@@ -833,37 +842,29 @@ class BaseRestView(
         This function can be overridden to further tweak the endpoints before they
         are added to FastAPI.
         """
-        # Auto-generate schema if none is provided
-        if not hasattr(cls, "schema"):
+        # Auto-generate schema if none is provided. Each of these guards
+        # checks ``cls.__dict__`` — not ``hasattr`` — so a subclass that
+        # changes ``schema``/``default_page_size``/``max_page_size`` regenerates
+        # the derived schemas instead of silently inheriting the parent's.
+        if "schema" not in cls.__dict__:
             if not hasattr(cls, "model"):
                 raise ValueError(
                     f"'{cls.__name__}.model' must be specified to auto-generate schema"
                 )
             cls.schema = cast(type[SchemaT], auto_generate_schema_for_view(cls, cls.model))
 
-        if not hasattr(cls, "query_modifier_version"):
-            cls.query_modifier_version = get_query_modifier_version()
-        if not hasattr(cls, "index_param_schema"):
-            with use_query_modifier_version(cls.query_modifier_version):
-                creator = get_query_param_schema_creator()
-            if cls.query_modifier_version == QueryModifierVersion.V2:
-                cls.index_param_schema = creator(
-                    cls.schema,
-                    default_page_size=cls.default_page_size,
-                    max_page_size=cls.max_page_size,
-                )
-            else:
-                cls.index_param_schema = creator(
-                    cls.schema,
-                    default_limit=cls.default_limit,
-                    max_limit=cls.max_limit,
-                )
-        if not hasattr(cls, "creation_schema"):
+        if "index_param_schema" not in cls.__dict__:
+            cls.index_param_schema = create_list_params_schema(
+                cls.schema,
+                default_page_size=cls.default_page_size,
+                max_page_size=cls.max_page_size,
+            )
+        if "creation_schema" not in cls.__dict__:
             cls.creation_schema = cast(
                 type[CreateSchemaT],
                 create_model_without_read_only_fields(cls.schema),
             )
-        if not hasattr(cls, "update_schema"):
+        if "update_schema" not in cls.__dict__:
             cls.update_schema = cast(
                 type[UpdateSchemaT],
                 create_model_with_optional_fields(cls.schema),

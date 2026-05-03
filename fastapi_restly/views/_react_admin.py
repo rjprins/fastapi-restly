@@ -176,7 +176,7 @@ def apply_react_admin_query(
     Apply filter, sort, and range (limit/offset) to a select query.
 
     This is the main query transformation entry point, analogous to
-    apply_query_modifiers_v1 / apply_query_modifiers_v2.
+    :func:`fastapi_restly.query.apply_list_params` for the standard REST dialect.
     """
     query = _apply_react_admin_filters(query, model, schema_cls, filters)
 

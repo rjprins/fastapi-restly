@@ -506,8 +506,6 @@ def test_sync_rest_view_crud_and_pagination(sync_db):
         assert paginated["page"] == 1
         assert paginated["page_size"] == 10
         assert paginated["total_pages"] == 1
-        assert paginated["limit"] == 10
-        assert paginated["offset"] == 0
         assert {item.item_name for item in paginated["items"]} == {"Keyboard", "Mouse"}
 
         detail = view.get(first.id)

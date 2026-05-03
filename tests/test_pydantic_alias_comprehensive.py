@@ -159,10 +159,6 @@ def test_put_requests_accept_aliases(client):
 def test_query_modifiers_with_aliases(client):
     """Test that query modifiers work with aliases."""
 
-    from fastapi_restly.query import QueryModifierVersion, set_query_modifier_version
-
-    set_query_modifier_version(QueryModifierVersion.V2)
-
     class Customer(fr.IDBase):
         customer_name: Mapped[str]
         customer_email: Mapped[str]

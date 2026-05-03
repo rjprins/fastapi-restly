@@ -177,7 +177,7 @@ override `handle_list` itself and use its optional `query` argument:
 ```
 
 `handle_list` accepts an optional `query` argument — a SQLAlchemy `Select`
-statement. Pass it to restrict the result set before query modifiers
+statement. Pass it to restrict the result set before the list parameters
 (filters, sorting, pagination) are applied on top. A `query` passed this
 way is *not* shared with `count_index`, so reach for `build_list_query`
 instead whenever the filter should also apply to pagination totals.

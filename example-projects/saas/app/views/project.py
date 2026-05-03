@@ -11,7 +11,6 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 import fastapi_restly as fr
-from fastapi_restly.query import apply_query_modifiers, use_query_modifier_version
 
 from ..models import Project, ProjectStatus, Task, TaskPriority, TaskStatus, TaskType
 from ..schemas import ProjectSchema, TaskSchema

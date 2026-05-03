@@ -49,7 +49,7 @@ For a view schema `MySchema`, Restly derives two input schemas in
   preserved.
 
 Both derived schemas are stored as class attributes on the view and are frozen
-at registration time (see [Query Modifier Lifecycle](#query-modifier-lifecycle)).
+at registration time (see [List Parameters Lifecycle](#list-parameters-lifecycle)).
 They can be overridden by declaring `creation_schema` or `update_schema` directly
 on the view class before `include_view()` is called.
 
@@ -134,9 +134,7 @@ runtime behaviour:
   `exclude_routes = ("delete",)`). Routes listed here have their `_api_route_args`
   marker removed during `before_include_view()` so FastAPI never registers them.
 - `include_pagination_metadata` — if `True`, the `index` endpoint returns a
-  paginated envelope with `items`, `total`, `page`, `page_size`, `total_pages`,
-  `limit`, and `offset`.
-- `query_modifier_version` — override the global version for this view class.
+  paginated envelope with `items`, `total`, `page`, `page_size`, and `total_pages`.
 
 ### include_view()
 
@@ -191,40 +189,28 @@ through to the SQLAlchemy model constructor or attribute setter, which usually
 does not match the ORM model shape. Use a flattened schema or override
 `handle_create()` / `handle_update()` to transform the payload first.
 
-(query-modifier-lifecycle)=
-## Query Modifier Lifecycle
+(list-parameters-lifecycle)=
+## List Parameters Lifecycle
 
-Query modifiers have two versions:
+List endpoints accept URL query parameters of the form
+``name=John``, ``age__gte=18``, ``order_by=-created_at``, and
+``page=2&page_size=50``. The full operator surface (`__ne`, `__isnull`,
+`__contains`, …) is documented in
+[the how-to guide](howto_query_modifiers.md).
 
-- `QueryModifierVersion.V1`: JSONAPI-style — `filter[name]=John`, `sort`,
-  `limit`, `offset`
-- `QueryModifierVersion.V2`: standard HTTP — `name=John`, `order_by`, `page`,
-  `page_size`
+During `before_include_view()`, the framework freezes a single class-level
+attribute:
 
-The active version is stored in a `ContextVar` (`_query_modifier_version`),
-defaulting to V1. `set_query_modifier_version()` calls `.set()` on this
-`ContextVar`, not a plain module-level global. In async frameworks, `ContextVar`
-values are scoped to the current task/context, so calling it at module level
-during application startup (a single-context moment) works as expected, but the
-setting does not propagate into concurrent request contexts automatically.
+- `cls.index_param_schema` — the query-parameter Pydantic schema generated
+  by `create_list_params_schema(cls.schema, default_page_size=...,
+  max_page_size=...)`. The schema covers pagination, sorting, and one
+  filter parameter per response-schema field with optional operator
+  suffixes. It is generated once per registration and never re-derived.
 
-During `before_include_view()`, two class-level attributes are set (once,
-idempotently):
-
-1. `cls.query_modifier_version` — the version read from the `ContextVar` at
-   registration time, stored as a class attribute. Once set, later calls to
-   `set_query_modifier_version()` do not affect already-registered views.
-2. `cls.index_param_schema` — the query-parameter Pydantic schema generated for
-   this view's `index` endpoint. It is generated inside a
-   `use_query_modifier_version(cls.query_modifier_version)` context so the
-   correct V1 or V2 field set is used. Like `query_modifier_version`, it is
-   frozen at registration time.
-
-To use a specific version, either:
-
-- call `set_query_modifier_version(...)` before registering the view, or
-- set `query_modifier_version = QueryModifierVersion.V1|V2` directly on the
-  view class.
+Custom dialects (e.g. react-admin's
+[`AsyncReactAdminView` / `ReactAdminView`](howto_react_admin.md)) live as
+parallel view classes that bypass `apply_list_params` entirely and
+implement their own request/response contract.
 
 ## Database Globals and Test Isolation
 
@@ -272,4 +258,4 @@ these assumptions unless they deliberately want different behavior.
 ## See Also
 
 - [How-To: Filter, Sort, and Paginate Lists](howto_query_modifiers.md) — full
-  V1 / V2 query-parameter reference.
+  filter, sort, and pagination reference.

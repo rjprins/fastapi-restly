@@ -22,7 +22,6 @@ class TicketBase(fr.AsyncRestView):
     schema = TicketSchema
     include_pagination_metadata = True
     exclude_routes = ("delete",)
-    query_modifier_version = fr.QueryModifierVersion.V2
 
 
 @fr.include_view(app)

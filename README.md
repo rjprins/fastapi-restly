@@ -115,29 +115,40 @@ class UserView(fr.AsyncRestView):
 
 Use **auto-schema** for prototypes and internal tools. Use an **explicit schema** when contract stability and validation control matter (public APIs, aliases, strict response shapes).
 
-### Query modifiers
+### List endpoint query parameters
 
-Two interfaces:
+List endpoints expose a stable URL parameter dialect generated from the
+response schema:
 
-**V1 (JSONAPI-style):**
 ```bash
-GET /users/?filter[name]=John&filter[age]=>21
-GET /users/?sort=name,-created_at
-GET /users/?limit=10&offset=20
-GET /users/?contains[name]=john
-```
-
-**V2 (standard HTTP):**
-```bash
-GET /users/?name=John&email__contains=example
-GET /users/?order_by=name,-created_at
+GET /users/?name=John&age__gte=21
+GET /users/?status=active,pending           # comma-separated → OR (IN)
+GET /users/?status__ne=archived,deleted     # comma-separated → NOT IN
+GET /users/?email__contains=example
+GET /users/?deleted_at__isnull=true
+GET /users/?order_by=-created_at,name
 GET /users/?page=2&page_size=10
 ```
 
-Notes:
-- V1 uses schema field names, not aliases.
-- V2 uses schema aliases for flat fields. With `populate_by_name=True`, flat fields also accept the Python field name.
-- V2 relation filters keep the relation segment as the schema/model field name and only use aliases for nested fields. Example: `author.authorName=Alice`, not `writer.authorName=Alice`.
+Parameter keys follow the **response schema's public names** end-to-end —
+including dotted relation paths. If `ArticleSchema.author` has
+`Field(alias="writer")` and `AuthorSchema.name` has
+`Field(alias="authorName")`, the URL key is `writer.authorName`. Aliased
+fields are only reachable by their alias; `populate_by_name` does not
+extend the URL surface with the Python field name.
+
+Pagination is opt-in: omitting `page_size` returns every matching row.
+For public/production endpoints set `default_page_size` and
+`max_page_size` on the view class:
+
+```python
+class UserView(fr.AsyncRestView):
+    default_page_size = 25
+    max_page_size = 200
+```
+
+See [How-To: Filter, Sort, and Paginate Lists](docs/howto_query_modifiers.md)
+for the full operator surface, alias rules, and pagination guidance.
 
 ### Read-only and write-only fields
 

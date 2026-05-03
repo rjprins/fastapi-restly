@@ -25,81 +25,58 @@ Notes:
 
 ## Query Parameters (List Endpoint)
 
-`GET /{prefix}/` supports query modifiers through `fr.apply_query_modifiers(...)`.
+`GET /{prefix}/` exposes a stable URL parameter dialect — the **list
+parameters** — derived from the response schema. This contract is part
+of the public API: parameter keys follow the response schema's public
+field names (aliases when set, Python names otherwise), end-to-end,
+including dotted relation paths.
 
-### V1 (JSONAPI-style)
-- Filtering: `?filter[name]=John&filter[age]=>21`
-- OR-values: `?filter[id]=1,2,3` (comma-separated values are OR'd together)
-- Sorting: `?sort=name,-created_at`
-- Pagination: `?limit=10&offset=20` (no limit is applied when omitted)
-- Contains: `?contains[name]=john` (multiple space-separated words are AND'd: all must be contained)
-  - V1 uses schema field names, not aliases
-
-### V2 (HTTP-style)
 - Filtering: `?name=John&created_at__gte=2024-01-01`
   - Suffixes: `__gte`, `__lte`, `__gt`, `__lt`, `__ne`, `__isnull`, `__contains` (string fields only)
-  - OR-values: `?id=1,2,3` (comma-separated values are OR'd together)
-  - Flat aliased fields use the alias name. If `populate_by_name=True` is enabled, flat fields also accept the Python field name.
-- Contains: `?name__contains=john` (multiple space-separated words are AND'd: all must be contained)
-  - `%`, `_`, and `\\` are escaped before building the SQL `ILIKE`
+  - OR-values (IN): `?id=1,2,3` (comma-separated values are OR-combined for `eq`)
+  - NOT-IN: `?status__ne=archived,deleted` (comma-separated values are AND-combined for `__ne`)
+  - Aliased fields use only the alias as the URL key; the Python field name is not accepted (``populate_by_name`` only affects body parsing, not the URL surface).
+- Contains: `?name__contains=john`
+  - Repeat the parameter to AND multiple terms — this is the precise form: `?name__contains=john&name__contains=doe`.
+  - As a convenience, whitespace inside one value is also AND-split: `?name__contains=john%20doe` is equivalent.
+  - `%`, `_`, and `\\` are escaped before building the SQL `ILIKE`.
 - Sorting: `?order_by=name,-created_at`
 - Pagination: `?page=2&page_size=10`
   - **Opt-in.** Omitting `page_size` returns every matching row (no implicit cap).
-  - Set `default_page_size` on the view class to enable pagination by default.
+  - For public/production endpoints, set `default_page_size` and `max_page_size` explicitly on the view class.
 
-Relation-filtering caveat for V2:
-- The relation segment must still use the schema/model field name
-- Only nested field segments may use aliases
-- Example: `?author.authorName=Alice` can work, while `?writer.authorName=Alice` does not
-
-### Pagination Caps
-
-Pagination parameter schemas enforce upper bounds through module-level constants in
-`fastapi_restly.query`:
-
-| Constant | Value | Applies To | Rationale |
-|---|---:|---|---|
-| `MAX_LIMIT` | `1000` | V1 `?limit=` | Prevents accidental or abusive very large list responses. |
-| `MAX_PAGE_SIZE` | `1000` | V2 `?page_size=` | Prevents accidental or abusive very large list responses. |
-
-These constants define validation caps, not implicit pagination. V1 still returns
-every matching row when `?limit=` is omitted and `default_limit` is `None`; V2 still
-returns every matching row when `?page_size=` is omitted and `default_page_size` is
-`None`.
-
-Override the cap per view when a specific endpoint should allow larger pages:
+**Unknown query keys are rejected.** Generated list endpoints validate
+the request's query string against the schema's declared parameters. Any
+key that isn't part of the generated schema — a typoed filter, a Python
+field name on an aliased field, an operator suffix that wasn't emitted
+for the field's type (e.g. ``__gte`` on a boolean) — produces a 422
+response with a FastAPI-style validation envelope. This prevents typos
+from silently widening the result set. To allow extra query keys that a
+view consumes outside the schema (e.g. an ``?include_deleted=true``
+escape hatch on a soft-delete mixin), declare them on the view class:
 
 ```python
-@fr.include_view(app)
-class ExportableItemView(fr.AsyncRestView):
-    prefix = "/items"
-    model = Item
-    schema = ItemSchema
-    query_modifier_version = fr.QueryModifierVersion.V2
-
-    max_page_size = 5000
+class UserView(fr.AsyncRestView):
+    extra_query_params = ("include_deleted",)
 ```
 
-With this view, `GET /items/?page_size=5000` is valid, while values above `5000`
-are rejected with a `422` validation response.
+Relation filtering uses dot notation, and aliases apply to every
+segment of the path. If `ArticleSchema.author` has `Field(alias="writer")`
+and `AuthorSchema.name` has `Field(alias="authorName")`, the URL key is
+`writer.authorName`. Canonical Python names are not exposed.
 
-### Query Modifier Version Configuration
+### Low-level helpers
 
-The active version is controlled via:
-- `fr.set_query_modifier_version(fr.QueryModifierVersion.V2)` — set globally
-- `fr.get_query_modifier_version()` — read the current global setting
-- `fr.use_query_modifier_version(version)` — context manager; preferred for tests and direct low-level helper calls
-
-`fr.QueryModifierVersion` is an enum with two members: `QueryModifierVersion.V1` (default) and `QueryModifierVersion.V2`.
-
-Views capture the active query-modifier version when they are registered with
-`@fr.include_view(...)`. Set the global version before registering the view, or
-set `query_modifier_version = fr.QueryModifierVersion.V2` on the view class directly
-for explicit per-view behavior.
-
-`fastapi_restly.query.create_query_param_schema(schema_cls)` is context-sensitive: it creates a V1 or V2
-query-parameter schema depending on the currently active version. (It is not exposed at the top level —
-import it from `fastapi_restly.query`.)
+`fr.create_list_params_schema(schema_cls, *, default_page_size=None,
+max_page_size=1000)` and `fr.apply_list_params(params, query, model,
+schema_cls)` are the primitives behind the generated endpoints. The
+happy path is to define a `RestView` / `AsyncRestView` and let the
+framework wire them up — the generated FastAPI endpoint validates
+incoming requests against the params schema before the SQL clauses are
+applied. Reach for these helpers directly only when you need to apply
+list parameters to a custom (non-`RestView`) endpoint, and pass a
+validated `create_list_params_schema(...)` instance rather than a raw
+`QueryParams` so pagination/filter bounds are enforced.
 
 ## Optional Pagination Metadata
 
@@ -112,17 +89,15 @@ on a view to return metadata together with the list items:
   "total": 123,
   "page": 2,
   "page_size": 50,
-  "total_pages": 3,
-  "limit": 50,
-  "offset": 50
+  "total_pages": 3
 }
 ```
 
-`page`, `page_size`, and `total_pages` are populated when the request was
-actually paginated — that is, when the client sent `?page=` / `?page_size=`
-(V2) or `?limit=` / `?offset=` (V1), or when the view sets a non-`None`
-`default_page_size` / `default_limit`. When pagination is not engaged the
-fields stay `null` and only `total` reflects the full result count.
+`page`, `page_size`, and `total_pages` are populated when the request
+was actually paginated — that is, when the client sent `?page=` /
+`?page_size=`, or when the view sets a non-`None` `default_page_size`.
+When pagination is not engaged the fields stay `null` and only `total`
+reflects the full result count.
 
 ## Endpoint Decorators
 
@@ -233,11 +208,9 @@ For generated CRUD endpoints:
 | `id_type` | `ClassVar[type]` | Primary key type used in generated `GET /{id}`, `PATCH /{id}`, and `DELETE /{id}` routes. Defaults to `int`. |
 | `include_pagination_metadata` | `ClassVar[bool]` | Set `True` to return the paginated metadata envelope. Defaults to `False`. |
 | `exclude_routes` | `ClassVar[tuple[str, ...]]` | Route names to suppress. |
-| `query_modifier_version` | `ClassVar[QueryModifierVersion]` | Per-view query style override. Defaults to the global setting at registration time. |
-| `default_limit` | `ClassVar[int \| None]` | Default `?limit=` for V1 list endpoints. `None` (the default) means "no implicit cap" — every matching row is returned. |
-| `max_limit` | `ClassVar[int]` | Upper bound for `?limit=` on V1 list endpoints. Values above are rejected with 422. Defaults to `1000`. |
-| `default_page_size` | `ClassVar[int \| None]` | Default `?page_size=` for V2 list endpoints. `None` (the default) means "no implicit cap" — every matching row is returned. |
-| `max_page_size` | `ClassVar[int]` | Upper bound for `?page_size=` on V2 list endpoints. Values above are rejected with 422. Defaults to `1000`. |
+| `extra_query_params` | `ClassVar[tuple[str, ...]]` | Query keys to allow on the index endpoint in addition to those derived from the response schema. Use for view-specific parameters consumed outside `apply_list_params` (e.g. an `?include_deleted=true` escape hatch). |
+| `default_page_size` | `ClassVar[int \| None]` | Default `?page_size=` for list endpoints. `None` (the default) means "no implicit cap" — every matching row is returned. |
+| `max_page_size` | `ClassVar[int]` | Upper bound for `?page_size=` on list endpoints. Values above are rejected with 422. Defaults to `1000`. |
 
 ### CRUD Utility Free Functions
 

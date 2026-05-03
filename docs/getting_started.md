@@ -100,7 +100,7 @@ For `prefix = "/users"`, generated endpoints are:
 
 Update semantics are `PATCH` (partial update).
 
-You can filter results using query parameters. For example, `GET /users/?filter[name]=Jane` returns only users named Jane (V1 syntax; see [How-To: Filter, Sort, and Paginate Lists](howto_query_modifiers.md) for the full V1 and V2 syntax reference).
+You can filter results using query parameters. For example, `GET /users/?name=Jane` returns only users named Jane. See [How-To: Filter, Sort, and Paginate Lists](howto_query_modifiers.md) for the full reference.
 
 ## 5. Add an Explicit Schema (Optional)
 

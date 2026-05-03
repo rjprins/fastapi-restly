@@ -1,25 +1,22 @@
-"""
-Tests for contains functionality in both v1 and v2 query modifiers.
-"""
+"""Tests for ``__contains`` filter functionality in list-params."""
 
 import warnings
 
 import pytest
-from fastapi import FastAPI
 from sqlalchemy import select
 from sqlalchemy.exc import SADeprecationWarning
 from sqlalchemy.orm import Mapped, mapped_column
 from starlette.datastructures import QueryParams
 
 import fastapi_restly as fr
+from fastapi_restly.query._impl import (
+    _apply_filtering,
+    _is_string_field,
+    _make_where_clause,
+    create_list_params_schema,
+)
 
-# Setup database
 
-
-app = FastAPI()
-
-
-# Define a model with string fields
 class User(fr.IDBase):
     name: Mapped[str] = mapped_column()
     email: Mapped[str] = mapped_column()
@@ -27,7 +24,6 @@ class User(fr.IDBase):
     age: Mapped[int] = mapped_column()
 
 
-# Define schema
 class UserSchema(fr.IDSchema):
     name: str
     email: str
@@ -35,479 +31,128 @@ class UserSchema(fr.IDSchema):
     age: int
 
 
-@fr.include_view(app)
-class UserView(fr.AsyncRestView):
-    prefix = "/users"
-    model = User
-    schema = UserSchema
-
-
-class TestContainsV1Functionality:
-    """Test contains functionality in v1 query modifiers."""
-
-    def test_contains_v1_string_field_detection(self):
-        """Test that string fields are correctly identified in v1."""
-        from fastapi_restly.query._v1 import _is_string_field, create_query_param_schema
-
-        # Test basic string field
-        schema = create_query_param_schema(UserSchema)
+class TestContainsSchemaGeneration:
+    def test_string_field_detection(self):
+        """``__contains`` is added for string fields, not for non-strings."""
+        schema = create_list_params_schema(UserSchema)
         fields = schema.model_fields
 
-        # Check that contains fields are added for string fields
-        assert "contains[name]" in fields
-        assert "contains[email]" in fields
-        assert "contains[description]" in fields
-
-        # Check that non-string fields don't get contains
-        assert "contains[age]" not in fields
-
-        # Check that filter fields are also present
-        assert "filter[name]" in fields
-        assert "filter[email]" in fields
-        assert "filter[description]" in fields
-        assert "filter[age]" in fields
-
-    def test_contains_v1_query_processing(self):
-        """Test that contains queries are processed correctly in v1."""
-        from fastapi_restly.query._v1 import apply_filtering
-
-        # Create a mock query
-        query = select(User)
-
-        # Test contains query
-        query_params = QueryParams("contains[name]=john&contains[email]=example")
-
-        # This should not raise an exception
-        result = apply_filtering(query_params, query, User, UserSchema)
-
-        # The result should be a Select object
-        assert hasattr(result, "where")
-
-    def test_contains_v1_multiple_values(self):
-        """Test that multiple contains values work correctly in v1."""
-        from fastapi_restly.query._v1 import apply_filtering
-
-        # Create a mock query
-        query = select(User)
-
-        # Test contains query with multiple values (OR logic)
-        query_params = QueryParams("contains[name]=john jane")
-
-        # This should not raise an exception
-        result = apply_filtering(query_params, query, User, UserSchema)
-
-        # The result should be a Select object
-        assert hasattr(result, "where")
-
-    def test_contains_v1_where_clause(self):
-        """Test that the contains operator creates correct ILIKE clauses in v1."""
-        from fastapi_restly.query._v1 import apply_filtering
-
-        # Create a mock query
-        query = select(User)
-
-        # Test contains query
-        query_params = QueryParams("contains[name]=john")
-
-        # This should not raise an exception and should create ILIKE clauses
-        result = apply_filtering(query_params, query, User, UserSchema)
-        assert hasattr(result, "where")
-
-    def test_contains_v1_combined_with_filters(self):
-        """Test that contains works with other v1 filters."""
-        from fastapi_restly.query._v1 import apply_filtering
-
-        query = select(User)
-
-        # Test contains combined with regular filters
-        query_params = QueryParams("contains[name]=john&filter[age]=25")
-
-        result = apply_filtering(query_params, query, User, UserSchema)
-        assert hasattr(result, "where")
-
-    def test_contains_v1_string_field_detection_edge_cases(self):
-        """Test string field detection with edge cases in v1."""
-        # Test with Optional[str]
-        from typing import Optional
-
-        from pydantic import BaseModel
-
-        from fastapi_restly.query._v1 import _is_string_field
-
-        class TestSchema(BaseModel):
-            name: str
-            email: Optional[str]
-            age: int
-
-        # Get field info
-        name_field = TestSchema.model_fields["name"]
-        email_field = TestSchema.model_fields["email"]
-        age_field = TestSchema.model_fields["age"]
-
-        assert _is_string_field(name_field) is True
-        assert _is_string_field(email_field) is True
-        assert _is_string_field(age_field) is False
-
-
-class TestContainsV2Functionality:
-    """Test contains functionality in v2 query modifiers."""
-
-    def test_contains_v2_string_field_detection(self):
-        """Test that string fields are correctly identified in v2."""
-        from fastapi_restly.query._v2 import (
-            _is_string_field_v2,
-            create_query_param_schema_v2,
-        )
-
-        # Test basic string field
-        schema = create_query_param_schema_v2(UserSchema)
-        fields = schema.model_fields
-
-        # Check that __contains fields are added for string fields
         assert "name__contains" in fields
         assert "email__contains" in fields
         assert "description__contains" in fields
-
-        # Check that non-string fields don't get __contains
         assert "age__contains" not in fields
 
-        # Check that regular fields are also present
-        assert "name" in fields
-        assert "email" in fields
-        assert "description" in fields
-        assert "age" in fields
+        # Plain (eq) and other operators are still emitted.
+        for op in ("", "__gte", "__lte", "__gt", "__lt", "__isnull"):
+            assert f"name{op}" in fields
 
-        # Check that other operators are present
-        assert "name__gte" in fields
-        assert "name__lte" in fields
-        assert "name__gt" in fields
-        assert "name__lt" in fields
-        assert "name__isnull" in fields
-
-    def test_contains_v2_query_processing(self):
-        """Test that __contains queries are processed correctly in v2."""
-        from fastapi_restly.query._v2 import apply_filtering_v2
-
-        # Create a mock query
-        query = select(User)
-
-        # Test __contains query
-        query_params = QueryParams("name__contains=john&email__contains=example")
-
-        # This should not raise an exception
-        result = apply_filtering_v2(query_params, query, User, UserSchema)
-
-        # The result should be a Select object
-        assert hasattr(result, "where")
-
-    def test_contains_v2_multiple_values(self):
-        """Test that multiple __contains values work correctly in v2."""
-        from fastapi_restly.query._v2 import apply_filtering_v2
-
-        # Create a mock query
-        query = select(User)
-
-        # Test __contains query with multiple values (OR logic)
-        query_params = QueryParams("name__contains=john jane")
-
-        # This should not raise an exception
-        result = apply_filtering_v2(query_params, query, User, UserSchema)
-
-        # The result should be a Select object
-        assert hasattr(result, "where")
-
-    def test_contains_v2_where_clause(self):
-        """Test that the __contains operator creates correct ILIKE clauses in v2."""
-        from fastapi_restly.query._v2 import _make_where_clause_v2
-
-        # Mock column
-        class MockColumn:
-            def ilike(self, pattern, escape=None):
-                return f"ILIKE {pattern} ESCAPE {escape}"
-
-        column = MockColumn()
-
-        # Test __contains operator
-        result = _make_where_clause_v2(column, "john", "contains", lambda x: x)
-
-        # Should create an ILIKE clause with %john%
-        assert "ILIKE %john%" in str(result)
-        assert "ESCAPE \\" in str(result)
-
-    def test_contains_escapes_like_wildcards(self):
-        """Test that contains escapes % and _ wildcard characters."""
-        from fastapi_restly.query._v1 import _escape_like_value as escape_v1
-        from fastapi_restly.query._v2 import _escape_like_value as escape_v2
-
-        raw = r"100%_match\\"
-        expected = r"100\%\_match\\\\"
-        assert escape_v1(raw) == expected
-        assert escape_v2(raw) == expected
-
-    def test_contains_v2_combined_with_filters(self):
-        """Test that __contains works with other v2 filters."""
-        from fastapi_restly.query._v2 import apply_filtering_v2
-
-        query = select(User)
-
-        # Test __contains combined with other v2 filters
-        query_params = QueryParams("name__contains=john&age__gte=25")
-
-        result = apply_filtering_v2(query_params, query, User, UserSchema)
-        assert hasattr(result, "where")
-
-    def test_contains_v2_string_field_detection_edge_cases(self):
-        """Test string field detection with edge cases in v2."""
-        # Test with Optional[str]
+    def test_string_field_detection_optional(self):
+        """Optional[str] / str | None should still count as a string field."""
         from typing import Optional
 
         from pydantic import BaseModel
 
-        from fastapi_restly.query._v2 import _is_string_field_v2
-
-        class TestSchema(BaseModel):
+        class Schema(BaseModel):
             name: str
-            email: Optional[str]
+            email: Optional[str] = None
+            phone: str | None = None
             age: int
 
-        # Get field info
-        name_field = TestSchema.model_fields["name"]
-        email_field = TestSchema.model_fields["email"]
-        age_field = TestSchema.model_fields["age"]
+        for field_name, expected in (
+            ("name", True),
+            ("email", True),
+            ("phone", True),
+            ("age", False),
+        ):
+            assert _is_string_field(Schema.model_fields[field_name]) is expected
 
-        assert _is_string_field_v2(name_field) is True
-        assert _is_string_field_v2(email_field) is True
-        assert _is_string_field_v2(age_field) is False
+        params = create_list_params_schema(Schema)
+        assert "email__contains" in params.model_fields
+        assert "phone__contains" in params.model_fields
+        assert "age__contains" not in params.model_fields
 
-    def test_contains_v2_string_field_detection_pep604_optional(self):
-        """PEP 604 optionals should still be treated as strings for __contains."""
-        from pydantic import BaseModel
-
-        from fastapi_restly.query._v2 import (
-            _is_string_field_v2,
-            create_query_param_schema_v2,
-        )
-
-        class TestSchema(BaseModel):
-            email: str | None = None
-            age: int
-
-        email_field = TestSchema.model_fields["email"]
-        age_field = TestSchema.model_fields["age"]
-
-        assert _is_string_field_v2(email_field) is True
-        assert _is_string_field_v2(age_field) is False
-
-        schema = create_query_param_schema_v2(TestSchema)
-        assert "email__contains" in schema.model_fields
-
-
-class TestContainsIntegration:
-    """Test contains functionality integration with other features."""
-
-    def test_contains_v1_with_aliases(self):
-        """Test that v1 contains works with field aliases."""
+    def test_aliases_drive_contains_field_name(self):
+        """When a field has a Pydantic alias the public name (alias) is used."""
         from pydantic import BaseModel, Field
 
-        from fastapi_restly.query._v1 import create_query_param_schema
-
-        class UserSchemaWithAliases(BaseModel):
+        class Schema(BaseModel):
             name: str = Field(alias="userName")
             email: str = Field(alias="userEmail")
             age: int
 
-        schema = create_query_param_schema(UserSchemaWithAliases)
-        fields = schema.model_fields
-
-        # V1 uses the field name, not the alias for contains
-        assert "contains[name]" in fields
-        assert "contains[email]" in fields
-        assert "contains[age]" not in fields
-
-    def test_contains_v2_with_aliases(self):
-        """Test that v2 contains works with field aliases."""
-        from pydantic import BaseModel, Field
-
-        from fastapi_restly.query._v2 import create_query_param_schema_v2
-
-        class UserSchemaWithAliases(BaseModel):
-            name: str = Field(alias="userName")
-            email: str = Field(alias="userEmail")
-            age: int
-
-        schema = create_query_param_schema_v2(UserSchemaWithAliases)
-        fields = schema.model_fields
-
-        # Should use the alias for __contains fields
+        fields = create_list_params_schema(Schema).model_fields
         assert "userName__contains" in fields
         assert "userEmail__contains" in fields
         assert "age__contains" not in fields
 
-    def test_contains_v1_with_nested_schemas(self):
-        """Test that v1 contains works with nested schemas."""
+    def test_nested_schemas_dot_notation(self):
+        """Nested schema fields are exposed with dot-notation public names."""
         from pydantic import BaseModel
 
-        from fastapi_restly.query._v1 import create_query_param_schema
-
-        class AddressSchema(BaseModel):
+        class Address(BaseModel):
             street: str
             city: str
 
-        class UserSchemaWithNested(BaseModel):
+        class Schema(BaseModel):
             name: str
             email: str
-            address: AddressSchema
+            address: Address
 
-        schema = create_query_param_schema(UserSchemaWithNested)
-        fields = schema.model_fields
-
-        # Should add contains for nested string fields
-        assert "contains[name]" in fields
-        assert "contains[email]" in fields
-        assert "contains[address.street]" in fields
-        assert "contains[address.city]" in fields
-
-    def test_contains_v2_with_nested_schemas(self):
-        """Test that v2 contains works with nested schemas."""
-        from pydantic import BaseModel
-
-        from fastapi_restly.query._v2 import create_query_param_schema_v2
-
-        class AddressSchema(BaseModel):
-            street: str
-            city: str
-
-        class UserSchemaWithNested(BaseModel):
-            name: str
-            email: str
-            address: AddressSchema
-
-        schema = create_query_param_schema_v2(UserSchemaWithNested)
-        fields = schema.model_fields
-
-        # Should add __contains for nested string fields
+        fields = create_list_params_schema(Schema).model_fields
         assert "name__contains" in fields
         assert "email__contains" in fields
         assert "address.street__contains" in fields
         assert "address.city__contains" in fields
 
-    def test_contains_v1_complex_scenarios(self):
-        """Test complex contains scenarios in v1."""
-        from fastapi_restly.query._v1 import apply_filtering
 
+class TestContainsApplied:
+    def test_contains_query_processing(self):
         query = select(User)
-
-        # Test multiple contains with multiple values
-        query_params = QueryParams(
-            "contains[name]=john jane&contains[email]=example&contains[description]=developer"
-        )
-
-        result = apply_filtering(query_params, query, User, UserSchema)
+        params = QueryParams("name__contains=john&email__contains=example")
+        result = _apply_filtering(params, query, User, UserSchema)
         assert hasattr(result, "where")
 
-        # Test contains with other operators (using correct v1 syntax)
-        query_params = QueryParams("contains[name]=john&filter[age]=25&sort=name")
-
-        result = apply_filtering(query_params, query, User, UserSchema)
-        assert hasattr(result, "where")
-
-    def test_contains_v2_complex_scenarios(self):
-        """Test complex contains scenarios in v2."""
-        from fastapi_restly.query._v2 import apply_filtering_v2
-
+    def test_multiple_contains_values_split_on_whitespace(self):
         query = select(User)
-
-        # Test multiple contains with multiple values
-        query_params = QueryParams(
-            "name__contains=john jane&email__contains=example&description__contains=developer"
-        )
-
-        result = apply_filtering_v2(query_params, query, User, UserSchema)
+        params = QueryParams("name__contains=john jane")
+        result = _apply_filtering(params, query, User, UserSchema)
         assert hasattr(result, "where")
 
-        # Test __contains with other v2 operators
-        query_params = QueryParams("name__contains=john&age__gte=25&order_by=name")
-
-        result = apply_filtering_v2(query_params, query, User, UserSchema)
+    def test_contains_combined_with_filters(self):
+        query = select(User)
+        params = QueryParams("name__contains=john&age__gte=25")
+        result = _apply_filtering(params, query, User, UserSchema)
         assert hasattr(result, "where")
+
+    def test_contains_emits_ilike_clause(self):
+        class MockColumn:
+            def ilike(self, pattern, escape=None):
+                return f"ILIKE {pattern} ESCAPE {escape}"
+
+        result = _make_where_clause(MockColumn(), "john", "contains", lambda x: x)
+        assert "ILIKE %john%" in str(result)
+        assert "ESCAPE \\" in str(result)
+
+    def test_contains_escapes_like_wildcards(self):
+        from fastapi_restly.query._shared import _escape_like_value
+
+        raw = r"100%_match\\"
+        expected = r"100\%\_match\\\\"
+        assert _escape_like_value(raw) == expected
 
 
 class TestContainsErrorHandling:
-    """Test error handling for contains functionality."""
-
-    def test_contains_v1_invalid_field(self):
-        """Test that v1 contains handles invalid fields gracefully."""
-        from fastapi_restly.query._v1 import apply_filtering
-
+    def test_invalid_field(self):
         query = select(User)
-
-        # Test with non-existent field
-        query_params = QueryParams("contains[nonexistent]=value")
-
-        # Should raise HTTPException
+        params = QueryParams("nonexistent__contains=value")
         with pytest.raises(Exception):
-            apply_filtering(query_params, query, User, UserSchema)
+            _apply_filtering(params, query, User, UserSchema)
 
-    def test_contains_v2_invalid_field(self):
-        """Test that v2 contains handles invalid fields gracefully."""
-        from fastapi_restly.query._v2 import apply_filtering_v2
-
+    def test_empty_value(self):
         query = select(User)
-
-        # Test with non-existent field
-        query_params = QueryParams("nonexistent__contains=value")
-
-        # Should raise HTTPException
-        with pytest.raises(Exception):
-            apply_filtering_v2(query_params, query, User, UserSchema)
-
-    def test_contains_v1_empty_value(self):
-        """Test that v1 contains handles empty values."""
-        from fastapi_restly.query._v1 import apply_filtering
-
-        query = select(User)
-
-        # Test with empty value
-        query_params = QueryParams("contains[name]=")
-
-        # Should not raise an exception
-        result = apply_filtering(query_params, query, User, UserSchema)
-        assert hasattr(result, "where")
-
-    def test_contains_v2_empty_value(self):
-        """Test that empty contains values are handled correctly in v2."""
-        from fastapi_restly.query._v2 import apply_filtering_v2
-
-        query = select(User)
-
-        # Test empty contains value
-        query_params = QueryParams("name__contains=")
+        params = QueryParams("name__contains=")
 
         with warnings.catch_warnings():
             warnings.simplefilter("error", SADeprecationWarning)
-            result = apply_filtering_v2(query_params, query, User, UserSchema)
+            result = _apply_filtering(params, query, User, UserSchema)
         assert hasattr(result, "where")
-
-    def test_contains_whitespace_splitting(self):
-        """Test that contains queries correctly split on whitespace."""
-        from fastapi_restly.query._v1 import apply_filtering
-        from fastapi_restly.query._v2 import apply_filtering_v2
-
-        query = select(User)
-
-        # Test v1 whitespace splitting
-        query_params_v1 = QueryParams("contains[name]=john jane mary")
-        result_v1 = apply_filtering(query_params_v1, query, User, UserSchema)
-        assert hasattr(result_v1, "where")
-
-        # Test v2 whitespace splitting
-        query_params_v2 = QueryParams("name__contains=john jane mary")
-        result_v2 = apply_filtering_v2(query_params_v2, query, User, UserSchema)
-        assert hasattr(result_v2, "where")
-
-        # Test that comma-separated values still work for non-contains operators
-        query_params_v2_comma = QueryParams("age__gte=25,30")
-        result_v2_comma = apply_filtering_v2(
-            query_params_v2_comma, query, User, UserSchema
-        )
-        assert hasattr(result_v2_comma, "where")

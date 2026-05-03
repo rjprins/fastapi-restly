@@ -1,8 +1,7 @@
-"""Typing fixture: Pydantic field aliases combined with V2 query modifiers.
+"""Typing fixture: Pydantic field aliases combined with list-params filtering.
 
 Verifies that consumer code defining schemas with camelCase aliases (e.g. for
-React Admin / SPA front-ends) stays Pyright-clean when paired with
-`QueryModifierVersion.V2`.
+React Admin / SPA front-ends) stays Pyright-clean.
 """
 from datetime import datetime
 
@@ -38,4 +37,3 @@ class InvoiceView(fr.AsyncRestView):
     prefix = "/invoices"
     model = Invoice
     schema = InvoiceSchema
-    query_modifier_version = fr.QueryModifierVersion.V2

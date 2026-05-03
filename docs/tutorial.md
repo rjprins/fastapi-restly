@@ -196,42 +196,18 @@ being part of the create/update body.
 
 ## Querying lists
 
-FastAPI-Restly supports two query parameter styles. Each view uses one style,
-configured globally or per-view with `query_modifier_version`.
-
-**V1 (default) — JSONAPI-style filters:**
-
-```text
-GET /posts/?filter[published]=true
-GET /posts/?sort=-id
-GET /posts/?limit=10&offset=0
-```
-
-**V2 — direct field names with operator suffixes:**
+List endpoints accept filtering, sorting, and pagination through URL
+query parameters. Filters use direct field names with optional operator
+suffixes:
 
 ```text
 GET /posts/?published=true&order_by=-id&page=1&page_size=10
 GET /posts/?title__contains=hello
+GET /posts/?created_at__gte=2024-01-01&created_at__lt=2025-01-01
 ```
 
-V1 and V2 are separate systems; you cannot mix their parameters in the same request.
-To switch globally:
-
-```python
-fr.set_query_modifier_version(fr.QueryModifierVersion.V2)
-```
-
-To switch per-view:
-
-```python
-class PostView(fr.AsyncRestView):
-    prefix = "/posts"
-    model = Post
-    schema = PostSchema
-    query_modifier_version = fr.QueryModifierVersion.V2
-```
-
-See [How-To: Filter, Sort, and Paginate Lists](howto_query_modifiers.md) for the full list of filters and operators.
+See [How-To: Filter, Sort, and Paginate Lists](howto_query_modifiers.md)
+for the full list of operators.
 
 ---
 

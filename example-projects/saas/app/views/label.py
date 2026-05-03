@@ -27,13 +27,11 @@ class LabelView(TenantScopedMixin, TenantBase):
 
     ``TenantScopedMixin`` handles read filtering + write stamping of
     ``organization_id``; this class only adds the cascade-on-delete.
-    Demonstrates V2 query modifier style.
     """
 
     prefix = "/labels"
     model = Label
     schema = LabelSchema
-    query_modifier_version = fr.QueryModifierVersion.V2
 
     async def delete_object(self, obj):
         """Remove all task-label associations before deleting the label.

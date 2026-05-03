@@ -49,13 +49,13 @@ async def test_async_handle_list_uses_validated_query_params(monkeypatch):
     """
     captured = {}
 
-    def _apply_query_modifiers(first_arg, query, model, schema):
+    def _apply_list_params(first_arg, query, model, schema):
         captured["first_arg"] = first_arg
         captured["model"] = model
         captured["schema"] = schema
         return query
 
-    monkeypatch.setattr("fastapi_restly.views._async.apply_query_modifiers", _apply_query_modifiers)
+    monkeypatch.setattr("fastapi_restly.views._async.apply_list_params", _apply_list_params)
 
     view = _DummyAsyncView()
     view.session = _DummySession()
