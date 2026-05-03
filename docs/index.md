@@ -16,48 +16,9 @@ FastAPI-Restly implements **true class-based views** — real Python classes tha
 
 ## Quick Start
 
-### Zero-boilerplate mode (auto-schema)
-
-```python
-import fastapi_restly as fr
-from fastapi import FastAPI
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Mapped
-
-app = FastAPI()
-
-# Setup database
-fr.configure(async_database_url="sqlite+aiosqlite:///app.db")
-
-# Define your models
-class User(fr.IDBase):
-    name: Mapped[str]
-    email: Mapped[str]
-
-# Create tables — for dev/SQLite only; use Alembic migrations in production.
-# Must run AFTER models are declared so they're registered on the metadata.
-fr.DataclassBase.metadata.create_all(create_engine("sqlite:///app.db"))
-
-# Create instant CRUD endpoints
-@fr.include_view(app)
-class UserView(fr.AsyncRestView):
-    prefix = "/users"
-    model = User
-```
-
-### Explicit schema mode
-
-```python
-class UserSchema(fr.IDSchema):
-    name: str
-    email: str
-
-@fr.include_view(app)
-class UserView(fr.AsyncRestView):
-    prefix = "/users"
-    model = User
-    schema = UserSchema
-```
+The maintained copy-paste Quick Start lives in [Getting Started](getting_started.md).
+It covers database setup, dev table creation, async vs sync views, auto-generated
+schemas, explicit schemas, and the generated endpoint surface.
 
 Use auto-schema when you want speed and low boilerplate. Use explicit schemas when
 you need strict public API contracts, custom validation, aliases, or field-level

@@ -32,49 +32,29 @@ The differentiator is **true class-based views**. You subclass `RestView` / `Asy
 
 ## Quickstart
 
+FastAPI-Restly turns a SQLAlchemy model into a class-based CRUD resource:
+
 ```python
 import fastapi_restly as fr
 from fastapi import FastAPI
-from sqlalchemy import create_engine
 from sqlalchemy.orm import Mapped
 
-fr.configure(async_database_url="sqlite+aiosqlite:///app.db")
 app = FastAPI()
 
-# Define your model — IDBase adds an auto-incrementing integer id.
-# Use IDStampsBase to also get created_at / updated_at timestamps.
 class User(fr.IDBase):
     name: Mapped[str]
     email: Mapped[str]
-    age: Mapped[int]
 
-# Create tables — for demo purposes; use Alembic migrations in production.
-# Must run AFTER model declaration so the table is registered on the metadata.
-fr.DataclassBase.metadata.create_all(create_engine("sqlite:///app.db"))
-
-# Create CRUD endpoints with auto-generated Pydantic schemas.
-# Use RestView instead of AsyncRestView for sync SQLAlchemy.
 @fr.include_view(app)
 class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
-
-
-# That's it! You now have a fully functional API with:
-# - GET    /users/      — list with filtering, sorting, pagination
-# - POST   /users/      — create
-# - GET    /users/{id}  — read one
-# - PATCH  /users/{id}  — partial update
-# - DELETE /users/{id}  — delete
 ```
 
-Run it with any ASGI server (`uv add uvicorn`):
-
-```bash
-uvicorn main:app --reload
-```
-
-Then open <http://127.0.0.1:8000/docs> for the interactive Swagger UI.
+That view exposes list, create, read, patch, and delete endpoints with filtering,
+sorting, pagination, and an auto-generated Pydantic schema. For the full
+copy-paste app, database setup, and run command, see
+[Getting Started](docs/getting_started.md).
 
 ## How does it compare?
 
