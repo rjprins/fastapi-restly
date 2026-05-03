@@ -598,15 +598,15 @@ dev = [
 requires-dist = [
     { name = "aiosqlite", marker = "extra == 'standard'", specifier = ">=0.21.0" },
     { name = "alembic", specifier = ">=1.15.2" },
-    { name = "fastapi", specifier = ">=0.115.12" },
-    { name = "fastapi", extras = ["standard"], marker = "extra == 'standard'", specifier = ">=0.115.12" },
+    { name = "fastapi", specifier = ">=0.115.0" },
+    { name = "fastapi", extras = ["standard"], marker = "extra == 'standard'", specifier = ">=0.115.0" },
     { name = "ghp-import", marker = "extra == 'docs'", specifier = ">=2.1.0" },
-    { name = "httpx", marker = "extra == 'standard'", specifier = ">=0.28.1" },
-    { name = "httpx", marker = "extra == 'test'", specifier = ">=0.28.1" },
-    { name = "httpx", marker = "extra == 'testing'", specifier = ">=0.28.1" },
+    { name = "httpx", marker = "extra == 'standard'", specifier = ">=0.27.0" },
+    { name = "httpx", marker = "extra == 'test'", specifier = ">=0.27.0" },
+    { name = "httpx", marker = "extra == 'testing'", specifier = ">=0.27.0" },
     { name = "myst-parser", marker = "extra == 'docs'", specifier = ">=4.0.1" },
     { name = "orjson", specifier = ">=3.10.18" },
-    { name = "pydantic", specifier = ">=2.11.4" },
+    { name = "pydantic", specifier = ">=2.11.0" },
     { name = "pydantic-settings", specifier = ">=2.9.1" },
     { name = "pydata-sphinx-theme", marker = "extra == 'docs'", specifier = ">=0.16.0" },
     { name = "pytest", marker = "extra == 'standard'", specifier = ">=8.3.5" },
@@ -623,7 +623,7 @@ requires-dist = [
     { name = "sphinx-copybutton", marker = "extra == 'docs'", specifier = ">=0.5.2" },
     { name = "sphinx-design", marker = "extra == 'docs'", specifier = ">=0.6.0" },
     { name = "sphinx-sitemap", marker = "extra == 'docs'", specifier = ">=2.9.0" },
-    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0.41" },
+    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0.22" },
 ]
 provides-extras = ["standard", "docs", "testing", "test"]
 
@@ -631,7 +631,7 @@ provides-extras = ["standard", "docs", "testing", "test"]
 dev = [
     { name = "aiosqlite", specifier = ">=0.21.0" },
     { name = "ghp-import", specifier = ">=2.1.0" },
-    { name = "httpx", specifier = ">=0.28.1" },
+    { name = "httpx", specifier = ">=0.27.0" },
     { name = "ipython", specifier = ">=8.36.0" },
     { name = "myst-parser", specifier = ">=4.0.1" },
     { name = "pdbpp", specifier = ">=0.11.6" },
