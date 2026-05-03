@@ -214,7 +214,7 @@ For generated CRUD endpoints:
 
 These module-level functions are the primitive surface for building and
 persisting ORM objects from schemas. Use them anywhere you have a session
-— inside `on_*` hooks, in custom routes, in services, or in test setup.
+— inside `handle_*` handlers, in custom routes, in services, or in test setup.
 Each variant exists in both sync and async form, matching the session
 type you have on hand.
 
@@ -237,7 +237,7 @@ explicitly. The async/sync split is implicit: `AsyncRestView.make_new_object`
 calls `async_make_new_object` under the hood, `RestView.make_new_object`
 calls the sync version.
 
-Use these inside `on_*` hooks or custom route methods. When you need to
+Use these inside `handle_*` handlers or custom route methods. When you need to
 work with a model that isn't `self.model` (e.g. creating a sibling row
 in a custom endpoint) reach for the free functions instead.
 
@@ -248,7 +248,7 @@ in a custom endpoint) reach for the free functions instead.
 | `self.update_object(obj, schema_obj, schema_cls=None)` | Wraps `fr.update_object` / `fr.async_update_object`. **Does not flush** — call `self.save_object(obj)` afterwards. |
 | `self.save_object(obj)` | Wraps `fr.save_object` / `fr.async_save_object` against `self.session`. Flush + refresh; this is where writes actually hit the database. |
 | `self.delete_object(obj)` | Delete `obj` via `self.session` and flush. |
-| `self.build_list_query()` | Return the base SQLAlchemy `Select` used by both `on_list` and `count_index`. Defaults to `sqlalchemy.select(self.model)`. Override to add `WHERE` clauses that should apply to listing **and** its pagination total — tenant scoping, soft-delete filtering, permission-based row visibility. Call `super().build_list_query()` and chain `.where(...)` to compose with base-class or mixin filters. See [Composing views with mixins](howto_compose_views_with_mixins.md). |
+| `self.build_list_query()` | Return the base SQLAlchemy `Select` used by both `handle_list` and `count_index`. Defaults to `sqlalchemy.select(self.model)`. Override to add `WHERE` clauses that should apply to listing **and** its pagination total — tenant scoping, soft-delete filtering, permission-based row visibility. Call `super().build_list_query()` and chain `.where(...)` to compose with base-class or mixin filters. See [Composing views with mixins](howto_compose_views_with_mixins.md). |
 | `self.count_index(query_params)` | Return the total row count for the current list query (after filters, before pagination). Called by the default `index` only when `include_pagination_metadata = True`; available for use in replacement routes regardless. Consults `build_list_query()` so list and count stay in sync. |
 
 ### Database

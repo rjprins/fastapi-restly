@@ -20,7 +20,7 @@
 
 ## Why FastAPI-Restly?
 
-The differentiator is **true class-based views**. You subclass `RestView` / `AsyncRestView` and override hooks like `on_get`, `on_create`, or `save_object` — CRUD logic is *methods you can swap*, not opaque generated functions. Share behavior across views via inheritance the way you would with any Python class.
+The differentiator is **true class-based views**. You subclass `RestView` / `AsyncRestView` and override handlers like `handle_get`, `handle_create`, or object helpers like `save_object` — CRUD logic is *methods you can swap*, not opaque generated functions. Share behavior across views via inheritance the way you would with any Python class.
 
 * **CRUD endpoints in minutes** — auto-generates Pydantic schemas from your SQLAlchemy models.
 * **Override anything** — replace an endpoint, or just its business logic, without awkward hacks.
@@ -83,7 +83,7 @@ Then open <http://127.0.0.1:8000/docs> for the interactive Swagger UI.
 | | fastapi-crudrouter | fastcrud | **fastapi-restly** |
 |---|---|---|---|
 | Style | Router factory | Router factory | **Class-based views** |
-| Customize an endpoint | Replace the route | Replace the route | Override `on_get` / `on_create` / `save_object`, or replace the route |
+| Customize an endpoint | Replace the route | Replace the route | Override `handle_get` / `handle_create` / `save_object`, or replace the route |
 | Share behavior across resources | Wrapper functions | Wrapper functions | **Subclass a base view** |
 | Schema generation | Optional | Optional | Optional (auto from model) |
 | SQLAlchemy 2.0 / Pydantic v2 | Partial | Yes | **Yes, native** |
@@ -185,9 +185,9 @@ class OrderSchema(fr.IDSchema):
     total: float
 ```
 
-### Custom endpoints and hooks
+### Custom endpoints and handlers
 
-Add endpoints with `@fr.get`, `@fr.post`, `@fr.put`, `@fr.patch`, `@fr.delete`, or the generic `@fr.route`. Override `on_*` hooks (`on_list`, `on_get`, `on_create`, ...) to customise built-in CRUD logic without replacing the endpoint.
+Add endpoints with `@fr.get`, `@fr.post`, `@fr.put`, `@fr.patch`, `@fr.delete`, or the generic `@fr.route`. Override `handle_*` handlers (`handle_list`, `handle_get`, `handle_create`, ...) to customise built-in CRUD logic without replacing the endpoint.
 
 ```python
 @fr.include_view(app)
@@ -200,9 +200,9 @@ class UserView(fr.AsyncRestView):
     async def download_user(self, id: int):
         return {"id": id, "status": "ok"}
 
-    async def on_list(self, query_params, query=None):
+    async def handle_list(self, query_params, query=None):
         # Custom logic here
-        return await super().on_list(query_params, query=query)
+        return await super().handle_list(query_params, query=query)
 ```
 
 ### React Admin integration

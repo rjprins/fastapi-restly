@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- Breaking: renamed CRUD operation override points from `on_*` to `handle_*`
+  to make clear that these methods are the operation handlers, not passive
+  event hooks. The mapping is `on_list` -> `handle_list`,
+  `on_get` -> `handle_get`, `on_create` -> `handle_create`,
+  `on_update` -> `handle_update`, and `on_delete` -> `handle_delete`.
+  No deprecated `on_*` aliases are kept for this alpha API rename.
+
 ## [3.0.0] - 2026-05-02
 
 First public release of FastAPI-Restly. The major version reflects the

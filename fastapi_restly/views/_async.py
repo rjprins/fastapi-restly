@@ -95,7 +95,7 @@ class AsyncRestView(
 
     @get("/")
     async def index(self, query_params: Any) -> Any:
-        objs = await self.on_list(query_params)
+        objs = await self.handle_list(query_params)
         if not self.include_pagination_metadata:
             return [self.to_response_schema(obj) for obj in objs]
 
@@ -104,7 +104,7 @@ class AsyncRestView(
 
     def build_list_query(self) -> sqlalchemy.Select[Any]:
         """
-        Return the base SQLAlchemy ``Select`` used by both ``on_list`` and
+        Return the base SQLAlchemy ``Select`` used by both ``handle_list`` and
         ``count_index``. Override to add ``WHERE`` clauses that should apply
         to listing *and* its pagination total — e.g. tenant scoping, soft-delete
         filtering, permission-based row visibility. Call
@@ -113,7 +113,7 @@ class AsyncRestView(
         """
         return sqlalchemy.select(self.model)
 
-    async def on_list(
+    async def handle_list(
         self,
         query_params: Any,
         query: sqlalchemy.Select[Any] | None = None,
@@ -123,9 +123,9 @@ class AsyncRestView(
         Accepts a query argument that can be used for narrowing down the selection.
         Feel free to override this method, e.g.:
 
-            async def on_list(self, query_params, query=None):
+            async def handle_list(self, query_params, query=None):
                 query = make_my_query()
-                objs = await super().on_list(query_params, query)
+                objs = await super().handle_list(query_params, query)
                 return add_my_info(objs)
 
         ``query_params`` is the validated query-parameter Pydantic model
@@ -160,10 +160,10 @@ class AsyncRestView(
 
     @get("/{id}")
     async def get(self, id: Any) -> Any:
-        obj = await self.on_get(id)
+        obj = await self.handle_get(id)
         return self.to_response_schema(obj)
 
-    async def on_get(self, id: IdT) -> ModelT:
+    async def handle_get(self, id: IdT) -> ModelT:
         """
         Handle a GET request on "/{id}". This should return a single object.
         Return a 404 if not found.
@@ -179,10 +179,10 @@ class AsyncRestView(
     async def post(
         self, schema_obj: BaseSchema
     ) -> Any:  # schema_obj type is set in before_include_view
-        obj = await self.on_create(schema_obj)
+        obj = await self.handle_create(schema_obj)
         return self.to_response_schema(obj)
 
-    async def on_create(self, schema_obj: CreateSchemaT) -> ModelT:
+    async def handle_create(self, schema_obj: CreateSchemaT) -> ModelT:
         """
         Handle a POST request on "/". This should create a new object.
         Feel free to override this method.
@@ -192,32 +192,32 @@ class AsyncRestView(
 
     @patch("/{id}")
     async def patch(self, id: Any, schema_obj: BaseSchema) -> Any:
-        obj = await self.on_update(id, schema_obj)
+        obj = await self.handle_update(id, schema_obj)
         return self.to_response_schema(obj)
 
-    async def on_update(self, id: IdT, schema_obj: UpdateSchemaT) -> ModelT:
+    async def handle_update(self, id: IdT, schema_obj: UpdateSchemaT) -> ModelT:
         """
         Handle a PATCH request on "/{id}". This should partially update an existing
         object.
         Feel free to override this method.
         """
-        obj = await self.on_get(id)
+        obj = await self.handle_get(id)
         obj = await self.update_object(obj, schema_obj)
         return await self.save_object(obj)
 
     @delete("/{id}")
     async def delete(self, id: Any) -> fastapi.Response:
-        return await self.on_delete(id)
+        return await self.handle_delete(id)
 
-    async def on_delete(self, id: IdT) -> fastapi.Response:
-        obj = await self.on_get(id)
+    async def handle_delete(self, id: IdT) -> fastapi.Response:
+        obj = await self.handle_get(id)
         await self.delete_object(obj)
         return fastapi.Response(status_code=204)
 
     async def delete_object(self, obj: ModelT) -> None:
         """
         Handle a DELETE request on "/{id}". This should delete an object from the
-        database. `on_get()` is called first to lookup the object.
+        database. `handle_get()` is called first to lookup the object.
         Feel free to override this method.
         """
         await self.session.delete(obj)

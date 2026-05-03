@@ -138,7 +138,7 @@ in.
 
 That is what "true class-based views" means in this framework. You can:
 
-- Define an abstract parent that supplies hooks but is never registered
+- Define an abstract parent that supplies handlers but is never registered
   itself (this is exactly what `BaseRestView` is).
 - Subclass a working view to specialise it for a different prefix, a
   different role, or a different audience.
@@ -215,8 +215,8 @@ layered together — see
 ## Override a single method
 
 `AsyncRestView` and `RestView` are designed so you can replace any one piece
-without touching the rest. Override the hook (`on_list`, `on_get`,
-`on_create`, `on_update`, `on_delete`) for business-logic changes that should
+without touching the rest. Override the handler (`handle_list`, `handle_get`,
+`handle_create`, `handle_update`, `handle_delete`) for business-logic changes that should
 fire on both the generated route and any custom callers; override the
 endpoint method itself (`get`, `post`, `patch`, `delete`, `index`) when you
 want full control of the HTTP layer.
@@ -228,9 +228,9 @@ class UserView(fr.AsyncRestView):
     model = User
     schema = UserSchema
 
-    async def on_create(self, schema_obj: UserCreate) -> User:
+    async def handle_create(self, schema_obj: UserCreate) -> User:
         # Compose the create flow yourself so the password hash is written
-        # *before* save_object flushes. Calling super().on_create() and
+        # *before* save_object flushes. Calling super().handle_create() and
         # mutating after would lose the change — the row is already saved.
         user = await self.make_new_object(schema_obj)
         user.password_hash = hash_password(schema_obj.password)
@@ -255,7 +255,7 @@ for the full event API.
 
 Everything else — listing, retrieval, update, delete, schema generation,
 pagination — keeps working unchanged. See
-[Override Endpoints](howto_override_endpoints.md) for the full list of hooks
+[Override Endpoints](howto_override_endpoints.md) for the full list of handlers
 and the call chain.
 
 ## Dependency injection on class attributes
@@ -337,7 +337,7 @@ co-located. Don't reach for them just for the sake of structure.
 
 ## Cross-references
 
-- [Override Endpoints](howto_override_endpoints.md) — every hook on
+- [Override Endpoints](howto_override_endpoints.md) — every handler on
   `AsyncRestView` / `RestView`, with call-chain diagrams.
 - [Share Behaviour with Base Views](howto_inheritance.md) — patterns for
   multi-tenant scoping, role-based filtering, and shared mixins.

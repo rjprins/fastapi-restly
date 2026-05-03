@@ -26,7 +26,7 @@ and testing.
 :link: tutorial_customizing
 :link-type: doc
 
-Override hooks, low-level object helpers, custom routes, and shared base classes.
+Override handlers, low-level object helpers, custom routes, and shared base classes.
 :::
 
 ::::
@@ -49,14 +49,14 @@ Define schemas with field aliases, write-only fields, and read-only computed fie
 :link: howto_typing
 :link-type: doc
 
-Use `IDSchema`, optional view generics, and typed `on_*` hooks without fighting the framework.
+Use `IDSchema`, optional view generics, and typed `handle_*` handlers without fighting the framework.
 :::
 
 :::{grid-item-card} Override Endpoints
 :link: howto_override_endpoints
 :link-type: doc
 
-Customize `on_*` hooks, replace generated routes, and add custom routes alongside generated CRUD.
+Customize `handle_*` handlers, replace generated routes, and add custom routes alongside generated CRUD.
 :::
 
 :::{grid-item-card} React Admin Integration
@@ -80,7 +80,7 @@ access control across multiple views.
 
 Layer cross-cutting concerns — tenant scoping, soft delete, audit stamping —
 through cooperative mixins. Includes the rule for when to layer in a mixin vs.
-write logic in `on_create` / `on_update`.
+write logic in `handle_create` / `handle_update`.
 :::
 
 :::{grid-item-card} Filter, Sort, and Paginate

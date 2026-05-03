@@ -3,7 +3,7 @@
 FastAPI-Restly supports two typing styles:
 
 - **Low-friction mode**: keep your view classes simple and let the framework do the work.
-- **Stronger typing mode**: add explicit type parameters when you want better editor help for `on_*` overrides.
+- **Stronger typing mode**: add explicit type parameters when you want better editor help for `handle_*` overrides.
 
 This guide focuses on practical usage with Pyright and VS Code with Pylance.
 
@@ -73,15 +73,15 @@ That tells Restly which model should be resolved from the `{"id": ...}` payload.
 
 `AsyncRestView` and `RestView` can be parameterized, but this is optional.
 
-The generic form is useful when you override hooks such as:
+The generic form is useful when you override handlers such as:
 
-- `on_get`
-- `on_create`
-- `on_update`
-- `on_delete`
-- `on_list`
+- `handle_get`
+- `handle_create`
+- `handle_update`
+- `handle_delete`
+- `handle_list`
 
-Without view generics, these hooks still work, but their types are broader.
+Without view generics, these handlers still work, but their types are broader.
 With view generics, your editor can infer the concrete model, schema, and id types.
 
 ```python
@@ -110,14 +110,14 @@ class UserView(
     creation_schema = UserCreateSchema
     update_schema = UserUpdateSchema
 
-    async def on_get(self, id: int) -> User:
-        return await super().on_get(id)
+    async def handle_get(self, id: int) -> User:
+        return await super().handle_get(id)
 
-    async def on_create(self, schema_obj: UserCreateSchema) -> User:
-        return await super().on_create(schema_obj)
+    async def handle_create(self, schema_obj: UserCreateSchema) -> User:
+        return await super().handle_create(schema_obj)
 
-    async def on_update(self, id: int, schema_obj: UserUpdateSchema) -> User:
-        return await super().on_update(id, schema_obj)
+    async def handle_update(self, id: int, schema_obj: UserUpdateSchema) -> User:
+        return await super().handle_update(id, schema_obj)
 ```
 
 This looks heavier because it is more explicit. Use it when that extra precision
@@ -131,7 +131,7 @@ Use the simplest form that gives you the typing help you want:
 
 - **No generics at all** for normal CRUD views
 - **`IDSchema[RelatedModel]`** for relationship ID fields
-- **View generics** only when you want precise `on_*` hook typing
+- **View generics** only when you want precise `handle_*` handler typing
 
 That keeps everyday usage clean while still allowing stricter typing for
 projects that want it.
@@ -141,7 +141,7 @@ projects that want it.
 ## Custom routes are straightforward
 
 Custom route methods do not need view generics unless they depend on strongly
-typed hook interactions.
+typed handler interactions.
 
 ```python
 @fr.include_view(app)
@@ -169,7 +169,7 @@ not understand every detail of that process.
 The practical takeaway is:
 
 - Type checkers are best at the **public contract**: models, schemas, `IDSchema[...]`,
-  class attributes, and `on_*` hooks.
+  class attributes, and `handle_*` handlers.
 - Type checkers are less useful for the internal signature-rewriting machinery.
 
 You usually do not need to care about that distinction unless you are modifying
@@ -190,5 +190,5 @@ with Pyright. The repository keeps a dedicated set of consumer typing fixtures u
 - Bare `IDSchema` is supported.
 - `IDSchema[Model]` is preferred for relationship ID fields.
 - Bare `RestView` / `AsyncRestView` are the default.
-- Parameterized views are optional and mainly help with `on_*` hook typing.
+- Parameterized views are optional and mainly help with `handle_*` handler typing.
 - Custom route methods work well with ordinary Python annotations.

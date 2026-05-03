@@ -34,7 +34,7 @@ years of use.
 Production history at three companies is meaningful, but they were focused
 deployments. A broader user base will find corners we haven't hit yet.
 
-The core patterns — class-based views, the hook hierarchy, schema generation —
+The core patterns — class-based views, the override hierarchy, schema generation —
 are proven. The public API surface is new. If you find something broken or
 missing, [open an issue](https://github.com/rjprins/fastapi-restly/issues).
 

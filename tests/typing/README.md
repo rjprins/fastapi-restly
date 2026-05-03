@@ -24,7 +24,7 @@ Coverage checklist:
 - [x] Relationship IDs with `IDSchema[...]`
 - [x] Sync `RestView` with explicit create/update schemas
 - [x] Custom extra routes via `@fr.get` and `@fr.route`
-- [x] `on_*` hook overrides
+- [x] `handle_*` handler overrides
 - [x] View options: `include_pagination_metadata`
 - [x] View options: `exclude_routes`
 - [x] View options: `query_modifier_version = QueryModifierVersion.V2`

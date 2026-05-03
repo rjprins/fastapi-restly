@@ -279,14 +279,14 @@ nested payloads, including aliases.
 
 Nested schemas are **not** supported for create/update payloads. `POST` and `PATCH` inputs must
 still map directly to model attributes or use the `*_id: IDSchema[Model]` pattern for foreign
-keys. If you need a nested request shape, flatten it in the schema or override `on_create` /
-`on_update` and transform the payload yourself.
+keys. If you need a nested request shape, flatten it in the schema or override `handle_create` /
+`handle_update` and transform the payload yourself.
 
 ---
 
 ## Next steps
 
-- **[Part 2: Customizing Views](tutorial_customizing.md)** — override hooks, add custom routes, and share behaviour with base classes
+- **[Part 2: Customizing Views](tutorial_customizing.md)** — override handlers, add custom routes, and share behaviour with base classes
 - [Auto-Generated Schemas](technical_details.md#auto-generated-schemas) — skip writing schemas for simple models
 - [How-To: Filter, Sort, and Paginate Lists](howto_query_modifiers.md) — full filter and sort reference
 - [How-To: Foreign Keys with IDSchema](howto_relationship_idschema.md) — list relations and nested objects

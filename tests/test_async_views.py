@@ -331,8 +331,72 @@ def test_async_rest_view_crud_and_pagination():
     asyncio.run(run())
 
 
-def test_async_on_list_with_custom_query():
-    """Call on_list with an explicit query to cover the query-is-not-None branch."""
+def test_async_rest_view_dispatches_to_handle_overrides():
+    class DispatchWidget(fr.IDBase):
+        name: Mapped[str]
+
+    class WidgetSchema(fr.IDSchema):
+        name: str
+
+    call_log: list[str] = []
+
+    class WidgetView(fr.AsyncRestView):
+        prefix = "/widgets"
+        model = DispatchWidget
+        schema = WidgetSchema
+
+        async def handle_list(self, query_params, query=None):
+            call_log.append("list")
+            return await super().handle_list(query_params, query=query)
+
+        async def handle_get(self, id):
+            call_log.append("get")
+            return await super().handle_get(id)
+
+        async def handle_create(self, schema_obj):
+            call_log.append("create")
+            return await super().handle_create(schema_obj)
+
+        async def handle_update(self, id, schema_obj):
+            call_log.append("update")
+            return await super().handle_update(id, schema_obj)
+
+        async def handle_delete(self, id):
+            call_log.append("delete")
+            return await super().handle_delete(id)
+
+    async def run():
+        engine, make_session = _make_engine_and_session()
+        async with engine.begin() as conn:
+            await conn.run_sync(fr.DataclassBase.metadata.create_all)
+
+        async with make_session() as session:
+            view = WidgetView()
+            view.session = session
+
+            created = await view.post(WidgetSchema(id=0, name="alpha"))
+            await view.index({})
+            await view.get(created.id)
+            await view.patch(created.id, WidgetSchema(id=created.id, name="beta"))
+            await view.delete(created.id)
+
+        await engine.dispose()
+
+    asyncio.run(run())
+
+    assert call_log == [
+        "create",
+        "list",
+        "get",
+        "update",
+        "get",
+        "delete",
+        "get",
+    ]
+
+
+def test_async_handle_list_with_custom_query():
+    """Call handle_list with an explicit query to cover the query-is-not-None branch."""
 
     class Widget(fr.IDBase):
         name: Mapped[str]
@@ -365,7 +429,7 @@ def test_async_on_list_with_custom_query():
 
             # Pass an explicit custom query (covers the query-is-not-None branch)
             custom_query = sqlalchemy.select(Widget).where(Widget.active == True)  # noqa: E712
-            results = await view.on_list({}, query=custom_query)
+            results = await view.handle_list({}, query=custom_query)
 
             assert len(results) == 2
             assert all(w.active for w in results)
@@ -376,7 +440,7 @@ def test_async_on_list_with_custom_query():
 
 
 def test_async_build_list_query_is_consulted_by_list_and_count():
-    """Both on_list and count_index must route through build_list_query so a
+    """Both handle_list and count_index must route through build_list_query so a
     single override filters listing AND its pagination total."""
 
     class Gizmo(fr.IDBase):
@@ -418,7 +482,7 @@ def test_async_build_list_query_is_consulted_by_list_and_count():
             )
 
             # Override is consulted by both list and count.
-            results = await view.on_list({})
+            results = await view.handle_list({})
             assert len(results) == 2
             assert all(g.active for g in results)
 

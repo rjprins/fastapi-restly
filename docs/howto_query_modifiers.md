@@ -336,7 +336,7 @@ GET /users/?page=2&page_size=50
 ## Overriding query logic per view
 
 Override `build_list_query` to inject a base query before the framework
-applies query modifiers. Both `on_list` and `count_index` consult this
+applies query modifiers. Both `handle_list` and `count_index` consult this
 seam, so the filter applies to listing **and** the pagination total
 without further plumbing:
 
@@ -355,7 +355,7 @@ cleanly with any base-class or mixin filter. See
 [Composing views with mixins](howto_compose_views_with_mixins.md) for the
 multi-layer pattern.
 
-`on_list` still accepts an optional `query` argument for the rare case
+`handle_list` still accepts an optional `query` argument for the rare case
 where the custom query intentionally should *not* affect `count_index`
 — for example, a list-only result decoration that needs a different
 join shape than the count. Reach for `build_list_query` first.

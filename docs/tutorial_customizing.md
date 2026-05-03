@@ -4,7 +4,7 @@ This tutorial extends the blog API from [Part 1](tutorial.md). It introduces eve
 layer of the customization system in order, from the simplest override down to
 shared base classes.
 
-The examples use `AsyncRestView`. The same hooks and patterns apply to `RestView`
+The examples use `AsyncRestView`. The same handlers and patterns apply to `RestView`
 (sync) — just drop the `async`/`await`.
 
 ---
@@ -14,7 +14,7 @@ The examples use `AsyncRestView`. The same hooks and patterns apply to `RestView
 FastAPI-Restly gives you four layers to work with:
 
 ```
-on_* hooks            — change what one CRUD operation does
+handle_* handlers            — change what one CRUD operation does
 object helpers        — change how objects are built/saved/deleted across all writes
 custom routes         — add endpoints beyond the five generated ones
 inheritance           — share any of the above across multiple views
@@ -24,23 +24,23 @@ Start at the highest layer that covers what you need. Drop down only when necess
 
 ---
 
-## Layer 1 — `on_*` hooks
+## Layer 1 — `handle_*` handlers
 
-Each generated endpoint delegates to an `on_*` hook. Override the hook to change
+Each generated endpoint delegates to a `handle_*` handler. Override the handler to change
 the business logic without touching the HTTP contract.
 
 ```
-GET /          → index()   → on_list(query_params)
-GET /{id}      → get()     → on_get(id)
-POST /         → post()    → on_create(schema_obj)
-PATCH /{id}    → patch()   → on_update(id, schema_obj)
-DELETE /{id}   → delete()  → on_delete(id)
+GET /          → index()   → handle_list(query_params)
+GET /{id}      → get()     → handle_get(id)
+POST /         → post()    → handle_create(schema_obj)
+PATCH /{id}    → patch()   → handle_update(id, schema_obj)
+DELETE /{id}   → delete()  → handle_delete(id)
 ```
 
-Inside every hook, `self.session` is the live database session and `self.request`
+Inside every handler, `self.session` is the live database session and `self.request`
 is the FastAPI `Request` object.
 
-### on_create — inject server-side fields
+### handle_create — inject server-side fields
 
 Real APIs rarely accept every field from the client. Say each post should record
 which user created it, taken from the request context rather than from the payload:
@@ -52,7 +52,7 @@ class PostView(fr.AsyncRestView):
     model = Post
     schema = PostSchema
 
-    async def on_create(self, schema_obj):
+    async def handle_create(self, schema_obj):
         obj = await self.make_new_object(schema_obj)
         obj.author_id = self.request.state.user_id   # set server-side
         return await self.save_object(obj)
@@ -62,27 +62,27 @@ class PostView(fr.AsyncRestView):
 `save_object` flushes and refreshes it. Both are separate steps you can
 intercept individually — more on that in Layer 2.
 
-### on_update — validate before saving
+### handle_update — validate before saving
 
 Block updates based on the current state of the object:
 
 ```python
-    async def on_update(self, id, schema_obj):
-        obj = await self.on_get(id)          # raises 404 if missing
+    async def handle_update(self, id, schema_obj):
+        obj = await self.handle_get(id)          # raises 404 if missing
         if obj.published:
             raise fastapi.HTTPException(409, "Cannot edit a published post")
         obj = await self.update_object(obj, schema_obj)
         return await self.save_object(obj)
 ```
 
-Calling `self.on_get(id)` reuses the same 404 logic as the GET endpoint.
-If you later override `on_get` (for example, to add tenant scoping), `on_update`
+Calling `self.handle_get(id)` reuses the same 404 logic as the GET endpoint.
+If you later override `handle_get` (for example, to add tenant scoping), `handle_update`
 picks up that change automatically.
 
 ### build_list_query — filter results to the current user
 
 The most common real-world override: restrict the list to rows the caller is
-allowed to see. `build_list_query` is the seam both `on_list` and `count_index`
+allowed to see. `build_list_query` is the seam both `handle_list` and `count_index`
 consult, so a single override keeps the listed rows and the pagination total
 in sync.
 
@@ -100,39 +100,39 @@ class PostView(fr.AsyncRestView):
 ```
 
 Calling `super().build_list_query()` and chaining `.where(...)` composes cleanly
-with any base-class or mixin filter. Reach for an `on_list` override only when
+with any base-class or mixin filter. Reach for a `handle_list` override only when
 you need to do work beyond a `WHERE` clause — see
 [Override Endpoints](howto_override_endpoints.md#scope-filter-the-list-endpoint).
 
-### on_delete — require explicit confirmation
+### handle_delete — require explicit confirmation
 
 ```python
-    async def on_delete(self, id):
+    async def handle_delete(self, id):
         if self.request.headers.get("X-Confirm-Delete") != "yes":
             raise fastapi.HTTPException(400, "Missing X-Confirm-Delete: yes header")
-        return await super().on_delete(id)
+        return await super().handle_delete(id)
 ```
 
-`super().on_delete(id)` handles the 404 check and the actual deletion.
+`super().handle_delete(id)` handles the 404 check and the actual deletion.
 Override only the guard; let the base class do the rest.
 
 ---
 
 ## Layer 2 — object helpers
 
-The object helpers sit below the `on_*` hooks. They handle the mechanics of
+The object helpers sit below the `handle_*` handlers. They handle the mechanics of
 construction, persistence, and removal. Override them when the same change
 applies to **both** create and update, so you don't repeat yourself.
 
 ```
-on_create  →  make_new_object(schema_obj)
+handle_create  →  make_new_object(schema_obj)
            →  save_object(obj)
 
-on_update  →  on_get(id)
+handle_update  →  handle_get(id)
            →  update_object(obj, schema_obj)
            →  save_object(obj)
 
-on_delete  →  on_get(id)
+handle_delete  →  handle_get(id)
            →  delete_object(obj)
 ```
 
@@ -148,7 +148,7 @@ invalidate a cache, emit an event — override `save_object`:
         return obj
 ```
 
-Because `on_create` and `on_update` both end with `self.save_object(obj)`,
+Because `handle_create` and `handle_update` both end with `self.save_object(obj)`,
 this one override covers both operations.
 
 ### make_new_object — set a default on creation only
@@ -186,7 +186,7 @@ from datetime import datetime, timezone
 ```
 
 `DELETE /posts/{id}` now marks the row instead of removing it. The 204 response
-is still returned by `on_delete`; only the persistence step changes.
+is still returned by `handle_delete`; only the persistence step changes.
 
 ---
 
@@ -208,7 +208,7 @@ class PostView(fr.AsyncRestView):
 
     @fr.get("/{id}/summary")
     async def summary(self, id: int):
-        post = await self.on_get(id)   # raises 404 automatically
+        post = await self.handle_get(id)   # raises 404 automatically
         return {
             "id": post.id,
             "title": post.title,
@@ -216,7 +216,7 @@ class PostView(fr.AsyncRestView):
         }
 ```
 
-Calling `self.on_get(id)` gives you the ORM object with the same 404 logic
+Calling `self.handle_get(id)` gives you the ORM object with the same 404 logic
 as the standard GET endpoint — and picks up any override you may have applied.
 
 ### A state-change action
@@ -228,7 +228,7 @@ import fastapi
 
     @fr.post("/{id}/publish", status_code=200)
     async def publish(self, id: int):
-        post = await self.on_get(id)
+        post = await self.handle_get(id)
         if post.published:
             raise fastapi.HTTPException(409, "Already published")
         post.published = True
@@ -250,7 +250,7 @@ special framework support.
 ### Extract authentication into a base class
 
 The blog API has two views that both need a current user. Instead of repeating
-the dependency and the `on_create` logic:
+the dependency and the `handle_create` logic:
 
 ```python
 from typing import Annotated
@@ -263,7 +263,7 @@ def get_current_user(request: fastapi.Request) -> User:
 class AuthoredBase(fr.AsyncRestView):
     current_user: Annotated[User, Depends(get_current_user)]
 
-    async def on_create(self, schema_obj):
+    async def handle_create(self, schema_obj):
         obj = await self.make_new_object(schema_obj)
         obj.author_id = self.current_user.id
         return await self.save_object(obj)
@@ -289,7 +289,7 @@ in every method of every subclass. `AuthoredBase` itself is never passed to
 
 ### Layer overrides with super()
 
-A subclass can extend a base-class hook rather than replace it:
+A subclass can extend a base-class handler rather than replace it:
 
 ```python
 @fr.include_view(app)
@@ -298,14 +298,14 @@ class PostView(AuthoredBase):
     model = Post
     schema = PostSchema
 
-    async def on_create(self, schema_obj):
+    async def handle_create(self, schema_obj):
         # PostView-specific logic before the base class runs
         schema_obj.slug = slugify(schema_obj.title)
-        return await super().on_create(schema_obj)
+        return await super().handle_create(schema_obj)
 ```
 
-The call chain is `PostView.on_create` → `AuthoredBase.on_create` →
-`AsyncRestView.on_create`. All three layers run in order.
+The call chain is `PostView.handle_create` → `AuthoredBase.handle_create` →
+`AsyncRestView.handle_create`. All three layers run in order.
 
 ### Apply router-level dependencies
 
@@ -412,7 +412,7 @@ def get_current_user_id(request: fastapi.Request) -> int:
 class AuthoredBase(fr.AsyncRestView):
     user_id: Annotated[int, Depends(get_current_user_id)]
 
-    async def on_create(self, schema_obj):
+    async def handle_create(self, schema_obj):
         obj = await self.make_new_object(schema_obj)
         obj.author_id = self.user_id
         return await self.save_object(obj)
@@ -426,8 +426,8 @@ class PostView(AuthoredBase):
     model = Post
     schema = PostSchema
 
-    async def on_update(self, id, schema_obj):
-        obj = await self.on_get(id)
+    async def handle_update(self, id, schema_obj):
+        obj = await self.handle_get(id)
         if obj.published:
             raise fastapi.HTTPException(409, "Cannot edit a published post")
         obj = await self.update_object(obj, schema_obj)
@@ -439,7 +439,7 @@ class PostView(AuthoredBase):
 
     @fr.post("/{id}/publish", status_code=200)
     async def publish(self, id: int):
-        post = await self.on_get(id)
+        post = await self.handle_get(id)
         if post.published:
             raise fastapi.HTTPException(409, "Already published")
         post.published = True
@@ -458,7 +458,7 @@ class CommentView(AuthoredBase):
 
 ## Next steps
 
-- [How-To: Override Endpoints](howto_override_endpoints.md) — complete hook reference with all signatures
+- [How-To: Override Endpoints](howto_override_endpoints.md) — complete handler reference with all signatures
 - [How-To: Share Behaviour with Base Views](howto_inheritance.md) — full inheritance guide
 - [How-To: Testing](howto_testing.md) — test the overrides you write
 - [API Reference](api_reference.md)

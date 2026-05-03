@@ -258,8 +258,67 @@ def test_sync_rest_view_crud_and_pagination(sync_db):
             view.get(second.id)
 
 
+def test_sync_rest_view_dispatches_to_handle_overrides(sync_db):
+    engine, make_session = sync_db
+
+    class DispatchWidget(fr.IDBase):
+        name: Mapped[str]
+
+    class WidgetSchema(fr.IDSchema):
+        name: str
+
+    call_log: list[str] = []
+
+    class WidgetView(fr.RestView):
+        prefix = "/widgets"
+        model = DispatchWidget
+        schema = WidgetSchema
+
+        def handle_list(self, query_params, query=None):
+            call_log.append("list")
+            return super().handle_list(query_params, query=query)
+
+        def handle_get(self, id):
+            call_log.append("get")
+            return super().handle_get(id)
+
+        def handle_create(self, schema_obj):
+            call_log.append("create")
+            return super().handle_create(schema_obj)
+
+        def handle_update(self, id, schema_obj):
+            call_log.append("update")
+            return super().handle_update(id, schema_obj)
+
+        def handle_delete(self, id):
+            call_log.append("delete")
+            return super().handle_delete(id)
+
+    fr.DataclassBase.metadata.create_all(engine)
+
+    with make_session() as session:
+        view = WidgetView()
+        view.session = session
+
+        created = view.post(WidgetSchema(id=0, name="alpha"))
+        view.index({})
+        view.get(created.id)
+        view.patch(created.id, WidgetSchema(id=created.id, name="beta"))
+        view.delete(created.id)
+
+    assert call_log == [
+        "create",
+        "list",
+        "get",
+        "update",
+        "get",
+        "delete",
+        "get",
+    ]
+
+
 def test_sync_build_list_query_is_consulted_by_list_and_count(sync_db):
-    """Both on_list and count_index must route through build_list_query so a
+    """Both handle_list and count_index must route through build_list_query so a
     single override filters listing AND its pagination total."""
     import sqlalchemy
 
@@ -301,7 +360,7 @@ def test_sync_build_list_query_is_consulted_by_list_and_count(sync_db):
         )
 
         # Override is consulted by both list and count.
-        results = view.on_list({})
+        results = view.handle_list({})
         assert len(results) == 2
         assert all(g.active for g in results)
 

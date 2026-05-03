@@ -91,8 +91,8 @@ for `getMany` calls. It translates to `WHERE id IN (1, 2, 3)`.
 default `PATCH /{id}` is also kept available, so clients that prefer partial
 updates continue to work.
 
-The PUT route delegates to the same `on_update` hook as PATCH and accepts the
-view's standard `update_schema` payload. Override `on_update` (or replace the
+The PUT route delegates to the same `handle_update` handler as PATCH and accepts the
+view's standard `update_schema` payload. Override `handle_update` (or replace the
 PUT route directly) if you need different write semantics for the two methods.
 
 ---
@@ -112,7 +112,7 @@ class OrderSchema(fr.IDSchema[Order]):
 
 `FlatIDSchema` accepts both raw scalars and `{"id": ...}` shapes on input, so
 it doubles as a permissive write-side type for FK lists when paired with a
-custom `on_create` / `on_update` that resolves them. For single-FK fields,
+custom `handle_create` / `handle_update` that resolves them. For single-FK fields,
 `fr.IDSchema[Model]` remains the right choice.
 
 ---
@@ -229,9 +229,9 @@ class CustomerView(ReactAdminBase):
 `AsyncReactAdminView` is a thin subclass of `AsyncRestView` built with the
 [route replacement](howto_override_endpoints.md#replace-a-generated-route)
 pattern. It replaces the `index` route to change the list contract and adds a
-`PUT /{id}` route that delegates to the standard `on_update` hook. All other
+`PUT /{id}` route that delegates to the standard `handle_update` handler. All other
 generated routes (`GET /{id}`, `POST /`, `PATCH /{id}`, `DELETE /{id}`) and all
-`on_*` hooks are inherited unchanged.
+`handle_*` handlers are inherited unchanged.
 
 The shared parsing and response logic lives in `ReactAdminMixin`, which is
 also what you would use directly if you need to build a fully custom

@@ -322,7 +322,7 @@ class AsyncReactAdminView(ReactAdminMixin, AsyncRestView):
 
     @put("/{id}")
     async def put(self, id: Any, schema_obj: BaseSchema) -> Any:
-        obj = await self.on_update(id, schema_obj)
+        obj = await self.handle_update(id, schema_obj)
         return self.to_response_schema(obj)
 
 
@@ -347,5 +347,5 @@ class ReactAdminView(ReactAdminMixin, RestView):
 
     @put("/{id}")
     def put(self, id: Any, schema_obj: BaseSchema) -> Any:
-        obj = self.on_update(id, schema_obj)
+        obj = self.handle_update(id, schema_obj)
         return self.to_response_schema(obj)

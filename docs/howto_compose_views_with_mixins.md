@@ -13,23 +13,23 @@ and two ergonomic gotchas worth knowing up front.
 
 ## When to override `make_new_object` / `update_object` / `delete_object` / `build_list_query`
 
-The [Override Endpoints](howto_override_endpoints.md#override-low-level-object-hooks)
-guide warns against overriding these low-level hooks for per-view
+The [Override Endpoints](howto_override_endpoints.md#override-low-level-object-helpers)
+guide warns against overriding these low-level helpers for per-view
 business logic — password hashing, slug derivation, denormalised rollups,
-status-transition events. Those belong in `on_create` / `on_update`,
+status-transition events. Those belong in `handle_create` / `handle_update`,
 written from scratch using the [`make_new_object` /
 `save_object`](api_reference.md#crud-utility-free-functions) helpers.
 
-There is one carve-out where overriding these hooks is the *right*
+There is one carve-out where overriding these helpers is the *right*
 answer:
 
-**Rule 1 — don't override these hooks for per-view application logic.**
+**Rule 1 — don't override these helpers for per-view application logic.**
 Hashing a password, deriving a slug with a uniqueness probe, computing a
 denormalised rollup, dispatching outbox events on a status transition —
-all of these belong in `on_create` / `on_update` so the call site is
+all of these belong in `handle_create` / `handle_update` so the call site is
 explicit about what happens on this resource's create.
 
-**Rule 2 — do override these hooks for structural cross-cutting
+**Rule 2 — do override these helpers for structural cross-cutting
 concerns**, layered through mixins. Stamping `created_by_id` /
 `updated_by_id` from auth context, stamping `organization_id` from the
 current tenant, filtering reads to non-soft-deleted rows, replacing
@@ -49,7 +49,7 @@ inputs?
   flags) and writes server-controlled fields → mixin (Rule 2).
 - If it reads schema fields and computes values from them
   (`hash_password(schema.password)`, `slugify(schema.name) +
-  uniqueness_probe`) → user's `on_create` / `on_update`, written from
+  uniqueness_probe`) → user's `handle_create` / `handle_update`, written from
   scratch (Rule 1).
 
 ## Three reusable mixins
@@ -88,8 +88,8 @@ class TenantScopedMixin:
             q = q.where(self.model.organization_id == org_id)
         return q
 
-    async def on_get(self, id: Any) -> Any:
-        obj = await super().on_get(id)  # type: ignore[misc]
+    async def handle_get(self, id: Any) -> Any:
+        obj = await super().handle_get(id)  # type: ignore[misc]
         if self._is_admin():
             return obj
         org_id = self._current_org_id()
@@ -128,8 +128,8 @@ class SoftDeleteMixin:
             q = q.where(self.model.deleted_at.is_(None))
         return q
 
-    async def on_get(self, id: Any) -> Any:
-        obj = await super().on_get(id)  # type: ignore[misc]
+    async def handle_get(self, id: Any) -> Any:
+        obj = await super().handle_get(id)  # type: ignore[misc]
         if not self._include_deleted() and getattr(obj, "deleted_at", None) is not None:
             raise fastapi.HTTPException(404, "Not found")
         return obj
@@ -184,7 +184,7 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, fr.Asyn
     schema = ProjectSchema
 ```
 
-Both `on_list` and `count_index` consult `build_list_query`, so the
+Both `handle_list` and `count_index` consult `build_list_query`, so the
 tenant + soft-delete `WHERE` clauses apply to listing **and** the
 pagination total without further plumbing.
 
