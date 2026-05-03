@@ -63,6 +63,10 @@ When auto-generated schemas are a good fit:
 - Early project scaffolding or prototypes
 - Straightforward models with minimal validation rules
 
+### Sync or Async?
+
+Default to `AsyncRestView` for new services; it follows FastAPI's async-first grain and works with async SQLAlchemy drivers. Choose sync `RestView` when a view depends on sync-only libraries or when you are integrating with a sync-first codebase. Mixed projects are fine: pick `AsyncRestView` or `RestView` per view based on the dependencies that view calls.
+
 ## 3. Run
 
 ```bash
