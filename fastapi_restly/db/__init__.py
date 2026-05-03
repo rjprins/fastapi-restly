@@ -1,4 +1,10 @@
-from ._globals import FRGlobals, fr_globals, get_fr_globals, use_fr_globals
+from ._globals import (
+    FRGlobals,
+    RestlyContext,
+    fr_globals,
+    get_fr_globals,
+    use_fr_globals,
+)
 from ._proxy import async_open_session, open_session
 from ._session import (
     AsyncSessionDep,
@@ -34,6 +40,7 @@ __all__ = [
     "activate_savepoint_only_mode",
     "deactivate_savepoint_only_mode",
     # Globals
+    "RestlyContext",
     "FRGlobals",
     "fr_globals",
     "get_fr_globals",

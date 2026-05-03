@@ -10,7 +10,7 @@ from sqlalchemy.pool import StaticPool
 
 import fastapi_restly as fr
 import fastapi_restly.db as fr_db
-from fastapi_restly.db._globals import FRGlobals, use_fr_globals
+from fastapi_restly.db._globals import FRGlobals, _get_restly_context, use_fr_globals
 from fastapi_restly.db._proxy import async_open_session as proxy_async_open_session
 from fastapi_restly.db._proxy import open_session as proxy_open_session
 from fastapi_restly.db._session import (
@@ -29,14 +29,57 @@ from fastapi_restly.db._session import (
 def test_public_session_context_manager_exports_use_open_names():
     assert fr.open_session is fr_db.open_session
     assert fr.async_open_session is fr_db.async_open_session
+    assert fr.RestlyContext is fr_db.RestlyContext
+    assert fr.FRGlobals is fr.RestlyContext
     assert "open_session" in fr.__all__
     assert "async_open_session" in fr.__all__
+    assert "RestlyContext" in fr.__all__
+    assert "FRGlobals" in fr.__all__
+    assert "get_restly_context" not in fr.__all__
+    assert "use_restly_context" not in fr.__all__
     assert "open_session" in fr_db.__all__
     assert "async_open_session" in fr_db.__all__
+    assert "RestlyContext" in fr_db.__all__
+    assert "get_restly_context" not in fr_db.__all__
+    assert "use_restly_context" not in fr_db.__all__
+    assert not hasattr(fr, "get_restly_context")
+    assert not hasattr(fr, "use_restly_context")
     assert not hasattr(fr, "session")
     assert not hasattr(fr, "async_session")
     assert "session" not in fr.__all__
     assert "async_session" not in fr.__all__
+
+
+def test_restly_context_is_public_context_manager():
+    original_context = _get_restly_context()
+    context = fr.RestlyContext()
+
+    with context as active_context:
+        assert active_context is context
+        assert _get_restly_context() is context
+        assert fr.get_fr_globals() is context
+
+    assert _get_restly_context() is original_context
+
+
+def test_restly_context_can_be_used_anonymously():
+    original_context = _get_restly_context()
+
+    with fr.RestlyContext() as context:
+        assert _get_restly_context() is context
+
+    assert _get_restly_context() is original_context
+
+
+def test_restly_context_nested_entries_restore_in_lifo_order():
+    outer = fr.RestlyContext()
+    inner = fr.RestlyContext()
+
+    with outer:
+        assert _get_restly_context() is outer
+        with inner:
+            assert _get_restly_context() is inner
+        assert _get_restly_context() is outer
 
 
 def test_getters_and_sync_proxy_raise_without_configuration():

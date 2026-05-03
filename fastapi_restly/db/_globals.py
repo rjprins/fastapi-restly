@@ -1,6 +1,6 @@
 from collections.abc import AsyncIterator, Callable, Iterator
 from contextlib import contextmanager
-from contextvars import ContextVar
+from contextvars import ContextVar, Token
 
 from sqlalchemy.ext.asyncio import AsyncSession as SA_AsyncSession
 from sqlalchemy.ext.asyncio import async_sessionmaker
@@ -8,7 +8,15 @@ from sqlalchemy.orm import Session as SA_Session
 from sqlalchemy.orm import sessionmaker
 
 
-class FRGlobals:
+class RestlyContext:
+    """Container for Restly runtime state.
+
+    Most applications use the default process-wide context by calling
+    ``fr.configure(...)`` directly. Create a ``RestlyContext`` when you need
+    isolated Restly state in the same process, for example for tests or
+    multiple FastAPI apps.
+    """
+
     __slots__ = (
         "async_database_url",
         "async_make_session",
@@ -33,32 +41,57 @@ class FRGlobals:
         self.session_generator = None
         self.sync_session_generator = None
 
+    def __enter__(self) -> "RestlyContext":
+        token = _restly_context_ctx.set(self)
+        _restly_context_token_stack.set(
+            _restly_context_token_stack.get() + (token,)
+        )
+        return self
 
-_default_globals = FRGlobals()
-_fr_globals_ctx: ContextVar[FRGlobals | None] = ContextVar(
-    "fastapi_restly_db_globals", default=None
+    def __exit__(self, *exc_info: object) -> None:
+        token_stack = _restly_context_token_stack.get()
+        if not token_stack:
+            raise RuntimeError("RestlyContext was exited without being entered.")
+        token = token_stack[-1]
+        _restly_context_token_stack.set(token_stack[:-1])
+        _restly_context_ctx.reset(token)
+
+
+FRGlobals = RestlyContext
+
+
+_default_context = RestlyContext()
+_restly_context_ctx: ContextVar[RestlyContext | None] = ContextVar(
+    "fastapi_restly_context", default=None
+)
+_restly_context_token_stack: ContextVar[
+    tuple[Token[RestlyContext | None], ...]
+] = ContextVar(
+    "fastapi_restly_context_token_stack",
+    default=(),
 )
 
 
+def _get_restly_context() -> RestlyContext:
+    return _restly_context_ctx.get() or _default_context
+
+
 def get_fr_globals() -> FRGlobals:
-    return _fr_globals_ctx.get() or _default_globals
+    return _get_restly_context()
 
 
 @contextmanager
 def use_fr_globals(globals_obj: FRGlobals) -> Iterator[None]:
-    token = _fr_globals_ctx.set(globals_obj)
-    try:
+    with globals_obj:
         yield
-    finally:
-        _fr_globals_ctx.reset(token)
 
 
 class _FRGlobalsProxy:
     def __getattr__(self, name: str):
-        return getattr(get_fr_globals(), name)
+        return getattr(_get_restly_context(), name)
 
     def __setattr__(self, name: str, value):
-        setattr(get_fr_globals(), name, value)
+        setattr(_get_restly_context(), name, value)
 
 
 fr_globals = _FRGlobalsProxy()

@@ -1,6 +1,8 @@
 # Database layer
 from .db import (
     AsyncSessionDep,
+    FRGlobals,
+    RestlyContext,
     SessionDep,
     activate_savepoint_only_mode,
     async_open_session,
@@ -82,6 +84,8 @@ __all__ = [
     "configure",
     "activate_savepoint_only_mode",
     "deactivate_savepoint_only_mode",
+    "RestlyContext",
+    "FRGlobals",
     "get_fr_globals",
     "use_fr_globals",
     # Models

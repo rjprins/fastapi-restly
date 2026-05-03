@@ -212,20 +212,49 @@ Custom dialects (e.g. react-admin's
 parallel view classes that bypass `apply_list_params` entirely and
 implement their own request/response contract.
 
-## Database Globals and Test Isolation
+## Restly Runtime Context
 
-The database session factories (`async_make_session`, `make_session`) are stored
-on an `FRGlobals` instance. A `ContextVar` (`_fr_globals_ctx`) determines which
-`FRGlobals` object is active in any given context. The module-level `fr_globals`
-is a proxy that delegates attribute access to `get_fr_globals()`, which returns
-the context-local instance if one has been set, or the default instance
-otherwise.
+The database session factories (`async_make_session`, `make_session`), database
+URLs, and optional custom session generators live on a `RestlyContext` instance.
+Most applications use the default context implicitly:
 
-The `use_fr_globals(globals_obj)` context manager swaps in an alternative
-`FRGlobals` during the block and restores the previous one on exit. This is how
-`activate_savepoint_only_mode()` achieves test isolation: it injects a
-savepoint-backed session factory without touching global state visible to other
-concurrent contexts.
+```python
+fr.configure(async_database_url="sqlite+aiosqlite:///app.db")
+```
+
+That default keeps the common case simple, but Restly is not limited to a single
+irreversible module-level singleton. `RestlyContext` is also a context manager:
+
+```python
+app_context = fr.RestlyContext()
+
+with app_context:
+    fr.configure(async_database_url="postgresql+asyncpg://host/app")
+```
+
+While the `with` block is active, every Restly helper that reads or writes
+runtime state uses `app_context`. When the block exits, Restly restores the
+previous context.
+
+Internally this is implemented with a `ContextVar`. The private
+`_get_restly_context()` helper returns the context-local instance when one is
+active, otherwise the default context. The module-level `fr_globals` object is a
+compatibility proxy: its attribute reads and writes delegate to the active
+context, so existing code inside the framework can continue to access
+`fr_globals.make_session` while remaining context-aware.
+
+`FRGlobals`, `get_fr_globals()`, and `use_fr_globals()` are compatibility names
+for the older globals API. New code should prefer `RestlyContext` directly:
+
+```python
+with fr.RestlyContext():
+    fr.configure(async_database_url="sqlite+aiosqlite:///:memory:")
+```
+
+This is how Restly stays singleton-by-default without being singleton-only.
+Tests, multiple FastAPI apps in one process, and embedded applications can each
+activate isolated runtime state without mutating the default context visible to
+other execution contexts.
 
 ## Session Factory Defaults
 

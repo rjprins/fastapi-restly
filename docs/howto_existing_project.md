@@ -79,27 +79,3 @@ class WorldView(fr.AsyncRestView):
 FastAPI-Restly supports these models for generated CRUD routes and
 auto-generated schemas. When creating tables, use your own base metadata
 (for example `AppBase.metadata.create_all(...)`).
-
-## Isolating Runtime State Per App
-
-FastAPI-Restly keeps default runtime state (session factories, database URLs)
-in a module-level `FRGlobals` instance. When running multiple apps in the same
-process you can isolate state per context:
-
-```python
-from fastapi_restly.db import FRGlobals, use_fr_globals
-
-app_a_globals = FRGlobals()
-app_b_globals = FRGlobals()
-
-with use_fr_globals(app_a_globals):
-    fr.configure(async_database_url="postgresql+asyncpg://host-a/db")
-    ...
-
-with use_fr_globals(app_b_globals):
-    fr.configure(async_database_url="postgresql+asyncpg://host-b/db")
-    ...
-```
-
-`use_fr_globals` uses a `ContextVar` internally, so concurrent async tasks
-each see the globals object that was active when they started.

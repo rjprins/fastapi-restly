@@ -263,12 +263,41 @@ in a custom endpoint) reach for the free functions instead.
 | `fr.async_open_session()` | Open an async SQLAlchemy session context manager for use outside request handling, for example in background jobs or scripts. |
 | `fr.open_session()` | Open a sync SQLAlchemy session context manager for use outside request handling, for example in background jobs or scripts. |
 | `fr.configure(async_database_url=..., ...)` | Configure the framework. Accepts async/sync URLs, engines, session makers, or custom session generators. |
+| `fr.RestlyContext()` | Context manager and reusable handle for isolating Restly runtime state, such as configured session factories and database URLs. Most apps do not need this; call `fr.configure(...)` directly unless you run multiple Restly configurations in one process. |
 | `fr.get_async_engine()` | Return the configured `AsyncEngine` instance. |
 | `fr.get_engine()` | Return the configured sync `Engine` instance. |
 | `fr.activate_savepoint_only_mode(make_session)` | **Intended for tests.** Wraps the session factory in a savepoint so test data never commits to the database. Each test rolls back instantly without touching the real data. Requires the session maker as argument. |
 | `fr.deactivate_savepoint_only_mode(make_session)` | Restore normal session behavior after testing. |
-| `fr.use_fr_globals(globals_obj)` | Context manager that swaps the global state for test isolation. |
-| `fr.get_fr_globals()` | Return the current `FRGlobals` instance (engine, session factory, etc.). |
+| `fr.FRGlobals`, `fr.use_fr_globals()`, `fr.get_fr_globals()` | Compatibility names for the older globals API. New code should prefer `RestlyContext` as a context manager. |
+
+Most applications configure Restly once and never need an explicit context:
+
+```python
+fr.configure(async_database_url="sqlite+aiosqlite:///app.db")
+```
+
+Use `RestlyContext` when one Python process needs isolated Restly runtime state:
+
+```python
+app_context = fr.RestlyContext()
+
+with app_context:
+    fr.configure(async_database_url="postgresql+asyncpg://host/app")
+    fr.include_view(app, UserView)
+
+# Later, reuse the same Restly configuration.
+with app_context:
+    async with fr.async_open_session() as session:
+        ...
+```
+
+For temporary isolation, an anonymous context is enough:
+
+```python
+with fr.RestlyContext():
+    fr.configure(async_database_url="sqlite+aiosqlite:///:memory:")
+    ...
+```
 
 ### Default Exception Handling
 
