@@ -23,14 +23,13 @@ make install-dev
 Create `main.py`:
 
 ```python
+from contextlib import asynccontextmanager
+
 import fastapi_restly as fr
 from fastapi import FastAPI
-from sqlalchemy import create_engine
 from sqlalchemy.orm import Mapped
 
 fr.configure(async_database_url="sqlite+aiosqlite:///app.db")
-
-app = FastAPI()
 
 
 class User(fr.IDBase):
@@ -38,9 +37,17 @@ class User(fr.IDBase):
     email: Mapped[str]
 
 
-# Create tables — for dev/SQLite only; use Alembic migrations in production.
-# Must run AFTER the model classes are declared so they are registered on the metadata.
-fr.DataclassBase.metadata.create_all(create_engine("sqlite:///app.db"))
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    # Dev/demo table creation only; use Alembic migrations in production.
+    # Runs after model classes are declared, so metadata contains every table.
+    engine = fr.get_async_engine()
+    async with engine.begin() as conn:
+        await conn.run_sync(fr.DataclassBase.metadata.create_all)
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
 
 
 @fr.include_view(app)
@@ -56,6 +63,7 @@ A few things to note:
 - `fr.IDBase` is the convenience alias that combines `DataclassBase` with an auto-incrementing integer `id` primary key.
 - If you prefer standard SQLAlchemy declarative style (without dataclass semantics), use `fr.PlainIDBase` instead — both work with the rest of the framework.
 - With no manual schema, FastAPI-Restly auto-generates one from your model.
+- The lifespan hook creates tables through the same async engine configured for the app. For production, use Alembic migrations instead of `create_all()`.
 
 When auto-generated schemas are a good fit:
 
