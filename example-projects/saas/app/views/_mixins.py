@@ -149,9 +149,10 @@ class AuditStampedMixin:
     # Required from the host class.
     if TYPE_CHECKING:
         request: fastapi.Request
+        current_user_id: int | None
 
     def _current_user_id(self) -> int | None:
-        return getattr(self.request.state, "user_id", None)
+        return self.current_user_id
 
     async def make_new_object(self, schema_obj: Any) -> Any:
         obj = await super().make_new_object(schema_obj)  # type: ignore[misc]

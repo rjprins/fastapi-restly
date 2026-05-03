@@ -50,7 +50,7 @@ class TaskLabelView(TenantBase):
     """CRUD for task-label associations.
 
     Demonstrates ``make_new_object`` to stamp the ``added_by_id`` field from
-    the request context rather than requiring the client to provide it.
+    the injected auth context rather than requiring the client to provide it.
     """
 
     prefix = "/task-labels"
@@ -61,8 +61,7 @@ class TaskLabelView(TenantBase):
         """Stamp added_by_id from auth context if the client did not provide it."""
         obj = await super().make_new_object(schema_obj)
         if obj.added_by_id is None:
-            # In production: obj.added_by_id = self.request.state.user_id
-            obj.added_by_id = getattr(self.request.state, "user_id", None)
+            obj.added_by_id = self._current_user_id()
         return obj
 
     @fr.post("/create-and-attach", response_model=TaskLabelSchema, status_code=201)
@@ -136,7 +135,7 @@ class TaskLabelView(TenantBase):
         # ``self.make_new_object`` method that this view overrides for
         # the stamp. Worth flagging for the helper-design discussion.
         if task_label.added_by_id is None:
-            task_label.added_by_id = getattr(self.request.state, "user_id", None)
+            task_label.added_by_id = self._current_user_id()
 
         task_label = await async_save_object(self.session, task_label)
         # IDRef serializes as a bare scalar both ways. FastAPI's

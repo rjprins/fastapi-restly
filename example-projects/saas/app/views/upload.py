@@ -72,7 +72,7 @@ class UploadView(TenantBase):
         upload = Upload(
             filename=file.filename,
             organization_id=organization_id,
-            uploaded_by_id=getattr(self.request.state, "user_id", None),
+            uploaded_by_id=self._current_user_id(),
         )
         self.session.add(upload)
 

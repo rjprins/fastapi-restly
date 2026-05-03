@@ -1154,10 +1154,8 @@ class TestNestedRoutes:
 class TestMeEndpoints:
     """Test /users/me endpoints for self-service."""
 
-    def test_get_me(self, client):
+    def test_get_me(self, client, auth_context):
         """Test GET /users/me returns current user."""
-        import app.views.user as user_view
-
         # Create org and user
         response = client.post(
             "/organizations/",
@@ -1175,21 +1173,16 @@ class TestMeEndpoints:
         )
         created_user_id = response.json()["id"]
 
-        user_view._TEST_USER_ID = created_user_id
-        try:
+        with auth_context(user_id=created_user_id):
             response = client.get("/users/me")
             me = response.json()
 
             assert me["id"] == created_user_id
             assert "email" in me
             assert "name" in me
-        finally:
-            user_view._TEST_USER_ID = None
 
-    def test_update_me(self, client):
+    def test_update_me(self, client, auth_context):
         """Test PATCH /users/me updates current user's profile."""
-        import app.views.user as user_view
-
         # Create org and user
         response = client.post(
             "/organizations/",
@@ -1207,8 +1200,7 @@ class TestMeEndpoints:
         )
         user_id = response.json()["id"]
 
-        user_view._TEST_USER_ID = user_id
-        try:
+        with auth_context(user_id=user_id):
             response = client.patch(
                 "/users/me",
                 json={"name": "Updated Name"},
@@ -1217,8 +1209,6 @@ class TestMeEndpoints:
 
             assert updated["name"] == "Updated Name"
             assert updated["email"] == "update-me@example.com"
-        finally:
-            user_view._TEST_USER_ID = None
 
 
 class TestReportingEndpoints:
@@ -1916,10 +1906,8 @@ class TestDifferentSchemasPerOperation:
 class TestTenantIsolation:
     """Test tenant isolation (org scoping) for projects."""
 
-    def test_tenant_isolation_filters_list(self, client):
+    def test_tenant_isolation_filters_list(self, client, auth_context):
         """Test that handle_list filters by current org when set."""
-        import app.views._base as project_view
-
         # Create two orgs
         response = client.post(
             "/organizations/",
@@ -1947,7 +1935,6 @@ class TestTenantIsolation:
         org2_project_id = response.json()["id"]
 
         # Without tenant isolation, both projects visible
-        project_view._TEST_ORG_ID = None
         response = client.get("/projects/")
         all_projects = response.json()["items"]
         all_ids = [p["id"] for p in all_projects]
@@ -1955,20 +1942,15 @@ class TestTenantIsolation:
         assert org2_project_id in all_ids
 
         # With tenant isolation for org1, only org1 projects visible
-        project_view._TEST_ORG_ID = org1_id
-        try:
+        with auth_context(org_id=org1_id):
             response = client.get("/projects/")
             filtered_projects = response.json()["items"]
             filtered_ids = [p["id"] for p in filtered_projects]
             assert org1_project_id in filtered_ids
             assert org2_project_id not in filtered_ids
-        finally:
-            project_view._TEST_ORG_ID = None  # Reset
 
-    def test_tenant_isolation_blocks_get_other_org(self, client):
+    def test_tenant_isolation_blocks_get_other_org(self, client, auth_context):
         """Test that handle_get returns 404 for other org's resources."""
-        import app.views._base as project_view
-
         # Create two orgs
         response = client.post(
             "/organizations/",
@@ -1990,19 +1972,14 @@ class TestTenantIsolation:
         org2_project_id = response.json()["id"]
 
         # With tenant isolation for org1, can't access org2's project
-        project_view._TEST_ORG_ID = org1_id
-        try:
+        with auth_context(org_id=org1_id):
             response = client.get(
                 f"/projects/{org2_project_id}",
                 assert_status_code=404,
             )
-        finally:
-            project_view._TEST_ORG_ID = None  # Reset
 
-    def test_tenant_isolation_allows_own_org(self, client):
+    def test_tenant_isolation_allows_own_org(self, client, auth_context):
         """Test that handle_get allows access to own org's resources."""
-        import app.views._base as project_view
-
         # Create org
         response = client.post(
             "/organizations/",
@@ -2018,22 +1995,17 @@ class TestTenantIsolation:
         project_id = response.json()["id"]
 
         # With tenant isolation for same org, can access project
-        project_view._TEST_ORG_ID = org_id
-        try:
+        with auth_context(org_id=org_id):
             response = client.get(f"/projects/{project_id}")
             project = response.json()
             assert project["id"] == project_id
-        finally:
-            project_view._TEST_ORG_ID = None  # Reset
 
 
 class TestRowLevelPermissions:
     """Test row-level permissions (filter results by user permissions)."""
 
-    def test_row_level_filters_task_list(self, client):
+    def test_row_level_filters_task_list(self, client, auth_context):
         """Test that handle_list filters tasks by current user."""
-        import app.views.task as task_view
-
         # Create org, users, and project
         response = client.post(
             "/organizations/",
@@ -2073,7 +2045,6 @@ class TestRowLevelPermissions:
         user2_task_id = response.json()["id"]
 
         # Without row-level permissions, all tasks visible
-        task_view._TEST_USER_ID = None
         response = client.get("/tasks/")
         all_tasks = response.json()
         all_ids = [t["id"] for t in all_tasks]
@@ -2081,20 +2052,15 @@ class TestRowLevelPermissions:
         assert user2_task_id in all_ids
 
         # With row-level permissions for user1, only user1's tasks visible
-        task_view._TEST_USER_ID = user1_id
-        try:
+        with auth_context(user_id=user1_id):
             response = client.get("/tasks/")
             filtered_tasks = response.json()
             filtered_ids = [t["id"] for t in filtered_tasks]
             assert user1_task_id in filtered_ids
             assert user2_task_id not in filtered_ids
-        finally:
-            task_view._TEST_USER_ID = None  # Reset
 
-    def test_row_level_blocks_get_other_user_task(self, client):
+    def test_row_level_blocks_get_other_user_task(self, client, auth_context):
         """Test that handle_get returns 404 for other user's tasks."""
-        import app.views.task as task_view
-
         # Create org, users, and project
         response = client.post(
             "/organizations/",
@@ -2128,19 +2094,14 @@ class TestRowLevelPermissions:
         user2_task_id = response.json()["id"]
 
         # User1 cannot access user2's task
-        task_view._TEST_USER_ID = user1_id
-        try:
+        with auth_context(user_id=user1_id):
             response = client.get(
                 f"/tasks/{user2_task_id}",
                 assert_status_code=404,
             )
-        finally:
-            task_view._TEST_USER_ID = None  # Reset
 
-    def test_row_level_allows_own_task(self, client):
+    def test_row_level_allows_own_task(self, client, auth_context):
         """Test that handle_get allows access to user's own tasks."""
-        import app.views.task as task_view
-
         # Create org, user, and project
         response = client.post(
             "/organizations/",
@@ -2168,13 +2129,10 @@ class TestRowLevelPermissions:
         task_id = response.json()["id"]
 
         # User can access own task
-        task_view._TEST_USER_ID = user_id
-        try:
+        with auth_context(user_id=user_id):
             response = client.get(f"/tasks/{task_id}")
             task = response.json()
             assert task["id"] == task_id
-        finally:
-            task_view._TEST_USER_ID = None  # Reset
 
 
 class TestFieldLevelPermissions:

@@ -16,8 +16,6 @@ from ._mixins import AuditStampedMixin, SoftDeleteMixin, TenantScopedMixin
 
 # Set by tests to simulate field-level permissions without real auth middleware.
 _TEST_USER_ROLE: "UserRole | None" = None
-# Set by tests to simulate the currently authenticated user.
-_TEST_USER_ID: int | None = None
 
 
 class UpdateMeRequest(BaseModel):
@@ -139,7 +137,7 @@ class UserView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantBase
     @fr.get("/me", response_model=UserSchema)
     async def get_current_user(self) -> Any:
         """Get current user's profile."""
-        user_id = getattr(self.request.state, "user_id", None) or _TEST_USER_ID
+        user_id = self._current_user_id()
         if not user_id:
             raise HTTPException(status_code=404, detail="Current user not found")
         user = await self.handle_get(user_id)
@@ -153,7 +151,7 @@ class UserView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantBase
         same path as ``PATCH /users/{id}``: any future ``handle_update`` override
         (validation, auditing, side-effects) applies here automatically.
         """
-        user_id = getattr(self.request.state, "user_id", None) or _TEST_USER_ID
+        user_id = self._current_user_id()
         if not user_id:
             raise HTTPException(status_code=404, detail="Current user not found")
         user = await self.handle_update(user_id, request)

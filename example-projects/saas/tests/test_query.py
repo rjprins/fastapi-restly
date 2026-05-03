@@ -244,10 +244,8 @@ class TestLabelFiltering:
 
         assert len(labels) <= 2
 
-    def test_filter_composes_with_tenant_scope(self, client):
+    def test_filter_composes_with_tenant_scope(self, client, auth_context):
         """LabelView's filters compose with TenantScopedMixin."""
-        import app.views._base as base_view
-
         org1 = client.post(
             "/organizations/",
             json={"name": "Scoped Labels 1", "slug": "scoped-labels-1"},
@@ -274,12 +272,9 @@ class TestLabelFiltering:
             },
         ).json()
 
-        base_view._TEST_ORG_ID = org1["id"]
-        try:
+        with auth_context(org_id=org1["id"]):
             response = client.get("/labels/?name=shared")
             labels = response.json()
-        finally:
-            base_view._TEST_ORG_ID = None
 
         assert [label["id"] for label in labels] == [label1["id"]]
         assert label2["id"] not in {label["id"] for label in labels}

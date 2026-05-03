@@ -11,9 +11,6 @@ from ..schemas import TaskSchema
 from ._base import TenantBase
 from ._mixins import AuditStampedMixin, SoftDeleteMixin
 
-# Set by tests to simulate row-level permissions without real auth middleware.
-_TEST_USER_ID: int | None = None
-
 
 class TaskCreateSchema(BaseModel):
     """Schema for creating a task (no id/timestamps)."""
@@ -75,14 +72,6 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
     prefix = "/tasks"
     model = Task
     schema = TaskSchema
-
-    def _current_user_id(self) -> int | None:
-        """Return the current user ID.
-
-        In production: set by auth middleware via ``request.state.user_id``.
-        In tests: controlled via the module-level ``_TEST_USER_ID`` variable.
-        """
-        return getattr(self.request.state, "user_id", None) or _TEST_USER_ID
 
     async def delete_object(self, obj):
         """Decrement the parent project's story-point rollup before delete."""

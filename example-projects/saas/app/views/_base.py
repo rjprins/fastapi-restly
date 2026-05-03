@@ -3,7 +3,7 @@
 Demonstrates:
 - Class-level ``dependencies`` applied to every route on every subclass
 - ``save_object`` override to run a side effect after every write
-- A shared ``_current_org_id()`` helper that reads from request state,
+- Shared auth-context dependencies and helper accessors,
   used by subclasses to scope list/get operations to the current tenant
 - ``_emit()`` helper that writes outbox events in the same transaction
   as the business write (use-cases: send email / fire webhook / invalidate
@@ -24,15 +24,11 @@ update every route::
         prefix = "/projects"         # → /api/v1/projects
 """
 
-from typing import Any, ClassVar
+from typing import Annotated, Any, ClassVar
 
 import fastapi
 
 import fastapi_restly as fr
-
-# Set by tests to simulate tenant isolation without real auth middleware.
-# In production, request.state.org_id is set by your auth middleware instead.
-_TEST_ORG_ID: int | None = None
 
 
 def check_api_key(request: fastapi.Request) -> None:
@@ -45,26 +41,43 @@ def check_api_key(request: fastapi.Request) -> None:
     pass  # Always passes in this example; replace with real auth logic
 
 
+def get_current_org_id(request: fastapi.Request) -> int | None:
+    """Return the authenticated tenant ID set by auth middleware."""
+    return getattr(request.state, "org_id", None)
+
+
+def get_current_user_id(request: fastapi.Request) -> int | None:
+    """Return the authenticated user ID set by auth middleware."""
+    return getattr(request.state, "user_id", None)
+
+
 class TenantBase(fr.AsyncRestView):
     """Base view wired with auth and audit logging for every concrete view.
 
     Subclasses inherit:
     - Router-level ``check_api_key`` dependency on every route
     - ``save_object`` that calls through to super() then logs the write
+    - FastAPI dependencies for current user/org context
     - ``_current_org_id()`` helper for tenant-scoped filtering
     """
 
     # Applied to every route registered by this view and all subclasses.
     dependencies: ClassVar[list[Any]] = [fastapi.Depends(check_api_key)]
+    current_org_id: Annotated[int | None, fastapi.Depends(get_current_org_id)]
+    current_user_id: Annotated[int | None, fastapi.Depends(get_current_user_id)]
 
     def _current_org_id(self) -> int | None:
         """Return the current tenant's org ID.
 
         In production: set by auth middleware via ``request.state.org_id``.
-        In tests: controlled via the module-level ``_TEST_ORG_ID`` variable.
+        In tests: controlled with ``app.dependency_overrides``.
         Returns ``None`` when neither is set (all rows visible, no scoping).
         """
-        return getattr(self.request.state, "org_id", None) or _TEST_ORG_ID
+        return self.current_org_id
+
+    def _current_user_id(self) -> int | None:
+        """Return the current authenticated user ID."""
+        return self.current_user_id
 
     def _is_admin(self) -> bool:
         """Whether the current request bypasses tenant + row scoping.

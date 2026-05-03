@@ -484,22 +484,15 @@ class TestAdminBypass:
         ).json()
         return a["id"], b["id"], pa["id"], pb["id"]
 
-    def test_non_admin_sees_only_own_org(self, client):
-        from app.views import _base as base_module
-
+    def test_non_admin_sees_only_own_org(self, client, auth_context):
         a_id, _b_id, pa_id, pb_id = self._setup_two_orgs_with_projects(client)
-        base_module._TEST_ORG_ID = a_id
-        try:
+        with auth_context(org_id=a_id):
             ids = {p["id"] for p in client.get("/projects/").json()["items"]}
             assert pa_id in ids
             assert pb_id not in ids
-        finally:
-            base_module._TEST_ORG_ID = None
 
-    def test_admin_sees_all_orgs(self, client, monkeypatch):
+    def test_admin_sees_all_orgs(self, client, monkeypatch, auth_context):
         """Admin bypass: setting request.state.is_admin shows everything."""
-        from app.views import _base as base_module
-
         a_id, _b_id, pa_id, pb_id = self._setup_two_orgs_with_projects(client)
 
         # Patch _is_admin to return True regardless of state — equivalent
@@ -507,17 +500,13 @@ class TestAdminBypass:
         from app.views._base import TenantBase
         monkeypatch.setattr(TenantBase, "_is_admin", lambda self: True)
 
-        base_module._TEST_ORG_ID = a_id  # would normally hide org B
-        try:
+        with auth_context(org_id=a_id):  # would normally hide org B
             ids = {p["id"] for p in client.get("/projects/").json()["items"]}
             assert pa_id in ids
-            assert pb_id in ids  # admin sees other org despite _TEST_ORG_ID
-        finally:
-            base_module._TEST_ORG_ID = None
+            assert pb_id in ids  # admin sees other org despite current org
 
-    def test_admin_sees_other_users_tasks(self, client, monkeypatch):
+    def test_admin_sees_other_users_tasks(self, client, monkeypatch, auth_context):
         """TaskView's assignee scope also short-circuits for admin."""
-        from app.views import task as task_module
         from app.views._base import TenantBase
 
         org = client.post(
@@ -551,8 +540,7 @@ class TestAdminBypass:
         )
 
         # As u1, only T1 visible
-        task_module._TEST_USER_ID = u1["id"]
-        try:
+        with auth_context(user_id=u1["id"]):
             titles = {t["title"] for t in client.get("/tasks/").json()}
             assert titles == {"T1"}
 
@@ -560,8 +548,6 @@ class TestAdminBypass:
             monkeypatch.setattr(TenantBase, "_is_admin", lambda self: True)
             titles = {t["title"] for t in client.get("/tasks/").json()}
             assert titles == {"T1", "T2"}
-        finally:
-            task_module._TEST_USER_ID = None
 
 
 # ---------------------------------------------------------------------------
@@ -573,31 +559,26 @@ class TestSiblingCreation:
     """The brenntag permissions.py:188-201 pattern: create a sibling row,
     then create another row that references it via IDRef."""
 
-    def _ctx(self, client):
-        from app.views import _base as base_module
-
+    def _ctx(self, client, auth_context):
         org = client.post(
             "/organizations/", json={"name": "Sib", "slug": "sib"}
         ).json()
-        base_module._TEST_ORG_ID = org["id"]  # required: TenantScopedMixin
-        proj = client.post(
-            "/projects/", json={"name": "Sib P", "organization_id": org["id"]}
-        ).json()
-        task = client.post(
-            "/tasks/",
-            json={"title": "Sib T", "project_id": proj["id"]},
-        ).json()
-        return org["id"], task["id"]
+        return org["id"], auth_context(org_id=org["id"])
 
-    def test_create_and_attach_creates_both_rows(self, client):
-        from app.views import _base as base_module
-
-        try:
-            _org_id, task_id = self._ctx(client)
+    def test_create_and_attach_creates_both_rows(self, client, auth_context):
+        _org_id, override_auth = self._ctx(client, auth_context)
+        with override_auth:
+            proj = client.post(
+                "/projects/", json={"name": "Sib P", "organization_id": _org_id}
+            ).json()
+            task = client.post(
+                "/tasks/",
+                json={"title": "Sib T", "project_id": proj["id"]},
+            ).json()
             response = client.post(
                 "/task-labels/create-and-attach",
                 json={
-                    "task_id": task_id,
+                    "task_id": task["id"],
                     "label_name": "urgent",
                     "color": "#ff0000",
                 },
@@ -605,7 +586,7 @@ class TestSiblingCreation:
             assert response.status_code == 201
             tl = response.json()
             # IDRef serializes as a scalar id on the wire.
-            assert tl["task_id"] == task_id
+            assert tl["task_id"] == task["id"]
             assert isinstance(tl["label_id"], int)
             assert tl["added_by_id"] is None  # no user context set in the test
 
@@ -614,10 +595,8 @@ class TestSiblingCreation:
             label = client.get(f"/labels/{label_id}").json()
             assert label["name"] == "urgent"
             assert label["color"] == "#ff0000"
-        finally:
-            base_module._TEST_ORG_ID = None
 
-    def test_idref_resolution_for_freshly_created_sibling(self, client):
+    def test_idref_resolution_for_freshly_created_sibling(self, client, auth_context):
         """The pinned behavior: the framework's IDRef resolver requires
         the referenced row to have a flushed PK before it can be
         constructed. Without ``await session.flush()`` between the Label
@@ -625,27 +604,30 @@ class TestSiblingCreation:
 
         The route flushes manually for exactly this reason; this test
         verifies the happy path works end-to-end."""
-        from app.views import _base as base_module
-
-        try:
-            _org_id, task_id = self._ctx(client)
+        _org_id, override_auth = self._ctx(client, auth_context)
+        with override_auth:
+            proj = client.post(
+                "/projects/", json={"name": "Sib P", "organization_id": _org_id}
+            ).json()
+            task = client.post(
+                "/tasks/",
+                json={"title": "Sib T", "project_id": proj["id"]},
+            ).json()
             r1 = client.post(
                 "/task-labels/create-and-attach",
-                json={"task_id": task_id, "label_name": "first"},
+                json={"task_id": task["id"], "label_name": "first"},
             )
             r2 = client.post(
                 "/task-labels/create-and-attach",
-                json={"task_id": task_id, "label_name": "second"},
+                json={"task_id": task["id"], "label_name": "second"},
             )
             assert r1.status_code == 201
             assert r2.status_code == 201
             # Different label IDs — each request really created its own
             # row, the resolver isn't returning a stale cached one.
             assert r1.json()["label_id"] != r2.json()["label_id"]
-        finally:
-            base_module._TEST_ORG_ID = None
 
-    def test_async_make_new_object_skips_view_overrides(self, client):
+    def test_async_make_new_object_skips_view_overrides(self, client, auth_context):
         """Insight worth pinning: the *free function* async_make_new_object
         does NOT go through ``self.make_new_object`` on TaskLabelView, so
         the ``added_by_id`` stamp (which is in the view's bound override)
@@ -655,14 +637,20 @@ class TestSiblingCreation:
         instance (we're not in one — we're in TaskLabelView itself but
         building a TaskLabel via the *free* helper), or apply the stamp
         manually in the custom route."""
-        from app.views import _base as base_module
         from app.views import label as label_module
 
-        try:
-            _org_id, task_id = self._ctx(client)
+        _org_id, override_auth = self._ctx(client, auth_context)
+        with override_auth:
+            proj = client.post(
+                "/projects/", json={"name": "Sib P", "organization_id": _org_id}
+            ).json()
+            task = client.post(
+                "/tasks/",
+                json={"title": "Sib T", "project_id": proj["id"]},
+            ).json()
             response = client.post(
                 "/task-labels/create-and-attach",
-                json={"task_id": task_id, "label_name": "no-stamp"},
+                json={"task_id": task["id"], "label_name": "no-stamp"},
             )
             assert response.status_code == 201
             # The route explicitly stamps added_by_id from request.state
@@ -674,5 +662,3 @@ class TestSiblingCreation:
             # request.state.user_id; the route handles None gracefully.
             assert tl["added_by_id"] is None
             del label_module  # silence unused
-        finally:
-            base_module._TEST_ORG_ID = None

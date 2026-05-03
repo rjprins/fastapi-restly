@@ -325,7 +325,7 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
         if not include_deleted:
             q = q.where(Task.deleted_at.is_(None))
         if not self._is_admin():
-            user_id = getattr(self.request.state, "user_id", None)
+            user_id = self._current_user_id()
             if user_id is not None:
                 q = q.where(Task.assignee_id == user_id)
         result = await self.session.scalars(q)
