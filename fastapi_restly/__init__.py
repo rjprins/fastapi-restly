@@ -66,10 +66,9 @@ from .views import (
 
 # Public API surface for fastapi-restly.
 #
-# Anything not listed here is considered internal and may change without
-# warning. Submodule ``__init__.py`` files have their own (narrower)
-# ``__all__`` lists for submodule-level imports such as
-# ``from fastapi_restly.schemas import ReadOnly``.
+# This top-level namespace is the primary public API. Submodule ``__all__``
+# lists may expose additional supported advanced symbols for users working in
+# that subsystem, such as ``from fastapi_restly.views import BaseRestView``.
 __all__ = [
     # Database — session context managers
     "async_open_session",

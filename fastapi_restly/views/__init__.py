@@ -5,7 +5,7 @@ from ._async import (
     async_update_object,
 )
 from ._base import (
-    BaseRestView,  # kept importable for advanced subclassing; not in __all__
+    BaseRestView,
     View,
     delete,
     get,
@@ -20,16 +20,16 @@ from ._sync import RestView, make_new_object, save_object, update_object
 
 # Public API for ``fastapi_restly.views``.
 #
-# ``BaseRestView`` is intentionally not listed: it is the abstract parent
-# shared by ``RestView`` / ``AsyncRestView`` and has no endpoints of its own,
-# so subclassing it directly is an advanced/internal pattern. It remains
-# importable from this module for users who explicitly need it, but it is
-# not part of the supported public surface.
+# Submodule exports are supported public API for users working in this
+# subsystem. Some names, such as ``BaseRestView``, are intentionally kept out
+# of the top-level ``fastapi_restly`` namespace because they are advanced
+# building blocks rather than the primary import path.
 __all__ = [
     "RestView",
     "AsyncRestView",
     "AsyncReactAdminView",
     "ReactAdminView",
+    "BaseRestView",
     "View",
     "async_make_new_object",
     "async_save_object",

@@ -184,6 +184,7 @@ Restly to an existing model layer.
 | Symbol | Description |
 |---|---|
 | `fr.View` | Base class for all class-based views. Subclass this directly when you do not need CRUD — add endpoints with `@fr.get`, `@fr.post`, etc. |
+| `fastapi_restly.views.BaseRestView` | Supported advanced base class for custom CRUD foundations shared by sync and async views. Import from `fastapi_restly.views`; it is intentionally not exported at the top level. |
 | `fr.AsyncRestView` | Async CRUD view. Use with async SQLAlchemy sessions. |
 | `fr.RestView` | Sync CRUD view. Use with sync SQLAlchemy sessions. |
 | `fr.AsyncReactAdminView` | Async CRUD view that speaks the `ra-data-simple-rest` wire contract used by [react-admin](https://marmelab.com/react-admin/). See [How-To: React Admin Integration](howto_react_admin.md). |
