@@ -82,9 +82,16 @@ markers*; they only stash route metadata on the method. Nothing is registered
 until you call:
 
 ```python
-fr.include_view(app, UserView)        # function form
-# or
-@fr.include_view(app)                  # decorator form
+fr.include_view(app, UserView)
+```
+
+This direct form is the recommended architecture for larger apps: view modules
+define classes, and the app/router composition layer decides where to mount
+them. Small apps can use the decorator shortcut when import-time registration
+is acceptable:
+
+```python
+@fr.include_view(app)
 class UserView(fr.View): ...
 ```
 

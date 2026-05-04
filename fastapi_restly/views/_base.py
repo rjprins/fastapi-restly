@@ -575,10 +575,6 @@ class View:
     def before_include_view(cls):
         pass
 
-    @classmethod
-    def add_to_router(cls, parent_router: fastapi.APIRouter | fastapi.FastAPI) -> None:
-        _init_view_cls_and_add_to_router(cls, parent_router)
-
 
 V = TypeVar("V", bound=type[View])
 
@@ -597,18 +593,17 @@ def include_view(
     parent_router: fastapi.APIRouter | fastapi.FastAPI, view_cls: V | None = None
 ) -> V | Callable[[V], V]:
     """
-    Add the routes of a View class to a FastAPI app or APIRouter.
-    This function should be used for every View class.
+    Add a View class's routes to a FastAPI app or APIRouter.
 
-    Can be used as a decorator::
+    Prefer the direct call form from your app/router composition layer::
+
+        include_view(app, MyView)
+
+    For small apps, it can also be used as a decorator::
 
         @include_view(app)
         class MyView(AsyncRestView):
             ...
-
-    Or as a function::
-
-        include_view(app, MyView)
     """
     if view_cls is not None:
         _init_view_cls_and_add_to_router(view_cls, parent_router)

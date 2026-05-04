@@ -85,7 +85,7 @@ from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from .settings import settings
-from .views import UserView  # registered with @fr.include_view(app) at import time
+from .views import UserView
 
 
 engine = create_async_engine(
@@ -104,6 +104,7 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 fr.configure(app, async_engine=engine)
+fr.include_view(app, UserView)
 ```
 
 Notes:
@@ -113,9 +114,8 @@ Notes:
   `install_default_exception_handlers=False` to opt out.
 - `engine.dispose()` in `lifespan` cleans up the connection pool on
   shutdown so workers exit promptly.
-- Views register themselves with `@fr.include_view(app)` at import time, so
-  importing the views module is enough — no manual `app.include_router()`
-  calls.
+- Register views deliberately during startup with `fr.include_view(app, ViewClass)`;
+  avoid relying on import-time side effects in larger apps.
 
 ## Running the app
 

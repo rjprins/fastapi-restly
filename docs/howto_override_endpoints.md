@@ -6,8 +6,9 @@ rows a user may see, run side effects, or expose non-CRUD operations. This guide
 walks through every layer of the override system, from the highest-level handlers
 down to raw session access.
 
-Every concrete view class must be decorated with `@fr.include_view(app)` (or
-an equivalent `APIRouter`), otherwise no routes are registered.
+Every concrete view class must be registered with `fr.include_view(app, ViewClass)`
+or the decorator shortcut before FastAPI sees its routes. Larger apps are easier
+to organize when view modules define classes and app/router modules include them.
 
 ---
 

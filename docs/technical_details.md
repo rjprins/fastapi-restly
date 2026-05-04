@@ -138,21 +138,29 @@ runtime behaviour:
 
 ### include_view()
 
-`include_view()` works in two equivalent forms:
+`include_view()` is the registration boundary between declarative view modules
+and application composition. For larger apps, define view classes without
+side effects in feature modules, then include them from the module that builds
+your `FastAPI` app or `APIRouter`:
 
 ```python
-# Decorator form
+fr.include_view(app, MyView)
+```
+
+This keeps imports predictable: importing `myapp.users.views` defines
+`UserView`, while `myapp.main` or `myapp.users.router` decides which app/router
+receives it. For small apps and examples, `include_view()` also works as a
+decorator:
+
+```python
 @fr.include_view(app)
 class MyView(fr.AsyncRestView):
     ...
-
-# Direct call form
-fr.include_view(app, MyView)
 ```
 
 Both forms call `before_include_view()` (which generates derived schemas,
 annotates endpoint signatures, and registers the `index_param_schema`), then
-attach an `APIRouter` to `app`.
+attach an `APIRouter` to the parent app/router.
 
 ### Endpoint / Handler Separation
 

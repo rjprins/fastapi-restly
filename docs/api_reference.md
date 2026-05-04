@@ -7,7 +7,7 @@ This page documents:
 
 ## Generated CRUD Endpoints
 
-When you register a view with `@fr.include_view(app)`, both `fr.AsyncRestView` and `fr.RestView` expose the same default CRUD surface:
+When you register a view with `fr.include_view(app, ViewClass)` (or the small-app decorator shortcut `@fr.include_view(app)`), both `fr.AsyncRestView` and `fr.RestView` expose the same default CRUD surface:
 
 | Method | Path | Purpose | Default Status |
 |---|---|---|---|
