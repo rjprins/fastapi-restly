@@ -126,3 +126,34 @@ fastapi_restly.views:
   - route
   - save_object
   - update_object
+
+submodule-only exports:
+fastapi_restly.db:
+  - fr_globals
+fastapi_restly.models:
+  - CASCADE_ALL_ASYNC
+  - CASCADE_ALL_DELETE_ORPHAN_ASYNC
+fastapi_restly.pytest_fixtures:
+  - app
+  - async_session
+  - autouse_alembic_upgrade
+  - autouse_savepoint_only_mode_sessions
+  - client
+  - project_root
+  - session
+fastapi_restly.query:
+  - DEFAULT_PAGE_SIZE
+  - MAX_PAGE_SIZE
+fastapi_restly.schemas:
+  - async_resolve_ids_to_sqlalchemy_objects
+fastapi_restly.testing:
+  - RestlyTestClient
+  - app
+  - async_session
+  - autouse_alembic_upgrade
+  - autouse_savepoint_only_mode_sessions
+  - client
+  - project_root
+  - session
+fastapi_restly.views:
+  - BaseRestView
