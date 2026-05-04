@@ -17,14 +17,14 @@ def test_custom_declarative_base_works_with_generated_async_crud(client):
         id: Mapped[int] = mapped_column(primary_key=True)
         name: Mapped[str] = mapped_column()
 
-    class ProductSchema(fr.IDSchema):
+    class ProductRead(fr.IDSchema):
         name: str
 
     @fr.include_view(client.app)
     class ProductView(fr.AsyncRestView):
         prefix = "/declarative-products"
         model = Product
-        schema = ProductSchema
+        schema = ProductRead
 
     async def create_tables():
         engine = fr.get_async_engine()

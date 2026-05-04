@@ -48,11 +48,25 @@ SQLAlchemyModel = TypeVar(
     "SQLAlchemyModel", bound=DeclarativeBase, default=DeclarativeBase
 )
 _IDREF_UNSET = object()
+_SCHEMA_RESOURCE_SUFFIXES = ("Schema", "Read", "Base")
 
 
 @functools.cache
 def _id_type_adapter(id_type: Any) -> pydantic.TypeAdapter[Any]:
     return pydantic.TypeAdapter(id_type)
+
+
+def _schema_resource_name(model_cls: type[pydantic.BaseModel]) -> str:
+    """Return the resource name used to derive role-specific API schemas."""
+    name = model_cls.__name__
+    for suffix in _SCHEMA_RESOURCE_SUFFIXES:
+        if name.endswith(suffix) and len(name) > len(suffix):
+            return name[: -len(suffix)]
+    return name
+
+
+def _schema_role_name(model_cls: type[pydantic.BaseModel], role: str) -> str:
+    return f"{_schema_resource_name(model_cls)}{role}"
 
 
 class IDSchema(BaseSchema, Generic[SQLAlchemyModel]):
@@ -325,7 +339,7 @@ def create_model_without_read_only_fields(
     """
     Create a subclass of the given pydantic model class with a new name.
     """
-    new_model_name = "Create" + model_cls.__name__
+    new_model_name = _schema_role_name(model_cls, "Create")
     new_doc = (model_cls.__doc__ or "") + "\nRead-only fields have been removed."
 
     # Create a subclass that mixes in OmitReadOnlyMixin
@@ -388,7 +402,7 @@ def create_model_with_optional_fields(
     Create a subclass of the given pydantic model class with a new name.
     Read-only fields are removed and all writable fields are made optional with None as default.
     """
-    new_model_name = "Update" + model_cls.__name__
+    new_model_name = _schema_role_name(model_cls, "Update")
     new_doc = (
         model_cls.__doc__ or ""
     ) + "\nRead-only fields have been removed and all fields are optional."

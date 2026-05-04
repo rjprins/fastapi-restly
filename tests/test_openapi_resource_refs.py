@@ -29,14 +29,14 @@ def _build_app():
         # Full nested object — should NOT get x-resource-ref
         author: Mapped[Author] = relationship(back_populates="books", lazy="selectin")
 
-    class AuthorSchema(fr.IDSchema):
+    class AuthorRead(fr.IDSchema):
         name: str
         books: fr.ReadOnly[list[fr.IDRef[Book]]] = []
 
-    class BookSchema(fr.IDSchema):
+    class BookRead(fr.IDSchema):
         title: str
         author_id: int
-        author: fr.ReadOnly[AuthorSchema | None]
+        author: fr.ReadOnly[AuthorRead | None]
 
     app = fastapi.FastAPI()
 
@@ -44,13 +44,13 @@ def _build_app():
     class AuthorView(fr.AsyncReactAdminView):
         prefix = "/authors"
         model = Author
-        schema = AuthorSchema
+        schema = AuthorRead
 
     @fr.include_view(app)
     class BookView(fr.AsyncReactAdminView):
         prefix = "/books"
         model = Book
-        schema = BookSchema
+        schema = BookRead
 
     create_tables()
     return app
@@ -63,19 +63,19 @@ def _build_app():
 
 def test_fk_column_gets_x_resource_ref():
     app = _build_app()
-    props = app.openapi()["components"]["schemas"]["BookSchema"]["properties"]
+    props = app.openapi()["components"]["schemas"]["BookRead"]["properties"]
     assert props["author_id"].get("x-resource-ref") == "authors"
 
 
 def test_relationship_with_idref_gets_x_resource_ref():
     app = _build_app()
-    props = app.openapi()["components"]["schemas"]["AuthorSchema"]["properties"]
+    props = app.openapi()["components"]["schemas"]["AuthorRead"]["properties"]
     assert props["books"].get("x-resource-ref") == "books"
 
 
 def test_idref_openapi_schema_is_scalar():
     spec = _build_app().openapi()
-    props = spec["components"]["schemas"]["AuthorSchema"]["properties"]
+    props = spec["components"]["schemas"]["AuthorRead"]["properties"]
     item_ref = props["books"]["items"]["$ref"]
     item_schema_name = item_ref.removeprefix("#/components/schemas/")
 
@@ -83,15 +83,15 @@ def test_idref_openapi_schema_is_scalar():
 
 
 def test_nested_schema_relationship_not_annotated():
-    """Full nested object (author: AuthorSchema) must not get x-resource-ref."""
+    """Full nested object (author: AuthorRead) must not get x-resource-ref."""
     app = _build_app()
-    props = app.openapi()["components"]["schemas"]["BookSchema"]["properties"]
+    props = app.openapi()["components"]["schemas"]["BookRead"]["properties"]
     assert "x-resource-ref" not in props["author"]
 
 
 def test_plain_field_not_annotated():
     app = _build_app()
-    props = app.openapi()["components"]["schemas"]["BookSchema"]["properties"]
+    props = app.openapi()["components"]["schemas"]["BookRead"]["properties"]
     assert "x-resource-ref" not in props["title"]
 
 
@@ -102,14 +102,14 @@ def test_plain_field_not_annotated():
 
 def test_create_schema_fk_gets_x_resource_ref():
     app = _build_app()
-    props = app.openapi()["components"]["schemas"]["CreateBookSchema"]["properties"]
+    props = app.openapi()["components"]["schemas"]["BookCreate"]["properties"]
     assert props["author_id"].get("x-resource-ref") == "authors"
 
 
 def test_update_schema_fk_gets_x_resource_ref():
-    """UpdateBookSchema wraps author_id in anyOf — annotation goes on the property root."""
+    """BookUpdate wraps author_id in anyOf — annotation goes on the property root."""
     app = _build_app()
-    props = app.openapi()["components"]["schemas"]["UpdateBookSchema"]["properties"]
+    props = app.openapi()["components"]["schemas"]["BookUpdate"]["properties"]
     assert props["author_id"].get("x-resource-ref") == "authors"
 
 
@@ -128,7 +128,7 @@ def test_unregistered_fk_target_not_annotated():
         name: Mapped[str]
         tag_id: Mapped[int] = mapped_column(sa.ForeignKey(Tag.id))
 
-    class ItemSchema(fr.IDSchema):
+    class ItemRead(fr.IDSchema):
         name: str
         tag_id: int
 
@@ -138,10 +138,10 @@ def test_unregistered_fk_target_not_annotated():
     class ItemView(fr.AsyncReactAdminView):
         prefix = "/items"
         model = Item
-        schema = ItemSchema
+        schema = ItemRead
 
     create_tables()
-    props = app.openapi()["components"]["schemas"]["ItemSchema"]["properties"]
+    props = app.openapi()["components"]["schemas"]["ItemRead"]["properties"]
     assert "x-resource-ref" not in props["tag_id"]
 
 
@@ -150,10 +150,10 @@ def test_spec_is_idempotent_on_multiple_openapi_calls():
     app = _build_app()
     spec1 = app.openapi()
     spec2 = app.openapi()
-    ref1 = spec1["components"]["schemas"]["BookSchema"]["properties"]["author_id"].get(
+    ref1 = spec1["components"]["schemas"]["BookRead"]["properties"]["author_id"].get(
         "x-resource-ref"
     )
-    ref2 = spec2["components"]["schemas"]["BookSchema"]["properties"]["author_id"].get(
+    ref2 = spec2["components"]["schemas"]["BookRead"]["properties"]["author_id"].get(
         "x-resource-ref"
     )
     assert ref1 == ref2 == "authors"

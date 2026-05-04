@@ -14,23 +14,23 @@ class Widget(fr.IDBase):
     name: Mapped[str]
 
 
-class WidgetSchema(fr.IDSchema[Widget]):
+class WidgetRead(fr.IDSchema[Widget]):
     name: str
 
 
-class WidgetInputSchema(fr.BaseSchema):
+class WidgetInput(fr.BaseSchema):
     name: str
 
 
 @fr.include_view(app)
 class WidgetView(
-    fr.RestView[Widget, WidgetSchema, WidgetInputSchema, WidgetInputSchema, int]
+    fr.RestView[Widget, WidgetRead, WidgetInput, WidgetInput, int]
 ):
     prefix = "/widgets"
     model = Widget
-    schema = WidgetSchema
-    creation_schema = WidgetInputSchema
-    update_schema = WidgetInputSchema
+    schema = WidgetRead
+    creation_schema = WidgetInput
+    update_schema = WidgetInput
 
     @fr.get("/ping")
     def ping(self) -> dict[str, bool]:
@@ -48,10 +48,10 @@ class WidgetView(
     def handle_get(self, id: int) -> Widget:
         return super().handle_get(id)
 
-    def handle_create(self, schema_obj: WidgetInputSchema) -> Widget:
+    def handle_create(self, schema_obj: WidgetInput) -> Widget:
         return super().handle_create(schema_obj)
 
-    def handle_update(self, id: int, schema_obj: WidgetInputSchema) -> Widget:
+    def handle_update(self, id: int, schema_obj: WidgetInput) -> Widget:
         return super().handle_update(id, schema_obj)
 
     def handle_delete(self, id: int) -> Response:

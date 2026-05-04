@@ -93,7 +93,7 @@ def _is_id_ref_annotation(annotation: Any) -> bool:
     """Return True if annotation is IDSchema[X], IDRef[X], or list/Optional thereof.
 
     Returns False for full nested BaseSchema objects — those are not ID references.
-    Concrete user-defined subclasses like ``AuthorSchema(IDSchema)`` return False;
+    Concrete user-defined subclasses like ``AuthorRead(IDSchema)`` return False;
     only parametrized generics like ``IDSchema[Author]`` or ``IDRef[Author]``
     return True, since those represent model ID references.
     """
@@ -118,7 +118,7 @@ def _is_id_ref_annotation(annotation: Any) -> bool:
     # __pydantic_generic_metadata__["origin"]:
     #   - Parametrized: IDSchema[Author]  → origin = IDSchema
     #   - Parametrized: IDRef[Author] → origin = IDRef
-    #   - User-defined subclass: AuthorSchema(IDSchema) → origin = None (not a parametrization)
+    #   - User-defined subclass: AuthorRead(IDSchema) → origin = None (not a parametrization)
     pydantic_meta = getattr(annotation, "__pydantic_generic_metadata__", {})
     origin_cls = pydantic_meta.get("origin")
     if inspect.isclass(origin_cls):

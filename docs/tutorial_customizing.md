@@ -50,7 +50,7 @@ which user created it, taken from the request context rather than from the paylo
 class PostView(fr.AsyncRestView):
     prefix = "/posts"
     model = Post
-    schema = PostSchema
+    schema = PostRead
 
     async def handle_create(self, schema_obj):
         obj = await self.make_new_object(schema_obj)
@@ -91,7 +91,7 @@ in sync.
 class PostView(fr.AsyncRestView):
     prefix = "/posts"
     model = Post
-    schema = PostSchema
+    schema = PostRead
     include_pagination_metadata = True
 
     def build_list_query(self):
@@ -208,7 +208,7 @@ Expose a summary of a post without returning the full record:
 class PostView(fr.AsyncRestView):
     prefix = "/posts"
     model = Post
-    schema = PostSchema
+    schema = PostRead
 
     @fr.get("/{id}/summary")
     async def summary(self, id: int):
@@ -312,14 +312,14 @@ class AuthoredBase(fr.AsyncRestView):
 class PostView(AuthoredBase):
     prefix = "/posts"
     model = Post
-    schema = PostSchema
+    schema = PostRead
 
 
 @fr.include_view(app)
 class CommentView(AuthoredBase):
     prefix = "/comments"
     model = Comment
-    schema = CommentSchema
+    schema = CommentRead
 ```
 
 `self.current_user` is injected by FastAPI's dependency system and is available
@@ -335,7 +335,7 @@ A subclass can extend a base-class handler rather than replace it:
 class PostView(AuthoredBase):
     prefix = "/posts"
     model = Post
-    schema = PostSchema
+    schema = PostRead
 
     async def handle_create(self, schema_obj):
         # PostView-specific logic before the base class runs
@@ -361,7 +361,7 @@ class ProtectedBase(fr.AsyncRestView):
 class PostView(ProtectedBase):
     prefix = "/posts"
     model = Post
-    schema = PostSchema
+    schema = PostRead
 ```
 
 Every route on `/posts/` now runs `require_auth` before the endpoint function.
@@ -379,14 +379,14 @@ class ApiV1(fr.AsyncRestView):
 class PostView(ApiV1):
     prefix = "/posts"     # → /api/v1/posts
     model = Post
-    schema = PostSchema
+    schema = PostRead
 
 
 @fr.include_view(app)
 class CommentView(ApiV1):
     prefix = "/comments"  # → /api/v1/comments
     model = Comment
-    schema = CommentSchema
+    schema = CommentRead
 ```
 
 ---
@@ -431,13 +431,13 @@ fr.DataclassBase.metadata.create_all(create_engine("sqlite:///blog.db"))
 
 # --- Schemas ---
 
-class PostSchema(fr.IDSchema):
+class PostRead(fr.IDSchema):
     title: str
     content: str
     published: bool
 
 
-class CommentSchema(fr.IDSchema):
+class CommentRead(fr.IDSchema):
     content: str
     post_id: fr.IDRef[Post]
 
@@ -463,7 +463,7 @@ class AuthoredBase(fr.AsyncRestView):
 class PostView(AuthoredBase):
     prefix = "/posts"
     model = Post
-    schema = PostSchema
+    schema = PostRead
 
     async def handle_update(self, id, schema_obj):
         obj = await self.handle_get(id)
@@ -490,7 +490,7 @@ class PostView(AuthoredBase):
 class CommentView(AuthoredBase):
     prefix = "/comments"
     model = Comment
-    schema = CommentSchema
+    schema = CommentRead
 ```
 
 ---

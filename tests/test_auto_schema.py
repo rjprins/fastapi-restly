@@ -56,6 +56,10 @@ def test_auto_generated_schema_in_view(client):
         model = User
         # No schema specified - should be auto-generated!
 
+    assert UserView.schema.__name__ == "UserRead"
+    assert UserView.creation_schema.__name__ == "UserCreate"
+    assert UserView.update_schema.__name__ == "UserUpdate"
+
     create_tables()
 
     # Test that the API is working
@@ -242,3 +246,12 @@ def test_create_schema_from_model_preserves_json_dict_types():
     schema = fr_schemas.create_schema_from_model(Event)
 
     assert schema.model_fields["payload"].annotation is dict
+
+
+def test_create_schema_from_model_defaults_to_read_schema_name():
+    class Report(fr.IDBase):
+        title: Mapped[str]
+
+    schema = fr_schemas.create_schema_from_model(Report)
+
+    assert schema.__name__ == "ReportRead"

@@ -86,10 +86,10 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
 
         class FooView(RestView):
             prefix = "/foo"
-            schema = FooSchema
+            schema = FooRead
             model = Foo
 
-    Where ``Foo`` is a SQLAlchemy model and ``FooSchema`` a Pydantic model.
+    Where ``Foo`` is a SQLAlchemy model and ``FooRead`` a Pydantic model.
     """
 
     session: SessionDep  # type: ignore[reportIncompatibleVariableOverride]

@@ -11,7 +11,7 @@ view.
 Field-level markers are implemented with `typing.Annotated` metadata:
 
 ```python
-class UserSchema(IDSchema):
+class UserRead(IDSchema):
     id: ReadOnly[int]
     email: str
     password: WriteOnly[str]
@@ -32,21 +32,26 @@ model's actual primary-key type.
 
 ### Generated Input Schemas
 
-For a view schema `MySchema`, Restly derives two input schemas in
+For a view schema `UserRead`, Restly derives two input schemas in
 `before_include_view()`:
 
 - `creation_schema`: produced by `create_model_without_read_only_fields()`,
-  which creates a subclass mixing in `OmitReadOnlyMixin` before `MySchema` in
+  which creates a subclass mixing in `OmitReadOnlyMixin` before `UserRead` in
   the MRO. `OmitReadOnlyMixin.__pydantic_init_subclass__` directly deletes
   `ReadOnly` entries from `cls.model_fields` and calls `model_rebuild(force=True)`.
-  The subclass still inherits validators from `MySchema` for the fields that
+  The subclass still inherits validators from `UserRead` for the fields that
   remain.
 - `update_schema`: produced by `create_model_with_optional_fields()`, which
   mixes in both `PatchMixin` and `OmitReadOnlyMixin`. After `OmitReadOnlyMixin`
   strips the read-only fields, `PatchMixin.__pydantic_init_subclass__` sets
   `field.default = None` and wraps every remaining annotation in `Optional[...]`.
-  Original field defaults from `MySchema` are **replaced** by `None`, not
+  Original field defaults from `UserRead` are **replaced** by `None`, not
   preserved.
+
+The generated class names use resource-first role suffixes. `UserRead`,
+`UserSchema`, and `UserBase` all derive `UserCreate` and `UserUpdate`.
+When `schema` is omitted entirely, a model named `User` auto-generates
+`UserRead` as the response schema.
 
 Both derived schemas are stored as class attributes on the view and are frozen
 at registration time (see [List Parameters Lifecycle](#list-parameters-lifecycle)).
@@ -191,7 +196,7 @@ Nested schemas serve two different roles in Restly today:
   treated as an intentional "no row" value for that consistency check; omitted
   optional fields are ignored.
 
-If you declare a nested input field like `address: AddressSchema` on a write
+If you declare a nested input field like `address: AddressRead` on a write
 schema, the default CRUD implementation will pass that nested Pydantic object
 through to the SQLAlchemy model constructor or attribute setter, which usually
 does not match the ORM model shape. Use a flattened schema or override

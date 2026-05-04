@@ -11,7 +11,7 @@ class Ticket(fr.IDBase):
     full_name: Mapped[str]
 
 
-class TicketSchema(fr.IDSchema[Ticket]):
+class TicketRead(fr.IDSchema[Ticket]):
     model_config = pydantic.ConfigDict(populate_by_name=True)
 
     full_name: str = pydantic.Field(alias="fullName")
@@ -19,7 +19,7 @@ class TicketSchema(fr.IDSchema[Ticket]):
 
 class TicketBase(fr.AsyncRestView):
     model = Ticket
-    schema = TicketSchema
+    schema = TicketRead
     include_pagination_metadata = True
     exclude_routes = ("delete",)
 

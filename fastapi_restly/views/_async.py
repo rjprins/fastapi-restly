@@ -91,10 +91,10 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
 
         class FooView(AsyncRestView):
             prefix = "/foo"
-            schema = FooSchema
+            schema = FooRead
             model = Foo
 
-    Where ``Foo`` is a SQLAlchemy model and ``FooSchema`` a Pydantic model.
+    Where ``Foo`` is a SQLAlchemy model and ``FooRead`` a Pydantic model.
     """
 
     session: AsyncSessionDep

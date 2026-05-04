@@ -6,7 +6,7 @@ import fastapi_restly as fr
 from .conftest import create_tables
 
 
-class ResponseUserSchema(fr.IDSchema):
+class ResponseUserRead(fr.IDSchema):
     name: str
     email: str
     password: fr.WriteOnly[str]
@@ -29,7 +29,7 @@ def test_to_response_schema_runs_response_field_validators_and_serializers():
 
     class ResponseUserView(fr.AsyncRestView):
         model = ResponseValidationUser
-        schema = ResponseUserSchema
+        schema = ResponseUserRead
 
     user = ResponseValidationUser(
         name="Ada", email="ADA@EXAMPLE.COM", password="secret"
@@ -38,7 +38,7 @@ def test_to_response_schema_runs_response_field_validators_and_serializers():
 
     schema_obj = ResponseUserView().to_response_schema(user)
 
-    assert isinstance(schema_obj, ResponseUserSchema)
+    assert isinstance(schema_obj, ResponseUserRead)
     assert schema_obj.email == "ada@example.com"
 
     payload = schema_obj.model_dump(mode="json")
@@ -56,7 +56,7 @@ def test_response_serialization_runs_through_fastapi_response_model(client):
     class UserView(fr.AsyncRestView):
         prefix = "/response-users"
         model = ResponseApiUser
-        schema = ResponseUserSchema
+        schema = ResponseUserRead
 
     create_tables()
 

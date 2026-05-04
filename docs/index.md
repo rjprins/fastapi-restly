@@ -31,7 +31,7 @@ serialization control.
 - **React Admin ready** — `AsyncReactAdminView` speaks `ra-data-simple-rest` out of the box; no custom data provider needed
 - **SQLAlchemy 2.0 support** — Async-first with modern patterns
 - **Pydantic v2 integration** — Full validation and serialization
-- **Automatic schema generation** — Create and update schemas generated automatically
+- **Automatic schema generation** — Read, create, and update schemas generated automatically
 - **List parameters** — Filter, sort, and paginate from a stable URL dialect generated from the response schema
 - **Relationship support** — Handle foreign keys and nested objects
 - **Testing utilities** — Built-in test helpers with savepoint isolation

@@ -216,21 +216,21 @@ def test_create_model_without_read_only_fields():
         created_at: ReadOnly[datetime]
 
     # Create a model without read-only fields
-    CreateTestSchema = create_model_without_read_only_fields(TestSchema)
+    TestCreate = create_model_without_read_only_fields(TestSchema)
 
-    # Check that the new model has the correct name
-    assert CreateTestSchema.__name__ == "CreateTestSchema"
+    # Check that the new model has the role-suffixed contract name.
+    assert TestCreate.__name__ == "TestCreate"
 
     # Check that ReadOnly fields are removed
-    assert "id" not in CreateTestSchema.model_fields
-    assert "created_at" not in CreateTestSchema.model_fields
+    assert "id" not in TestCreate.model_fields
+    assert "created_at" not in TestCreate.model_fields
 
     # Check that non-ReadOnly fields are preserved
-    assert "name" in CreateTestSchema.model_fields
-    assert "email" in CreateTestSchema.model_fields
+    assert "name" in TestCreate.model_fields
+    assert "email" in TestCreate.model_fields
 
     # Test that the new model can be instantiated
-    create_schema = CreateTestSchema(name="Test", email="test@example.com")
+    create_schema = TestCreate(name="Test", email="test@example.com")
     assert create_schema.name == "Test"
     assert create_schema.email == "test@example.com"
 
@@ -245,28 +245,51 @@ def test_create_model_with_optional_fields():
         created_at: ReadOnly[datetime]
 
     # Create a model with optional fields
-    UpdateTestSchema = create_model_with_optional_fields(TestSchema)
+    TestUpdate = create_model_with_optional_fields(TestSchema)
 
-    # Check that the new model has the correct name
-    assert UpdateTestSchema.__name__ == "UpdateTestSchema"
+    # Check that the new model has the role-suffixed contract name.
+    assert TestUpdate.__name__ == "TestUpdate"
 
     # Check that ReadOnly fields are removed
-    assert "id" not in UpdateTestSchema.model_fields
-    assert "created_at" not in UpdateTestSchema.model_fields
+    assert "id" not in TestUpdate.model_fields
+    assert "created_at" not in TestUpdate.model_fields
 
     # Check that non-ReadOnly fields are made optional
-    assert "name" in UpdateTestSchema.model_fields
-    assert "email" in UpdateTestSchema.model_fields
+    assert "name" in TestUpdate.model_fields
+    assert "email" in TestUpdate.model_fields
 
     # Test that the new model can be instantiated with optional fields
-    update_schema = UpdateTestSchema()
+    update_schema = TestUpdate()
     assert update_schema.name == None
     assert update_schema.email == None
 
     # Test that fields can be set
-    update_schema = UpdateTestSchema(name="Updated", email="updated@example.com")
+    update_schema = TestUpdate(name="Updated", email="updated@example.com")
     assert update_schema.name == "Updated"
     assert update_schema.email == "updated@example.com"
+
+
+def test_generated_request_schema_names_use_resource_role_suffixes():
+    class UserRead(BaseSchema):
+        name: str
+
+    class TeamSchema(BaseSchema):
+        name: str
+
+    class ProjectBase(BaseSchema):
+        name: str
+
+    class Label(BaseSchema):
+        name: str
+
+    for schema_cls, create_name, update_name in (
+        (UserRead, "UserCreate", "UserUpdate"),
+        (TeamSchema, "TeamCreate", "TeamUpdate"),
+        (ProjectBase, "ProjectCreate", "ProjectUpdate"),
+        (Label, "LabelCreate", "LabelUpdate"),
+    ):
+        assert create_model_without_read_only_fields(schema_cls).__name__ == create_name
+        assert create_model_with_optional_fields(schema_cls).__name__ == update_name
 
 
 def test_readonly_with_inheritance():

@@ -194,7 +194,7 @@ def create_schema_from_model(
         A Pydantic schema class
     """
     if schema_name is None:
-        schema_name = f"{model_cls.__name__}Schema"
+        schema_name = f"{model_cls.__name__}Read"
 
     # Get field information from the model
     model_fields = get_model_fields(model_cls)
@@ -375,7 +375,7 @@ def auto_generate_schema_for_view(
         A Pydantic schema class
     """
     if schema_name is None:
-        schema_name = f"{view_cls.__name__}Schema"
+        schema_name = f"{model_cls.__name__}Read"
 
     return create_schema_from_model(
         model_cls, schema_name=schema_name, include_relationships=False

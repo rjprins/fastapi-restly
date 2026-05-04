@@ -10,7 +10,7 @@ class Product(fr.IDBase):
     name: Mapped[str]
 
 
-class ProductSchema(fr.IDSchema[Product]):
+class ProductRead(fr.IDSchema[Product]):
     name: str
 
 
@@ -18,4 +18,4 @@ class ProductSchema(fr.IDSchema[Product]):
 class ProductView(fr.AsyncReactAdminView):
     prefix = "/products"
     model = Product
-    schema = ProductSchema
+    schema = ProductRead

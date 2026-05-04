@@ -55,13 +55,13 @@ The `id` column is excluded from `__init__` automatically — you do not pass it
 ## Schemas
 
 ```python
-class PostSchema(fr.IDSchema):
+class PostRead(fr.IDSchema):
     title: str
     content: str
     published: bool
 
 
-class CommentSchema(fr.IDSchema):
+class CommentRead(fr.IDSchema):
     content: str
     post_id: fr.IDRef[Post]
 ```
@@ -130,14 +130,14 @@ app = FastAPI(lifespan=lifespan)
 class PostView(fr.AsyncRestView):
     prefix = "/posts"
     model = Post
-    schema = PostSchema
+    schema = PostRead
 
 
 @fr.include_view(app)
 class CommentView(fr.AsyncRestView):
     prefix = "/comments"
     model = Comment
-    schema = CommentSchema
+    schema = CommentRead
 ```
 
 Tables are created inside a FastAPI `lifespan` context manager so they are initialised
@@ -166,7 +166,7 @@ To disable specific endpoints, set `exclude_routes`:
 class PostView(fr.AsyncRestView):
     prefix = "/posts"
     model = Post
-    schema = PostSchema
+    schema = PostRead
     exclude_routes = ("delete",)  # disables DELETE /posts/{id}
 ```
 
@@ -178,7 +178,7 @@ Say you want to add an author token that is stored on creation but never returne
 `slug` field that is computed server-side and must not be writable:
 
 ```python
-class PostSchema(fr.IDSchema):
+class PostRead(fr.IDSchema):
     title: str
     content: str
     published: bool

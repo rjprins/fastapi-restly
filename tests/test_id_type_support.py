@@ -62,11 +62,11 @@ def test_idschema_accepts_uuid_relation_ids(client):
         author_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("uuid_author.id"))
         author: Mapped[Author] = relationship()
 
-    class AuthorSchema(fr.BaseSchema):
+    class AuthorRead(fr.BaseSchema):
         id: fr.ReadOnly[UUID]
         name: str
 
-    class ArticleSchema(fr.IDSchema):
+    class ArticleRead(fr.IDSchema):
         title: str
         author_id: fr.IDSchema[Author]
 
@@ -74,14 +74,14 @@ def test_idschema_accepts_uuid_relation_ids(client):
     class AuthorView(fr.AsyncRestView):
         prefix = "/uuid-authors"
         model = Author
-        schema = AuthorSchema
+        schema = AuthorRead
         id_type = UUID
 
     @fr.include_view(client.app)
     class ArticleView(fr.AsyncRestView):
         prefix = "/uuid-articles"
         model = Article
-        schema = ArticleSchema
+        schema = ArticleRead
 
     create_tables()
 

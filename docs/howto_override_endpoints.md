@@ -84,7 +84,7 @@ import fastapi_restly as fr
 class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
-    schema = UserSchema
+    schema = UserRead
 
     async def handle_create(self, schema_obj):
         obj = await self.make_new_object(schema_obj)
@@ -152,7 +152,7 @@ import sqlalchemy as sa
 class DocumentView(fr.AsyncRestView):
     prefix = "/documents"
     model = Document
-    schema = DocumentSchema
+    schema = DocumentRead
     include_pagination_metadata = True
 
     def build_list_query(self):
@@ -289,7 +289,7 @@ endpoints:
 class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
-    schema = UserSchema
+    schema = UserRead
 
     @fr.get("/{id}/summary")
     async def summary(self, id: int):
@@ -316,7 +316,7 @@ actions such as archive, publish, or recalculate:
 class OrderView(fr.AsyncRestView):
     prefix = "/orders"
     model = Order
-    schema = OrderSchema
+    schema = OrderRead
 
     @fr.post("/{id}/archive", status_code=202)
     async def archive(self, id: int):
@@ -346,7 +346,7 @@ and add a route decorator to it:
 class OrderView(fr.AsyncRestView):
     prefix = "/orders"
     model = Order
-    schema = OrderSchema
+    schema = OrderRead
 
     @fr.delete("/{id}", status_code=200)
     async def delete(self, id: int):
@@ -408,9 +408,9 @@ validation:
 class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
-    schema = UserSchema
+    schema = UserRead
 
-    def to_response_schema(self, obj: User) -> UserSchema:
+    def to_response_schema(self, obj: User) -> UserRead:
         return self.schema.model_construct(
             id=obj.id,
             name=obj.name,
@@ -433,7 +433,7 @@ In a custom route, be careful when you construct a schema yourself. Pydantic's
 you wrap them explicitly:
 
 ```python
-link_schema = TaskLabelSchema.model_construct(
+link_schema = TaskLabelRead.model_construct(
     task_id=fr.IDRef[Task](id=request.task_id),
     label_id=fr.IDRef[Label](id=label.id),
 )
@@ -449,7 +449,7 @@ This keeps the resolver path active: Restly verifies the referenced rows exist
 and then writes the FK columns. It is especially useful when the schema inherits
 from `IDSchema` and validated construction would require response-only fields
 such as `id` or timestamps. In that case, direct construction like
-`TaskLabelSchema(task_id=1, label_id=2)` would run the `IDRef` validators, but
+`TaskLabelRead(task_id=1, label_id=2)` would run the `IDRef` validators, but
 it would also require those response-only values that the route does not have
 yet.
 
@@ -458,12 +458,12 @@ custom response schema, serialize the ORM object through `self.to_response_schem
 before returning it:
 
 ```python
-class TaskLabelNestedSchema(fr.IDSchema):
+class TaskLabelNestedRead(fr.IDSchema):
     task: fr.IDSchema[Task]
     label: fr.IDSchema[Label]
 
 
-@fr.post("/attach", response_model=TaskLabelNestedSchema, status_code=201)
+@fr.post("/attach", response_model=TaskLabelNestedRead, status_code=201)
 async def attach(self, request: AttachRequest):
     obj = await create_task_label(...)
     return self.to_response_schema(obj)
@@ -488,7 +488,7 @@ back as JSON:
 class ProductView(fr.AsyncRestView):
     prefix = "/products"
     model = Product
-    schema = ProductSchema
+    schema = ProductRead
 
     @fr.delete("/{id}", status_code=200)
     async def delete(self, id: int):
@@ -516,7 +516,7 @@ import json
 class ProductView(fr.AsyncRestView):
     prefix = "/products"
     model = Product
-    schema = ProductSchema
+    schema = ProductRead
 
     @fr.get("/")
     async def index(self):
@@ -552,14 +552,14 @@ class DeleteReturnsObjectMixin:
 class ProductView(DeleteReturnsObjectMixin, fr.AsyncRestView):
     prefix = "/products"
     model = Product
-    schema = ProductSchema
+    schema = ProductRead
 
 
 @fr.include_view(app)
 class OrderView(DeleteReturnsObjectMixin, fr.AsyncRestView):
     prefix = "/orders"
     model = Order
-    schema = OrderSchema
+    schema = OrderRead
 ```
 
 Both views now return the deleted record as JSON. All other generated routes

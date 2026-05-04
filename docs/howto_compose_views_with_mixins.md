@@ -181,7 +181,7 @@ scoping). A typical project view:
 class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, fr.AsyncRestView):
     prefix = "/projects"
     model = Project
-    schema = ProjectSchema
+    schema = ProjectRead
 ```
 
 Both `handle_list` and `count_index` consult `build_list_query`, so the

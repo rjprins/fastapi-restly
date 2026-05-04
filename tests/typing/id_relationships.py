@@ -17,7 +17,7 @@ class Article(fr.IDBase):
     author: Mapped[Author]
 
 
-class ArticleSchema(fr.IDSchema[Article]):
+class ArticleRead(fr.IDSchema[Article]):
     title: str
     author_id: fr.IDSchema[Author]
 
@@ -26,4 +26,4 @@ class ArticleSchema(fr.IDSchema[Article]):
 class ArticleView(fr.AsyncRestView):
     prefix = "/articles"
     model = Article
-    schema = ArticleSchema
+    schema = ArticleRead

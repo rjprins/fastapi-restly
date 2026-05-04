@@ -17,13 +17,13 @@ class AuditBase(fr.RestView):
 class UserView(AuditBase):
     prefix = "/users"
     model = User
-    schema = UserSchema
+    schema = UserRead
 
 @fr.include_view(app)
 class OrderView(AuditBase):
     prefix = "/orders"
     model = Order
-    schema = OrderSchema
+    schema = OrderRead
 ```
 
 `audit_log.record` is called on every `POST` to `/users/` and `/orders/` without repeating the override. The base class itself is never registered — only the concrete subclasses are passed to `include_view`.
@@ -43,7 +43,7 @@ class AuditBase(fr.RestView):
 class OrderView(AuditBase):
     prefix = "/orders"
     model = Order
-    schema = OrderSchema
+    schema = OrderRead
 
     def handle_create(self, schema_obj):
         schema_obj.created_by = current_user()
@@ -71,7 +71,7 @@ class AuthBase(fr.RestView):
 class NoteView(AuthBase):
     prefix = "/notes"
     model = Note
-    schema = NoteSchema
+    schema = NoteRead
 ```
 
 `self.current_user` is available in every method of `NoteView` and any other subclass of `AuthBase`.
@@ -88,13 +88,13 @@ class ProtectedBase(fr.RestView):
 class UserView(ProtectedBase):
     prefix = "/users"
     model = User
-    schema = UserSchema
+    schema = UserRead
 
 @fr.include_view(app)
 class OrderView(ProtectedBase):
     prefix = "/orders"
     model = Order
-    schema = OrderSchema
+    schema = OrderRead
 ```
 
 Every route on `/users/` and `/orders/` now requires authentication.
@@ -111,13 +111,13 @@ class ApiV1(fr.RestView):
 class UserView(ApiV1):
     prefix = "/users"     # → /api/v1/users
     model = User
-    schema = UserSchema
+    schema = UserRead
 
 @fr.include_view(app)
 class OrderView(ApiV1):
     prefix = "/orders"    # → /api/v1/orders
     model = Order
-    schema = OrderSchema
+    schema = OrderRead
 ```
 
 Prefixes concatenate across as many levels as you have:
@@ -133,7 +133,7 @@ class V2Base(AdminBase):
 class ReportView(V2Base):
     prefix = "/reports"   # → /admin/v2/reports
     model = Report
-    schema = ReportSchema
+    schema = ReportRead
 ```
 
 ## Inherit custom routes
@@ -150,7 +150,7 @@ class HealthBase(fr.RestView):
 class UserView(HealthBase):
     prefix = "/users"
     model = User
-    schema = UserSchema
+    schema = UserRead
 ```
 
 `GET /users/health` is registered alongside the standard CRUD endpoints.
@@ -167,7 +167,7 @@ class ReadOnlyBase(fr.RestView):
 class ProductView(ReadOnlyBase):
     prefix = "/products"
     model = Product
-    schema = ProductSchema
+    schema = ProductRead
 ```
 
 `ProductView` only exposes `GET /products/` and `GET /products/{id}`.
@@ -186,7 +186,7 @@ class SoftDeleteBase(fr.RestView):
 class ArticleView(SoftDeleteBase):
     prefix = "/articles"
     model = Article
-    schema = ArticleSchema
+    schema = ArticleRead
 ```
 
 `DELETE /articles/{id}` now sets `deleted = True` instead of removing the row. Every subclass of `SoftDeleteBase` gets this behaviour.

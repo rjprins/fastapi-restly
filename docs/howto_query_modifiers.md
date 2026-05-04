@@ -163,7 +163,7 @@ controls how Pydantic parses request bodies; it does **not** extend the
 list-params URL contract with extra Python-name aliases.
 
 ```python
-class UserSchema(BaseModel):
+class UserRead(BaseModel):
     user_name: Annotated[str, Field(alias="userName")]
 ```
 
@@ -187,20 +187,20 @@ GET /orders/?user.name__contains=ali
 
 The relation must be defined on both the SQLAlchemy model (as a
 `relationship`) and the Pydantic schema (as a nested schema field).
-Optional nested schemas (`UserSchema | None`) and deep nesting
+Optional nested schemas (`UserRead | None`) and deep nesting
 (`?blog.author.name=Alice`) are supported. Lists of nested schemas
-(`list[UserSchema]`) are not.
+(`list[UserRead]`) are not.
 
 Aliases apply to **every** segment of the dotted path — both the
 relation field and the nested column. The list-params keys always follow
 the response schema's public names:
 
 ```python
-class AuthorSchema(BaseModel):
+class AuthorRead(BaseModel):
     name: str = Field(alias="authorName")
 
-class ArticleSchema(BaseModel):
-    author: AuthorSchema = Field(alias="writer")
+class ArticleRead(BaseModel):
+    author: AuthorRead = Field(alias="writer")
 ```
 
 ```text

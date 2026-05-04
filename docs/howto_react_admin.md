@@ -105,7 +105,7 @@ responses to be plain id arrays, e.g. `"product_ids": [1, 2, 3]`, not
 your response schema:
 
 ```python
-class OrderSchema(fr.IDSchema[Order]):
+class OrderRead(fr.IDSchema[Order]):
     customer_name: str
     products: list[fr.IDRef[Product]]  # serializes as [1, 2, 3]
 ```

@@ -41,7 +41,7 @@ This is the recommended starting point.
 You can subclass `IDSchema` directly:
 
 ```python
-class UserSchema(fr.IDSchema):
+class UserRead(fr.IDSchema):
     name: str
     email: str
 ```
@@ -51,7 +51,7 @@ own read-only `id` field. You can parameterize it when you want the schema class
 itself to carry the SQLAlchemy model type:
 
 ```python
-class UserSchema(fr.IDSchema[User]):
+class UserRead(fr.IDSchema[User]):
     name: str
     email: str
 ```
@@ -62,7 +62,7 @@ recommended starting point.
 For foreign-key fields, use `IDRef[RelatedModel]`:
 
 ```python
-class ArticleSchema(fr.IDSchema):
+class ArticleRead(fr.IDSchema):
     title: str
     author_id: fr.IDRef[User]
 ```
@@ -87,38 +87,38 @@ Without view generics, these handlers still work, but their types are broader.
 With view generics, your editor can infer the concrete model, schema, and id types.
 
 ```python
-class UserSchema(fr.IDSchema[User]):
+class UserRead(fr.IDSchema[User]):
     name: str
     email: str
 
 
-class UserCreateSchema(fr.BaseSchema):
+class UserCreate(fr.BaseSchema):
     name: str
     email: str
 
 
-class UserUpdateSchema(fr.BaseSchema):
+class UserUpdate(fr.BaseSchema):
     name: str
     email: str
 
 
 @fr.include_view(app)
 class UserView(
-    fr.AsyncRestView[User, UserSchema, UserCreateSchema, UserUpdateSchema, int]
+    fr.AsyncRestView[User, UserRead, UserCreate, UserUpdate, int]
 ):
     prefix = "/users"
     model = User
-    schema = UserSchema
-    creation_schema = UserCreateSchema
-    update_schema = UserUpdateSchema
+    schema = UserRead
+    creation_schema = UserCreate
+    update_schema = UserUpdate
 
     async def handle_get(self, id: int) -> User:
         return await super().handle_get(id)
 
-    async def handle_create(self, schema_obj: UserCreateSchema) -> User:
+    async def handle_create(self, schema_obj: UserCreate) -> User:
         return await super().handle_create(schema_obj)
 
-    async def handle_update(self, id: int, schema_obj: UserUpdateSchema) -> User:
+    async def handle_update(self, id: int, schema_obj: UserUpdate) -> User:
         return await super().handle_update(id, schema_obj)
 ```
 

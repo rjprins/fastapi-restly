@@ -73,7 +73,8 @@ A few things to note:
 - `fr.DataclassBase` is the explicit dataclass-oriented declarative base.
 - `fr.IDBase` is the convenience alias that combines `DataclassBase` with an auto-incrementing integer `id` primary key.
 - If you prefer standard SQLAlchemy declarative style (without dataclass semantics), define your own `sqlalchemy.orm.DeclarativeBase` as usual — those models also work with the rest of the framework.
-- With no manual schema, FastAPI-Restly auto-generates one from your model.
+- With no manual schema, FastAPI-Restly auto-generates `UserRead`, `UserCreate`,
+  and `UserUpdate` from your model.
 - The lifespan hook creates tables through the same async engine configured for the app. For production, use Alembic migrations instead of `create_all()`.
 
 When auto-generated schemas are a good fit:
@@ -118,7 +119,7 @@ You can filter results using query parameters. For example, `GET /users/?name=Ja
 Replace the `UserView` definition from Section 2 with:
 
 ```python
-class UserSchema(fr.IDSchema):
+class UserRead(fr.IDSchema):
     name: str
     email: str
 
@@ -127,9 +128,11 @@ class UserSchema(fr.IDSchema):
 class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
-    schema = UserSchema
+    schema = UserRead
 ```
 
+`schema` is the read/response contract. Restly derives `UserCreate` and
+`UserUpdate` from it unless you override `creation_schema` or `update_schema`.
 `fr.IDSchema` already includes the `id` field as `fr.ReadOnly` (excluded from create/update requests, present in responses). You can apply the same marker to your own fields: `fr.ReadOnly[str]` keeps a field out of write operations. `fr.WriteOnly[T]` does the opposite — accepted on input, omitted from responses (useful for passwords).
 
 Choose explicit schemas when you need:

@@ -203,14 +203,14 @@ class TenantScopedView(fr.AsyncRestView):
 class InvoiceView(TenantScopedView):
     prefix = "/invoices"
     model = Invoice
-    schema = InvoiceSchema
+    schema = InvoiceRead
 
 
 @fr.include_view(app)
 class CustomerView(TenantScopedView):
     prefix = "/customers"
     model = Customer
-    schema = CustomerSchema
+    schema = CustomerRead
 ```
 
 Two views, one shared dependency, one shared filter. Add a new tenant-scoped
@@ -233,7 +233,7 @@ want full control of the HTTP layer.
 class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
-    schema = UserSchema
+    schema = UserRead
 
     async def handle_create(self, schema_obj: UserCreate) -> User:
         # Compose the create flow yourself so the password hash is written

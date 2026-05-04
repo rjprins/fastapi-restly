@@ -3,7 +3,7 @@
 :::{note}
 FastAPI-Restly uses **schema** for Pydantic request/response models and
 **model** for SQLAlchemy ORM models. A `User` model is the database object; a
-`UserSchema` schema is the public API shape.
+`UserRead` schema is the public API shape.
 :::
 
 Use explicit schemas when you need a stable public contract: aliases, hidden
@@ -19,7 +19,7 @@ objects directly.
 Use `BaseSchema` when you want to declare every field yourself, including `id`:
 
 ```python
-class UserSchema(fr.BaseSchema):
+class UserRead(fr.BaseSchema):
     id: int
     name: str
     email: str
@@ -42,7 +42,7 @@ class IDSchema(fr.BaseSchema):
 That is why examples usually look like this:
 
 ```python
-class UserSchema(fr.IDSchema):
+class UserRead(fr.IDSchema):
     name: str
     email: str
 ```
@@ -57,7 +57,7 @@ Use `fr.TimestampsSchemaMixin` when a schema should include read-only
 `created_at` and `updated_at` fields:
 
 ```python
-class UserSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
+class UserRead(fr.TimestampsSchemaMixin, fr.IDSchema):
     name: str
 ```
 
@@ -67,7 +67,7 @@ class UserSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
 update inputs:
 
 ```python
-class UserSchema(fr.IDSchema):
+class UserRead(fr.IDSchema):
     name: str
     created_by_id: fr.ReadOnly[int]
 ```
@@ -76,7 +76,7 @@ class UserSchema(fr.IDSchema):
 payloads but stripped from responses:
 
 ```python
-class UserSchema(fr.IDSchema):
+class UserRead(fr.IDSchema):
     email: str
     password: fr.WriteOnly[str]
 ```
@@ -93,7 +93,7 @@ database attribute:
 from pydantic import Field
 
 
-class UserSchema(fr.IDSchema):
+class UserRead(fr.IDSchema):
     first_name: str = Field(alias="firstName")
     email: str
 ```
@@ -106,7 +106,7 @@ Restly routes.
 Use `fr.IDRef[Model]` for foreign-key and identifier-reference fields:
 
 ```python
-class ArticleSchema(fr.IDSchema):
+class ArticleRead(fr.IDSchema):
     title: str
     author_id: fr.IDRef[Author]
 ```
@@ -130,7 +130,7 @@ If a client expects a nested relationship object, use `fr.IDSchema[Model]` as a
 field type:
 
 ```python
-class ArticleSchema(fr.IDSchema):
+class ArticleRead(fr.IDSchema):
     title: str
     author: fr.IDSchema[Author]
 ```
@@ -168,5 +168,5 @@ the SQLAlchemy model:
 class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
-    schema = UserSchema
+    schema = UserRead
 ```

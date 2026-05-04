@@ -13,18 +13,18 @@ class Order(fr.IDBase):
     customer_id: Mapped[int]
 
 
-class CustomerSchema(fr.IDSchema[Customer]):
+class CustomerRead(fr.IDSchema[Customer]):
     name: str
 
 
-class OrderSchema(fr.IDSchema[Order]):
+class OrderRead(fr.IDSchema[Order]):
     item_name: str
     quantity: int
     customer_id: int
-    customer: CustomerSchema | None = None
+    customer: CustomerRead | None = None
 
 
-class OrderInputSchema(fr.BaseSchema):
+class OrderInput(fr.BaseSchema):
     item_name: str
     quantity: int
     customer_id: int
@@ -33,6 +33,6 @@ class OrderInputSchema(fr.BaseSchema):
 class OrderView(fr.RestView):
     prefix = "/orders"
     model = Order
-    schema = OrderSchema
-    creation_schema = OrderInputSchema
-    update_schema = OrderInputSchema
+    schema = OrderRead
+    creation_schema = OrderInput
+    update_schema = OrderInput

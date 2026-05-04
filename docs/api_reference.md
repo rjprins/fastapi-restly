@@ -62,8 +62,8 @@ class UserView(fr.AsyncRestView):
 ```
 
 Relation filtering uses dot notation, and aliases apply to every
-segment of the path. If `ArticleSchema.author` has `Field(alias="writer")`
-and `AuthorSchema.name` has `Field(alias="authorName")`, the URL key is
+segment of the path. If `ArticleRead.author` has `Field(alias="writer")`
+and `AuthorRead.name` has `Field(alias="authorName")`, the URL key is
 `writer.authorName`. Canonical Python names are not exposed.
 
 ### Low-level helpers
@@ -137,9 +137,9 @@ Valid route names for exclusion: `"index"`, `"get"`, `"post"`, `"patch"`, `"dele
 ## Response Modeling
 
 For generated CRUD endpoints:
-- Response schema defaults to `schema` (or auto-generated schema when omitted).
-- Input schema for `POST` defaults to schema without read-only fields (`creation_schema`).
-- Input schema for `PATCH` defaults to optionalized schema (`update_schema`, via `PatchMixin`).
+- Response schema defaults to `schema` (or an auto-generated `*Read` schema when omitted).
+- Input schema for `POST` defaults to schema without read-only fields (`creation_schema`, generated as `*Create`).
+- Input schema for `PATCH` defaults to optionalized schema (`update_schema`, generated as `*Update`).
 - Alias-aware serialization is applied so response payload keys follow schema aliases.
 
 ## Key Public Symbols
@@ -198,9 +198,9 @@ Restly to an existing model layer.
 
 | Attribute | Type | Description |
 |---|---|---|
-| `schema` | `ClassVar[type[BaseSchema]]` | The primary Pydantic schema for responses. If omitted, auto-generated from `model`. |
-| `creation_schema` | `ClassVar[type[BaseSchema]]` | Schema for `POST` input. Auto-derived by removing `ReadOnly` fields. |
-| `update_schema` | `ClassVar[type[BaseSchema]]` | Schema for `PATCH` input. Auto-derived by making all writable fields optional. |
+| `schema` | `ClassVar[type[BaseSchema]]` | The read/response schema. If omitted, auto-generated from `model` as `ModelRead`. |
+| `creation_schema` | `ClassVar[type[BaseSchema]]` | Schema for `POST` input. Auto-derived by removing `ReadOnly` fields and named `ModelCreate`. |
+| `update_schema` | `ClassVar[type[BaseSchema]]` | Schema for `PATCH` input. Auto-derived by making all writable fields optional and named `ModelUpdate`. |
 | `model` | `ClassVar[type[DeclarativeBase]]` | The SQLAlchemy model class. |
 | `id_type` | `ClassVar[type]` | Primary key type used in generated `GET /{id}`, `PATCH /{id}`, and `DELETE /{id}` routes. Defaults to `int`. |
 | `include_pagination_metadata` | `ClassVar[bool]` | Set `True` to return the paginated metadata envelope. Defaults to `False`. |

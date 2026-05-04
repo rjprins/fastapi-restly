@@ -34,11 +34,11 @@ correct here.
 ## Schema Setup
 
 ```python
-class AuthorSchema(fr.IDSchema):
+class AuthorRead(fr.IDSchema):
     name: str
 
 
-class ArticleSchema(fr.IDSchema):
+class ArticleRead(fr.IDSchema):
     title: str
     author_id: fr.IDRef[Author]
 ```
@@ -70,7 +70,7 @@ Responses use the same shape:
 class ArticleView(fr.AsyncRestView):
     prefix = "/articles"
     model = Article
-    schema = ArticleSchema
+    schema = ArticleRead
 ```
 
 On create and update, Restly looks up the `Author` with `id=1`. If it does not
@@ -181,7 +181,7 @@ identifier field.
 Most examples inherit from `fr.IDSchema`:
 
 ```python
-class ArticleSchema(fr.IDSchema):
+class ArticleRead(fr.IDSchema):
     title: str
     author_id: fr.IDRef[Author]
 ```
@@ -198,7 +198,7 @@ You can inherit from `fr.BaseSchema` instead if you want every field, including
 `id`, to be explicit in the schema definition:
 
 ```python
-class ArticleSchema(fr.BaseSchema):
+class ArticleRead(fr.BaseSchema):
     id: fr.ReadOnly[int]
     title: str
     author_id: fr.IDRef[Author]
@@ -210,7 +210,7 @@ Some clients model relationships as objects. For that shape, annotate the
 relationship field with `fr.IDSchema[Model]`:
 
 ```python
-class ArticleSchema(fr.IDSchema):
+class ArticleRead(fr.IDSchema):
     title: str
     author: fr.IDSchema[Author]
 ```

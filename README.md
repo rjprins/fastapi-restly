@@ -100,7 +100,7 @@ make test-typing
 For custom validation or field aliases:
 
 ```python
-class UserSchema(fr.IDSchema):
+class UserRead(fr.IDSchema):
     name: str
     email: str
     age: int
@@ -110,7 +110,7 @@ class UserSchema(fr.IDSchema):
 class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
-    schema = UserSchema
+    schema = UserRead
 ```
 
 Use **auto-schema** for prototypes and internal tools. Use an **explicit schema** when contract stability and validation control matter (public APIs, aliases, strict response shapes).
@@ -131,8 +131,8 @@ GET /users/?page=2&page_size=10
 ```
 
 Parameter keys follow the **response schema's public names** end-to-end —
-including dotted relation paths. If `ArticleSchema.author` has
-`Field(alias="writer")` and `AuthorSchema.name` has
+including dotted relation paths. If `ArticleRead.author` has
+`Field(alias="writer")` and `AuthorRead.name` has
 `Field(alias="authorName")`, the URL key is `writer.authorName`. Aliased
 fields are only reachable by their alias; `populate_by_name` does not
 extend the URL surface with the Python field name.
@@ -155,7 +155,7 @@ for the full operator surface, alias rules, and pagination guidance.
 `IDSchema` already provides a read-only `id`, so don't redeclare it unless you need to narrow the type.
 
 ```python
-class UserSchema(fr.IDSchema):
+class UserRead(fr.IDSchema):
     name: str
     email: str
     password: fr.WriteOnly[str]        # never appears in responses
@@ -172,7 +172,7 @@ class Order(fr.IDBase):
     customer_id: Mapped[int] = mapped_column(ForeignKey("customer.id"))
     total: Mapped[float]
 
-class OrderSchema(fr.IDSchema):
+class OrderRead(fr.IDSchema):
     customer_id: fr.IDRef[Customer]      # wire format: 123 — resolved to FK
     total: float
 ```
@@ -186,7 +186,7 @@ Add endpoints with `@fr.get`, `@fr.post`, `@fr.put`, `@fr.patch`, `@fr.delete`, 
 class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
-    schema = UserSchema
+    schema = UserRead
 
     @fr.get("/{id}/download")
     async def download_user(self, id: int):
@@ -206,7 +206,7 @@ Use `AsyncReactAdminView` to get a backend that [react-admin](https://marmelab.c
 class ProductView(fr.AsyncReactAdminView):
     prefix = "/products"
     model = Product
-    schema = ProductSchema
+    schema = ProductRead
 ```
 
 The view speaks the `ra-data-simple-rest` wire contract:
