@@ -26,7 +26,7 @@ The differentiator is **true class-based views**. You subclass `RestView` / `Asy
 * **Override anything** — replace an endpoint, or just its business logic, without awkward hacks.
 * **React Admin ready** — `AsyncReactAdminView` speaks the `ra-data-simple-rest` wire contract, no custom data provider needed.
 * **Modern stack** — SQLAlchemy 2.0, Pydantic v2, async and sync support.
-* **Filtering, pagination, sorting** — JSONAPI-style and standard HTTP query interfaces.
+* **Filtering, pagination, sorting** — standard HTTP query interface generated from your response schema.
 * **Field control** — `ReadOnly` / `WriteOnly` markers, plus scalar foreign-key references via `IDRef[...]`.
 * **Testing utilities** — `RestlyTestClient` and savepoint-based isolation fixtures.
 
