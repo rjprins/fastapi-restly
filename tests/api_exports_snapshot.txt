@@ -28,6 +28,7 @@ fastapi_restly:
   - configure
   - create_list_params_schema
   - create_schema_from_model
+  - db
   - deactivate_savepoint_only_mode
   - delete
   - get
@@ -36,21 +37,29 @@ fastapi_restly:
   - get_fr_globals
   - include_view
   - make_new_object
+  - models
   - open_session
   - patch
   - post
   - put
+  - pytest_fixtures
+  - query
   - route
   - save_object
+  - schemas
+  - testing
   - update_object
+  - views
 fastapi_restly.db:
   - AsyncSessionDep
   - RestlyContext
   - SessionDep
   - activate_savepoint_only_mode
+  - async_generate_session
   - async_open_session
   - configure
   - deactivate_savepoint_only_mode
+  - generate_session
   - get_async_engine
   - get_engine
   - get_fr_globals
@@ -117,6 +126,8 @@ fastapi_restly.views:
 
 submodule-only exports:
 fastapi_restly.db:
+  - async_generate_session
+  - generate_session
 fastapi_restly.models:
   - CASCADE_ALL_ASYNC
   - CASCADE_ALL_DELETE_ORPHAN_ASYNC

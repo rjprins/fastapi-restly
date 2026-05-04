@@ -16,12 +16,18 @@ PUBLIC_MODULES = (
 
 
 def _render_api_exports() -> str:
+    loaded_modules = {
+        module_name: importlib.import_module(module_name)
+        for module_name in PUBLIC_MODULES
+    }
     lines: list[str] = []
     top_level_exports: set[str] = set()
 
     for module_name in PUBLIC_MODULES:
-        module = importlib.import_module(module_name)
-        module_exports = sorted(module.__all__)
+        module = loaded_modules[module_name]
+        module_exports = sorted(
+            name for name in vars(module) if not name.startswith("_")
+        )
         lines.append(f"{module_name}:")
         lines.extend(f"  - {name}" for name in module_exports)
         if module_name == "fastapi_restly":
@@ -30,8 +36,11 @@ def _render_api_exports() -> str:
     lines.append("")
     lines.append("submodule-only exports:")
     for module_name in PUBLIC_MODULES[1:]:
-        module = importlib.import_module(module_name)
-        submodule_only_exports = sorted(set(module.__all__) - top_level_exports)
+        module = loaded_modules[module_name]
+        module_exports = {
+            name for name in vars(module) if not name.startswith("_")
+        }
+        submodule_only_exports = sorted(module_exports - top_level_exports)
         lines.append(f"{module_name}:")
         lines.extend(f"  - {name}" for name in submodule_only_exports)
 
