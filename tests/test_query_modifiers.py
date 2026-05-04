@@ -499,7 +499,7 @@ def _render_sql(query) -> str:
 
 
 class TestMakeWhereClause:
-    """Test _make_where_clause by compiling real SQL — mirrors the V1 pattern."""
+    """Test _make_where_clause by compiling real SQL."""
 
     def test_make_where_clause_equals(self):
         clause = _make_where_clause(WidgetModel.name, "John", "eq", str)
