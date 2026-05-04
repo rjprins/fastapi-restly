@@ -32,14 +32,15 @@ field names (aliases when set, Python names otherwise), end-to-end,
 including dotted relation paths.
 
 - Filtering: `?name=John&created_at__gte=2024-01-01`
-  - Suffixes: `__gte`, `__lte`, `__gt`, `__lt`, `__ne`, `__isnull`, `__contains` (string fields only)
+  - Suffixes: `__gte`, `__lte`, `__gt`, `__lt`, `__ne`, `__isnull`, `__contains`, `__icontains` (contains operators are string fields only)
   - OR-values (IN): `?id=1,2,3` (comma-separated values are OR-combined for `eq`)
   - NOT-IN: `?status__ne=archived,deleted` (comma-separated values are AND-combined for `__ne`)
   - Aliased fields use only the alias as the URL key; the Python field name is not accepted (``populate_by_name`` only affects body parsing, not the URL surface).
-- Contains: `?name__contains=john`
+- Contains: `?name__contains=John` (case-sensitive where the SQL backend supports that distinction)
+- IContains: `?name__icontains=john` (case-insensitive)
   - Repeat the parameter to AND multiple terms — this is the precise form: `?name__contains=john&name__contains=doe`.
   - As a convenience, whitespace inside one value is also AND-split: `?name__contains=john%20doe` is equivalent.
-  - `%`, `_`, and `\\` are escaped before building the SQL `ILIKE`.
+  - `%`, `_`, and `\\` are escaped before building the SQL `LIKE` / `ILIKE`.
 - Sorting: `?order_by=name,-created_at`
 - Pagination: `?page=2&page_size=10`
   - **Opt-in.** Omitting `page_size` returns every matching row (no implicit cap).

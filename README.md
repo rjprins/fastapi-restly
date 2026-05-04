@@ -124,7 +124,7 @@ response schema:
 GET /users/?name=John&age__gte=21
 GET /users/?status=active,pending           # comma-separated → OR (IN)
 GET /users/?status__ne=archived,deleted     # comma-separated → NOT IN
-GET /users/?email__contains=example
+GET /users/?email__icontains=example
 GET /users/?deleted_at__isnull=true
 GET /users/?order_by=-created_at,name
 GET /users/?page=2&page_size=10

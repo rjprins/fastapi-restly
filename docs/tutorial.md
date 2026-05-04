@@ -202,7 +202,7 @@ suffixes:
 
 ```text
 GET /posts/?published=true&order_by=-id&page=1&page_size=10
-GET /posts/?title__contains=hello
+GET /posts/?title__icontains=hello
 GET /posts/?created_at__gte=2024-01-01&created_at__lt=2025-01-01
 ```
 

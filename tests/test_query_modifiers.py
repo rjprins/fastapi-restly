@@ -194,6 +194,7 @@ class TestCreateListParamsSchema:
 
         assert "user.name" in schema.model_fields
         assert "user.email__contains" in schema.model_fields
+        assert "user.email__icontains" in schema.model_fields
 
 
 class TestApplyPagination:
@@ -530,9 +531,17 @@ class TestMakeWhereClause:
         )
 
     def test_make_where_clause_contains(self):
-        """contains operator should compile to ILIKE with wildcards."""
+        """contains operator should compile to LIKE with wildcards."""
         clause = _make_where_clause(WidgetModel.name, "oh", "contains", str)
         sql = _render_sql(sqlalchemy.select(WidgetModel).where(clause))
-        # SQLite renders ILIKE as LIKE LOWER(...)
         assert "%oh%" in sql or "%%oh%%" in sql
-        assert "lower" in sql.lower() or "like" in sql.lower()
+        assert "LIKE" in sql
+        assert "lower" not in sql.lower()
+
+    def test_make_where_clause_icontains(self):
+        """icontains operator should compile to case-insensitive LIKE."""
+        clause = _make_where_clause(WidgetModel.name, "oh", "icontains", str)
+        sql = _render_sql(sqlalchemy.select(WidgetModel).where(clause))
+        # SQLite renders ILIKE as LIKE LOWER(...).
+        assert "%oh%" in sql or "%%oh%%" in sql
+        assert "lower" in sql.lower() or "ILIKE" in sql

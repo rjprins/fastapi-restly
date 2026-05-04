@@ -200,6 +200,12 @@ def test_repeated_contains_ands_predicates(people_client):
     assert response.json() == []
 
 
+def test_icontains_uses_case_insensitive_matching(people_client):
+    response = people_client.get("/people/?name__icontains=ali")
+    names = sorted(r["name"] for r in response.json())
+    assert names == ["Alice"]
+
+
 def test_unknown_query_param_rejected_with_422(people_client):
     """A typoed or otherwise unknown filter is rejected, not ignored."""
     response = people_client.get("/people/?nme=Alice", assert_status_code=422)
@@ -247,8 +253,8 @@ def test_python_field_name_rejected_for_aliased_field(client):
 def test_unsupported_operator_rejected(people_client):
     """An operator suffix that isn't valid for the field's type is rejected.
 
-    ``__contains`` is only emitted for string fields. Sending it on an int
-    column lets the schema reject the unknown key rather than running an
+    Contains operators are only emitted for string fields. Sending one on an
+    int column lets the schema reject the unknown key rather than running an
     unintended SQL expression.
     """
     response = people_client.get("/people/?age__contains=2", assert_status_code=422)

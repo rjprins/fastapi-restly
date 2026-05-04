@@ -85,7 +85,7 @@ def create_list_params_schema(
     The generated model accepts pagination (``page``, ``page_size``), sorting
     (``order_by``), and one filter parameter per response-schema field with
     optional ``__ne``/``__gte``/``__lte``/``__gt``/``__lt``/``__isnull``/
-    ``__contains`` suffixes.
+    ``__contains``/``__icontains`` suffixes.
 
     ``page`` and ``page_size`` are validated by Pydantic with bounds
     (``page >= 1``, ``1 <= page_size <= max_page_size``); out-of-range values
@@ -205,6 +205,20 @@ def create_list_params_schema(
                     Optional[list[str]],
                     Field(
                         description=(
+                            f"Case-sensitive substring search on "
+                            f"``{name}``. Repeat the parameter to AND "
+                            "multiple terms; whitespace inside one value is "
+                            "also AND-split as a convenience."
+                        )
+                    ),
+                ],
+                None,
+            )
+            fields[f"{name}__icontains"] = (
+                Annotated[
+                    Optional[list[str]],
+                    Field(
+                        description=(
                             f"Case-insensitive substring search on "
                             f"``{name}``. Repeat the parameter to AND "
                             "multiple terms; whitespace inside one value is "
@@ -253,7 +267,7 @@ def apply_list_params(
         name=Bob&status=active&created_at__gte=2024-01-01
 
         # Contains (string fields)
-        name__contains=john&email__contains=example
+        name__contains=John&email__icontains=example
     """
     query_params = _coerce_to_query_params(params)
     select_query = _apply_filtering(query_params, select_query, model, schema_cls)
@@ -443,7 +457,7 @@ def _apply_filtering(
     Multiple filters on the same column are AND-combined. Comma-separated
     values within one parameter are OR-combined for ``eq`` (the default) and
     AND-combined for ``ne`` (so ``status__ne=a,b`` means NOT IN (a, b)). For
-    ``contains`` values are split on whitespace and AND-combined.
+    ``contains``/``icontains`` values are split on whitespace and AND-combined.
     """
     filters: dict[InstrumentedAttribute[Any], list[ColumnElement[Any]]] = defaultdict(
         list
@@ -493,7 +507,7 @@ def _build_clause(
     parser: Callable[[str], Any],
 ) -> ColumnElement[Any] | None:
     """Combine multiple values within one parameter according to ``op`` semantics."""
-    if op == "contains":
+    if op in {"contains", "icontains"}:
         values = [v for v in raw_value.split() if v]
         if not values:
             return None
@@ -561,6 +575,8 @@ def _make_where_clause(
     if op == "ne":
         return column != parser(filter_value)
     if op == "contains":
+        return column.like(f"%{_escape_like_value(filter_value)}%", escape="\\")
+    if op == "icontains":
         return column.ilike(f"%{_escape_like_value(filter_value)}%", escape="\\")
     if op == "eq":
         return column == parser(filter_value)

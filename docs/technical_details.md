@@ -203,7 +203,7 @@ does not match the ORM model shape. Use a flattened schema or override
 List endpoints accept URL query parameters of the form
 ``name=John``, ``age__gte=18``, ``order_by=-created_at``, and
 ``page=2&page_size=50``. The full operator surface (`__ne`, `__isnull`,
-`__contains`, …) is documented in
+`__contains`, `__icontains`, …) is documented in
 [the how-to guide](howto_query_modifiers.md).
 
 During `before_include_view()`, the framework freezes a single class-level

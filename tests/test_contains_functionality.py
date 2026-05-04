@@ -1,4 +1,4 @@
-"""Tests for ``__contains`` filter functionality in list-params."""
+"""Tests for contains filter functionality in list-params."""
 
 import warnings
 
@@ -33,14 +33,18 @@ class UserSchema(fr.IDSchema):
 
 class TestContainsSchemaGeneration:
     def test_string_field_detection(self):
-        """``__contains`` is added for string fields, not for non-strings."""
+        """Contains operators are added for string fields, not for non-strings."""
         schema = create_list_params_schema(UserSchema)
         fields = schema.model_fields
 
         assert "name__contains" in fields
+        assert "name__icontains" in fields
         assert "email__contains" in fields
+        assert "email__icontains" in fields
         assert "description__contains" in fields
+        assert "description__icontains" in fields
         assert "age__contains" not in fields
+        assert "age__icontains" not in fields
 
         # Plain (eq) and other operators are still emitted.
         for op in ("", "__gte", "__lte", "__gt", "__lt", "__isnull"):
@@ -68,8 +72,11 @@ class TestContainsSchemaGeneration:
 
         params = create_list_params_schema(Schema)
         assert "email__contains" in params.model_fields
+        assert "email__icontains" in params.model_fields
         assert "phone__contains" in params.model_fields
+        assert "phone__icontains" in params.model_fields
         assert "age__contains" not in params.model_fields
+        assert "age__icontains" not in params.model_fields
 
     def test_aliases_drive_contains_field_name(self):
         """When a field has a Pydantic alias the public name (alias) is used."""
@@ -82,8 +89,11 @@ class TestContainsSchemaGeneration:
 
         fields = create_list_params_schema(Schema).model_fields
         assert "userName__contains" in fields
+        assert "userName__icontains" in fields
         assert "userEmail__contains" in fields
+        assert "userEmail__icontains" in fields
         assert "age__contains" not in fields
+        assert "age__icontains" not in fields
 
     def test_nested_schemas_dot_notation(self):
         """Nested schema fields are exposed with dot-notation public names."""
@@ -100,9 +110,13 @@ class TestContainsSchemaGeneration:
 
         fields = create_list_params_schema(Schema).model_fields
         assert "name__contains" in fields
+        assert "name__icontains" in fields
         assert "email__contains" in fields
+        assert "email__icontains" in fields
         assert "address.street__contains" in fields
+        assert "address.street__icontains" in fields
         assert "address.city__contains" in fields
+        assert "address.city__icontains" in fields
 
 
 class TestContainsApplied:
@@ -118,18 +132,33 @@ class TestContainsApplied:
         result = _apply_filtering(params, query, User, UserSchema)
         assert hasattr(result, "where")
 
+    def test_multiple_icontains_values_split_on_whitespace(self):
+        query = select(User)
+        params = QueryParams("name__icontains=john jane")
+        result = _apply_filtering(params, query, User, UserSchema)
+        assert hasattr(result, "where")
+
     def test_contains_combined_with_filters(self):
         query = select(User)
         params = QueryParams("name__contains=john&age__gte=25")
         result = _apply_filtering(params, query, User, UserSchema)
         assert hasattr(result, "where")
 
-    def test_contains_emits_ilike_clause(self):
+    def test_contains_emits_like_clause(self):
+        class MockColumn:
+            def like(self, pattern, escape=None):
+                return f"LIKE {pattern} ESCAPE {escape}"
+
+        result = _make_where_clause(MockColumn(), "john", "contains", lambda x: x)
+        assert "LIKE %john%" in str(result)
+        assert "ESCAPE \\" in str(result)
+
+    def test_icontains_emits_ilike_clause(self):
         class MockColumn:
             def ilike(self, pattern, escape=None):
                 return f"ILIKE {pattern} ESCAPE {escape}"
 
-        result = _make_where_clause(MockColumn(), "john", "contains", lambda x: x)
+        result = _make_where_clause(MockColumn(), "john", "icontains", lambda x: x)
         assert "ILIKE %john%" in str(result)
         assert "ESCAPE \\" in str(result)
 

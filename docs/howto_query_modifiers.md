@@ -47,7 +47,8 @@ Suffixes add other operators:
 | `__gt` | `field > value` | `?age__gt=17` |
 | `__lt` | `field < value` | `?age__lt=65` |
 | `__ne` | `field != value` | `?status__ne=archived` |
-| `__contains` | `field ILIKE '%value%'` | `?email__contains=example` |
+| `__contains` | `field LIKE '%value%'` | `?email__contains=Example` |
+| `__icontains` | `field ILIKE '%value%'` | `?email__icontains=example` |
 | `__isnull` | `field IS NULL` / `IS NOT NULL` | `?deleted_at__isnull=true` |
 
 `__isnull` accepts a boolean value (`true` or `false`), not the string
@@ -55,7 +56,7 @@ Suffixes add other operators:
 
 Range operators (`__gte`/`__lte`/`__gt`/`__lt`) are only generated for
 orderable column types — they're omitted for booleans and UUIDs.
-`__contains` is only generated for string fields.
+`__contains` and `__icontains` are only generated for string fields.
 
 ### Comma logic on bare equality
 
@@ -80,25 +81,28 @@ GET /users/?status__ne=archived,deleted
 Produces `WHERE status != 'archived' AND status != 'deleted'`. Equivalent
 to SQL `NOT IN`.
 
-### AND-combining multiple `__contains` terms
+### AND-combining multiple contains terms
 
 The precise form is to repeat the parameter — each predicate becomes its
-own ILIKE clause and they are AND-combined:
+own `LIKE` / `ILIKE` clause and they are AND-combined:
 
 ```text
 GET /users/?name__contains=john&name__contains=doe
+GET /users/?name__icontains=john&name__icontains=doe
 ```
 
-Produces `WHERE name ILIKE '%john%' AND name ILIKE '%doe%'`.
+The `__contains` form produces `WHERE name LIKE '%john%' AND name LIKE '%doe%'`.
+The `__icontains` form uses `ILIKE` instead.
 
-As a convenience, whitespace inside one `__contains` value is also
-AND-split. `?name__contains=john%20doe` is equivalent to the form above.
+As a convenience, whitespace inside one `__contains` or `__icontains`
+value is also AND-split. `?name__contains=john%20doe` is equivalent to
+the repeated-parameter form above.
 Prefer repeated parameters when you control the URL — they are
 unambiguous and survive any client/server quoting changes.
 
 Literal `%`, `_`, and `\` characters are escaped before building the SQL
-`ILIKE`, so contains searches behave like literal substring matching
-rather than wildcard matching.
+`LIKE` / `ILIKE`, so contains searches behave like literal substring
+matching rather than wildcard matching.
 
 ### Multiple filters on the same field
 
@@ -214,7 +218,7 @@ GET /users/?name=John
 GET /users/?status=active,pending
 GET /users/?age__gte=18&age__lt=65
 GET /users/?deleted_at__isnull=true
-GET /users/?email__contains=example
+GET /users/?email__icontains=example
 GET /users/?name__contains=john doe
 GET /users/?order_by=-id
 GET /users/?page=2&page_size=50

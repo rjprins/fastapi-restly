@@ -386,6 +386,7 @@ class TestRelationAliases:
         fields = create_list_params_schema(ArticleSchema).model_fields
         assert "writer.authorName" in fields
         assert "writer.authorName__contains" in fields
+        assert "writer.authorName__icontains" in fields
         # Canonical (non-aliased) names must NOT leak into the public surface.
         assert "author.name" not in fields
         assert "author.authorName" not in fields
