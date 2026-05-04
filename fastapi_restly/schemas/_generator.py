@@ -176,6 +176,7 @@ def get_model_fields(model_cls: type[DeclarativeBase]) -> dict[str, Any]:
 
 def create_schema_from_model(
     model_cls: type[DeclarativeBase],
+    *,
     schema_name: str | None = None,
     include_relationships: bool = True,
     include_readonly_fields: bool = True,
@@ -376,4 +377,6 @@ def auto_generate_schema_for_view(
     if schema_name is None:
         schema_name = f"{view_cls.__name__}Schema"
 
-    return create_schema_from_model(model_cls, schema_name, include_relationships=False)
+    return create_schema_from_model(
+        model_cls, schema_name=schema_name, include_relationships=False
+    )

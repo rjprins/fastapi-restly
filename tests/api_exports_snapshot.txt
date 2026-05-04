@@ -25,7 +25,6 @@ fastapi_restly:
   - async_update_object
   - configure
   - create_list_params_schema
-  - create_schema_from_model
   - db
   - deactivate_savepoint_only_mode
   - delete
@@ -135,6 +134,7 @@ fastapi_restly.query:
   - DEFAULT_PAGE_SIZE
   - MAX_PAGE_SIZE
 fastapi_restly.schemas:
+  - create_schema_from_model
 fastapi_restly.testing:
   - RestlyTestClient
   - app

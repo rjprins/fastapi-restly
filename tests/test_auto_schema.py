@@ -19,10 +19,10 @@ from .conftest import create_tables
 
 
 def test_create_schema_from_model_is_the_only_public_schema_generator():
-    """The RestView-specific generator wrapper is internal-only."""
+    """Manual schema generation is available from the advanced schema module."""
 
-    assert hasattr(fr, "create_schema_from_model")
-    assert "create_schema_from_model" in fr.__all__
+    assert not hasattr(fr, "create_schema_from_model")
+    assert "create_schema_from_model" not in fr.__all__
     assert hasattr(fr_schemas, "create_schema_from_model")
     assert "create_schema_from_model" in fr_schemas.__all__
 
@@ -30,6 +30,14 @@ def test_create_schema_from_model_is_the_only_public_schema_generator():
     assert "auto_generate_schema_for_view" not in fr.__all__
     assert not hasattr(fr_schemas, "auto_generate_schema_for_view")
     assert "auto_generate_schema_for_view" not in fr_schemas.__all__
+
+
+def test_create_schema_from_model_options_are_keyword_only():
+    class User(fr.IDBase):
+        name: Mapped[str]
+
+    with pytest.raises(TypeError):
+        fr_schemas.create_schema_from_model(User, "UserSchema")  # type: ignore[misc]
 
 
 def test_auto_generated_schema_in_view(client):
@@ -190,7 +198,7 @@ def test_create_schema_from_model_includes_nested_relationship_schema():
         user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
         user: Mapped[User] = relationship()
 
-    schema = fr.create_schema_from_model(Order, include_relationships=True)
+    schema = fr_schemas.create_schema_from_model(Order, include_relationships=True)
 
     assert "user" in schema.model_fields
     user_annotation = schema.model_fields["user"].annotation
@@ -231,6 +239,6 @@ def test_create_schema_from_model_preserves_json_dict_types():
     class Event(fr.IDBase):
         payload: Mapped[dict] = mapped_column(JSON)
 
-    schema = fr.create_schema_from_model(Event)
+    schema = fr_schemas.create_schema_from_model(Event)
 
     assert schema.model_fields["payload"].annotation is dict

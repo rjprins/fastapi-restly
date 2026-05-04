@@ -27,7 +27,6 @@ from .schemas import (
     ReadOnly,
     TimestampsSchemaMixin,
     WriteOnly,
-    create_schema_from_model,
 )
 
 # Views
@@ -88,7 +87,6 @@ __all__ = [
     "ReadOnly",
     "WriteOnly",
     "TimestampsSchemaMixin",
-    "create_schema_from_model",
     # Views
     "RestView",
     "AsyncRestView",

@@ -76,7 +76,7 @@ behaviours:
   references).
 
 When a `RestView` / `AsyncRestView` omits `schema`, the internal view setup calls
-`create_schema_from_model(model_cls, schema_name, include_relationships=False)`.
+`create_schema_from_model(model_cls, schema_name=schema_name, include_relationships=False)`.
 It does not apply any other filtering beyond excluding relationship attributes;
 foreign-key columns appear in the generated schema as ordinary scalar fields.
 
