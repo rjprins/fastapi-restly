@@ -41,7 +41,7 @@ including dotted relation paths.
   - Repeat the parameter to AND multiple terms — this is the precise form: `?name__contains=john&name__contains=doe`.
   - As a convenience, whitespace inside one value is also AND-split: `?name__contains=john%20doe` is equivalent.
   - `%`, `_`, and `\\` are escaped before building the SQL `LIKE` / `ILIKE`.
-- Sorting: `?order_by=name,-created_at`
+- Sorting: `?sort=name,-created_at`
 - Pagination: `?page=2&page_size=10`
   - **Opt-in.** Omitting `page_size` returns every matching row (no implicit cap).
   - For public/production endpoints, set `default_page_size` and `max_page_size` explicitly on the view class.

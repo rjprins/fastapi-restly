@@ -208,7 +208,7 @@ does not match the ORM model shape. Use a flattened schema or override
 ## List Parameters Lifecycle
 
 List endpoints accept URL query parameters of the form
-``name=John``, ``age__gte=18``, ``order_by=-created_at``, and
+``name=John``, ``age__gte=18``, ``sort=-created_at``, and
 ``page=2&page_size=50``. The full operator surface (`__ne`, `__isnull`,
 `__contains`, `__icontains`, …) is documented in
 [the how-to guide](howto_query_modifiers.md).

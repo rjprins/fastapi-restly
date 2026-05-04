@@ -126,7 +126,7 @@ GET /users/?status=active,pending           # comma-separated → OR (IN)
 GET /users/?status__ne=archived,deleted     # comma-separated → NOT IN
 GET /users/?email__icontains=example
 GET /users/?deleted_at__isnull=true
-GET /users/?order_by=-created_at,name
+GET /users/?sort=-created_at,name
 GET /users/?page=2&page_size=10
 ```
 

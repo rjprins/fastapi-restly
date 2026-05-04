@@ -153,7 +153,7 @@ class TestCreateListParamsSchema:
         # Check that pagination fields exist
         assert "page" in schema.model_fields
         assert "page_size" in schema.model_fields
-        assert "order_by" in schema.model_fields
+        assert "sort" in schema.model_fields
 
         # Check that field filters exist
         assert "name" in schema.model_fields
@@ -195,6 +195,16 @@ class TestCreateListParamsSchema:
         assert "user.name" in schema.model_fields
         assert "user.email__contains" in schema.model_fields
         assert "user.email__icontains" in schema.model_fields
+
+    def test_create_list_params_schema_rejects_sort_field_collision(self):
+        """A response field named ``sort`` would shadow the sorting parameter."""
+
+        class SortFieldSchema(pydantic.BaseModel):
+            id: int
+            sort: str
+
+        with pytest.raises(ValueError, match="reserved pagination/sort"):
+            create_list_params_schema(SortFieldSchema)
 
 
 class TestApplyPagination:
@@ -238,7 +248,7 @@ class TestApplyPagination:
 
 class TestApplySorting:
     def test__apply_sorting_default(self, select_query, mock_query_params):
-        """Test sorting with default (no order_by parameter)."""
+        """Test sorting with default (no sort parameter)."""
         params = mock_query_params()
         result = _apply_sorting(params, select_query, WidgetModel, WidgetSchema)
 
@@ -247,21 +257,21 @@ class TestApplySorting:
 
     def test__apply_sorting_single_field(self, select_query, mock_query_params):
         """Test sorting with single field."""
-        params = mock_query_params(order_by="name")
+        params = mock_query_params(sort="name")
         result = _apply_sorting(params, select_query, WidgetModel, WidgetSchema)
 
         assert "ORDER BY test_model.name" in str(result)
 
     def test__apply_sorting_descending(self, select_query, mock_query_params):
         """Test sorting with descending order."""
-        params = mock_query_params(order_by="-name")
+        params = mock_query_params(sort="-name")
         result = _apply_sorting(params, select_query, WidgetModel, WidgetSchema)
 
         assert "ORDER BY test_model.name DESC" in str(result)
 
     def test__apply_sorting_multiple_fields(self, select_query, mock_query_params):
         """Test sorting with multiple fields."""
-        params = mock_query_params(order_by="name,-age")
+        params = mock_query_params(sort="name,-age")
         result = _apply_sorting(params, select_query, WidgetModel, WidgetSchema)
 
         assert "ORDER BY test_model.name ASC, test_model.age DESC" in str(result)
@@ -288,7 +298,7 @@ class TestApplyFilteringIsNull:
 
     def test__apply_sorting_invalid_field(self, select_query, mock_query_params):
         """Test sorting with invalid field."""
-        params = mock_query_params(order_by="invalid_field")
+        params = mock_query_params(sort="invalid_field")
 
         with pytest.raises(HTTPException) as exc_info:
             _apply_sorting(params, select_query, WidgetModel, WidgetSchema)
@@ -422,7 +432,7 @@ class TestApplyFiltering:
     def test__apply_sorting_relation_field_handles_ambiguous_foreign_keys(
         self, audit_log_select_query, mock_query_params
     ):
-        params = mock_query_params(order_by="creator.name,-id")
+        params = mock_query_params(sort="creator.name,-id")
         result = _apply_sorting(
             params, audit_log_select_query, AuditLogModel, AuditLogSchema
         )
@@ -439,7 +449,7 @@ class TestApplyListParams:
     def test_apply_list_params_full(self, select_query, mock_query_params):
         """Test applying all query modifiers together."""
         params = mock_query_params(
-            page="2", page_size="25", order_by="name,-age", name="John", age__gte="25"
+            page="2", page_size="25", sort="name,-age", name="John", age__gte="25"
         )
         result = apply_list_params(params, select_query, WidgetModel, WidgetSchema)
 
@@ -451,7 +461,7 @@ class TestApplyListParams:
 
     def test_apply_list_params_order(self, select_query, mock_query_params):
         """Test that filtering is applied before sorting and pagination."""
-        params = mock_query_params(name="John", order_by="age", page="1")
+        params = mock_query_params(name="John", sort="age", page="1")
 
         with patch("fastapi_restly.query._impl._apply_filtering") as mock_filter:
             with patch("fastapi_restly.query._impl._apply_sorting") as mock_sort:

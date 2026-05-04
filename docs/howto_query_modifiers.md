@@ -118,14 +118,14 @@ Produces `WHERE created_at >= '2024-01-01' AND created_at < '2025-01-01'`.
 
 ## Sorting
 
-Use the `order_by` parameter with comma-separated field names. Prefix
+Use the `sort` parameter with comma-separated field names. Prefix
 with `-` for descending:
 
 ```text
-GET /users/?order_by=-created_at,name
+GET /users/?sort=-created_at,name
 ```
 
-> **Default ordering:** When no `order_by` parameter is given and the
+> **Default ordering:** When no `sort` parameter is given and the
 > model has an `id` column, the framework automatically applies
 > `ORDER BY id ASC`. Models without an `id` column return results in an
 > unspecified order.
@@ -220,7 +220,7 @@ GET /users/?age__gte=18&age__lt=65
 GET /users/?deleted_at__isnull=true
 GET /users/?email__icontains=example
 GET /users/?name__contains=john doe
-GET /users/?order_by=-id
+GET /users/?sort=-id
 GET /users/?page=2&page_size=50
 ```
 

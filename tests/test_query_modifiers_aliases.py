@@ -88,7 +88,7 @@ class TestCreateListParamsSchemaWithAliases:
         # Check that pagination fields exist
         assert "page" in schema.model_fields
         assert "page_size" in schema.model_fields
-        assert "order_by" in schema.model_fields
+        assert "sort" in schema.model_fields
 
         # Check that field filters use aliases
         assert "userName" in schema.model_fields  # Alias
@@ -253,7 +253,7 @@ class TestApplyFilteringWithAliases:
 class TestApplySortingWithAliases:
     def test__apply_sorting_with_aliases(self, select_query, mock_query_params):
         """Test sorting with aliases."""
-        params = mock_query_params(order_by="userName,-age")
+        params = mock_query_params(sort="userName,-age")
         result = _apply_sorting(params, select_query, AliasModel, SchemaWithAliases)
 
         assert (
@@ -265,7 +265,7 @@ class TestApplySortingWithAliases:
         self, select_query, mock_query_params
     ):
         """Sorting honours the alias even when populate_by_name=True."""
-        params = mock_query_params(order_by="userName,-age")
+        params = mock_query_params(sort="userName,-age")
         result = _apply_sorting(
             params, select_query, AliasModel, SchemaWithPopulateByName
         )
@@ -275,14 +275,14 @@ class TestApplySortingWithAliases:
         )
 
         # Sorting by the Python field name on an aliased field is rejected.
-        params = mock_query_params(order_by="user_name")
+        params = mock_query_params(sort="user_name")
         with pytest.raises(HTTPException) as exc_info:
             _apply_sorting(params, select_query, AliasModel, SchemaWithPopulateByName)
         assert exc_info.value.status_code == 400
 
     def test__apply_sorting_without_aliases(self, select_query, mock_query_params):
         """Test sorting without aliases."""
-        params = mock_query_params(order_by="user_name,-age")
+        params = mock_query_params(sort="user_name,-age")
         result = _apply_sorting(params, select_query, AliasModel, SchemaWithoutAliases)
 
         assert (
@@ -297,7 +297,7 @@ class TestApplyListParamsWithAliases:
         params = mock_query_params(
             page="2",
             page_size="25",
-            order_by="userName,-age",
+            sort="userName,-age",
             userName="John Doe",
             age__gte="25",
         )
@@ -319,7 +319,7 @@ class TestApplyListParamsWithAliases:
         params = mock_query_params(
             page="2",
             page_size="25",
-            order_by="userName,-age",
+            sort="userName,-age",
             userName="John Doe",
             age__gte="25",
         )
@@ -403,7 +403,7 @@ class TestRelationAliases:
 
     def test_sort_resolves_aliased_relation_path(self, mock_query_params):
         Article, ArticleSchema = self._build()
-        params = mock_query_params(order_by="-writer.authorName")
+        params = mock_query_params(sort="-writer.authorName")
         rendered = str(
             _apply_sorting(params, sqlalchemy.select(Article), Article, ArticleSchema)
         )

@@ -34,7 +34,7 @@ MAX_PAGE_SIZE = 1000
 #: Reserved query-parameter names produced by the schema. Filter columns
 #: literally named one of these would shadow pagination/sort, which would
 #: silently break the endpoint contract. Treated as a hard error.
-_RESERVED_NAMES = frozenset({"page", "page_size", "order_by"})
+_RESERVED_NAMES = frozenset({"page", "page_size", "sort"})
 
 # Types that support SQL ``<``/``<=``/``>``/``>=`` comparisons. Booleans
 # deliberately don't — ordering booleans is rarely meaningful and emitting
@@ -83,7 +83,7 @@ def create_list_params_schema(
     for list endpoints.
 
     The generated model accepts pagination (``page``, ``page_size``), sorting
-    (``order_by``), and one filter parameter per response-schema field with
+    (``sort``), and one filter parameter per response-schema field with
     optional ``__ne``/``__gte``/``__lte``/``__gt``/``__lt``/``__isnull``/
     ``__contains``/``__icontains`` suffixes.
 
@@ -128,7 +128,7 @@ def create_list_params_schema(
             ],
             default_page_size,
         ),
-        "order_by": (
+        "sort": (
             Annotated[
                 Optional[str],
                 Field(
@@ -261,7 +261,7 @@ def apply_list_params(
         page=2&page_size=50
 
         # Sorting
-        order_by=name,-created_at
+        sort=name,-created_at
 
         # Filtering
         name=Bob&status=active&created_at__gte=2024-01-01
@@ -328,7 +328,7 @@ def _apply_sorting(
     model: type[DeclarativeBase],
     schema_cls: SchemaType,
 ) -> Select[Any]:
-    sort_string = query_params.get("order_by")
+    sort_string = query_params.get("sort")
     if not sort_string:
         id_column = getattr(model, "id", None)
         if id_column is not None:

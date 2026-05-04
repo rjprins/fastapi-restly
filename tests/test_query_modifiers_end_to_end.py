@@ -214,6 +214,14 @@ def test_unknown_query_param_rejected_with_422(people_client):
     assert ["query", "nme"] in locs
 
 
+def test_legacy_order_by_param_rejected_with_422(people_client):
+    """The standard REST dialect exposes ``sort`` only, not ``order_by``."""
+    response = people_client.get("/people/?order_by=name", assert_status_code=422)
+    body = response.json()
+    locs = [item.get("loc") for item in body.get("detail", [])]
+    assert ["query", "order_by"] in locs
+
+
 def test_python_field_name_rejected_for_aliased_field(client):
     """Aliased fields are reachable only by their alias on the URL surface.
 
