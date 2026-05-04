@@ -108,8 +108,7 @@ class Task(fr.IDStampsBase):
 
     # Relationships
     project: orm.Mapped["Project"] = orm.relationship(  # noqa: F821
-        back_populates="tasks",
-        init=False,
+        back_populates="tasks", init=False
     )
     assignee: orm.Mapped["User | None"] = orm.relationship(  # noqa: F821
         back_populates="assigned_tasks",
@@ -120,17 +119,11 @@ class Task(fr.IDStampsBase):
         foreign_keys="Task.assignee_id",
     )
     parent: orm.Mapped["Task | None"] = orm.relationship(
-        back_populates="subtasks",
-        remote_side="Task.id",
-        init=False,
+        back_populates="subtasks", remote_side="Task.id", init=False
     )
     subtasks: orm.Mapped[list["Task"]] = orm.relationship(
-        back_populates="parent",
-        init=False,
-        default_factory=list,
+        back_populates="parent", init=False, default_factory=list
     )
     task_labels: orm.Mapped[list["TaskLabel"]] = orm.relationship(  # noqa: F821
-        back_populates="task",
-        init=False,
-        default_factory=list,
+        back_populates="task", init=False, default_factory=list
     )

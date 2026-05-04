@@ -13,9 +13,7 @@ pytest_plugins = ["fastapi_restly.pytest_fixtures"]
 def use_in_memory_database():
     """Switch to a fresh in-memory SQLite database for each test."""
     engine = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
+        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
     )
     fr.configure(engine=engine)
     fr.DataclassBase.metadata.create_all(engine)

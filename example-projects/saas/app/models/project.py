@@ -51,11 +51,8 @@ class Project(fr.IDStampsBase):
 
     # Relationships
     organization: orm.Mapped["Organization"] = orm.relationship(  # noqa: F821
-        back_populates="projects",
-        init=False,
+        back_populates="projects", init=False
     )
     tasks: orm.Mapped[list["Task"]] = orm.relationship(  # noqa: F821
-        back_populates="project",
-        default_factory=list,
-        cascade="all, delete-orphan",
+        back_populates="project", default_factory=list, cascade="all, delete-orphan"
     )

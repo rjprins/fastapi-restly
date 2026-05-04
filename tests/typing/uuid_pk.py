@@ -3,6 +3,7 @@
 Verifies that consumer code using `id_type = UUID` and `IDSchema[Model]`
 relations on UUID-keyed models stays Pyright-clean.
 """
+
 from uuid import UUID, uuid4
 
 from fastapi import FastAPI
@@ -30,9 +31,7 @@ class Project(Base):
 
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
     title: Mapped[str]
-    account_id: Mapped[UUID] = mapped_column(
-        Uuid, ForeignKey("account.id")
-    )
+    account_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("account.id"))
     account: Mapped[Account] = relationship()
 
 

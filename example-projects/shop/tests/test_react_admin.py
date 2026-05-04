@@ -38,7 +38,10 @@ def _post_product(client, name="Widget", price=9.99):
 def _post_order(client, customer_id, product_ids=()):
     return client.post(
         "/orders/",
-        json={"customer_id": customer_id, "products": [{"id": pid} for pid in product_ids]},
+        json={
+            "customer_id": customer_id,
+            "products": [{"id": pid} for pid in product_ids],
+        },
     ).json()
 
 
@@ -68,7 +71,9 @@ def test_customers_sort_and_range(client):
     for letter in "dcba":
         _post_customer(client, f"{letter}@example.com")
 
-    response = client.get("/customers/", params={"sort": '["email","ASC"]', "range": "[0,1]"})
+    response = client.get(
+        "/customers/", params={"sort": '["email","ASC"]', "range": "[0,1]"}
+    )
     data = response.json()
     assert len(data) == 2
     assert data[0]["email"] < data[1]["email"]
@@ -79,7 +84,9 @@ def test_customers_filter_by_email(client):
     _post_customer(client, "find@example.com")
     _post_customer(client, "other@example.com")
 
-    data = client.get("/customers/", params={"filter": '{"email":"find@example.com"}'}).json()
+    data = client.get(
+        "/customers/", params={"filter": '{"email":"find@example.com"}'}
+    ).json()
     assert len(data) == 1
     assert data[0]["email"] == "find@example.com"
 
@@ -198,5 +205,7 @@ def test_orders_list_includes_timestamps(client):
 def test_sort_by_relationship_returns_400(client):
     _post_customer(client)
 
-    response = client.get("/customers/", params={"sort": '["orders","ASC"]'}, assert_status_code=400)
+    response = client.get(
+        "/customers/", params={"sort": '["orders","ASC"]'}, assert_status_code=400
+    )
     assert "relationship" in response.json()["detail"]

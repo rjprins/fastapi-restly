@@ -32,9 +32,7 @@ class OrganizationView(fr.AsyncRestView):
 
     @fr.post("/", response_model=OrganizationSchema, status_code=201)
     async def create_with_location(
-        self,
-        schema_obj: OrganizationCreateSchema,
-        response: Response,
+        self, schema_obj: OrganizationCreateSchema, response: Response
     ) -> Organization:
         """Create + 201 Created + Location header."""
         org = await self.handle_create(schema_obj)

@@ -69,9 +69,7 @@ def main() -> int:
     display_percent = f"{math.floor(percent + 0.5)}%"
 
     badge_path.parent.mkdir(parents=True, exist_ok=True)
-    badge_path.write_text(
-        build_badge("coverage", display_percent, pick_color(percent))
-    )
+    badge_path.write_text(build_badge("coverage", display_percent, pick_color(percent)))
 
     summary = {
         "label": "coverage",

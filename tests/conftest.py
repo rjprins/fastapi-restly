@@ -82,9 +82,7 @@ def sync_db() -> Iterator[tuple[Engine, sessionmaker[Session]]]:
     original_sync_session_generator = fr_globals.sync_session_generator
 
     engine = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
+        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
     )
     make_session = sessionmaker(bind=engine, expire_on_commit=False)
     fr.configure(make_session=make_session)

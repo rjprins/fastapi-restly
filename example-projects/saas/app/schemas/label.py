@@ -23,4 +23,6 @@ class TaskLabelSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
 
     task_id: fr.IDRef[Task]
     label_id: fr.IDRef[Label]
-    added_by_id: int | None = None  # stamped server-side by TaskLabelView.make_new_object
+    added_by_id: int | None = (
+        None  # stamped server-side by TaskLabelView.make_new_object
+    )

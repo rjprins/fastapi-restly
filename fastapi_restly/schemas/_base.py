@@ -45,9 +45,7 @@ class TimestampsSchemaMixin(pydantic.BaseModel):
 
 
 SQLAlchemyModel = TypeVar(
-    "SQLAlchemyModel",
-    bound=DeclarativeBase,
-    default=DeclarativeBase,
+    "SQLAlchemyModel", bound=DeclarativeBase, default=DeclarativeBase
 )
 _IDREF_UNSET = object()
 
@@ -143,15 +141,15 @@ class IDRef(IDSchema[SQLAlchemyModel], Generic[SQLAlchemyModel]):
     def __init__(self, value: Any = _IDREF_UNSET, **data: Any) -> None:
         if value is not _IDREF_UNSET:
             if data:
-                raise TypeError("IDRef accepts either a positional id or keyword fields")
+                raise TypeError(
+                    "IDRef accepts either a positional id or keyword fields"
+                )
             data = value if isinstance(value, dict) else {"id": value}
         super().__init__(**data)
 
     @classmethod
     def __get_pydantic_json_schema__(
-        cls,
-        core_schema: Any,
-        handler: pydantic.GetJsonSchemaHandler,
+        cls, core_schema: Any, handler: pydantic.GetJsonSchemaHandler
     ) -> dict[str, Any]:
         id_type = cls._get_sql_model_id_type()
         if id_type in (None, Any):
@@ -436,7 +434,9 @@ class PatchMixin(pydantic.BaseModel):
                 union_args = get_args(annotation)
                 if type(None) not in union_args:
                     non_none = [a for a in union_args if a is not type(None)]
-                    inner = non_none[0] if len(non_none) == 1 else Union[tuple(non_none)]
+                    inner = (
+                        non_none[0] if len(non_none) == 1 else Union[tuple(non_none)]
+                    )
                     field.annotation = Optional[inner]  # type: ignore[assignment]
             else:
                 origin = getattr(annotation, "__origin__", None)

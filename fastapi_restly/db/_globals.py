@@ -43,9 +43,7 @@ class RestlyContext:
 
     def __enter__(self) -> "RestlyContext":
         token = _restly_context_ctx.set(self)
-        _restly_context_token_stack.set(
-            _restly_context_token_stack.get() + (token,)
-        )
+        _restly_context_token_stack.set(_restly_context_token_stack.get() + (token,))
         return self
 
     def __exit__(self, *exc_info: object) -> None:
@@ -64,11 +62,8 @@ _default_context = RestlyContext()
 _restly_context_ctx: ContextVar[RestlyContext | None] = ContextVar(
     "fastapi_restly_context", default=None
 )
-_restly_context_token_stack: ContextVar[
-    tuple[Token[RestlyContext | None], ...]
-] = ContextVar(
-    "fastapi_restly_context_token_stack",
-    default=(),
+_restly_context_token_stack: ContextVar[tuple[Token[RestlyContext | None], ...]] = (
+    ContextVar("fastapi_restly_context_token_stack", default=())
 )
 
 

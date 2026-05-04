@@ -96,7 +96,9 @@ def test_patch_mixin_makes_fields_optional_with_none_default() -> None:
     assert "id" not in Update.model_fields
     for field_name in ("name", "count"):
         info = Update.model_fields[field_name]
-        assert info.default is None, f"{field_name} default should be None, got {info.default!r}"
+        assert info.default is None, (
+            f"{field_name} default should be None, got {info.default!r}"
+        )
 
     # Empty payload must validate.
     empty = Update()  # type: ignore[call-arg]

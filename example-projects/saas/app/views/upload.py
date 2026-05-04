@@ -92,6 +92,7 @@ class UploadView(TenantBase):
 
         upload.line_count = len(rows)
         from datetime import datetime, timezone
+
         upload.completed_at = datetime.now(timezone.utc)
 
         # 4) Final flush + refresh — picks up server-side defaults on the

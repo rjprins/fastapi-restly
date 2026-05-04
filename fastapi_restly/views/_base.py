@@ -123,8 +123,7 @@ def _has_model_attr(model_cls: type[DeclarativeBase], attr_name: str) -> bool:
 
 
 def _get_relationship_property(
-    model_cls: type[DeclarativeBase],
-    relation_name: str,
+    model_cls: type[DeclarativeBase], relation_name: str
 ) -> Any | None:
     try:
         mapper = sa_inspect(model_cls)
@@ -134,8 +133,7 @@ def _get_relationship_property(
 
 
 def _get_unambiguous_local_fk_name(
-    model_cls: type[DeclarativeBase],
-    relation_name: str,
+    model_cls: type[DeclarativeBase], relation_name: str
 ) -> str | None:
     relationship_property = _get_relationship_property(model_cls, relation_name)
     if relationship_property is None:
@@ -155,10 +153,7 @@ def _get_unambiguous_local_fk_name(
     return local_columns[0].key
 
 
-def _is_reference_schema_field(
-    schema_cls: type[BaseSchema],
-    field_name: str,
-) -> bool:
+def _is_reference_schema_field(schema_cls: type[BaseSchema], field_name: str) -> bool:
     field_info = schema_cls.model_fields.get(field_name)
     if field_info is None:
         return False
@@ -241,8 +236,7 @@ def validate_resolved_reference_consistency(
 
 
 def iter_creatable_fields(
-    schema_obj: BaseSchema,
-    schema_cls: type[BaseSchema] | None = None,
+    schema_obj: BaseSchema, schema_cls: type[BaseSchema] | None = None
 ) -> Iterator[tuple[str, Any]]:
     """Iterate over (field_name, value) pairs that should be used to construct a new
     ORM object from ``schema_obj``.
@@ -367,18 +361,13 @@ def build_create_kwargs(
     return build_create_plan(model_cls, schema_obj, schema_cls).kwargs
 
 
-def apply_create_assignments(
-    obj: DeclarativeBase,
-    assignments: dict[str, Any],
-) -> None:
+def apply_create_assignments(obj: DeclarativeBase, assignments: dict[str, Any]) -> None:
     for field_name, value in assignments.items():
         setattr(obj, field_name, value)
 
 
 def _apply_resolved_reference_update(
-    obj: DeclarativeBase,
-    field_name: str,
-    value: DeclarativeBase,
+    obj: DeclarativeBase, field_name: str, value: DeclarativeBase
 ) -> None:
     model_cls = type(obj)
     if field_name.endswith("_id"):
@@ -411,8 +400,7 @@ def apply_update_to_object(
             setattr(obj, field_name, value.id)
             continue
         if isinstance(value, DeclarativeBase) and _is_reference_schema_field(
-            schema_cls or schema_obj.__class__,
-            field_name,
+            schema_cls or schema_obj.__class__, field_name
         ):
             _apply_resolved_reference_update(obj, field_name, value)
             continue
@@ -471,9 +459,7 @@ def _serialize_response_value(annotation: Any, value: Any) -> Any:
         if _is_idschema_reference_annotation(item_annotation) and isinstance(
             value, Sequence
         ):
-            return [
-                _serialize_idschema_value(item_annotation, item) for item in value
-            ]
+            return [_serialize_idschema_value(item_annotation, item) for item in value]
 
     return value
 
@@ -502,9 +488,7 @@ class _OmitWriteOnlyMixin(pydantic.BaseModel):
         super().__pydantic_init_subclass__(**kwargs)
 
         writeonly_fields = [
-            name
-            for name in cls.model_fields
-            if is_writeonly_field(cls, name)
+            name for name in cls.model_fields if is_writeonly_field(cls, name)
         ]
         for name in writeonly_fields:
             del cls.model_fields[name]
@@ -516,7 +500,9 @@ class _OmitWriteOnlyMixin(pydantic.BaseModel):
 def _create_response_validation_schema(
     schema_cls: type[BaseSchema],
 ) -> type[BaseSchema]:
-    if not any(is_writeonly_field(schema_cls, name) for name in schema_cls.model_fields):
+    if not any(
+        is_writeonly_field(schema_cls, name) for name in schema_cls.model_fields
+    ):
         return schema_cls
 
     return type(
@@ -713,9 +699,7 @@ def delete(path: str, **api_route_kwargs: Any) -> Callable[..., Any]:
     return route(path, **api_route_kwargs)
 
 
-class BaseRestView(
-    View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT]
-):
+class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT]):
     """
     Base class for RestView implementations.
 
@@ -733,7 +717,9 @@ class BaseRestView(
     update_schema: ClassVar[type[UpdateSchemaT]]
     model: ClassVar[type[ModelT]]
     id_type: ClassVar[type[IdT]] = int
-    include_pagination_metadata: ClassVar[bool] = False  # Set True to include count/total in list responses
+    include_pagination_metadata: ClassVar[bool] = (
+        False  # Set True to include count/total in list responses
+    )
     exclude_routes: ClassVar[tuple[str, ...]] = ()
     #: Extra query-parameter keys to allow on the index endpoint in addition
     #: to those derived from the response schema. Use this when a view
@@ -887,7 +873,9 @@ class BaseRestView(
                 raise ValueError(
                     f"'{cls.__name__}.model' must be specified to auto-generate schema"
                 )
-            cls.schema = cast(type[SchemaT], auto_generate_schema_for_view(cls, cls.model))
+            cls.schema = cast(
+                type[SchemaT], auto_generate_schema_for_view(cls, cls.model)
+            )
 
         if "index_param_schema" not in cls.__dict__:
             cls.index_param_schema = create_list_params_schema(
@@ -897,13 +885,11 @@ class BaseRestView(
             )
         if "creation_schema" not in cls.__dict__:
             cls.creation_schema = cast(
-                type[CreateSchemaT],
-                create_model_without_read_only_fields(cls.schema),
+                type[CreateSchemaT], create_model_without_read_only_fields(cls.schema)
             )
         if "update_schema" not in cls.__dict__:
             cls.update_schema = cast(
-                type[UpdateSchemaT],
-                create_model_with_optional_fields(cls.schema),
+                type[UpdateSchemaT], create_model_with_optional_fields(cls.schema)
             )
 
         response_schema = cls.schema
@@ -1103,7 +1089,9 @@ def _get_all_parent_endpoints(view_cls: type[View]) -> list[Callable]:
 
 def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
     # Concatenate prefixes defined at each level of the class hierarchy (base → derived).
-    prefix = "".join(c.__dict__["prefix"] for c in reversed(view_cls.mro()) if "prefix" in c.__dict__)
+    prefix = "".join(
+        c.__dict__["prefix"] for c in reversed(view_cls.mro()) if "prefix" in c.__dict__
+    )
     tags = _get_router_tags(view_cls, prefix)
     api_router = fastapi.APIRouter(
         prefix=prefix,
@@ -1234,17 +1222,14 @@ def _init_class_based_view(view_cls: type[View]) -> None:
             if get_origin(annotation) is ClassVar:
                 continue
             metadata = getattr(annotation, "__metadata__", ())
-            has_depends_marker = any(
-                isinstance(m, _DependsMarker) for m in metadata
-            )
+            has_depends_marker = any(isinstance(m, _DependsMarker) for m in metadata)
             underlying = (
                 annotation
                 if get_origin(annotation) is not Annotated
                 else (get_args(annotation)[0] if get_args(annotation) else annotation)
             )
-            is_special_type = (
-                inspect.isclass(underlying)
-                and issubclass(underlying, _FASTAPI_SPECIAL_INJECTABLE)
+            is_special_type = inspect.isclass(underlying) and issubclass(
+                underlying, _FASTAPI_SPECIAL_INJECTABLE
             )
             if has_depends_marker or is_special_type:
                 # Marker-bearing annotation wins, regardless of MRO position.

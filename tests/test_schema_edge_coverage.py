@@ -166,9 +166,7 @@ def test_idref_fields_serialize_cleanly_through_fastapi_response_model(client):
 
 def test_resolve_ids_to_sqlalchemy_objects_handles_missing_single_and_list_entries():
     engine = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
+        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
     )
 
     class Author(fr.IDBase):
@@ -198,8 +196,7 @@ def test_resolve_ids_to_sqlalchemy_objects_handles_missing_single_and_list_entri
 
         with pytest.raises(HTTPException, match="Id not found for author_id"):
             resolve_ids_to_sqlalchemy_objects(
-                session,
-                SingleRefSchema(author_id={"id": author.id + 999}),
+                session, SingleRefSchema(author_id={"id": author.id + 999})
             )
 
         with pytest.raises(HTTPException, match="Id not found for authors"):
@@ -239,10 +236,7 @@ async def test_async_resolve_ids_to_sqlalchemy_objects_handles_missing_entries()
             with pytest.raises(HTTPException, match="Id not found for team_id"):
                 await async_resolve_ids_to_sqlalchemy_objects(
                     session,
-                    TeamRefSchema(
-                        team_id={"id": team.id + 1},
-                        teams=[{"id": team.id}],
-                    ),
+                    TeamRefSchema(team_id={"id": team.id + 1}, teams=[{"id": team.id}]),
                 )
 
             with pytest.raises(HTTPException, match="Id not found for teams"):
@@ -282,8 +276,7 @@ async def test_async_resolve_ids_to_sqlalchemy_objects_handles_idref_missing_ent
 
             with pytest.raises(HTTPException, match="Id not found for team_id"):
                 await async_resolve_ids_to_sqlalchemy_objects(
-                    session,
-                    TeamRefSchema(team_id=team.id + 1),
+                    session, TeamRefSchema(team_id=team.id + 1)
                 )
     finally:
         await async_engine.dispose()
@@ -317,8 +310,7 @@ def test_schema_helper_utilities_cover_readonly_optional_and_config_rebasing():
     assert DemoSchema.model_config["title"] == "DemoSchema"
 
     writable = get_writable_inputs(
-        DemoSchema(id=2, password="pw", name="name"),
-        DemoSchema,
+        DemoSchema(id=2, password="pw", name="name"), DemoSchema
     )
     assert "id" not in writable
     assert writable["password"] == "pw"
@@ -337,8 +329,7 @@ def test_schema_generator_helpers_cover_relationships_defaults_and_type_conversi
     class Customer(fr.IDBase):
         name: Mapped[str]
         orders: Mapped[list["Order"]] = relationship(
-            back_populates="customer",
-            default_factory=list,
+            back_populates="customer", default_factory=list
         )
 
     class Order(fr.IDBase):
@@ -346,25 +337,18 @@ def test_schema_generator_helpers_cover_relationships_defaults_and_type_conversi
         quantity: Mapped[int | None]
         notes: Mapped[str] = mapped_column(default="none")
         customer_id: Mapped[int] = mapped_column(ForeignKey("customer.id"))
-        customer: Mapped[Customer] = relationship(
-            back_populates="orders",
-            default=None,
-        )
+        customer: Mapped[Customer] = relationship(back_populates="orders", default=None)
 
     class Node(fr.IDBase):
         name: Mapped[str]
         parent_id: Mapped[int | None] = mapped_column(
-            ForeignKey("node.id"),
-            nullable=True,
+            ForeignKey("node.id"), nullable=True
         )
         parent: Mapped["Node | None"] = relationship(
-            remote_side="Node.id",
-            back_populates="children",
-            default=None,
+            remote_side="Node.id", back_populates="children", default=None
         )
         children: Mapped[list["Node"]] = relationship(
-            back_populates="parent",
-            default_factory=list,
+            back_populates="parent", default_factory=list
         )
 
     Node.__annotations__["parent"] = Mapped[Node | None]
@@ -373,7 +357,10 @@ def test_schema_generator_helpers_cover_relationships_defaults_and_type_conversi
     customer_field = Customer.orders.property
     assert is_relationship_field(customer_field) is True
     assert get_relationship_target_model(customer_field) is Order
-    assert get_sqlalchemy_field_type(type("FieldWithType", (), {"type": String})()) is String
+    assert (
+        get_sqlalchemy_field_type(type("FieldWithType", (), {"type": String})())
+        is String
+    )
     assert get_sqlalchemy_field_type(list[int]) is list
     assert get_sqlalchemy_field_type(object()) is Any
 
@@ -447,7 +434,10 @@ def test_schema_generator_helpers_cover_relationships_defaults_and_type_conversi
     assert convert_sqlalchemy_type_to_pydantic(Any) is Any
     assert convert_sqlalchemy_type_to_pydantic(Priority) is Priority
     assert convert_sqlalchemy_type_to_pydantic(Customer) is Customer
-    assert convert_sqlalchemy_type_to_pydantic(dict[str, Any], is_optional=True) == Optional[dict[str, Any]]
+    assert (
+        convert_sqlalchemy_type_to_pydantic(dict[str, Any], is_optional=True)
+        == Optional[dict[str, Any]]
+    )
 
     class UnsupportedType:
         __name__ = "UnsupportedType"
@@ -456,9 +446,7 @@ def test_schema_generator_helpers_cover_relationships_defaults_and_type_conversi
         convert_sqlalchemy_type_to_pydantic(UnsupportedType)
 
     custom_named_schema = auto_generate_schema_for_view(
-        AutoOrderView,
-        Order,
-        schema_name="CustomNamedSchema",
+        AutoOrderView, Order, schema_name="CustomNamedSchema"
     )
     assert custom_named_schema.__name__ == "CustomNamedSchema"
 
@@ -468,7 +456,9 @@ def test_schema_generator_fallback_paths_for_relationship_detection_and_annotati
         name: Mapped[str]
 
     class Parent(fr.IDBase):
-        child_id: Mapped[int | None] = mapped_column(ForeignKey("child.id"), nullable=True)
+        child_id: Mapped[int | None] = mapped_column(
+            ForeignKey("child.id"), nullable=True
+        )
         child: Mapped[Child | None] = relationship(default=None)
         legacy_optional_name: Mapped[Optional[str]] = mapped_column(nullable=True)
 
@@ -484,7 +474,10 @@ def test_schema_generator_fallback_paths_for_relationship_detection_and_annotati
 
     assert get_relationship_target_model(RelationshipWrapper()) is Child
 
-    with patch("fastapi_restly.schemas._generator.is_relationship_field", return_value=True):
+    with patch(
+        "fastapi_restly.schemas._generator.is_relationship_field", return_value=True
+    ):
+
         class ListFallbackField:
             type = list[Child]
 

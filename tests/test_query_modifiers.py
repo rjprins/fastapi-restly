@@ -61,7 +61,9 @@ class UserModel(DataclassBase):
     name: Mapped[str] = mapped_column(String(50))
     email: Mapped[str] = mapped_column(String(100))
 
-    posts: Mapped[list["PostModel"]] = relationship("PostModel", back_populates="author")
+    posts: Mapped[list["PostModel"]] = relationship(
+        "PostModel", back_populates="author"
+    )
 
 
 class PostModel(DataclassBase):
@@ -126,6 +128,7 @@ def select_query():
 def mock_query_params():
     def _create_params(**kwargs):
         return QueryParams(kwargs)
+
     return _create_params
 
 
@@ -183,6 +186,7 @@ class TestCreateListParamsSchema:
 
     def test_create_list_params_schema_nested_pep604_optional(self):
         """Optional nested schemas using X | None should still expand nested filters."""
+
         class OptionalNestedSchema(pydantic.BaseModel):
             user: WidgetSchema | None = None
 
@@ -263,13 +267,17 @@ class TestApplySorting:
 
 
 class TestApplyFilteringIsNull:
-    def test__apply_filtering_isnull_valid_boolean(self, select_query, mock_query_params):
+    def test__apply_filtering_isnull_valid_boolean(
+        self, select_query, mock_query_params
+    ):
         params = mock_query_params(age__isnull="true")
         result = _apply_filtering(params, select_query, WidgetModel, WidgetSchema)
 
         assert "test_model.age IS NULL" in str(result)
 
-    def test__apply_filtering_isnull_rejects_invalid_values(self, select_query, mock_query_params):
+    def test__apply_filtering_isnull_rejects_invalid_values(
+        self, select_query, mock_query_params
+    ):
         params = mock_query_params(age__isnull="123")
 
         with pytest.raises(HTTPException) as exc_info:
@@ -359,7 +367,9 @@ class TestApplyFiltering:
 
         assert "AND" in str(result)
 
-    def test__apply_filtering_ignore_pagination_params(self, select_query, mock_query_params):
+    def test__apply_filtering_ignore_pagination_params(
+        self, select_query, mock_query_params
+    ):
         """Test that pagination parameters are ignored in filtering."""
         params = mock_query_params(page="1", page_size="10", name="John")
         result = _apply_filtering(params, select_query, WidgetModel, WidgetSchema)
@@ -383,13 +393,14 @@ class TestApplyFiltering:
     ):
         """Relation filtering should join through the relationship instead of cross joining."""
         params = mock_query_params(**{"author.name": "Alice"})
-        result = _apply_filtering(
-            params, post_select_query, PostModel, PostSchema
-        )
+        result = _apply_filtering(params, post_select_query, PostModel, PostSchema)
 
         rendered = str(result)
-        assert 'JOIN relation_users ON relation_users.id = relation_posts.author_id' in rendered
-        assert 'FROM relation_posts, relation_users' not in rendered
+        assert (
+            "JOIN relation_users ON relation_users.id = relation_posts.author_id"
+            in rendered
+        )
+        assert "FROM relation_posts, relation_users" not in rendered
         assert "WHERE relation_users.name = " in rendered
 
     def test__apply_filtering_relation_field_handles_ambiguous_foreign_keys(
@@ -427,11 +438,7 @@ class TestApplyListParams:
     def test_apply_list_params_full(self, select_query, mock_query_params):
         """Test applying all query modifiers together."""
         params = mock_query_params(
-            page="2",
-            page_size="25",
-            order_by="name,-age",
-            name="John",
-            age__gte="25"
+            page="2", page_size="25", order_by="name,-age", name="John", age__gte="25"
         )
         result = apply_list_params(params, select_query, WidgetModel, WidgetSchema)
 
@@ -445,9 +452,11 @@ class TestApplyListParams:
         """Test that filtering is applied before sorting and pagination."""
         params = mock_query_params(name="John", order_by="age", page="1")
 
-        with patch('fastapi_restly.query._impl._apply_filtering') as mock_filter:
-            with patch('fastapi_restly.query._impl._apply_sorting') as mock_sort:
-                with patch('fastapi_restly.query._impl._apply_pagination') as mock_paginate:
+        with patch("fastapi_restly.query._impl._apply_filtering") as mock_filter:
+            with patch("fastapi_restly.query._impl._apply_sorting") as mock_sort:
+                with patch(
+                    "fastapi_restly.query._impl._apply_pagination"
+                ) as mock_paginate:
                     apply_list_params(params, select_query, WidgetModel, WidgetSchema)
 
                     # Check call order
@@ -494,7 +503,9 @@ class TestMakeWhereClause:
 
     def test_make_where_clause_equals(self):
         clause = _make_where_clause(WidgetModel.name, "John", "eq", str)
-        assert "name = 'John'" in _render_sql(sqlalchemy.select(WidgetModel).where(clause))
+        assert "name = 'John'" in _render_sql(
+            sqlalchemy.select(WidgetModel).where(clause)
+        )
 
     def test_make_where_clause_greater_than(self):
         clause = _make_where_clause(WidgetModel.age, "25", "gt", int)
@@ -514,7 +525,9 @@ class TestMakeWhereClause:
 
     def test_make_where_clause_not_equals(self):
         clause = _make_where_clause(WidgetModel.name, "John", "ne", str)
-        assert "name != 'John'" in _render_sql(sqlalchemy.select(WidgetModel).where(clause))
+        assert "name != 'John'" in _render_sql(
+            sqlalchemy.select(WidgetModel).where(clause)
+        )
 
     def test_make_where_clause_contains(self):
         """contains operator should compile to ILIKE with wildcards."""

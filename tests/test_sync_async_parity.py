@@ -146,9 +146,7 @@ def test_collection_routes_accept_slash_and_no_slash(view_client: TestClient):
     no_slash_create = view_client.post(
         "/gadgets", json={"name": "No slash", "price": 1.0}
     )
-    slash_create = view_client.post(
-        "/gadgets/", json={"name": "Slash", "price": 2.0}
-    )
+    slash_create = view_client.post("/gadgets/", json={"name": "Slash", "price": 2.0})
 
     assert no_slash_create.status_code == 201
     assert slash_create.status_code == 201
@@ -202,9 +200,7 @@ def test_patch_updates_partially(view_client: TestClient):
 
 @pytest.mark.parametrize("view_client", ["sync", "async"], indirect=True)
 def test_patch_missing_returns_404(view_client: TestClient):
-    response = view_client.patch(
-        "/gadgets/99999", json={"name": "X", "price": 0.0}
-    )
+    response = view_client.patch("/gadgets/99999", json={"name": "X", "price": 0.0})
     assert response.status_code == 404
 
 

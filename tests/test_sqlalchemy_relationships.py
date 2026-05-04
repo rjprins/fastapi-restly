@@ -357,9 +357,10 @@ class TestManyToManyRelationships:
         user = users[0]
         assert user["name"] == "John Doe"
         assert {group["name"] for group in user["groups"]} == {"Admins", "Editors"}
-        assert {
-            group["description"] for group in user["groups"]
-        } == {"System administrators", "Content editors"}
+        assert {group["description"] for group in user["groups"]} == {
+            "System administrators",
+            "Content editors",
+        }
 
 
 class TestDeeplyNestedRelationships:
@@ -528,9 +529,7 @@ class TestRelationshipWithReadOnlyFields:
         async def insert_test_data():
             async with fr.async_open_session() as session:
                 user = User7(name="John Doe", email="john@example.com")
-                address = Address7(
-                    street="123 Main St", city="Anytown", user=user
-                )
+                address = Address7(street="123 Main St", city="Anytown", user=user)
                 session.add(user)
                 session.add(address)
                 await session.commit()

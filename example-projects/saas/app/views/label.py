@@ -105,9 +105,7 @@ class TaskLabelView(TenantBase):
         # 1) Build sibling #1 (Label) and flush — needed because the
         #    next step's IDRef resolver requires an existing PK.
         label = Label(
-            name=request.label_name,
-            color=request.color,
-            organization_id=org_id,
+            name=request.label_name, color=request.color, organization_id=org_id
         )
         self.session.add(label)
         await self.session.flush()  # <-- the resolver path's hard requirement
@@ -124,12 +122,9 @@ class TaskLabelView(TenantBase):
         #    column is also an int. But that path skips the existence
         #    check, which is the whole point of the type.)
         link_schema = TaskLabelSchema.model_construct(
-            task_id=IDRef[Task](id=request.task_id),
-            label_id=IDRef[Label](id=label.id),
+            task_id=IDRef[Task](id=request.task_id), label_id=IDRef[Label](id=label.id)
         )
-        task_label = await async_make_new_object(
-            self.session, TaskLabel, link_schema
-        )
+        task_label = await async_make_new_object(self.session, TaskLabel, link_schema)
         # added_by_id stamping isn't auto-applied here because
         # async_make_new_object is the *free function*, not the bound
         # ``self.make_new_object`` method that this view overrides for

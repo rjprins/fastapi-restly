@@ -69,13 +69,17 @@ def test_put_request_with_non_existing_id(client):
     class User(fr.IDBase):
         name: Mapped[str]
         email: Mapped[str]
-        blogs: Mapped[list["Blog"]] = relationship("Blog", back_populates="author", default_factory=list)
+        blogs: Mapped[list["Blog"]] = relationship(
+            "Blog", back_populates="author", default_factory=list
+        )
 
     class Blog(fr.IDBase):
         title: Mapped[str]
         content: Mapped[str]
         author_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
-        author: Mapped["User"] = relationship("User", back_populates="blogs", default=None)
+        author: Mapped["User"] = relationship(
+            "User", back_populates="blogs", default=None
+        )
 
     # Create schemas
     class UserSchema(fr.IDSchema):
@@ -113,7 +117,7 @@ def test_put_request_with_non_existing_id(client):
     blog_data = {
         "title": "My First Blog",
         "content": "This is my first blog post",
-        "author_id": {"id": user_id}
+        "author_id": {"id": user_id},
     }
     response = client.post("/blogs/", json=blog_data)
     assert response.status_code == 201
@@ -124,7 +128,7 @@ def test_put_request_with_non_existing_id(client):
     update_data = {
         "title": "Updated Blog Title",
         "content": "Updated blog content",
-        "author_id": {"id": user_id}
+        "author_id": {"id": user_id},
     }
     response = client.patch(f"/blogs/{blog_id}", json=update_data)
     assert response.status_code == 200

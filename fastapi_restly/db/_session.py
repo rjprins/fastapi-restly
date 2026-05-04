@@ -99,7 +99,11 @@ def configure(
     pass ``app`` here, the handlers are registered the first time a view is
     mounted via :func:`fastapi_restly.include_view` instead.
     """
-    if async_database_url is not None or async_engine is not None or async_make_session is not None:
+    if (
+        async_database_url is not None
+        or async_engine is not None
+        or async_make_session is not None
+    ):
         _setup_async_database_connection(
             async_database_url=async_database_url,
             async_engine=async_engine,
@@ -107,9 +111,7 @@ def configure(
         )
     if database_url is not None or engine is not None or make_session is not None:
         _setup_database_connection(
-            database_url=database_url,
-            engine=engine,
-            make_session=make_session,
+            database_url=database_url, engine=engine, make_session=make_session
         )
     if session_generator is not None:
         fr_globals.session_generator = session_generator
@@ -171,18 +173,14 @@ def deactivate_savepoint_only_mode(
 def get_async_engine() -> AsyncEngine:
     """Return the async engine registered via configure()."""
     if fr_globals.async_make_session is None:
-        raise RuntimeError(
-            "Call fr.configure() before using get_async_engine()."
-        )
+        raise RuntimeError("Call fr.configure() before using get_async_engine().")
     return fr_globals.async_make_session.kw["bind"]
 
 
 def get_engine() -> Engine:
     """Return the sync engine registered via configure()."""
     if fr_globals.make_session is None:
-        raise RuntimeError(
-            "Call fr.configure() before using get_engine()."
-        )
+        raise RuntimeError("Call fr.configure() before using get_engine().")
     return fr_globals.make_session.kw["bind"]
 
 

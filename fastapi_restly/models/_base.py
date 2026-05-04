@@ -60,10 +60,10 @@ def underscore(name: str) -> str:
     Handles acronyms correctly: HTTPServer -> http_server, XMLParser -> xml_parser.
     """
     # Insert underscore before an uppercase letter that follows a lowercase letter
-    s1 = re.sub(r'([a-z0-9])([A-Z])', r'\1_\2', name)
+    s1 = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", name)
     # Insert underscore before an uppercase letter that is followed by a lowercase letter
     # (handles the end of an acronym: "HTTPServer" -> "HTTP_Server")
-    s2 = re.sub(r'([A-Z]+)([A-Z][a-z])', r'\1_\2', s1)
+    s2 = re.sub(r"([A-Z]+)([A-Z][a-z])", r"\1_\2", s1)
     return s2.lower()
 
 
@@ -76,6 +76,7 @@ class DataclassBase(TableNameMixin, MappedAsDataclass, DeclarativeBase, kw_only=
         # requiring database migrations for every enum change.
         enum.Enum: Enum(enum.Enum, native_enum=False, length=64)
     }
+
 
 class IDBase(IDMixin, DataclassBase):
     """Convenience base: DataclassBase + integer `id` primary key."""

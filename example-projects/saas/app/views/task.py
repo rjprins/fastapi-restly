@@ -124,7 +124,7 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
                 if assignee.organization_id != project.organization_id:
                     raise HTTPException(
                         status_code=422,
-                        detail="Assignee must be from the same organization as the project"
+                        detail="Assignee must be from the same organization as the project",
                     )
 
     def _validate_conditional_fields(self, data: dict) -> None:
@@ -135,8 +135,7 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
         # Bugs require severity
         if task_type == TaskType.BUG and severity is None:
             raise HTTPException(
-                status_code=422,
-                detail="severity is required for bug tasks"
+                status_code=422, detail="severity is required for bug tasks"
             )
 
     async def handle_create(self, schema_obj):
@@ -158,8 +157,7 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
             project = await self.session.get(Project, project_id)
             if project and project.status == ProjectStatus.ARCHIVED:
                 raise HTTPException(
-                    status_code=400,
-                    detail="Cannot create tasks in an archived project"
+                    status_code=400, detail="Cannot create tasks in an archived project"
                 )
 
         # Validate conditional required fields
@@ -209,10 +207,12 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
         # Cross-resource validation for assignee change.
         sent = schema_obj.model_dump(exclude_unset=True)
         if sent.get("assignee_id") is not None:
-            await self._validate_cross_resource({
-                "project_id": sent.get("project_id", task.project_id),
-                "assignee_id": sent["assignee_id"],
-            })
+            await self._validate_cross_resource(
+                {
+                    "project_id": sent.get("project_id", task.project_id),
+                    "assignee_id": sent["assignee_id"],
+                }
+            )
 
         old_points = task.story_points or 0
         old_project_id = task.project_id
@@ -222,7 +222,9 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
         # explicitly — if the client sent a version it was already validated
         # above, and we always want server-side increment.
         task = await self.update_object(task, schema_obj)
-        task.version = (client_version if client_version is not None else task.version) + 1
+        task.version = (
+            client_version if client_version is not None else task.version
+        ) + 1
 
         # Propagate story-point delta to the (possibly new) parent project.
         new_points = task.story_points or 0
@@ -242,11 +244,7 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
         return await self.save_object(task)
 
     async def _transition_task(
-        self,
-        id: int,
-        source_status: TaskStatus,
-        target_status: TaskStatus,
-        action: str,
+        self, id: int, source_status: TaskStatus, target_status: TaskStatus, action: str
     ) -> Task:
         if target_status not in VALID_TRANSITIONS.get(source_status, []):
             raise RuntimeError(

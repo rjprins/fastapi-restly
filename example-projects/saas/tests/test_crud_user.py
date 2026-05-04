@@ -8,8 +8,7 @@ class TestUserCRUD:
         """Test creating a user."""
         # Create org first
         response = client.post(
-            "/organizations/",
-            json={"name": "User Test Org", "slug": "user-test-org"},
+            "/organizations/", json={"name": "User Test Org", "slug": "user-test-org"}
         )
         org_id = response.json()["id"]
 
@@ -32,8 +31,7 @@ class TestUserCRUD:
         """Test creating a user with a specific role."""
         # Create org
         response = client.post(
-            "/organizations/",
-            json={"name": "Role Test Org", "slug": "role-test-org"},
+            "/organizations/", json={"name": "Role Test Org", "slug": "role-test-org"}
         )
         org_id = response.json()["id"]
 
@@ -52,7 +50,6 @@ class TestUserCRUD:
         assert user["role"] == "admin"
 
 
-
 class TestMeEndpoints:
     """Test /users/me endpoints for self-service."""
 
@@ -60,8 +57,7 @@ class TestMeEndpoints:
         """Test GET /users/me returns current user."""
         # Create org and user
         response = client.post(
-            "/organizations/",
-            json={"name": "Me Test Org", "slug": "me-test-org"},
+            "/organizations/", json={"name": "Me Test Org", "slug": "me-test-org"}
         )
         org_id = response.json()["id"]
 
@@ -87,8 +83,7 @@ class TestMeEndpoints:
         """Test PATCH /users/me updates current user's profile."""
         # Create org and user
         response = client.post(
-            "/organizations/",
-            json={"name": "Me Update Org", "slug": "me-update-org"},
+            "/organizations/", json={"name": "Me Update Org", "slug": "me-update-org"}
         )
         org_id = response.json()["id"]
 
@@ -103,10 +98,7 @@ class TestMeEndpoints:
         user_id = response.json()["id"]
 
         with auth_context(user_id=user_id):
-            response = client.patch(
-                "/users/me",
-                json={"name": "Updated Name"},
-            )
+            response = client.patch("/users/me", json={"name": "Updated Name"})
             updated = response.json()
 
             assert updated["name"] == "Updated Name"

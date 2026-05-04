@@ -8,14 +8,12 @@ class TestTaskCRUD:
         """Test creating a task."""
         # Create org and project
         response = client.post(
-            "/organizations/",
-            json={"name": "Task Test Org", "slug": "task-test-org"},
+            "/organizations/", json={"name": "Task Test Org", "slug": "task-test-org"}
         )
         org_id = response.json()["id"]
 
         response = client.post(
-            "/projects/",
-            json={"name": "Task Project", "organization_id": org_id},
+            "/projects/", json={"name": "Task Project", "organization_id": org_id}
         )
         project_id = response.json()["id"]
 
@@ -54,8 +52,7 @@ class TestTaskCRUD:
         user_id = response.json()["id"]
 
         response = client.post(
-            "/projects/",
-            json={"name": "Assign Project", "organization_id": org_id},
+            "/projects/", json={"name": "Assign Project", "organization_id": org_id}
         )
         project_id = response.json()["id"]
 
@@ -82,30 +79,22 @@ class TestTaskCRUD:
         org_id = response.json()["id"]
 
         response = client.post(
-            "/projects/",
-            json={"name": "Status Project", "organization_id": org_id},
+            "/projects/", json={"name": "Status Project", "organization_id": org_id}
         )
         project_id = response.json()["id"]
 
         # Create task
         response = client.post(
-            "/tasks/",
-            json={"title": "Status Task", "project_id": project_id},
+            "/tasks/", json={"title": "Status Task", "project_id": project_id}
         )
         task_id = response.json()["id"]
 
         # Update to in_progress
-        response = client.patch(
-            f"/tasks/{task_id}",
-            json={"status": "in_progress"},
-        )
+        response = client.patch(f"/tasks/{task_id}", json={"status": "in_progress"})
         assert response.json()["status"] == "in_progress"
 
         # Update to done
-        response = client.patch(
-            f"/tasks/{task_id}",
-            json={"status": "done"},
-        )
+        response = client.patch(f"/tasks/{task_id}", json={"status": "done"})
         assert response.json()["status"] == "done"
 
     def test_set_task_priority(self, client):
@@ -118,8 +107,7 @@ class TestTaskCRUD:
         org_id = response.json()["id"]
 
         response = client.post(
-            "/projects/",
-            json={"name": "Priority Project", "organization_id": org_id},
+            "/projects/", json={"name": "Priority Project", "organization_id": org_id}
         )
         project_id = response.json()["id"]
 
@@ -146,15 +134,13 @@ class TestTaskCRUD:
         org_id = response.json()["id"]
 
         response = client.post(
-            "/projects/",
-            json={"name": "Subtask Project", "organization_id": org_id},
+            "/projects/", json={"name": "Subtask Project", "organization_id": org_id}
         )
         project_id = response.json()["id"]
 
         # Create parent task
         response = client.post(
-            "/tasks/",
-            json={"title": "Parent Task", "project_id": project_id},
+            "/tasks/", json={"title": "Parent Task", "project_id": project_id}
         )
         parent_id = response.json()["id"]
 
@@ -189,8 +175,7 @@ class TestTaskCRUD:
 
         # Create parent task
         response = client.post(
-            "/tasks/",
-            json={"title": "Parent", "project_id": project_id},
+            "/tasks/", json={"title": "Parent", "project_id": project_id}
         )
         parent_id = response.json()["id"]
 
@@ -209,7 +194,6 @@ class TestTaskCRUD:
         assert subtask["title"] == "Child"
 
 
-
 class TestPolymorphicTasks:
     """Test polymorphic task types (bug, feature, task)."""
 
@@ -217,14 +201,12 @@ class TestPolymorphicTasks:
         """Test creating a bug with bug-specific fields."""
         # Create org and project
         response = client.post(
-            "/organizations/",
-            json={"name": "Bug Test Org", "slug": "bug-test-org"},
+            "/organizations/", json={"name": "Bug Test Org", "slug": "bug-test-org"}
         )
         org_id = response.json()["id"]
 
         response = client.post(
-            "/projects/",
-            json={"name": "Bug Project", "organization_id": org_id},
+            "/projects/", json={"name": "Bug Project", "organization_id": org_id}
         )
         project_id = response.json()["id"]
 
@@ -256,8 +238,7 @@ class TestPolymorphicTasks:
         org_id = response.json()["id"]
 
         response = client.post(
-            "/projects/",
-            json={"name": "Feature Project", "organization_id": org_id},
+            "/projects/", json={"name": "Feature Project", "organization_id": org_id}
         )
         project_id = response.json()["id"]
 
@@ -276,7 +257,10 @@ class TestPolymorphicTasks:
 
         assert feature["task_type"] == "feature"
         assert feature["story_points"] == 5
-        assert feature["acceptance_criteria"] == "- Toggle in settings\n- Persists across sessions"
+        assert (
+            feature["acceptance_criteria"]
+            == "- Toggle in settings\n- Persists across sessions"
+        )
         assert feature["severity"] is None  # Bug field not set
 
     def test_filter_by_task_type(self, client):
@@ -295,9 +279,27 @@ class TestPolymorphicTasks:
         project_id = response.json()["id"]
 
         # Create tasks of different types (bugs require severity for create, but not for filtering)
-        client.post("/tasks/", json={"title": "Bug 1", "task_type": "bug", "severity": 2, "project_id": project_id})
-        client.post("/tasks/", json={"title": "Feature 1", "task_type": "feature", "project_id": project_id})
-        client.post("/tasks/", json={"title": "Task 1", "task_type": "task", "project_id": project_id})
+        client.post(
+            "/tasks/",
+            json={
+                "title": "Bug 1",
+                "task_type": "bug",
+                "severity": 2,
+                "project_id": project_id,
+            },
+        )
+        client.post(
+            "/tasks/",
+            json={
+                "title": "Feature 1",
+                "task_type": "feature",
+                "project_id": project_id,
+            },
+        )
+        client.post(
+            "/tasks/",
+            json={"title": "Task 1", "task_type": "task", "project_id": project_id},
+        )
 
         # Filter by bug type
         response = client.get("/tasks/?task_type=bug")
@@ -306,7 +308,6 @@ class TestPolymorphicTasks:
         # All returned should be bugs
         for task in bugs:
             assert task["task_type"] == "bug"
-
 
 
 class TestBulkOperations:
@@ -322,8 +323,7 @@ class TestBulkOperations:
         org_id = response.json()["id"]
 
         response = client.post(
-            "/projects/",
-            json={"name": "Bulk Project", "organization_id": org_id},
+            "/projects/", json={"name": "Bulk Project", "organization_id": org_id}
         )
         project_id = response.json()["id"]
 
@@ -362,16 +362,12 @@ class TestBulkOperations:
         task_ids = []
         for i in range(3):
             response = client.post(
-                "/tasks/",
-                json={"title": f"To Delete {i}", "project_id": project_id},
+                "/tasks/", json={"title": f"To Delete {i}", "project_id": project_id}
             )
             task_ids.append(response.json()["id"])
 
         # Bulk delete
-        response = client.post(
-            "/tasks/bulk-delete",
-            json={"ids": task_ids},
-        )
+        response = client.post("/tasks/bulk-delete", json={"ids": task_ids})
         result = response.json()
 
         assert result["success"] == 3
@@ -397,22 +393,19 @@ class TestBulkOperations:
         project_id = response.json()["id"]
 
         response = client.post(
-            "/tasks/",
-            json={"title": "Real Task", "project_id": project_id},
+            "/tasks/", json={"title": "Real Task", "project_id": project_id}
         )
         real_id = response.json()["id"]
 
         # Bulk delete with mix of valid and invalid IDs
         response = client.post(
-            "/tasks/bulk-delete",
-            json={"ids": [real_id, 99999, 99998]},
+            "/tasks/bulk-delete", json={"ids": [real_id, 99999, 99998]}
         )
         result = response.json()
 
         assert result["success"] == 1
         assert result["failed"] == 2
         assert len(result["errors"]) == 2
-
 
 
 class TestSoftDelete:
@@ -428,8 +421,7 @@ class TestSoftDelete:
         org_id = response.json()["id"]
 
         response = client.post(
-            "/projects/",
-            json={"name": "To Soft Delete", "organization_id": org_id},
+            "/projects/", json={"name": "To Soft Delete", "organization_id": org_id}
         )
         project_id = response.json()["id"]
 
@@ -455,14 +447,12 @@ class TestSoftDelete:
         org_id = response.json()["id"]
 
         response = client.post(
-            "/projects/",
-            json={"name": "Active Project", "organization_id": org_id},
+            "/projects/", json={"name": "Active Project", "organization_id": org_id}
         )
         active_id = response.json()["id"]
 
         response = client.post(
-            "/projects/",
-            json={"name": "Deleted Project", "organization_id": org_id},
+            "/projects/", json={"name": "Deleted Project", "organization_id": org_id}
         )
         deleted_id = response.json()["id"]
 
@@ -487,14 +477,12 @@ class TestSoftDelete:
         """Test restoring a soft-deleted project."""
         # Create org and project
         response = client.post(
-            "/organizations/",
-            json={"name": "Restore Org", "slug": "restore-org"},
+            "/organizations/", json={"name": "Restore Org", "slug": "restore-org"}
         )
         org_id = response.json()["id"]
 
         response = client.post(
-            "/projects/",
-            json={"name": "To Restore", "organization_id": org_id},
+            "/projects/", json={"name": "To Restore", "organization_id": org_id}
         )
         project_id = response.json()["id"]
 
@@ -523,17 +511,14 @@ class TestSoftDelete:
         org_id = response.json()["id"]
 
         response = client.post(
-            "/projects/",
-            json={"name": "Not Deleted", "organization_id": org_id},
+            "/projects/", json={"name": "Not Deleted", "organization_id": org_id}
         )
         project_id = response.json()["id"]
 
         # Try to restore non-deleted project
         response = client.post(
-            f"/projects/{project_id}/restore",
-            assert_status_code=400,
+            f"/projects/{project_id}/restore", assert_status_code=400
         )
-
 
 
 class TestOptimisticLocking:
@@ -549,14 +534,12 @@ class TestOptimisticLocking:
         org_id = response.json()["id"]
 
         response = client.post(
-            "/projects/",
-            json={"name": "Version Project", "organization_id": org_id},
+            "/projects/", json={"name": "Version Project", "organization_id": org_id}
         )
         project_id = response.json()["id"]
 
         response = client.post(
-            "/tasks/",
-            json={"title": "Versioned Task", "project_id": project_id},
+            "/tasks/", json={"title": "Versioned Task", "project_id": project_id}
         )
         task = response.json()
         task_id = task["id"]
@@ -564,8 +547,7 @@ class TestOptimisticLocking:
 
         # Update with correct version
         response = client.patch(
-            f"/tasks/{task_id}",
-            json={"title": "Updated Title", "version": 1},
+            f"/tasks/{task_id}", json={"title": "Updated Title", "version": 1}
         )
         updated = response.json()
 
@@ -582,14 +564,12 @@ class TestOptimisticLocking:
         org_id = response.json()["id"]
 
         response = client.post(
-            "/projects/",
-            json={"name": "Conflict Project", "organization_id": org_id},
+            "/projects/", json={"name": "Conflict Project", "organization_id": org_id}
         )
         project_id = response.json()["id"]
 
         response = client.post(
-            "/tasks/",
-            json={"title": "Conflict Task", "project_id": project_id},
+            "/tasks/", json={"title": "Conflict Task", "project_id": project_id}
         )
         task_id = response.json()["id"]
 
@@ -606,33 +586,28 @@ class TestOptimisticLocking:
         """Test that update without version skips optimistic locking check."""
         # Create org, project, and task
         response = client.post(
-            "/organizations/",
-            json={"name": "No Version Org", "slug": "no-version-org"},
+            "/organizations/", json={"name": "No Version Org", "slug": "no-version-org"}
         )
         org_id = response.json()["id"]
 
         response = client.post(
-            "/projects/",
-            json={"name": "No Version Project", "organization_id": org_id},
+            "/projects/", json={"name": "No Version Project", "organization_id": org_id}
         )
         project_id = response.json()["id"]
 
         response = client.post(
-            "/tasks/",
-            json={"title": "No Version Task", "project_id": project_id},
+            "/tasks/", json={"title": "No Version Task", "project_id": project_id}
         )
         task_id = response.json()["id"]
 
         # Update without version - should still work and increment version
         response = client.patch(
-            f"/tasks/{task_id}",
-            json={"title": "Updated Without Version"},
+            f"/tasks/{task_id}", json={"title": "Updated Without Version"}
         )
         updated = response.json()
 
         assert updated["title"] == "Updated Without Version"
         assert updated["version"] == 2
-
 
 
 class TestComputedFields:
@@ -677,16 +652,27 @@ class TestComputedFields:
         org_id = response.json()["id"]
 
         response = client.post(
-            "/projects/",
-            json={"name": "Computed Project", "organization_id": org_id},
+            "/projects/", json={"name": "Computed Project", "organization_id": org_id}
         )
         project_id = response.json()["id"]
 
         # Add tasks with different statuses
-        client.post("/tasks/", json={"title": "Task 1", "status": "todo", "project_id": project_id})
-        client.post("/tasks/", json={"title": "Task 2", "status": "in_progress", "project_id": project_id})
-        client.post("/tasks/", json={"title": "Task 3", "status": "done", "project_id": project_id})
-        client.post("/tasks/", json={"title": "Task 4", "status": "done", "project_id": project_id})
+        client.post(
+            "/tasks/",
+            json={"title": "Task 1", "status": "todo", "project_id": project_id},
+        )
+        client.post(
+            "/tasks/",
+            json={"title": "Task 2", "status": "in_progress", "project_id": project_id},
+        )
+        client.post(
+            "/tasks/",
+            json={"title": "Task 3", "status": "done", "project_id": project_id},
+        )
+        client.post(
+            "/tasks/",
+            json={"title": "Task 4", "status": "done", "project_id": project_id},
+        )
 
         # Get stats - should have computed counts
         response = client.get(f"/projects/{project_id}/stats")
@@ -706,8 +692,7 @@ class TestComputedFields:
         org_id = response.json()["id"]
 
         response = client.post(
-            "/projects/",
-            json={"name": "Empty Project", "organization_id": org_id},
+            "/projects/", json={"name": "Empty Project", "organization_id": org_id}
         )
         project_id = response.json()["id"]
 
@@ -717,7 +702,6 @@ class TestComputedFields:
 
         assert stats["total_tasks"] == 0
         assert stats["completion_percent"] == 0.0
-
 
 
 class TestTaskWorkflow:
@@ -733,14 +717,12 @@ class TestTaskWorkflow:
         org_id = response.json()["id"]
 
         response = client.post(
-            "/projects/",
-            json={"name": "Workflow Project", "organization_id": org_id},
+            "/projects/", json={"name": "Workflow Project", "organization_id": org_id}
         )
         project_id = response.json()["id"]
 
         response = client.post(
-            "/tasks/",
-            json={"title": "Workflow Task", "project_id": project_id},
+            "/tasks/", json={"title": "Workflow Task", "project_id": project_id}
         )
         task = response.json()
         task_id = task["id"]
@@ -764,15 +746,13 @@ class TestTaskWorkflow:
         org_id = response.json()["id"]
 
         response = client.post(
-            "/projects/",
-            json={"name": "Complete Project", "organization_id": org_id},
+            "/projects/", json={"name": "Complete Project", "organization_id": org_id}
         )
         project_id = response.json()["id"]
 
         # Create task and start it
         response = client.post(
-            "/tasks/",
-            json={"title": "Task to Complete", "project_id": project_id},
+            "/tasks/", json={"title": "Task to Complete", "project_id": project_id}
         )
         task_id = response.json()["id"]
 
@@ -796,15 +776,13 @@ class TestTaskWorkflow:
         org_id = response.json()["id"]
 
         response = client.post(
-            "/projects/",
-            json={"name": "Reopen Project", "organization_id": org_id},
+            "/projects/", json={"name": "Reopen Project", "organization_id": org_id}
         )
         project_id = response.json()["id"]
 
         # Create task, start it, and complete it
         response = client.post(
-            "/tasks/",
-            json={"title": "Task to Reopen", "project_id": project_id},
+            "/tasks/", json={"title": "Task to Reopen", "project_id": project_id}
         )
         task_id = response.json()["id"]
 
@@ -834,8 +812,7 @@ class TestTaskWorkflow:
         project_id = response.json()["id"]
 
         response = client.post(
-            "/tasks/",
-            json={"title": "Already Started", "project_id": project_id},
+            "/tasks/", json={"title": "Already Started", "project_id": project_id}
         )
         task_id = response.json()["id"]
 
@@ -863,8 +840,7 @@ class TestTaskWorkflow:
         project_id = response.json()["id"]
 
         response = client.post(
-            "/tasks/",
-            json={"title": "Not Started", "project_id": project_id},
+            "/tasks/", json={"title": "Not Started", "project_id": project_id}
         )
         task_id = response.json()["id"]
 
@@ -889,8 +865,7 @@ class TestTaskWorkflow:
         project_id = response.json()["id"]
 
         response = client.post(
-            "/tasks/",
-            json={"title": "Not Done", "project_id": project_id},
+            "/tasks/", json={"title": "Not Done", "project_id": project_id}
         )
         task_id = response.json()["id"]
 

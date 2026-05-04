@@ -156,8 +156,7 @@ def test_include_view_registers_handler_as_fallback(client):
 def test_postgres_pgcode_classification(pgcode, expected_substring):
     """Postgres SQLSTATE codes drive the human-readable detail."""
     orig = SimpleNamespace(
-        pgcode=pgcode,
-        diag=SimpleNamespace(constraint_name=None, column_name=None),
+        pgcode=pgcode, diag=SimpleNamespace(constraint_name=None, column_name=None)
     )
     exc = _make_integrity_error(orig)
     detail = _build_integrity_detail(exc)
@@ -168,9 +167,7 @@ def test_postgres_pgcode_includes_constraint_name():
     """When psycopg's ``orig.diag`` carries a constraint name, we surface it."""
     orig = SimpleNamespace(
         pgcode="23505",
-        diag=SimpleNamespace(
-            constraint_name="uq_user_email", column_name=None
-        ),
+        diag=SimpleNamespace(constraint_name="uq_user_email", column_name=None),
     )
     exc = _make_integrity_error(orig)
     detail = _build_integrity_detail(exc)
@@ -180,8 +177,7 @@ def test_postgres_pgcode_includes_constraint_name():
 
 def test_postgres_pgcode_not_null_includes_column():
     orig = SimpleNamespace(
-        pgcode="23502",
-        diag=SimpleNamespace(constraint_name=None, column_name="email"),
+        pgcode="23502", diag=SimpleNamespace(constraint_name=None, column_name="email")
     )
     detail = _build_integrity_detail(_make_integrity_error(orig))
     assert "not-null" in detail.lower()
@@ -247,9 +243,7 @@ def test_handler_response_is_json_409():
 
     @app.get("/boom")
     def boom():
-        raise _make_integrity_error(
-            Exception("UNIQUE constraint failed: foo.bar")
-        )
+        raise _make_integrity_error(Exception("UNIQUE constraint failed: foo.bar"))
 
     client = TestClient(app)
     response = client.get("/boom")

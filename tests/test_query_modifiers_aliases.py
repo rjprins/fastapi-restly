@@ -73,6 +73,7 @@ def mock_query_params():
     def _mock_query_params(**kwargs):
         params = {key: str(value) for key, value in kwargs.items()}
         return QueryParams(params)
+
     return _mock_query_params
 
 
@@ -201,7 +202,9 @@ class TestApplyFilteringWithAliases:
         """populate_by_name=True does not change the list-params URL surface."""
         # Alias resolves.
         params = mock_query_params(userName="John Doe")
-        result = _apply_filtering(params, select_query, AliasModel, SchemaWithPopulateByName)
+        result = _apply_filtering(
+            params, select_query, AliasModel, SchemaWithPopulateByName
+        )
         assert "WHERE test_model_aliases.user_name = " in str(result)
 
         # Python field name is rejected.
@@ -213,11 +216,15 @@ class TestApplyFilteringWithAliases:
     def test__apply_filtering_without_aliases(self, select_query, mock_query_params):
         """Test filtering without aliases."""
         params = mock_query_params(user_name="John Doe")
-        result = _apply_filtering(params, select_query, AliasModel, SchemaWithoutAliases)
+        result = _apply_filtering(
+            params, select_query, AliasModel, SchemaWithoutAliases
+        )
 
         assert "WHERE test_model_aliases.user_name = " in str(result)
 
-    def test__apply_filtering_range_filters_with_aliases(self, select_query, mock_query_params):
+    def test__apply_filtering_range_filters_with_aliases(
+        self, select_query, mock_query_params
+    ):
         """Test range filtering with aliases."""
         params = mock_query_params(age__gte="25", userEmail__isnull="false")
         result = _apply_filtering(params, select_query, AliasModel, SchemaWithAliases)
@@ -230,7 +237,9 @@ class TestApplyFilteringWithAliases:
     ):
         """Range filters with populate_by_name=True still use the alias only."""
         params = mock_query_params(age__gte="25", userEmail__isnull="false")
-        result = _apply_filtering(params, select_query, AliasModel, SchemaWithPopulateByName)
+        result = _apply_filtering(
+            params, select_query, AliasModel, SchemaWithPopulateByName
+        )
         assert "WHERE test_model_aliases.age >=" in str(result)
         assert "test_model_aliases.user_email IS NOT NULL" in str(result)
 
@@ -247,15 +256,23 @@ class TestApplySortingWithAliases:
         params = mock_query_params(order_by="userName,-age")
         result = _apply_sorting(params, select_query, AliasModel, SchemaWithAliases)
 
-        assert "ORDER BY test_model_aliases.user_name ASC, test_model_aliases.age DESC" in str(result)
+        assert (
+            "ORDER BY test_model_aliases.user_name ASC, test_model_aliases.age DESC"
+            in str(result)
+        )
 
     def test__apply_sorting_with_populate_by_name_uses_alias_only(
         self, select_query, mock_query_params
     ):
         """Sorting honours the alias even when populate_by_name=True."""
         params = mock_query_params(order_by="userName,-age")
-        result = _apply_sorting(params, select_query, AliasModel, SchemaWithPopulateByName)
-        assert "ORDER BY test_model_aliases.user_name ASC, test_model_aliases.age DESC" in str(result)
+        result = _apply_sorting(
+            params, select_query, AliasModel, SchemaWithPopulateByName
+        )
+        assert (
+            "ORDER BY test_model_aliases.user_name ASC, test_model_aliases.age DESC"
+            in str(result)
+        )
 
         # Sorting by the Python field name on an aliased field is rejected.
         params = mock_query_params(order_by="user_name")
@@ -268,7 +285,10 @@ class TestApplySortingWithAliases:
         params = mock_query_params(order_by="user_name,-age")
         result = _apply_sorting(params, select_query, AliasModel, SchemaWithoutAliases)
 
-        assert "ORDER BY test_model_aliases.user_name ASC, test_model_aliases.age DESC" in str(result)
+        assert (
+            "ORDER BY test_model_aliases.user_name ASC, test_model_aliases.age DESC"
+            in str(result)
+        )
 
 
 class TestApplyListParamsWithAliases:
@@ -279,14 +299,17 @@ class TestApplyListParamsWithAliases:
             page_size="25",
             order_by="userName,-age",
             userName="John Doe",
-            age__gte="25"
+            age__gte="25",
         )
         result = apply_list_params(params, select_query, AliasModel, SchemaWithAliases)
 
         # Should have pagination, sorting, and filtering
         assert "LIMIT :param_1" in str(result)
         assert "OFFSET :param_2" in str(result)
-        assert "ORDER BY test_model_aliases.user_name ASC, test_model_aliases.age DESC" in str(result)
+        assert (
+            "ORDER BY test_model_aliases.user_name ASC, test_model_aliases.age DESC"
+            in str(result)
+        )
         assert "WHERE" in str(result)
 
     def test_apply_list_params_with_populate_by_name_uses_alias_only(
@@ -300,17 +323,24 @@ class TestApplyListParamsWithAliases:
             userName="John Doe",
             age__gte="25",
         )
-        result = apply_list_params(params, select_query, AliasModel, SchemaWithPopulateByName)
+        result = apply_list_params(
+            params, select_query, AliasModel, SchemaWithPopulateByName
+        )
 
         assert "LIMIT :param_1" in str(result)
         assert "OFFSET :param_2" in str(result)
-        assert "ORDER BY test_model_aliases.user_name ASC, test_model_aliases.age DESC" in str(result)
+        assert (
+            "ORDER BY test_model_aliases.user_name ASC, test_model_aliases.age DESC"
+            in str(result)
+        )
         assert "WHERE" in str(result)
 
         # Filtering by the Python field name on an aliased field is rejected.
         params = mock_query_params(user_name="John Doe")
         with pytest.raises(HTTPException) as exc_info:
-            apply_list_params(params, select_query, AliasModel, SchemaWithPopulateByName)
+            apply_list_params(
+                params, select_query, AliasModel, SchemaWithPopulateByName
+            )
         assert exc_info.value.status_code == 400
 
 
@@ -365,9 +395,7 @@ class TestRelationAliases:
         Article, ArticleSchema = self._build()
         params = mock_query_params(**{"writer.authorName": "Alice"})
         rendered = str(
-            _apply_filtering(
-                params, sqlalchemy.select(Article), Article, ArticleSchema
-            )
+            _apply_filtering(params, sqlalchemy.select(Article), Article, ArticleSchema)
         )
         assert "JOIN ra_author" in rendered
         assert "ra_author.name = " in rendered
@@ -376,8 +404,6 @@ class TestRelationAliases:
         Article, ArticleSchema = self._build()
         params = mock_query_params(order_by="-writer.authorName")
         rendered = str(
-            _apply_sorting(
-                params, sqlalchemy.select(Article), Article, ArticleSchema
-            )
+            _apply_sorting(params, sqlalchemy.select(Article), Article, ArticleSchema)
         )
         assert "ORDER BY ra_author.name DESC" in rendered

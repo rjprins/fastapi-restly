@@ -7,8 +7,7 @@ class TestOrganizationCRUD:
     def test_create_organization(self, client):
         """Test creating an organization."""
         response = client.post(
-            "/organizations/",
-            json={"name": "Acme Corp", "slug": "acme-corp"},
+            "/organizations/", json={"name": "Acme Corp", "slug": "acme-corp"}
         )
         org = response.json()
 
@@ -21,8 +20,7 @@ class TestOrganizationCRUD:
         """Test getting an organization by ID."""
         # Create first
         response = client.post(
-            "/organizations/",
-            json={"name": "Test Org", "slug": "test-org"},
+            "/organizations/", json={"name": "Test Org", "slug": "test-org"}
         )
         org_id = response.json()["id"]
 
@@ -49,16 +47,12 @@ class TestOrganizationCRUD:
         """Test updating an organization."""
         # Create
         response = client.post(
-            "/organizations/",
-            json={"name": "Old Name", "slug": "old-slug"},
+            "/organizations/", json={"name": "Old Name", "slug": "old-slug"}
         )
         org_id = response.json()["id"]
 
         # Update
-        response = client.patch(
-            f"/organizations/{org_id}",
-            json={"name": "New Name"},
-        )
+        response = client.patch(f"/organizations/{org_id}", json={"name": "New Name"})
         org = response.json()
 
         assert org["name"] == "New Name"
@@ -68,8 +62,7 @@ class TestOrganizationCRUD:
         """Test deleting an organization."""
         # Create
         response = client.post(
-            "/organizations/",
-            json={"name": "To Delete", "slug": "to-delete"},
+            "/organizations/", json={"name": "To Delete", "slug": "to-delete"}
         )
         org_id = response.json()["id"]
 

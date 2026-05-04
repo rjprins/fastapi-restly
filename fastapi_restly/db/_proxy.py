@@ -17,9 +17,7 @@ async def async_open_session() -> AsyncIterator[SA_AsyncSession]:
             result = await session.execute(select(User))
     """
     if fr_globals.async_make_session is None:
-        raise RuntimeError(
-            "Call fr.configure() before using async_open_session()."
-        )
+        raise RuntimeError("Call fr.configure() before using async_open_session().")
     async with fr_globals.async_make_session() as sess:
         yield sess
 
@@ -34,8 +32,6 @@ def open_session() -> Iterator[SA_Session]:
             result = session.execute(select(User))
     """
     if fr_globals.make_session is None:
-        raise RuntimeError(
-            "Call fr.configure() before using open_session()."
-        )
+        raise RuntimeError("Call fr.configure() before using open_session().")
     with fr_globals.make_session() as sess:
         yield sess

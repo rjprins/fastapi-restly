@@ -10,6 +10,7 @@ Covers the ra-data-simple-rest wire contract for GET /:
 Both the async and sync variants are exercised. The sync tests reuse the same
 HTTP-level assertions as the async ones to guarantee parity.
 """
+
 import json
 from collections.abc import Iterator
 
@@ -211,9 +212,7 @@ def test_react_admin_invalid_filter_json_returns_400(client):
 def test_react_admin_unknown_filter_field_returns_400(client):
     _setup_async_item_view(client)
     client.get(
-        "/items/",
-        params={"filter": '{"nonexistent":"value"}'},
-        assert_status_code=400,
+        "/items/", params={"filter": '{"nonexistent":"value"}'}, assert_status_code=400
     )
 
 
@@ -311,9 +310,7 @@ def test_sync_react_admin_filter_id_array(sync_client):
     sync_client.post("/items/", json={"name": "Baz", "price": 3.0})
 
     ids = [r1["id"], r2["id"]]
-    data = sync_client.get(
-        "/items/", params={"filter": json.dumps({"id": ids})}
-    ).json()
+    data = sync_client.get("/items/", params={"filter": json.dumps({"id": ids})}).json()
     assert len(data) == 2
     assert {item["id"] for item in data} == set(ids)
 
@@ -336,9 +333,7 @@ def test_sync_react_admin_invalid_filter_json_returns_400(sync_client):
 def test_sync_react_admin_unknown_filter_field_returns_400(sync_client):
     _setup_sync_item_view(sync_client)
     sync_client.get(
-        "/items/",
-        params={"filter": '{"nonexistent":"value"}'},
-        assert_status_code=400,
+        "/items/", params={"filter": '{"nonexistent":"value"}'}, assert_status_code=400
     )
 
 

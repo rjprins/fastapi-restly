@@ -55,7 +55,9 @@ async def test_async_handle_list_uses_validated_query_params(monkeypatch):
         captured["schema"] = schema
         return query
 
-    monkeypatch.setattr("fastapi_restly.views._async.apply_list_params", _apply_list_params)
+    monkeypatch.setattr(
+        "fastapi_restly.views._async.apply_list_params", _apply_list_params
+    )
 
     view = _DummyAsyncView()
     view.session = _DummySession()

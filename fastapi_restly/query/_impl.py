@@ -136,7 +136,7 @@ def create_list_params_schema(
                         "Comma-separated list of fields to sort by. Prefix a "
                         "field with ``-`` for descending order. Example: "
                         "``-created_at,name``."
-                    ),
+                    )
                 ),
             ],
             None,
@@ -178,7 +178,7 @@ def create_list_params_schema(
                     description=(
                         f"``true`` matches rows where ``{name}`` IS NULL; "
                         f"``false`` matches IS NOT NULL."
-                    ),
+                    )
                 ),
             ],
             None,
@@ -209,7 +209,7 @@ def create_list_params_schema(
                             f"``{name}``. Repeat the parameter to AND "
                             "multiple terms; whitespace inside one value is "
                             "also AND-split as a convenience."
-                        ),
+                        )
                     ),
                 ],
                 None,
@@ -262,9 +262,7 @@ def apply_list_params(
     return select_query
 
 
-def _coerce_to_query_params(
-    params: pydantic.BaseModel | QueryParams,
-) -> QueryParams:
+def _coerce_to_query_params(params: pydantic.BaseModel | QueryParams) -> QueryParams:
     """Normalise a validated Pydantic model or raw QueryParams to QueryParams.
 
     When a dumped field is a list (e.g. a repeated ``name__contains``), each
@@ -388,9 +386,7 @@ def _resolve_field_name(schema_cls: SchemaType, public_name: str) -> str | None:
 
 
 def _resolve_column(
-    model: type[DeclarativeBase],
-    column_path: str,
-    schema_cls: SchemaType,
+    model: type[DeclarativeBase], column_path: str, schema_cls: SchemaType
 ) -> tuple[list[InstrumentedAttribute[Any]], InstrumentedAttribute[Any]]:
     """Resolve a (possibly dotted) public column path to its SQLAlchemy column,
     plus the relationship attributes that need to be joined.
@@ -485,9 +481,7 @@ def _apply_filtering(
         select_query = select_query.join(join)
 
     for column, clauses in filters.items():
-        and_clause = (
-            clauses[0] if len(clauses) == 1 else sqlalchemy.and_(*clauses)
-        )
+        and_clause = clauses[0] if len(clauses) == 1 else sqlalchemy.and_(*clauses)
         select_query = select_query.where(and_clause)
     return select_query
 

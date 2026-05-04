@@ -8,6 +8,7 @@ Implements the ra-data-simple-rest wire contract for list:
 - filter: filter={"field":"value"} or filter={"id":[1,2,3]} for getMany
 - Content-Range: items 0-24/315
 """
+
 import json
 from typing import Any, ClassVar, Sequence
 
@@ -46,7 +47,9 @@ def parse_react_admin_sort(sort_raw: str | None) -> tuple[str, str] | None:
     except json.JSONDecodeError:
         raise fastapi.HTTPException(400, "Invalid sort parameter: must be a JSON array")
     if not isinstance(parsed, list) or len(parsed) != 2:
-        raise fastapi.HTTPException(400, "Invalid sort parameter: must be [field, direction]")
+        raise fastapi.HTTPException(
+            400, "Invalid sort parameter: must be [field, direction]"
+        )
     field, direction = parsed
     if not isinstance(field, str) or direction not in ("ASC", "DESC"):
         raise fastapi.HTTPException(
@@ -56,8 +59,7 @@ def parse_react_admin_sort(sort_raw: str | None) -> tuple[str, str] | None:
 
 
 def parse_react_admin_range(
-    range_raw: str | None,
-    default_page_size: int = DEFAULT_REACT_ADMIN_PAGE_SIZE,
+    range_raw: str | None, default_page_size: int = DEFAULT_REACT_ADMIN_PAGE_SIZE
 ) -> tuple[int, int]:
     """
     Parse a react-admin range query parameter.
@@ -71,12 +73,18 @@ def parse_react_admin_range(
     try:
         parsed = json.loads(range_raw)
     except json.JSONDecodeError:
-        raise fastapi.HTTPException(400, "Invalid range parameter: must be a JSON array")
+        raise fastapi.HTTPException(
+            400, "Invalid range parameter: must be a JSON array"
+        )
     if not isinstance(parsed, list) or len(parsed) != 2:
-        raise fastapi.HTTPException(400, "Invalid range parameter: must be [start, end]")
+        raise fastapi.HTTPException(
+            400, "Invalid range parameter: must be [start, end]"
+        )
     start, end = parsed
     if not isinstance(start, int) or not isinstance(end, int):
-        raise fastapi.HTTPException(400, "Invalid range parameter: values must be integers")
+        raise fastapi.HTTPException(
+            400, "Invalid range parameter: values must be integers"
+        )
     return start, end
 
 
@@ -93,9 +101,13 @@ def parse_react_admin_filter(filter_raw: str | None) -> dict:
     try:
         parsed = json.loads(filter_raw)
     except json.JSONDecodeError:
-        raise fastapi.HTTPException(400, "Invalid filter parameter: must be a JSON object")
+        raise fastapi.HTTPException(
+            400, "Invalid filter parameter: must be a JSON object"
+        )
     if not isinstance(parsed, dict):
-        raise fastapi.HTTPException(400, "Invalid filter parameter: must be a JSON object")
+        raise fastapi.HTTPException(
+            400, "Invalid filter parameter: must be a JSON object"
+        )
     return parsed
 
 
@@ -245,11 +257,7 @@ class ReactAdminMixin:
         ]
 
     def _build_react_admin_list_response(
-        self,
-        serialized_items: list[dict],
-        total: int,
-        start: int,
-        end: int,
+        self, serialized_items: list[dict], total: int, start: int, end: int
     ) -> fastapi.Response:
         """Build a JSON array response with a Content-Range header."""
         unit = self.get_react_admin_range_unit()
@@ -277,7 +285,9 @@ class ReactAdminMixin:
         loader_options = self.get_relationship_loader_options()
         if loader_options:
             base = base.options(*loader_options)
-        return apply_react_admin_query(base, self.model, self.schema, sort, start, end, filters)
+        return apply_react_admin_query(
+            base, self.model, self.schema, sort, start, end, filters
+        )
 
     @classmethod
     def before_include_view(cls) -> None:
@@ -314,7 +324,9 @@ class AsyncReactAdminView(ReactAdminMixin, AsyncRestView):
         sort, (start, end), filters = self._parse_react_admin_params()
         total = int(await self.session.scalar(self._build_count_query(filters)) or 0)
         items = (
-            await self.session.scalars(self._build_list_query(sort, start, end, filters))
+            await self.session.scalars(
+                self._build_list_query(sort, start, end, filters)
+            )
         ).all()
         return self._build_react_admin_list_response(
             self._serialize_items(items), total, start, end

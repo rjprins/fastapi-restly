@@ -128,8 +128,7 @@ async def test_setup_async_database_connection_creates_sessionmaker_and_proxy_op
     try:
         with use_fr_globals(FRGlobals()):
             make_session = _setup_async_database_connection(
-                "sqlite+aiosqlite:///:memory:",
-                async_engine=async_engine,
+                "sqlite+aiosqlite:///:memory:", async_engine=async_engine
             )
 
             assert get_async_engine() is async_engine
@@ -144,9 +143,7 @@ async def test_setup_async_database_connection_creates_sessionmaker_and_proxy_op
 
 def test_configure_accepts_explicit_sessionmakers():
     sync_engine = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
+        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
     )
     async_engine = create_async_engine("sqlite+aiosqlite:///:memory:")
     sync_make_session = sessionmaker(bind=sync_engine, expire_on_commit=False)
@@ -155,8 +152,7 @@ def test_configure_accepts_explicit_sessionmakers():
     try:
         with use_fr_globals(FRGlobals()):
             configure(
-                make_session=sync_make_session,
-                async_make_session=async_make_session,
+                make_session=sync_make_session, async_make_session=async_make_session
             )
 
             assert get_engine() is sync_engine
@@ -170,9 +166,7 @@ def test_configure_accepts_explicit_sessionmakers():
 
 def test_activate_and_deactivate_savepoint_only_mode_for_sync_sessionmaker():
     engine = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
+        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
     )
     make_session = sessionmaker(bind=engine, expire_on_commit=False)
     original_connect = engine.connect

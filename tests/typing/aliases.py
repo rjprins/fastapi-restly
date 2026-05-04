@@ -3,6 +3,7 @@
 Verifies that consumer code defining schemas with camelCase aliases (e.g. for
 React Admin / SPA front-ends) stays Pyright-clean.
 """
+
 from datetime import datetime
 
 import pydantic

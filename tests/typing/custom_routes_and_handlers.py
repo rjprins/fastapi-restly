@@ -41,9 +41,7 @@ class WidgetView(
         return {"status": "ok"}
 
     def handle_list(
-        self,
-        query_params: Any,
-        query: sqlalchemy.Select[Any] | None = None,
+        self, query_params: Any, query: sqlalchemy.Select[Any] | None = None
     ) -> Sequence[Widget]:
         return super().handle_list(query_params, query=query)
 

@@ -7,6 +7,7 @@ FK columns and SQLAlchemy relationship fields backed by IDSchema/IDRef
 are annotated with ``x-resource-ref: "<resource-name>"`` in the generated spec.
 Full nested-object relationships (plain BaseSchema fields) are left untouched.
 """
+
 import inspect
 import types
 import weakref
@@ -37,21 +38,20 @@ _registry: weakref.WeakKeyDictionary[
 
 
 def _register_for_resource_ref(
-    parent_router: fastapi.FastAPI | fastapi.APIRouter,
-    view_cls: type,
+    parent_router: fastapi.FastAPI | fastapi.APIRouter, view_cls: type
 ) -> None:
     """Register a view's model→resource mapping and ensure the spec is patched.
 
     Silently skips views without a SQLAlchemy model (e.g. plain View subclasses).
     """
     model = getattr(view_cls, "model", None)
-    if model is None or not (isinstance(model, type) and issubclass(model, DeclarativeBase)):
+    if model is None or not (
+        isinstance(model, type) and issubclass(model, DeclarativeBase)
+    ):
         return
 
     resource_name = "".join(
-        c.__dict__["prefix"]
-        for c in reversed(view_cls.mro())
-        if "prefix" in c.__dict__
+        c.__dict__["prefix"] for c in reversed(view_cls.mro()) if "prefix" in c.__dict__
     ).lstrip("/")
 
     entry = _Entry(

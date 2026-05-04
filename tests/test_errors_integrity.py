@@ -64,7 +64,9 @@ def test_post_duplicate_explicit_unique_constraint_returns_409(client):
     class Coupon(fr.IDBase):
         code: Mapped[str]
         campaign: Mapped[str]
-        __table_args__ = (UniqueConstraint("code", "campaign", name="uq_coupon_code_campaign"),)
+        __table_args__ = (
+            UniqueConstraint("code", "campaign", name="uq_coupon_code_campaign"),
+        )
 
     class CouponSchema(fr.IDSchema):
         code: str
@@ -78,9 +80,7 @@ def test_post_duplicate_explicit_unique_constraint_returns_409(client):
 
     create_tables()
 
-    response = client.post(
-        "/coupons/", json={"code": "SAVE10", "campaign": "spring"}
-    )
+    response = client.post("/coupons/", json={"code": "SAVE10", "campaign": "spring"})
     assert response.status_code == 201
 
     response = client.post(
@@ -119,9 +119,7 @@ def test_patch_to_duplicate_unique_value_returns_409(client):
     client.post("/accounts/", json={"username": "bob"}).json()
 
     response = client.patch(
-        f"/accounts/{a['id']}",
-        json={"username": "bob"},
-        assert_status_code=409,
+        f"/accounts/{a['id']}", json={"username": "bob"}, assert_status_code=409
     )
     assert response.status_code == 409
     assert "unique" in response.json()["detail"].lower()
@@ -277,5 +275,7 @@ def test_post_missing_required_field_returns_422(client):
 
     create_tables()
 
-    response = client.post("/strict-items/", json={"name": "Hat"}, assert_status_code=422)
+    response = client.post(
+        "/strict-items/", json={"name": "Hat"}, assert_status_code=422
+    )
     assert response.status_code == 422

@@ -31,9 +31,7 @@ def auth_context() -> Callable[..., Iterator[None]]:
 
     @contextmanager
     def override(
-        *,
-        org_id: int | None = None,
-        user_id: int | None = None,
+        *, org_id: int | None = None, user_id: int | None = None
     ) -> Iterator[None]:
         previous = app.dependency_overrides.copy()
         if org_id is not None:

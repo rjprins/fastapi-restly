@@ -115,9 +115,7 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         return sqlalchemy.select(self.model)
 
     def handle_list(
-        self,
-        query_params: Any,
-        query: sqlalchemy.Select[Any] | None = None,
+        self, query_params: Any, query: sqlalchemy.Select[Any] | None = None
     ) -> Sequence[ModelT]:
         """
         Handle a GET request on "/". This should return a list of objects.
@@ -230,9 +228,7 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         ``save_object`` afterwards; override this method for construction-time
         changes that must happen before that save boundary.
         """
-        return make_new_object(
-            self.session, self.model, schema_obj, self.schema
-        )
+        return make_new_object(self.session, self.model, schema_obj, self.schema)
 
     def update_object(self, obj: ModelT, schema_obj: UpdateSchemaT) -> ModelT:
         """

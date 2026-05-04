@@ -434,7 +434,7 @@ def test_mixed_readonly_writeonly_fields():
         name="Test User",
         password="secret123",
         created_at=datetime.now(),
-        secret_token="abc123"
+        secret_token="abc123",
     )
 
     assert schema.id == 1

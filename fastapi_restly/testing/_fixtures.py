@@ -107,6 +107,7 @@ async def async_session(_shared_connection) -> AsyncIterator[SA_AsyncSession]:
 
     async with get_bound_async_connection() as async_conn:
         async with fr_globals.async_make_session(bind=async_conn) as sess:
+
             async def begin_nested():
                 await sess.begin_nested()
                 return sess

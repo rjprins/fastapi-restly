@@ -47,10 +47,7 @@ def _model_and_schema():
                 c.get("/items/1"),
             )[-1],
         ),
-        (
-            "handle_list",
-            lambda c: c.get("/items/"),
-        ),
+        ("handle_list", lambda c: c.get("/items/")),
         (
             "handle_update",
             lambda c: (

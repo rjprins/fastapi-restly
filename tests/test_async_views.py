@@ -18,7 +18,9 @@ from fastapi_restly.views._async import (
 
 def _make_engine_and_session():
     engine = create_async_engine("sqlite+aiosqlite:///:memory:")
-    make_session = async_sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
+    make_session = async_sessionmaker(
+        bind=engine, autoflush=False, expire_on_commit=False
+    )
     return engine, make_session
 
 
@@ -70,9 +72,7 @@ def test_async_object_helpers_handle_readonly_and_relationship_inputs():
             article_view.session = session
 
             create_payload = ArticleSchema(
-                id=999,
-                title="Draft",
-                author_id={"id": original_author.id},
+                id=999, title="Draft", author_id={"id": original_author.id}
             )
             article = await article_view.make_new_object(create_payload)
             await session.flush()
@@ -82,9 +82,7 @@ def test_async_object_helpers_handle_readonly_and_relationship_inputs():
             assert article.author.id == original_author.id
 
             update_payload = ArticleSchema(
-                id=12345,
-                title="Published",
-                author_id={"id": replacement_author.id},
+                id=12345, title="Published", author_id={"id": replacement_author.id}
             )
             updated_article = await article_view.update_object(article, update_payload)
 
@@ -150,9 +148,7 @@ def test_async_free_functions_handle_readonly_and_relationship_inputs():
             await session.flush()
 
             create_payload = ArticleSchema(
-                id=999,
-                title="Draft",
-                author_id={"id": original_author.id},
+                id=999, title="Draft", author_id={"id": original_author.id}
             )
             article = await async_make_new_object(
                 session, Article, create_payload, ArticleSchema
@@ -164,9 +160,7 @@ def test_async_free_functions_handle_readonly_and_relationship_inputs():
             assert article.author_id == original_author.id
 
             update_payload = ArticleSchema(
-                id=12345,
-                title="Published",
-                author_id={"id": replacement_author.id},
+                id=12345, title="Published", author_id={"id": replacement_author.id}
             )
             await async_update_object(session, article, update_payload, ArticleSchema)
             assert article.title == "Published"
@@ -216,10 +210,7 @@ def test_async_update_object_only_applies_set_fields():
 
         async with make_session() as session:
             item = await async_make_new_object(
-                session,
-                Item,
-                ItemSchema(id=0, name="orig", notes="keep"),
-                ItemSchema,
+                session, Item, ItemSchema(id=0, name="orig", notes="keep"), ItemSchema
             )
             await async_save_object(session, item)
 
@@ -296,9 +287,7 @@ def test_async_object_helpers_are_dataclass_init_aware_for_resolved_refs():
                     session,
                     Dd8AsyncRelationshipFirstArticle,
                     BothReferenceSchema(
-                        title="conflict",
-                        author_id=first.id,
-                        author={"id": second.id},
+                        title="conflict", author_id=first.id, author={"id": second.id}
                     ),
                     BothReferenceSchema,
                 )
@@ -309,9 +298,7 @@ def test_async_object_helpers_are_dataclass_init_aware_for_resolved_refs():
                     session,
                     article,
                     BothReferenceSchema(
-                        title="conflict",
-                        author_id=first.id,
-                        author={"id": second.id},
+                        title="conflict", author_id=first.id, author={"id": second.id}
                     ),
                     BothReferenceSchema,
                 )
@@ -400,7 +387,9 @@ def test_async_rest_view_crud_and_pagination():
             view.session = session
 
             first = await view.post(
-                OrderInputSchema(item_name="Keyboard", quantity=1, customer_id=customer_id)
+                OrderInputSchema(
+                    item_name="Keyboard", quantity=1, customer_id=customer_id
+                )
             )
             second = await view.post(
                 OrderInputSchema(item_name="Mouse", quantity=2, customer_id=customer_id)
@@ -414,14 +403,19 @@ def test_async_rest_view_crud_and_pagination():
             assert paginated["page"] == 1
             assert paginated["page_size"] == 10
             assert paginated["total_pages"] == 1
-            assert {item.item_name for item in paginated["items"]} == {"Keyboard", "Mouse"}
+            assert {item.item_name for item in paginated["items"]} == {
+                "Keyboard",
+                "Mouse",
+            }
 
             detail = await view.get(first.id)
             assert detail.quantity == 1
 
             updated = await view.patch(
                 first.id,
-                OrderInputSchema(item_name="Keyboard Pro", quantity=3, customer_id=customer_id),
+                OrderInputSchema(
+                    item_name="Keyboard Pro", quantity=3, customer_id=customer_id
+                ),
             )
             assert updated.item_name == "Keyboard Pro"
             assert updated.quantity == 3
@@ -490,15 +484,7 @@ def test_async_rest_view_dispatches_to_handle_overrides():
 
     asyncio.run(run())
 
-    assert call_log == [
-        "create",
-        "list",
-        "get",
-        "update",
-        "get",
-        "delete",
-        "get",
-    ]
+    assert call_log == ["create", "list", "get", "update", "get", "delete", "get"]
 
 
 def test_async_handle_list_with_custom_query():
@@ -523,11 +509,13 @@ def test_async_handle_list_with_custom_query():
             await conn.run_sync(fr.DataclassBase.metadata.create_all)
 
         async with make_session() as session:
-            session.add_all([
-                Widget(name="alpha", active=True),
-                Widget(name="beta", active=False),
-                Widget(name="gamma", active=True),
-            ])
+            session.add_all(
+                [
+                    Widget(name="alpha", active=True),
+                    Widget(name="beta", active=False),
+                    Widget(name="gamma", active=True),
+                ]
+            )
             await session.flush()
 
             view = WidgetView()
@@ -571,12 +559,14 @@ def test_async_build_list_query_is_consulted_by_list_and_count():
             await conn.run_sync(fr.DataclassBase.metadata.create_all)
 
         async with make_session() as session:
-            session.add_all([
-                Gizmo(name="alpha", active=True),
-                Gizmo(name="beta", active=False),
-                Gizmo(name="gamma", active=True),
-                Gizmo(name="delta", active=False),
-            ])
+            session.add_all(
+                [
+                    Gizmo(name="alpha", active=True),
+                    Gizmo(name="beta", active=False),
+                    Gizmo(name="gamma", active=True),
+                    Gizmo(name="delta", active=False),
+                ]
+            )
             await session.flush()
 
             view = GizmoView()

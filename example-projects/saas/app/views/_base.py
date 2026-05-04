@@ -111,10 +111,7 @@ class TenantBase(fr.AsyncRestView):
         return obj
 
     def _emit(
-        self,
-        event_type: str,
-        aggregate: Any,
-        payload: dict[str, Any] | None = None,
+        self, event_type: str, aggregate: Any, payload: dict[str, Any] | None = None
     ) -> None:
         """Write an outbox row in the current session.
 

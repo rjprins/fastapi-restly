@@ -15,19 +15,14 @@ class Label(fr.IDStampsBase):
     color: orm.Mapped[str] = orm.mapped_column(default="#808080")
 
     # Foreign keys
-    organization_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("organization.id")
-    )
+    organization_id: orm.Mapped[int] = orm.mapped_column(ForeignKey("organization.id"))
 
     # Relationships
     organization: orm.Mapped["Organization"] = orm.relationship(  # noqa: F821
-        back_populates="labels",
-        init=False,
+        back_populates="labels", init=False
     )
     task_labels: orm.Mapped[list["TaskLabel"]] = orm.relationship(
-        back_populates="label",
-        init=False,
-        default_factory=list,
+        back_populates="label", init=False, default_factory=list
     )
 
 
@@ -46,13 +41,11 @@ class TaskLabel(fr.IDStampsBase):
 
     # Relationships
     task: orm.Mapped["Task"] = orm.relationship(  # noqa: F821
-        back_populates="task_labels",
-        init=False,
+        back_populates="task_labels", init=False
     )
     label: orm.Mapped["Label"] = orm.relationship(
-        back_populates="task_labels",
-        init=False,
+        back_populates="task_labels", init=False
     )
     added_by: orm.Mapped["User | None"] = orm.relationship(  # noqa: F821
-        init=False,
+        init=False
     )

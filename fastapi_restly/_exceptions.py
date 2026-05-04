@@ -113,7 +113,7 @@ def _extract_sqlite_detail(orig: Any) -> str | None:
         # Try to surface the column / constraint info that SQLite tacks on
         # after the colon. ``UNIQUE constraint failed: user.username`` →
         # ``"Unique constraint violated on user.username"``.
-        remainder = text[len(prefix):].strip().lstrip(":").strip()
+        remainder = text[len(prefix) :].strip().lstrip(":").strip()
         if remainder:
             return f"{base} on {remainder}"
         return base
@@ -191,7 +191,4 @@ def register_default_exception_handlers(app: FastAPI) -> None:
     setattr(app.state, _HANDLERS_INSTALLED_FLAG, True)
 
 
-__all__ = [
-    "integrity_error_handler",
-    "register_default_exception_handlers",
-]
+__all__ = ["integrity_error_handler", "register_default_exception_handlers"]

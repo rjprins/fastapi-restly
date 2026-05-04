@@ -43,9 +43,7 @@ def test_sync_object_helpers_handle_readonly_and_relationship_inputs(sync_db):
         session.flush()
 
         create_payload = ArticleSchema(
-            id=999,
-            title="Draft",
-            author_id={"id": original_author.id},
+            id=999, title="Draft", author_id={"id": original_author.id}
         )
         article = make_new_object(session, Article, create_payload, ArticleSchema)
         session.flush()
@@ -55,9 +53,7 @@ def test_sync_object_helpers_handle_readonly_and_relationship_inputs(sync_db):
         assert article.author.id == original_author.id
 
         update_payload = ArticleSchema(
-            id=12345,
-            title="Published",
-            author_id={"id": replacement_author.id},
+            id=12345, title="Published", author_id={"id": replacement_author.id}
         )
         updated_article = update_object(session, article, update_payload, ArticleSchema)
 
@@ -292,10 +288,7 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
         assert both_init_plan.post_assignments["author"] is first
 
         def validate_optional_payload(
-            fields_set: set[str],
-            *,
-            author_id=...,
-            author=...,
+            fields_set: set[str], *, author_id=..., author=...
         ):
             values = {"title": "optional"}
             if author_id is not ...:
@@ -303,13 +296,10 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
             if author is not ...:
                 values["author"] = author
             payload = OptionalBothReferenceSchema.model_construct(
-                _fields_set=fields_set,
-                **values,
+                _fields_set=fields_set, **values
             )
             validate_resolved_reference_consistency(
-                Dd8SyncRelationshipFirstArticle,
-                payload,
-                OptionalBothReferenceSchema,
+                Dd8SyncRelationshipFirstArticle, payload, OptionalBothReferenceSchema
             )
 
         validate_optional_payload({"title", "author"}, author=first)
@@ -352,9 +342,7 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
             session,
             Dd8SyncRelationshipFirstArticle,
             BothReferenceSchema(
-                title="both explicit",
-                author_id=first.id,
-                author={"id": first.id},
+                title="both explicit", author_id=first.id, author={"id": first.id}
             ),
             BothReferenceSchema,
         )
@@ -366,9 +354,7 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
                 session,
                 Dd8SyncRelationshipFirstArticle,
                 BothReferenceSchema(
-                    title="conflict",
-                    author_id=first.id,
-                    author={"id": second.id},
+                    title="conflict", author_id=first.id, author={"id": second.id}
                 ),
                 BothReferenceSchema,
             )
@@ -379,9 +365,7 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
                 session,
                 both_explicit,
                 BothReferenceSchema(
-                    title="conflict",
-                    author_id=first.id,
-                    author={"id": second.id},
+                    title="conflict", author_id=first.id, author={"id": second.id}
                 ),
                 BothReferenceSchema,
             )
@@ -471,18 +455,10 @@ def test_sync_rest_view_crud_and_pagination(sync_db):
         view.session = session
 
         first = view.post(
-            OrderInputSchema(
-                item_name="Keyboard",
-                quantity=1,
-                customer_id=customer_id,
-            )
+            OrderInputSchema(item_name="Keyboard", quantity=1, customer_id=customer_id)
         )
         second = view.post(
-            OrderInputSchema(
-                item_name="Mouse",
-                quantity=2,
-                customer_id=customer_id,
-            )
+            OrderInputSchema(item_name="Mouse", quantity=2, customer_id=customer_id)
         )
 
         assert first.customer.name == "Acme"
@@ -502,9 +478,7 @@ def test_sync_rest_view_crud_and_pagination(sync_db):
         updated = view.patch(
             first.id,
             OrderInputSchema(
-                item_name="Keyboard Pro",
-                quantity=3,
-                customer_id=customer_id,
+                item_name="Keyboard Pro", quantity=3, customer_id=customer_id
             ),
         )
         assert updated.item_name == "Keyboard Pro"
@@ -565,15 +539,7 @@ def test_sync_rest_view_dispatches_to_handle_overrides(sync_db):
         view.patch(created.id, WidgetSchema(id=created.id, name="beta"))
         view.delete(created.id)
 
-    assert call_log == [
-        "create",
-        "list",
-        "get",
-        "update",
-        "get",
-        "delete",
-        "get",
-    ]
+    assert call_log == ["create", "list", "get", "update", "get", "delete", "get"]
 
 
 def test_sync_build_list_query_is_consulted_by_list_and_count(sync_db):
@@ -602,21 +568,21 @@ def test_sync_build_list_query_is_consulted_by_list_and_count(sync_db):
     fr.DataclassBase.metadata.create_all(engine)
 
     with make_session() as session:
-        session.add_all([
-            Gadget(name="alpha", active=True),
-            Gadget(name="beta", active=False),
-            Gadget(name="gamma", active=True),
-            Gadget(name="delta", active=False),
-        ])
+        session.add_all(
+            [
+                Gadget(name="alpha", active=True),
+                Gadget(name="beta", active=False),
+                Gadget(name="gamma", active=True),
+                Gadget(name="delta", active=False),
+            ]
+        )
         session.flush()
 
         view = GadgetView()
         view.session = session
 
         # Default build_list_query returns select(self.model).
-        assert str(fr.RestView.build_list_query(view)) == str(
-            sqlalchemy.select(Gadget)
-        )
+        assert str(fr.RestView.build_list_query(view)) == str(sqlalchemy.select(Gadget))
 
         # Override is consulted by both list and count.
         results = view.handle_list({})

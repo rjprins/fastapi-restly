@@ -27,9 +27,7 @@ _SALT_BYTES = 16
 def hash_password(plaintext: str) -> str:
     """Return a salted PBKDF2-SHA256 digest formatted as ``salt$digest`` hex."""
     salt = os.urandom(_SALT_BYTES)
-    digest = hashlib.pbkdf2_hmac(
-        "sha256", plaintext.encode("utf-8"), salt, _ITERATIONS
-    )
+    digest = hashlib.pbkdf2_hmac("sha256", plaintext.encode("utf-8"), salt, _ITERATIONS)
     return f"{salt.hex()}${digest.hex()}"
 
 

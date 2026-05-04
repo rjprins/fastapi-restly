@@ -37,20 +37,15 @@ class TestProjectCRUD:
         org_id = response.json()["id"]
 
         response = client.post(
-            "/projects/",
-            json={"name": "To Archive", "organization_id": org_id},
+            "/projects/", json={"name": "To Archive", "organization_id": org_id}
         )
         project_id = response.json()["id"]
 
         # Archive
-        response = client.patch(
-            f"/projects/{project_id}",
-            json={"status": "archived"},
-        )
+        response = client.patch(f"/projects/{project_id}", json={"status": "archived"})
         project = response.json()
 
         assert project["status"] == "archived"
-
 
 
 class TestProjectClone:
@@ -60,8 +55,7 @@ class TestProjectClone:
         """Test cloning a project including all tasks."""
         # Create org and project with tasks
         response = client.post(
-            "/organizations/",
-            json={"name": "Clone Test Org", "slug": "clone-test-org"},
+            "/organizations/", json={"name": "Clone Test Org", "slug": "clone-test-org"}
         )
         org_id = response.json()["id"]
 
@@ -82,8 +76,7 @@ class TestProjectClone:
 
         # Clone project
         response = client.post(
-            f"/projects/{project_id}/clone",
-            json={"new_name": "Cloned Project"},
+            f"/projects/{project_id}/clone", json={"new_name": "Cloned Project"}
         )
         cloned = response.json()
 
@@ -101,22 +94,17 @@ class TestProjectClone:
         """Test cloning with default name appends (Copy)."""
         # Create org and project
         response = client.post(
-            "/organizations/",
-            json={"name": "Clone Name Org", "slug": "clone-name-org"},
+            "/organizations/", json={"name": "Clone Name Org", "slug": "clone-name-org"}
         )
         org_id = response.json()["id"]
 
         response = client.post(
-            "/projects/",
-            json={"name": "My Project", "organization_id": org_id},
+            "/projects/", json={"name": "My Project", "organization_id": org_id}
         )
         project_id = response.json()["id"]
 
         # Clone without specifying name
-        response = client.post(
-            f"/projects/{project_id}/clone",
-            json={},
-        )
+        response = client.post(f"/projects/{project_id}/clone", json={})
         cloned = response.json()
 
         assert cloned["name"] == "My Project (Copy)"
@@ -131,8 +119,7 @@ class TestProjectClone:
         org_id = response.json()["id"]
 
         response = client.post(
-            "/projects/",
-            json={"name": "Project With Tasks", "organization_id": org_id},
+            "/projects/", json={"name": "Project With Tasks", "organization_id": org_id}
         )
         project_id = response.json()["id"]
 
@@ -140,8 +127,7 @@ class TestProjectClone:
 
         # Clone without tasks
         response = client.post(
-            f"/projects/{project_id}/clone",
-            json={"include_tasks": False},
+            f"/projects/{project_id}/clone", json={"include_tasks": False}
         )
         cloned = response.json()
 
@@ -149,7 +135,6 @@ class TestProjectClone:
         response = client.get(f"/tasks/?project_id={cloned['id']}")
         cloned_tasks = response.json()
         assert len(cloned_tasks) == 0
-
 
 
 class TestNestedRoutes:
@@ -165,14 +150,12 @@ class TestNestedRoutes:
         org_id = response.json()["id"]
 
         response = client.post(
-            "/projects/",
-            json={"name": "Project 1", "organization_id": org_id},
+            "/projects/", json={"name": "Project 1", "organization_id": org_id}
         )
         project1_id = response.json()["id"]
 
         response = client.post(
-            "/projects/",
-            json={"name": "Project 2", "organization_id": org_id},
+            "/projects/", json={"name": "Project 2", "organization_id": org_id}
         )
         project2_id = response.json()["id"]
 
@@ -198,15 +181,13 @@ class TestNestedRoutes:
         org_id = response.json()["id"]
 
         response = client.post(
-            "/projects/",
-            json={"name": "Nested Project", "organization_id": org_id},
+            "/projects/", json={"name": "Nested Project", "organization_id": org_id}
         )
         project_id = response.json()["id"]
 
         # Create task via nested route (no project_id in body)
         response = client.post(
-            f"/projects/{project_id}/tasks",
-            json={"title": "Nested Task"},
+            f"/projects/{project_id}/tasks", json={"title": "Nested Task"}
         )
         task = response.json()
 
@@ -216,7 +197,6 @@ class TestNestedRoutes:
     def test_nested_route_with_nonexistent_project(self, client):
         """Test that nested routes return 404 for nonexistent project."""
         client.get("/projects/99999/tasks", assert_status_code=404)
-
 
 
 class TestProjectLifecycle:
@@ -232,8 +212,7 @@ class TestProjectLifecycle:
         org_id = response.json()["id"]
 
         response = client.post(
-            "/projects/",
-            json={"name": "Project to Archive", "organization_id": org_id},
+            "/projects/", json={"name": "Project to Archive", "organization_id": org_id}
         )
         project = response.json()
         project_id = project["id"]
@@ -255,8 +234,7 @@ class TestProjectLifecycle:
         org_id = response.json()["id"]
 
         response = client.post(
-            "/projects/",
-            json={"name": "Already Archived", "organization_id": org_id},
+            "/projects/", json={"name": "Already Archived", "organization_id": org_id}
         )
         project_id = response.json()["id"]
 
@@ -264,7 +242,9 @@ class TestProjectLifecycle:
         client.post(f"/projects/{project_id}/archive")
 
         # Try to archive again
-        response = client.post(f"/projects/{project_id}/archive", assert_status_code=400)
+        response = client.post(
+            f"/projects/{project_id}/archive", assert_status_code=400
+        )
         error = response.json()
         assert "already archived" in error["detail"]
 
@@ -278,8 +258,7 @@ class TestProjectLifecycle:
         org_id = response.json()["id"]
 
         response = client.post(
-            "/projects/",
-            json={"name": "Archived for Tasks", "organization_id": org_id},
+            "/projects/", json={"name": "Archived for Tasks", "organization_id": org_id}
         )
         project_id = response.json()["id"]
 

@@ -49,12 +49,24 @@ def people_client(client):
     create_tables()
 
     rows = [
-        {"name": "Alice", "age": 17, "created_at": "2024-06-01T00:00:00",
-         "deleted_at": None},
-        {"name": "Bob", "age": 30, "created_at": "2024-09-15T00:00:00",
-         "deleted_at": "2025-02-01T00:00:00"},
-        {"name": "Carol", "age": 65, "created_at": "2025-03-20T00:00:00",
-         "deleted_at": None},
+        {
+            "name": "Alice",
+            "age": 17,
+            "created_at": "2024-06-01T00:00:00",
+            "deleted_at": None,
+        },
+        {
+            "name": "Bob",
+            "age": 30,
+            "created_at": "2024-09-15T00:00:00",
+            "deleted_at": "2025-02-01T00:00:00",
+        },
+        {
+            "name": "Carol",
+            "age": 65,
+            "created_at": "2025-03-20T00:00:00",
+            "deleted_at": None,
+        },
     ]
     for row in rows:
         client.post("/people/", json=row)
@@ -163,8 +175,7 @@ def test_range_operators_not_emitted_for_bool(client):
     response = client.get("/flagged/?active__gte=true", assert_status_code=422)
     body = response.json()
     assert any(
-        item.get("loc") == ["query", "active__gte"]
-        for item in body.get("detail", [])
+        item.get("loc") == ["query", "active__gte"] for item in body.get("detail", [])
     )
 
 
@@ -180,16 +191,12 @@ def test_repeated_contains_ands_predicates(people_client):
     assert names == ["Alice", "Carol"]
 
     # Both terms together should narrow to Alice.
-    response = people_client.get(
-        "/people/?name__contains=e&name__contains=c"
-    )
+    response = people_client.get("/people/?name__contains=e&name__contains=c")
     names = sorted(r["name"] for r in response.json())
     assert names == ["Alice"]
 
     # Fully disjoint terms must return no rows.
-    response = people_client.get(
-        "/people/?name__contains=hi&name__contains=ho"
-    )
+    response = people_client.get("/people/?name__contains=hi&name__contains=ho")
     assert response.json() == []
 
 
@@ -232,9 +239,7 @@ def test_python_field_name_rejected_for_aliased_field(client):
     assert response.status_code == 200
 
     # Python field name is rejected.
-    response = client.get(
-        "/aliased-items/?display_name=X", assert_status_code=422
-    )
+    response = client.get("/aliased-items/?display_name=X", assert_status_code=422)
     locs = [item.get("loc") for item in response.json().get("detail", [])]
     assert ["query", "display_name"] in locs
 
@@ -246,8 +251,6 @@ def test_unsupported_operator_rejected(people_client):
     column lets the schema reject the unknown key rather than running an
     unintended SQL expression.
     """
-    response = people_client.get(
-        "/people/?age__contains=2", assert_status_code=422
-    )
+    response = people_client.get("/people/?age__contains=2", assert_status_code=422)
     locs = [item.get("loc") for item in response.json().get("detail", [])]
     assert ["query", "age__contains"] in locs

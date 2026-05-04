@@ -59,9 +59,7 @@ def test_autouse_savepoint_only_mode_sessions_activates_only_configured_sessions
             activate.assert_not_called()
 
     sync_engine = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
+        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
     )
     async_engine = create_async_engine("sqlite+aiosqlite:///:memory:")
     sync_make_session = sessionmaker(bind=sync_engine, expire_on_commit=False)
@@ -94,9 +92,7 @@ def test_shared_connection_yields_none_or_real_connection():
             next(gen)
 
     engine = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
+        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
     )
     make_session = sessionmaker(bind=engine, expire_on_commit=False)
 
@@ -116,9 +112,7 @@ def test_shared_connection_yields_none_or_real_connection():
 
 def test_sync_fixture_wrapper_patches_and_restores_sessionmaker():
     engine = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
+        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
     )
     make_session = sessionmaker(bind=engine, expire_on_commit=False)
 
@@ -159,9 +153,7 @@ async def test_async_fixture_wrapper_patches_and_restores_sessionmaker():
             mocked_make_session = fr_globals.async_make_session
             assert mocked_make_session is not make_session
             assert await mocked_make_session() is session
-            assert (
-                await mocked_make_session.begin.return_value.__aenter__() is session
-            )
+            assert await mocked_make_session.begin.return_value.__aenter__() is session
 
             await agen.aclose()
             assert fr_globals.async_make_session is make_session

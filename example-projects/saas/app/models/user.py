@@ -54,8 +54,7 @@ class User(fr.IDStampsBase):
 
     # Relationships
     organization: orm.Mapped["Organization"] = orm.relationship(  # noqa: F821
-        back_populates="users",
-        init=False,
+        back_populates="users", init=False
     )
     assigned_tasks: orm.Mapped[list["Task"]] = orm.relationship(  # noqa: F821
         back_populates="assignee",

@@ -8,24 +8,44 @@ class TestReportingEndpoints:
         """Test GET /projects/{id}/stats returns correct counts."""
         # Create org and project
         response = client.post(
-            "/organizations/",
-            json={"name": "Stats Test Org", "slug": "stats-test-org"},
+            "/organizations/", json={"name": "Stats Test Org", "slug": "stats-test-org"}
         )
         org_id = response.json()["id"]
 
         response = client.post(
-            "/projects/",
-            json={"name": "Stats Project", "organization_id": org_id},
+            "/projects/", json={"name": "Stats Project", "organization_id": org_id}
         )
         project_id = response.json()["id"]
 
         # Add tasks with different statuses
-        client.post("/tasks/", json={"title": "Todo 1", "status": "todo", "project_id": project_id})
-        client.post("/tasks/", json={"title": "Todo 2", "status": "todo", "project_id": project_id})
-        client.post("/tasks/", json={"title": "In Progress", "status": "in_progress", "project_id": project_id})
-        client.post("/tasks/", json={"title": "Done 1", "status": "done", "project_id": project_id})
-        client.post("/tasks/", json={"title": "Done 2", "status": "done", "project_id": project_id})
-        client.post("/tasks/", json={"title": "Done 3", "status": "done", "project_id": project_id})
+        client.post(
+            "/tasks/",
+            json={"title": "Todo 1", "status": "todo", "project_id": project_id},
+        )
+        client.post(
+            "/tasks/",
+            json={"title": "Todo 2", "status": "todo", "project_id": project_id},
+        )
+        client.post(
+            "/tasks/",
+            json={
+                "title": "In Progress",
+                "status": "in_progress",
+                "project_id": project_id,
+            },
+        )
+        client.post(
+            "/tasks/",
+            json={"title": "Done 1", "status": "done", "project_id": project_id},
+        )
+        client.post(
+            "/tasks/",
+            json={"title": "Done 2", "status": "done", "project_id": project_id},
+        )
+        client.post(
+            "/tasks/",
+            json={"title": "Done 3", "status": "done", "project_id": project_id},
+        )
 
         # Get stats
         response = client.get(f"/projects/{project_id}/stats")
@@ -58,7 +78,6 @@ class TestReportingEndpoints:
 
         assert stats["total_tasks"] == 0
         assert stats["completion_percent"] == 0.0
-
 
 
 class TestConditionalValidation:
@@ -186,7 +205,6 @@ class TestConditionalValidation:
         assert task["severity"] is None
 
 
-
 class TestCrossResourceValidation:
     """Test cross-resource validation (assignee must be in same org as project)."""
 
@@ -218,8 +236,7 @@ class TestCrossResourceValidation:
 
         # Create project in org 1
         response = client.post(
-            "/projects/",
-            json={"name": "Org 1 Project", "organization_id": org1_id},
+            "/projects/", json={"name": "Org 1 Project", "organization_id": org1_id}
         )
         project_in_org1 = response.json()["id"]
 
@@ -240,8 +257,7 @@ class TestCrossResourceValidation:
         """Test that creating a task with assignee from same org succeeds."""
         # Create organization
         response = client.post(
-            "/organizations/",
-            json={"name": "Same Org Test", "slug": "same-org-test"},
+            "/organizations/", json={"name": "Same Org Test", "slug": "same-org-test"}
         )
         org_id = response.json()["id"]
 
@@ -258,8 +274,7 @@ class TestCrossResourceValidation:
 
         # Create project in org
         response = client.post(
-            "/projects/",
-            json={"name": "Same Org Project", "organization_id": org_id},
+            "/projects/", json={"name": "Same Org Project", "organization_id": org_id}
         )
         project_id = response.json()["id"]
 
@@ -311,8 +326,7 @@ class TestCrossResourceValidation:
 
         # Create task without assignee
         response = client.post(
-            "/tasks/",
-            json={"title": "Unassigned task", "project_id": project_in_org1},
+            "/tasks/", json={"title": "Unassigned task", "project_id": project_in_org1}
         )
         task_id = response.json()["id"]
 
@@ -324,7 +338,6 @@ class TestCrossResourceValidation:
         )
         error = response.json()
         assert "same organization" in error["detail"]
-
 
 
 class TestDifferentSchemasPerOperation:
@@ -355,8 +368,7 @@ class TestDifferentSchemasPerOperation:
     def test_create_org_with_valid_slug_succeeds(self, client):
         """Test that creation_schema accepts valid slugs."""
         response = client.post(
-            "/organizations/",
-            json={"name": "Valid Org", "slug": "valid-slug-123"},
+            "/organizations/", json={"name": "Valid Org", "slug": "valid-slug-123"}
         )
         org = response.json()
 
@@ -384,8 +396,7 @@ class TestDifferentSchemasPerOperation:
 
         # Update name only - should succeed
         response = client.patch(
-            f"/organizations/{org_id}",
-            json={"name": "Updated Name"},
+            f"/organizations/{org_id}", json={"name": "Updated Name"}
         )
         updated = response.json()
 
@@ -402,15 +413,11 @@ class TestDifferentSchemasPerOperation:
         org_id = response.json()["id"]
 
         # Try to update slug - should be ignored (not in update_schema)
-        response = client.patch(
-            f"/organizations/{org_id}",
-            json={"slug": "new-slug"},
-        )
+        response = client.patch(f"/organizations/{org_id}", json={"slug": "new-slug"})
         updated = response.json()
 
         # Slug should be unchanged (field not in update_schema)
         assert updated["slug"] == "original-slug"
-
 
 
 class TestTenantIsolation:
@@ -420,27 +427,23 @@ class TestTenantIsolation:
         """Test that handle_list filters by current org when set."""
         # Create two orgs
         response = client.post(
-            "/organizations/",
-            json={"name": "Tenant Org 1", "slug": "tenant-org-1"},
+            "/organizations/", json={"name": "Tenant Org 1", "slug": "tenant-org-1"}
         )
         org1_id = response.json()["id"]
 
         response = client.post(
-            "/organizations/",
-            json={"name": "Tenant Org 2", "slug": "tenant-org-2"},
+            "/organizations/", json={"name": "Tenant Org 2", "slug": "tenant-org-2"}
         )
         org2_id = response.json()["id"]
 
         # Create project in each org
         response = client.post(
-            "/projects/",
-            json={"name": "Org 1 Project", "organization_id": org1_id},
+            "/projects/", json={"name": "Org 1 Project", "organization_id": org1_id}
         )
         org1_project_id = response.json()["id"]
 
         response = client.post(
-            "/projects/",
-            json={"name": "Org 2 Project", "organization_id": org2_id},
+            "/projects/", json={"name": "Org 2 Project", "organization_id": org2_id}
         )
         org2_project_id = response.json()["id"]
 
@@ -484,23 +487,20 @@ class TestTenantIsolation:
         # With tenant isolation for org1, can't access org2's project
         with auth_context(org_id=org1_id):
             response = client.get(
-                f"/projects/{org2_project_id}",
-                assert_status_code=404,
+                f"/projects/{org2_project_id}", assert_status_code=404
             )
 
     def test_tenant_isolation_allows_own_org(self, client, auth_context):
         """Test that handle_get allows access to own org's resources."""
         # Create org
         response = client.post(
-            "/organizations/",
-            json={"name": "Own Tenant Org", "slug": "own-tenant-org"},
+            "/organizations/", json={"name": "Own Tenant Org", "slug": "own-tenant-org"}
         )
         org_id = response.json()["id"]
 
         # Create project in org
         response = client.post(
-            "/projects/",
-            json={"name": "Own Org Project", "organization_id": org_id},
+            "/projects/", json={"name": "Own Org Project", "organization_id": org_id}
         )
         project_id = response.json()["id"]
 
@@ -511,7 +511,6 @@ class TestTenantIsolation:
             assert project["id"] == project_id
 
 
-
 class TestRowLevelPermissions:
     """Test row-level permissions (filter results by user permissions)."""
 
@@ -519,39 +518,53 @@ class TestRowLevelPermissions:
         """Test that handle_list filters tasks by current user."""
         # Create org, users, and project
         response = client.post(
-            "/organizations/",
-            json={"name": "Row Level Org", "slug": "row-level-org"},
+            "/organizations/", json={"name": "Row Level Org", "slug": "row-level-org"}
         )
         org_id = response.json()["id"]
 
         response = client.post(
             "/users/",
-            json={"email": "user1@row.com", "name": "User 1", "organization_id": org_id},
+            json={
+                "email": "user1@row.com",
+                "name": "User 1",
+                "organization_id": org_id,
+            },
         )
         user1_id = response.json()["id"]
 
         response = client.post(
             "/users/",
-            json={"email": "user2@row.com", "name": "User 2", "organization_id": org_id},
+            json={
+                "email": "user2@row.com",
+                "name": "User 2",
+                "organization_id": org_id,
+            },
         )
         user2_id = response.json()["id"]
 
         response = client.post(
-            "/projects/",
-            json={"name": "Row Level Project", "organization_id": org_id},
+            "/projects/", json={"name": "Row Level Project", "organization_id": org_id}
         )
         project_id = response.json()["id"]
 
         # Create tasks assigned to different users
         response = client.post(
             "/tasks/",
-            json={"title": "User 1 Task", "project_id": project_id, "assignee_id": user1_id},
+            json={
+                "title": "User 1 Task",
+                "project_id": project_id,
+                "assignee_id": user1_id,
+            },
         )
         user1_task_id = response.json()["id"]
 
         response = client.post(
             "/tasks/",
-            json={"title": "User 2 Task", "project_id": project_id, "assignee_id": user2_id},
+            json={
+                "title": "User 2 Task",
+                "project_id": project_id,
+                "assignee_id": user2_id,
+            },
         )
         user2_task_id = response.json()["id"]
 
@@ -581,61 +594,75 @@ class TestRowLevelPermissions:
 
         response = client.post(
             "/users/",
-            json={"email": "getuser1@row.com", "name": "Get User 1", "organization_id": org_id},
+            json={
+                "email": "getuser1@row.com",
+                "name": "Get User 1",
+                "organization_id": org_id,
+            },
         )
         user1_id = response.json()["id"]
 
         response = client.post(
             "/users/",
-            json={"email": "getuser2@row.com", "name": "Get User 2", "organization_id": org_id},
+            json={
+                "email": "getuser2@row.com",
+                "name": "Get User 2",
+                "organization_id": org_id,
+            },
         )
         user2_id = response.json()["id"]
 
         response = client.post(
-            "/projects/",
-            json={"name": "Get Row Project", "organization_id": org_id},
+            "/projects/", json={"name": "Get Row Project", "organization_id": org_id}
         )
         project_id = response.json()["id"]
 
         # Create task assigned to user2
         response = client.post(
             "/tasks/",
-            json={"title": "User 2 Only Task", "project_id": project_id, "assignee_id": user2_id},
+            json={
+                "title": "User 2 Only Task",
+                "project_id": project_id,
+                "assignee_id": user2_id,
+            },
         )
         user2_task_id = response.json()["id"]
 
         # User1 cannot access user2's task
         with auth_context(user_id=user1_id):
-            response = client.get(
-                f"/tasks/{user2_task_id}",
-                assert_status_code=404,
-            )
+            response = client.get(f"/tasks/{user2_task_id}", assert_status_code=404)
 
     def test_row_level_allows_own_task(self, client, auth_context):
         """Test that handle_get allows access to user's own tasks."""
         # Create org, user, and project
         response = client.post(
-            "/organizations/",
-            json={"name": "Own Task Org", "slug": "own-task-org"},
+            "/organizations/", json={"name": "Own Task Org", "slug": "own-task-org"}
         )
         org_id = response.json()["id"]
 
         response = client.post(
             "/users/",
-            json={"email": "ownuser@row.com", "name": "Own User", "organization_id": org_id},
+            json={
+                "email": "ownuser@row.com",
+                "name": "Own User",
+                "organization_id": org_id,
+            },
         )
         user_id = response.json()["id"]
 
         response = client.post(
-            "/projects/",
-            json={"name": "Own Task Project", "organization_id": org_id},
+            "/projects/", json={"name": "Own Task Project", "organization_id": org_id}
         )
         project_id = response.json()["id"]
 
         # Create task assigned to user
         response = client.post(
             "/tasks/",
-            json={"title": "My Own Task", "project_id": project_id, "assignee_id": user_id},
+            json={
+                "title": "My Own Task",
+                "project_id": project_id,
+                "assignee_id": user_id,
+            },
         )
         task_id = response.json()["id"]
 
@@ -644,7 +671,6 @@ class TestRowLevelPermissions:
             response = client.get(f"/tasks/{task_id}")
             task = response.json()
             assert task["id"] == task_id
-
 
 
 class TestFieldLevelPermissions:
@@ -760,8 +786,7 @@ class TestFieldLevelPermissions:
 
         # Create org and user with salary
         response = client.post(
-            "/organizations/",
-            json={"name": "No Role Org", "slug": "no-role-org"},
+            "/organizations/", json={"name": "No Role Org", "slug": "no-role-org"}
         )
         org_id = response.json()["id"]
 

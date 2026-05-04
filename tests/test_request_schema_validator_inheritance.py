@@ -38,8 +38,7 @@ def test_field_validator_inherited_by_create_and_patch_request_schemas(client):
     assert create_response.status_code == 422
 
     user_response = client.post(
-        "/field-validator-users/",
-        json={"name": "Ada", "email": "ada@example.com"},
+        "/field-validator-users/", json={"name": "Ada", "email": "ada@example.com"}
     )
     user_id = user_response.json()["id"]
 
@@ -127,8 +126,7 @@ def test_model_validator_inherited_by_create_and_patch_request_schemas(client):
     assert create_response.status_code == 422
 
     user_response = client.post(
-        "/model-validator-users/",
-        json={"name": "Ada", "email": "ada@example.com"},
+        "/model-validator-users/", json={"name": "Ada", "email": "ada@example.com"}
     )
     user_id = user_response.json()["id"]
 

@@ -50,6 +50,7 @@ class TenantScopedMixin:
         request: fastapi.Request
         session: AsyncSession
         model: type[DeclarativeBase]
+
         def _current_org_id(self) -> int | None: ...
         def _is_admin(self) -> bool: ...
 
@@ -67,10 +68,7 @@ class TenantScopedMixin:
         if self._is_admin():
             return obj
         org_id = self._current_org_id()
-        if (
-            org_id is not None
-            and getattr(obj, "organization_id", org_id) != org_id
-        ):
+        if org_id is not None and getattr(obj, "organization_id", org_id) != org_id:
             raise fastapi.HTTPException(404, "Not found")
         return obj
 
@@ -110,8 +108,7 @@ class SoftDeleteMixin:
 
     def _include_deleted(self) -> bool:
         return (
-            self.request.query_params.get("include_deleted", "false").lower()
-            == "true"
+            self.request.query_params.get("include_deleted", "false").lower() == "true"
         )
 
     def build_list_query(self) -> sa.Select:
@@ -122,10 +119,7 @@ class SoftDeleteMixin:
 
     async def handle_get(self, id: Any) -> Any:
         obj = await super().handle_get(id)  # type: ignore[misc]
-        if (
-            not self._include_deleted()
-            and getattr(obj, "deleted_at", None) is not None
-        ):
+        if not self._include_deleted() and getattr(obj, "deleted_at", None) is not None:
             raise fastapi.HTTPException(404, "Not found")
         return obj
 

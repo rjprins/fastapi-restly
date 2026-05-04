@@ -3,6 +3,7 @@
 Verifies that consumer code using `IDRef` for list-of-relations or
 single-relation references stays Pyright-clean.
 """
+
 from fastapi import FastAPI
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship

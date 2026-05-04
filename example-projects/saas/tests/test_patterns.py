@@ -29,8 +29,7 @@ def client() -> RestlyTestClient:
 @pytest.fixture
 def org_id(client) -> int:
     response = client.post(
-        "/organizations/",
-        json={"name": "Pattern Org", "slug": "pattern-org"},
+        "/organizations/", json={"name": "Pattern Org", "slug": "pattern-org"}
     )
     return response.json()["id"]
 
@@ -90,7 +89,9 @@ class TestPasswordHashing:
 
         async with _async_session() as session:
             user = (
-                await session.scalars(select(User).where(User.email == "bob@example.com"))
+                await session.scalars(
+                    select(User).where(User.email == "bob@example.com")
+                )
             ).one()
         assert user.password != "trustno1"  # not plaintext
         assert verify_password("trustno1", user.password)
@@ -147,19 +148,16 @@ class TestPasswordHashing:
 class TestProjectMeta:
     def test_slug_generated_from_name(self, client, org_id):
         p = client.post(
-            "/projects/",
-            json={"name": "My Cool Project", "organization_id": org_id},
+            "/projects/", json={"name": "My Cool Project", "organization_id": org_id}
         ).json()
         assert p["slug"] == "my-cool-project"
 
     def test_slug_uniqueness_within_tenant(self, client, org_id):
         a = client.post(
-            "/projects/",
-            json={"name": "Same Name", "organization_id": org_id},
+            "/projects/", json={"name": "Same Name", "organization_id": org_id}
         ).json()
         b = client.post(
-            "/projects/",
-            json={"name": "Same Name", "organization_id": org_id},
+            "/projects/", json={"name": "Same Name", "organization_id": org_id}
         ).json()
         assert a["slug"] == "same-name"
         assert b["slug"] == "same-name-2"
@@ -168,16 +166,14 @@ class TestProjectMeta:
         """Without request.state.user_id set, stamps are None — tested in the
         no-auth-context path. Real auth tests would assert IDs match."""
         p = client.post(
-            "/projects/",
-            json={"name": "Audit Test", "organization_id": org_id},
+            "/projects/", json={"name": "Audit Test", "organization_id": org_id}
         ).json()
         assert p["created_by_id"] is None
         assert p["updated_by_id"] is None
 
     def test_can_edit_decoration_present_on_get(self, client, org_id):
         p = client.post(
-            "/projects/",
-            json={"name": "Decorate Me", "organization_id": org_id},
+            "/projects/", json={"name": "Decorate Me", "organization_id": org_id}
         ).json()
         got = client.get(f"/projects/{p['id']}").json()
         assert got["can_edit"] is True
@@ -192,14 +188,13 @@ class TestOutbox:
     async def test_project_create_emits_outbox(self, client, org_id):
         from app.models import OutboxEvent
 
-        client.post(
-            "/projects/",
-            json={"name": "Outboxed", "organization_id": org_id},
-        )
+        client.post("/projects/", json={"name": "Outboxed", "organization_id": org_id})
         async with _async_session() as session:
             events = (
                 await session.scalars(
-                    select(OutboxEvent).where(OutboxEvent.event_type == "project.created")
+                    select(OutboxEvent).where(
+                        OutboxEvent.event_type == "project.created"
+                    )
                 )
             ).all()
         assert len(events) == 1
@@ -210,8 +205,7 @@ class TestOutbox:
         from app.models import OutboxEvent
 
         p = client.post(
-            "/projects/",
-            json={"name": "Transitions", "organization_id": org_id},
+            "/projects/", json={"name": "Transitions", "organization_id": org_id}
         ).json()
         client.patch(f"/projects/{p['id']}", json={"status": "archived"})
         async with _async_session() as session:
@@ -230,8 +224,7 @@ class TestOutbox:
         from app.models import OutboxEvent
 
         p = client.post(
-            "/projects/",
-            json={"name": "Idempotent", "organization_id": org_id},
+            "/projects/", json={"name": "Idempotent", "organization_id": org_id}
         ).json()
         client.patch(f"/projects/{p['id']}", json={"status": "active"})
         async with _async_session() as session:
@@ -298,8 +291,7 @@ class TestMultipartUpload:
 class TestTaskCSVImport:
     def test_csv_import_per_row_results(self, client, org_id):
         project = client.post(
-            "/projects/",
-            json={"name": "CSV target", "organization_id": org_id},
+            "/projects/", json={"name": "CSV target", "organization_id": org_id}
         ).json()
         csv_bytes = b"title,description\nFirst,Hello\n,Empty title row\nThird,\n"
         response = client.post(
@@ -321,8 +313,7 @@ class TestTaskCSVImport:
 class TestLocationHeader:
     def test_location_header_on_org_create(self, client):
         response = client.post(
-            "/organizations/",
-            json={"name": "With Header", "slug": "with-header"},
+            "/organizations/", json={"name": "With Header", "slug": "with-header"}
         )
         assert response.status_code == 201
         body = response.json()
@@ -348,9 +339,7 @@ class TestReadOnlyLookup:
     def test_post_is_not_allowed(self, client):
         # Generated POST is excluded — no route registered.
         client.post(
-            "/countries/",
-            json={"code": "FR", "name": "France"},
-            assert_status_code=405,
+            "/countries/", json={"code": "FR", "name": "France"}, assert_status_code=405
         )
 
     def test_patch_is_not_allowed(self, client):
@@ -368,8 +357,7 @@ class TestReadOnlyLookup:
 class TestStoryPointRollup:
     def _setup(self, client, org_id):
         project = client.post(
-            "/projects/",
-            json={"name": "Rollup", "organization_id": org_id},
+            "/projects/", json={"name": "Rollup", "organization_id": org_id}
         ).json()
         return project
 
@@ -440,8 +428,7 @@ class TestPartialUpdateSemantic:
 
     def test_omitted_field_is_preserved(self, client, org_id):
         project = client.post(
-            "/projects/",
-            json={"name": "Partial", "organization_id": org_id},
+            "/projects/", json={"name": "Partial", "organization_id": org_id}
         ).json()
         task = client.post(
             "/tasks/",
@@ -474,8 +461,12 @@ class TestAdminBypass:
     """
 
     def _setup_two_orgs_with_projects(self, client):
-        a = client.post("/organizations/", json={"name": "Org A", "slug": "org-a"}).json()
-        b = client.post("/organizations/", json={"name": "Org B", "slug": "org-b"}).json()
+        a = client.post(
+            "/organizations/", json={"name": "Org A", "slug": "org-a"}
+        ).json()
+        b = client.post(
+            "/organizations/", json={"name": "Org B", "slug": "org-b"}
+        ).json()
         pa = client.post(
             "/projects/", json={"name": "A-only", "organization_id": a["id"]}
         ).json()
@@ -498,6 +489,7 @@ class TestAdminBypass:
         # Patch _is_admin to return True regardless of state — equivalent
         # to auth middleware having set ``request.state.is_admin = True``.
         from app.views._base import TenantBase
+
         monkeypatch.setattr(TenantBase, "_is_admin", lambda self: True)
 
         with auth_context(org_id=a_id):  # would normally hide org B
@@ -516,14 +508,18 @@ class TestAdminBypass:
         u1 = client.post(
             "/users/",
             json={
-                "email": "u1@x", "name": "U1", "organization_id": org["id"],
+                "email": "u1@x",
+                "name": "U1",
+                "organization_id": org["id"],
                 "password": "p",
             },
         ).json()
         u2 = client.post(
             "/users/",
             json={
-                "email": "u2@x", "name": "U2", "organization_id": org["id"],
+                "email": "u2@x",
+                "name": "U2",
+                "organization_id": org["id"],
                 "password": "p",
             },
         ).json()
@@ -560,9 +556,7 @@ class TestSiblingCreation:
     then create another row that references it via IDRef."""
 
     def _ctx(self, client, auth_context):
-        org = client.post(
-            "/organizations/", json={"name": "Sib", "slug": "sib"}
-        ).json()
+        org = client.post("/organizations/", json={"name": "Sib", "slug": "sib"}).json()
         return org["id"], auth_context(org_id=org["id"])
 
     def test_create_and_attach_creates_both_rows(self, client, auth_context):
@@ -572,8 +566,7 @@ class TestSiblingCreation:
                 "/projects/", json={"name": "Sib P", "organization_id": _org_id}
             ).json()
             task = client.post(
-                "/tasks/",
-                json={"title": "Sib T", "project_id": proj["id"]},
+                "/tasks/", json={"title": "Sib T", "project_id": proj["id"]}
             ).json()
             response = client.post(
                 "/task-labels/create-and-attach",
@@ -610,8 +603,7 @@ class TestSiblingCreation:
                 "/projects/", json={"name": "Sib P", "organization_id": _org_id}
             ).json()
             task = client.post(
-                "/tasks/",
-                json={"title": "Sib T", "project_id": proj["id"]},
+                "/tasks/", json={"title": "Sib T", "project_id": proj["id"]}
             ).json()
             r1 = client.post(
                 "/task-labels/create-and-attach",
@@ -645,8 +637,7 @@ class TestSiblingCreation:
                 "/projects/", json={"name": "Sib P", "organization_id": _org_id}
             ).json()
             task = client.post(
-                "/tasks/",
-                json={"title": "Sib T", "project_id": proj["id"]},
+                "/tasks/", json={"title": "Sib T", "project_id": proj["id"]}
             ).json()
             response = client.post(
                 "/task-labels/create-and-attach",

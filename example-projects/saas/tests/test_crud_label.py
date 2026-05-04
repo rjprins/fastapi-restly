@@ -8,19 +8,14 @@ class TestLabelCRUD:
         """Test creating a label."""
         # Create org
         response = client.post(
-            "/organizations/",
-            json={"name": "Label Test Org", "slug": "label-test-org"},
+            "/organizations/", json={"name": "Label Test Org", "slug": "label-test-org"}
         )
         org_id = response.json()["id"]
 
         # Create label
         response = client.post(
             "/labels/",
-            json={
-                "name": "urgent",
-                "color": "#ff0000",
-                "organization_id": org_id,
-            },
+            json={"name": "urgent", "color": "#ff0000", "organization_id": org_id},
         )
         label = response.json()
 
@@ -47,14 +42,12 @@ class TestLabelCRUD:
         user_id = response.json()["id"]
 
         response = client.post(
-            "/projects/",
-            json={"name": "Label Project", "organization_id": org_id},
+            "/projects/", json={"name": "Label Project", "organization_id": org_id}
         )
         project_id = response.json()["id"]
 
         response = client.post(
-            "/tasks/",
-            json={"title": "Labeled Task", "project_id": project_id},
+            "/tasks/", json={"title": "Labeled Task", "project_id": project_id}
         )
         task_id = response.json()["id"]
 
@@ -69,11 +62,7 @@ class TestLabelCRUD:
         # values automatically.
         response = client.post(
             "/task-labels/",
-            json={
-                "task_id": task_id,
-                "label_id": label_id,
-                "added_by_id": user_id,
-            },
+            json={"task_id": task_id, "label_id": label_id, "added_by_id": user_id},
         )
         task_label = response.json()
 

@@ -12,6 +12,7 @@ from .conftest import create_tables
 
 class TestWriteOnlyAPIBasicBehavior:
     """Test basic WriteOnly API behavior."""
+
     def test_writeonly_fields_excluded_from_get_response(self, client):
         """Test that WriteOnly fields are excluded from GET responses."""
 
@@ -64,6 +65,7 @@ class TestWriteOnlyAPIBasicBehavior:
         # Should NOT include WriteOnly fields
         assert "password" not in user
         assert "secret_token" not in user
+
     def test_writeonly_fields_accepted_in_post_request(self, client):
         """Test that WriteOnly fields are accepted in POST requests."""
 
@@ -105,6 +107,7 @@ class TestWriteOnlyAPIBasicBehavior:
 
         # Should NOT include WriteOnly field in response
         assert "password" not in created_user
+
     def test_writeonly_fields_accepted_in_put_request(self, client):
         """Test that WriteOnly fields are accepted in PUT requests."""
 
@@ -158,6 +161,7 @@ class TestWriteOnlyAPIBasicBehavior:
 
         # Should NOT include WriteOnly field in response
         assert "password" not in updated_user
+
     def test_writeonly_fields_excluded_from_list_response(self, client):
         """Test that WriteOnly fields are excluded from list GET responses."""
 
@@ -210,6 +214,7 @@ class TestWriteOnlyAPIBasicBehavior:
 
 class TestWriteOnlyWithMixedFields:
     """Test WriteOnly fields mixed with ReadOnly and regular fields."""
+
     def test_mixed_readonly_writeonly_regular_fields(self, client):
         """Test API behavior with ReadOnly, WriteOnly, and regular fields."""
 
@@ -281,6 +286,7 @@ class TestWriteOnlyWithMixedFields:
 
 class TestWriteOnlyWithAliases:
     """Test WriteOnly fields with field aliases."""
+
     def test_writeonly_fields_with_aliases(self, client):
         """Test that WriteOnly fields work correctly with aliases."""
 

@@ -76,25 +76,28 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
     async def _decorate_project_response(self, project: Project) -> Project:
         """Populate transient response fields that are not stored on Project."""
         project.can_edit = self._can_edit(project)
-        project.task_count = await self.session.scalar(
-            select(func.count()).where(
-                Task.project_id == project.id,
-                Task.deleted_at.is_(None),
+        project.task_count = (
+            await self.session.scalar(
+                select(func.count()).where(
+                    Task.project_id == project.id, Task.deleted_at.is_(None)
+                )
             )
-        ) or 0
-        project.completed_task_count = await self.session.scalar(
-            select(func.count()).where(
-                Task.project_id == project.id,
-                Task.status == TaskStatus.DONE,
-                Task.deleted_at.is_(None),
+            or 0
+        )
+        project.completed_task_count = (
+            await self.session.scalar(
+                select(func.count()).where(
+                    Task.project_id == project.id,
+                    Task.status == TaskStatus.DONE,
+                    Task.deleted_at.is_(None),
+                )
             )
-        ) or 0
+            or 0
+        )
         return project
 
     async def handle_list(
-        self,
-        query_params,
-        query: sa.Select | None = None,
+        self, query_params, query: sa.Select | None = None
     ) -> Sequence[Project]:
         projects = await super().handle_list(query_params, query)
         return [await self._decorate_project_response(project) for project in projects]
@@ -127,7 +130,9 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
             project.slug or _slugify(project.name), project.organization_id
         )
         project = await self.save_object(project)
-        self._emit("project.created", project, {"name": project.name, "slug": project.slug})
+        self._emit(
+            "project.created", project, {"name": project.name, "slug": project.slug}
+        )
         return await self._decorate_project_response(project)
 
     async def handle_update(self, id: int, schema_obj):
@@ -162,8 +167,7 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
         n = 1
         while True:
             q = sa.select(Project.id).where(
-                Project.slug == candidate,
-                Project.organization_id == org_id,
+                Project.slug == candidate, Project.organization_id == org_id
             )
             if exclude_id is not None:
                 q = q.where(Project.id != exclude_id)
@@ -182,7 +186,9 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
         """
         new_org = getattr(schema_obj, "organization_id", None)
         if new_org is not None and new_org != obj.organization_id:
-            raise HTTPException(400, "Cannot move a project to a different organization")
+            raise HTTPException(
+                400, "Cannot move a project to a different organization"
+            )
         return await super().update_object(obj, schema_obj)
 
     @fr.delete("/{id}", status_code=200, response_model=ProjectSchema)
@@ -239,9 +245,7 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
         await self.handle_get(id)
 
         query = (
-            select(Project)
-            .where(Project.id == id)
-            .options(selectinload(Project.tasks))
+            select(Project).where(Project.id == id).options(selectinload(Project.tasks))
         )
         result = await self.session.execute(query)
         original = result.scalar_one()
@@ -287,15 +291,30 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
         # handle_get enforces tenant scope and 404s — get the access check for free.
         await self.handle_get(id)
 
-        todo = await self.session.scalar(
-            select(func.count()).where(Task.project_id == id, Task.status == TaskStatus.TODO)
-        ) or 0
-        in_progress = await self.session.scalar(
-            select(func.count()).where(Task.project_id == id, Task.status == TaskStatus.IN_PROGRESS)
-        ) or 0
-        done = await self.session.scalar(
-            select(func.count()).where(Task.project_id == id, Task.status == TaskStatus.DONE)
-        ) or 0
+        todo = (
+            await self.session.scalar(
+                select(func.count()).where(
+                    Task.project_id == id, Task.status == TaskStatus.TODO
+                )
+            )
+            or 0
+        )
+        in_progress = (
+            await self.session.scalar(
+                select(func.count()).where(
+                    Task.project_id == id, Task.status == TaskStatus.IN_PROGRESS
+                )
+            )
+            or 0
+        )
+        done = (
+            await self.session.scalar(
+                select(func.count()).where(
+                    Task.project_id == id, Task.status == TaskStatus.DONE
+                )
+            )
+            or 0
+        )
         total = todo + in_progress + done
         completion = round(done / total * 100, 1) if total > 0 else 0.0
 
@@ -345,7 +364,9 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
 
         project = await self.handle_get(id)
         if project.status == ProjectStatus.ARCHIVED:
-            raise HTTPException(status_code=400, detail="Cannot create tasks in an archived project")
+            raise HTTPException(
+                status_code=400, detail="Cannot create tasks in an archived project"
+            )
 
         task = Task(
             title=request.title,

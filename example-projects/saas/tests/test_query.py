@@ -28,11 +28,9 @@ def setup_test_data(client):
 
     # Create users
     users = []
-    for i, (name, role) in enumerate([
-        ("Alice", "admin"),
-        ("Bob", "member"),
-        ("Charlie", "member"),
-    ]):
+    for i, (name, role) in enumerate(
+        [("Alice", "admin"), ("Bob", "member"), ("Charlie", "member")]
+    ):
         response = client.post(
             "/users/",
             json={
@@ -46,8 +44,7 @@ def setup_test_data(client):
 
     # Create project
     response = client.post(
-        "/projects/",
-        json={"name": "Query Project", "organization_id": org_id},
+        "/projects/", json={"name": "Query Project", "organization_id": org_id}
     )
     project_id = response.json()["id"]
 
@@ -67,7 +64,9 @@ def setup_test_data(client):
                 "status": status,
                 "priority": priority,
                 "project_id": project_id,
-                "assignee_id": users[assignee_idx]["id"] if assignee_idx is not None else None,
+                "assignee_id": users[assignee_idx]["id"]
+                if assignee_idx is not None
+                else None,
             },
         )
         tasks.append(response.json())
@@ -210,9 +209,18 @@ class TestLabelFiltering:
         )
         org_id = response.json()["id"]
 
-        client.post("/labels/", json={"name": "urgent", "color": "#ff0000", "organization_id": org_id})
-        client.post("/labels/", json={"name": "feature", "color": "#00ff00", "organization_id": org_id})
-        client.post("/labels/", json={"name": "bug", "color": "#0000ff", "organization_id": org_id})
+        client.post(
+            "/labels/",
+            json={"name": "urgent", "color": "#ff0000", "organization_id": org_id},
+        )
+        client.post(
+            "/labels/",
+            json={"name": "feature", "color": "#00ff00", "organization_id": org_id},
+        )
+        client.post(
+            "/labels/",
+            json={"name": "bug", "color": "#0000ff", "organization_id": org_id},
+        )
         return org_id
 
     def test_filter_by_name(self, client):
@@ -257,19 +265,11 @@ class TestLabelFiltering:
 
         label1 = client.post(
             "/labels/",
-            json={
-                "name": "shared",
-                "color": "#ff0000",
-                "organization_id": org1["id"],
-            },
+            json={"name": "shared", "color": "#ff0000", "organization_id": org1["id"]},
         ).json()
         label2 = client.post(
             "/labels/",
-            json={
-                "name": "shared",
-                "color": "#00ff00",
-                "organization_id": org2["id"],
-            },
+            json={"name": "shared", "color": "#00ff00", "organization_id": org2["id"]},
         ).json()
 
         with auth_context(org_id=org1["id"]):
@@ -293,7 +293,9 @@ class TestPaginationMetadata:
         org_id = response.json()["id"]
 
         for i in range(3):
-            client.post("/projects/", json={"name": f"Project {i}", "organization_id": org_id})
+            client.post(
+                "/projects/", json={"name": f"Project {i}", "organization_id": org_id}
+            )
 
         response = client.get("/projects/")
         data = response.json()

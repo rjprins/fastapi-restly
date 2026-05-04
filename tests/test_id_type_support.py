@@ -14,9 +14,7 @@ from .conftest import create_tables
 class UUIDModel(fr.DataclassBase):
     __tablename__ = "uuid_model"
 
-    id: Mapped[UUID] = mapped_column(
-        Uuid, primary_key=True, default_factory=uuid4
-    )
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default_factory=uuid4)
     name: Mapped[str]
 
 
@@ -45,7 +43,9 @@ def test_view_id_type_controls_openapi_path_parameter():
     app = FastAPI()
     fr.include_view(app, UUIDView)
 
-    parameter_schema = app.openapi()["paths"]["/uuid-models/{id}"]["get"]["parameters"][0]["schema"]
+    parameter_schema = app.openapi()["paths"]["/uuid-models/{id}"]["get"]["parameters"][
+        0
+    ]["schema"]
     assert parameter_schema["type"] == "string"
     assert parameter_schema["format"] == "uuid"
 
@@ -54,16 +54,12 @@ def test_idschema_accepts_uuid_relation_ids(client):
     class Author(fr.DataclassBase):
         __tablename__ = "uuid_author"
 
-        id: Mapped[UUID] = mapped_column(
-            Uuid, primary_key=True, default_factory=uuid4
-        )
+        id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default_factory=uuid4)
         name: Mapped[str]
 
     class Article(fr.IDBase):
         title: Mapped[str]
-        author_id: Mapped[UUID] = mapped_column(
-            Uuid, ForeignKey("uuid_author.id")
-        )
+        author_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("uuid_author.id"))
         author: Mapped[Author] = relationship()
 
     class AuthorSchema(fr.BaseSchema):
@@ -93,8 +89,7 @@ def test_idschema_accepts_uuid_relation_ids(client):
     author_id = author_response.json()["id"]
 
     article_response = client.post(
-        "/uuid-articles/",
-        json={"title": "Hello", "author_id": {"id": author_id}},
+        "/uuid-articles/", json={"title": "Hello", "author_id": {"id": author_id}}
     )
 
     assert article_response.status_code == 201

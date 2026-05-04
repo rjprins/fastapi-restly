@@ -71,7 +71,11 @@ def get_relationship_target_model(field: Any) -> type[DeclarativeBase] | None:
     if not isinstance(relationship, RelationshipProperty):
         relationship = getattr(field, "property", None)
 
-    if relationship is not None and hasattr(relationship, "mapper") and hasattr(relationship.mapper, "class_"):
+    if (
+        relationship is not None
+        and hasattr(relationship, "mapper")
+        and hasattr(relationship.mapper, "class_")
+    ):
         return relationship.mapper.class_
 
     # Try to get from the type annotation
@@ -124,13 +128,13 @@ def get_model_fields(model_cls: type[DeclarativeBase]) -> dict[str, Any]:
         actual_type = args[0]
         relationship = mapper.relationships.get(name)
 
-        rel_mapper = getattr(relationship, "mapper", None) if relationship is not None else None
+        rel_mapper = (
+            getattr(relationship, "mapper", None) if relationship is not None else None
+        )
         field_info: dict[str, Any] = {
             "type": actual_type,
             "is_relationship": relationship is not None,
-            "target_model": (
-                rel_mapper.class_ if rel_mapper is not None else None
-            ),
+            "target_model": (rel_mapper.class_ if rel_mapper is not None else None),
             "is_optional": False,
             "default": None,
         }
@@ -372,6 +376,4 @@ def auto_generate_schema_for_view(
     if schema_name is None:
         schema_name = f"{view_cls.__name__}Schema"
 
-    return create_schema_from_model(
-        model_cls, schema_name, include_relationships=False
-    )
+    return create_schema_from_model(model_cls, schema_name, include_relationships=False)

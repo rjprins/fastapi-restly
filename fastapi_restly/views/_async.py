@@ -83,9 +83,7 @@ async def async_save_object(
     return obj
 
 
-class AsyncRestView(
-    BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT]
-):
+class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT]):
     """
     AsyncRestView creates an async CRUD/REST interface for database objects.
     Basic usage::
@@ -122,9 +120,7 @@ class AsyncRestView(
         return sqlalchemy.select(self.model)
 
     async def handle_list(
-        self,
-        query_params: Any,
-        query: sqlalchemy.Select[Any] | None = None,
+        self, query_params: Any, query: sqlalchemy.Select[Any] | None = None
     ) -> Sequence[ModelT]:
         """
         Handle a GET request on "/". This should return a list of objects.

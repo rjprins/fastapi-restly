@@ -4,6 +4,7 @@ Tests for automatic x-resource-ref OpenAPI extension.
 Verifies that include_view() causes FK columns and IDSchema relationship fields
 to be annotated with x-resource-ref in the generated OpenAPI spec.
 """
+
 import fastapi
 import sqlalchemy as sa
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -149,6 +150,10 @@ def test_spec_is_idempotent_on_multiple_openapi_calls():
     app = _build_app()
     spec1 = app.openapi()
     spec2 = app.openapi()
-    ref1 = spec1["components"]["schemas"]["BookSchema"]["properties"]["author_id"].get("x-resource-ref")
-    ref2 = spec2["components"]["schemas"]["BookSchema"]["properties"]["author_id"].get("x-resource-ref")
+    ref1 = spec1["components"]["schemas"]["BookSchema"]["properties"]["author_id"].get(
+        "x-resource-ref"
+    )
+    ref2 = spec2["components"]["schemas"]["BookSchema"]["properties"]["author_id"].get(
+        "x-resource-ref"
+    )
     assert ref1 == ref2 == "authors"

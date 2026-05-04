@@ -35,9 +35,7 @@ class Upload(fr.IDStampsBase):
     line_count: orm.Mapped[int] = orm.mapped_column(default=0)
 
     lines: orm.Mapped[list["UploadLine"]] = orm.relationship(
-        back_populates="upload",
-        default_factory=list,
-        cascade="all, delete-orphan",
+        back_populates="upload", default_factory=list, cascade="all, delete-orphan"
     )
 
 
@@ -49,6 +47,4 @@ class UploadLine(fr.IDStampsBase):
     title: orm.Mapped[str]
     amount: orm.Mapped[int] = orm.mapped_column(default=0)
 
-    upload: orm.Mapped["Upload"] = orm.relationship(
-        back_populates="lines", init=False
-    )
+    upload: orm.Mapped["Upload"] = orm.relationship(back_populates="lines", init=False)
