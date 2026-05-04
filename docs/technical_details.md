@@ -48,10 +48,12 @@ For a view schema `UserRead`, Restly derives two input schemas in
   Original field defaults from `UserRead` are **replaced** by `None`, not
   preserved.
 
-The generated class names use resource-first role suffixes. `UserRead`,
-`UserSchema`, and `UserBase` all derive `UserCreate` and `UserUpdate`.
-When `schema` is omitted entirely, a model named `User` auto-generates
-`UserRead` as the response schema.
+The generated class names use resource-first role suffixes. `UserRead` derives
+`UserCreate` and `UserUpdate`. The `Read` suffix is the only suffix Restly
+strips when deriving request-schema names; other schema names are kept literally,
+so `UserSchema` derives `UserSchemaCreate` and `UserSchemaUpdate`. When `schema`
+is omitted entirely, a model named `User` auto-generates `UserRead` as the
+response schema.
 
 Both derived schemas are stored as class attributes on the view and are frozen
 at registration time (see [List Parameters Lifecycle](#list-parameters-lifecycle)).

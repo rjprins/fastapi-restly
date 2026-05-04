@@ -48,7 +48,7 @@ SQLAlchemyModel = TypeVar(
     "SQLAlchemyModel", bound=DeclarativeBase, default=DeclarativeBase
 )
 _IDREF_UNSET = object()
-_SCHEMA_RESOURCE_SUFFIXES = ("Schema", "Read", "Base")
+_SCHEMA_RESOURCE_SUFFIX = "Read"
 
 
 @functools.cache
@@ -59,9 +59,10 @@ def _id_type_adapter(id_type: Any) -> pydantic.TypeAdapter[Any]:
 def _schema_resource_name(model_cls: type[pydantic.BaseModel]) -> str:
     """Return the resource name used to derive role-specific API schemas."""
     name = model_cls.__name__
-    for suffix in _SCHEMA_RESOURCE_SUFFIXES:
-        if name.endswith(suffix) and len(name) > len(suffix):
-            return name[: -len(suffix)]
+    if name.endswith(_SCHEMA_RESOURCE_SUFFIX) and len(name) > len(
+        _SCHEMA_RESOURCE_SUFFIX
+    ):
+        return name[: -len(_SCHEMA_RESOURCE_SUFFIX)]
     return name
 
 

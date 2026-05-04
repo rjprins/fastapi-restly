@@ -209,14 +209,14 @@ def test_is_writeonly_field():
 def test_create_model_without_read_only_fields():
     """Test that create_model_without_read_only_fields removes ReadOnly fields."""
 
-    class TestSchema(BaseSchema):
+    class TestRead(BaseSchema):
         id: ReadOnly[int]
         name: str
         email: str
         created_at: ReadOnly[datetime]
 
     # Create a model without read-only fields
-    TestCreate = create_model_without_read_only_fields(TestSchema)
+    TestCreate = create_model_without_read_only_fields(TestRead)
 
     # Check that the new model has the role-suffixed contract name.
     assert TestCreate.__name__ == "TestCreate"
@@ -238,14 +238,14 @@ def test_create_model_without_read_only_fields():
 def test_create_model_with_optional_fields():
     """Test that create_model_with_optional_fields makes fields optional."""
 
-    class TestSchema(BaseSchema):
+    class TestRead(BaseSchema):
         id: ReadOnly[int]
         name: str
         email: str
         created_at: ReadOnly[datetime]
 
     # Create a model with optional fields
-    TestUpdate = create_model_with_optional_fields(TestSchema)
+    TestUpdate = create_model_with_optional_fields(TestRead)
 
     # Check that the new model has the role-suffixed contract name.
     assert TestUpdate.__name__ == "TestUpdate"
@@ -284,8 +284,8 @@ def test_generated_request_schema_names_use_resource_role_suffixes():
 
     for schema_cls, create_name, update_name in (
         (UserRead, "UserCreate", "UserUpdate"),
-        (TeamSchema, "TeamCreate", "TeamUpdate"),
-        (ProjectBase, "ProjectCreate", "ProjectUpdate"),
+        (TeamSchema, "TeamSchemaCreate", "TeamSchemaUpdate"),
+        (ProjectBase, "ProjectBaseCreate", "ProjectBaseUpdate"),
         (Label, "LabelCreate", "LabelUpdate"),
     ):
         assert create_model_without_read_only_fields(schema_cls).__name__ == create_name
