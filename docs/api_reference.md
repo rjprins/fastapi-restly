@@ -107,14 +107,13 @@ Use these decorators on methods in a view class:
 |---|---|---|
 | `@fr.get(path)` | `GET` | `200` |
 | `@fr.post(path)` | `POST` | `201` |
-| `@fr.patch(path)` | `PATCH` | FastAPI default (`200`) |
-| `@fr.put(path)` | `PUT` | FastAPI default (`200`) |
+| `@fr.patch(path)` | `PATCH` | `200` |
+| `@fr.put(path)` | `PUT` | `200` |
 | `@fr.delete(path)` | `DELETE` | `204` |
 | `@fr.route(path, ...)` | Custom | As configured |
 
-`@fr.get()`, `@fr.post()`, and `@fr.delete()` explicitly set the default status code shown.
-`@fr.patch()` and `@fr.put()` set only the HTTP method; FastAPI applies its own default of `200`.
-Pass `status_code=` explicitly to either decorator to override.
+The shorthand decorators explicitly set the default status code shown. Pass
+`status_code=` to override it.
 
 `@fr.put(...)` is available for custom endpoints, but default generated update endpoints use `PATCH`.
 

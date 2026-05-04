@@ -11,7 +11,7 @@ from starlette.datastructures import QueryParams
 import fastapi_restly as fr
 from fastapi_restly.models._base import utc_now
 from fastapi_restly.views._async import AsyncRestView
-from fastapi_restly.views._base import get
+from fastapi_restly.views._base import delete, get, patch, post, put
 
 
 class QueryUser(fr.IDBase):
@@ -80,12 +80,34 @@ def test_utc_now_is_timezone_aware_utc():
     assert now.tzinfo is timezone.utc
 
 
-def test_get_decorator_sets_http_method_explicitly():
-    @get("/hello")
+@pytest.mark.parametrize(
+    ("decorator", "method", "default_status_code"),
+    [
+        (get, "GET", 200),
+        (post, "POST", 201),
+        (put, "PUT", 200),
+        (patch, "PATCH", 200),
+        (delete, "DELETE", 204),
+    ],
+)
+def test_http_method_decorators_set_method_and_default_status_code(
+    decorator, method, default_status_code
+):
+    @decorator("/hello")
     def endpoint():
         return {"ok": True}
 
     path, kwargs = endpoint._api_route_args  # type: ignore[attr-defined]
     assert path == "/hello"
-    assert kwargs["methods"] == ["GET"]
-    assert kwargs["status_code"] == 200
+    assert kwargs["methods"] == [method]
+    assert kwargs["status_code"] == default_status_code
+
+
+def test_http_method_decorator_status_code_can_be_overridden():
+    @patch("/hello", status_code=202)
+    def endpoint():
+        return {"ok": True}
+
+    _path, kwargs = endpoint._api_route_args  # type: ignore[attr-defined]
+    assert kwargs["methods"] == ["PATCH"]
+    assert kwargs["status_code"] == 202

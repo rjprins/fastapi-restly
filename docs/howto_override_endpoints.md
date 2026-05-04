@@ -592,9 +592,9 @@ other string raises `AttributeError` at startup.
 ## Choosing between `@fr.route` and the shorthand decorators
 
 Prefer `@fr.get`, `@fr.post`, `@fr.put`, `@fr.patch`, and `@fr.delete` for
-most endpoints — they set the HTTP method automatically, and `@fr.get` (200),
-`@fr.post` (201), and `@fr.delete` (204) also set default status codes.
-`@fr.put` and `@fr.patch` do not set a default; FastAPI uses 200.
+most endpoints. They set the HTTP method automatically and apply Restly's
+default status codes: `@fr.get`/`@fr.put`/`@fr.patch` use 200, `@fr.post`
+uses 201, and `@fr.delete` uses 204.
 
 Use `@fr.route(path, methods=[...], ...)` only when you need full manual
 control over route options — for example, to register a single path under

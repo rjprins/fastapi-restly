@@ -661,11 +661,10 @@ def put(path: str, **api_route_kwargs: Any) -> Callable[..., Any]:
 
     Equivalent to::
 
-        @route(path, methods=["PUT"], ... )
-
-    No default status code is set; FastAPI will use 200 if none is specified.
+        @route(path, methods=["PUT"], status_code=200, ... )
     """
     api_route_kwargs.setdefault("methods", ["PUT"])
+    api_route_kwargs.setdefault("status_code", 200)
     return route(path, **api_route_kwargs)
 
 
@@ -674,11 +673,10 @@ def patch(path: str, **api_route_kwargs: Any) -> Callable[..., Any]:
 
     Equivalent to::
 
-        @route(path, methods=["PATCH"], ... )
-
-    No default status code is set; FastAPI will use 200 if none is specified.
+        @route(path, methods=["PATCH"], status_code=200, ... )
     """
     api_route_kwargs.setdefault("methods", ["PATCH"])
+    api_route_kwargs.setdefault("status_code", 200)
     return route(path, **api_route_kwargs)
 
 
