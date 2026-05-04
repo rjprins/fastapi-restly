@@ -82,9 +82,3 @@ class IDBase(IDMixin, DataclassBase):
     """Convenience base: DataclassBase + integer `id` primary key."""
 
     __abstract__ = True
-
-
-class IDStampsBase(TimestampsMixin, IDBase):
-    """Convenience base: IDBase + `created_at` / `updated_at` timestamps."""
-
-    __abstract__ = True

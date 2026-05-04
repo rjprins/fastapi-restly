@@ -226,7 +226,7 @@ class TestWriteOnlyWithMixedFields:
             created_at: ReadOnly[datetime]  # ReadOnly field
             secret_token: WriteOnly[str]  # WriteOnly field
 
-        class WriteOnlyUserMixed(fr.IDStampsBase):
+        class WriteOnlyUserMixed(fr.TimestampsMixin, fr.IDBase):
             name: Mapped[str]
             email: Mapped[str]
             password: Mapped[str]

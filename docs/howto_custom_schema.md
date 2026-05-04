@@ -61,13 +61,6 @@ class UserSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
     name: str
 ```
 
-`fr.IDStampsSchema` combines `IDSchema` and `TimestampsSchemaMixin` in one base:
-
-```python
-class UserSchema(fr.IDStampsSchema):
-    name: str
-```
-
 ## ReadOnly and WriteOnly
 
 `fr.ReadOnly[T]` marks a field as response-only. It is removed from create and

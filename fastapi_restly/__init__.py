@@ -14,7 +14,7 @@ from .db import (
 )
 
 # Model base classes
-from .models import DataclassBase, IDBase, IDMixin, IDStampsBase, TimestampsMixin
+from .models import DataclassBase, IDBase, IDMixin, TimestampsMixin
 
 # List endpoint query parameters
 from .query import apply_list_params, create_list_params_schema
@@ -24,7 +24,6 @@ from .schemas import (
     BaseSchema,
     IDRef,
     IDSchema,
-    IDStampsSchema,
     ReadOnly,
     TimestampsSchemaMixin,
     WriteOnly,
@@ -78,7 +77,6 @@ __all__ = [
     "DataclassBase",
     "IDBase",
     "IDMixin",
-    "IDStampsBase",
     "TimestampsMixin",
     # List endpoint query parameters
     "apply_list_params",
@@ -87,7 +85,6 @@ __all__ = [
     "BaseSchema",
     "IDRef",
     "IDSchema",
-    "IDStampsSchema",
     "ReadOnly",
     "WriteOnly",
     "TimestampsSchemaMixin",

@@ -226,7 +226,7 @@ both pointing at `User`. If the model already has another FK to `User`
 existing relationship and raises `AmbiguousForeignKeysError`. Pin it:
 
 ```python
-class Task(fr.IDStampsBase):
+class Task(fr.TimestampsMixin, fr.IDBase):
     assignee_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
     assignee: Mapped[User] = relationship(foreign_keys="Task.assignee_id")
 

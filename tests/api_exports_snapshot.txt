@@ -8,8 +8,6 @@ fastapi_restly:
   - IDMixin
   - IDRef
   - IDSchema
-  - IDStampsBase
-  - IDStampsSchema
   - ReactAdminView
   - ReadOnly
   - RestView
@@ -68,7 +66,6 @@ fastapi_restly.models:
   - DataclassBase
   - IDBase
   - IDMixin
-  - IDStampsBase
   - TimestampsMixin
 fastapi_restly.pytest_fixtures:
   - app
@@ -87,7 +84,6 @@ fastapi_restly.schemas:
   - BaseSchema
   - IDRef
   - IDSchema
-  - IDStampsSchema
   - ReadOnly
   - TimestampsSchemaMixin
   - WriteOnly

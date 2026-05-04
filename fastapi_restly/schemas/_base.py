@@ -120,10 +120,6 @@ class IDSchema(BaseSchema, Generic[SQLAlchemyModel]):
         return self._get_sql_model_annotation()  # type: ignore[return-value]
 
 
-class IDStampsSchema(TimestampsSchemaMixin, IDSchema):
-    pass
-
-
 class IDRef(IDSchema[SQLAlchemyModel], Generic[SQLAlchemyModel]):
     """Reference to a row of T by id.
 

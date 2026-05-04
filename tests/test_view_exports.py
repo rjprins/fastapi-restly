@@ -19,3 +19,15 @@ def test_react_admin_mixin_is_not_public_api():
     assert "ReactAdminMixin" not in fr.__all__
     assert not hasattr(fr_views, "ReactAdminMixin")
     assert "ReactAdminMixin" not in fr_views.__all__
+
+
+def test_timestamp_convenience_bases_are_not_public_api():
+    assert not hasattr(fr, "IDStampsBase")
+    assert "IDStampsBase" not in fr.__all__
+    assert not hasattr(fr.models, "IDStampsBase")
+    assert "IDStampsBase" not in fr.models.__all__
+
+    assert not hasattr(fr, "IDStampsSchema")
+    assert "IDStampsSchema" not in fr.__all__
+    assert not hasattr(fr.schemas, "IDStampsSchema")
+    assert "IDStampsSchema" not in fr.schemas.__all__

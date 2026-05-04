@@ -489,14 +489,14 @@ class TestRelationshipWithReadOnlyFields:
         """Test relationships where some fields are ReadOnly."""
 
         # Define SQLAlchemy models with relationship
-        class User7(fr.IDStampsBase):
+        class User7(fr.TimestampsMixin, fr.IDBase):
             name: Mapped[str] = mapped_column(String(100))
             email: Mapped[str] = mapped_column(String(100))
             addresses: Mapped[List["Address7"]] = relationship(
                 "Address7", back_populates="user", default_factory=list
             )
 
-        class Address7(fr.IDStampsBase):
+        class Address7(fr.TimestampsMixin, fr.IDBase):
             street: Mapped[str] = mapped_column(String(200))
             city: Mapped[str] = mapped_column(String(100))
             user_id: Mapped[int] = mapped_column(
