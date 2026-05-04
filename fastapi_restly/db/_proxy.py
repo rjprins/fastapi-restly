@@ -4,7 +4,7 @@ from typing import AsyncIterator, Iterator
 from sqlalchemy.ext.asyncio import AsyncSession as SA_AsyncSession
 from sqlalchemy.orm import Session as SA_Session
 
-from ._globals import fr_globals
+from ._globals import _fr_globals
 
 
 @asynccontextmanager
@@ -16,9 +16,9 @@ async def async_open_session() -> AsyncIterator[SA_AsyncSession]:
         async with fr.async_open_session() as session:
             result = await session.execute(select(User))
     """
-    if fr_globals.async_make_session is None:
+    if _fr_globals.async_make_session is None:
         raise RuntimeError("Call fr.configure() before using async_open_session().")
-    async with fr_globals.async_make_session() as sess:
+    async with _fr_globals.async_make_session() as sess:
         yield sess
 
 
@@ -31,7 +31,7 @@ def open_session() -> Iterator[SA_Session]:
         with fr.open_session() as session:
             result = session.execute(select(User))
     """
-    if fr_globals.make_session is None:
+    if _fr_globals.make_session is None:
         raise RuntimeError("Call fr.configure() before using open_session().")
-    with fr_globals.make_session() as sess:
+    with _fr_globals.make_session() as sess:
         yield sess

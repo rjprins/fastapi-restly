@@ -13,7 +13,7 @@ from sqlalchemy.types import JSON
 
 import fastapi_restly as fr
 import fastapi_restly.schemas as fr_schemas
-from fastapi_restly.db import fr_globals
+from fastapi_restly.db._globals import _fr_globals
 
 from .conftest import create_tables
 

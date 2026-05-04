@@ -19,7 +19,7 @@ from fastapi import FastAPI
 from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
-from fastapi_restly.db import fr_globals
+from fastapi_restly.db._globals import _fr_globals
 from fastapi_restly.testing._client import RestlyTestClient
 from fastapi_restly.views._react_admin import (
     DEFAULT_REACT_ADMIN_PAGE_SIZE,
@@ -82,7 +82,7 @@ def _setup_sync_item_view(client):
         model = SyncItem
         schema = SyncItemSchema
 
-    fr.DataclassBase.metadata.create_all(fr_globals.make_session.kw["bind"])
+    fr.DataclassBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
 
 
 # ===========================================================================

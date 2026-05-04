@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 import fastapi_restly as fr
-from fastapi_restly.db import fr_globals
+from fastapi_restly.db._globals import _fr_globals
 
 pytest_plugins = ["fastapi_restly.testing._fixtures"]
 
@@ -67,19 +67,19 @@ def reset_metadata():
 def setup_database_connection():
     # Clear any sticky state left behind by previous tests (e.g. tests that
     # plug a custom ``session_generator`` / ``sync_session_generator`` into
-    # ``fr_globals`` and don't tear them down).
-    fr_globals.session_generator = None
-    fr_globals.sync_session_generator = None
-    fr_globals.make_session = None
+    # ``_fr_globals`` and don't tear them down).
+    _fr_globals.session_generator = None
+    _fr_globals.sync_session_generator = None
+    _fr_globals.make_session = None
     fr.configure(async_database_url="sqlite+aiosqlite:///:memory:")
 
 
 @pytest.fixture
 def sync_db() -> Iterator[tuple[Engine, sessionmaker[Session]]]:
     """Configure an in-memory SQLite engine for sync RestView tests."""
-    original_database_url = fr_globals.database_url
-    original_make_session = fr_globals.make_session
-    original_sync_session_generator = fr_globals.sync_session_generator
+    original_database_url = _fr_globals.database_url
+    original_make_session = _fr_globals.make_session
+    original_sync_session_generator = _fr_globals.sync_session_generator
 
     engine = create_engine(
         "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
@@ -90,9 +90,9 @@ def sync_db() -> Iterator[tuple[Engine, sessionmaker[Session]]]:
     try:
         yield engine, make_session
     finally:
-        fr_globals.database_url = original_database_url
-        fr_globals.make_session = original_make_session
-        fr_globals.sync_session_generator = original_sync_session_generator
+        _fr_globals.database_url = original_database_url
+        _fr_globals.make_session = original_make_session
+        _fr_globals.sync_session_generator = original_sync_session_generator
         engine.dispose()
 
 

@@ -12,7 +12,7 @@ from sqlalchemy import ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 import fastapi_restly as fr
-from fastapi_restly.db import fr_globals
+from fastapi_restly.db._globals import _fr_globals
 from fastapi_restly.schemas import ReadOnly
 
 from .conftest import create_tables

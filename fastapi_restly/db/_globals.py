@@ -1,5 +1,4 @@
 from collections.abc import AsyncIterator, Callable, Iterator
-from contextlib import contextmanager
 from contextvars import ContextVar, Token
 
 from sqlalchemy.ext.asyncio import AsyncSession as SA_AsyncSession
@@ -55,9 +54,6 @@ class RestlyContext:
         _restly_context_ctx.reset(token)
 
 
-FRGlobals = RestlyContext
-
-
 _default_context = RestlyContext()
 _restly_context_ctx: ContextVar[RestlyContext | None] = ContextVar(
     "fastapi_restly_context", default=None
@@ -71,14 +67,8 @@ def _get_restly_context() -> RestlyContext:
     return _restly_context_ctx.get() or _default_context
 
 
-def get_fr_globals() -> FRGlobals:
+def get_fr_globals() -> RestlyContext:
     return _get_restly_context()
-
-
-@contextmanager
-def use_fr_globals(globals_obj: FRGlobals) -> Iterator[None]:
-    with globals_obj:
-        yield
 
 
 class _FRGlobalsProxy:
@@ -89,4 +79,4 @@ class _FRGlobalsProxy:
         setattr(_get_restly_context(), name, value)
 
 
-fr_globals = _FRGlobalsProxy()
+_fr_globals = _FRGlobalsProxy()

@@ -170,7 +170,7 @@ class IDRef(IDSchema[SQLAlchemyModel], Generic[SQLAlchemyModel]):
         return self.id if hasattr(self, "id") else self
 
 
-async def async_resolve_ids_to_sqlalchemy_objects(
+async def _async_resolve_ids_to_sqlalchemy_objects(
     session: SA_AsyncSession, schema_obj: BaseSchema
 ) -> None:
     """
@@ -217,7 +217,7 @@ async def async_resolve_ids_to_sqlalchemy_objects(
             setattr(schema_obj, field, sql_model_objs)
 
 
-def resolve_ids_to_sqlalchemy_objects(
+def _resolve_ids_to_sqlalchemy_objects(
     session: SA_Session, schema_obj: BaseSchema
 ) -> None:
     """

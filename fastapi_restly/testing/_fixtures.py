@@ -14,7 +14,8 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.ext.asyncio import AsyncSession as SA_AsyncSession
 from sqlalchemy.orm import Session as SA_Session
 
-from ..db import activate_savepoint_only_mode, fr_globals, get_fr_globals
+from ..db import activate_savepoint_only_mode, get_fr_globals
+from ..db._globals import _fr_globals
 from ._client import RestlyTestClient
 
 
@@ -52,24 +53,24 @@ def autouse_alembic_upgrade(project_root):
 @pytest.fixture(autouse=True, scope="session")
 def autouse_savepoint_only_mode_sessions() -> None:
     # Only run if database connections are set up
-    if not fr_globals.async_make_session and not fr_globals.make_session:
+    if not _fr_globals.async_make_session and not _fr_globals.make_session:
         return  # Skip if no database connections
 
-    if fr_globals.async_make_session:
-        activate_savepoint_only_mode(fr_globals.async_make_session)
-    if fr_globals.make_session:
-        activate_savepoint_only_mode(fr_globals.make_session)
+    if _fr_globals.async_make_session:
+        activate_savepoint_only_mode(_fr_globals.async_make_session)
+    if _fr_globals.make_session:
+        activate_savepoint_only_mode(_fr_globals.make_session)
 
 
 @pytest.fixture
 def _shared_connection():
     # Sync tests need a sync sessionmaker, but async-only projects should still
     # be able to use the async_session fixture without one.
-    if not fr_globals.make_session:
+    if not _fr_globals.make_session:
         yield None
         return
 
-    engine = fr_globals.make_session.kw["bind"]
+    engine = _fr_globals.make_session.kw["bind"]
     with engine.connect() as conn:
         yield conn
 
@@ -89,10 +90,10 @@ async def async_session(_shared_connection) -> AsyncIterator[SA_AsyncSession]:
     still visible.
     """
     # Only run if database connections are set up
-    if not fr_globals.async_make_session:
+    if not _fr_globals.async_make_session:
         pytest.skip("Database connection not set up")
 
-    async_engine = fr_globals.async_make_session.kw["bind"]
+    async_engine = _fr_globals.async_make_session.kw["bind"]
 
     @asynccontextmanager
     async def get_bound_async_connection():
@@ -106,7 +107,7 @@ async def async_session(_shared_connection) -> AsyncIterator[SA_AsyncSession]:
             yield async_conn
 
     async with get_bound_async_connection() as async_conn:
-        async with fr_globals.async_make_session(bind=async_conn) as sess:
+        async with _fr_globals.async_make_session(bind=async_conn) as sess:
 
             async def begin_nested():
                 await sess.begin_nested()
@@ -159,10 +160,10 @@ def session(_shared_connection) -> Iterator[SA_Session]:
     still visible.
     """
     # Only run if database connections are set up
-    if not fr_globals.make_session:
+    if not _fr_globals.make_session:
         pytest.skip("Database connection not set up")
 
-    with fr_globals.make_session(bind=_shared_connection) as sess:
+    with _fr_globals.make_session(bind=_shared_connection) as sess:
 
         def begin_nested():
             sess.begin_nested()

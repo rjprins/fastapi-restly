@@ -8,7 +8,8 @@ from sqlalchemy.orm import DeclarativeBase, Session
 
 from ..db import SessionDep
 from ..query import apply_list_params
-from ..schemas import BaseSchema, resolve_ids_to_sqlalchemy_objects
+from ..schemas import BaseSchema
+from ..schemas._base import _resolve_ids_to_sqlalchemy_objects
 from ._base import (
     BaseRestView,
     CreateSchemaT,
@@ -41,7 +42,7 @@ def make_new_object(
 
     See also: :func:`async_make_new_object` for the async equivalent.
     """
-    resolve_ids_to_sqlalchemy_objects(session, schema_obj)
+    _resolve_ids_to_sqlalchemy_objects(session, schema_obj)
     validate_resolved_reference_consistency(model_cls, schema_obj, schema_cls)
     create_plan = build_create_plan(model_cls, schema_obj, schema_cls)
     obj = model_cls(**create_plan.kwargs)
@@ -61,7 +62,7 @@ def update_object(
 
     See also: :func:`async_update_object` for the async equivalent.
     """
-    resolve_ids_to_sqlalchemy_objects(session, schema_obj)
+    _resolve_ids_to_sqlalchemy_objects(session, schema_obj)
     validate_resolved_reference_consistency(type(obj), schema_obj, schema_cls)
     apply_update_to_object(obj, schema_obj, schema_cls)
     return obj

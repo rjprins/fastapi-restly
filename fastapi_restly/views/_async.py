@@ -9,7 +9,8 @@ from sqlalchemy.orm import DeclarativeBase
 
 from ..db import AsyncSessionDep
 from ..query import apply_list_params
-from ..schemas import BaseSchema, async_resolve_ids_to_sqlalchemy_objects
+from ..schemas import BaseSchema
+from ..schemas._base import _async_resolve_ids_to_sqlalchemy_objects
 from ._base import (
     BaseRestView,
     CreateSchemaT,
@@ -42,7 +43,7 @@ async def async_make_new_object(
     ``session``. Read-only fields and any unset fields' defaults are handled by
     the shared helper. The session is not flushed here.
     """
-    await async_resolve_ids_to_sqlalchemy_objects(session, schema_obj)
+    await _async_resolve_ids_to_sqlalchemy_objects(session, schema_obj)
     validate_resolved_reference_consistency(model_cls, schema_obj, schema_cls)
     create_plan = build_create_plan(model_cls, schema_obj, schema_cls)
     obj = model_cls(**create_plan.kwargs)
@@ -64,7 +65,7 @@ async def async_update_object(
     Apply writable inputs from ``schema_obj`` onto ``obj``. Only fields the
     caller explicitly set are applied; read-only fields are skipped.
     """
-    await async_resolve_ids_to_sqlalchemy_objects(session, schema_obj)
+    await _async_resolve_ids_to_sqlalchemy_objects(session, schema_obj)
     validate_resolved_reference_consistency(type(obj), schema_obj, schema_cls)
     apply_update_to_object(obj, schema_obj, schema_cls)
     return obj

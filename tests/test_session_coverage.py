@@ -10,7 +10,7 @@ from sqlalchemy.pool import StaticPool
 
 import fastapi_restly as fr
 import fastapi_restly.db as fr_db
-from fastapi_restly.db._globals import FRGlobals, _get_restly_context, use_fr_globals
+from fastapi_restly.db._globals import RestlyContext, _get_restly_context
 from fastapi_restly.db._proxy import async_open_session as proxy_async_open_session
 from fastapi_restly.db._proxy import open_session as proxy_open_session
 from fastapi_restly.db._session import (
@@ -30,16 +30,23 @@ def test_public_session_context_manager_exports_use_open_names():
     assert fr.open_session is fr_db.open_session
     assert fr.async_open_session is fr_db.async_open_session
     assert fr.RestlyContext is fr_db.RestlyContext
-    assert fr.FRGlobals is fr.RestlyContext
     assert "open_session" in fr.__all__
     assert "async_open_session" in fr.__all__
     assert "RestlyContext" in fr.__all__
-    assert "FRGlobals" in fr.__all__
+    assert "FRGlobals" not in fr.__all__
+    assert "use_fr_globals" not in fr.__all__
     assert "get_restly_context" not in fr.__all__
     assert "use_restly_context" not in fr.__all__
     assert "open_session" in fr_db.__all__
     assert "async_open_session" in fr_db.__all__
     assert "RestlyContext" in fr_db.__all__
+    assert "FRGlobals" not in fr_db.__all__
+    assert "fr_globals" not in fr_db.__all__
+    assert "use_fr_globals" not in fr_db.__all__
+    assert not hasattr(fr, "FRGlobals")
+    assert not hasattr(fr_db, "FRGlobals")
+    assert not hasattr(fr_db, "fr_globals")
+    assert not hasattr(fr_db, "use_fr_globals")
     assert "get_restly_context" not in fr_db.__all__
     assert "use_restly_context" not in fr_db.__all__
     assert not hasattr(fr, "get_restly_context")
@@ -83,7 +90,7 @@ def test_restly_context_nested_entries_restore_in_lifo_order():
 
 
 def test_getters_and_sync_proxy_raise_without_configuration():
-    with use_fr_globals(FRGlobals()):
+    with RestlyContext():
         with pytest.raises(RuntimeError, match="Call fr.configure\\(\\)"):
             get_engine()
 
@@ -94,7 +101,7 @@ def test_getters_and_sync_proxy_raise_without_configuration():
 
 @pytest.mark.asyncio
 async def test_async_getter_and_proxy_raise_without_configuration():
-    with use_fr_globals(FRGlobals()):
+    with RestlyContext():
         with pytest.raises(RuntimeError, match="Call fr.configure\\(\\)"):
             get_async_engine()
 
@@ -104,7 +111,7 @@ async def test_async_getter_and_proxy_raise_without_configuration():
 
 
 def test_setup_database_connection_creates_sessionmaker_and_proxy_open_session():
-    with use_fr_globals(FRGlobals()):
+    with RestlyContext():
         make_session = _setup_database_connection(
             "sqlite://",
             engine=create_engine(
@@ -126,7 +133,7 @@ def test_setup_database_connection_creates_sessionmaker_and_proxy_open_session()
 async def test_setup_async_database_connection_creates_sessionmaker_and_proxy_open_session():
     async_engine = create_async_engine("sqlite+aiosqlite:///:memory:")
     try:
-        with use_fr_globals(FRGlobals()):
+        with RestlyContext():
             make_session = _setup_async_database_connection(
                 "sqlite+aiosqlite:///:memory:", async_engine=async_engine
             )
@@ -150,7 +157,7 @@ def test_configure_accepts_explicit_sessionmakers():
     async_make_session = async_sessionmaker(bind=async_engine, expire_on_commit=False)
 
     try:
-        with use_fr_globals(FRGlobals()):
+        with RestlyContext():
             configure(
                 make_session=sync_make_session, async_make_session=async_make_session
             )
@@ -239,7 +246,7 @@ def test_generate_session_commits_and_rolls_back_on_failure():
         def __call__(self):
             return DummySyncContext(self.session)
 
-    with use_fr_globals(FRGlobals()):
+    with RestlyContext():
         successful = DummySyncSession()
         configure(make_session=DummySyncMaker(successful))  # type: ignore[arg-type]
         yielded = list(generate_session())
@@ -247,7 +254,7 @@ def test_generate_session_commits_and_rolls_back_on_failure():
         assert successful.committed == 1
         assert successful.rolled_back == 0
 
-    with use_fr_globals(FRGlobals()):
+    with RestlyContext():
         failing = DummySyncSession(fail_commit=True)
         configure(make_session=DummySyncMaker(failing))  # type: ignore[arg-type]
         with pytest.raises(RuntimeError, match="boom"):
@@ -290,7 +297,7 @@ async def test_async_generate_session_commits_and_rolls_back_on_failure():
         def __call__(self):
             return DummyAsyncContext(self.session)
 
-    with use_fr_globals(FRGlobals()):
+    with RestlyContext():
         successful = DummyAsyncSession()
         configure(
             async_make_session=DummyAsyncMaker(successful)  # type: ignore[arg-type]
@@ -304,7 +311,7 @@ async def test_async_generate_session_commits_and_rolls_back_on_failure():
         assert successful.committed == 1
         assert successful.rolled_back == 0
 
-    with use_fr_globals(FRGlobals()):
+    with RestlyContext():
         failing = DummyAsyncSession(fail_commit=True)
         configure(async_make_session=DummyAsyncMaker(failing))  # type: ignore[arg-type]
 

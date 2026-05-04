@@ -238,13 +238,13 @@ previous context.
 
 Internally this is implemented with a `ContextVar`. The private
 `_get_restly_context()` helper returns the context-local instance when one is
-active, otherwise the default context. The module-level `fr_globals` object is a
-compatibility proxy: its attribute reads and writes delegate to the active
-context, so existing code inside the framework can continue to access
-`fr_globals.make_session` while remaining context-aware.
+active, otherwise the default context. The private module-level `_fr_globals`
+proxy delegates attribute reads and writes to that active context, so framework
+internals can remain context-aware without passing the context through every
+call.
 
-`FRGlobals`, `get_fr_globals()`, and `use_fr_globals()` are compatibility names
-for the older globals API. New code should prefer `RestlyContext` directly:
+`get_fr_globals()` returns the active context for compatibility. New code should
+prefer `RestlyContext` directly:
 
 ```python
 with fr.RestlyContext():

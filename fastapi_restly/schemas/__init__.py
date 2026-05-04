@@ -6,8 +6,6 @@ from ._base import (
     ReadOnly,
     TimestampsSchemaMixin,
     WriteOnly,
-    async_resolve_ids_to_sqlalchemy_objects,
-    resolve_ids_to_sqlalchemy_objects,
 )
 from ._generator import create_schema_from_model
 
@@ -29,7 +27,5 @@ __all__ = [
     "ReadOnly",
     "TimestampsSchemaMixin",
     "WriteOnly",
-    "async_resolve_ids_to_sqlalchemy_objects",
     "create_schema_from_model",
-    "resolve_ids_to_sqlalchemy_objects",
 ]

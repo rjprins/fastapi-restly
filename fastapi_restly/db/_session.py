@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session as SA_Session
 from sqlalchemy.orm import sessionmaker
 
 from .._exceptions import register_default_exception_handlers
-from ._globals import fr_globals
+from ._globals import _fr_globals
 
 try:
     import orjson
@@ -44,8 +44,8 @@ def _setup_async_database_connection(
             bind=async_engine, autoflush=False, expire_on_commit=False
         )
 
-    fr_globals.async_database_url = async_database_url
-    fr_globals.async_make_session = async_make_session
+    _fr_globals.async_database_url = async_database_url
+    _fr_globals.async_make_session = async_make_session
     return async_make_session
 
 
@@ -64,8 +64,8 @@ def _setup_database_connection(
             )
         make_session = sessionmaker(bind=engine, expire_on_commit=False)
 
-    fr_globals.database_url = database_url
-    fr_globals.make_session = make_session
+    _fr_globals.database_url = database_url
+    _fr_globals.make_session = make_session
     return make_session
 
 
@@ -114,9 +114,9 @@ def configure(
             database_url=database_url, engine=engine, make_session=make_session
         )
     if session_generator is not None:
-        fr_globals.session_generator = session_generator
+        _fr_globals.session_generator = session_generator
     if sync_session_generator is not None:
-        fr_globals.sync_session_generator = sync_session_generator
+        _fr_globals.sync_session_generator = sync_session_generator
     if app is not None and install_default_exception_handlers:
         register_default_exception_handlers(app)
 
@@ -172,16 +172,16 @@ def deactivate_savepoint_only_mode(
 
 def get_async_engine() -> AsyncEngine:
     """Return the async engine registered via configure()."""
-    if fr_globals.async_make_session is None:
+    if _fr_globals.async_make_session is None:
         raise RuntimeError("Call fr.configure() before using get_async_engine().")
-    return fr_globals.async_make_session.kw["bind"]
+    return _fr_globals.async_make_session.kw["bind"]
 
 
 def get_engine() -> Engine:
     """Return the sync engine registered via configure()."""
-    if fr_globals.make_session is None:
+    if _fr_globals.make_session is None:
         raise RuntimeError("Call fr.configure() before using get_engine().")
-    return fr_globals.make_session.kw["bind"]
+    return _fr_globals.make_session.kw["bind"]
 
 
 def _get_sync_engine(make_session: async_sessionmaker | sessionmaker) -> Engine:
@@ -193,14 +193,14 @@ def _get_sync_engine(make_session: async_sessionmaker | sessionmaker) -> Engine:
 
 async def async_generate_session() -> AsyncIterator[SA_AsyncSession]:
     """FastAPI dependency for async database session."""
-    if fr_globals.session_generator is not None:
-        async for session in fr_globals.session_generator():
+    if _fr_globals.session_generator is not None:
+        async for session in _fr_globals.session_generator():
             yield session
         return
 
     # FastAPI does not support contextmanagers as dependency directly,
     # but it does support generators.
-    async with fr_globals.async_make_session() as session:
+    async with _fr_globals.async_make_session() as session:
         yield session
         if session.is_active:
             try:
@@ -215,11 +215,11 @@ AsyncSessionDep = Annotated[SA_AsyncSession, Depends(async_generate_session)]
 
 def generate_session() -> Iterator[SA_Session]:
     """FastAPI dependency for sync database session."""
-    if fr_globals.sync_session_generator is not None:
-        yield from fr_globals.sync_session_generator()
+    if _fr_globals.sync_session_generator is not None:
+        yield from _fr_globals.sync_session_generator()
         return
 
-    with fr_globals.make_session() as session:
+    with _fr_globals.make_session() as session:
         yield session
         if session.is_active:
             try:

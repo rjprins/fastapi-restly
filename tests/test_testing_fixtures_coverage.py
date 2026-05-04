@@ -14,7 +14,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 import fastapi_restly.pytest_fixtures as exported_fixtures
-from fastapi_restly.db._globals import FRGlobals, use_fr_globals
+from fastapi_restly.db._globals import RestlyContext
 from fastapi_restly.testing import _fixtures
 from fastapi_restly.testing._client import RestlyTestClient
 
@@ -51,7 +51,7 @@ def test_autouse_alembic_upgrade_handles_missing_and_failing_migrations(tmp_path
 
 
 def test_autouse_savepoint_only_mode_sessions_activates_only_configured_sessions():
-    with use_fr_globals(FRGlobals()):
+    with RestlyContext():
         with patch(
             "fastapi_restly.testing._fixtures.activate_savepoint_only_mode"
         ) as activate:
@@ -66,11 +66,11 @@ def test_autouse_savepoint_only_mode_sessions_activates_only_configured_sessions
     async_make_session = async_sessionmaker(bind=async_engine, expire_on_commit=False)
 
     try:
-        with use_fr_globals(FRGlobals()):
-            from fastapi_restly.db import fr_globals
+        with RestlyContext():
+            from fastapi_restly.db._globals import _fr_globals
 
-            fr_globals.make_session = sync_make_session
-            fr_globals.async_make_session = async_make_session
+            _fr_globals.make_session = sync_make_session
+            _fr_globals.async_make_session = async_make_session
 
             with patch(
                 "fastapi_restly.testing._fixtures.activate_savepoint_only_mode"
@@ -85,7 +85,7 @@ def test_autouse_savepoint_only_mode_sessions_activates_only_configured_sessions
 
 
 def test_shared_connection_yields_none_or_real_connection():
-    with use_fr_globals(FRGlobals()):
+    with RestlyContext():
         gen = _fixtures._shared_connection.__wrapped__()
         assert next(gen) is None
         with pytest.raises(StopIteration):
@@ -97,10 +97,10 @@ def test_shared_connection_yields_none_or_real_connection():
     make_session = sessionmaker(bind=engine, expire_on_commit=False)
 
     try:
-        with use_fr_globals(FRGlobals()):
-            from fastapi_restly.db import fr_globals
+        with RestlyContext():
+            from fastapi_restly.db._globals import _fr_globals
 
-            fr_globals.make_session = make_session
+            _fr_globals.make_session = make_session
 
             gen = _fixtures._shared_connection.__wrapped__()
             conn = next(gen)
@@ -117,14 +117,14 @@ def test_sync_fixture_wrapper_patches_and_restores_sessionmaker():
     make_session = sessionmaker(bind=engine, expire_on_commit=False)
 
     try:
-        with use_fr_globals(FRGlobals()):
-            from fastapi_restly.db import fr_globals
+        with RestlyContext():
+            from fastapi_restly.db._globals import _fr_globals
 
-            fr_globals.make_session = make_session
+            _fr_globals.make_session = make_session
             gen = _fixtures.session.__wrapped__(None)
             session = next(gen)
 
-            mocked_make_session = fr_globals.make_session
+            mocked_make_session = _fr_globals.make_session
             assert mocked_make_session is not make_session
             assert mocked_make_session() is session
             assert mocked_make_session.begin.return_value.__enter__() is session
@@ -132,7 +132,7 @@ def test_sync_fixture_wrapper_patches_and_restores_sessionmaker():
             with pytest.raises(StopIteration):
                 next(gen)
 
-            assert fr_globals.make_session is make_session
+            assert _fr_globals.make_session is make_session
     finally:
         engine.dispose()
 
@@ -143,20 +143,20 @@ async def test_async_fixture_wrapper_patches_and_restores_sessionmaker():
     make_session = async_sessionmaker(bind=async_engine, expire_on_commit=False)
 
     try:
-        with use_fr_globals(FRGlobals()):
-            from fastapi_restly.db import fr_globals
+        with RestlyContext():
+            from fastapi_restly.db._globals import _fr_globals
 
-            fr_globals.async_make_session = make_session
+            _fr_globals.async_make_session = make_session
             agen = _fixtures.async_session.__wrapped__(None)
             session = await agen.__anext__()
 
-            mocked_make_session = fr_globals.async_make_session
+            mocked_make_session = _fr_globals.async_make_session
             assert mocked_make_session is not make_session
             assert await mocked_make_session() is session
             assert await mocked_make_session.begin.return_value.__aenter__() is session
 
             await agen.aclose()
-            assert fr_globals.async_make_session is make_session
+            assert _fr_globals.async_make_session is make_session
     finally:
         await async_engine.dispose()
 

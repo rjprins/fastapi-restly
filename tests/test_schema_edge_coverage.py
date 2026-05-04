@@ -15,7 +15,8 @@ from sqlalchemy.types import Boolean, Date, DateTime, Float, Integer, String, Te
 import fastapi_restly as fr
 from fastapi_restly.schemas import BaseSchema
 from fastapi_restly.schemas._base import (
-    async_resolve_ids_to_sqlalchemy_objects,
+    _async_resolve_ids_to_sqlalchemy_objects,
+    _resolve_ids_to_sqlalchemy_objects,
     create_model_with_optional_fields,
     create_model_without_read_only_fields,
     get_writable_inputs,
@@ -23,7 +24,6 @@ from fastapi_restly.schemas._base import (
     is_readonly_field,
     is_writeonly_field,
     rebase_with_model_config,
-    resolve_ids_to_sqlalchemy_objects,
     set_schema_title,
 )
 from fastapi_restly.schemas._generator import (
@@ -186,21 +186,21 @@ def test_resolve_ids_to_sqlalchemy_objects_handles_missing_single_and_list_entri
         session.commit()
 
         single_payload = SingleRefSchema(author_id={"id": author.id})
-        resolve_ids_to_sqlalchemy_objects(session, single_payload)
+        _resolve_ids_to_sqlalchemy_objects(session, single_payload)
         assert isinstance(single_payload.author_id, Author)
         assert single_payload.author_id.id == author.id
 
         list_payload = ListRefSchema(authors=[{"id": author.id}])
-        resolve_ids_to_sqlalchemy_objects(session, list_payload)
+        _resolve_ids_to_sqlalchemy_objects(session, list_payload)
         assert isinstance(list_payload.authors[0], Author)
 
         with pytest.raises(HTTPException, match="Id not found for author_id"):
-            resolve_ids_to_sqlalchemy_objects(
+            _resolve_ids_to_sqlalchemy_objects(
                 session, SingleRefSchema(author_id={"id": author.id + 999})
             )
 
         with pytest.raises(HTTPException, match="Id not found for authors"):
-            resolve_ids_to_sqlalchemy_objects(
+            _resolve_ids_to_sqlalchemy_objects(
                 session,
                 ListRefSchema(authors=[{"id": author.id}, {"id": author.id + 999}]),
             )
@@ -229,18 +229,18 @@ async def test_async_resolve_ids_to_sqlalchemy_objects_handles_missing_entries()
             await session.commit()
 
             payload = TeamRefSchema(team_id={"id": team.id}, teams=[{"id": team.id}])
-            await async_resolve_ids_to_sqlalchemy_objects(session, payload)
+            await _async_resolve_ids_to_sqlalchemy_objects(session, payload)
             assert isinstance(payload.team_id, Team)
             assert isinstance(payload.teams[0], Team)
 
             with pytest.raises(HTTPException, match="Id not found for team_id"):
-                await async_resolve_ids_to_sqlalchemy_objects(
+                await _async_resolve_ids_to_sqlalchemy_objects(
                     session,
                     TeamRefSchema(team_id={"id": team.id + 1}, teams=[{"id": team.id}]),
                 )
 
             with pytest.raises(HTTPException, match="Id not found for teams"):
-                await async_resolve_ids_to_sqlalchemy_objects(
+                await _async_resolve_ids_to_sqlalchemy_objects(
                     session,
                     TeamRefSchema(
                         team_id={"id": team.id},
@@ -271,11 +271,11 @@ async def test_async_resolve_ids_to_sqlalchemy_objects_handles_idref_missing_ent
             await session.commit()
 
             payload = TeamRefSchema(team_id=team.id)
-            await async_resolve_ids_to_sqlalchemy_objects(session, payload)
+            await _async_resolve_ids_to_sqlalchemy_objects(session, payload)
             assert isinstance(payload.team_id, IDRefResolverTeam)
 
             with pytest.raises(HTTPException, match="Id not found for team_id"):
-                await async_resolve_ids_to_sqlalchemy_objects(
+                await _async_resolve_ids_to_sqlalchemy_objects(
                     session, TeamRefSchema(team_id=team.id + 1)
                 )
     finally:

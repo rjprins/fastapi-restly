@@ -14,7 +14,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
-from fastapi_restly.db import fr_globals
+from fastapi_restly.db._globals import _fr_globals
 
 # ---------------------------------------------------------------------------
 # A pair of fixtures that each yield a TestClient with one view registered.
@@ -25,16 +25,16 @@ from fastapi_restly.db import fr_globals
 
 def _save_globals():
     return {
-        "database_url": fr_globals.database_url,
-        "make_session": fr_globals.make_session,
-        "sync_session_generator": fr_globals.sync_session_generator,
+        "database_url": _fr_globals.database_url,
+        "make_session": _fr_globals.make_session,
+        "sync_session_generator": _fr_globals.sync_session_generator,
     }
 
 
 def _restore_globals(saved):
-    fr_globals.database_url = saved["database_url"]
-    fr_globals.make_session = saved["make_session"]
-    fr_globals.sync_session_generator = saved["sync_session_generator"]
+    _fr_globals.database_url = saved["database_url"]
+    _fr_globals.make_session = saved["make_session"]
+    _fr_globals.sync_session_generator = saved["sync_session_generator"]
 
 
 @pytest.fixture

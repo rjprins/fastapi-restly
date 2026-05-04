@@ -153,8 +153,6 @@ For generated CRUD endpoints:
 | `fr.IDStampsBase` | Extends `IDBase` with `created_at` / `updated_at` timestamps (UTC-aware). |
 | `fr.TimestampsMixin` | Dataclass mixin adding `created_at` / `updated_at` to any `DataclassBase` subclass. |
 | `fr.IDMixin` | Dataclass mixin adding integer `id` to a custom `DataclassBase` subclass. |
-| `fr.get_one_or_create(model, session, **kwargs)` | Return the unique matching row or create it using a sync SQLAlchemy session. |
-| `fr.async_get_one_or_create(model, session, **kwargs)` | Async variant of `get_one_or_create`. |
 | `fastapi_restly.models.CASCADE_ALL_ASYNC` | Cascade string for use with `relationship(cascade=...)` in async SQLAlchemy models. Equivalent to `"save-update, merge, delete, expunge"`. SQLAlchemy's default `"all"` includes `"refresh-expire"` which is incompatible with async sessions. Import from `fastapi_restly.models` (not exposed at the top level). |
 | `fastapi_restly.models.CASCADE_ALL_DELETE_ORPHAN_ASYNC` | Like `CASCADE_ALL_ASYNC` but also includes `"delete-orphan"`. |
 
@@ -177,7 +175,6 @@ Restly to an existing model layer.
 | `fr.ReadOnly[T]` | Type annotation marker. Fields annotated `ReadOnly[T]` are excluded from create/update inputs. |
 | `fr.WriteOnly[T]` | Type annotation marker. Fields annotated `WriteOnly[T]` are excluded from responses. |
 | `fr.create_schema_from_model(model)` | Auto-generate a Pydantic schema from a SQLAlchemy model. Useful for scaffolding, prototypes, and internal tools; prefer explicit schemas for stable public API contracts. |
-| `fr.resolve_ids_to_sqlalchemy_objects(session, schema_obj)` | Walk a schema instance, load `IDRef` / `IDSchema` reference fields from the database, and replace them with ORM objects. Called automatically during create/update. |
 
 ### View Classes
 
@@ -269,7 +266,7 @@ in a custom endpoint) reach for the free functions instead.
 | `fr.get_engine()` | Return the configured sync `Engine` instance. |
 | `fr.activate_savepoint_only_mode(make_session)` | **Intended for tests.** Wraps the session factory in a savepoint so test data never commits to the database. Each test rolls back instantly without touching the real data. Requires the session maker as argument. |
 | `fr.deactivate_savepoint_only_mode(make_session)` | Restore normal session behavior after testing. |
-| `fr.FRGlobals`, `fr.use_fr_globals()`, `fr.get_fr_globals()` | Compatibility names for the older globals API. New code should prefer `RestlyContext` as a context manager. |
+| `fr.get_fr_globals()` | Return the active `RestlyContext`. Prefer `RestlyContext` as a context manager when isolating runtime state. |
 
 Most applications configure Restly once and never need an explicit context:
 

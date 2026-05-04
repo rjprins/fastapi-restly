@@ -1,10 +1,4 @@
-from ._globals import (
-    FRGlobals,
-    RestlyContext,
-    fr_globals,
-    get_fr_globals,
-    use_fr_globals,
-)
+from ._globals import RestlyContext, get_fr_globals
 from ._proxy import async_open_session, open_session
 from ._session import (
     AsyncSessionDep,
@@ -20,10 +14,8 @@ from ._session import (
 
 # Public API for ``fastapi_restly.db``.
 #
-# ``async_generate_session`` and ``generate_session`` remain importable for
-# advanced users (and existing tests) who plug a custom session generator
-# into ``fr_globals``, but they are not part of the supported public API
-# and may move into a private module in a future release.
+# Session generator internals live in private modules; use ``configure`` and
+# ``RestlyContext`` to configure or isolate runtime state.
 __all__ = [
     # Session context managers
     "async_open_session",
@@ -41,8 +33,5 @@ __all__ = [
     "deactivate_savepoint_only_mode",
     # Globals
     "RestlyContext",
-    "FRGlobals",
-    "fr_globals",
     "get_fr_globals",
-    "use_fr_globals",
 ]
