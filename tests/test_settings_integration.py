@@ -4,8 +4,9 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession as SAAsyncSession
 from sqlalchemy.orm import Session as SASession
 
-from fastapi_restly.db import async_generate_session, configure, generate_session
+from fastapi_restly.db import configure
 from fastapi_restly.db._globals import _fr_globals
+from fastapi_restly.db._session import _async_generate_session, _generate_session
 
 
 @pytest.fixture(autouse=True)
@@ -43,7 +44,7 @@ async def test_async_generate_session_uses_configured_session_generator():
     configure(session_generator=my_generator)
 
     sessions = []
-    async for session in async_generate_session():
+    async for session in _async_generate_session():
         sessions.append(session)
 
     assert yielded == ["called"]
@@ -62,7 +63,7 @@ def test_generate_session_uses_configured_sync_session_generator():
 
     configure(sync_session_generator=my_generator)
 
-    sessions = list(generate_session())
+    sessions = list(_generate_session())
 
     assert yielded == ["called"]
     assert len(sessions) == 1

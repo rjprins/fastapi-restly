@@ -191,7 +191,7 @@ def _get_sync_engine(make_session: async_sessionmaker | sessionmaker) -> Engine:
     return engine
 
 
-async def async_generate_session() -> AsyncIterator[SA_AsyncSession]:
+async def _async_generate_session() -> AsyncIterator[SA_AsyncSession]:
     """FastAPI dependency for async database session."""
     if _fr_globals.session_generator is not None:
         async for session in _fr_globals.session_generator():
@@ -210,10 +210,10 @@ async def async_generate_session() -> AsyncIterator[SA_AsyncSession]:
                 raise
 
 
-AsyncSessionDep = Annotated[SA_AsyncSession, Depends(async_generate_session)]
+AsyncSessionDep = Annotated[SA_AsyncSession, Depends(_async_generate_session)]
 
 
-def generate_session() -> Iterator[SA_Session]:
+def _generate_session() -> Iterator[SA_Session]:
     """FastAPI dependency for sync database session."""
     if _fr_globals.sync_session_generator is not None:
         yield from _fr_globals.sync_session_generator()
@@ -229,4 +229,4 @@ def generate_session() -> Iterator[SA_Session]:
                 raise
 
 
-SessionDep = Annotated[SA_Session, Depends(generate_session)]
+SessionDep = Annotated[SA_Session, Depends(_generate_session)]

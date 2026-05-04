@@ -4,10 +4,8 @@ from ._session import (
     AsyncSessionDep,
     SessionDep,
     activate_savepoint_only_mode,
-    async_generate_session,
     configure,
     deactivate_savepoint_only_mode,
-    generate_session,
     get_async_engine,
     get_engine,
 )

@@ -14,13 +14,13 @@ from fastapi_restly.db._globals import RestlyContext, _get_restly_context
 from fastapi_restly.db._proxy import async_open_session as proxy_async_open_session
 from fastapi_restly.db._proxy import open_session as proxy_open_session
 from fastapi_restly.db._session import (
+    _async_generate_session,
+    _generate_session,
     _setup_async_database_connection,
     _setup_database_connection,
     activate_savepoint_only_mode,
-    async_generate_session,
     configure,
     deactivate_savepoint_only_mode,
-    generate_session,
     get_async_engine,
     get_engine,
 )
@@ -43,10 +43,14 @@ def test_public_session_context_manager_exports_use_open_names():
     assert "FRGlobals" not in fr_db.__all__
     assert "fr_globals" not in fr_db.__all__
     assert "use_fr_globals" not in fr_db.__all__
+    assert "async_generate_session" not in fr_db.__all__
+    assert "generate_session" not in fr_db.__all__
     assert not hasattr(fr, "FRGlobals")
     assert not hasattr(fr_db, "FRGlobals")
     assert not hasattr(fr_db, "fr_globals")
     assert not hasattr(fr_db, "use_fr_globals")
+    assert not hasattr(fr_db, "async_generate_session")
+    assert not hasattr(fr_db, "generate_session")
     assert "get_restly_context" not in fr_db.__all__
     assert "use_restly_context" not in fr_db.__all__
     assert not hasattr(fr, "get_restly_context")
@@ -249,7 +253,7 @@ def test_generate_session_commits_and_rolls_back_on_failure():
     with RestlyContext():
         successful = DummySyncSession()
         configure(make_session=DummySyncMaker(successful))  # type: ignore[arg-type]
-        yielded = list(generate_session())
+        yielded = list(_generate_session())
         assert yielded == [successful]
         assert successful.committed == 1
         assert successful.rolled_back == 0
@@ -258,7 +262,7 @@ def test_generate_session_commits_and_rolls_back_on_failure():
         failing = DummySyncSession(fail_commit=True)
         configure(make_session=DummySyncMaker(failing))  # type: ignore[arg-type]
         with pytest.raises(RuntimeError, match="boom"):
-            list(generate_session())
+            list(_generate_session())
         assert failing.committed == 1
         assert failing.rolled_back == 1
 
@@ -304,7 +308,7 @@ async def test_async_generate_session_commits_and_rolls_back_on_failure():
         )
 
         yielded = []
-        async for session in async_generate_session():
+        async for session in _async_generate_session():
             yielded.append(session)
 
         assert yielded == [successful]
@@ -316,7 +320,7 @@ async def test_async_generate_session_commits_and_rolls_back_on_failure():
         configure(async_make_session=DummyAsyncMaker(failing))  # type: ignore[arg-type]
 
         with pytest.raises(RuntimeError, match="boom"):
-            async for _session in async_generate_session():
+            async for _session in _async_generate_session():
                 pass
 
         assert failing.committed == 1

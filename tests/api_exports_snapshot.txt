@@ -55,11 +55,9 @@ fastapi_restly.db:
   - RestlyContext
   - SessionDep
   - activate_savepoint_only_mode
-  - async_generate_session
   - async_open_session
   - configure
   - deactivate_savepoint_only_mode
-  - generate_session
   - get_async_engine
   - get_engine
   - get_fr_globals
@@ -126,8 +124,6 @@ fastapi_restly.views:
 
 submodule-only exports:
 fastapi_restly.db:
-  - async_generate_session
-  - generate_session
 fastapi_restly.models:
   - CASCADE_ALL_ASYNC
   - CASCADE_ALL_DELETE_ORPHAN_ASYNC
