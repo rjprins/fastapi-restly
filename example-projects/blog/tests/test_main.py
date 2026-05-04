@@ -21,8 +21,8 @@ def test_openapi_spec(tmp_path):
             for method in spec["paths"][path]:
                 routes.append(f"{method.upper()} {path}")
         assert routes == [
-            "GET /blogs/",
-            "POST /blogs/",
+            "GET /blogs",
+            "POST /blogs",
             "GET /blogs/{id}",
             "PATCH /blogs/{id}",
             "DELETE /blogs/{id}",

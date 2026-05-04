@@ -94,7 +94,7 @@ class ProductSchema(fr.IDSchema):
 
 
 class OrderSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
-    customer: fr.ReadOnly[CustomerSchema | None]
+    customer: fr.ReadOnly[CustomerSchema | None] = None
     customer_id: int
     products: list[fr.IDRef[Product]]
 
