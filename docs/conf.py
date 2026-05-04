@@ -18,7 +18,8 @@ version = ""
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-html_baseurl = "https://rjprins.github.io/fastapi-restly"
+html_baseurl = "https://rjprins.github.io/fastapi-restly/"
+sitemap_url_scheme = "{link}"
 extensions = [
     "myst_parser",
     "sphinx_sitemap",
