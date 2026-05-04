@@ -12,3 +12,10 @@ def test_base_rest_view_is_advanced_views_export_not_top_level():
 def test_view_registration_is_via_include_view_not_class_method():
     assert hasattr(fr_views, "include_view")
     assert not hasattr(fr_views.View, "add_to_router")
+
+
+def test_react_admin_mixin_is_not_public_api():
+    assert not hasattr(fr, "ReactAdminMixin")
+    assert "ReactAdminMixin" not in fr.__all__
+    assert not hasattr(fr_views, "ReactAdminMixin")
+    assert "ReactAdminMixin" not in fr_views.__all__

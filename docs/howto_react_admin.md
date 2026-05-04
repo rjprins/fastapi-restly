@@ -146,22 +146,18 @@ is more reliable and is the recommended setup for production.
 
 ## Customization
 
-### Override query-parameter parsing
+### Set the default page size
 
-Each parsing step is a separate method. Override one to change how a parameter
-is interpreted without rewriting the rest:
+When the frontend does not send a `range` query parameter, Restly returns the
+first 25 rows. Set `default_page_size` on the view to choose a different
+default:
 
 ```python
 @fr.include_view(app)
 class ProductView(fr.AsyncReactAdminView):
     prefix = "/products"
     model = Product
-
-    def _parse_react_admin_params(self):
-        sort, (start, end), filters = super()._parse_react_admin_params()
-        # Enforce a maximum page size of 50 regardless of what the frontend sends
-        end = min(end, start + 49)
-        return sort, (start, end), filters
+    default_page_size = 50
 ```
 
 ### Change the Content-Range unit
@@ -178,38 +174,17 @@ class ProductView(fr.AsyncReactAdminView):
         return "products"
 ```
 
-### Override the list response
-
-Override `_build_react_admin_list_response` to change the response format
-entirely — for instance to add extra metadata headers:
-
-```python
-import fastapi, json
-
-class ProductView(fr.AsyncReactAdminView):
-    prefix = "/products"
-    model = Product
-
-    def _build_react_admin_list_response(self, items, total, start, end):
-        response = super()._build_react_admin_list_response(items, total, start, end)
-        response.headers["X-Api-Version"] = "2"
-        return response
-```
-
 ### Share the react-admin contract across multiple views
 
-Put any customizations in a mixin and inherit from it alongside
-`AsyncReactAdminView`:
+Put shared customizations in a project base class and inherit your views from
+that class:
 
 ```python
 class ReactAdminBase(fr.AsyncReactAdminView):
+    default_page_size = 100
+
     def get_react_admin_range_unit(self) -> str:
         return "items"
-
-    def _parse_react_admin_params(self):
-        sort, (start, end), filters = super()._parse_react_admin_params()
-        end = min(end, start + 99)  # cap page size
-        return sort, (start, end), filters
 
 @fr.include_view(app)
 class ProductView(ReactAdminBase):
@@ -233,6 +208,5 @@ pattern. It replaces the `index` route to change the list contract and adds a
 generated routes (`GET /{id}`, `POST /`, `PATCH /{id}`, `DELETE /{id}`) and all
 `handle_*` handlers are inherited unchanged.
 
-The shared parsing and response logic lives in `ReactAdminMixin`, which is
-also what you would use directly if you need to build a fully custom
-react-admin-compatible view from scratch.
+The shared parsing and response logic is an internal implementation detail of
+the concrete React Admin view classes.

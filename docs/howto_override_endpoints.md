@@ -565,10 +565,10 @@ class OrderView(DeleteReturnsObjectMixin, fr.AsyncRestView):
 Both views now return the deleted record as JSON. All other generated routes
 behave normally on both.
 
-This mixin pattern is also how `fr.AsyncReactAdminView` and `fr.ReactAdminView`
-are implemented internally: `ReactAdminMixin` replaces `index` with one that
-speaks the `ra-data-simple-rest` wire contract, and the two concrete view
-classes are thin subclasses that add only the async/sync distinction.
+The public React Admin views use the same route-replacement pattern
+internally: `fr.AsyncReactAdminView` and `fr.ReactAdminView` replace `index`
+with one that speaks the `ra-data-simple-rest` wire contract, while preserving
+the standard CRUD handlers for the rest of the view.
 
 ---
 

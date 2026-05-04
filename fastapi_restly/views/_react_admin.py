@@ -23,7 +23,7 @@ from ._base import _annotate, get, put
 from ._sync import RestView
 
 #: Default page size used when the react-admin client does not send a `range`
-#: query parameter. Override per-view via :attr:`ReactAdminMixin.default_page_size`.
+#: query parameter. Override per-view via ``default_page_size``.
 DEFAULT_REACT_ADMIN_PAGE_SIZE = 25
 
 
@@ -207,15 +207,17 @@ def apply_react_admin_query(
 
 
 # ---------------------------------------------------------------------------
-# Shared mixin
+# Shared implementation mixin
 # ---------------------------------------------------------------------------
 
 
-class ReactAdminMixin:
+class _ReactAdminMixin:
     """
     Shared transport helpers for react-admin views.
 
-    Override these methods to customize the ra-data-simple-rest contract.
+    This is an implementation detail shared by ReactAdminView and
+    AsyncReactAdminView. User-facing customization should happen by
+    subclassing one of those concrete view classes.
 
     Set :attr:`default_page_size` on a subclass to change the implicit page
     size used when the client does not send a ``range`` query parameter.
@@ -311,7 +313,7 @@ class ReactAdminMixin:
 # ---------------------------------------------------------------------------
 
 
-class AsyncReactAdminView(ReactAdminMixin, AsyncRestView):
+class AsyncReactAdminView(_ReactAdminMixin, AsyncRestView):
     """
     AsyncRestView that speaks the ra-data-simple-rest wire contract.
 
@@ -338,7 +340,7 @@ class AsyncReactAdminView(ReactAdminMixin, AsyncRestView):
         return self.to_response_schema(obj)
 
 
-class ReactAdminView(ReactAdminMixin, RestView):
+class ReactAdminView(_ReactAdminMixin, RestView):
     """
     RestView that speaks the ra-data-simple-rest wire contract.
 
