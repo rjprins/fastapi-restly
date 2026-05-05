@@ -1,5 +1,4 @@
-from ._globals import RestlyContext, get_fr_globals
-from ._proxy import async_open_session, open_session
+from ._proxy import open_async_session, open_session
 from ._session import (
     AsyncSessionDep,
     SessionDep,
@@ -12,11 +11,11 @@ from ._session import (
 
 # Public API for ``fastapi_restly.db``.
 #
-# Session generator internals live in private modules; use ``configure`` and
-# ``RestlyContext`` to configure or isolate runtime state.
+# Session generator internals live in private modules; use ``configure`` to
+# configure the process-wide Restly runtime state.
 __all__ = [
     # Session context managers
-    "async_open_session",
+    "open_async_session",
     "open_session",
     # FastAPI dependencies
     "AsyncSessionDep",
@@ -29,7 +28,4 @@ __all__ = [
     # Savepoint mode
     "activate_savepoint_only_mode",
     "deactivate_savepoint_only_mode",
-    # Globals
-    "RestlyContext",
-    "get_fr_globals",
 ]

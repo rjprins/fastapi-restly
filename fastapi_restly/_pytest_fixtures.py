@@ -15,8 +15,8 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.ext.asyncio import AsyncSession as SA_AsyncSession
 from sqlalchemy.orm import Session as SA_Session
 
-from .db import activate_savepoint_only_mode, get_fr_globals
-from .db._globals import _fr_globals
+from .db import activate_savepoint_only_mode
+from .db._globals import _fr_globals, _get_restly_context
 
 if TYPE_CHECKING:
     from .testing._client import RestlyTestClient
@@ -157,7 +157,7 @@ else:
                     await sess.flush()
                     await sess.begin_nested()
 
-                globals_obj = get_fr_globals()
+                globals_obj = _get_restly_context()
                 original_async_make_session = globals_obj.async_make_session
                 globals_obj.async_make_session = mock_sessionmaker
                 try:
@@ -213,7 +213,7 @@ def restly_session(_shared_connection) -> Iterator[SA_Session]:
             sess.flush()
             sess.begin_nested()
 
-        globals_obj = get_fr_globals()
+        globals_obj = _get_restly_context()
         original_make_session = globals_obj.make_session
         globals_obj.make_session = mock_sessionmaker
         try:

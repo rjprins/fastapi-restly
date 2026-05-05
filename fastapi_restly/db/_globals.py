@@ -9,13 +9,7 @@ from sqlalchemy.orm import sessionmaker
 
 
 class RestlyContext:
-    """Container for Restly runtime state.
-
-    Most applications use the default process-wide context by calling
-    ``fr.configure(...)`` directly. Create a ``RestlyContext`` when you need
-    isolated Restly state in the same process, for example for tests or
-    multiple FastAPI apps.
-    """
+    """Private container for Restly runtime state used by tests and internals."""
 
     __slots__ = (
         "async_database_url",
@@ -66,10 +60,6 @@ _restly_context_token_stack: ContextVar[tuple[Token[RestlyContext | None], ...]]
 
 def _get_restly_context() -> RestlyContext:
     return _restly_context_ctx.get() or _default_context
-
-
-def get_fr_globals() -> RestlyContext:
-    return _get_restly_context()
 
 
 class _FRGlobalsProxy:

@@ -1,13 +1,11 @@
 # Database layer
 from .db import (
     AsyncSessionDep,
-    RestlyContext,
     SessionDep,
-    async_open_session,
     configure,
     get_async_engine,
     get_engine,
-    get_fr_globals,
+    open_async_session,
     open_session,
 )
 
@@ -56,7 +54,7 @@ from .views import (
 # that subsystem, such as ``from fastapi_restly.views import BaseRestView``.
 __all__ = [
     # Database — session context managers
-    "async_open_session",
+    "open_async_session",
     "open_session",
     # Database — FastAPI dependencies
     "AsyncSessionDep",
@@ -66,8 +64,6 @@ __all__ = [
     "get_engine",
     # Database — setup & utilities
     "configure",
-    "RestlyContext",
-    "get_fr_globals",
     # Models
     "DataclassBase",
     "IDBase",

@@ -46,7 +46,7 @@ own code (for example in background tasks):
 ```python
 import fastapi_restly as fr
 
-async with fr.async_open_session() as session:
+async with fr.open_async_session() as session:
     result = await session.execute(...)
 ```
 

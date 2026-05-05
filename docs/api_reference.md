@@ -256,42 +256,23 @@ in a custom endpoint) reach for the free functions instead.
 |---|---|
 | `fr.AsyncSessionDep` | FastAPI `Depends`-compatible async session dependency. |
 | `fr.SessionDep` | FastAPI `Depends`-compatible sync session dependency. |
-| `fr.async_open_session()` | Open an async SQLAlchemy session context manager for use outside request handling, for example in background jobs or scripts. |
+| `fr.open_async_session()` | Open an async SQLAlchemy session context manager for use outside request handling, for example in background jobs or scripts. |
 | `fr.open_session()` | Open a sync SQLAlchemy session context manager for use outside request handling, for example in background jobs or scripts. |
 | `fr.configure(async_database_url=..., ...)` | Configure the framework. Accepts async/sync URLs, engines, session makers, or custom session generators. |
-| `fr.RestlyContext()` | Context manager and reusable handle for isolating Restly runtime state, such as configured session factories and database URLs. Most apps do not need this; call `fr.configure(...)` directly unless you run multiple Restly configurations in one process. |
 | `fr.get_async_engine()` | Return the configured `AsyncEngine` instance. |
 | `fr.get_engine()` | Return the configured sync `Engine` instance. |
-| `fr.get_fr_globals()` | Return the active `RestlyContext`. Prefer `RestlyContext` as a context manager when isolating runtime state. |
 
-Most applications configure Restly once and never need an explicit context:
+Restly has one public process-wide configuration. Configure it once during
+application startup:
 
 ```python
 fr.configure(async_database_url="sqlite+aiosqlite:///app.db")
 ```
 
-Use `RestlyContext` when one Python process needs isolated Restly runtime state:
-
-```python
-app_context = fr.RestlyContext()
-
-with app_context:
-    fr.configure(async_database_url="postgresql+asyncpg://host/app")
-    fr.include_view(app, UserView)
-
-# Later, reuse the same Restly configuration.
-with app_context:
-    async with fr.async_open_session() as session:
-        ...
-```
-
-For temporary isolation, an anonymous context is enough:
-
-```python
-with fr.RestlyContext():
-    fr.configure(async_database_url="sqlite+aiosqlite:///:memory:")
-    ...
-```
+Applications that need more than one database can still use FastAPI and
+SQLAlchemy directly: provide a custom dependency on a view, or pass a custom
+session generator to `fr.configure(...)`. Restly does not currently provide a
+public multi-context or multi-engine API.
 
 ### Testing
 

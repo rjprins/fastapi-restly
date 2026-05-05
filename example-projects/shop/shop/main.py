@@ -20,7 +20,9 @@ from starlette.middleware.cors import CORSMiddleware
 
 import fastapi_restly as fr
 
-fr.configure(async_database_url="sqlite+aiosqlite:///shop.db")
+ASYNC_DATABASE_URL = "sqlite+aiosqlite:///shop.db"
+
+fr.configure(async_database_url=ASYNC_DATABASE_URL)
 
 
 @asynccontextmanager

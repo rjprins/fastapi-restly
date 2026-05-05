@@ -41,9 +41,9 @@ async def _async_session():
     Uses the (test-patched) sessionmaker so changes a route just made are
     visible to the savepoint we open here.
     """
-    from fastapi_restly.db._globals import get_fr_globals
+    from fastapi_restly.db._globals import _get_restly_context
 
-    factory = get_fr_globals().async_make_session
+    factory = _get_restly_context().async_make_session
     assert factory is not None, "fr.configure() must run first"
     async with factory() as session:
         yield session

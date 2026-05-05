@@ -11,7 +11,6 @@ fastapi_restly:
   - ReactAdminView
   - ReadOnly
   - RestView
-  - RestlyContext
   - SessionDep
   - TimestampsMixin
   - TimestampsSchemaMixin
@@ -19,7 +18,6 @@ fastapi_restly:
   - WriteOnly
   - apply_list_params
   - async_make_new_object
-  - async_open_session
   - async_save_object
   - async_update_object
   - configure
@@ -29,10 +27,10 @@ fastapi_restly:
   - get
   - get_async_engine
   - get_engine
-  - get_fr_globals
   - include_view
   - make_new_object
   - models
+  - open_async_session
   - open_session
   - patch
   - post
@@ -47,15 +45,13 @@ fastapi_restly:
   - views
 fastapi_restly.db:
   - AsyncSessionDep
-  - RestlyContext
   - SessionDep
   - activate_savepoint_only_mode
-  - async_open_session
   - configure
   - deactivate_savepoint_only_mode
   - get_async_engine
   - get_engine
-  - get_fr_globals
+  - open_async_session
   - open_session
 fastapi_restly.models:
   - CASCADE_ALL_ASYNC

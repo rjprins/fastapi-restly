@@ -12,7 +12,7 @@ import fastapi_restly as fr
 import fastapi_restly.db as fr_db
 import fastapi_restly.testing as fr_testing
 from fastapi_restly.db._globals import RestlyContext, _get_restly_context
-from fastapi_restly.db._proxy import async_open_session as proxy_async_open_session
+from fastapi_restly.db._proxy import open_async_session as proxy_open_async_session
 from fastapi_restly.db._proxy import open_session as proxy_open_session
 from fastapi_restly.db._session import (
     _async_generate_session,
@@ -29,25 +29,34 @@ from fastapi_restly.db._session import (
 
 def test_public_session_context_manager_exports_use_open_names():
     assert fr.open_session is fr_db.open_session
-    assert fr.async_open_session is fr_db.async_open_session
-    assert fr.RestlyContext is fr_db.RestlyContext
+    assert fr.open_async_session is fr_db.open_async_session
     assert "open_session" in fr.__all__
-    assert "async_open_session" in fr.__all__
-    assert "RestlyContext" in fr.__all__
+    assert "open_async_session" in fr.__all__
+    assert "async_open_session" not in fr.__all__
+    assert "RestlyContext" not in fr.__all__
+    assert "get_fr_globals" not in fr.__all__
     assert "FRGlobals" not in fr.__all__
     assert "use_fr_globals" not in fr.__all__
     assert "get_restly_context" not in fr.__all__
     assert "use_restly_context" not in fr.__all__
     assert "open_session" in fr_db.__all__
-    assert "async_open_session" in fr_db.__all__
-    assert "RestlyContext" in fr_db.__all__
+    assert "open_async_session" in fr_db.__all__
+    assert "async_open_session" not in fr_db.__all__
+    assert "RestlyContext" not in fr_db.__all__
+    assert "get_fr_globals" not in fr_db.__all__
     assert "FRGlobals" not in fr_db.__all__
     assert "fr_globals" not in fr_db.__all__
     assert "use_fr_globals" not in fr_db.__all__
     assert "async_generate_session" not in fr_db.__all__
     assert "generate_session" not in fr_db.__all__
     assert not hasattr(fr, "FRGlobals")
+    assert not hasattr(fr, "RestlyContext")
+    assert not hasattr(fr, "get_fr_globals")
+    assert not hasattr(fr, "async_open_session")
     assert not hasattr(fr_db, "FRGlobals")
+    assert not hasattr(fr_db, "RestlyContext")
+    assert not hasattr(fr_db, "get_fr_globals")
+    assert not hasattr(fr_db, "async_open_session")
     assert not hasattr(fr_db, "fr_globals")
     assert not hasattr(fr_db, "use_fr_globals")
     assert not hasattr(fr_db, "async_generate_session")
@@ -70,14 +79,13 @@ def test_public_session_context_manager_exports_use_open_names():
     assert "deactivate_savepoint_only_mode" in fr_testing.__all__
 
 
-def test_restly_context_is_public_context_manager():
+def test_private_restly_context_is_context_manager():
     original_context = _get_restly_context()
-    context = fr.RestlyContext()
+    context = RestlyContext()
 
     with context as active_context:
         assert active_context is context
         assert _get_restly_context() is context
-        assert fr.get_fr_globals() is context
 
     assert _get_restly_context() is original_context
 
@@ -85,15 +93,15 @@ def test_restly_context_is_public_context_manager():
 def test_restly_context_can_be_used_anonymously():
     original_context = _get_restly_context()
 
-    with fr.RestlyContext() as context:
+    with RestlyContext() as context:
         assert _get_restly_context() is context
 
     assert _get_restly_context() is original_context
 
 
 def test_restly_context_nested_entries_restore_in_lifo_order():
-    outer = fr.RestlyContext()
-    inner = fr.RestlyContext()
+    outer = RestlyContext()
+    inner = RestlyContext()
 
     with outer:
         assert _get_restly_context() is outer
@@ -119,7 +127,7 @@ async def test_async_getter_and_proxy_raise_without_configuration():
             get_async_engine()
 
         with pytest.raises(RuntimeError, match="Call fr.configure\\(\\)"):
-            async with proxy_async_open_session():
+            async with proxy_open_async_session():
                 pass
 
 
@@ -153,7 +161,7 @@ async def test_setup_async_database_connection_creates_sessionmaker_and_proxy_op
 
             assert get_async_engine() is async_engine
 
-            async with proxy_async_open_session() as session:
+            async with proxy_open_async_session() as session:
                 assert isinstance(session, AsyncSession)
 
             assert make_session.kw["bind"] is async_engine

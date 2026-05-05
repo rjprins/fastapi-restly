@@ -5,7 +5,9 @@ from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
 
-fr.configure(database_url="sqlite:///blog.db")
+DATABASE_URL = "sqlite:///blog.db"
+
+fr.configure(database_url=DATABASE_URL)
 
 
 def create_tables() -> None:

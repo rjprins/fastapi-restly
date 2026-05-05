@@ -8,16 +8,16 @@ from ._globals import _fr_globals
 
 
 @asynccontextmanager
-async def async_open_session() -> AsyncIterator[SA_AsyncSession]:
+async def open_async_session() -> AsyncIterator[SA_AsyncSession]:
     """Open an async database session for use outside of request context.
 
     Example::
 
-        async with fr.async_open_session() as session:
+        async with fr.open_async_session() as session:
             result = await session.execute(select(User))
     """
     if _fr_globals.async_make_session is None:
-        raise RuntimeError("Call fr.configure() before using async_open_session().")
+        raise RuntimeError("Call fr.configure() before using open_async_session().")
     async with _fr_globals.async_make_session() as sess:
         yield sess
 

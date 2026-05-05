@@ -227,49 +227,20 @@ Custom dialects (e.g. react-admin's
 parallel view classes that bypass `apply_list_params` entirely and
 implement their own request/response contract.
 
-## Restly Runtime Context
+## Restly Runtime Configuration
 
-The database session factories (`async_make_session`, `make_session`), database
-URLs, and optional custom session generators live on a `RestlyContext` instance.
-Most applications use the default context implicitly:
+Restly exposes one public process-wide runtime configuration. Most applications
+configure it once during startup:
 
 ```python
 fr.configure(async_database_url="sqlite+aiosqlite:///app.db")
 ```
 
-That default keeps the common case simple, but Restly is not limited to a single
-irreversible module-level singleton. `RestlyContext` is also a context manager:
-
-```python
-app_context = fr.RestlyContext()
-
-with app_context:
-    fr.configure(async_database_url="postgresql+asyncpg://host/app")
-```
-
-While the `with` block is active, every Restly helper that reads or writes
-runtime state uses `app_context`. When the block exits, Restly restores the
-previous context.
-
-Internally this is implemented with a `ContextVar`. The private
-`_get_restly_context()` helper returns the context-local instance when one is
-active, otherwise the default context. The private module-level `_fr_globals`
-proxy delegates attribute reads and writes to that active context, so framework
-internals can remain context-aware without passing the context through every
-call.
-
-`get_fr_globals()` returns the active context for compatibility. New code should
-prefer `RestlyContext` directly:
-
-```python
-with fr.RestlyContext():
-    fr.configure(async_database_url="sqlite+aiosqlite:///:memory:")
-```
-
-This is how Restly stays singleton-by-default without being singleton-only.
-Tests, multiple FastAPI apps in one process, and embedded applications can each
-activate isolated runtime state without mutating the default context visible to
-other execution contexts.
+Internally, Restly keeps a private context object so its own tests and fixtures
+can isolate runtime state. That context is not a public multi-engine feature.
+If an application needs multiple databases, wire a custom FastAPI dependency or
+session generator for that view. Restly does not currently bind different views
+to different named contexts.
 
 ## Session Factory Defaults
 
