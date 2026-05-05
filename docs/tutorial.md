@@ -174,20 +174,23 @@ class PostView(fr.AsyncRestView):
 
 ## Read-only and write-only fields
 
-Say you want to add an author token that is stored on creation but never returned, and a
-`slug` field that is computed server-side and must not be writable:
+Say you want to add an author token that is stored on creation but stripped by
+`self.to_response_schema(obj)`, and a `slug` field that is computed server-side
+and must not be writable:
 
 ```python
 class PostRead(fr.IDSchema):
     title: str
     content: str
     published: bool
-    author_token: fr.WriteOnly[str]  # accepted on create/update, hidden in responses
+    author_token: fr.WriteOnly[str]  # accepted on input, stripped by to_response_schema()
     slug: fr.ReadOnly[str]           # returned in responses, ignored on create/update
 ```
 
 - `ReadOnly` fields appear in responses but are ignored on create and update.
-- `WriteOnly` fields are accepted on create and update but never returned in responses.
+- `WriteOnly` fields are accepted on create and update. They are removed only
+  when Restly serializes an object through `self.to_response_schema(obj)`, which
+  the generated CRUD and ReactAdmin routes use.
 
 `id` on `IDSchema` is already `ReadOnly`, which is why it appears in responses without
 being part of the create/update body.

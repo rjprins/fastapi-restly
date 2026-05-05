@@ -16,6 +16,17 @@ a view, Restly can auto-generate one from the SQLAlchemy model instead.
 `from_attributes=True`, which lets response schemas validate SQLAlchemy ORM
 objects directly.
 
+In code, it is intentionally this small:
+
+```python
+class BaseSchema(pydantic.BaseModel):
+    model_config = pydantic.ConfigDict(from_attributes=True)
+```
+
+Generated Restly routes still serialize ORM objects through
+`self.to_response_schema(obj)`. That is where Restly applies response-specific
+behavior such as `WriteOnly` filtering and relationship-id normalization.
+
 Use `BaseSchema` when you want to declare every field yourself, including `id`:
 
 ```python
@@ -73,7 +84,9 @@ class UserRead(fr.IDSchema):
 ```
 
 `fr.WriteOnly[T]` marks a field as request-only. It is accepted in create/update
-payloads but stripped from responses:
+payloads. Restly strips it only when an object is serialized through
+`self.to_response_schema(obj)`, which the generated CRUD and ReactAdmin routes
+use:
 
 ```python
 class UserRead(fr.IDSchema):
@@ -81,8 +94,11 @@ class UserRead(fr.IDSchema):
     password: fr.WriteOnly[str]
 ```
 
-Restly applies both markers when it generates `creation_schema`,
-`update_schema`, and response payloads.
+Restly applies `ReadOnly` when it generates `creation_schema` and
+`update_schema`, and when its object helpers construct or update ORM objects.
+`WriteOnly` is removed from responses by `to_response_schema()`. If you return
+a schema object directly to FastAPI or call Pydantic serialization yourself,
+`WriteOnly` is schema metadata only and is not removed automatically.
 
 ## Aliases
 

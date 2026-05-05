@@ -160,7 +160,7 @@ for the full operator surface, alias rules, and pagination guidance.
 class UserRead(fr.IDSchema):
     name: str
     email: str
-    password: fr.WriteOnly[str]        # never appears in responses
+    password: fr.WriteOnly[str]        # stripped by to_response_schema()
     created_at: fr.ReadOnly[datetime]  # cannot be set in requests
 ```
 
