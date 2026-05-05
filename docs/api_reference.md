@@ -127,10 +127,10 @@ To disable generated endpoints on a view, use:
 class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
-    exclude_routes = ["delete", "patch"]
+    exclude_routes = ["destroy", "update"]
 ```
 
-Valid route names for exclusion: `"index"`, `"get"`, `"post"`, `"patch"`, `"delete"`.
+Valid route names for exclusion: `"listing"`, `"retrieve"`, `"create"`, `"update"`, `"destroy"`.
 
 `exclude_routes` accepts any iterable of route-name strings, such as a list or tuple.
 
@@ -205,7 +205,7 @@ Restly to an existing model layer.
 | `id_type` | `ClassVar[type]` | Primary key type used in generated `GET /{id}`, `PATCH /{id}`, and `DELETE /{id}` routes. Defaults to `int`. |
 | `include_pagination_metadata` | `ClassVar[bool]` | Set `True` to return the paginated metadata envelope. Defaults to `False`. |
 | `exclude_routes` | `ClassVar[Iterable[str]]` | Route names to suppress. |
-| `extra_query_params` | `ClassVar[Iterable[str]]` | Query keys to allow on the index endpoint in addition to those derived from the response schema. Use for view-specific parameters consumed outside `apply_list_params` (e.g. an `?include_deleted=true` escape hatch). |
+| `extra_query_params` | `ClassVar[Iterable[str]]` | Query keys to allow on the listing endpoint in addition to those derived from the response schema. Use for view-specific parameters consumed outside `apply_list_params` (e.g. an `?include_deleted=true` escape hatch). |
 | `default_page_size` | `ClassVar[int \| None]` | Default `?page_size=` for list endpoints. `None` (the default) means "no implicit cap" — every matching row is returned. |
 | `max_page_size` | `ClassVar[int]` | Upper bound for `?page_size=` on list endpoints. Values above are rejected with 422. Defaults to `1000`. |
 
@@ -247,8 +247,8 @@ in a custom endpoint) reach for the free functions instead.
 | `self.update_object(obj, schema_obj, schema_cls=None)` | Wraps `fr.update_object` / `fr.async_update_object`. **Does not flush** — call `self.save_object(obj)` afterwards. |
 | `self.save_object(obj)` | Wraps `fr.save_object` / `fr.async_save_object` against `self.session`. Flush + refresh; this is where writes actually hit the database. |
 | `self.delete_object(obj)` | Delete `obj` via `self.session` and flush. |
-| `self.build_list_query()` | Return the base SQLAlchemy `Select` used by both `handle_list` and `count_index`. Defaults to `sqlalchemy.select(self.model)`. Override to add `WHERE` clauses that should apply to listing **and** its pagination total — tenant scoping, soft-delete filtering, permission-based row visibility. Call `super().build_list_query()` and chain `.where(...)` to compose with base-class or mixin filters. See [Composing views with mixins](howto_compose_views_with_mixins.md). |
-| `self.count_index(query_params)` | Return the total row count for the current list query (after filters, before pagination). Called by the default `index` only when `include_pagination_metadata = True`; available for use in replacement routes regardless. Consults `build_list_query()` so list and count stay in sync. |
+| `self.build_listing_query()` | Return the base SQLAlchemy `Select` used by both `handle_listing` and `count_listing`. Defaults to `sqlalchemy.select(self.model)`. Override to add `WHERE` clauses that should apply to listing **and** its pagination total — tenant scoping, soft-delete filtering, permission-based row visibility. Call `super().build_listing_query()` and chain `.where(...)` to compose with base-class or mixin filters. See [Composing views with mixins](howto_compose_views_with_mixins.md). |
+| `self.count_listing(query_params)` | Return the total row count for the current list query (after filters, before pagination). Called by the default `listing` only when `include_pagination_metadata = True`; available for use in replacement routes regardless. Consults `build_listing_query()` so list and count stay in sync. |
 
 ### Database
 

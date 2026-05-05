@@ -1,7 +1,7 @@
 """Read-only Country lookup view.
 
 Demonstrates the "read-only resource" use-case from the matrix: the
-generated POST / PATCH / DELETE routes are excluded so the API only
+generated create / update / delete routes are excluded so the API only
 serves GETs. Reads still go through the framework's filtering / paging /
 ordering pipeline.
 """
@@ -22,4 +22,4 @@ class CountryView(fr.AsyncRestView):
     prefix = "/countries"
     model = Country
     schema = CountrySchema
-    exclude_routes = ["post", "patch", "delete"]
+    exclude_routes = ["create", "update", "destroy"]

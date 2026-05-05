@@ -34,7 +34,7 @@ from ._base import TenantBase
 class UploadView(TenantBase):
     """Read endpoints for uploads + a custom multipart POST.
 
-    Generic POST is excluded because the wire format is multipart, not
+    Generic create is excluded because the wire format is multipart, not
     JSON. The CRUD scaffolding still covers GET / list / PATCH / DELETE,
     which are all JSON.
     """
@@ -42,7 +42,7 @@ class UploadView(TenantBase):
     prefix = "/uploads"
     model = Upload
     schema = UploadSchema
-    exclude_routes = ["post"]
+    exclude_routes = ["create"]
 
     @fr.post("/", response_model=UploadSchema, status_code=201)
     async def upload_csv(

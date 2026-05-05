@@ -23,7 +23,7 @@ class TicketBase(fr.AsyncRestView):
     model = Ticket
     schema = TicketRead
     include_pagination_metadata = True
-    exclude_routes = ["delete"]
+    exclude_routes = ["destroy"]
     dependencies: ClassVar[list[Any]] = [Depends(lambda: None)]
 
 

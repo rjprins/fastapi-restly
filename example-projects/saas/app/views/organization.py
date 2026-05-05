@@ -18,7 +18,7 @@ class OrganizationView(fr.AsyncRestView):
 
     Also demonstrates a custom POST route that returns ``201 Created`` with
     a ``Location`` header pointing at the new resource — the HTTP-correct
-    contract for create. The framework's generated POST returns the body
+    contract for create. The framework's generated create route returns the body
     only; replacing it lets us add the header. ``exclude_routes`` removes
     the auto-generated route so the custom one owns ``POST /``.
     """
@@ -28,7 +28,7 @@ class OrganizationView(fr.AsyncRestView):
     schema = OrganizationSchema
     creation_schema = OrganizationCreateSchema
     update_schema = OrganizationUpdateSchema
-    exclude_routes = ["post"]
+    exclude_routes = ["create"]
 
     @fr.post("/", response_model=OrganizationSchema, status_code=201)
     async def create_with_location(

@@ -161,7 +161,7 @@ Set `exclude_routes` on a base class to make every subclass read-only (or whatev
 
 ```python
 class ReadOnlyBase(fr.RestView):
-    exclude_routes = ("post", "patch", "delete")
+    exclude_routes = ("create", "update", "destroy")
 
 @fr.include_view(app)
 class ProductView(ReadOnlyBase):

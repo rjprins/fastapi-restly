@@ -138,7 +138,7 @@ def test_range_operators_not_emitted_for_bool(client):
 
     Booleans aren't orderable in SQL — emitting ``WHERE active >= true``
     raises ``sqlalchemy.exc.ArgumentError`` and bubbles up as HTTP 500.
-    The schema omits the parameter, and the generated index endpoint
+    The schema omits the parameter, and the generated listing endpoint
     rejects unknown keys with a 422 instead of silently ignoring them
     (which would widen the result set — bad for filters).
     """

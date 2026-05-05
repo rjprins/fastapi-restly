@@ -100,27 +100,27 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     session: AsyncSessionDep
 
     @get("/")
-    async def index(self, query_params: Any) -> Any:
+    async def listing(self, query_params: Any) -> Any:
         self._reject_unknown_query_params()
-        objs = await self.handle_list(query_params)
+        objs = await self.handle_listing(query_params)
         if not self.include_pagination_metadata:
             return [self.to_response_schema(obj) for obj in objs]
 
-        total = await self.count_index(query_params)
+        total = await self.count_listing(query_params)
         return self._build_pagination_payload(query_params, objs, total)
 
-    def build_list_query(self) -> sqlalchemy.Select[Any]:
+    def build_listing_query(self) -> sqlalchemy.Select[Any]:
         """
-        Return the base SQLAlchemy ``Select`` used by both ``handle_list`` and
-        ``count_index``. Override to add ``WHERE`` clauses that should apply
+        Return the base SQLAlchemy ``Select`` used by both ``handle_listing`` and
+        ``count_listing``. Override to add ``WHERE`` clauses that should apply
         to listing *and* its pagination total — e.g. tenant scoping, soft-delete
         filtering, permission-based row visibility. Call
-        ``super().build_list_query()`` and chain ``.where(...)`` to compose with
-        any base-class or mixin filters.
+        ``super().build_listing_query()`` and chain ``.where(...)`` to compose
+        with any base-class or mixin filters.
         """
         return sqlalchemy.select(self.model)
 
-    async def handle_list(
+    async def handle_listing(
         self, query_params: Any, query: sqlalchemy.Select[Any] | None = None
     ) -> Sequence[ModelT]:
         """
@@ -128,9 +128,9 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         Accepts a query argument that can be used for narrowing down the selection.
         Feel free to override this method, e.g.:
 
-            async def handle_list(self, query_params, query=None):
+            async def handle_listing(self, query_params, query=None):
                 query = make_my_query()
-                objs = await super().handle_list(query_params, query)
+                objs = await super().handle_listing(query_params, query)
                 return add_my_info(objs)
 
         ``query_params`` is the validated query-parameter Pydantic model
@@ -139,10 +139,10 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         :func:`fastapi_restly.query.create_list_params_schema`.
 
         For WHERE-clause-only filtering that should also apply to the
-        pagination total, override :meth:`build_list_query` instead.
+        pagination total, override :meth:`build_listing_query` instead.
         """
         if query is None:
-            query = self.build_list_query()
+            query = self.build_listing_query()
         loader_options = self.get_relationship_loader_options()
         if loader_options:
             query = query.options(*loader_options)
@@ -151,20 +151,20 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         scalar_result = await self.session.scalars(query)
         return scalar_result.all()
 
-    async def count_index(self, query_params: Any) -> int:
+    async def count_listing(self, query_params: Any) -> int:
         filtered_query = apply_list_params(
-            query_params, self.build_list_query(), self.model, self.schema
+            query_params, self.build_listing_query(), self.model, self.schema
         )
         filtered_query = filtered_query.order_by(None).limit(None).offset(None)
         count_query = select(func.count()).select_from(filtered_query.subquery())
         return int(await self.session.scalar(count_query) or 0)
 
     @get("/{id}")
-    async def get(self, id: Any) -> Any:
-        obj = await self.handle_get(id)
+    async def retrieve(self, id: Any) -> Any:
+        obj = await self.handle_retrieve(id)
         return self.to_response_schema(obj)
 
-    async def handle_get(self, id: IdT) -> ModelT:
+    async def handle_retrieve(self, id: IdT) -> ModelT:
         """
         Handle a GET request on "/{id}". This should return a single object.
         Return a 404 if not found.
@@ -178,7 +178,7 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         return obj
 
     @post("/")
-    async def post(self, schema_obj: Any) -> Any:
+    async def create(self, schema_obj: Any) -> Any:
         obj = await self.handle_create(schema_obj)
         return self.to_response_schema(obj)
 
@@ -191,7 +191,7 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         return await self.save_object(obj)
 
     @patch("/{id}")
-    async def patch(self, id: Any, schema_obj: Any) -> Any:
+    async def update(self, id: Any, schema_obj: Any) -> Any:
         obj = await self.handle_update(id, schema_obj)
         return self.to_response_schema(obj)
 
@@ -201,16 +201,16 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         object.
         Feel free to override this method.
         """
-        obj = await self.handle_get(id)
+        obj = await self.handle_retrieve(id)
         obj = await self.update_object(obj, schema_obj)
         return await self.save_object(obj)
 
     @delete("/{id}")
-    async def delete(self, id: Any) -> fastapi.Response:
-        return await self.handle_delete(id)
+    async def destroy(self, id: Any) -> fastapi.Response:
+        return await self.handle_destroy(id)
 
-    async def handle_delete(self, id: IdT) -> fastapi.Response:
-        obj = await self.handle_get(id)
+    async def handle_destroy(self, id: IdT) -> fastapi.Response:
+        obj = await self.handle_retrieve(id)
         await self.delete_object(obj)
         return fastapi.Response(status_code=204)
 
@@ -218,7 +218,7 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         """
         Delete ``obj`` and flush the session.
 
-        ``handle_delete`` calls ``handle_get`` first, so this method receives an
+        ``handle_destroy`` calls ``handle_retrieve`` first, so this method receives an
         existing object. Override it to change the deletion mechanics, for
         example to implement soft-delete.
         """

@@ -151,9 +151,9 @@ runtime behaviour:
 - `model` — the SQLAlchemy model class.
 - `id_type` — Python type for the `{id}` path parameter (default `int`).
 - `exclude_routes` — iterable of method names to suppress (e.g.
-  `exclude_routes = ["delete"]`). Routes listed here have their `_api_route_args`
+  `exclude_routes = ["destroy"]`). Routes listed here have their `_api_route_args`
   marker removed during `before_include_view()` so FastAPI never registers them.
-- `include_pagination_metadata` — if `True`, the `index` endpoint returns a
+- `include_pagination_metadata` — if `True`, the `listing` endpoint returns a
   paginated envelope with `items`, `total`, `page`, `page_size`, and `total_pages`.
 
 ### include_view()
@@ -179,15 +179,15 @@ class MyView(fr.AsyncRestView):
 ```
 
 Both forms call `before_include_view()` (which generates derived schemas,
-annotates endpoint signatures, and registers the `index_param_schema`), then
+annotates endpoint signatures, and registers the `listing_param_schema`), then
 attach an `APIRouter` to the parent app/router.
 
 ### Endpoint / Handler Separation
 
-Every CRUD endpoint delegates to a `handle_*` handler (`handle_list`,
-`handle_get`, `handle_create`, `handle_update`, `handle_delete`). Override
+Every CRUD endpoint delegates to a `handle_*` handler (`handle_listing`,
+`handle_retrieve`, `handle_create`, `handle_update`, `handle_destroy`). Override
 the `handle_*` handler to change business logic while keeping the endpoint
-wrapper intact, or override the endpoint method itself (e.g. `index`) to replace
+wrapper intact, or override the endpoint method itself (e.g. `listing`) to replace
 the full request/response flow.
 
 ### Nested Response Schemas vs Write Payloads
@@ -229,7 +229,7 @@ List endpoints accept URL query parameters of the form
 During `before_include_view()`, the framework freezes a single class-level
 attribute:
 
-- `cls.index_param_schema` — the query-parameter Pydantic schema generated
+- `cls.listing_param_schema` — the query-parameter Pydantic schema generated
   by `create_list_params_schema(cls.schema, default_page_size=...,
   max_page_size=...)`. The schema covers pagination, sorting, and one
   filter parameter per response-schema field with optional operator

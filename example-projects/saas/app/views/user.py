@@ -99,11 +99,11 @@ class UserView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantBase
 
         Action route rather than PATCH because the request contract is
         different (proof-of-possession via ``current_password``, no public
-        body fields). Calls ``handle_get`` for the fetch+404 (so any row-level
-        access checks layered into ``handle_get`` apply here too) and uses
+        body fields). Calls ``handle_retrieve`` for the fetch+404 (so any row-level
+        access checks layered into ``handle_retrieve`` apply here too) and uses
         ``save_object`` as a utility for the final flush+refresh.
         """
-        user = await self.handle_get(id)
+        user = await self.handle_retrieve(id)
         if not verify_password(request.current_password, user.password):
             raise HTTPException(403, "Current password is incorrect")
         if not request.new_password:
@@ -122,7 +122,7 @@ class UserView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantBase
 
         Example: GET /users/1/with-permissions
         """
-        user = await self.handle_get(id)
+        user = await self.handle_retrieve(id)
 
         # Select schema based on viewer's role
         if self._can_see_salary():
@@ -140,7 +140,7 @@ class UserView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantBase
         user_id = self._current_user_id()
         if not user_id:
             raise HTTPException(status_code=404, detail="Current user not found")
-        user = await self.handle_get(user_id)
+        user = await self.handle_retrieve(user_id)
         return self.to_response_schema(user)
 
     @fr.patch("/me", response_model=UserSchema)

@@ -63,8 +63,8 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
 
     Mixin-composed: soft delete + audit stamps. Tenant scope is *not*
     applied here — task scoping is by ``assignee_id`` (a row-level
-    permission, not a tenant filter), implemented in ``handle_get`` /
-    ``handle_list`` below. Demonstrates that views with non-tenant-aligned
+    permission, not a tenant filter), implemented in ``handle_retrieve`` /
+    ``handle_listing`` below. Demonstrates that views with non-tenant-aligned
     access models still benefit from the soft-delete + audit mixins,
     and that mixin composition is a la carte.
     """
@@ -83,15 +83,15 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
                 project.total_story_points -= obj.story_points
         await super().delete_object(obj)
 
-    def build_list_query(self):
+    def build_listing_query(self):
         """Filter tasks to those assigned to the current user.
 
         Admin requests bypass this filter — they see every task regardless
-        of assignee. Layered through ``build_list_query`` so the same
-        scope feeds both ``handle_list`` and ``count_index`` (and composes
-        with ``SoftDeleteMixin.build_list_query`` via ``super()``).
+        of assignee. Layered through ``build_listing_query`` so the same
+        scope feeds both ``handle_listing`` and ``count_listing`` (and composes
+        with ``SoftDeleteMixin.build_listing_query`` via ``super()``).
         """
-        q = super().build_list_query()
+        q = super().build_listing_query()
         if self._is_admin():
             return q
         current_user = self._current_user_id()
@@ -99,9 +99,9 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
             q = q.where(Task.assignee_id == current_user)
         return q
 
-    async def handle_get(self, id: int):
+    async def handle_retrieve(self, id: int):
         """Verify row-level access: only the assignee can fetch the task."""
-        task = await super().handle_get(id)
+        task = await super().handle_retrieve(id)
         if self._is_admin():
             return task
         current_user = self._current_user_id()
@@ -189,8 +189,8 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
         """
         from ..models import Project
 
-        # handle_get enforces row-level access (assignee match) and 404s.
-        task = await self.handle_get(id)
+        # handle_retrieve enforces row-level access (assignee match) and 404s.
+        task = await self.handle_retrieve(id)
 
         # Check version for optimistic locking before applying the update.
         client_version = getattr(schema_obj, "version", None)
@@ -251,7 +251,7 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
                 f"Invalid task transition definition: {source_status.value} -> {target_status.value}"
             )
 
-        task = await self.handle_get(id)
+        task = await self.handle_retrieve(id)
         if task.status != source_status:
             raise HTTPException(
                 status_code=400,
@@ -338,8 +338,8 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
     async def bulk_delete(self, request: BulkDeleteRequest) -> BulkResult:
         """Delete multiple tasks by IDs.
 
-        Uses ``handle_get`` per id so each delete inherits the row-level access
-        check (only the assignee may see/touch the task). handle_get raises
+        Uses ``handle_retrieve`` per id so each delete inherits the row-level access
+        check (only the assignee may see/touch the task). handle_retrieve raises
         404 for both "missing" and "not yours", which we catch and report.
         """
         success = 0
@@ -348,7 +348,7 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
 
         for task_id in request.ids:
             try:
-                task = await self.handle_get(task_id)
+                task = await self.handle_retrieve(task_id)
                 await self.delete_object(task)
                 success += 1
             except HTTPException as exc:

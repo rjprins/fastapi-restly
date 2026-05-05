@@ -95,27 +95,27 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
     session: SessionDep  # type: ignore[reportIncompatibleVariableOverride]
 
     @get("/")
-    def index(self, query_params: Any) -> Any:
+    def listing(self, query_params: Any) -> Any:
         self._reject_unknown_query_params()
-        objs = self.handle_list(query_params)
+        objs = self.handle_listing(query_params)
         if not self.include_pagination_metadata:
             return [self.to_response_schema(obj) for obj in objs]
 
-        total = self.count_index(query_params)
+        total = self.count_listing(query_params)
         return self._build_pagination_payload(query_params, objs, total)
 
-    def build_list_query(self) -> sqlalchemy.Select[Any]:
+    def build_listing_query(self) -> sqlalchemy.Select[Any]:
         """
-        Return the base SQLAlchemy ``Select`` used by both ``handle_list`` and
-        ``count_index``. Override to add ``WHERE`` clauses that should apply
+        Return the base SQLAlchemy ``Select`` used by both ``handle_listing`` and
+        ``count_listing``. Override to add ``WHERE`` clauses that should apply
         to listing *and* its pagination total — e.g. tenant scoping, soft-delete
         filtering, permission-based row visibility. Call
-        ``super().build_list_query()`` and chain ``.where(...)`` to compose with
-        any base-class or mixin filters.
+        ``super().build_listing_query()`` and chain ``.where(...)`` to compose
+        with any base-class or mixin filters.
         """
         return sqlalchemy.select(self.model)
 
-    def handle_list(
+    def handle_listing(
         self, query_params: Any, query: sqlalchemy.Select[Any] | None = None
     ) -> Sequence[ModelT]:
         """
@@ -123,9 +123,9 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         Accepts a query argument that can be used for narrowing down the selection.
         Feel free to override this method, e.g.:
 
-            def handle_list(self, query_params, query=None):
+            def handle_listing(self, query_params, query=None):
                 query = make_my_query()
-                objs = super().handle_list(query_params, query)
+                objs = super().handle_listing(query_params, query)
                 return add_my_info(objs)
 
         ``query_params`` is the validated query-parameter Pydantic model
@@ -134,10 +134,10 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         :func:`fastapi_restly.query.create_list_params_schema`.
 
         For WHERE-clause-only filtering that should also apply to the
-        pagination total, override :meth:`build_list_query` instead.
+        pagination total, override :meth:`build_listing_query` instead.
         """
         if query is None:
-            query = self.build_list_query()
+            query = self.build_listing_query()
         loader_options = self.get_relationship_loader_options()
         if loader_options:
             query = query.options(*loader_options)
@@ -145,20 +145,20 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         scalar_result = self.session.scalars(query)
         return scalar_result.all()
 
-    def count_index(self, query_params: Any) -> int:
+    def count_listing(self, query_params: Any) -> int:
         filtered_query = apply_list_params(
-            query_params, self.build_list_query(), self.model, self.schema
+            query_params, self.build_listing_query(), self.model, self.schema
         )
         filtered_query = filtered_query.order_by(None).limit(None).offset(None)
         count_query = select(func.count()).select_from(filtered_query.subquery())
         return int(self.session.scalar(count_query) or 0)
 
     @get("/{id}")
-    def get(self, id: Any) -> Any:
-        obj = self.handle_get(id)
+    def retrieve(self, id: Any) -> Any:
+        obj = self.handle_retrieve(id)
         return self.to_response_schema(obj)
 
-    def handle_get(self, id: IdT) -> ModelT:
+    def handle_retrieve(self, id: IdT) -> ModelT:
         """
         Handle a GET request on "/{id}". This should return a single object.
         Return a 404 if not found.
@@ -172,7 +172,7 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         return obj
 
     @post("/")
-    def post(self, schema_obj: Any) -> Any:
+    def create(self, schema_obj: Any) -> Any:
         obj = self.handle_create(schema_obj)
         return self.to_response_schema(obj)
 
@@ -186,7 +186,7 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         return obj
 
     @patch("/{id}")
-    def patch(self, id: Any, schema_obj: Any) -> Any:
+    def update(self, id: Any, schema_obj: Any) -> Any:
         obj = self.handle_update(id, schema_obj)
         return self.to_response_schema(obj)
 
@@ -196,16 +196,16 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         object.
         Feel free to override this method.
         """
-        obj = self.handle_get(id)
+        obj = self.handle_retrieve(id)
         obj = self.update_object(obj, schema_obj)
         return self.save_object(obj)
 
     @delete("/{id}")
-    def delete(self, id: Any) -> fastapi.Response:
-        return self.handle_delete(id)
+    def destroy(self, id: Any) -> fastapi.Response:
+        return self.handle_destroy(id)
 
-    def handle_delete(self, id: IdT) -> fastapi.Response:
-        obj = self.handle_get(id)
+    def handle_destroy(self, id: IdT) -> fastapi.Response:
+        obj = self.handle_retrieve(id)
         self.delete_object(obj)
         return fastapi.Response(status_code=204)
 
@@ -213,7 +213,7 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         """
         Delete ``obj`` and flush the session.
 
-        ``handle_delete`` calls ``handle_get`` first, so this method receives an
+        ``handle_destroy`` calls ``handle_retrieve`` first, so this method receives an
         existing object. Override it to change the deletion mechanics, for
         example to implement soft-delete.
         """

@@ -456,7 +456,7 @@ class TestAdminBypass:
 
     A request with ``request.state.is_admin = True`` short-circuits the
     tenant filter in TenantScopedMixin and the assignee filter in
-    TaskView.handle_get / handle_list. Demonstrates the runtime-flag design:
+    TaskView.handle_retrieve / handle_listing. Demonstrates the runtime-flag design:
     no separate route tree, no parallel base view.
     """
 

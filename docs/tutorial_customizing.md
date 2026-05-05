@@ -30,11 +30,11 @@ Each generated endpoint delegates to a `handle_*` handler. Override the handler 
 the business logic without touching the HTTP contract.
 
 ```
-GET /          → index()   → handle_list(query_params)
-GET /{id}      → get()     → handle_get(id)
-POST /         → post()    → handle_create(schema_obj)
-PATCH /{id}    → patch()   → handle_update(id, schema_obj)
-DELETE /{id}   → delete()  → handle_delete(id)
+GET /          → listing() → handle_listing(query_params)
+GET /{id}      → retrieve() → handle_retrieve(id)
+POST /         → create()  → handle_create(schema_obj)
+PATCH /{id}    → update()  → handle_update(id, schema_obj)
+DELETE /{id}   → destroy() → handle_destroy(id)
 ```
 
 Inside every handler, `self.session` is the live database session and `self.request`
@@ -68,21 +68,21 @@ Block updates based on the current state of the object:
 
 ```python
     async def handle_update(self, id, schema_obj):
-        obj = await self.handle_get(id)          # raises 404 if missing
+        obj = await self.handle_retrieve(id)          # raises 404 if missing
         if obj.published:
             raise fastapi.HTTPException(409, "Cannot edit a published post")
         obj = await self.update_object(obj, schema_obj)
         return await self.save_object(obj)
 ```
 
-Calling `self.handle_get(id)` reuses the same 404 logic as the GET endpoint.
-If you later override `handle_get` (for example, to add tenant scoping), `handle_update`
+Calling `self.handle_retrieve(id)` reuses the same 404 logic as the GET endpoint.
+If you later override `handle_retrieve` (for example, to add tenant scoping), `handle_update`
 picks up that change automatically.
 
-### build_list_query — filter results to the current user
+### build_listing_query — filter results to the current user
 
 The most common real-world override: restrict the list to rows the caller is
-allowed to see. `build_list_query` is the seam both `handle_list` and `count_index`
+allowed to see. `build_listing_query` is the seam both `handle_listing` and `count_listing`
 consult, so a single override keeps the listed rows and the pagination total
 in sync.
 
@@ -94,26 +94,26 @@ class PostView(fr.AsyncRestView):
     schema = PostRead
     include_pagination_metadata = True
 
-    def build_list_query(self):
+    def build_listing_query(self):
         user_id = self.request.state.user_id
-        return super().build_list_query().where(Post.author_id == user_id)
+        return super().build_listing_query().where(Post.author_id == user_id)
 ```
 
-Calling `super().build_list_query()` and chaining `.where(...)` composes cleanly
-with any base-class or mixin filter. Reach for a `handle_list` override only when
+Calling `super().build_listing_query()` and chaining `.where(...)` composes cleanly
+with any base-class or mixin filter. Reach for a `handle_listing` override only when
 you need to do work beyond a `WHERE` clause — see
 [Override Endpoints](howto_override_endpoints.md#scope-filter-the-list-endpoint).
 
-### handle_delete — require explicit confirmation
+### handle_destroy — require explicit confirmation
 
 ```python
-    async def handle_delete(self, id):
+    async def handle_destroy(self, id):
         if self.request.headers.get("X-Confirm-Delete") != "yes":
             raise fastapi.HTTPException(400, "Missing X-Confirm-Delete: yes header")
-        return await super().handle_delete(id)
+        return await super().handle_destroy(id)
 ```
 
-`super().handle_delete(id)` handles the 404 check and the actual deletion.
+`super().handle_destroy(id)` handles the 404 check and the actual deletion.
 Override only the guard; let the base class do the rest.
 
 ---
@@ -128,11 +128,11 @@ change applies to **both** create and update, so you don't repeat yourself.
 handle_create  →  make_new_object(schema_obj)
            →  save_object(obj)
 
-handle_update  →  handle_get(id)
+handle_update  →  handle_retrieve(id)
            →  update_object(obj, schema_obj)
            →  save_object(obj)
 
-handle_delete  →  handle_get(id)
+handle_destroy  →  handle_retrieve(id)
            →  delete_object(obj)
 ```
 
@@ -190,7 +190,7 @@ from datetime import datetime, timezone
 ```
 
 `DELETE /posts/{id}` now marks the row instead of removing it. The 204 response
-is still returned by `handle_delete`; only the persistence step changes.
+is still returned by `handle_destroy`; only the persistence step changes.
 
 ---
 
@@ -212,7 +212,7 @@ class PostView(fr.AsyncRestView):
 
     @fr.get("/{id}/summary")
     async def summary(self, id: int):
-        post = await self.handle_get(id)   # raises 404 automatically
+        post = await self.handle_retrieve(id)   # raises 404 automatically
         return {
             "id": post.id,
             "title": post.title,
@@ -220,7 +220,7 @@ class PostView(fr.AsyncRestView):
         }
 ```
 
-Calling `self.handle_get(id)` gives you the ORM object with the same 404 logic
+Calling `self.handle_retrieve(id)` gives you the ORM object with the same 404 logic
 as the standard GET endpoint — and picks up any override you may have applied.
 
 ### A state-change action
@@ -232,7 +232,7 @@ import fastapi
 
     @fr.post("/{id}/publish", status_code=200)
     async def publish(self, id: int):
-        post = await self.handle_get(id)
+        post = await self.handle_retrieve(id)
         if post.published:
             raise fastapi.HTTPException(409, "Already published")
         post.published = True
@@ -466,7 +466,7 @@ class PostView(AuthoredBase):
     schema = PostRead
 
     async def handle_update(self, id, schema_obj):
-        obj = await self.handle_get(id)
+        obj = await self.handle_retrieve(id)
         if obj.published:
             raise fastapi.HTTPException(409, "Cannot edit a published post")
         obj = await self.update_object(obj, schema_obj)
@@ -478,7 +478,7 @@ class PostView(AuthoredBase):
 
     @fr.post("/{id}/publish", status_code=200)
     async def publish(self, id: int):
-        post = await self.handle_get(id)
+        post = await self.handle_retrieve(id)
         if post.published:
             raise fastapi.HTTPException(409, "Already published")
         post.published = True

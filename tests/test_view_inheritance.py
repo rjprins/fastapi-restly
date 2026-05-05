@@ -54,14 +54,14 @@ def test_inherit_model_and_schema(sync_db):
         view = WidgetView()
         view.session = session
 
-        created = view.post(WidgetSchema(id=0, name="Cog"))
+        created = view.create(WidgetSchema(id=0, name="Cog"))
         assert created.name == "Cog"
         assert created.id is not None
 
-        fetched = view.get(created.id)
+        fetched = view.retrieve(created.id)
         assert fetched.name == "Cog"
 
-        items = view.index({})
+        items = view.listing({})
         assert len(items) == 1
 
 
@@ -104,11 +104,11 @@ def test_handler_override_shared_across_subclasses(sync_db):
     with fr.open_session() as session:
         view_a = ViewA()
         view_a.session = session
-        view_a.post(TagSchema(id=0, label="alpha"))
+        view_a.create(TagSchema(id=0, label="alpha"))
 
         view_b = ViewB()
         view_b.session = session
-        view_b.post(TagSchema(id=0, label="beta"))
+        view_b.create(TagSchema(id=0, label="beta"))
 
     assert call_log == ["audit", "audit"]
 
@@ -154,7 +154,7 @@ def test_super_chain_in_handler_override(sync_db):
     with fr.open_session() as session:
         view = NoteView()
         view.session = session
-        view.post(NoteSchema(id=0, text="hello"))
+        view.create(NoteSchema(id=0, text="hello"))
 
     assert call_log == ["sub_pre", "base_pre", "base_post", "sub_post"]
 
@@ -177,7 +177,7 @@ def test_inherit_exclude_routes(sync_db):
     class ReadOnlyBase(fr.RestView):
         model = Entry
         schema = EntrySchema
-        exclude_routes = ("post", "patch", "delete")
+        exclude_routes = ("create", "update", "destroy")
 
     app = FastAPI()
 
@@ -228,10 +228,10 @@ def test_inherit_include_pagination_metadata(sync_db):
     with fr.open_session() as session:
         view = TicketView()
         view.session = session
-        view.post(TicketSchema(id=0, title="Bug"))
-        view.post(TicketSchema(id=0, title="Feature"))
+        view.create(TicketSchema(id=0, title="Bug"))
+        view.create(TicketSchema(id=0, title="Feature"))
 
-        result = view.index({"page": "1", "page_size": "10"})
+        result = view.listing({"page": "1", "page_size": "10"})
 
     assert isinstance(result, dict)
     assert result["total"] == 2
@@ -276,13 +276,13 @@ def test_inherit_soft_delete_via_delete_object(sync_db):
         view = RecordView()
         view.session = session
 
-        rec = view.post(RecordSchema(id=0, name="doc", deleted=False))
+        rec = view.create(RecordSchema(id=0, name="doc", deleted=False))
         assert rec.deleted is False
 
-        view.delete(rec.id)
+        view.destroy(rec.id)
 
         # Still exists in database but is flagged deleted
-        fetched = view.get(rec.id)
+        fetched = view.retrieve(rec.id)
         assert fetched.deleted is True
 
 

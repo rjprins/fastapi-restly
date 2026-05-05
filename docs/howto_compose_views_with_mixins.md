@@ -11,7 +11,7 @@ mixin declaration.
 This guide covers the pattern, the rule that decides whether to use it,
 and two ergonomic gotchas worth knowing up front.
 
-## When to override `make_new_object` / `update_object` / `delete_object` / `build_list_query`
+## When to override `make_new_object` / `update_object` / `delete_object` / `build_listing_query`
 
 The [Override Endpoints](howto_override_endpoints.md#override-low-level-object-helpers)
 guide warns against overriding these low-level helpers for per-view
@@ -79,8 +79,8 @@ class TenantScopedMixin:
         def _current_org_id(self) -> int | None: ...
         def _is_admin(self) -> bool: ...
 
-    def build_list_query(self) -> sa.Select:
-        q = super().build_list_query()  # type: ignore[misc]
+    def build_listing_query(self) -> sa.Select:
+        q = super().build_listing_query()  # type: ignore[misc]
         if self._is_admin():
             return q
         org_id = self._current_org_id()
@@ -88,8 +88,8 @@ class TenantScopedMixin:
             q = q.where(self.model.organization_id == org_id)
         return q
 
-    async def handle_get(self, id: Any) -> Any:
-        obj = await super().handle_get(id)  # type: ignore[misc]
+    async def handle_retrieve(self, id: Any) -> Any:
+        obj = await super().handle_retrieve(id)  # type: ignore[misc]
         if self._is_admin():
             return obj
         org_id = self._current_org_id()
@@ -122,14 +122,14 @@ class SoftDeleteMixin:
     def _include_deleted(self) -> bool:
         return self.request.query_params.get("include_deleted", "false").lower() == "true"
 
-    def build_list_query(self) -> sa.Select:
-        q = super().build_list_query()  # type: ignore[misc]
+    def build_listing_query(self) -> sa.Select:
+        q = super().build_listing_query()  # type: ignore[misc]
         if not self._include_deleted() and hasattr(self.model, "deleted_at"):
             q = q.where(self.model.deleted_at.is_(None))
         return q
 
-    async def handle_get(self, id: Any) -> Any:
-        obj = await super().handle_get(id)  # type: ignore[misc]
+    async def handle_retrieve(self, id: Any) -> Any:
+        obj = await super().handle_retrieve(id)  # type: ignore[misc]
         if not self._include_deleted() and getattr(obj, "deleted_at", None) is not None:
             raise fastapi.HTTPException(404, "Not found")
         return obj
@@ -184,7 +184,7 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, fr.Asyn
     schema = ProjectRead
 ```
 
-Both `handle_list` and `count_index` consult `build_list_query`, so the
+Both `handle_listing` and `count_listing` consult `build_listing_query`, so the
 tenant + soft-delete `WHERE` clauses apply to listing **and** the
 pagination total without further plumbing.
 

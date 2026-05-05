@@ -77,11 +77,11 @@ That tells Restly which model should be resolved from the scalar id payload.
 
 The generic form is useful when you override handlers such as:
 
-- `handle_get`
+- `handle_retrieve`
 - `handle_create`
 - `handle_update`
-- `handle_delete`
-- `handle_list`
+- `handle_destroy`
+- `handle_listing`
 
 Without view generics, these handlers still work, but their types are broader.
 With view generics, your editor can infer the concrete model, schema, and id types.
@@ -112,8 +112,8 @@ class UserView(
     creation_schema = UserCreate
     update_schema = UserUpdate
 
-    async def handle_get(self, id: int) -> User:
-        return await super().handle_get(id)
+    async def handle_retrieve(self, id: int) -> User:
+        return await super().handle_retrieve(id)
 
     async def handle_create(self, schema_obj: UserCreate) -> User:
         return await super().handle_create(schema_obj)

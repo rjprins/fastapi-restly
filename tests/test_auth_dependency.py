@@ -244,7 +244,7 @@ def test_async_excluded_route_does_not_trigger_dependency(client):
         model = Tag
         schema = TagSchema
         dependencies = [Depends(require_auth)]
-        exclude_routes = ("delete",)
+        exclude_routes = ("destroy",)
 
     create_tables()
 

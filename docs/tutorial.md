@@ -167,7 +167,7 @@ class PostView(fr.AsyncRestView):
     prefix = "/posts"
     model = Post
     schema = PostRead
-    exclude_routes = ("delete",)  # disables DELETE /posts/{id}
+    exclude_routes = ("destroy",)  # disables DELETE /posts/{id}
 ```
 
 ---

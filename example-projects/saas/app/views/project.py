@@ -52,13 +52,13 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
     - ``TenantScopedMixin`` — adds ``organization_id`` filter to reads,
       stamps it on writes from auth context.
     - ``TenantBase`` — auth dep, audit ``save_object`` seam, ``_emit``
-      outbox helper. The ``build_list_query`` seam consumed by the mixins
+      outbox helper. The ``build_listing_query`` seam consumed by the mixins
       above lives on ``AsyncRestView`` itself.
 
-    Each mixin's ``build_list_query`` calls ``super().build_list_query()``, so the
+    Each mixin's ``build_listing_query`` calls ``super().build_listing_query()``, so the
     tenant + soft-delete WHERE clauses compose without either mixin
-    knowing the other exists. The same chain feeds both ``handle_list`` and
-    ``count_index`` (defined on ``AsyncRestView``), so pagination totals stay
+    knowing the other exists. The same chain feeds both ``handle_listing`` and
+    ``count_listing`` (defined on ``AsyncRestView``), so pagination totals stay
     aligned with list results — the matrix's "row-based access for
     GET /" + "count must use same filter" pair, satisfied by inheritance.
 
@@ -71,7 +71,7 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
     model = Project
     schema = ProjectSchema
     include_pagination_metadata = True
-    exclude_routes = ["delete"]  # replaced by soft_delete below
+    exclude_routes = ["destroy"]  # replaced by soft_delete below
 
     async def _decorate_project_response(self, project: Project) -> Project:
         """Populate transient response fields that are not stored on Project."""
@@ -96,16 +96,16 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
         )
         return project
 
-    async def handle_list(
+    async def handle_listing(
         self, query_params, query: sa.Select | None = None
     ) -> Sequence[Project]:
-        projects = await super().handle_list(query_params, query)
+        projects = await super().handle_listing(query_params, query)
         return [await self._decorate_project_response(project) for project in projects]
 
-    async def handle_get(self, id: int):
+    async def handle_retrieve(self, id: int):
         # The mixins enforce tenant scope + soft-delete filtering already.
         # Here we only do project-specific response decoration.
-        project = await super().handle_get(id)
+        project = await super().handle_retrieve(id)
         return await self._decorate_project_response(project)
 
     def _can_edit(self, project: Project) -> bool:
@@ -140,10 +140,10 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
 
         Audit-stamping (``updated_by_id``) is provided by
         ``AuditStampedMixin.update_object``; tenant-scope enforcement comes
-        from ``TenantScopedMixin.handle_get``. This method only contains the
+        from ``TenantScopedMixin.handle_retrieve``. This method only contains the
         project-specific slug + transition-event logic.
         """
-        project = await self.handle_get(id)
+        project = await self.handle_retrieve(id)
         old_name, old_status = project.name, project.status
         project = await self.update_object(project, schema_obj)
         if project.name != old_name and not getattr(schema_obj, "slug", None):
@@ -201,7 +201,7 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
         requires a 200 + body contract — that's a route-level HTTP
         decision, not a behavior change.
         """
-        project = await self.handle_get(id)
+        project = await self.handle_retrieve(id)
         await self.delete_object(project)
         return await self._decorate_project_response(project)
 
@@ -226,7 +226,7 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
     @fr.post("/{id}/archive", response_model=ProjectSchema)
     async def archive_project(self, id: int) -> Project:
         """Archive a project (prevents new task creation)."""
-        project = await self.handle_get(id)
+        project = await self.handle_retrieve(id)
         if project.status == ProjectStatus.ARCHIVED:
             raise HTTPException(status_code=400, detail="Project is already archived")
         project.status = ProjectStatus.ARCHIVED
@@ -236,13 +236,13 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
     async def clone_project(self, id: int, request: CloneRequest) -> Project:
         """Clone a project with all its tasks.
 
-        Calls ``handle_get`` first to enforce tenant scope and 404, then
+        Calls ``handle_retrieve`` first to enforce tenant scope and 404, then
         re-queries with ``selectinload`` to eager-load the tasks. Cleaner
-        as a single ``handle_get`` if/when it grows a ``loader_options``
+        as a single ``handle_retrieve`` if/when it grows a ``loader_options``
         argument; for now, two queries is the honest cost.
         """
         # Tenant + 404 check via the canonical handler.
-        await self.handle_get(id)
+        await self.handle_retrieve(id)
 
         query = (
             select(Project).where(Project.id == id).options(selectinload(Project.tasks))
@@ -288,8 +288,8 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
     @fr.get("/{id}/stats", response_model=ProjectStats)
     async def get_project_stats(self, id: int) -> ProjectStats:
         """Get task statistics for a project."""
-        # handle_get enforces tenant scope and 404s — get the access check for free.
-        await self.handle_get(id)
+        # handle_retrieve enforces tenant scope and 404s — get the access check for free.
+        await self.handle_retrieve(id)
 
         todo = (
             await self.session.scalar(
@@ -333,10 +333,10 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
         Mirrors the predicates ``TaskView`` applies to ``GET /tasks/``:
         soft-deleted tasks are hidden (unless ``?include_deleted=true``),
         and non-admin callers see only tasks assigned to themselves.
-        Tenant scoping is implicit — ``self.handle_get(id)`` already verified
+        Tenant scoping is implicit — ``self.handle_retrieve(id)`` already verified
         the project is visible to the caller, and tasks are project-bound.
         """
-        await self.handle_get(id)
+        await self.handle_retrieve(id)
         q = select(Task).where(Task.project_id == id)
         include_deleted = (
             self.request.query_params.get("include_deleted", "false").lower() == "true"
@@ -362,7 +362,7 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
         """
         from fastapi_restly.views import async_save_object
 
-        project = await self.handle_get(id)
+        project = await self.handle_retrieve(id)
         if project.status == ProjectStatus.ARCHIVED:
             raise HTTPException(
                 status_code=400, detail="Cannot create tasks in an archived project"

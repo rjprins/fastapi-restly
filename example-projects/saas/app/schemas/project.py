@@ -32,7 +32,7 @@ class ProjectSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
     # Denormalized roll-up — written by TaskView, not by the client.
     total_story_points: fr.ReadOnly[int] = 0
 
-    # Transient response-only field — populated by handle_get from permission state.
+    # Transient response-only field — populated by handle_retrieve from permission state.
     can_edit: fr.ReadOnly[bool | None] = None
 
     # Computed fields - populated by the view, not stored in DB

@@ -164,7 +164,7 @@ def test_per_view_max_page_size_override_propagates_to_schema(client):
 
     create_tables()
 
-    page_size_field = BigItemView.index_param_schema.model_fields["page_size"]
+    page_size_field = BigItemView.listing_param_schema.model_fields["page_size"]
     le_meta = next(m for m in page_size_field.metadata if hasattr(m, "le"))
     assert le_meta.le == 5000
     assert page_size_field.default == 500

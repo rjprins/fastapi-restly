@@ -454,28 +454,28 @@ def test_sync_rest_view_crud_and_pagination(sync_db):
         view = OrderView()
         view.session = session
 
-        first = view.post(
+        first = view.create(
             OrderInputSchema(item_name="Keyboard", quantity=1, customer_id=customer_id)
         )
-        second = view.post(
+        second = view.create(
             OrderInputSchema(item_name="Mouse", quantity=2, customer_id=customer_id)
         )
 
         assert first.customer.name == "Acme"
         assert second.customer.name == "Acme"
 
-        paginated = view.index({"page": "1", "page_size": "10"})
+        paginated = view.listing({"page": "1", "page_size": "10"})
         assert paginated["total"] == 2
         assert paginated["page"] == 1
         assert paginated["page_size"] == 10
         assert paginated["total_pages"] == 1
         assert {item.item_name for item in paginated["items"]} == {"Keyboard", "Mouse"}
 
-        detail = view.get(first.id)
+        detail = view.retrieve(first.id)
         assert detail.customer.name == "Acme"
         assert detail.quantity == 1
 
-        updated = view.patch(
+        updated = view.update(
             first.id,
             OrderInputSchema(
                 item_name="Keyboard Pro", quantity=3, customer_id=customer_id
@@ -484,11 +484,11 @@ def test_sync_rest_view_crud_and_pagination(sync_db):
         assert updated.item_name == "Keyboard Pro"
         assert updated.quantity == 3
 
-        delete_response = view.delete(second.id)
+        delete_response = view.destroy(second.id)
         assert delete_response.status_code == 204
 
         with pytest.raises(HTTPException):
-            view.get(second.id)
+            view.retrieve(second.id)
 
 
 def test_sync_rest_view_dispatches_to_handle_overrides(sync_db):
@@ -507,13 +507,13 @@ def test_sync_rest_view_dispatches_to_handle_overrides(sync_db):
         model = DispatchWidget
         schema = WidgetSchema
 
-        def handle_list(self, query_params, query=None):
+        def handle_listing(self, query_params, query=None):
             call_log.append("list")
-            return super().handle_list(query_params, query=query)
+            return super().handle_listing(query_params, query=query)
 
-        def handle_get(self, id):
+        def handle_retrieve(self, id):
             call_log.append("get")
-            return super().handle_get(id)
+            return super().handle_retrieve(id)
 
         def handle_create(self, schema_obj):
             call_log.append("create")
@@ -523,9 +523,9 @@ def test_sync_rest_view_dispatches_to_handle_overrides(sync_db):
             call_log.append("update")
             return super().handle_update(id, schema_obj)
 
-        def handle_delete(self, id):
+        def handle_destroy(self, id):
             call_log.append("delete")
-            return super().handle_delete(id)
+            return super().handle_destroy(id)
 
     fr.DataclassBase.metadata.create_all(engine)
 
@@ -533,17 +533,17 @@ def test_sync_rest_view_dispatches_to_handle_overrides(sync_db):
         view = WidgetView()
         view.session = session
 
-        created = view.post(WidgetSchema(id=0, name="alpha"))
-        view.index({})
-        view.get(created.id)
-        view.patch(created.id, WidgetSchema(id=created.id, name="beta"))
-        view.delete(created.id)
+        created = view.create(WidgetSchema(id=0, name="alpha"))
+        view.listing({})
+        view.retrieve(created.id)
+        view.update(created.id, WidgetSchema(id=created.id, name="beta"))
+        view.destroy(created.id)
 
     assert call_log == ["create", "list", "get", "update", "get", "delete", "get"]
 
 
-def test_sync_build_list_query_is_consulted_by_list_and_count(sync_db):
-    """Both handle_list and count_index must route through build_list_query so a
+def test_sync_build_listing_query_is_consulted_by_list_and_count(sync_db):
+    """Both handle_listing and count_listing must route through build_listing_query so a
     single override filters listing AND its pagination total."""
     import sqlalchemy
 
@@ -562,8 +562,8 @@ def test_sync_build_list_query_is_consulted_by_list_and_count(sync_db):
         model = Gadget
         schema = GadgetSchema
 
-        def build_list_query(self):
-            return super().build_list_query().where(Gadget.active.is_(True))
+        def build_listing_query(self):
+            return super().build_listing_query().where(Gadget.active.is_(True))
 
     fr.DataclassBase.metadata.create_all(engine)
 
@@ -581,13 +581,13 @@ def test_sync_build_list_query_is_consulted_by_list_and_count(sync_db):
         view = GadgetView()
         view.session = session
 
-        # Default build_list_query returns select(self.model).
-        assert str(fr.RestView.build_list_query(view)) == str(sqlalchemy.select(Gadget))
+        # Default build_listing_query returns select(self.model).
+        assert str(fr.RestView.build_listing_query(view)) == str(sqlalchemy.select(Gadget))
 
         # Override is consulted by both list and count.
-        results = view.handle_list({})
+        results = view.handle_listing({})
         assert len(results) == 2
         assert all(g.active for g in results)
 
-        total = view.count_index({})
+        total = view.count_listing({})
         assert total == 2

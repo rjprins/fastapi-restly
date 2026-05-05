@@ -41,13 +41,13 @@ def _model_and_schema():
             lambda c: c.post("/items/", json={"name": "x"}, assert_status_code=201),
         ),
         (
-            "handle_get",
+            "handle_retrieve",
             lambda c: (
                 c.post("/items/", json={"name": "x"}, assert_status_code=201),
                 c.get("/items/1"),
             )[-1],
         ),
-        ("handle_list", lambda c: c.get("/items/")),
+        ("handle_listing", lambda c: c.get("/items/")),
         (
             "handle_update",
             lambda c: (
@@ -56,7 +56,7 @@ def _model_and_schema():
             )[-1],
         ),
         (
-            "handle_delete",
+            "handle_destroy",
             lambda c: (
                 c.post("/items/", json={"name": "x"}, assert_status_code=201),
                 c.delete("/items/1", assert_status_code=204),

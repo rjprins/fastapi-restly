@@ -329,7 +329,7 @@ def test_async_free_functions_importable_from_views_package():
 
 
 def test_async_rest_view_crud_and_pagination():
-    """Call AsyncRestView methods directly (no HTTP) to cover get/post/patch/delete
+    """Call AsyncRestView methods directly (no HTTP) to cover get/create/update/delete
     and include_pagination_metadata=True, mirroring test_sync_views.py."""
 
     class Base(DeclarativeBase):
@@ -386,19 +386,19 @@ def test_async_rest_view_crud_and_pagination():
             view = OrderView()
             view.session = session
 
-            first = await view.post(
+            first = await view.create(
                 OrderInputSchema(
                     item_name="Keyboard", quantity=1, customer_id=customer_id
                 )
             )
-            second = await view.post(
+            second = await view.create(
                 OrderInputSchema(item_name="Mouse", quantity=2, customer_id=customer_id)
             )
 
             assert first.item_name == "Keyboard"
             assert second.item_name == "Mouse"
 
-            paginated = await view.index({"page": "1", "page_size": "10"})
+            paginated = await view.listing({"page": "1", "page_size": "10"})
             assert paginated["total"] == 2
             assert paginated["page"] == 1
             assert paginated["page_size"] == 10
@@ -408,10 +408,10 @@ def test_async_rest_view_crud_and_pagination():
                 "Mouse",
             }
 
-            detail = await view.get(first.id)
+            detail = await view.retrieve(first.id)
             assert detail.quantity == 1
 
-            updated = await view.patch(
+            updated = await view.update(
                 first.id,
                 OrderInputSchema(
                     item_name="Keyboard Pro", quantity=3, customer_id=customer_id
@@ -420,11 +420,11 @@ def test_async_rest_view_crud_and_pagination():
             assert updated.item_name == "Keyboard Pro"
             assert updated.quantity == 3
 
-            delete_response = await view.delete(second.id)
+            delete_response = await view.destroy(second.id)
             assert delete_response.status_code == 204
 
             with pytest.raises(HTTPException):
-                await view.get(second.id)
+                await view.retrieve(second.id)
 
         await engine.dispose()
 
@@ -445,13 +445,13 @@ def test_async_rest_view_dispatches_to_handle_overrides():
         model = DispatchWidget
         schema = WidgetSchema
 
-        async def handle_list(self, query_params, query=None):
+        async def handle_listing(self, query_params, query=None):
             call_log.append("list")
-            return await super().handle_list(query_params, query=query)
+            return await super().handle_listing(query_params, query=query)
 
-        async def handle_get(self, id):
+        async def handle_retrieve(self, id):
             call_log.append("get")
-            return await super().handle_get(id)
+            return await super().handle_retrieve(id)
 
         async def handle_create(self, schema_obj):
             call_log.append("create")
@@ -461,9 +461,9 @@ def test_async_rest_view_dispatches_to_handle_overrides():
             call_log.append("update")
             return await super().handle_update(id, schema_obj)
 
-        async def handle_delete(self, id):
+        async def handle_destroy(self, id):
             call_log.append("delete")
-            return await super().handle_delete(id)
+            return await super().handle_destroy(id)
 
     async def run():
         engine, make_session = _make_engine_and_session()
@@ -474,11 +474,11 @@ def test_async_rest_view_dispatches_to_handle_overrides():
             view = WidgetView()
             view.session = session
 
-            created = await view.post(WidgetSchema(id=0, name="alpha"))
-            await view.index({})
-            await view.get(created.id)
-            await view.patch(created.id, WidgetSchema(id=created.id, name="beta"))
-            await view.delete(created.id)
+            created = await view.create(WidgetSchema(id=0, name="alpha"))
+            await view.listing({})
+            await view.retrieve(created.id)
+            await view.update(created.id, WidgetSchema(id=created.id, name="beta"))
+            await view.destroy(created.id)
 
         await engine.dispose()
 
@@ -487,8 +487,8 @@ def test_async_rest_view_dispatches_to_handle_overrides():
     assert call_log == ["create", "list", "get", "update", "get", "delete", "get"]
 
 
-def test_async_handle_list_with_custom_query():
-    """Call handle_list with an explicit query to cover the query-is-not-None branch."""
+def test_async_handle_listing_with_custom_query():
+    """Call handle_listing with an explicit query to cover the query-is-not-None branch."""
 
     class Widget(fr.IDBase):
         name: Mapped[str]
@@ -523,7 +523,7 @@ def test_async_handle_list_with_custom_query():
 
             # Pass an explicit custom query (covers the query-is-not-None branch)
             custom_query = sqlalchemy.select(Widget).where(Widget.active == True)  # noqa: E712
-            results = await view.handle_list({}, query=custom_query)
+            results = await view.handle_listing({}, query=custom_query)
 
             assert len(results) == 2
             assert all(w.active for w in results)
@@ -533,8 +533,8 @@ def test_async_handle_list_with_custom_query():
     asyncio.run(run())
 
 
-def test_async_build_list_query_is_consulted_by_list_and_count():
-    """Both handle_list and count_index must route through build_list_query so a
+def test_async_build_listing_query_is_consulted_by_list_and_count():
+    """Both handle_listing and count_listing must route through build_listing_query so a
     single override filters listing AND its pagination total."""
 
     class Gizmo(fr.IDBase):
@@ -550,8 +550,8 @@ def test_async_build_list_query_is_consulted_by_list_and_count():
         model = Gizmo
         schema = GizmoSchema
 
-        def build_list_query(self):
-            return super().build_list_query().where(Gizmo.active.is_(True))
+        def build_listing_query(self):
+            return super().build_listing_query().where(Gizmo.active.is_(True))
 
     async def run():
         engine, make_session = _make_engine_and_session()
@@ -572,17 +572,17 @@ def test_async_build_list_query_is_consulted_by_list_and_count():
             view = GizmoView()
             view.session = session
 
-            # Default build_list_query returns select(self.model).
-            assert str(fr.AsyncRestView.build_list_query(view)) == str(
+            # Default build_listing_query returns select(self.model).
+            assert str(fr.AsyncRestView.build_listing_query(view)) == str(
                 sqlalchemy.select(Gizmo)
             )
 
             # Override is consulted by both list and count.
-            results = await view.handle_list({})
+            results = await view.handle_listing({})
             assert len(results) == 2
             assert all(g.active for g in results)
 
-            total = await view.count_index({})
+            total = await view.count_listing({})
             assert total == 2
 
         await engine.dispose()

@@ -228,8 +228,8 @@ GET /users/?page=2&page_size=50
 
 ## Overriding query logic per view
 
-Override `build_list_query` to inject a base query before the framework
-applies the URL parameters. Both `handle_list` and `count_index` consult
+Override `build_listing_query` to inject a base query before the framework
+applies the URL parameters. Both `handle_listing` and `count_listing` consult
 this seam, so the filter applies to listing **and** the pagination total
 without further plumbing:
 
@@ -239,16 +239,16 @@ import fastapi_restly as fr
 class UserView(fr.AsyncRestView):
     ...
 
-    def build_list_query(self):
-        return super().build_list_query().where(self.model.active.is_(True))
+    def build_listing_query(self):
+        return super().build_listing_query().where(self.model.active.is_(True))
 ```
 
-Calling `super().build_list_query()` and chaining `.where(...)` composes
+Calling `super().build_listing_query()` and chaining `.where(...)` composes
 cleanly with any base-class or mixin filter. See
 [Composing views with mixins](howto_compose_views_with_mixins.md) for the
 multi-layer pattern.
 
-`handle_list` still accepts an optional `query` argument for the rare
+`handle_listing` still accepts an optional `query` argument for the rare
 case where the custom query intentionally should *not* affect
-`count_index` — for example, a list-only result decoration that needs a
-different join shape than the count. Reach for `build_list_query` first.
+`count_listing` — for example, a list-only result decoration that needs a
+different join shape than the count. Reach for `build_listing_query` first.

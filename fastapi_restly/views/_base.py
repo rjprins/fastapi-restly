@@ -701,7 +701,7 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         False  # Set True to include count/total in list responses
     )
     exclude_routes: ClassVar[Iterable[str]] = ()
-    #: Extra query-parameter keys to allow on the index endpoint in addition
+    #: Extra query-parameter keys to allow on the listing endpoint in addition
     #: to those derived from the response schema. Use this when a view
     #: intentionally consumes a custom query parameter (e.g. an
     #: ``?include_deleted=true`` escape hatch on a soft-delete mixin) that
@@ -713,7 +713,7 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     default_page_size: ClassVar[int | None] = DEFAULT_PAGE_SIZE
     #: Maximum ``page_size`` accepted on list endpoints. Above this returns 422.
     max_page_size: ClassVar[int] = MAX_PAGE_SIZE
-    index_param_schema: ClassVar[type[pydantic.BaseModel]]
+    listing_param_schema: ClassVar[type[pydantic.BaseModel]]
     pagination_response_schema: ClassVar[type[pydantic.BaseModel]]
 
     request: fastapi.Request
@@ -722,9 +722,9 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         return _build_relationship_loader_options(self.model, self.schema)
 
     def _reject_unknown_query_params(self) -> None:
-        """Reject any query-string key that isn't part of ``index_param_schema``.
+        """Reject any query-string key that isn't part of ``listing_param_schema``.
 
-        FastAPI flattens ``Annotated[index_param_schema, Query()]`` into named
+        FastAPI flattens ``Annotated[listing_param_schema, Query()]`` into named
         query parameters; unknown keys are silently ignored at that layer,
         which would let typoed filters or unsupported operators (e.g.
         ``active__gte=true`` on a boolean column where the schema does not
@@ -733,17 +733,17 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         FastAPI's 422 envelope shape so the response is consistent with
         bound-violation errors.
 
-        No-op when there's no live request (programmatic ``view.index(...)``
+        No-op when there's no live request (programmatic ``view.listing(...)``
         calls outside an HTTP request) — there's no URL surface to validate
         and the in-process caller is responsible for what they pass.
         """
         request = getattr(self, "request", None)
         if request is None:
             return
-        index_schema = getattr(self, "index_param_schema", None)
-        if index_schema is None:
+        listing_schema = getattr(self, "listing_param_schema", None)
+        if listing_schema is None:
             return
-        allowed = set(index_schema.model_fields) | set(self.extra_query_params)
+        allowed = set(listing_schema.model_fields) | set(self.extra_query_params)
         sent = set(request.query_params.keys())
         unknown = sent - allowed
         if not unknown:
@@ -857,8 +857,8 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
                 type[SchemaT], auto_generate_schema_for_view(cls, cls.model)
             )
 
-        if "index_param_schema" not in cls.__dict__:
-            cls.index_param_schema = create_list_params_schema(
+        if "listing_param_schema" not in cls.__dict__:
+            cls.listing_param_schema = create_list_params_schema(
                 cls.schema,
                 default_page_size=cls.default_page_size,
                 max_page_size=cls.max_page_size,
@@ -875,36 +875,36 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         response_schema = cls.schema
 
         # Only annotate if the methods exist (they will be overridden in subclasses)
-        index_response_annotation: Any = Sequence[response_schema]
+        listing_response_annotation: Any = Sequence[response_schema]
         if cls.include_pagination_metadata:
             cls.pagination_response_schema = cls._create_pagination_response_schema(
                 response_schema
             )
-            index_response_annotation = cls.pagination_response_schema
+            listing_response_annotation = cls.pagination_response_schema
 
-        if hasattr(cls, "index"):
+        if hasattr(cls, "listing"):
             _annotate(
-                cls.index,
-                return_annotation=index_response_annotation,
-                query_params=Annotated[cls.index_param_schema, fastapi.Query()],
+                cls.listing,
+                return_annotation=listing_response_annotation,
+                query_params=Annotated[cls.listing_param_schema, fastapi.Query()],
             )
-        if hasattr(cls, "get"):
-            _annotate(cls.get, return_annotation=response_schema, id=cls.id_type)
-        if hasattr(cls, "post"):
+        if hasattr(cls, "retrieve"):
+            _annotate(cls.retrieve, return_annotation=response_schema, id=cls.id_type)
+        if hasattr(cls, "create"):
             _annotate(
-                cls.post,
+                cls.create,
                 return_annotation=response_schema,
                 schema_obj=cls.creation_schema,
             )
-        if hasattr(cls, "patch"):
+        if hasattr(cls, "update"):
             _annotate(
-                cls.patch,
+                cls.update,
                 return_annotation=response_schema,
                 schema_obj=cls.update_schema,
                 id=cls.id_type,
             )
-        if hasattr(cls, "delete"):
-            _annotate(cls.delete, return_annotation=fastapi.Response, id=cls.id_type)
+        if hasattr(cls, "destroy"):
+            _annotate(cls.destroy, return_annotation=fastapi.Response, id=cls.id_type)
         _exclude_routes(cls)
 
 
@@ -1033,7 +1033,7 @@ def _init_all_endpoints(view_cls: type[View]):
             continue
         endpoint = attr
         # Give every endpoint a unique name
-        # This will give the FooView.post() endpoint the name "fooview_post"
+        # This will give the FooView.create() endpoint the name "fooview_create"
         endpoint.__name__ = view_cls.__name__.lower() + "_" + endpoint.__name__
         _annotate_self(view_cls, endpoint)
 
@@ -1127,7 +1127,7 @@ def _should_add_collection_route_alias(
         return False
     if path != "/":
         return False
-    return endpoint.__name__.endswith(("_index", "_post"))
+    return endpoint.__name__.endswith(("_listing", "_create"))
 
 
 def _annotate_self(view_cls: type[View], endpoint: Callable) -> None:

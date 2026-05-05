@@ -165,11 +165,11 @@ View                   ← class-based view primitive (no CRUD)
 
 - `View` is the bare CBV primitive. Use it for non-CRUD endpoints — auth
   flows, custom RPC, file uploads, anything that does not fit the
-  list/get/create/update/delete shape.
+  listing/retrieve/create/update/destroy shape.
 - `BaseRestView` extends `View` with `model`, `schema`, the auto-generated
   create/update schemas, query-modifier configuration, and helper methods
-  like `to_response_schema()`. It declares route methods (`index`, `get`,
-  `post`, `patch`, `delete`) but provides no implementations — it is an
+  like `to_response_schema()`. It declares route methods (`listing`, `retrieve`,
+  `create`, `update`, `destroy`) but provides no implementations — it is an
   abstract scaffold.
 - `RestView` and `AsyncRestView` provide the concrete sync and async
   implementations of the CRUD endpoints. **One of these is what you usually
@@ -191,10 +191,10 @@ class TenantScopedView(fr.AsyncRestView):
     """Internal base — never registered directly."""
     dependencies = [Depends(require_logged_in)]
 
-    def build_list_query(self):
+    def build_listing_query(self):
         # automatic tenant filtering for every list — and every pagination total,
-        # because count_index consults the same seam.
-        return super().build_list_query().where(
+        # because count_listing consults the same seam.
+        return super().build_listing_query().where(
             self.model.tenant_id == self.request.state.tenant_id
         )
 
@@ -222,10 +222,10 @@ layered together — see
 ## Override a single method
 
 `AsyncRestView` and `RestView` are designed so you can replace any one piece
-without touching the rest. Override the handler (`handle_list`, `handle_get`,
-`handle_create`, `handle_update`, `handle_delete`) for business-logic changes that should
+without touching the rest. Override the handler (`handle_listing`, `handle_retrieve`,
+`handle_create`, `handle_update`, `handle_destroy`) for business-logic changes that should
 fire on both the generated route and any custom callers; override the
-endpoint method itself (`get`, `post`, `patch`, `delete`, `index`) when you
+endpoint method itself (`listing`, `retrieve`, `create`, `update`, `destroy`) when you
 want full control of the HTTP layer.
 
 ```python
