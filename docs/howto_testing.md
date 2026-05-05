@@ -52,9 +52,11 @@ Useful fixtures include:
 
 Restly does not register autouse fixtures. If you want database isolation for every test, opt in from your own `conftest.py` by requesting the fixture there.
 
-One caveat to be aware of: explicit `with restly_session.begin(): ...` / `async with restly_async_session.begin(): ...`
-blocks inside tests are supported, but the fixture implementation currently documents a visibility
-caveat around those blocks. See [pytest Fixtures Reference](pytest_fixtures.md) for details.
+Explicit `with restly_session.begin(): ...` /
+`async with restly_async_session.begin(): ...` blocks are supported and flush
+pending changes when the block exits successfully. See
+[pytest Fixtures Reference](pytest_fixtures.md) for details about the fixture
+isolation model.
 
 Example — override `restly_app` in your `conftest.py`:
 
