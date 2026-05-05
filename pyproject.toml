@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fastapi-restly"
-version = "3.0.0rc1"
+version = "3.0.0"
 description = "A REST Framework for FastAPI"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -100,6 +100,12 @@ pythonpath = ["."]
 addopts = "--ignore=example-projects"
 xfail_strict = true
 asyncio_default_fixture_loop_scope = "function"
+filterwarnings = [
+    # Pydantic warns when Restly's ReadOnly/WriteOnly Annotated markers wrap fields
+    # that also set Field(alias=...). The tests intentionally cover that supported
+    # schema shape, and Restly preserves aliases in generated request/response models.
+    "ignore:The .* attribute with value .* was provided to the `Field\\(\\)` function, which has no effect in the context it was used:pydantic.warnings.UnsupportedFieldAttributeWarning",
+]
 
 [tool.coverage.run]
 branch = true

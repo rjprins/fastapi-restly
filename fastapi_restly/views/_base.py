@@ -975,10 +975,10 @@ def _copy_all_parent_class_endpoints_into_this_subclass(view_cls: type[View]):
     with a new copy directly on view_cls . This allows us to change the
     annotations on these endpoints without affecting the parent endpoints.
 
-    For example, FooView.get() delegates to AsyncRestView.get() if it is not
+    For example, FooView.retrieve() delegates to AsyncRestView.retrieve() if it is not
     overridden (this is called implicit delegation through method resolution). And if
-    we add the annotation that FooView.get() returns FooRead but do not make a copy
-    then AsyncRestView.get() and all other subclasses will get the FooRead
+    we add the annotation that FooView.retrieve() returns FooRead but do not make a copy
+    then AsyncRestView.retrieve() and all other subclasses will get the FooRead
     annotation as well.
     """
     for endpoint in _get_all_parent_endpoints(view_cls):

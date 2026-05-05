@@ -46,6 +46,7 @@ Suffixes add other operators:
 | `__lte` | `field <= value` | `?age__lte=64` |
 | `__gt` | `field > value` | `?age__gt=17` |
 | `__lt` | `field < value` | `?age__lt=65` |
+| `__in` | `field IN (...)` | `?status__in=active,pending` |
 | `__ne` | `field != value` | `?status__ne=archived` |
 | `__contains` | `field LIKE '%value%'` | `?email__contains=Example` |
 | `__icontains` | `field ILIKE '%value%'` | `?email__icontains=example` |
@@ -68,6 +69,13 @@ GET /users/?status=active,pending
 
 Produces `WHERE status = 'active' OR status = 'pending'`. Equivalent to
 SQL `IN`.
+
+Use `__in` when you want that same SQL `IN` meaning to be explicit in
+the URL:
+
+```text
+GET /users/?status__in=active,pending
+```
 
 ### Comma logic on `__ne` (NOT IN)
 

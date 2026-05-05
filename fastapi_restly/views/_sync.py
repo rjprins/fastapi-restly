@@ -168,7 +168,10 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         model_cls = cast(type[ModelT], self.model)
         obj = self.session.get(model_cls, id, options=loader_options)
         if obj is None:
-            raise fastapi.HTTPException(404)
+            raise fastapi.HTTPException(
+                status_code=404,
+                detail=f"{self.model.__name__} with id {id!r} was not found",
+            )
         return obj
 
     @post("/")

@@ -1,3 +1,6 @@
+from importlib.metadata import PackageNotFoundError as _PackageNotFoundError
+from importlib.metadata import version as _version
+
 # Database layer
 from .db import (
     AsyncSessionDep,
@@ -48,12 +51,18 @@ from .views import (
     update_object,
 )
 
+try:
+    __version__ = _version("fastapi-restly")
+except _PackageNotFoundError:  # pragma: no cover - only possible from an unpackaged tree
+    __version__ = "0+unknown"
+
 # Public API surface for fastapi-restly.
 #
 # This top-level namespace is the primary public API. Submodule ``__all__``
 # lists may expose additional supported advanced symbols for users working in
 # that subsystem, such as ``from fastapi_restly.views import BaseRestView``.
 __all__ = [
+    "__version__",
     # Database — session context managers
     "open_async_session",
     "open_session",

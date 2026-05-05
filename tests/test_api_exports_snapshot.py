@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+import importlib.metadata
 from pathlib import Path
 
 PUBLIC_MODULES = (
@@ -56,3 +57,10 @@ def test_api_exports_match_snapshot():
     snapshot_path = Path(__file__).with_name("api_exports_snapshot.txt")
 
     assert _render_api_exports() == snapshot_path.read_text()
+
+
+def test_package_version_matches_installed_metadata():
+    import fastapi_restly as fr
+
+    assert fr.__version__ == importlib.metadata.version("fastapi-restly")
+    assert "__version__" in fr.__all__

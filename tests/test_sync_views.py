@@ -1,15 +1,40 @@
 import pytest
-from fastapi import HTTPException
+from fastapi import FastAPI, HTTPException
 from sqlalchemy import ForeignKey, ForeignKeyConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 import fastapi_restly as fr
 from fastapi_restly.schemas._base import create_model_with_optional_fields
+from fastapi_restly.testing import RestlyTestClient
 from fastapi_restly.views._base import (
     build_create_plan,
     validate_resolved_reference_consistency,
 )
 from fastapi_restly.views._sync import make_new_object, save_object, update_object
+
+
+def test_sync_rest_view_404_response_includes_detail(sync_db):
+    engine, _make_session = sync_db
+
+    class Widget(fr.IDBase):
+        name: Mapped[str]
+
+    class WidgetSchema(fr.IDSchema):
+        name: str
+
+    app = FastAPI()
+
+    @fr.include_view(app)
+    class WidgetView(fr.RestView):
+        prefix = "/widgets"
+        model = Widget
+        schema = WidgetSchema
+
+    fr.DataclassBase.metadata.create_all(engine)
+
+    client = RestlyTestClient(app)
+    response = client.get("/widgets/123", assert_status_code=404)
+    assert response.json() == {"detail": "Widget with id 123 was not found"}
 
 
 def test_sync_object_helpers_handle_readonly_and_relationship_inputs(sync_db):

@@ -398,15 +398,14 @@ Here is the blog API from Part 1, extended with everything from this tutorial:
 ```python
 import fastapi
 import fastapi_restly as fr
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Annotated
 from fastapi import Depends
-from sqlalchemy import create_engine, ForeignKey
+from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 
 fr.configure(async_database_url="sqlite+aiosqlite:///blog.db")
-
-app = fastapi.FastAPI()
 
 
 # --- Models ---
@@ -425,8 +424,16 @@ class Comment(fr.IDBase):
     author_id: Mapped[int | None] = mapped_column(default=None)
 
 
-# Create tables — must run AFTER model classes are declared so they're registered on the metadata.
-fr.DataclassBase.metadata.create_all(create_engine("sqlite:///blog.db"))
+@asynccontextmanager
+async def lifespan(app: fastapi.FastAPI):
+    # Create tables after model classes are declared so they're registered on the metadata.
+    engine = fr.get_async_engine()
+    async with engine.begin() as conn:
+        await conn.run_sync(fr.DataclassBase.metadata.create_all)
+    yield
+
+
+app = fastapi.FastAPI(lifespan=lifespan)
 
 
 # --- Schemas ---

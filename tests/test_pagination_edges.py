@@ -75,6 +75,22 @@ def test_empty_result_with_metadata_explicit_page_size(client):
     assert payload["total_pages"] == 0
 
 
+def test_single_item_page_size_one_metadata(client):
+    """A one-row result with page_size=1 should report exactly one total page."""
+    _setup_view(client, include_metadata=True)
+    client.post("/widgets/", json={"name": "A"})
+
+    response = client.get("/widgets/?page=1&page_size=1")
+    assert response.status_code == 200
+    payload = response.json()
+
+    assert payload["total"] == 1
+    assert len(payload["items"]) == 1
+    assert payload["page"] == 1
+    assert payload["page_size"] == 1
+    assert payload["total_pages"] == 1
+
+
 # ---------------------------------------------------------------------------
 # Page bounds
 # ---------------------------------------------------------------------------
@@ -107,7 +123,13 @@ def test_page_size_zero_returns_422(client):
     response = client.get("/widgets/?page_size=0", assert_status_code=422)
     assert response.status_code == 422
     body = response.json()
-    assert any("page_size" in str(err).lower() for err in body.get("detail", []))
+    assert body["detail"]
+    assert any(
+        err.get("loc") == ["query", "page_size"]
+        and "greater than or equal to 1" in err.get("msg", "")
+        and err.get("type") == "greater_than_equal"
+        for err in body["detail"]
+    )
 
 
 def test_negative_page_size_returns_422(client):

@@ -84,7 +84,7 @@ def create_list_params_schema(
 
     The generated model accepts pagination (``page``, ``page_size``), sorting
     (``sort``), and one filter parameter per response-schema field with
-    optional ``__ne``/``__gte``/``__lte``/``__gt``/``__lt``/``__isnull``/
+    optional ``__in``/``__ne``/``__gte``/``__lte``/``__gt``/``__lt``/``__isnull``/
     ``__contains``/``__icontains`` suffixes.
 
     ``page`` and ``page_size`` are validated by Pydantic with bounds
@@ -163,8 +163,16 @@ def create_list_params_schema(
             f"Exclude rows where ``{name}`` matches. Comma-separated values "
             "are AND-combined (SQL ``NOT IN``)."
         )
+        in_desc = (
+            f"Filter by ``{name}`` with explicit SQL ``IN`` semantics. "
+            "Provide comma-separated values."
+        )
         fields[name] = (
             Annotated[Optional[list[str]], Field(description=eq_desc)],
+            None,
+        )
+        fields[f"{name}__in"] = (
+            Annotated[Optional[list[str]], Field(description=in_desc)],
             None,
         )
         fields[f"{name}__ne"] = (
@@ -455,9 +463,10 @@ def _apply_filtering(
     """Apply ``key=value`` and ``key__op=value`` filters to ``select_query``.
 
     Multiple filters on the same column are AND-combined. Comma-separated
-    values within one parameter are OR-combined for ``eq`` (the default) and
-    AND-combined for ``ne`` (so ``status__ne=a,b`` means NOT IN (a, b)). For
-    ``contains``/``icontains`` values are split on whitespace and AND-combined.
+    values within one parameter are OR-combined for ``eq`` (the default),
+    mapped to SQL ``IN`` for ``in``, and AND-combined for ``ne`` (so
+    ``status__ne=a,b`` means NOT IN (a, b)). For ``contains``/``icontains``
+    values are split on whitespace and AND-combined.
     """
     filters: dict[InstrumentedAttribute[Any], list[ColumnElement[Any]]] = defaultdict(
         list
@@ -517,6 +526,8 @@ def _build_clause(
     values = raw_value.split(",")
     if not values:
         return None
+    if op == "in":
+        return column.in_([parser(v) for v in values])
     clauses = [_make_where_clause(column, v, op, parser) for v in values]
     if len(clauses) == 1:
         return clauses[0]

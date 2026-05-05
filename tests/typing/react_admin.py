@@ -19,3 +19,10 @@ class ProductView(fr.AsyncReactAdminView):
     prefix = "/products"
     model = Product
     schema = ProductRead
+
+
+@fr.include_view(app)
+class SyncProductView(fr.ReactAdminView):
+    prefix = "/sync-products"
+    model = Product
+    schema = ProductRead

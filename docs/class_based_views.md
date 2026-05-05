@@ -175,6 +175,11 @@ View                   ← class-based view primitive (no CRUD)
   implementations of the CRUD endpoints. **One of these is what you usually
   subclass.**
 
+The public method surface is classified in the
+[API reference](api_reference.md#view-method-surface): route methods define the
+HTTP contract, `handle_*` methods are override hooks, and object/query helpers
+are public utilities for handlers and custom routes.
+
 ## A complete example: shared base view
 
 A common pattern: every view in your app needs auth, tenant scoping, and a

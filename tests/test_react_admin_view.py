@@ -303,6 +303,14 @@ def test_sync_react_admin_filter_scalar(sync_client):
     assert data[0]["name"] == "Foo"
 
 
+def test_sync_react_admin_list_supports_empty_filter_object(sync_client):
+    _setup_sync_item_view(sync_client)
+    sync_client.post("/items/", json={"name": "Foo", "price": 1.0})
+
+    data = sync_client.get("/items/", params={"filter": "{}"}).json()
+    assert len(data) == 1
+
+
 def test_sync_react_admin_filter_id_array(sync_client):
     _setup_sync_item_view(sync_client)
     r1 = sync_client.post("/items/", json={"name": "Foo", "price": 1.0}).json()
@@ -347,6 +355,14 @@ def test_sync_react_admin_put_endpoint_updates_resource(sync_client):
     assert response.status_code == 200
     assert response.json()["name"] == "Foo Updated"
     assert response.json()["price"] == 9.0
+
+
+def test_sync_react_admin_post_endpoint_creates_resource(sync_client):
+    _setup_sync_item_view(sync_client)
+
+    response = sync_client.post("/items/", json={"name": "Foo", "price": 1.0})
+    assert response.status_code == 201
+    assert response.json()["name"] == "Foo"
 
 
 def test_sync_react_admin_get_one_endpoint(sync_client):

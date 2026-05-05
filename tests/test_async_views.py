@@ -329,7 +329,7 @@ def test_async_free_functions_importable_from_views_package():
 
 
 def test_async_rest_view_crud_and_pagination():
-    """Call AsyncRestView methods directly (no HTTP) to cover get/create/update/delete
+    """Call AsyncRestView methods directly to cover CRUD route methods
     and include_pagination_metadata=True, mirroring test_sync_views.py."""
 
     class Base(DeclarativeBase):

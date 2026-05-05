@@ -15,6 +15,8 @@ to organize when view modules define classes and app/router modules include them
 ## How the handler chain works
 
 Understanding the call chain helps you pick the right layer to override.
+The API reference also classifies the full view method surface:
+[View Method Surface](api_reference.md#view-method-surface).
 
 ### Read path
 

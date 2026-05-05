@@ -32,8 +32,9 @@ field names (aliases when set, Python names otherwise), end-to-end,
 including dotted relation paths.
 
 - Filtering: `?name=John&created_at__gte=2024-01-01`
-  - Suffixes: `__gte`, `__lte`, `__gt`, `__lt`, `__ne`, `__isnull`, `__contains`, `__icontains` (contains operators are string fields only)
+  - Suffixes: `__in`, `__gte`, `__lte`, `__gt`, `__lt`, `__ne`, `__isnull`, `__contains`, `__icontains` (contains operators are string fields only)
   - OR-values (IN): `?id=1,2,3` (comma-separated values are OR-combined for `eq`)
+  - Explicit IN: `?status__in=active,pending`
   - NOT-IN: `?status__ne=archived,deleted` (comma-separated values are AND-combined for `__ne`)
   - Aliased fields use only the alias as the URL key; the Python field name is not accepted (``populate_by_name`` only affects body parsing, not the URL surface).
 - Contains: `?name__contains=John` (case-sensitive where the SQL backend supports that distinction)
@@ -184,6 +185,46 @@ Restly to an existing model layer.
 | `fr.RestView` | Sync CRUD view. Use with sync SQLAlchemy sessions. |
 | `fr.AsyncReactAdminView` | Async CRUD view that speaks the `ra-data-simple-rest` wire contract used by [react-admin](https://marmelab.com/react-admin/). See [How-To: React Admin Integration](howto_react_admin.md). |
 | `fr.ReactAdminView` | Sync variant of `AsyncReactAdminView`. |
+
+### View Method Surface
+
+Methods on `RestView` / `AsyncRestView` fall into three categories:
+
+- **Route methods** define the HTTP contract and are decorated as FastAPI
+  endpoints. Override these only when you need to change status codes, response
+  shape, headers, or request parameters.
+- **Handler hooks** contain the default CRUD business logic and are the normal
+  customization point.
+- **Public helpers** are utility methods intended for use inside handlers or
+  custom routes.
+
+| Category | Method | Signature | Return | Purpose |
+|---|---|---|---|---|
+| Route | `listing` | `(query_params)` | response schema list or pagination envelope | `GET /`; validates query parameters and serializes list results. |
+| Route | `retrieve` | `(id)` | response schema | `GET /{id}`; serializes one retrieved object. |
+| Route | `create` | `(schema_obj)` | response schema | `POST /`; serializes the created object. |
+| Route | `update` | `(id, schema_obj)` | response schema | `PATCH /{id}`; serializes the updated object. |
+| Route | `destroy` | `(id)` | `fastapi.Response` | `DELETE /{id}`; returns `204` by default. |
+| Handler hook | `handle_listing` | `(query_params, query=None)` | `Sequence[Model]` | Fetch list rows; override for list business logic beyond query construction. |
+| Handler hook | `handle_retrieve` | `(id)` | `Model` | Fetch one row or raise `404`; override for custom lookup/eager-loading behavior. |
+| Handler hook | `handle_create` | `(schema_obj)` | `Model` | Build and save a new row; override for create-time business rules. |
+| Handler hook | `handle_update` | `(id, schema_obj)` | `Model` | Fetch, mutate, and save an existing row; override for update rules. |
+| Handler hook | `handle_destroy` | `(id)` | `fastapi.Response` | Fetch and delete a row; override for delete rules while keeping the HTTP contract. |
+| Public helper | `build_listing_query` | `()` | `sqlalchemy.Select` | Base query shared by listing and pagination totals. |
+| Public helper | `count_listing` | `(query_params)` | `int` | Count filtered rows before pagination. |
+| Public helper | `to_response_schema` | `(obj)` | response schema | Validate and serialize an ORM object with Restly's alias/reference/write-only handling. |
+| Public helper | `make_new_object` | `(schema_obj)` | `Model` | Build and stage a new object without flushing. |
+| Public helper | `update_object` | `(obj, schema_obj)` | `Model` | Apply writable fields without flushing. |
+| Public helper | `save_object` | `(obj)` | `Model` | Flush and refresh a staged object. |
+| Public helper | `delete_object` | `(obj)` | `None` | Delete and flush an existing object. |
+
+Internal methods prefixed with `_`, including `_reject_unknown_query_params`
+and pagination payload helpers, are implementation details even though they are
+visible on instances.
+
+See [Class-Based Views](class_based_views.md#the-view-hierarchy) for the class
+hierarchy and [How-To: Override Endpoints](howto_override_endpoints.md) for
+examples of choosing between handler hooks and route replacement.
 
 `fr.View` class attributes:
 

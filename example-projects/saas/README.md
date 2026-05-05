@@ -20,8 +20,9 @@ customized.
   (`OrganizationCreateSchema`, `OrganizationUpdateSchema`).
 - **Custom endpoints** alongside auto-generated CRUD: clone/archive/restore
   projects, soft delete via `@fr.delete`, `/me` self-service routes.
-- **Both query modifier APIs.** V1 (`filter[name]=...`) and V2
-  (`name=...`) shown side by side in `tests/test_query.py`.
+- **Query modifiers.** Field-name filters (`name=...`), operator suffixes
+  (`created_at__gte=...`), sorting, and pagination are covered in
+  `tests/test_query.py`.
 
 The package layout under `app/` (models / schemas / views split into
 sub-packages) is the recommended layout for projects beyond a single file.

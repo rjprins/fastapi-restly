@@ -99,6 +99,12 @@ def test_or_list_filter(people_client):
     assert _ids(response.json()) == target_ids
 
 
+def test_explicit_in_filter_operator(people_client):
+    response = people_client.get("/people/?name__in=Alice,Carol")
+    names = sorted(r["name"] for r in response.json())
+    assert names == ["Alice", "Carol"]
+
+
 def test_or_list_filter_on_datetime_column(people_client):
     """B2.3: OR-comma on a typed (non-string) column must also work.
 

@@ -46,13 +46,13 @@ Coverage checklist:
 - [x] View options: `exclude_routes`
 - [x] View options: class-level `dependencies`
 - [x] `AsyncReactAdminView`
-- [ ] `ReactAdminView` sync variant
-- [ ] Inherited view configuration from base classes
-- [ ] Prefix concatenation across inherited views
+- [x] `ReactAdminView` sync variant
+- [x] Inherited view configuration from base classes
+- [x] Prefix concatenation across inherited views
 - [x] List-valued `exclude_routes`
-- [ ] Instance dependencies via annotated `Depends`
+- [x] Instance dependencies via annotated `Depends`
 - [x] Schema aliases with list-params filtering
 - [x] `IDRef[...]`
 - [x] UUID / non-int primary key flows
 - [ ] Write-only and read-only field markers in consumer schemas
-- [ ] Direct override of built-in `listing/retrieve/create/update/destroy` route methods as a documented pattern
+- [x] Direct override of built-in `listing/retrieve/create/update/destroy` route methods as a documented pattern
