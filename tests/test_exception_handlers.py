@@ -19,7 +19,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Mapped, mapped_column
 
 import fastapi_restly as fr
-from fastapi_restly._exceptions import (
+from fastapi_restly._exception_handlers import (
     _HANDLERS_INSTALLED_FLAG,
     _build_integrity_detail,
     integrity_error_handler,

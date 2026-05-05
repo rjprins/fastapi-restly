@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession as SA_AsyncSession
 from sqlalchemy.orm import Session as SA_Session
 from sqlalchemy.orm import sessionmaker
 
-from .._exceptions import register_default_exception_handlers
+from .._exception_handlers import register_default_exception_handlers
 from ..exceptions import RestlyConfigurationError
 from ._globals import _fr_globals
 

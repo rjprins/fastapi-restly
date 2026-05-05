@@ -46,7 +46,7 @@ from sqlalchemy.orm import DeclarativeBase, selectinload
 from starlette.datastructures import QueryParams
 from typing_extensions import TypeVar
 
-from .._exceptions import register_default_exception_handlers
+from .._exception_handlers import register_default_exception_handlers
 from ..query import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, create_list_params_schema
 from ..schemas import BaseSchema, IDRef, IDSchema
 from ..schemas._base import (
