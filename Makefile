@@ -70,7 +70,9 @@ dev-setup: install-dev
 # Run tests with coverage
 test-coverage:
 	@echo "=== Running Tests with Coverage ==="
-	uv run pytest tests/ --cov=fastapi_restly --cov-report=term-missing --cov-report=xml
+	uv run coverage run -m pytest tests/
+	uv run coverage report -m
+	uv run coverage xml
 
 docs:
 	uv run sphinx-build -M html docs site
@@ -81,7 +83,11 @@ docs-serve:
 
 build-pages:
 	rm -rf site/html htmlcov
-	uv run pytest tests/ --cov=fastapi_restly --cov-report=term-missing --cov-report=xml --cov-report=json:coverage.json --cov-report=html
+	uv run coverage run -m pytest tests/
+	uv run coverage report -m
+	uv run coverage xml
+	uv run coverage json -o coverage.json
+	uv run coverage html
 	uv run sphinx-build -M html docs site
 	mkdir -p site/html/coverage
 	cp -rf htmlcov/. site/html/coverage/
