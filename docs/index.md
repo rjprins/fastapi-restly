@@ -14,6 +14,19 @@ FastAPI-Restly (`fr`) is a framework that supplements FastAPI with instant CRUD 
 
 FastAPI-Restly implements **true class-based views** — real Python classes that support inheritance and method overrides. Share common behavior across views by subclassing, and override individual CRUD methods without touching the rest. See [Class-Based Views](class_based_views.md) for why this is the heart of the framework.
 
+:::{admonition} Release maturity
+FastAPI-Restly 3.0 is the first public release after several private
+production iterations. The 3.0 release-candidate cycle has included
+significant API cleanup to settle the public surface before SemVer stability
+starts.
+
+It is suitable for evaluation, prototypes, internal tools, and early adopters
+who are comfortable reviewing their framework dependencies. For critical
+production systems, adopt deliberately: pin versions, read the changelog, test
+the override patterns you rely on, and expect some API polish while the public
+ecosystem settles.
+:::
+
 ## Quick Start
 
 The maintained copy-paste Quick Start lives in [Getting Started](getting_started.md).

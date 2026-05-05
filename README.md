@@ -17,6 +17,15 @@
 > ```bash
 > pip install "fastapi-restly[standard]"
 > ```
+>
+> **Release maturity:** FastAPI-Restly 3.0 is the first public release after
+> several private production iterations. The 3.0 release-candidate cycle has
+> included significant API cleanup to settle the public surface before SemVer
+> stability starts. It is a good fit for evaluation, prototypes, internal tools,
+> and teams comfortable reviewing framework code before adoption. For critical
+> production systems, adopt deliberately: pin versions, read the changelog, test
+> the override patterns you rely on, and expect some API polish while the public
+> ecosystem settles.
 
 **Docs:** <https://rjprins.github.io/fastapi-restly/> · **[Changelog](CHANGELOG.md)** · **[Contributing](CONTRIBUTING.md)** · **[Security](SECURITY.md)** · **[Code of Conduct](CODE_OF_CONDUCT.md)** · **[Examples](example-projects/)**
 
