@@ -11,7 +11,9 @@
 
 **Build maintainable CRUD APIs on FastAPI, SQLAlchemy 2.0, and Pydantic v2 — with real class-based views.**
 
-> **Status:** `3.0.0` — first public release. See the [Changelog](CHANGELOG.md).
+> **Status:** `3.0.0` — first public release. FastAPI-Restly follows
+> Semantic Versioning; public API breaks after `3.0.0` require a new major
+> version. See the [Changelog](CHANGELOG.md).
 > ```bash
 > pip install "fastapi-restly[standard]"
 > ```
