@@ -196,7 +196,6 @@ requires-dist = [
     { name = "fastapi", extras = ["standard"], marker = "extra == 'standard'", specifier = ">=0.115.0" },
     { name = "ghp-import", marker = "extra == 'docs'", specifier = ">=2.1.0" },
     { name = "httpx", marker = "extra == 'standard'", specifier = ">=0.27.0" },
-    { name = "httpx", marker = "extra == 'test'", specifier = ">=0.27.0" },
     { name = "httpx", marker = "extra == 'testing'", specifier = ">=0.27.0" },
     { name = "myst-parser", marker = "extra == 'docs'", specifier = ">=4.0.1" },
     { name = "orjson", specifier = ">=3.10.18" },
@@ -204,13 +203,10 @@ requires-dist = [
     { name = "pydantic-settings", specifier = ">=2.9.1" },
     { name = "pydata-sphinx-theme", marker = "extra == 'docs'", specifier = ">=0.16.0" },
     { name = "pytest", marker = "extra == 'standard'", specifier = ">=8.3.5" },
-    { name = "pytest", marker = "extra == 'test'", specifier = ">=8.3.5" },
     { name = "pytest", marker = "extra == 'testing'", specifier = ">=8.3.5" },
     { name = "pytest-asyncio", marker = "extra == 'standard'", specifier = ">=0.24.0" },
-    { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=0.24.0" },
     { name = "pytest-asyncio", marker = "extra == 'testing'", specifier = ">=0.24.0" },
     { name = "pytest-cov", marker = "extra == 'standard'", specifier = ">=6.1.1" },
-    { name = "pytest-cov", marker = "extra == 'test'", specifier = ">=6.1.1" },
     { name = "pytest-cov", marker = "extra == 'testing'", specifier = ">=6.1.1" },
     { name = "sphinx", marker = "extra == 'docs'", specifier = ">=8.1.3" },
     { name = "sphinx-autobuild", marker = "extra == 'docs'", specifier = ">=2024.10.3" },
@@ -219,7 +215,7 @@ requires-dist = [
     { name = "sphinx-sitemap", marker = "extra == 'docs'", specifier = ">=2.9.0" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0.22" },
 ]
-provides-extras = ["standard", "docs", "testing", "test"]
+provides-extras = ["standard", "docs", "testing"]
 
 [package.metadata.requires-dev]
 dev = [
