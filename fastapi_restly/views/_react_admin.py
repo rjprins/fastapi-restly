@@ -10,7 +10,7 @@ Implements the ra-data-simple-rest wire contract for list:
 """
 
 import json
-from typing import Any, ClassVar, Sequence
+from typing import Any, ClassVar, Protocol, Sequence, cast
 
 import fastapi
 import sqlalchemy
@@ -211,6 +211,24 @@ def apply_react_admin_query(
 # ---------------------------------------------------------------------------
 
 
+class _ReactAdminViewProtocol(Protocol):
+    request: fastapi.Request
+    model: ClassVar[type[DeclarativeBase]]
+    schema: ClassVar[type[BaseSchema]]
+    update_schema: ClassVar[type[BaseSchema]]
+    id_type: ClassVar[type[Any]]
+    default_page_size: ClassVar[int | None]
+    index: ClassVar[Any]
+    put: ClassVar[Any]
+
+    def get_react_admin_range_unit(self) -> str: ...
+    def get_relationship_loader_options(self) -> list[Any]: ...
+    def to_response_schema(self, obj: Any) -> BaseSchema: ...
+
+    @classmethod
+    def before_include_view(cls) -> None: ...
+
+
 class _ReactAdminMixin:
     """
     Shared transport helpers for react-admin views.
@@ -222,18 +240,12 @@ class _ReactAdminMixin:
     Set :attr:`default_page_size` on a subclass to change the implicit page
     size used when the client does not send a ``range`` query parameter.
 
-    Note: this is a bare mixin that is always combined with ``RestView`` or
-    ``AsyncRestView``. The inherited ``session``/``model``/``schema``/etc.
-    attributes come from those bases at runtime. Static type checkers cannot
-    see that relationship through a bare mixin, which yields a handful of
-    ``reportAttributeAccessIssue`` errors when checking this module in
-    isolation. They are accepted as a documented limitation of the mixin
-    pattern; users importing ``ReactAdminView`` / ``AsyncReactAdminView``
-    directly do not see them because the resolved MRO has the attributes.
+    Type annotations on the mixin methods use ``_ReactAdminViewProtocol`` to
+    make the expected ``RestView`` surface explicit to static checkers.
     """
 
     #: Implicit page size when no ``range`` parameter is sent. Override per-view.
-    default_page_size: ClassVar[int] = DEFAULT_REACT_ADMIN_PAGE_SIZE
+    default_page_size: ClassVar[int | None] = DEFAULT_REACT_ADMIN_PAGE_SIZE
 
     def get_react_admin_range_unit(self) -> str:
         """Return the unit string used in the Content-Range header."""
@@ -243,26 +255,34 @@ class _ReactAdminMixin:
         self,
     ) -> tuple[tuple[str, str] | None, tuple[int, int], dict]:
         """Parse sort, range, and filter from the current request query string."""
-        params = self.request.query_params
+        view = cast(_ReactAdminViewProtocol, self)
+        params = view.request.query_params
+        default_page_size = view.default_page_size or DEFAULT_REACT_ADMIN_PAGE_SIZE
         sort = parse_react_admin_sort(params.get("sort"))
         start, end = parse_react_admin_range(
-            params.get("range"), default_page_size=self.default_page_size
+            params.get("range"), default_page_size=default_page_size
         )
         filters = parse_react_admin_filter(params.get("filter"))
         return sort, (start, end), filters
 
     def _serialize_items(self, items: Sequence[Any]) -> list[dict]:
         """Serialize ORM objects to JSON-compatible dicts via the view's response schema."""
+        view = cast(_ReactAdminViewProtocol, self)
         return [
-            self.to_response_schema(obj).model_dump(mode="json", by_alias=True)
+            view.to_response_schema(obj).model_dump(mode="json", by_alias=True)
             for obj in items
         ]
 
     def _build_react_admin_list_response(
-        self, serialized_items: list[dict], total: int, start: int, end: int
+        self,
+        serialized_items: list[dict],
+        total: int,
+        start: int,
+        end: int,
     ) -> fastapi.Response:
         """Build a JSON array response with a Content-Range header."""
-        unit = self.get_react_admin_range_unit()
+        view = cast(_ReactAdminViewProtocol, self)
+        unit = view.get_react_admin_range_unit()
         last = start + len(serialized_items) - 1 if serialized_items else start
         return fastapi.Response(
             content=json.dumps(serialized_items),
@@ -275,36 +295,43 @@ class _ReactAdminMixin:
 
     def _build_count_query(self, filters: dict) -> sqlalchemy.Select:
         """Count query: filters only, no sort or pagination."""
-        base = sqlalchemy.select(self.model)
-        filtered = _apply_react_admin_filters(base, self.model, self.schema, filters)
+        view = cast(_ReactAdminViewProtocol, self)
+        base = sqlalchemy.select(view.model)
+        filtered = _apply_react_admin_filters(base, view.model, view.schema, filters)
         return select(func.count()).select_from(filtered.subquery())
 
     def _build_list_query(
-        self, sort: tuple[str, str] | None, start: int, end: int, filters: dict
+        self,
+        sort: tuple[str, str] | None,
+        start: int,
+        end: int,
+        filters: dict,
     ) -> sqlalchemy.Select:
         """List query: filters, sort, and range applied."""
-        base = sqlalchemy.select(self.model)
-        loader_options = self.get_relationship_loader_options()
+        view = cast(_ReactAdminViewProtocol, self)
+        base = sqlalchemy.select(view.model)
+        loader_options = view.get_relationship_loader_options()
         if loader_options:
             base = base.options(*loader_options)
         return apply_react_admin_query(
-            base, self.model, self.schema, sort, start, end, filters
+            base, view.model, view.schema, sort, start, end, filters
         )
 
     @classmethod
     def before_include_view(cls) -> None:
-        super().before_include_view()
+        cast(Any, super()).before_include_view()
+        view_cls = cast(type[_ReactAdminViewProtocol], cls)
         # Override the index return annotation set by BaseRestView to Response,
         # since we return a raw Response with Content-Range header.
-        if hasattr(cls, "index"):
-            _annotate(cls.index, return_annotation=fastapi.Response)
+        if hasattr(view_cls, "index"):
+            _annotate(view_cls.index, return_annotation=fastapi.Response)
         # Annotate the PUT handler with the same schema/types as PATCH.
-        if hasattr(cls, "put"):
+        if hasattr(view_cls, "put"):
             _annotate(
-                cls.put,
-                return_annotation=cls.schema,
-                schema_obj=cls.update_schema,
-                id=cls.id_type,
+                view_cls.put,
+                return_annotation=view_cls.schema,
+                schema_obj=view_cls.update_schema,
+                id=view_cls.id_type,
             )
 
 

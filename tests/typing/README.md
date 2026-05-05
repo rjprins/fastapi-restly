@@ -10,6 +10,21 @@ Run them with:
 make test-typing
 ```
 
+Package inspection baseline:
+
+```bash
+uv run pyright fastapi_restly
+```
+
+As of 2026-05-05 this reports 26 package-internal errors. The previously
+user-facing `ClassVar[type[SchemaT]]` cascade in `views/_base.py` and bare
+`_ReactAdminMixin` attribute cascade in `views/_react_admin.py` are fixed. The
+remaining package errors are internal dynamic-framework edges: SQLAlchemy model
+`id` access through `DeclarativeBase`, dynamic endpoint attributes installed
+before route registration, `schema_obj` endpoint annotations tracked by
+`fastapi-restly-gfu.29`, one pytest fixture redeclaration, and FastAPI/Starlette
+stub mismatches.
+
 Design rules:
 
 - Keep examples focused on public Restly usage, not framework internals.

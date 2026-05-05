@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from typing import Any, TypeVar
+from typing import Any, TypeVar, cast
 
 import fastapi
 import sqlalchemy
@@ -171,7 +171,8 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         Feel free to override this method.
         """
         loader_options = self.get_relationship_loader_options()
-        obj = await self.session.get(self.model, id, options=loader_options)
+        model_cls = cast(type[ModelT], self.model)
+        obj = await self.session.get(model_cls, id, options=loader_options)
         if obj is None:
             raise fastapi.HTTPException(404)
         return obj
@@ -234,8 +235,9 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         ``save_object`` afterwards; override this method for construction-time
         changes that must happen before that save boundary.
         """
+        model_cls = cast(type[ModelT], self.model)
         return await async_make_new_object(
-            self.session, self.model, schema_obj, self.schema
+            self.session, model_cls, schema_obj, self.schema
         )
 
     async def update_object(self, obj: ModelT, schema_obj: UpdateSchemaT) -> ModelT:
@@ -246,9 +248,10 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         ``save_object`` afterwards; override this method for update-time changes
         that must happen before that save boundary.
         """
-        return await async_update_object(  # type: ignore[return-value]
+        updated_obj = await async_update_object(
             self.session, obj, schema_obj, self.schema
         )
+        return cast(ModelT, updated_obj)
 
     async def save_object(self, obj: ModelT) -> ModelT:
         """
@@ -258,4 +261,4 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         update handlers. Override it for behavior that should run after every
         successful create/update flush.
         """
-        return await async_save_object(self.session, obj)  # type: ignore[return-value]
+        return cast(ModelT, await async_save_object(self.session, obj))

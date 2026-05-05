@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from typing import Any, TypeVar
+from typing import Any, TypeVar, cast
 
 import fastapi
 import sqlalchemy
@@ -165,7 +165,8 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         Feel free to override this method.
         """
         loader_options = self.get_relationship_loader_options()
-        obj = self.session.get(self.model, id, options=loader_options)
+        model_cls = cast(type[ModelT], self.model)
+        obj = self.session.get(model_cls, id, options=loader_options)
         if obj is None:
             raise fastapi.HTTPException(404)
         return obj
@@ -229,7 +230,8 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         ``save_object`` afterwards; override this method for construction-time
         changes that must happen before that save boundary.
         """
-        return make_new_object(self.session, self.model, schema_obj, self.schema)
+        model_cls = cast(type[ModelT], self.model)
+        return make_new_object(self.session, model_cls, schema_obj, self.schema)
 
     def update_object(self, obj: ModelT, schema_obj: UpdateSchemaT) -> ModelT:
         """
@@ -239,7 +241,7 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         ``save_object`` afterwards; override this method for update-time changes
         that must happen before that save boundary.
         """
-        return update_object(self.session, obj, schema_obj, self.schema)
+        return cast(ModelT, update_object(self.session, obj, schema_obj, self.schema))
 
     def save_object(self, obj: ModelT) -> ModelT:
         """
@@ -249,4 +251,4 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         update handlers. Override it for behavior that should run after every
         successful create/update flush.
         """
-        return save_object(self.session, obj)
+        return cast(ModelT, save_object(self.session, obj))

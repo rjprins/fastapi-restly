@@ -11,27 +11,6 @@ view decorator from fastapi-utils.
 AsyncRestView:
 Provides default reading and writing functions on the database using
 SQLAlchemy models.
-
-Pyright/static-typing notes
----------------------------
-This module contains a small number of pyright errors that are accepted
-limitations of SQLAlchemy 2.0's typing model and Python's
-``ClassVar[GenericT]`` rule, namely:
-
-- ``ClassVar[type[SchemaT]]`` etc. (lines ~414-420): pyright (correctly per
-  PEP 526) reports ``"ClassVar" type cannot include type variables``. These
-  generic class attributes carry no runtime cost; the alternative would be
-  ``type[SchemaT]`` without ``ClassVar``, which makes them per-instance.
-- ``Cannot access attribute "id" for class "DeclarativeBase"``: SQLAlchemy's
-  base does not declare ``id`` (subclasses add it via ``IDMixin``). We use
-  ``getattr(model, "id")`` to access it generically.
-- ``Cannot access attribute "index"/"get"/"post"/...``: these attributes are
-  populated by ``before_include_view`` at class-construction time, so static
-  type checkers cannot see them.
-
-These warnings only surface when consumers run pyright with
-``useLibraryCodeForTypes = true``. They do not appear in the framework's CI
-typing gate (which checks ``tests/typing/``, the consumer-facing fixtures).
 """
 
 import dataclasses
@@ -703,13 +682,13 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
 
     responses: ClassVar[dict[int, Any]] = {404: {"description": "Not found"}}
 
-    schema: ClassVar[type[SchemaT]]
+    schema: ClassVar[type[BaseSchema]]
     # If 'creation_schema' is not defined it will be created from 'schema'
     # using `create_model_without_read_only_fields()`.
-    creation_schema: ClassVar[type[CreateSchemaT]]
-    update_schema: ClassVar[type[UpdateSchemaT]]
-    model: ClassVar[type[ModelT]]
-    id_type: ClassVar[type[IdT]] = int
+    creation_schema: ClassVar[type[BaseSchema]]
+    update_schema: ClassVar[type[BaseSchema]]
+    model: ClassVar[type[DeclarativeBase]]
+    id_type: ClassVar[type[Any]] = int
     include_pagination_metadata: ClassVar[bool] = (
         False  # Set True to include count/total in list responses
     )
