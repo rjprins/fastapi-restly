@@ -1,4 +1,5 @@
 from collections.abc import AsyncIterator, Callable, Iterator
+from inspect import signature
 from typing import Annotated, Any, cast
 
 from fastapi import Depends, FastAPI
@@ -81,6 +82,7 @@ def configure(
     make_session: sessionmaker[Any] | None = None,
     session_generator: Callable[[], AsyncIterator[SA_AsyncSession]] | None = None,
     sync_session_generator: Callable[[], Iterator[SA_Session]] | None = None,
+    commit_session_on_response: bool = True,
     install_default_exception_handlers: bool = True,
 ) -> None:
     """Configure FastAPI-Restly. Call once at startup.
@@ -93,6 +95,11 @@ def configure(
     Use ``session_generator`` / ``sync_session_generator`` to plug in a
     custom session factory instead of the built-in one.
 
+    By default, Restly commits built-in request sessions when an endpoint
+    successfully produces a response. Set ``commit_session_on_response=False``
+    to own commit/rollback calls yourself. Custom session generators always
+    own their transaction lifecycle.
+
     Pass your :class:`FastAPI` ``app`` to install fastapi-restly's default
     exception handlers (currently: a translator that turns SQLAlchemy
     :class:`~sqlalchemy.exc.IntegrityError` into HTTP 409 Conflict). Set
@@ -100,6 +107,7 @@ def configure(
     pass ``app`` here, the handlers are registered the first time a view is
     mounted via :func:`fastapi_restly.include_view` instead.
     """
+    _fr_globals.commit_session_on_response = commit_session_on_response
     if (
         async_database_url is not None
         or async_engine is not None
@@ -207,7 +215,7 @@ async def _async_generate_session() -> AsyncIterator[SA_AsyncSession]:
     # but it does support generators.
     async with _fr_globals.async_make_session() as session:
         yield session
-        if session.is_active:
+        if _fr_globals.commit_session_on_response and session.is_active:
             try:
                 await session.commit()
             except Exception:
@@ -215,7 +223,14 @@ async def _async_generate_session() -> AsyncIterator[SA_AsyncSession]:
                 raise
 
 
-AsyncSessionDep = Annotated[SA_AsyncSession, Depends(_async_generate_session)]
+def _session_dependency(dependency: Callable[..., Any]) -> Any:
+    depends = cast(Callable[..., Any], Depends)
+    if "scope" in signature(Depends).parameters:
+        return depends(dependency, scope="function")
+    return depends(dependency)
+
+
+AsyncSessionDep = Annotated[SA_AsyncSession, _session_dependency(_async_generate_session)]
 
 
 def _generate_session() -> Iterator[SA_Session]:
@@ -226,7 +241,7 @@ def _generate_session() -> Iterator[SA_Session]:
 
     with _fr_globals.make_session() as session:
         yield session
-        if session.is_active:
+        if _fr_globals.commit_session_on_response and session.is_active:
             try:
                 session.commit()
             except Exception:
@@ -234,4 +249,4 @@ def _generate_session() -> Iterator[SA_Session]:
                 raise
 
 
-SessionDep = Annotated[SA_Session, Depends(_generate_session)]
+SessionDep = Annotated[SA_Session, _session_dependency(_generate_session)]

@@ -258,7 +258,7 @@ in a custom endpoint) reach for the free functions instead.
 | `fr.SessionDep` | FastAPI `Depends`-compatible sync session dependency. |
 | `fr.open_async_session()` | Open an async SQLAlchemy session context manager for use outside request handling, for example in background jobs or scripts. |
 | `fr.open_session()` | Open a sync SQLAlchemy session context manager for use outside request handling, for example in background jobs or scripts. |
-| `fr.configure(async_database_url=..., ...)` | Configure the framework. Accepts async/sync URLs, engines, session makers, or custom session generators. |
+| `fr.configure(async_database_url=..., ...)` | Configure the framework. Accepts async/sync URLs, engines, session makers, custom session generators, and `commit_session_on_response`. |
 | `fr.get_async_engine()` | Return the configured `AsyncEngine` instance. |
 | `fr.get_engine()` | Return the configured sync `Engine` instance. |
 
@@ -273,6 +273,18 @@ Applications that need more than one database can still use FastAPI and
 SQLAlchemy directly: provide a custom dependency on a view, or pass a custom
 session generator to `fr.configure(...)`. Restly does not currently provide a
 public multi-context or multi-engine API.
+
+By default, Restly commits sessions created by `AsyncSessionDep` / `SessionDep`
+when an endpoint successfully produces a response. On FastAPI versions that
+support dependency scopes, Restly requests function scope so this commit runs
+before the response is sent. On older FastAPI versions, commit timing follows
+FastAPI's default `yield` dependency cleanup timing and may run after the
+response has been sent.
+
+Set `commit_session_on_response=False` if your handlers should call
+`commit()` / `rollback()` explicitly. If you pass `session_generator` or
+`sync_session_generator`, Restly does not add commit/rollback behavior; that
+custom generator owns the transaction lifecycle.
 
 ### Exceptions
 

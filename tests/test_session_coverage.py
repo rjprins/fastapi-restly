@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator, Iterator
+from inspect import signature
+from typing import get_args
 
 import pytest
+from fastapi import Depends
 from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import Session, sessionmaker
@@ -97,6 +100,23 @@ def test_restly_context_can_be_used_anonymously():
         assert _get_restly_context() is context
 
     assert _get_restly_context() is original_context
+
+
+def test_restly_context_defaults_to_committing_sessions_on_response():
+    with RestlyContext() as context:
+        assert context.commit_session_on_response is True
+
+
+def test_session_dependencies_request_function_scope_when_fastapi_supports_it():
+    async_dep = get_args(fr.AsyncSessionDep)[1]
+    sync_dep = get_args(fr.SessionDep)[1]
+
+    if "scope" in signature(Depends).parameters:
+        assert async_dep.scope == "function"
+        assert sync_dep.scope == "function"
+    else:
+        assert not hasattr(async_dep, "scope")
+        assert not hasattr(sync_dep, "scope")
 
 
 def test_restly_context_nested_entries_restore_in_lifo_order():
@@ -276,6 +296,17 @@ def test_generate_session_commits_and_rolls_back_on_failure():
         assert successful.rolled_back == 0
 
     with RestlyContext():
+        manual_commit = DummySyncSession()
+        configure(
+            make_session=DummySyncMaker(manual_commit),  # type: ignore[arg-type]
+            commit_session_on_response=False,
+        )
+        yielded = list(_generate_session())
+        assert yielded == [manual_commit]
+        assert manual_commit.committed == 0
+        assert manual_commit.rolled_back == 0
+
+    with RestlyContext():
         failing = DummySyncSession(fail_commit=True)
         configure(make_session=DummySyncMaker(failing))  # type: ignore[arg-type]
         with pytest.raises(RuntimeError, match="boom"):
@@ -331,6 +362,21 @@ async def test_async_generate_session_commits_and_rolls_back_on_failure():
         assert yielded == [successful]
         assert successful.committed == 1
         assert successful.rolled_back == 0
+
+    with RestlyContext():
+        manual_commit = DummyAsyncSession()
+        configure(
+            async_make_session=DummyAsyncMaker(manual_commit),  # type: ignore[arg-type]
+            commit_session_on_response=False,
+        )
+
+        yielded = []
+        async for session in _async_generate_session():
+            yielded.append(session)
+
+        assert yielded == [manual_commit]
+        assert manual_commit.committed == 0
+        assert manual_commit.rolled_back == 0
 
     with RestlyContext():
         failing = DummyAsyncSession(fail_commit=True)
