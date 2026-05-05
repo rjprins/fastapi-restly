@@ -207,6 +207,8 @@ def test_setup_database_connection_creates_sessionmaker_and_proxy_open_session()
         )
 
         assert get_engine() is make_session.kw["bind"]
+        assert make_session.kw["autoflush"] is True
+        assert make_session.kw["expire_on_commit"] is False
 
         with proxy_open_session() as session:
             assert isinstance(session, Session)
@@ -224,6 +226,8 @@ async def test_setup_async_database_connection_creates_sessionmaker_and_proxy_op
             )
 
             assert get_async_engine() is async_engine
+            assert make_session.kw["autoflush"] is False
+            assert make_session.kw["expire_on_commit"] is False
 
             async with proxy_open_async_session() as session:
                 assert isinstance(session, AsyncSession)
