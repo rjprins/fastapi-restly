@@ -239,7 +239,7 @@ class UserView(fr.AsyncRestView):
 
 ## Testing
 
-`fastapi_restly.pytest_fixtures` provides namespaced pytest fixtures (`restly_app`, `restly_client`, `restly_async_session`, `restly_session`) for test clients and **savepoint-based isolation**. Add to your `conftest.py`:
+`fastapi_restly.pytest_fixtures` provides namespaced pytest fixtures (`restly_app`, `restly_client`, `restly_async_session`, `restly_session`) for test clients and **savepoint-based isolation**. The testing extra installs a pytest plugin entry point, so pytest auto-loads these fixtures.
 
 Install the testing extra when consuming FastAPI-Restly as a package:
 
@@ -247,14 +247,7 @@ Install the testing extra when consuming FastAPI-Restly as a package:
 pip install "fastapi-restly[testing]"
 ```
 
-```python
-# conftest.py
-import fastapi_restly as fr
-
-pytest_plugins = ["fastapi_restly.pytest_fixtures"]
-
-fr.configure(async_database_url="sqlite+aiosqlite:///test.db")
-```
+Configure Restly for your test database in `conftest.py`.
 
 `RestlyTestClient` automatically asserts the expected HTTP status (`200` for GET, `201` for POST, `204` for DELETE, ...) and raises a descriptive `AssertionError` with the response body on failure:
 

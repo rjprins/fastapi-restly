@@ -77,6 +77,9 @@ Documentation = "https://rjprins.github.io/fastapi-restly/"
 Issues = "https://github.com/rjprins/fastapi-restly/issues"
 Changelog = "https://github.com/rjprins/fastapi-restly/blob/main/CHANGELOG.md"
 
+[project.entry-points.pytest11]
+fastapi_restly = "fastapi_restly.pytest_fixtures"
+
 [dependency-groups]
 dev = [
     "aiosqlite>=0.21.0",

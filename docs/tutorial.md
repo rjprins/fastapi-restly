@@ -231,10 +231,7 @@ item = client.get(f"/posts/{post.json()['id']}")
 For test isolation, use the `restly_async_session` or `restly_session` pytest fixtures. These wrap each
 test in a database savepoint so changes never persist between tests:
 
-```python
-# conftest.py
-pytest_plugins = ["fastapi_restly.pytest_fixtures"]
-```
+Pytest auto-loads Restly's fixtures after installing the testing extra.
 
 ```python
 # test_posts.py

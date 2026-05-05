@@ -1,5 +1,5 @@
 try:
-    from fastapi_restly.testing._fixtures import (
+    from fastapi_restly._pytest_fixtures import (
         _shared_connection,
         restly_app,
         restly_async_session,

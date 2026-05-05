@@ -13,10 +13,10 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+import fastapi_restly._pytest_fixtures as _fixtures
 import fastapi_restly.pytest_fixtures as exported_fixtures
 import fastapi_restly.testing as testing
 from fastapi_restly.db._globals import RestlyContext
-from fastapi_restly.testing import _fixtures
 from fastapi_restly.testing._client import RestlyTestClient
 
 
@@ -54,7 +54,7 @@ def test_run_alembic_upgrade_handles_missing_and_failing_migrations(tmp_path: Pa
 def test_activate_savepoint_only_mode_sessions_activates_only_configured_sessions():
     with RestlyContext():
         with patch(
-            "fastapi_restly.testing._fixtures.activate_savepoint_only_mode"
+            "fastapi_restly._pytest_fixtures.activate_savepoint_only_mode"
         ) as activate:
             _fixtures._activate_savepoint_only_mode_sessions()
             activate.assert_not_called()
@@ -74,7 +74,7 @@ def test_activate_savepoint_only_mode_sessions_activates_only_configured_session
             _fr_globals.async_make_session = async_make_session
 
             with patch(
-                "fastapi_restly.testing._fixtures.activate_savepoint_only_mode"
+                "fastapi_restly._pytest_fixtures.activate_savepoint_only_mode"
             ) as activate:
                 _fixtures._activate_savepoint_only_mode_sessions()
                 assert activate.call_count == 2
@@ -183,14 +183,29 @@ def test_fixture_exports_and_client_helpers():
     assert not hasattr(testing, "session")
 
 
-def _run_with_blocked_httpx(import_statement: str) -> subprocess.CompletedProcess[str]:
+def _run_with_blocked_imports(
+    import_statement: str, *blocked_modules: str
+) -> subprocess.CompletedProcess[str]:
+    blocked = repr(blocked_modules)
     code = f"""
 import builtins
+import sys
 real_import = builtins.__import__
+blocked_modules = {blocked}
+
+for module_name in list(sys.modules):
+    if any(
+        module_name == blocked or module_name.startswith(blocked + ".")
+        for blocked in blocked_modules
+    ):
+        del sys.modules[module_name]
 
 def blocked_import(name, globals=None, locals=None, fromlist=(), level=0):
-    if name == "httpx" or name.startswith("httpx."):
-        raise ModuleNotFoundError("No module named 'httpx'", name="httpx")
+    for blocked in blocked_modules:
+        if name == blocked or name.startswith(blocked + "."):
+            raise ModuleNotFoundError(
+                f"No module named '{{blocked}}'", name=blocked
+            )
     return real_import(name, globals, locals, fromlist, level)
 
 builtins.__import__ = blocked_import
@@ -203,14 +218,57 @@ builtins.__import__ = blocked_import
 
 
 def test_testing_namespace_reports_missing_optional_dependencies():
-    result = _run_with_blocked_httpx("import fastapi_restly.testing")
+    result = _run_with_blocked_imports("import fastapi_restly.testing", "httpx")
 
     assert result.returncode != 0
     assert 'pip install "fastapi-restly[testing]"' in result.stderr
 
 
-def test_pytest_plugin_reports_missing_optional_dependencies():
-    result = _run_with_blocked_httpx("import fastapi_restly.pytest_fixtures")
+def test_pytest_plugin_imports_without_httpx():
+    result = _run_with_blocked_imports(
+        """
+import fastapi_restly.pytest_fixtures as fixtures
+assert "restly_client" in fixtures.__all__
+""",
+        "httpx",
+    )
+
+    assert result.returncode == 0
+
+
+def test_restly_client_reports_missing_optional_dependencies():
+    result = _run_with_blocked_imports(
+        """
+from fastapi_restly.pytest_fixtures import restly_app, restly_client
+restly_client.__wrapped__(restly_app.__wrapped__())
+""",
+        "httpx",
+    )
+
+    assert result.returncode != 0
+    assert 'pip install "fastapi-restly[testing]"' in result.stderr
+
+
+def test_pytest_plugin_imports_without_pytest_asyncio():
+    result = _run_with_blocked_imports(
+        """
+import fastapi_restly.pytest_fixtures as fixtures
+assert "restly_async_session" in fixtures.__all__
+""",
+        "pytest_asyncio",
+    )
+
+    assert result.returncode == 0
+
+
+def test_restly_async_session_reports_missing_optional_dependencies():
+    result = _run_with_blocked_imports(
+        """
+from fastapi_restly.pytest_fixtures import restly_async_session
+restly_async_session.__wrapped__(None)
+""",
+        "pytest_asyncio",
+    )
 
     assert result.returncode != 0
     assert 'pip install "fastapi-restly[testing]"' in result.stderr

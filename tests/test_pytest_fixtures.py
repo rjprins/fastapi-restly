@@ -1,3 +1,5 @@
+from importlib.metadata import entry_points
+
 import pytest
 
 pytest_plugins = ["pytester"]
@@ -15,8 +17,6 @@ asyncio_default_fixture_loop_scope = "function"
         """
 import pytest
 import fastapi_restly as fr
-
-pytest_plugins = ["fastapi_restly.pytest_fixtures"]
 
 
 @pytest.fixture(autouse=True)
@@ -63,11 +63,6 @@ def test_public_plugin_uses_prefixed_fixture_names(pytester: pytest.Pytester):
 asyncio_default_fixture_loop_scope = "function"
 """,
     )
-    pytester.makeconftest(
-        """
-pytest_plugins = ["fastapi_restly.pytest_fixtures"]
-"""
-    )
     pytester.makepyfile(
         """
 def test_fixture_names(pytestconfig):
@@ -95,4 +90,47 @@ def test_fixture_names(pytestconfig):
     )
 
     result = pytester.runpytest("-q")
+    result.assert_outcomes(passed=1)
+
+
+def test_pytest_entry_point_auto_loads_fixture_plugin(pytester: pytest.Pytester):
+    pytester.makefile(
+        ".toml",
+        pyproject="""
+[tool.pytest.ini_options]
+asyncio_default_fixture_loop_scope = "function"
+""",
+    )
+    if not any(
+        entry_point.name == "fastapi_restly"
+        and entry_point.value == "fastapi_restly.pytest_fixtures"
+        for entry_point in entry_points(group="pytest11")
+    ):
+        dist_info = pytester.path / "fastapi_restly_entrypoint_test-0.0.dist-info"
+        dist_info.mkdir()
+        (dist_info / "METADATA").write_text(
+            "Name: fastapi-restly-entrypoint-test\nVersion: 0.0\n"
+        )
+        (dist_info / "entry_points.txt").write_text(
+            "[pytest11]\nfastapi_restly = fastapi_restly.pytest_fixtures\n"
+        )
+
+    pytester.makepyfile(
+        """
+def test_fixture_auto_loaded(pytestconfig):
+    fixture_names = set(
+        pytestconfig.pluginmanager.get_plugin("funcmanage")._arg2fixturedefs
+    )
+
+    assert {
+        "restly_app",
+        "restly_client",
+        "restly_session",
+        "restly_async_session",
+        "restly_project_root",
+    } <= fixture_names
+"""
+    )
+
+    result = pytester.runpytest_subprocess("-q")
     result.assert_outcomes(passed=1)

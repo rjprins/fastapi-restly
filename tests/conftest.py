@@ -11,8 +11,7 @@ from sqlalchemy.pool import StaticPool
 
 import fastapi_restly as fr
 from fastapi_restly.db._globals import _fr_globals
-
-pytest_plugins = ["fastapi_restly.pytest_fixtures"]
+from fastapi_restly.pytest_fixtures import restly_client as restly_client
 
 
 @pytest.fixture

@@ -35,6 +35,10 @@ Pass `assert_status_code=None` to skip the assertion entirely and inspect the re
 
 ## Pytest Fixtures
 
+The testing extra installs a pytest plugin entry point, so pytest auto-loads the
+Restly fixtures. If your project disables plugin autoloading, register the plugin
+manually:
+
 ```python
 pytest_plugins = ["fastapi_restly.pytest_fixtures"]
 ```
