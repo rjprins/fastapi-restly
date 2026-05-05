@@ -10,7 +10,7 @@ from _pytest.outcomes import Exit
 from fastapi import FastAPI
 from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 import fastapi_restly._pytest_fixtures as _fixtures
@@ -18,6 +18,17 @@ import fastapi_restly.pytest_fixtures as exported_fixtures
 import fastapi_restly.testing as testing
 from fastapi_restly.db._globals import RestlyContext
 from fastapi_restly.testing._client import RestlyTestClient
+
+
+class FixtureTestBase(DeclarativeBase):
+    pass
+
+
+class FixtureItem(FixtureTestBase):
+    __tablename__ = "fixture_item"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    name: Mapped[str]
 
 
 def test_restly_project_root_discovers_pyproject(monkeypatch, tmp_path: Path):
@@ -138,6 +149,35 @@ def test_sync_fixture_wrapper_patches_and_restores_sessionmaker():
         engine.dispose()
 
 
+def test_sync_fixture_begin_context_flushes_on_successful_exit():
+    engine = create_engine(
+        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
+    )
+    make_session = sessionmaker(bind=engine, expire_on_commit=False)
+
+    try:
+        FixtureTestBase.metadata.create_all(engine)
+
+        with RestlyContext():
+            from fastapi_restly.db._globals import _fr_globals
+
+            _fr_globals.make_session = make_session
+            with engine.connect() as conn:
+                gen = _fixtures.restly_session.__wrapped__(conn)
+                next(gen)
+
+                item = FixtureItem(name="sync")
+                with _fr_globals.make_session.begin() as session:
+                    session.add(item)
+
+                assert item.id is not None
+
+                with pytest.raises(StopIteration):
+                    next(gen)
+    finally:
+        engine.dispose()
+
+
 @pytest.mark.asyncio
 async def test_async_fixture_wrapper_patches_and_restores_sessionmaker():
     async_engine = create_async_engine("sqlite+aiosqlite:///:memory:")
@@ -153,11 +193,40 @@ async def test_async_fixture_wrapper_patches_and_restores_sessionmaker():
 
             mocked_make_session = _fr_globals.async_make_session
             assert mocked_make_session is not make_session
-            assert await mocked_make_session() is session
-            assert await mocked_make_session.begin.return_value.__aenter__() is session
+            async with mocked_make_session() as context_session:
+                assert context_session is session
+            async with mocked_make_session.begin() as context_session:
+                assert context_session is session
 
             await agen.aclose()
             assert _fr_globals.async_make_session is make_session
+    finally:
+        await async_engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_async_fixture_begin_context_flushes_on_successful_exit():
+    async_engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+    make_session = async_sessionmaker(bind=async_engine, expire_on_commit=False)
+
+    try:
+        async with async_engine.begin() as conn:
+            await conn.run_sync(FixtureTestBase.metadata.create_all)
+
+        with RestlyContext():
+            from fastapi_restly.db._globals import _fr_globals
+
+            _fr_globals.async_make_session = make_session
+            agen = _fixtures.restly_async_session.__wrapped__(None)
+            await agen.__anext__()
+
+            item = FixtureItem(name="async")
+            async with _fr_globals.async_make_session.begin() as session:
+                session.add(item)
+
+            assert item.id is not None
+
+            await agen.aclose()
     finally:
         await async_engine.dispose()
 

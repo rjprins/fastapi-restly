@@ -4,7 +4,7 @@ import traceback
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, AsyncIterator, Iterator
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import alembic
 import alembic.command
@@ -52,7 +52,7 @@ def _run_alembic_upgrade(project_root: Path) -> None:
     if not alembic_dir.exists():
         return  # Skip if no alembic directory
 
-    # TODO: Move project root discovery to Settings?
+    # restly_project_root owns discovery; this helper only builds Alembic config.
     alembic_cfg = alembic.config.Config(project_root / "alembic.ini")
     alembic_cfg.set_main_option("script_location", str(alembic_dir))
     try:
@@ -131,23 +131,29 @@ else:
 
         async with get_bound_async_connection() as async_conn:
             async with _fr_globals.async_make_session(bind=async_conn) as sess:
+                class AsyncSessionContext:
+                    def __init__(self, *, flush_on_success: bool) -> None:
+                        self.flush_on_success = flush_on_success
 
-                async def begin_nested():
-                    await sess.begin_nested()
-                    return sess
+                    async def __aenter__(self):
+                        await sess.begin_nested()
+                        return sess
 
-                mock_sessionmaker = AsyncMock()
-                mock_sessionmaker.side_effect = begin_nested
-                # session.begin() is used as a context manager (async with session.begin():)
-                # We need it to also return our savepoint session so explicit transaction
-                # blocks work correctly with our isolation mechanism
-                mock_sessionmaker.begin.return_value.__aenter__.side_effect = (
-                    begin_nested
+                    async def __aexit__(self, exc_type, exc_value, tb):
+                        if self.flush_on_success and exc_type is None:
+                            await sess.flush()
+                        return False  # re-raise any exception
+
+                mock_sessionmaker = MagicMock()
+                mock_sessionmaker.side_effect = lambda *args, **kwargs: (
+                    AsyncSessionContext(flush_on_success=False)
                 )
-                # FIXME: begin().__aexit__ should flush pending changes to make them visible
-                # within the test, but currently does not. This may cause visibility issues
-                # when using `async with session.begin(): ...` blocks inside tests.
-                # Impact: changes inside explicit begin() blocks may not be visible after exit.
+                # session.begin() is used as a context manager (async with
+                # session.begin():). Return the same isolated session and flush
+                # pending changes after successful explicit transaction blocks.
+                mock_sessionmaker.begin.side_effect = lambda *args, **kwargs: (
+                    AsyncSessionContext(flush_on_success=True)
+                )
 
                 async def passthrough_exit(self, exc_type, exc_value, traceback):
                     await sess.flush()
@@ -200,10 +206,11 @@ def restly_session(_shared_connection) -> Iterator[SA_Session]:
         # We need it to also return our savepoint session so explicit transaction
         # blocks work correctly with our isolation mechanism
         mock_sessionmaker.begin.return_value.__enter__.side_effect = begin_nested
-        # FIXME: begin().__exit__ should flush pending changes to make them visible
-        # within the test, but currently does not. This may cause visibility issues
-        # when using `with session.begin(): ...` blocks inside tests.
-        # Impact: changes inside explicit begin() blocks may not be visible after exit.
+
+        def exit_nested(exc_type, exc_value, tb):
+            if exc_type is None:
+                sess.flush()
+            return False  # re-raise any exception
 
         def passthrough_exit(self, exc_type, exc_value, traceback):
             sess.flush()
@@ -221,6 +228,7 @@ def restly_session(_shared_connection) -> Iterator[SA_Session]:
                 patch.object(SA_Session, "__exit__", passthrough_exit),
                 patch.object(SA_Session, "commit", patched_commit),
             ):
+                mock_sessionmaker.begin.return_value.__exit__.side_effect = exit_nested
                 yield sess
         finally:
             globals_obj.make_session = original_make_session

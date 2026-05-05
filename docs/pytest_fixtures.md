@@ -128,15 +128,15 @@ Pass `assert_status_code=None` to skip assertion and inspect the response yourse
 ## Explicit `begin()` caveat
 
 The fixtures patch `commit()` and the session context-manager exit paths so most tests behave as
-expected under savepoint isolation. There is still a documented caveat around explicit transaction
-blocks:
+expected under savepoint isolation. Explicit transaction blocks are also supported:
 
-- `with restly_session.begin(): ...` and `async with restly_async_session.begin(): ...` are supported
-- The fixture implementation notes that the `begin().__exit__` / `begin().__aexit__` path does not
-  currently mirror production perfectly for visibility after the block exits
+- `with restly_session.begin(): ...` flushes pending changes when the block exits successfully
+- `async with restly_async_session.begin(): ...` does the same for async tests
 
-If your tests depend on precise behavior at that boundary, prefer explicit `flush()` calls or test
-against the public API/client layer instead of depending on fixture internals.
+These fixtures still run under savepoint-based isolation rather than production
+transaction management. If a test depends on precise rollback behavior at that
+boundary, prefer explicit `flush()` / `rollback()` calls or test against the
+public API/client layer instead of depending on fixture internals.
 
 ---
 
