@@ -22,15 +22,15 @@ The API reference also classifies the full view method surface:
 
 ```
 GET /{id}
-  └─ retrieve()         ← HTTP contract (replace to change; see below)
-       └─ handle_retrieve(id)    ← business-logic handler — override here
+  └─ get()         ← HTTP contract (replace to change; see below)
+       └─ perform_get(id)    ← business-logic handler — override here
             └─ build_query()    ← same seam as listing — read filters apply here too
 ```
 
 ```
 GET /
-  └─ listing()                      ← HTTP contract (replace to change; see below)
-       └─ handle_listing(query_params)      ← business-logic handler — override here
+  └─ list()                      ← HTTP contract (replace to change; see below)
+       └─ perform_list(query_params)      ← business-logic handler — override here
        │    └─ build_query()    ← WHERE-clause seam shared with count_listing AND retrieve
        └─ count_listing(query_params)  ← only called when include_pagination_metadata = True
             └─ build_query()    ← same seam — overriding once filters list, count, and retrieve
@@ -41,21 +41,21 @@ GET /
 ```
 POST /
   └─ create()                      ← FastAPI endpoint (avoid overriding)
-       └─ handle_create(schema_obj)    ← operation handler — override here to add fields
+       └─ perform_create(schema_obj)    ← operation handler — override here to add fields
             └─ make_new_object(...)  ← object helper — override to change construction
             └─ save_object(obj)      ← object helper — override to add side effects
 
 PATCH /{id}
   └─ update()
-       └─ handle_update(id, schema_obj)
-            └─ handle_retrieve(id)            ← reuses the same 404 logic
+       └─ perform_update(id, schema_obj)
+            └─ perform_get(id)            ← reuses the same 404 logic
             └─ update_object(obj, schema_obj)
             └─ save_object(obj)      ← object helper — override to add side effects
 
 DELETE /{id}
-  └─ destroy()
-       └─ handle_destroy(id)
-            └─ handle_retrieve(id)
+  └─ delete()
+       └─ perform_delete(id)
+            └─ perform_get(id)
             └─ delete_object(obj)
 ```
 
@@ -64,7 +64,7 @@ the session. The default create and update handlers both call `save_object`
 afterwards; that explicit save step is where the write is flushed and refreshed
 from the database.
 
-**General rule:** prefer overriding `handle_*` handlers for business logic and
+**General rule:** prefer overriding `perform_*` handlers for business logic and
 `make_new_object` / `update_object` / `save_object` / `delete_object` for
 lower-level structural changes. When you need to change the HTTP contract
 itself — status code, response shape, headers, or query parameter semantics —
@@ -73,12 +73,12 @@ replace the raw endpoint method; see
 
 ---
 
-## Override a `handle_*` handler
+## Override a `perform_*` handler
 
-Each `handle_*` handler maps one-to-one to a generated endpoint. Override the
+Each `perform_*` handler maps one-to-one to a generated endpoint. Override the
 one you want to change; the others keep their default implementations.
 
-### `handle_create` — inject server-side fields at creation
+### `perform_create` — inject server-side fields at creation
 
 ```python
 import fastapi_restly as fr
@@ -89,7 +89,7 @@ class UserView(fr.AsyncRestView):
     model = User
     schema = UserRead
 
-    async def handle_create(self, schema_obj):
+    async def perform_create(self, schema_obj):
         obj = await self.make_new_object(schema_obj)
         obj.created_by = self.request.state.user_id  # set from request context
         return await self.save_object(obj)
@@ -98,38 +98,38 @@ class UserView(fr.AsyncRestView):
 `self.request` is the live FastAPI `Request`. `self.session` is the injected
 async SQLAlchemy session. Both are available in every handler.
 
-### `handle_update` — run validation before saving
+### `perform_update` — run validation before saving
 
 ```python
-    async def handle_update(self, id, schema_obj):
-        obj = await self.handle_retrieve(id)  # raises 404 if missing
+    async def perform_update(self, id, schema_obj):
+        obj = await self.perform_get(id)  # raises 404 if missing
         if obj.locked:
             raise fastapi.HTTPException(409, "Cannot update a locked record")
         obj = await self.update_object(obj, schema_obj)
         return await self.save_object(obj)
 ```
 
-### `handle_destroy` — require a confirmation header
+### `perform_delete` — require a confirmation header
 
 ```python
-    async def handle_destroy(self, id):
+    async def perform_delete(self, id):
         if self.request.headers.get("X-Confirm-Delete") != "yes":
             raise fastapi.HTTPException(400, "Missing X-Confirm-Delete: yes header")
-        return await super().handle_destroy(id)
+        return await super().perform_delete(id)
 ```
 
 Using `super()` here keeps the existing 404-checking and deletion logic intact.
 
-### `handle_retrieve` — eager-load extra relationships
+### `perform_get` — eager-load extra relationships
 
-The default `handle_retrieve` relies on the view's `schema` to decide which
+The default `perform_get` relies on the view's `schema` to decide which
 relationships to load. If you need something extra just for one endpoint,
 override and load it manually:
 
 ```python
 from sqlalchemy.orm import selectinload
 
-    async def handle_retrieve(self, id):
+    async def perform_get(self, id):
         obj = await self.session.get(
             self.model, id,
             options=[selectinload(User.audit_log)]
@@ -145,11 +145,11 @@ from sqlalchemy.orm import selectinload
 
 The most common real-world override: restrict reads to rows owned by the
 current user. The single seam for this is `build_query`, which
-`handle_listing`, `count_listing`, **and** `handle_retrieve` all consult —
+`perform_list`, `count_listing`, **and** `perform_get` all consult —
 override it once and pagination totals stay aligned with the listed rows,
 and a row hidden from listing returns 404 from `GET /{id}` as well.
-`handle_update` and `handle_destroy` inherit the visibility check via
-`handle_retrieve`.
+`perform_update` and `perform_delete` inherit the visibility check via
+`perform_get`.
 
 ```python
 import sqlalchemy as sa
@@ -171,22 +171,22 @@ cleanly with any base-class or mixin filter. For multi-tenant scoping,
 soft-delete hiding, or row-level permission visibility, this is the seam
 to reach for.
 
-If you need `handle_listing` to also do work *beyond* a `WHERE` clause —
+If you need `perform_list` to also do work *beyond* a `WHERE` clause —
 post-query result decoration, pre-query joins, eager-loading tweaks —
-override `handle_listing` itself and use its optional `query` argument:
+override `perform_list` itself and use its optional `query` argument:
 
 ```python
-    async def handle_listing(self, query_params, query=None):
-        objs = await super().handle_listing(query_params, query)
+    async def perform_list(self, query_params, query=None):
+        objs = await super().perform_list(query_params, query)
         for obj in objs:
             obj._display_name = derive_display_name(obj)
         return objs
 ```
 
-`handle_listing` accepts an optional `query` argument — a SQLAlchemy `Select`
+`perform_list` accepts an optional `query` argument — a SQLAlchemy `Select`
 statement. Pass it to restrict the result set before the list parameters
 (filters, sorting, pagination) are applied on top. A `query` passed this
-way is *not* shared with `count_listing` or `handle_retrieve`, so reach
+way is *not* shared with `count_listing` or `perform_get`, so reach
 for `build_query` instead whenever the filter should also apply to
 pagination totals or single-row fetches.
 
@@ -196,12 +196,12 @@ pagination totals or single-row fetches.
 
 When the change you need applies to *all* writes (both create and update), it
 is cleaner to override the low-level helpers rather than duplicate logic in
-`handle_create` and `handle_update`.
+`perform_create` and `perform_update`.
 
 Two rules apply to `make_new_object` / `update_object` overrides:
 
 - **Per-view application logic** (password hashing, slug derivation,
-  status-transition events) belongs in `handle_create` / `handle_update`,
+  status-transition events) belongs in `perform_create` / `perform_update`,
   written from scratch using the
   [CRUD utility helpers](api_reference.md#crud-utility-free-functions).
   Layering it through `make_new_object` creates ordering surprises and
@@ -260,8 +260,8 @@ than re-implementing the handler from scratch. The pattern is consistent across 
 handlers:
 
 ```python
-    async def handle_listing(self, query_params, query=None):
-        objs = await super().handle_listing(query_params, query)
+    async def perform_list(self, query_params, query=None):
+        objs = await super().perform_list(query_params, query)
         # Annotate each object with a computed field before serialization
         for obj in objs:
             obj._display_name = f"{obj.first_name} {obj.last_name}"
@@ -272,16 +272,16 @@ handlers:
 
 ## Raise HTTP errors from handlers
 
-All `handle_*` handlers run inside a request context, so you can raise
+All `perform_*` handlers run inside a request context, so you can raise
 `fastapi.HTTPException` at any point:
 
 ```python
 import fastapi
 
-    async def handle_create(self, schema_obj):
+    async def perform_create(self, schema_obj):
         if not self.request.state.user.is_admin:
             raise fastapi.HTTPException(403, "Admin access required")
-        return await super().handle_create(schema_obj)
+        return await super().perform_create(schema_obj)
 ```
 
 ---
@@ -300,7 +300,7 @@ class UserView(fr.AsyncRestView):
 
     @fr.get("/{id}/summary")
     async def summary(self, id: int):
-        user = await self.handle_retrieve(id)   # raises 404 automatically
+        user = await self.perform_get(id)   # raises 404 automatically
         return {
             "id": user.id,
             "display_name": f"{user.first_name} {user.last_name}",
@@ -308,7 +308,7 @@ class UserView(fr.AsyncRestView):
         }
 ```
 
-`handle_retrieve` returns the raw ORM object, so you can access all model
+`perform_get` returns the raw ORM object, so you can access all model
 attributes directly.
 
 ---
@@ -327,7 +327,7 @@ class OrderView(fr.AsyncRestView):
 
     @fr.post("/{id}/archive", status_code=202)
     async def archive(self, id: int):
-        order = await self.handle_retrieve(id)
+        order = await self.perform_get(id)
         if order.archived:
             raise fastapi.HTTPException(409, "Already archived")
         order.archived = True
@@ -339,7 +339,7 @@ class OrderView(fr.AsyncRestView):
 
 ## Replace a generated route
 
-The `handle_*` handlers let you change what happens *inside* a generated route while
+The `perform_*` handlers let you change what happens *inside* a generated route while
 leaving its HTTP contract intact. Sometimes you need more than that: a
 different response shape, custom response headers, a non-standard status code,
 or completely different query parameter semantics. In those cases you can
@@ -356,8 +356,8 @@ class OrderView(fr.AsyncRestView):
     schema = OrderRead
 
     @fr.delete("/{id}", status_code=200)
-    async def destroy(self, id: int):
-        obj = await self.handle_retrieve(id)
+    async def delete(self, id: int):
+        obj = await self.perform_get(id)
         serialized = self.to_response_schema(obj).model_dump(mode="json")
         await self.delete_object(obj)
         return serialized
@@ -365,7 +365,7 @@ class OrderView(fr.AsyncRestView):
 
 The route decorator is required. When the framework initialises a view it
 checks whether each standard route is already defined directly on the class.
-If it finds `destroy` with a route decorator, it uses that version and skips
+If it finds `delete` with a route decorator, it uses that version and skips
 the one from `AsyncRestView`. All other generated routes (`GET /`,
 `GET /{id}`, `POST /`, `PATCH /{id}`) remain unchanged.
 
@@ -375,8 +375,8 @@ These two are easy to conflate:
 
 | Technique | How | When to use |
 |---|---|---|
-| Override a `handle_*` handler | `async def handle_create(self, ...)` — no decorator | Change business logic; keep the HTTP contract |
-| Replace a route | `@fr.delete("/{id}") async def destroy(self, ...)` — with decorator | Change the HTTP contract: status code, response shape, headers, query params |
+| Override a `perform_*` handler | `async def perform_create(self, ...)` — no decorator | Change business logic; keep the HTTP contract |
+| Replace a route | `@fr.delete("/{id}") async def delete(self, ...)` — with decorator | Change the HTTP contract: status code, response shape, headers, query params |
 
 Use handlers for the common case. Route replacement is for the cases where you
 genuinely need to renegotiate what the endpoint looks like on the wire.
@@ -387,14 +387,14 @@ A replacement is a full view method. Everything the parent view provides is
 still on `self`:
 
 - `self.session`, `self.request`, `self.model`, `self.schema`
-- All `handle_*` handlers — call them to reuse existing business logic without
+- All `perform_*` handlers — call them to reuse existing business logic without
   re-implementing it
 - `self.to_response_schema(obj)` — serialise an ORM object to the configured
   Pydantic schema
 - `self.make_new_object`, `self.update_object`, `self.save_object`,
   `self.delete_object`
 
-The example above delegates the 404 check to `self.handle_retrieve(id)` and the
+The example above delegates the 404 check to `self.perform_get(id)` and the
 database removal to `self.delete_object(obj)`. Only the HTTP response layer
 changes.
 
@@ -498,8 +498,8 @@ class ProductView(fr.AsyncRestView):
     schema = ProductRead
 
     @fr.delete("/{id}", status_code=200)
-    async def destroy(self, id: int):
-        obj = await self.handle_retrieve(id)
+    async def delete(self, id: int):
+        obj = await self.perform_get(id)
         serialized = self.to_response_schema(obj).model_dump(mode="json")
         await self.delete_object(obj)
         return serialized
@@ -509,10 +509,10 @@ The four other generated routes are unaffected.
 
 ### Example: replace the list endpoint
 
-Replace `listing` to take full control of how the list is returned — for
+Replace `list` to take full control of how the list is returned — for
 instance to add custom response headers. Note that the replacement takes no
 `query_params` argument; the framework's automatic query parameter injection
-only applies to the standard generated `listing`. Read query parameters directly
+only applies to the standard generated `list`. Read query parameters directly
 from `self.request.query_params` if you need them:
 
 ```python
@@ -526,8 +526,8 @@ class ProductView(fr.AsyncRestView):
     schema = ProductRead
 
     @fr.get("/")
-    async def listing(self):
-        items = await self.handle_listing({})
+    async def list(self):
+        items = await self.perform_list({})
         total = await self.count_listing({})
         serialized = [
             self.to_response_schema(obj).model_dump(mode="json") for obj in items
@@ -548,8 +548,8 @@ up before the standard one:
 ```python
 class DeleteReturnsObjectMixin:
     @fr.delete("/{id}", status_code=200)
-    async def destroy(self, id):
-        obj = await self.handle_retrieve(id)
+    async def delete(self, id):
+        obj = await self.perform_get(id)
         serialized = self.to_response_schema(obj).model_dump(mode="json")
         await self.delete_object(obj)
         return serialized
@@ -573,7 +573,7 @@ Both views now return the deleted record as JSON. All other generated routes
 behave normally on both.
 
 The public React Admin views use the same route-replacement pattern
-internally: `fr.AsyncReactAdminView` and `fr.ReactAdminView` replace `listing`
+internally: `fr.AsyncReactAdminView` and `fr.ReactAdminView` replace `list`
 with one that speaks the `ra-data-simple-rest` wire contract, while preserving
 the standard CRUD handlers for the rest of the view.
 
@@ -588,12 +588,12 @@ Set `exclude_routes` to suppress specific generated endpoints:
 class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
-    exclude_routes = [fr.ViewRoute.DESTROY, fr.ViewRoute.UPDATE]
+    exclude_routes = [fr.ViewRoute.DELETE, fr.ViewRoute.UPDATE]
 ```
 
-Valid values are: `fr.ViewRoute.LISTING`, `fr.ViewRoute.RETRIEVE`,
-`fr.ViewRoute.CREATE`, `fr.ViewRoute.UPDATE`, `fr.ViewRoute.DESTROY`. Route-name
-strings such as `"destroy"` are still accepted for compatibility; any other
+Valid values are: `fr.ViewRoute.LIST`, `fr.ViewRoute.GET`,
+`fr.ViewRoute.CREATE`, `fr.ViewRoute.UPDATE`, `fr.ViewRoute.DELETE`. Route-name
+strings such as `"delete"` are also accepted; any other
 string raises `AttributeError` at startup.
 
 ---

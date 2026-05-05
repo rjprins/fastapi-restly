@@ -150,10 +150,12 @@ runtime behaviour:
 - `creation_schema`, `update_schema` — derived from `schema` if not declared.
 - `model` — the SQLAlchemy model class.
 - `id_type` — Python type for the `{id}` path parameter (default `int`).
-- `exclude_routes` — iterable of method names to suppress (e.g.
-  `exclude_routes = ["destroy"]`). Routes listed here have their `_api_route_args`
-  marker removed during `before_include_view()` so FastAPI never registers them.
-- `include_pagination_metadata` — if `True`, the `listing` endpoint returns a
+- `exclude_routes` — iterable of route names to suppress (e.g.
+  `exclude_routes = [fr.ViewRoute.DELETE]`). Route-name strings such as
+  `"delete"` are also accepted. Routes listed here have their
+  `_api_route_args` marker removed during `before_include_view()` so FastAPI
+  never registers them.
+- `include_pagination_metadata` — if `True`, the `list` endpoint returns a
   paginated envelope with `items`, `total`, `page`, `page_size`, and `total_pages`.
 
 ### include_view()
@@ -184,10 +186,10 @@ attach an `APIRouter` to the parent app/router.
 
 ### Endpoint / Handler Separation
 
-Every CRUD endpoint delegates to a `handle_*` handler (`handle_listing`,
-`handle_retrieve`, `handle_create`, `handle_update`, `handle_destroy`). Override
-the `handle_*` handler to change business logic while keeping the endpoint
-wrapper intact, or override the endpoint method itself (e.g. `listing`) to replace
+Every CRUD endpoint delegates to a `perform_*` handler (`perform_list`,
+`perform_get`, `perform_create`, `perform_update`, `perform_delete`). Override
+the `perform_*` handler to change business logic while keeping the endpoint
+wrapper intact, or override the endpoint method itself (e.g. `list`) to replace
 the full request/response flow.
 
 ### Nested Response Schemas vs Write Payloads
@@ -215,7 +217,7 @@ If you declare a nested input field like `address: AddressRead` on a write
 schema, the default CRUD implementation will pass that nested Pydantic object
 through to the SQLAlchemy model constructor or attribute setter, which usually
 does not match the ORM model shape. Use a flattened schema or override
-`handle_create()` / `handle_update()` to transform the payload first.
+`perform_create()` / `perform_update()` to transform the payload first.
 
 (list-parameters-lifecycle)=
 ## List Parameters Lifecycle

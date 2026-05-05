@@ -237,8 +237,8 @@ GET /users/?page=2&page_size=50
 ## Overriding query logic per view
 
 Override `build_query` to inject a base query before the framework
-applies the URL parameters. `handle_listing`, `count_listing`, and
-`handle_retrieve` all consult this seam, so the filter applies to listing,
+applies the URL parameters. `perform_list`, `count_listing`, and
+`perform_get` all consult this seam, so the filter applies to listing,
 the pagination total, **and** single-row fetches (`GET /{id}`) without
 further plumbing:
 
@@ -257,8 +257,8 @@ cleanly with any base-class or mixin filter. See
 [Composing views with mixins](howto_compose_views_with_mixins.md) for the
 multi-layer pattern.
 
-`handle_listing` still accepts an optional `query` argument for the rare
+`perform_list` still accepts an optional `query` argument for the rare
 case where the custom query intentionally should *not* affect
-`count_listing` or `handle_retrieve` — for example, a list-only result
+`count_listing` or `perform_get` — for example, a list-only result
 decoration that needs a different join shape than the count. Reach for
 `build_query` first.

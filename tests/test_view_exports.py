@@ -33,39 +33,23 @@ def test_timestamp_convenience_bases_are_not_public_api():
     assert "IDStampsSchema" not in fr.schemas.__all__
 
 
-def test_rest_view_route_and_listing_hook_names_are_current():
-    legacy_base_query_hook_name = "build_" + "list_query"
+def test_rest_view_route_and_hook_names_are_current():
     current_names = (
-        "listing",
-        "retrieve",
+        "list",
+        "get",
         "create",
         "update",
-        "destroy",
-        "handle_listing",
+        "delete",
+        "perform_list",
         "build_query",
         "count_listing",
         "to_response_schema",
-        "handle_retrieve",
-        "handle_create",
-        "handle_update",
-        "handle_destroy",
-    )
-    old_names = (
-        "index",
-        "handle_list",
-        legacy_base_query_hook_name,
-        "build_listing_query",
-        "count_index",
-        "get",
-        "post",
-        "patch",
-        "delete",
+        "perform_get",
+        "perform_create",
+        "perform_update",
+        "perform_delete",
     )
 
     for view_cls in (fr.RestView, fr.AsyncRestView):
         for name in current_names:
             assert hasattr(view_cls, name), f"{view_cls.__name__}.{name} is missing"
-        for name in old_names:
-            assert not hasattr(view_cls, name), (
-                f"{view_cls.__name__}.{name} should not remain on the public surface"
-            )

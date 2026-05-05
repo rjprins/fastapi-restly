@@ -96,9 +96,9 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
     session: SessionDep  # type: ignore[reportIncompatibleVariableOverride]
 
     @get("/")
-    def listing(self, query_params: Any) -> Any:
+    def list(self, query_params: Any) -> Any:
         self._reject_unknown_query_params()
-        objs = self.handle_listing(query_params)
+        objs = self.perform_list(query_params)
         if not self.include_pagination_metadata:
             return [self.to_response_schema(obj) for obj in objs]
 
@@ -120,7 +120,7 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         """
         return sqlalchemy.select(self.model)
 
-    def handle_listing(
+    def perform_list(
         self, query_params: Any, query: sqlalchemy.Select[Any] | None = None
     ) -> Sequence[ModelT]:
         """
@@ -128,9 +128,9 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         Accepts a query argument that can be used for narrowing down the selection.
         Feel free to override this method, e.g.:
 
-            def handle_listing(self, query_params, query=None):
+            def perform_list(self, query_params, query=None):
                 query = make_my_query()
-                objs = super().handle_listing(query_params, query)
+                objs = super().perform_list(query_params, query)
                 return add_my_info(objs)
 
         ``query_params`` is the validated query-parameter Pydantic model
@@ -160,11 +160,11 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         return int(self.session.scalar(count_query) or 0)
 
     @get("/{id}")
-    def retrieve(self, id: Any) -> Any:
-        obj = self.handle_retrieve(id)
+    def get(self, id: Any) -> Any:
+        obj = self.perform_get(id)
         return self.to_response_schema(obj)
 
-    def handle_retrieve(self, id: IdT) -> ModelT:
+    def perform_get(self, id: IdT) -> ModelT:
         """
         Handle a GET request on "/{id}". This should return a single object.
         Return a 404 if not found.
@@ -178,7 +178,7 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         if len(pk_cols) != 1:
             raise NotImplementedError(
                 f"{self.model.__name__} has a composite primary key; "
-                "override handle_retrieve to fetch it."
+                "override perform_get to fetch it."
             )
         query = self.build_query().where(pk_cols[0] == id)
         loader_options = self.get_relationship_loader_options()
@@ -194,10 +194,10 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
 
     @post("/")
     def create(self, schema_obj: Any) -> Any:
-        obj = self.handle_create(schema_obj)
+        obj = self.perform_create(schema_obj)
         return self.to_response_schema(obj)
 
-    def handle_create(self, schema_obj: CreateSchemaT) -> ModelT:
+    def perform_create(self, schema_obj: CreateSchemaT) -> ModelT:
         """
         Handle a POST request on "/". This should create a new object.
         Feel free to override this method.
@@ -208,25 +208,25 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
 
     @patch("/{id}")
     def update(self, id: Any, schema_obj: Any) -> Any:
-        obj = self.handle_update(id, schema_obj)
+        obj = self.perform_update(id, schema_obj)
         return self.to_response_schema(obj)
 
-    def handle_update(self, id: IdT, schema_obj: UpdateSchemaT) -> ModelT:
+    def perform_update(self, id: IdT, schema_obj: UpdateSchemaT) -> ModelT:
         """
         Handle a PATCH request on "/{id}". This should partially update an existing
         object.
         Feel free to override this method.
         """
-        obj = self.handle_retrieve(id)
+        obj = self.perform_get(id)
         obj = self.update_object(obj, schema_obj)
         return self.save_object(obj)
 
     @delete("/{id}")
-    def destroy(self, id: Any) -> fastapi.Response:
-        return self.handle_destroy(id)
+    def delete(self, id: Any) -> fastapi.Response:
+        return self.perform_delete(id)
 
-    def handle_destroy(self, id: IdT) -> fastapi.Response:
-        obj = self.handle_retrieve(id)
+    def perform_delete(self, id: IdT) -> fastapi.Response:
+        obj = self.perform_get(id)
         self.delete_object(obj)
         return fastapi.Response(status_code=204)
 
@@ -234,7 +234,7 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         """
         Delete ``obj`` and flush the session.
 
-        ``handle_destroy`` calls ``handle_retrieve`` first, so this method receives an
+        ``perform_delete`` calls ``perform_get`` first, so this method receives an
         existing object. Override it to change the deletion mechanics, for
         example to implement soft-delete.
         """
@@ -245,7 +245,7 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         """
         Build a new ORM object from ``schema_obj`` and add it to the session.
 
-        This does not flush. The default ``handle_create`` calls
+        This does not flush. The default ``perform_create`` calls
         ``save_object`` afterwards; override this method for construction-time
         changes that must happen before that save boundary.
         """
@@ -256,7 +256,7 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         """
         Apply writable fields from ``schema_obj`` to ``obj``.
 
-        This does not flush. The default ``handle_update`` calls
+        This does not flush. The default ``perform_update`` calls
         ``save_object`` afterwards; override this method for update-time changes
         that must happen before that save boundary.
         """

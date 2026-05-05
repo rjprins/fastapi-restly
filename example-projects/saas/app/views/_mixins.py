@@ -1,7 +1,7 @@
 """Cross-cutting mixins for the SaaS example.
 
 These compose by cooperative ``super()`` chains. Application-layer logic
-in concrete views (``ProjectView.handle_create`` etc.) doesn't have to know
+in concrete views (``ProjectView.perform_create`` etc.) doesn't have to know
 they exist — the mixins inject their behavior into the right framework
 helper/handler (``make_new_object`` / ``update_object`` for *write-side* stamps,
 ``build_query`` for *read-side* filters that apply to listing, count, and
@@ -57,7 +57,7 @@ class TenantScopedMixin:
 
     def build_query(self) -> sa.Select:
         # Filters listing, count, AND retrieve via the framework's unified
-        # read seam — no separate handle_retrieve override required.
+        # read seam — no separate perform_get override required.
         q = super().build_query()  # type: ignore[misc]
         if self._is_admin():
             return q

@@ -7,6 +7,7 @@ from ._async import (
 from ._base import (
     BaseRestView,
     View,
+    ViewRoute,
     delete,
     get,
     include_view,
@@ -31,6 +32,7 @@ __all__ = [
     "ReactAdminView",
     "BaseRestView",
     "View",
+    "ViewRoute",
     "async_make_new_object",
     "async_save_object",
     "async_update_object",

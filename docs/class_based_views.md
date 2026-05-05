@@ -165,11 +165,11 @@ View                   ← class-based view primitive (no CRUD)
 
 - `View` is the bare CBV primitive. Use it for non-CRUD endpoints — auth
   flows, custom RPC, file uploads, anything that does not fit the
-  listing/retrieve/create/update/destroy shape.
+  list/get/create/update/delete shape.
 - `BaseRestView` extends `View` with `model`, `schema`, the auto-generated
   create/update schemas, query-modifier configuration, and helper methods
-  like `to_response_schema()`. It declares route methods (`listing`, `retrieve`,
-  `create`, `update`, `destroy`) but provides no implementations — it is an
+  like `to_response_schema()`. It declares route methods (`list`, `get`,
+  `create`, `update`, `delete`) but provides no implementations — it is an
   abstract scaffold.
 - `RestView` and `AsyncRestView` provide the concrete sync and async
   implementations of the CRUD endpoints. **One of these is what you usually
@@ -177,7 +177,7 @@ View                   ← class-based view primitive (no CRUD)
 
 The public method surface is classified in the
 [API reference](api_reference.md#view-method-surface): route methods define the
-HTTP contract, `handle_*` methods are override hooks, and object/query helpers
+HTTP contract, `perform_*` methods are override hooks, and object/query helpers
 are public utilities for handlers and custom routes.
 
 ## A complete example: shared base view
@@ -227,10 +227,10 @@ layered together — see
 ## Override a single method
 
 `AsyncRestView` and `RestView` are designed so you can replace any one piece
-without touching the rest. Override the handler (`handle_listing`, `handle_retrieve`,
-`handle_create`, `handle_update`, `handle_destroy`) for business-logic changes that should
+without touching the rest. Override the handler (`perform_list`, `perform_get`,
+`perform_create`, `perform_update`, `perform_delete`) for business-logic changes that should
 fire on both the generated route and any custom callers; override the
-endpoint method itself (`listing`, `retrieve`, `create`, `update`, `destroy`) when you
+endpoint method itself (`list`, `get`, `create`, `update`, `delete`) when you
 want full control of the HTTP layer.
 
 ```python
@@ -240,9 +240,9 @@ class UserView(fr.AsyncRestView):
     model = User
     schema = UserRead
 
-    async def handle_create(self, schema_obj: UserCreate) -> User:
+    async def perform_create(self, schema_obj: UserCreate) -> User:
         # Compose the create flow yourself so the password hash is written
-        # *before* save_object flushes. Calling super().handle_create() and
+        # *before* save_object flushes. Calling super().perform_create() and
         # mutating after would lose the change — the row is already saved.
         user = await self.make_new_object(schema_obj)
         user.password_hash = hash_password(schema_obj.password)

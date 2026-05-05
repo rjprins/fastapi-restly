@@ -14,7 +14,7 @@ The examples use `AsyncRestView`. The same handlers and patterns apply to `RestV
 FastAPI-Restly gives you four layers to work with:
 
 ```
-handle_* handlers            — change what one CRUD operation does
+perform_* handlers            — change what one CRUD operation does
 object helpers        — change how objects are built/saved/deleted across all writes
 custom routes         — add endpoints beyond the five generated ones
 inheritance           — share any of the above across multiple views
@@ -24,23 +24,23 @@ Start at the highest layer that covers what you need. Drop down only when necess
 
 ---
 
-## Layer 1 — `handle_*` handlers
+## Layer 1 — `perform_*` handlers
 
-Each generated endpoint delegates to a `handle_*` handler. Override the handler to change
+Each generated endpoint delegates to a `perform_*` handler. Override the handler to change
 the business logic without touching the HTTP contract.
 
 ```
-GET /          → listing() → handle_listing(query_params)
-GET /{id}      → retrieve() → handle_retrieve(id)
-POST /         → create()  → handle_create(schema_obj)
-PATCH /{id}    → update()  → handle_update(id, schema_obj)
-DELETE /{id}   → destroy() → handle_destroy(id)
+GET /          → list() → perform_list(query_params)
+GET /{id}      → get() → perform_get(id)
+POST /         → create()  → perform_create(schema_obj)
+PATCH /{id}    → update()  → perform_update(id, schema_obj)
+DELETE /{id}   → delete() → perform_delete(id)
 ```
 
 Inside every handler, `self.session` is the live database session and `self.request`
 is the FastAPI `Request` object.
 
-### handle_create — inject server-side fields
+### perform_create — inject server-side fields
 
 Real APIs rarely accept every field from the client. Say each post should record
 which user created it, taken from the request context rather than from the payload:
@@ -52,7 +52,7 @@ class PostView(fr.AsyncRestView):
     model = Post
     schema = PostRead
 
-    async def handle_create(self, schema_obj):
+    async def perform_create(self, schema_obj):
         obj = await self.make_new_object(schema_obj)
         obj.author_id = self.request.state.user_id   # set server-side
         return await self.save_object(obj)
@@ -62,31 +62,31 @@ class PostView(fr.AsyncRestView):
 `save_object` flushes and refreshes it. Both are separate steps you can
 intercept individually — more on that in Layer 2.
 
-### handle_update — validate before saving
+### perform_update — validate before saving
 
 Block updates based on the current state of the object:
 
 ```python
-    async def handle_update(self, id, schema_obj):
-        obj = await self.handle_retrieve(id)          # raises 404 if missing
+    async def perform_update(self, id, schema_obj):
+        obj = await self.perform_get(id)          # raises 404 if missing
         if obj.published:
             raise fastapi.HTTPException(409, "Cannot edit a published post")
         obj = await self.update_object(obj, schema_obj)
         return await self.save_object(obj)
 ```
 
-Calling `self.handle_retrieve(id)` reuses the same 404 logic as the GET endpoint.
-If you later override `handle_retrieve` (for example, to add tenant scoping), `handle_update`
+Calling `self.perform_get(id)` reuses the same 404 logic as the GET endpoint.
+If you later override `perform_get` (for example, to add tenant scoping), `perform_update`
 picks up that change automatically.
 
 ### build_query — filter results to the current user
 
 The most common real-world override: restrict reads to rows the caller is
-allowed to see. `build_query` is the seam `handle_listing`, `count_listing`,
-**and** `handle_retrieve` all consult, so a single override keeps listed
+allowed to see. `build_query` is the seam `perform_list`, `count_listing`,
+**and** `perform_get` all consult, so a single override keeps listed
 rows, pagination totals, and single-row fetches in sync — a row hidden
-from listing returns 404 from `GET /{id}` too, and `handle_update` /
-`handle_destroy` inherit the visibility check via `handle_retrieve`.
+from listing returns 404 from `GET /{id}` too, and `perform_update` /
+`perform_delete` inherit the visibility check via `perform_get`.
 
 ```python
 @fr.include_view(app)
@@ -102,39 +102,39 @@ class PostView(fr.AsyncRestView):
 ```
 
 Calling `super().build_query()` and chaining `.where(...)` composes cleanly
-with any base-class or mixin filter. Reach for a `handle_listing` override only when
+with any base-class or mixin filter. Reach for a `perform_list` override only when
 you need to do work beyond a `WHERE` clause — see
 [Override Endpoints](howto_override_endpoints.md#scope-filter-the-list-endpoint).
 
-### handle_destroy — require explicit confirmation
+### perform_delete — require explicit confirmation
 
 ```python
-    async def handle_destroy(self, id):
+    async def perform_delete(self, id):
         if self.request.headers.get("X-Confirm-Delete") != "yes":
             raise fastapi.HTTPException(400, "Missing X-Confirm-Delete: yes header")
-        return await super().handle_destroy(id)
+        return await super().perform_delete(id)
 ```
 
-`super().handle_destroy(id)` handles the 404 check and the actual deletion.
+`super().perform_delete(id)` handles the 404 check and the actual deletion.
 Override only the guard; let the base class do the rest.
 
 ---
 
 ## Layer 2 — object helpers
 
-The object helpers sit below the `handle_*` handlers. They handle the mechanics of
+The object helpers sit below the `perform_*` handlers. They handle the mechanics of
 construction, update, explicit save, and removal. Override them when the same
 change applies to **both** create and update, so you don't repeat yourself.
 
 ```
-handle_create  →  make_new_object(schema_obj)
+perform_create  →  make_new_object(schema_obj)
            →  save_object(obj)
 
-handle_update  →  handle_retrieve(id)
+perform_update  →  perform_get(id)
            →  update_object(obj, schema_obj)
            →  save_object(obj)
 
-handle_destroy  →  handle_retrieve(id)
+perform_delete  →  perform_get(id)
            →  delete_object(obj)
 ```
 
@@ -154,7 +154,7 @@ invalidate a cache, emit an event — override `save_object`:
         return obj
 ```
 
-Because `handle_create` and `handle_update` both end with `self.save_object(obj)`,
+Because `perform_create` and `perform_update` both end with `self.save_object(obj)`,
 this one override covers both operations.
 
 ### make_new_object — set a default on creation only
@@ -192,7 +192,7 @@ from datetime import datetime, timezone
 ```
 
 `DELETE /posts/{id}` now marks the row instead of removing it. The 204 response
-is still returned by `handle_destroy`; only the persistence step changes.
+is still returned by `perform_delete`; only the persistence step changes.
 
 ---
 
@@ -214,7 +214,7 @@ class PostView(fr.AsyncRestView):
 
     @fr.get("/{id}/summary")
     async def summary(self, id: int):
-        post = await self.handle_retrieve(id)   # raises 404 automatically
+        post = await self.perform_get(id)   # raises 404 automatically
         return {
             "id": post.id,
             "title": post.title,
@@ -222,7 +222,7 @@ class PostView(fr.AsyncRestView):
         }
 ```
 
-Calling `self.handle_retrieve(id)` gives you the ORM object with the same 404 logic
+Calling `self.perform_get(id)` gives you the ORM object with the same 404 logic
 as the standard GET endpoint — and picks up any override you may have applied.
 
 ### A state-change action
@@ -234,7 +234,7 @@ import fastapi
 
     @fr.post("/{id}/publish", status_code=200)
     async def publish(self, id: int):
-        post = await self.handle_retrieve(id)
+        post = await self.perform_get(id)
         if post.published:
             raise fastapi.HTTPException(409, "Already published")
         post.published = True
@@ -291,7 +291,7 @@ special framework support.
 ### Extract authentication into a base class
 
 The blog API has two views that both need a current user. Instead of repeating
-the dependency and the `handle_create` logic:
+the dependency and the `perform_create` logic:
 
 ```python
 from typing import Annotated
@@ -304,7 +304,7 @@ def get_current_user(request: fastapi.Request) -> User:
 class AuthoredBase(fr.AsyncRestView):
     current_user: Annotated[User, Depends(get_current_user)]
 
-    async def handle_create(self, schema_obj):
+    async def perform_create(self, schema_obj):
         obj = await self.make_new_object(schema_obj)
         obj.author_id = self.current_user.id
         return await self.save_object(obj)
@@ -339,14 +339,14 @@ class PostView(AuthoredBase):
     model = Post
     schema = PostRead
 
-    async def handle_create(self, schema_obj):
+    async def perform_create(self, schema_obj):
         # PostView-specific logic before the base class runs
         schema_obj.slug = slugify(schema_obj.title)
-        return await super().handle_create(schema_obj)
+        return await super().perform_create(schema_obj)
 ```
 
-The call chain is `PostView.handle_create` → `AuthoredBase.handle_create` →
-`AsyncRestView.handle_create`. All three layers run in order.
+The call chain is `PostView.perform_create` → `AuthoredBase.perform_create` →
+`AsyncRestView.perform_create`. All three layers run in order.
 
 ### Apply router-level dependencies
 
@@ -460,7 +460,7 @@ def get_current_user_id(request: fastapi.Request) -> int:
 class AuthoredBase(fr.AsyncRestView):
     user_id: Annotated[int, Depends(get_current_user_id)]
 
-    async def handle_create(self, schema_obj):
+    async def perform_create(self, schema_obj):
         obj = await self.make_new_object(schema_obj)
         obj.author_id = self.user_id
         return await self.save_object(obj)
@@ -474,8 +474,8 @@ class PostView(AuthoredBase):
     model = Post
     schema = PostRead
 
-    async def handle_update(self, id, schema_obj):
-        obj = await self.handle_retrieve(id)
+    async def perform_update(self, id, schema_obj):
+        obj = await self.perform_get(id)
         if obj.published:
             raise fastapi.HTTPException(409, "Cannot edit a published post")
         obj = await self.update_object(obj, schema_obj)
@@ -487,7 +487,7 @@ class PostView(AuthoredBase):
 
     @fr.post("/{id}/publish", status_code=200)
     async def publish(self, id: int):
-        post = await self.handle_retrieve(id)
+        post = await self.perform_get(id)
         if post.published:
             raise fastapi.HTTPException(409, "Already published")
         post.published = True

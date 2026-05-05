@@ -10,16 +10,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Renamed `build_listing_query` to `build_query` and broadened its role:
-  `handle_retrieve` now also routes through this seam, so a single override
+  `perform_get` now also routes through this seam, so a single override
   filters listing, the pagination total, AND single-row fetches. A row
-  hidden from listing returns 404 from `GET /{id}` too, and `handle_update`
-  / `handle_destroy` inherit the visibility check via `handle_retrieve`.
+  hidden from listing returns 404 from `GET /{id}` too, and `perform_update`
+  / `perform_delete` inherit the visibility check via `perform_get`.
   Mixins that previously needed both `build_listing_query` and a
-  `handle_retrieve` override can drop the latter.
-- `handle_retrieve` now issues a `SELECT … WHERE pk = ?` instead of
+  `perform_get` override can drop the latter.
+- `perform_get` now issues a `SELECT … WHERE pk = ?` instead of
   `session.get(...)`. Behaviour is unchanged for single-column primary
   keys; subclasses with composite primary keys must override
-  `handle_retrieve` themselves (a `NotImplementedError` is raised
+  `perform_get` themselves (a `NotImplementedError` is raised
   otherwise with a clear message).
 
 ## [3.0.0] - 2026-05-02
@@ -29,7 +29,7 @@ First public release.
 ### Added
 
 - Class-based CRUD views for async and sync SQLAlchemy sessions with generated
-  list, retrieve, create, update, and destroy routes.
+  list, get, create, update, and delete routes.
 - React Admin compatible `AsyncReactAdminView` and `ReactAdminView` variants
   for the `ra-data-simple-rest` wire contract.
 - Generated schema support for read, create, and update payloads, including
@@ -45,9 +45,9 @@ First public release.
 - Consolidated framework setup on `fr.configure(...)`, including async/sync
   engine configuration and response-session commit policy.
 - Renamed built-in route methods to resource-oriented names:
-  `listing`, `retrieve`, `create`, `update`, and `destroy`.
-- Renamed business-logic hooks to `handle_listing`, `handle_retrieve`,
-  `handle_create`, `handle_update`, and `handle_destroy`.
+  `list`, `get`, `create`, `update`, and `delete`.
+- Renamed business-logic hooks to `perform_list`, `perform_get`,
+  `perform_create`, `perform_update`, and `perform_delete`.
 - Standardized schema component names on `ModelRead`, `ModelCreate`, and
   `ModelUpdate`.
 - Made `sort` the canonical list ordering parameter.

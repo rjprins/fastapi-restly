@@ -128,14 +128,14 @@ To disable generated endpoints on a view, use:
 class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
-    exclude_routes = [fr.ViewRoute.DESTROY, fr.ViewRoute.UPDATE]
+    exclude_routes = [fr.ViewRoute.DELETE, fr.ViewRoute.UPDATE]
 ```
 
-Valid route values for exclusion: `fr.ViewRoute.LISTING`, `fr.ViewRoute.RETRIEVE`,
-`fr.ViewRoute.CREATE`, `fr.ViewRoute.UPDATE`, `fr.ViewRoute.DESTROY`.
+Valid route values for exclusion: `fr.ViewRoute.LIST`, `fr.ViewRoute.GET`,
+`fr.ViewRoute.CREATE`, `fr.ViewRoute.UPDATE`, `fr.ViewRoute.DELETE`.
 
-`exclude_routes` accepts any iterable of `ViewRoute` values. Route-name strings such
-as `"destroy"` are still accepted for compatibility.
+`exclude_routes` accepts any iterable of `ViewRoute` values. Current route-name
+strings such as `"delete"` are also accepted.
 
 ## Response Modeling
 
@@ -202,16 +202,16 @@ Methods on `RestView` / `AsyncRestView` fall into three categories:
 
 | Category | Method | Signature | Return | Purpose |
 |---|---|---|---|---|
-| Route | `listing` | `(query_params)` | response schema list or pagination envelope | `GET /`; validates query parameters and serializes list results. |
-| Route | `retrieve` | `(id)` | response schema | `GET /{id}`; serializes one retrieved object. |
+| Route | `list` | `(query_params)` | response schema list or pagination envelope | `GET /`; validates query parameters and serializes list results. |
+| Route | `get` | `(id)` | response schema | `GET /{id}`; serializes one retrieved object. |
 | Route | `create` | `(schema_obj)` | response schema | `POST /`; serializes the created object. |
 | Route | `update` | `(id, schema_obj)` | response schema | `PATCH /{id}`; serializes the updated object. |
-| Route | `destroy` | `(id)` | `fastapi.Response` | `DELETE /{id}`; returns `204` by default. |
-| Handler hook | `handle_listing` | `(query_params, query=None)` | `Sequence[Model]` | Fetch list rows; override for list business logic beyond query construction. |
-| Handler hook | `handle_retrieve` | `(id)` | `Model` | Fetch one row through `build_query()` or raise `404`. Read-side filters layered into `build_query` apply here too — so `update`/`destroy` (which call `handle_retrieve`) inherit the visibility check for free. |
-| Handler hook | `handle_create` | `(schema_obj)` | `Model` | Build and save a new row; override for create-time business rules. |
-| Handler hook | `handle_update` | `(id, schema_obj)` | `Model` | Fetch, mutate, and save an existing row; override for update rules. |
-| Handler hook | `handle_destroy` | `(id)` | `fastapi.Response` | Fetch and delete a row; override for delete rules while keeping the HTTP contract. |
+| Route | `delete` | `(id)` | `fastapi.Response` | `DELETE /{id}`; returns `204` by default. |
+| Handler hook | `perform_list` | `(query_params, query=None)` | `Sequence[Model]` | Fetch list rows; override for list business logic beyond query construction. |
+| Handler hook | `perform_get` | `(id)` | `Model` | Fetch one row through `build_query()` or raise `404`. Read-side filters layered into `build_query` apply here too — so `update`/`delete` (which call `perform_get`) inherit the visibility check for free. |
+| Handler hook | `perform_create` | `(schema_obj)` | `Model` | Build and save a new row; override for create-time business rules. |
+| Handler hook | `perform_update` | `(id, schema_obj)` | `Model` | Fetch, mutate, and save an existing row; override for update rules. |
+| Handler hook | `perform_delete` | `(id)` | `fastapi.Response` | Fetch and delete a row; override for delete rules while keeping the HTTP contract. |
 | Public helper | `build_query` | `()` | `sqlalchemy.Select` | Base query shared by listing, pagination totals, AND single-row retrieve. |
 | Public helper | `count_listing` | `(query_params)` | `int` | Count filtered rows before pagination. |
 | Public helper | `to_response_schema` | `(obj)` | response schema | Validate and serialize an ORM object with Restly's alias/reference/write-only handling. |
@@ -256,7 +256,7 @@ examples of choosing between handler hooks and route replacement.
 
 These module-level functions are the primitive surface for building, updating,
 and explicitly saving ORM objects from schemas. Use them anywhere you have a
-session — inside `handle_*` handlers, in custom routes, in services, or in test
+session — inside `perform_*` handlers, in custom routes, in services, or in test
 setup. Each variant exists in both sync and async form, matching the session type
 you have on hand.
 
@@ -279,7 +279,7 @@ explicitly. The async/sync split is implicit: `AsyncRestView.make_new_object`
 calls `async_make_new_object` under the hood, `RestView.make_new_object`
 calls the sync version.
 
-Use these inside `handle_*` handlers or custom route methods. When you need to
+Use these inside `perform_*` handlers or custom route methods. When you need to
 work with a model that isn't `self.model` (e.g. creating a sibling row
 in a custom endpoint) reach for the free functions instead.
 
@@ -290,8 +290,8 @@ in a custom endpoint) reach for the free functions instead.
 | `self.update_object(obj, schema_obj, schema_cls=None)` | Wraps `fr.update_object` / `fr.async_update_object`. **Does not flush** — call `self.save_object(obj)` afterwards. |
 | `self.save_object(obj)` | Wraps `fr.save_object` / `fr.async_save_object` against `self.session`. Flush + refresh; this is where writes actually hit the database. |
 | `self.delete_object(obj)` | Delete `obj` via `self.session` and flush. |
-| `self.build_query()` | Return the base SQLAlchemy `Select` used by every read on this view's model — `handle_listing`, `count_listing`, AND `handle_retrieve`. Defaults to `sqlalchemy.select(self.model)`. Override to add `WHERE` clauses that should apply to all reads — tenant scoping, soft-delete filtering, row-level permission visibility. Because retrieve also routes through this query, a row hidden from listing returns 404 from `GET /{id}` too. Call `super().build_query()` and chain `.where(...)` to compose with base-class or mixin filters. See [Composing views with mixins](howto_compose_views_with_mixins.md). |
-| `self.count_listing(query_params)` | Return the total row count for the current list query (after filters, before pagination). Called by the default `listing` only when `include_pagination_metadata = True`; available for use in replacement routes regardless. Consults `build_query()` so list and count stay in sync. |
+| `self.build_query()` | Return the base SQLAlchemy `Select` used by every read on this view's model — `perform_list`, `count_listing`, AND `perform_get`. Defaults to `sqlalchemy.select(self.model)`. Override to add `WHERE` clauses that should apply to all reads — tenant scoping, soft-delete filtering, row-level permission visibility. Because retrieve also routes through this query, a row hidden from listing returns 404 from `GET /{id}` too. Call `super().build_query()` and chain `.where(...)` to compose with base-class or mixin filters. See [Composing views with mixins](howto_compose_views_with_mixins.md). |
+| `self.count_listing(query_params)` | Return the total row count for the current list query (after filters, before pagination). Called by the default `list` only when `include_pagination_metadata = True`; available for use in replacement routes regardless. Consults `build_query()` so list and count stay in sync. |
 
 ### Database
 

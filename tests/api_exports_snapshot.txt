@@ -17,6 +17,7 @@ fastapi_restly:
   - TimestampsMixin
   - TimestampsSchemaMixin
   - View
+  - ViewRoute
   - WriteOnly
   - apply_list_params
   - async_make_new_object
@@ -96,6 +97,7 @@ fastapi_restly.views:
   - ReactAdminView
   - RestView
   - View
+  - ViewRoute
   - async_make_new_object
   - async_save_object
   - async_update_object

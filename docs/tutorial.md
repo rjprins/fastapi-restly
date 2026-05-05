@@ -167,7 +167,7 @@ class PostView(fr.AsyncRestView):
     prefix = "/posts"
     model = Post
     schema = PostRead
-    exclude_routes = ("destroy",)  # disables DELETE /posts/{id}
+    exclude_routes = (fr.ViewRoute.DELETE,)  # disables DELETE /posts/{id}
 ```
 
 ---
@@ -257,8 +257,8 @@ nested payloads, including aliases.
 
 Nested schemas are **not** supported for create/update payloads. `POST` and `PATCH` inputs must
 still map directly to model attributes or use the `*_id: IDRef[Model]` pattern for foreign
-keys. If you need a nested request shape, flatten it in the schema or override `handle_create` /
-`handle_update` and transform the payload yourself.
+keys. If you need a nested request shape, flatten it in the schema or override `perform_create` /
+`perform_update` and transform the payload yourself.
 
 ---
 

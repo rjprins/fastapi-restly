@@ -103,7 +103,7 @@ class TenantBase(fr.AsyncRestView):
 
         Overriding ``save_object`` is the right place for side effects that
         should run after *every* write — both create and update — because
-        both ``handle_create`` and ``handle_update`` end by calling ``self.save_object``.
+        both ``perform_create`` and ``perform_update`` end by calling ``self.save_object``.
         """
         obj = await super().save_object(obj)
         # In production: publish to an audit log or event bus.

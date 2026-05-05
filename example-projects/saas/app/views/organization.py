@@ -28,13 +28,13 @@ class OrganizationView(fr.AsyncRestView):
     schema = OrganizationSchema
     creation_schema = OrganizationCreateSchema
     update_schema = OrganizationUpdateSchema
-    exclude_routes = ["create"]
+    exclude_routes = [fr.ViewRoute.CREATE]
 
     @fr.post("/", response_model=OrganizationSchema, status_code=201)
     async def create_with_location(
         self, schema_obj: OrganizationCreateSchema, response: Response
     ) -> Organization:
         """Create + 201 Created + Location header."""
-        org = await self.handle_create(schema_obj)
+        org = await self.perform_create(schema_obj)
         response.headers["Location"] = f"{self.prefix}/{org.id}"
         return org

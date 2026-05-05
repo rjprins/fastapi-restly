@@ -47,22 +47,22 @@ class CustomProjectView(
     schema = ProjectRead
 
     @fr.get("/")
-    async def listing(self, query_params: Any) -> list[ProjectRead]:
-        objs = await self.handle_listing(query_params)
+    async def list(self, query_params: Any) -> list[ProjectRead]:
+        objs = await self.perform_list(query_params)
         return [self.to_response_schema(obj) for obj in objs]
 
     @fr.get("/{id}")
-    async def retrieve(self, id: int) -> ProjectRead:
-        return self.to_response_schema(await self.handle_retrieve(id))
+    async def get(self, id: int) -> ProjectRead:
+        return self.to_response_schema(await self.perform_get(id))
 
     @fr.post("/")
     async def create(self, schema_obj: ProjectRead) -> ProjectRead:
-        return self.to_response_schema(await self.handle_create(schema_obj))
+        return self.to_response_schema(await self.perform_create(schema_obj))
 
     @fr.patch("/{id}")
     async def update(self, id: int, schema_obj: ProjectRead) -> ProjectRead:
-        return self.to_response_schema(await self.handle_update(id, schema_obj))
+        return self.to_response_schema(await self.perform_update(id, schema_obj))
 
     @fr.delete("/{id}")
-    async def destroy(self, id: int) -> Response:
-        return await self.handle_destroy(id)
+    async def delete(self, id: int) -> Response:
+        return await self.perform_delete(id)

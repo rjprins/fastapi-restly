@@ -49,14 +49,14 @@ Define schemas with field aliases, write-only fields, and read-only computed fie
 :link: howto_typing
 :link-type: doc
 
-Use `IDSchema`, optional view generics, and typed `handle_*` handlers without fighting the framework.
+Use `IDSchema`, optional view generics, and typed `perform_*` handlers without fighting the framework.
 :::
 
 :::{grid-item-card} Override Endpoints
 :link: howto_override_endpoints
 :link-type: doc
 
-Customize `handle_*` handlers, replace generated routes, and add custom routes alongside generated CRUD.
+Customize `perform_*` handlers, replace generated routes, and add custom routes alongside generated CRUD.
 :::
 
 :::{grid-item-card} React Admin Integration
@@ -80,7 +80,7 @@ access control across multiple views.
 
 Layer cross-cutting concerns — tenant scoping, soft delete, audit stamping —
 through cooperative mixins. Includes the rule for when to layer in a mixin vs.
-write logic in `handle_create` / `handle_update`.
+write logic in `perform_create` / `perform_update`.
 :::
 
 :::{grid-item-card} Filter, Sort, and Paginate

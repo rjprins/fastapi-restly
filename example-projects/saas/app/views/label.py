@@ -92,7 +92,7 @@ class TaskLabelView(TenantBase):
            Label instance, which the framework then converts back to
            ``label_id = label.id`` via the resolver path.
         """
-        # Tenant scope is enforced via TaskView.handle_retrieve-style checks here:
+        # Tenant scope is enforced via TaskView.perform_get-style checks here:
         # we don't go through TaskView, so we re-validate the task fits
         # the current org to avoid a cross-tenant attach.
         task = await self.session.get(Task, request.task_id)

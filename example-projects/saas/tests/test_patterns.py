@@ -55,7 +55,7 @@ async def _async_session():
 
 
 class TestPasswordHashing:
-    """Use-case: hash password on user create — UserView.handle_create."""
+    """Use-case: hash password on user create — UserView.perform_create."""
 
     def test_password_is_hashed_at_rest(self, client, org_id):
         """The plaintext from the body must never reach the database column."""
@@ -456,7 +456,7 @@ class TestAdminBypass:
 
     A request with ``request.state.is_admin = True`` short-circuits the
     tenant filter in TenantScopedMixin and the assignee filter in
-    TaskView.handle_retrieve / handle_listing. Demonstrates the runtime-flag design:
+    TaskView.perform_get / perform_list. Demonstrates the runtime-flag design:
     no separate route tree, no parallel base view.
     """
 

@@ -29,13 +29,13 @@ class UUIDView(fr.AsyncRestView):
     schema = UUIDSchema
     id_type = UUID
 
-    async def handle_retrieve(self, id: UUID):
+    async def perform_get(self, id: UUID):
         return SimpleNamespace(id=id, name="demo")
 
-    async def handle_update(self, id: UUID, schema_obj: BaseModel):
+    async def perform_update(self, id: UUID, schema_obj: BaseModel):
         return SimpleNamespace(id=id, name=getattr(schema_obj, "name", "demo"))
 
-    async def handle_destroy(self, id: UUID):
+    async def perform_delete(self, id: UUID):
         return Response(status_code=204)
 
 

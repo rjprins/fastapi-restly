@@ -40,19 +40,19 @@ class WidgetView(
     def health(self) -> dict[str, str]:
         return {"status": "ok"}
 
-    def handle_listing(
+    def perform_list(
         self, query_params: Any, query: sqlalchemy.Select[Any] | None = None
     ) -> Sequence[Widget]:
-        return super().handle_listing(query_params, query=query)
+        return super().perform_list(query_params, query=query)
 
-    def handle_retrieve(self, id: int) -> Widget:
-        return super().handle_retrieve(id)
+    def perform_get(self, id: int) -> Widget:
+        return super().perform_get(id)
 
-    def handle_create(self, schema_obj: WidgetInput) -> Widget:
-        return super().handle_create(schema_obj)
+    def perform_create(self, schema_obj: WidgetInput) -> Widget:
+        return super().perform_create(schema_obj)
 
-    def handle_update(self, id: int, schema_obj: WidgetInput) -> Widget:
-        return super().handle_update(id, schema_obj)
+    def perform_update(self, id: int, schema_obj: WidgetInput) -> Widget:
+        return super().perform_update(id, schema_obj)
 
-    def handle_destroy(self, id: int) -> Response:
-        return super().handle_destroy(id)
+    def perform_delete(self, id: int) -> Response:
+        return super().perform_delete(id)

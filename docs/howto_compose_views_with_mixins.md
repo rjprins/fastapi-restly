@@ -16,7 +16,7 @@ and two ergonomic gotchas worth knowing up front.
 The [Override Endpoints](howto_override_endpoints.md#override-low-level-object-helpers)
 guide warns against overriding these low-level helpers for per-view
 business logic — password hashing, slug derivation, denormalised rollups,
-status-transition events. Those belong in `handle_create` / `handle_update`,
+status-transition events. Those belong in `perform_create` / `perform_update`,
 written from scratch using the [`make_new_object` /
 `save_object`](api_reference.md#crud-utility-free-functions) helpers.
 
@@ -26,7 +26,7 @@ answer:
 **Rule 1 — don't override these helpers for per-view application logic.**
 Hashing a password, deriving a slug with a uniqueness probe, computing a
 denormalised rollup, dispatching outbox events on a status transition —
-all of these belong in `handle_create` / `handle_update` so the call site is
+all of these belong in `perform_create` / `perform_update` so the call site is
 explicit about what happens on this resource's create.
 
 **Rule 2 — do override these helpers for structural cross-cutting
@@ -49,7 +49,7 @@ inputs?
   flags) and writes server-controlled fields → mixin (Rule 2).
 - If it reads schema fields and computes values from them
   (`hash_password(schema.password)`, `slugify(schema.name) +
-  uniqueness_probe`) → user's `handle_create` / `handle_update`, written from
+  uniqueness_probe`) → user's `perform_create` / `perform_update`, written from
   scratch (Rule 1).
 
 ## Three reusable mixins
@@ -81,7 +81,7 @@ class TenantScopedMixin:
 
     def build_query(self) -> sa.Select:
         # Filters listing, count, AND retrieve via the framework's
-        # unified read seam — no separate handle_retrieve override needed.
+        # unified read seam — no separate perform_get override needed.
         q = super().build_query()  # type: ignore[misc]
         if self._is_admin():
             return q
@@ -171,12 +171,12 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, fr.Asyn
     schema = ProjectRead
 ```
 
-`handle_listing`, `count_listing`, and `handle_retrieve` all consult
+`perform_list`, `count_listing`, and `perform_get` all consult
 `build_query`, so the tenant + soft-delete `WHERE` clauses apply to
 listing, the pagination total, **and** single-row fetches (`GET /{id}`)
 without further plumbing. A row hidden from listing returns 404 from
-retrieve too — and `handle_update` / `handle_destroy` inherit the check
-since they call `handle_retrieve` first.
+retrieve too — and `perform_update` / `perform_delete` inherit the check
+since they call `perform_get` first.
 
 ## Two ergonomic gotchas
 

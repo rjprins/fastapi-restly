@@ -22,4 +22,4 @@ class CountryView(fr.AsyncRestView):
     prefix = "/countries"
     model = Country
     schema = CountrySchema
-    exclude_routes = ["create", "update", "destroy"]
+    exclude_routes = [fr.ViewRoute.CREATE, fr.ViewRoute.UPDATE, fr.ViewRoute.DELETE]

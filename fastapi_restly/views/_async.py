@@ -101,9 +101,9 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     session: AsyncSessionDep
 
     @get("/")
-    async def listing(self, query_params: Any) -> Any:
+    async def list(self, query_params: Any) -> Any:
         self._reject_unknown_query_params()
-        objs = await self.handle_listing(query_params)
+        objs = await self.perform_list(query_params)
         if not self.include_pagination_metadata:
             return [self.to_response_schema(obj) for obj in objs]
 
@@ -125,7 +125,7 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         """
         return sqlalchemy.select(self.model)
 
-    async def handle_listing(
+    async def perform_list(
         self, query_params: Any, query: sqlalchemy.Select[Any] | None = None
     ) -> Sequence[ModelT]:
         """
@@ -133,9 +133,9 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         Accepts a query argument that can be used for narrowing down the selection.
         Feel free to override this method, e.g.:
 
-            async def handle_listing(self, query_params, query=None):
+            async def perform_list(self, query_params, query=None):
                 query = make_my_query()
-                objs = await super().handle_listing(query_params, query)
+                objs = await super().perform_list(query_params, query)
                 return add_my_info(objs)
 
         ``query_params`` is the validated query-parameter Pydantic model
@@ -166,11 +166,11 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         return int(await self.session.scalar(count_query) or 0)
 
     @get("/{id}")
-    async def retrieve(self, id: Any) -> Any:
-        obj = await self.handle_retrieve(id)
+    async def get(self, id: Any) -> Any:
+        obj = await self.perform_get(id)
         return self.to_response_schema(obj)
 
-    async def handle_retrieve(self, id: IdT) -> ModelT:
+    async def perform_get(self, id: IdT) -> ModelT:
         """
         Handle a GET request on "/{id}". This should return a single object.
         Return a 404 if not found.
@@ -184,7 +184,7 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         if len(pk_cols) != 1:
             raise NotImplementedError(
                 f"{self.model.__name__} has a composite primary key; "
-                "override handle_retrieve to fetch it."
+                "override perform_get to fetch it."
             )
         query = self.build_query().where(pk_cols[0] == id)
         loader_options = self.get_relationship_loader_options()
@@ -200,10 +200,10 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
 
     @post("/")
     async def create(self, schema_obj: Any) -> Any:
-        obj = await self.handle_create(schema_obj)
+        obj = await self.perform_create(schema_obj)
         return self.to_response_schema(obj)
 
-    async def handle_create(self, schema_obj: CreateSchemaT) -> ModelT:
+    async def perform_create(self, schema_obj: CreateSchemaT) -> ModelT:
         """
         Handle a POST request on "/". This should create a new object.
         Feel free to override this method.
@@ -213,25 +213,25 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
 
     @patch("/{id}")
     async def update(self, id: Any, schema_obj: Any) -> Any:
-        obj = await self.handle_update(id, schema_obj)
+        obj = await self.perform_update(id, schema_obj)
         return self.to_response_schema(obj)
 
-    async def handle_update(self, id: IdT, schema_obj: UpdateSchemaT) -> ModelT:
+    async def perform_update(self, id: IdT, schema_obj: UpdateSchemaT) -> ModelT:
         """
         Handle a PATCH request on "/{id}". This should partially update an existing
         object.
         Feel free to override this method.
         """
-        obj = await self.handle_retrieve(id)
+        obj = await self.perform_get(id)
         obj = await self.update_object(obj, schema_obj)
         return await self.save_object(obj)
 
     @delete("/{id}")
-    async def destroy(self, id: Any) -> fastapi.Response:
-        return await self.handle_destroy(id)
+    async def delete(self, id: Any) -> fastapi.Response:
+        return await self.perform_delete(id)
 
-    async def handle_destroy(self, id: IdT) -> fastapi.Response:
-        obj = await self.handle_retrieve(id)
+    async def perform_delete(self, id: IdT) -> fastapi.Response:
+        obj = await self.perform_get(id)
         await self.delete_object(obj)
         return fastapi.Response(status_code=204)
 
@@ -239,7 +239,7 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         """
         Delete ``obj`` and flush the session.
 
-        ``handle_destroy`` calls ``handle_retrieve`` first, so this method receives an
+        ``perform_delete`` calls ``perform_get`` first, so this method receives an
         existing object. Override it to change the deletion mechanics, for
         example to implement soft-delete.
         """
@@ -250,7 +250,7 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         """
         Build a new ORM object from ``schema_obj`` and add it to the session.
 
-        This does not flush. The default ``handle_create`` calls
+        This does not flush. The default ``perform_create`` calls
         ``save_object`` afterwards; override this method for construction-time
         changes that must happen before that save boundary.
         """
@@ -263,7 +263,7 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         """
         Apply writable fields from ``schema_obj`` to ``obj``.
 
-        This does not flush. The default ``handle_update`` calls
+        This does not flush. The default ``perform_update`` calls
         ``save_object`` afterwards; override this method for update-time changes
         that must happen before that save boundary.
         """

@@ -70,6 +70,16 @@ UpdateSchemaT = TypeVar(
 IdT = TypeVar("IdT", default=int)
 
 
+class ViewRoute(str, Enum):
+    """Generated CRUD routes that can be referenced by view options."""
+
+    LIST = "list"
+    GET = "get"
+    CREATE = "create"
+    UPDATE = "update"
+    DELETE = "delete"
+
+
 def _accepts_init_kwarg(model_cls: type, attr_name: str) -> bool:
     """Return True if attr_name can be passed as a keyword argument to model_cls.__init__.
 
@@ -700,7 +710,7 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     include_pagination_metadata: ClassVar[bool] = (
         False  # Set True to include count/total in list responses
     )
-    exclude_routes: ClassVar[Iterable[str]] = ()
+    exclude_routes: ClassVar[Iterable[str | ViewRoute]] = ()
     #: Extra query-parameter keys to allow on the listing endpoint in addition
     #: to those derived from the response schema. Use this when a view
     #: intentionally consumes a custom query parameter (e.g. an
@@ -733,7 +743,7 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         FastAPI's 422 envelope shape so the response is consistent with
         bound-violation errors.
 
-        No-op when there's no live request (programmatic ``view.listing(...)``
+        No-op when there's no live request (programmatic ``view.list(...)``
         calls outside an HTTP request) — there's no URL surface to validate
         and the in-process caller is responsible for what they pass.
         """
@@ -882,14 +892,14 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
             )
             listing_response_annotation = cls.pagination_response_schema
 
-        if hasattr(cls, "listing"):
+        if hasattr(cls, "list"):
             _annotate(
-                cls.listing,
+                cls.list,
                 return_annotation=listing_response_annotation,
                 query_params=Annotated[cls.listing_param_schema, fastapi.Query()],
             )
-        if hasattr(cls, "retrieve"):
-            _annotate(cls.retrieve, return_annotation=response_schema, id=cls.id_type)
+        if hasattr(cls, "get"):
+            _annotate(cls.get, return_annotation=response_schema, id=cls.id_type)
         if hasattr(cls, "create"):
             _annotate(
                 cls.create,
@@ -903,13 +913,16 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
                 schema_obj=cls.update_schema,
                 id=cls.id_type,
             )
-        if hasattr(cls, "destroy"):
-            _annotate(cls.destroy, return_annotation=fastapi.Response, id=cls.id_type)
+        if hasattr(cls, "delete"):
+            _annotate(cls.delete, return_annotation=fastapi.Response, id=cls.id_type)
         _exclude_routes(cls)
 
 
 def _exclude_routes(cls: type[View]):
-    for method_name in cls.exclude_routes:
+    for route_name in cls.exclude_routes:
+        method_name = (
+            route_name.value if isinstance(route_name, ViewRoute) else route_name
+        )
         # @route decorator adds `_api_route_args` to a method to create the route later.
         # By removing it from the method, the method will no longer be added as a route.
         try:
@@ -975,10 +988,10 @@ def _copy_all_parent_class_endpoints_into_this_subclass(view_cls: type[View]):
     with a new copy directly on view_cls . This allows us to change the
     annotations on these endpoints without affecting the parent endpoints.
 
-    For example, FooView.retrieve() delegates to AsyncRestView.retrieve() if it is not
+    For example, FooView.get() delegates to AsyncRestView.get() if it is not
     overridden (this is called implicit delegation through method resolution). And if
-    we add the annotation that FooView.retrieve() returns FooRead but do not make a copy
-    then AsyncRestView.retrieve() and all other subclasses will get the FooRead
+    we add the annotation that FooView.get() returns FooRead but do not make a copy
+    then AsyncRestView.get() and all other subclasses will get the FooRead
     annotation as well.
     """
     for endpoint in _get_all_parent_endpoints(view_cls):
@@ -1127,7 +1140,7 @@ def _should_add_collection_route_alias(
         return False
     if path != "/":
         return False
-    return endpoint.__name__.endswith(("_listing", "_create"))
+    return endpoint.__name__.endswith(("_list", "_create"))
 
 
 def _annotate_self(view_cls: type[View], endpoint: Callable) -> None:

@@ -7,8 +7,8 @@ the request body's plaintext ``password`` is converted into a stored
 ``password_hash`` *before* persistence.
 
 The whole reason this helper exists is to make the mistake from
-``rut-notes/discussion_save_object.md`` reproducible: if ``handle_create``
-calls ``super().handle_create()`` and only then sets ``password_hash``, the
+``rut-notes/discussion_save_object.md`` reproducible: if ``perform_create``
+calls ``super().perform_create()`` and only then sets ``password_hash``, the
 in-memory mutation never reaches the database — the row is committed
 with ``password_hash = ""``.
 """

@@ -46,7 +46,7 @@ class UserView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantBase
     user-specific concerns: password hashing, field-level permissions,
     /me routes, and change-password.
 
-    The ``handle_create`` override below is the canonical illustration of the
+    The ``perform_create`` override below is the canonical illustration of the
     "rewrite from scratch using the helpers" pattern from
     ``rut-notes/discussion_save_object.md``: build the ORM object via
     ``self.make_new_object`` (which transparently runs through the mixin
@@ -70,7 +70,7 @@ class UserView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantBase
         role = self._current_user_role()
         return role in (UserRole.HR, UserRole.OWNER)
 
-    async def handle_create(self, schema_obj):
+    async def perform_create(self, schema_obj):
         """Hash the plaintext password before the row is persisted.
 
         Canonical "rewrite using helpers" pattern (option B' from
@@ -78,7 +78,7 @@ class UserView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantBase
 
         DO NOT do this::
 
-            user = await super().handle_create(schema_obj)   # already flushed
+            user = await super().perform_create(schema_obj)   # already flushed
             user.password = hash_password(...)           # in-memory only
             return user                                  # plaintext on disk
 
@@ -99,11 +99,11 @@ class UserView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantBase
 
         Action route rather than PATCH because the request contract is
         different (proof-of-possession via ``current_password``, no public
-        body fields). Calls ``handle_retrieve`` for the fetch+404 (so any row-level
-        access checks layered into ``handle_retrieve`` apply here too) and uses
+        body fields). Calls ``perform_get`` for the fetch+404 (so any row-level
+        access checks layered into ``perform_get`` apply here too) and uses
         ``save_object`` as a utility for the final flush+refresh.
         """
-        user = await self.handle_retrieve(id)
+        user = await self.perform_get(id)
         if not verify_password(request.current_password, user.password):
             raise HTTPException(403, "Current password is incorrect")
         if not request.new_password:
@@ -122,7 +122,7 @@ class UserView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantBase
 
         Example: GET /users/1/with-permissions
         """
-        user = await self.handle_retrieve(id)
+        user = await self.perform_get(id)
 
         # Select schema based on viewer's role
         if self._can_see_salary():
@@ -140,19 +140,19 @@ class UserView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantBase
         user_id = self._current_user_id()
         if not user_id:
             raise HTTPException(status_code=404, detail="Current user not found")
-        user = await self.handle_retrieve(user_id)
+        user = await self.perform_get(user_id)
         return self.to_response_schema(user)
 
     @fr.patch("/me", response_model=UserSchema)
     async def update_current_user(self, request: UpdateMeRequest) -> Any:
         """Update current user's profile.
 
-        Delegates to ``handle_update`` so this action route follows the exact
-        same path as ``PATCH /users/{id}``: any future ``handle_update`` override
+        Delegates to ``perform_update`` so this action route follows the exact
+        same path as ``PATCH /users/{id}``: any future ``perform_update`` override
         (validation, auditing, side-effects) applies here automatically.
         """
         user_id = self._current_user_id()
         if not user_id:
             raise HTTPException(status_code=404, detail="Current user not found")
-        user = await self.handle_update(user_id, request)
+        user = await self.perform_update(user_id, request)
         return self.to_response_schema(user)

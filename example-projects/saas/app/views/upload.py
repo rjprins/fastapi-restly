@@ -42,7 +42,7 @@ class UploadView(TenantBase):
     prefix = "/uploads"
     model = Upload
     schema = UploadSchema
-    exclude_routes = ["create"]
+    exclude_routes = [fr.ViewRoute.CREATE]
 
     @fr.post("/", response_model=UploadSchema, status_code=201)
     async def upload_csv(

@@ -22,7 +22,7 @@
 
 ## Why FastAPI-Restly?
 
-The differentiator is **true class-based views**. You subclass `RestView` / `AsyncRestView` and override handlers like `handle_retrieve`, `handle_create`, or object helpers like `save_object` — CRUD logic is *methods you can swap*, not opaque generated functions. Share behavior across views via inheritance the way you would with any Python class.
+The differentiator is **true class-based views**. You subclass `RestView` / `AsyncRestView` and override handlers like `perform_get`, `perform_create`, or object helpers like `save_object` — CRUD logic is *methods you can swap*, not opaque generated functions. Share behavior across views via inheritance the way you would with any Python class.
 
 * **CRUD endpoints in minutes** — auto-generates Pydantic schemas from your SQLAlchemy models.
 * **Override anything** — replace an endpoint, or just its business logic, without awkward hacks.
@@ -67,7 +67,7 @@ Unlike SQLModel, Restly does not ask you to wrap SQLAlchemy and Pydantic into on
 | | fastapi-crudrouter | fastcrud | **fastapi-restly** |
 |---|---|---|---|
 | Style | Router factory | Router factory | **Class-based views** |
-| Customize an endpoint | Replace the route | Replace the route | Override `handle_retrieve` / `handle_create` / `save_object`, or replace the route |
+| Customize an endpoint | Replace the route | Replace the route | Override `perform_get` / `perform_create` / `save_object`, or replace the route |
 | Share behavior across resources | Wrapper functions | Wrapper functions | **Subclass a base view** |
 | Schema generation | Optional | Optional | Optional (auto from model) |
 | SQLAlchemy 2.0 / Pydantic v2 | Partial | Yes | **Yes, native** |
@@ -181,7 +181,7 @@ class OrderRead(fr.IDSchema):
 
 ### Custom endpoints and handlers
 
-Add endpoints with `@fr.get`, `@fr.post`, `@fr.put`, `@fr.patch`, `@fr.delete`, or the generic `@fr.route`. Override `handle_*` handlers (`handle_listing`, `handle_retrieve`, `handle_create`, ...) to customise built-in CRUD logic without replacing the endpoint.
+Add endpoints with `@fr.get`, `@fr.post`, `@fr.put`, `@fr.patch`, `@fr.delete`, or the generic `@fr.route`. Override `perform_*` handlers (`perform_list`, `perform_get`, `perform_create`, ...) to customise built-in CRUD logic without replacing the endpoint.
 
 ```python
 @fr.include_view(app)
@@ -194,9 +194,9 @@ class UserView(fr.AsyncRestView):
     async def download_user(self, id: int):
         return {"id": id, "status": "ok"}
 
-    async def handle_listing(self, query_params, query=None):
+    async def perform_list(self, query_params, query=None):
         # Custom logic here
-        return await super().handle_listing(query_params, query=query)
+        return await super().perform_list(query_params, query=query)
 ```
 
 ### React Admin integration
@@ -225,7 +225,7 @@ See [React Admin Integration](https://rjprins.github.io/fastapi-restly/howto_rea
 class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
-    exclude_routes = ("destroy",)  # names: "listing", "retrieve", "create", "update", "destroy"
+    exclude_routes = (fr.ViewRoute.DELETE,)
 ```
 
 ### Pagination metadata

@@ -41,7 +41,7 @@ Coverage checklist:
 - [x] Sync `RestView` with explicit create/update schemas
 - [x] Plain Pydantic `BaseModel` create/update schemas
 - [x] Custom extra routes via `@fr.get` and `@fr.route`
-- [x] `handle_*` handler overrides
+- [x] `perform_*` handler overrides
 - [x] View options: `include_pagination_metadata`
 - [x] View options: `exclude_routes`
 - [x] View options: class-level `dependencies`
@@ -55,4 +55,4 @@ Coverage checklist:
 - [x] `IDRef[...]`
 - [x] UUID / non-int primary key flows
 - [ ] Write-only and read-only field markers in consumer schemas
-- [x] Direct override of built-in `listing/retrieve/create/update/destroy` route methods as a documented pattern
+- [x] Direct override of built-in `list/get/create/update/delete` route methods as a documented pattern

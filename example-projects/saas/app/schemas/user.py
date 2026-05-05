@@ -13,7 +13,7 @@ class UserSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
     """Schema for User model.
 
     ``password`` is plaintext on the wire (write-only) and is never echoed
-    back. The view's ``handle_create`` hashes it into ``User.password_hash``
+    back. The view's ``perform_create`` hashes it into ``User.password_hash``
     before the row is persisted. ``password_hash`` is intentionally not
     on the schema — clients should never see it.
 

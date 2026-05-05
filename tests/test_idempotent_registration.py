@@ -150,7 +150,7 @@ def test_class_attributes_are_not_corrupted_by_second_registration():
     # second registration would prepend the prefix again.
     endpoint_names = {
         name: getattr(WidgetView, name).__name__
-        for name in ("listing", "retrieve", "create", "update", "destroy")
+        for name in ("list", "get", "create", "update", "delete")
     }
 
     # Second registration on a different parent must not error or mutate.
@@ -190,7 +190,7 @@ def test_exclude_routes_does_not_crash_on_second_registration(sync_db):
         prefix = "/tokens"
         model = Token
         schema = TokenSchema
-        exclude_routes = ("destroy",)
+        exclude_routes = ("delete",)
 
     app_a = FastAPI()
     app_b = FastAPI()
