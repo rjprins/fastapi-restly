@@ -185,6 +185,7 @@ Restly to an existing model layer.
 | `fastapi_restly.views.BaseRestView` | Supported advanced base class for custom CRUD foundations shared by sync and async views. Import from `fastapi_restly.views`; it is intentionally not exported at the top level. |
 | `fr.AsyncRestView` | Async CRUD view. Use with async SQLAlchemy sessions. |
 | `fr.RestView` | Sync CRUD view. Use with sync SQLAlchemy sessions. |
+| `fr.ListingResult` | Value object returned by `perform_listing`, with `.objects` and `.total_count`, before `to_listing_response` formats the HTTP response. |
 | `fr.AsyncReactAdminView` | Async CRUD view that speaks the `ra-data-simple-rest` wire contract used by [react-admin](https://marmelab.com/react-admin/). See [How-To: React Admin Integration](howto_react_admin.md). |
 | `fr.ReactAdminView` | Sync variant of `AsyncReactAdminView`. |
 
@@ -202,27 +203,28 @@ Methods on `RestView` / `AsyncRestView` fall into three categories:
 
 | Category | Method | Signature | Return | Purpose |
 |---|---|---|---|---|
-| Route | `list` | `(query_params)` | response schema list or pagination envelope | `GET /`; validates query parameters and serializes list results. |
+| Route | `listing` | `(query_params)` | response schema list or pagination envelope | `GET /`; validates query parameters and serializes listing results. |
 | Route | `get` | `(id)` | response schema | `GET /{id}`; serializes one retrieved object. |
 | Route | `create` | `(schema_obj)` | response schema | `POST /`; serializes the created object. |
 | Route | `update` | `(id, schema_obj)` | response schema | `PATCH /{id}`; serializes the updated object. |
 | Route | `delete` | `(id)` | `fastapi.Response` | `DELETE /{id}`; returns `204` by default. |
-| Handler hook | `perform_list` | `(query_params, query=None)` | `Sequence[Model]` | Fetch list rows; override for list business logic beyond query construction. |
+| Handler hook | `perform_listing` | `(query_params, query=None)` | `ListingResult[Model]` | Fetch list rows and total count before pagination; override for list business logic beyond query construction. |
 | Handler hook | `perform_get` | `(id)` | `Model` | Fetch one row through `build_query()` or raise `404`. Read-side filters layered into `build_query` apply here too — so `update`/`delete` (which call `perform_get`) inherit the visibility check for free. |
 | Handler hook | `perform_create` | `(schema_obj)` | `Model` | Build and save a new row; override for create-time business rules. |
 | Handler hook | `perform_update` | `(id, schema_obj)` | `Model` | Fetch, mutate, and save an existing row; override for update rules. |
 | Handler hook | `perform_delete` | `(id)` | `fastapi.Response` | Fetch and delete a row; override for delete rules while keeping the HTTP contract. |
-| Public helper | `build_query` | `()` | `sqlalchemy.Select` | Base query shared by listing, pagination totals, AND single-row retrieve. |
-| Public helper | `count_listing` | `(query_params)` | `int` | Count filtered rows before pagination. |
+| Public helper | `build_query` | `()` | `sqlalchemy.Select` | Base query shared by listing and single-row retrieve. |
+| Public helper | `count_listing` | `(query)` | `int` | Count an already-built list query after removing ordering and pagination. |
+| Public helper | `to_listing_response` | `(query_params, listing_result)` | response schema list or pagination envelope | Serialize a `ListingResult` into the configured list HTTP response shape. |
+| Public helper | `to_paginated_listing_response` | `(query_params, listing_result)` | pagination envelope | Serialize a `ListingResult` into the paginated list response shape. |
 | Public helper | `to_response_schema` | `(obj)` | response schema | Validate and serialize an ORM object with Restly's alias/reference/write-only handling. |
 | Public helper | `make_new_object` | `(schema_obj)` | `Model` | Build and stage a new object without flushing. |
 | Public helper | `update_object` | `(obj, schema_obj)` | `Model` | Apply writable fields without flushing. |
 | Public helper | `save_object` | `(obj)` | `Model` | Flush and refresh a staged object. |
 | Public helper | `delete_object` | `(obj)` | `None` | Delete and flush an existing object. |
 
-Internal methods prefixed with `_`, including `_reject_unknown_query_params`
-and pagination payload helpers, are implementation details even though they are
-visible on instances.
+Internal methods prefixed with `_`, including `_reject_unknown_query_params`,
+are implementation details even though they are visible on instances.
 
 See [Class-Based Views](class_based_views.md#the-view-hierarchy) for the class
 hierarchy and [How-To: Override Endpoints](howto_override_endpoints.md) for
@@ -290,8 +292,10 @@ in a custom endpoint) reach for the free functions instead.
 | `self.update_object(obj, schema_obj, schema_cls=None)` | Wraps `fr.update_object` / `fr.async_update_object`. **Does not flush** — call `self.save_object(obj)` afterwards. |
 | `self.save_object(obj)` | Wraps `fr.save_object` / `fr.async_save_object` against `self.session`. Flush + refresh; this is where writes actually hit the database. |
 | `self.delete_object(obj)` | Delete `obj` via `self.session` and flush. |
-| `self.build_query()` | Return the base SQLAlchemy `Select` used by every read on this view's model — `perform_list`, `count_listing`, AND `perform_get`. Defaults to `sqlalchemy.select(self.model)`. Override to add `WHERE` clauses that should apply to all reads — tenant scoping, soft-delete filtering, row-level permission visibility. Because retrieve also routes through this query, a row hidden from listing returns 404 from `GET /{id}` too. Call `super().build_query()` and chain `.where(...)` to compose with base-class or mixin filters. See [Composing views with mixins](howto_compose_views_with_mixins.md). |
-| `self.count_listing(query_params)` | Return the total row count for the current list query (after filters, before pagination). Called by the default `list` only when `include_pagination_metadata = True`; available for use in replacement routes regardless. Consults `build_query()` so list and count stay in sync. |
+| `self.build_query()` | Return the base SQLAlchemy `Select` used by every read on this view's model — `perform_listing` and `perform_get`. Defaults to `sqlalchemy.select(self.model)`. Override to add `WHERE` clauses that should apply to all reads — tenant scoping, soft-delete filtering, row-level permission visibility. Because retrieve also routes through this query, a row hidden from listing returns 404 from `GET /{id}` too. Call `super().build_query()` and chain `.where(...)` to compose with base-class or mixin filters. See [Composing views with mixins](howto_compose_views_with_mixins.md). |
+| `self.count_listing(query)` | Return the total row count for an already-built list query. The default `perform_listing` applies list params once, passes that same query to `count_listing`, and `count_listing` removes `ORDER BY`, `LIMIT`, and `OFFSET` before counting. |
+| `self.to_listing_response(query_params, listing_result)` | Convert a `fr.ListingResult` from `perform_listing` into either the default JSON array or the pagination metadata envelope, depending on `include_pagination_metadata`. Override this when only the list response shape needs to change. |
+| `self.to_paginated_listing_response(query_params, listing_result)` | Convert a `fr.ListingResult` into the paginated response envelope with `items`, `total`, `page`, `page_size`, and `total_pages`. Called by `to_listing_response` when `include_pagination_metadata = True`; override this when only the paginated envelope should change. |
 
 ### Database
 

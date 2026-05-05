@@ -33,6 +33,7 @@ from .schemas import (
 from .views import (
     AsyncReactAdminView,
     AsyncRestView,
+    ListingResult,
     ReactAdminView,
     RestView,
     View,
@@ -96,6 +97,7 @@ __all__ = [
     # Views
     "RestView",
     "AsyncRestView",
+    "ListingResult",
     "AsyncReactAdminView",
     "ReactAdminView",
     "View",

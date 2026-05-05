@@ -1,4 +1,3 @@
-from collections.abc import Sequence
 from typing import Any
 
 import sqlalchemy
@@ -40,10 +39,10 @@ class WidgetView(
     def health(self) -> dict[str, str]:
         return {"status": "ok"}
 
-    def perform_list(
+    def perform_listing(
         self, query_params: Any, query: sqlalchemy.Select[Any] | None = None
-    ) -> Sequence[Widget]:
-        return super().perform_list(query_params, query=query)
+    ) -> fr.ListingResult[Widget]:
+        return super().perform_listing(query_params, query=query)
 
     def perform_get(self, id: int) -> Widget:
         return super().perform_get(id)

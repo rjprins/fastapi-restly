@@ -55,4 +55,4 @@ Coverage checklist:
 - [x] `IDRef[...]`
 - [x] UUID / non-int primary key flows
 - [ ] Write-only and read-only field markers in consumer schemas
-- [x] Direct override of built-in `list/get/create/update/delete` route methods as a documented pattern
+- [x] Direct override of built-in `listing/get/create/update/delete` route methods as a documented pattern

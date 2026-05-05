@@ -61,7 +61,7 @@ def test_inherit_model_and_schema(sync_db):
         fetched = view.get(created.id)
         assert fetched.name == "Cog"
 
-        items = view.list({})
+        items = view.listing({})
         assert len(items) == 1
 
 
@@ -256,7 +256,7 @@ def test_inherit_include_pagination_metadata(sync_db):
         view.create(TicketSchema(id=0, title="Bug"))
         view.create(TicketSchema(id=0, title="Feature"))
 
-        result = view.list({"page": "1", "page_size": "10"})
+        result = view.listing({"page": "1", "page_size": "10"})
 
     assert isinstance(result, dict)
     assert result["total"] == 2

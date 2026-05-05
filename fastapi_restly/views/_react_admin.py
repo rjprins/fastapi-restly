@@ -219,7 +219,7 @@ class _ReactAdminViewProtocol(Protocol):
     update_schema: ClassVar[type[pydantic.BaseModel]]
     id_type: ClassVar[type[Any]]
     default_page_size: ClassVar[int | None]
-    list: ClassVar[Any]
+    listing: ClassVar[Any]
     put: ClassVar[Any]
 
     def get_react_admin_range_unit(self) -> str: ...
@@ -322,10 +322,10 @@ class _ReactAdminMixin:
     def before_include_view(cls) -> None:
         cast(Any, super()).before_include_view()
         view_cls = cast(type[_ReactAdminViewProtocol], cls)
-        # Override the list return annotation set by BaseRestView to Response,
+        # Override the listing return annotation set by BaseRestView to Response,
         # since we return a raw Response with Content-Range header.
-        if hasattr(view_cls, "list"):
-            _annotate(view_cls.list, return_annotation=fastapi.Response)
+        if hasattr(view_cls, "listing"):
+            _annotate(view_cls.listing, return_annotation=fastapi.Response)
         # Annotate the PUT handler with the same schema/types as PATCH.
         if hasattr(view_cls, "put"):
             _annotate(
@@ -350,7 +350,7 @@ class AsyncReactAdminView(_ReactAdminMixin, AsyncRestView):
     """
 
     @get("/")
-    async def list(self) -> Any:
+    async def listing(self) -> Any:
         sort, (start, end), filters = self._parse_react_admin_params()
         total = int(await self.session.scalar(self._build_count_query(filters)) or 0)
         items = (
@@ -377,7 +377,7 @@ class ReactAdminView(_ReactAdminMixin, RestView):
     """
 
     @get("/")
-    def list(self) -> Any:
+    def listing(self) -> Any:
         sort, (start, end), filters = self._parse_react_admin_params()
         total = int(self.session.scalar(self._build_count_query(filters)) or 0)
         items = self.session.scalars(

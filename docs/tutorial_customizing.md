@@ -30,7 +30,7 @@ Each generated endpoint delegates to a `perform_*` handler. Override the handler
 the business logic without touching the HTTP contract.
 
 ```
-GET /          → list() → perform_list(query_params)
+GET /          → listing() → perform_listing(query_params)
 GET /{id}      → get() → perform_get(id)
 POST /         → create()  → perform_create(schema_obj)
 PATCH /{id}    → update()  → perform_update(id, schema_obj)
@@ -82,10 +82,11 @@ picks up that change automatically.
 ### build_query — filter results to the current user
 
 The most common real-world override: restrict reads to rows the caller is
-allowed to see. `build_query` is the seam `perform_list`, `count_listing`,
-**and** `perform_get` all consult, so a single override keeps listed
-rows, pagination totals, and single-row fetches in sync — a row hidden
-from listing returns 404 from `GET /{id}` too, and `perform_update` /
+allowed to see. `build_query` is the seam `perform_listing` and `perform_get`
+consult, and `count_listing` counts the query built by `perform_listing`. A single
+override keeps listed rows, pagination totals, and single-row fetches in
+sync — a row hidden from listing returns 404 from `GET /{id}` too, and
+`perform_update` /
 `perform_delete` inherit the visibility check via `perform_get`.
 
 ```python
@@ -102,9 +103,9 @@ class PostView(fr.AsyncRestView):
 ```
 
 Calling `super().build_query()` and chaining `.where(...)` composes cleanly
-with any base-class or mixin filter. Reach for a `perform_list` override only when
+with any base-class or mixin filter. Reach for a `perform_listing` override only when
 you need to do work beyond a `WHERE` clause — see
-[Override Endpoints](howto_override_endpoints.md#scope-filter-the-list-endpoint).
+[Override Endpoints](howto_override_endpoints.md#scope-filter-reads).
 
 ### perform_delete — require explicit confirmation
 

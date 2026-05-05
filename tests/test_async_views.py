@@ -398,7 +398,7 @@ def test_async_rest_view_crud_and_pagination():
             assert first.item_name == "Keyboard"
             assert second.item_name == "Mouse"
 
-            paginated = await view.list({"page": "1", "page_size": "10"})
+            paginated = await view.listing({"page": "1", "page_size": "10"})
             assert paginated["total"] == 2
             assert paginated["page"] == 1
             assert paginated["page_size"] == 10
@@ -445,9 +445,13 @@ def test_async_rest_view_dispatches_to_handle_overrides():
         model = DispatchWidget
         schema = WidgetSchema
 
-        async def perform_list(self, query_params, query=None):
-            call_log.append("list")
-            return await super().perform_list(query_params, query=query)
+        async def perform_listing(self, query_params, query=None):
+            call_log.append("listing")
+            return await super().perform_listing(query_params, query=query)
+
+        def to_listing_response(self, query_params, listing_result):
+            call_log.append("to_listing_response")
+            return super().to_listing_response(query_params, listing_result)
 
         async def perform_get(self, id):
             call_log.append("get")
@@ -475,7 +479,7 @@ def test_async_rest_view_dispatches_to_handle_overrides():
             view.session = session
 
             created = await view.create(WidgetSchema(id=0, name="alpha"))
-            await view.list({})
+            await view.listing({})
             await view.get(created.id)
             await view.update(created.id, WidgetSchema(id=created.id, name="beta"))
             await view.delete(created.id)
@@ -484,11 +488,20 @@ def test_async_rest_view_dispatches_to_handle_overrides():
 
     asyncio.run(run())
 
-    assert call_log == ["create", "list", "get", "update", "get", "delete", "get"]
+    assert call_log == [
+        "create",
+        "listing",
+        "to_listing_response",
+        "get",
+        "update",
+        "get",
+        "delete",
+        "get",
+    ]
 
 
-def test_async_perform_list_with_custom_query():
-    """Call perform_list with an explicit query to cover the query-is-not-None branch."""
+def test_async_perform_listing_with_custom_query():
+    """Call perform_listing with an explicit query to cover the query-is-not-None branch."""
 
     class Widget(fr.IDBase):
         name: Mapped[str]
@@ -523,10 +536,11 @@ def test_async_perform_list_with_custom_query():
 
             # Pass an explicit custom query (covers the query-is-not-None branch)
             custom_query = sqlalchemy.select(Widget).where(Widget.active == True)  # noqa: E712
-            results = await view.perform_list({}, query=custom_query)
+            results = await view.perform_listing({}, query=custom_query)
 
-            assert len(results) == 2
-            assert all(w.active for w in results)
+            assert len(results.objects) == 2
+            assert results.total_count == 2
+            assert all(w.active for w in results.objects)
 
         await engine.dispose()
 
@@ -534,7 +548,7 @@ def test_async_perform_list_with_custom_query():
 
 
 def test_async_build_query_is_consulted_by_list_and_count():
-    """Both perform_list and count_listing must route through build_query so a
+    """perform_listing routes through build_query and count_listing uses that query so a
     single override filters listing AND its pagination total."""
 
     class Gizmo(fr.IDBase):
@@ -578,11 +592,13 @@ def test_async_build_query_is_consulted_by_list_and_count():
             )
 
             # Override is consulted by both list and count.
-            results = await view.perform_list({})
-            assert len(results) == 2
-            assert all(g.active for g in results)
+            results = await view.perform_listing({})
+            assert len(results.objects) == 2
+            assert results.total_count == 2
+            assert all(g.active for g in results.objects)
 
-            total = await view.count_listing({})
+            query = fr.apply_list_params({}, view.build_query(), Gizmo, GizmoSchema)
+            total = await view.count_listing(query)
             assert total == 2
 
         await engine.dispose()

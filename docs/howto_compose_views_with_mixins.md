@@ -171,10 +171,10 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, fr.Asyn
     schema = ProjectRead
 ```
 
-`perform_list`, `count_listing`, and `perform_get` all consult
-`build_query`, so the tenant + soft-delete `WHERE` clauses apply to
-listing, the pagination total, **and** single-row fetches (`GET /{id}`)
-without further plumbing. A row hidden from listing returns 404 from
+`perform_listing` and `perform_get` consult `build_query`; `count_listing` counts
+the query built by `perform_listing`. The tenant + soft-delete `WHERE` clauses
+therefore apply to listing, the pagination total, **and** single-row fetches
+(`GET /{id}`) without further plumbing. A row hidden from listing returns 404 from
 retrieve too — and `perform_update` / `perform_delete` inherit the check
 since they call `perform_get` first.
 

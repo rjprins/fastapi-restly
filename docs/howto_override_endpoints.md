@@ -29,11 +29,13 @@ GET /{id}
 
 ```
 GET /
-  └─ list()                      ← HTTP contract (replace to change; see below)
-       └─ perform_list(query_params)      ← business-logic handler — override here
-       │    └─ build_query()    ← WHERE-clause seam shared with count_listing AND retrieve
-       └─ count_listing(query_params)  ← only called when include_pagination_metadata = True
-            └─ build_query()    ← same seam — overriding once filters list, count, and retrieve
+  └─ listing()                   ← HTTP contract (replace to change; see below)
+       └─ perform_listing(query_params)      ← business-logic handler — override here
+       │    └─ build_query()    ← WHERE-clause seam shared with retrieve
+       │    └─ apply_list_params(query_params, query, ...)
+       │    └─ count_listing(query)  ← counts the same query after stripping order/limit/offset
+       └─ to_listing_response(query_params, result)  ← response-shape hook
+            └─ to_paginated_listing_response(query_params, result)  ← paginated envelope hook
 ```
 
 ### Write path
@@ -145,9 +147,10 @@ from sqlalchemy.orm import selectinload
 
 The most common real-world override: restrict reads to rows owned by the
 current user. The single seam for this is `build_query`, which
-`perform_list`, `count_listing`, **and** `perform_get` all consult —
-override it once and pagination totals stay aligned with the listed rows,
-and a row hidden from listing returns 404 from `GET /{id}` as well.
+`perform_listing` and `perform_get` consult. `count_listing` counts the query
+built by `perform_listing`, so override it once and pagination totals stay
+aligned with the listed rows, and a row hidden from listing returns 404
+from `GET /{id}` as well.
 `perform_update` and `perform_delete` inherit the visibility check via
 `perform_get`.
 
@@ -171,24 +174,25 @@ cleanly with any base-class or mixin filter. For multi-tenant scoping,
 soft-delete hiding, or row-level permission visibility, this is the seam
 to reach for.
 
-If you need `perform_list` to also do work *beyond* a `WHERE` clause —
+If you need `perform_listing` to also do work *beyond* a `WHERE` clause —
 post-query result decoration, pre-query joins, eager-loading tweaks —
-override `perform_list` itself and use its optional `query` argument:
+override `perform_listing` itself and use its optional `query` argument:
 
 ```python
-    async def perform_list(self, query_params, query=None):
-        objs = await super().perform_list(query_params, query)
-        for obj in objs:
+    async def perform_listing(self, query_params, query=None):
+        result = await super().perform_listing(query_params, query)
+        for obj in result.objects:
             obj._display_name = derive_display_name(obj)
-        return objs
+        return result
 ```
 
-`perform_list` accepts an optional `query` argument — a SQLAlchemy `Select`
+`perform_listing` accepts an optional `query` argument — a SQLAlchemy `Select`
 statement. Pass it to restrict the result set before the list parameters
 (filters, sorting, pagination) are applied on top. A `query` passed this
-way is *not* shared with `count_listing` or `perform_get`, so reach
-for `build_query` instead whenever the filter should also apply to
-pagination totals or single-row fetches.
+way is used for that `perform_listing` result and its `total_count`, but is not
+shared with standalone `count_listing` calls or `perform_get`, so reach for
+`build_query` instead whenever the filter should also apply to single-row
+fetches or other count calls.
 
 ---
 
@@ -260,12 +264,12 @@ than re-implementing the handler from scratch. The pattern is consistent across 
 handlers:
 
 ```python
-    async def perform_list(self, query_params, query=None):
-        objs = await super().perform_list(query_params, query)
+    async def perform_listing(self, query_params, query=None):
+        result = await super().perform_listing(query_params, query)
         # Annotate each object with a computed field before serialization
-        for obj in objs:
+        for obj in result.objects:
             obj._display_name = f"{obj.first_name} {obj.last_name}"
-        return objs
+        return result
 ```
 
 ---
@@ -507,12 +511,12 @@ class ProductView(fr.AsyncRestView):
 
 The four other generated routes are unaffected.
 
-### Example: replace the list endpoint
+### Example: replace the listing endpoint
 
-Replace `list` to take full control of how the list is returned — for
+Replace `listing` to take full control of how the list is returned — for
 instance to add custom response headers. Note that the replacement takes no
 `query_params` argument; the framework's automatic query parameter injection
-only applies to the standard generated `list`. Read query parameters directly
+only applies to the standard generated `listing`. Read query parameters directly
 from `self.request.query_params` if you need them:
 
 ```python
@@ -526,16 +530,16 @@ class ProductView(fr.AsyncRestView):
     schema = ProductRead
 
     @fr.get("/")
-    async def list(self):
-        items = await self.perform_list({})
-        total = await self.count_listing({})
+    async def listing(self):
+        result = await self.perform_listing({})
         serialized = [
-            self.to_response_schema(obj).model_dump(mode="json") for obj in items
+            self.to_response_schema(obj).model_dump(mode="json")
+            for obj in result.objects
         ]
         return fastapi.Response(
             content=json.dumps(serialized),
             media_type="application/json",
-            headers={"X-Total-Count": str(total)},
+            headers={"X-Total-Count": str(result.total_count)},
         )
 ```
 
@@ -573,7 +577,7 @@ Both views now return the deleted record as JSON. All other generated routes
 behave normally on both.
 
 The public React Admin views use the same route-replacement pattern
-internally: `fr.AsyncReactAdminView` and `fr.ReactAdminView` replace `list`
+internally: `fr.AsyncReactAdminView` and `fr.ReactAdminView` replace `listing`
 with one that speaks the `ra-data-simple-rest` wire contract, while preserving
 the standard CRUD handlers for the rest of the view.
 

@@ -8,6 +8,7 @@ fastapi_restly:
   - IDMixin
   - IDRef
   - IDSchema
+  - ListingResult
   - ReactAdminView
   - ReadOnly
   - RestView
@@ -94,6 +95,7 @@ fastapi_restly.views:
   - AsyncReactAdminView
   - AsyncRestView
   - BaseRestView
+  - ListingResult
   - ReactAdminView
   - RestView
   - View

@@ -150,7 +150,7 @@ def test_class_attributes_are_not_corrupted_by_second_registration():
     # second registration would prepend the prefix again.
     endpoint_names = {
         name: getattr(WidgetView, name).__name__
-        for name in ("list", "get", "create", "update", "delete")
+        for name in ("listing", "get", "create", "update", "delete")
     }
 
     # Second registration on a different parent must not error or mutate.

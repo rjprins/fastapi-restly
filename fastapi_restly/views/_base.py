@@ -70,10 +70,18 @@ UpdateSchemaT = TypeVar(
 IdT = TypeVar("IdT", default=int)
 
 
+@dataclasses.dataclass(frozen=True)
+class ListingResult(Generic[ModelT]):
+    """Result returned by ``perform_listing`` before HTTP response formatting."""
+
+    objects: Sequence[ModelT]
+    total_count: int
+
+
 class ViewRoute(str, Enum):
     """Generated CRUD routes that can be referenced by view options."""
 
-    LIST = "list"
+    LIST = "listing"
     GET = "get"
     CREATE = "create"
     UPDATE = "update"
@@ -743,7 +751,7 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         FastAPI's 422 envelope shape so the response is consistent with
         bound-violation errors.
 
-        No-op when there's no live request (programmatic ``view.list(...)``
+        No-op when there's no live request (programmatic ``view.listing(...)``
         calls outside an HTTP request) — there's no URL surface to validate
         and the in-process caller is responsible for what they pass.
         """
@@ -820,13 +828,13 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
             total_pages=(int | None, None),
         )
 
-    def _build_pagination_payload(
-        self, query_params: Any, items: Sequence[Any], total: int
+    def to_paginated_listing_response(
+        self, query_params: Any, listing_result: ListingResult[Any]
     ) -> dict[str, Any]:
         params = self._to_query_params(query_params)
         payload: dict[str, Any] = {
-            "items": [self.to_response_schema(obj) for obj in items],
-            "total": total,
+            "items": [self.to_response_schema(obj) for obj in listing_result.objects],
+            "total": listing_result.total_count,
             "page": None,
             "page_size": None,
             "total_pages": None,
@@ -842,8 +850,18 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         )
         payload["page"] = page
         payload["page_size"] = page_size
-        payload["total_pages"] = ceil(total / page_size) if page_size > 0 else 0
+        payload["total_pages"] = (
+            ceil(listing_result.total_count / page_size) if page_size > 0 else 0
+        )
         return payload
+
+    def to_listing_response(
+        self, query_params: Any, listing_result: ListingResult[ModelT]
+    ) -> Any:
+        if not self.include_pagination_metadata:
+            return [self.to_response_schema(obj) for obj in listing_result.objects]
+
+        return self.to_paginated_listing_response(query_params, listing_result)
 
     @classmethod
     def before_include_view(cls):
@@ -892,9 +910,9 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
             )
             listing_response_annotation = cls.pagination_response_schema
 
-        if hasattr(cls, "list"):
+        if hasattr(cls, "listing"):
             _annotate(
-                cls.list,
+                cls.listing,
                 return_annotation=listing_response_annotation,
                 query_params=Annotated[cls.listing_param_schema, fastapi.Query()],
             )
@@ -1140,7 +1158,7 @@ def _should_add_collection_route_alias(
         return False
     if path != "/":
         return False
-    return endpoint.__name__.endswith(("_list", "_create"))
+    return endpoint.__name__.endswith(("_listing", "_create"))
 
 
 def _annotate_self(view_cls: type[View], endpoint: Callable) -> None:

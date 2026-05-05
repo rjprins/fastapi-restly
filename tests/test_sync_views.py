@@ -489,7 +489,7 @@ def test_sync_rest_view_crud_and_pagination(sync_db):
         assert first.customer.name == "Acme"
         assert second.customer.name == "Acme"
 
-        paginated = view.list({"page": "1", "page_size": "10"})
+        paginated = view.listing({"page": "1", "page_size": "10"})
         assert paginated["total"] == 2
         assert paginated["page"] == 1
         assert paginated["page_size"] == 10
@@ -532,9 +532,13 @@ def test_sync_rest_view_dispatches_to_handle_overrides(sync_db):
         model = DispatchWidget
         schema = WidgetSchema
 
-        def perform_list(self, query_params, query=None):
-            call_log.append("list")
-            return super().perform_list(query_params, query=query)
+        def perform_listing(self, query_params, query=None):
+            call_log.append("listing")
+            return super().perform_listing(query_params, query=query)
+
+        def to_listing_response(self, query_params, listing_result):
+            call_log.append("to_listing_response")
+            return super().to_listing_response(query_params, listing_result)
 
         def perform_get(self, id):
             call_log.append("get")
@@ -559,16 +563,25 @@ def test_sync_rest_view_dispatches_to_handle_overrides(sync_db):
         view.session = session
 
         created = view.create(WidgetSchema(id=0, name="alpha"))
-        view.list({})
+        view.listing({})
         view.get(created.id)
         view.update(created.id, WidgetSchema(id=created.id, name="beta"))
         view.delete(created.id)
 
-    assert call_log == ["create", "list", "get", "update", "get", "delete", "get"]
+    assert call_log == [
+        "create",
+        "listing",
+        "to_listing_response",
+        "get",
+        "update",
+        "get",
+        "delete",
+        "get",
+    ]
 
 
 def test_sync_build_query_is_consulted_by_list_and_count(sync_db):
-    """Both perform_list and count_listing must route through build_query so a
+    """perform_listing routes through build_query and count_listing uses that query so a
     single override filters listing AND its pagination total."""
     import sqlalchemy
 
@@ -610,9 +623,11 @@ def test_sync_build_query_is_consulted_by_list_and_count(sync_db):
         assert str(fr.RestView.build_query(view)) == str(sqlalchemy.select(Gadget))
 
         # Override is consulted by both list and count.
-        results = view.perform_list({})
-        assert len(results) == 2
-        assert all(g.active for g in results)
+        results = view.perform_listing({})
+        assert len(results.objects) == 2
+        assert results.total_count == 2
+        assert all(g.active for g in results.objects)
 
-        total = view.count_listing({})
+        query = fr.apply_list_params({}, view.build_query(), Gadget, GadgetSchema)
+        total = view.count_listing(query)
         assert total == 2

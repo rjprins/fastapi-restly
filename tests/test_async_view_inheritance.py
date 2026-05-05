@@ -47,7 +47,7 @@ def _model_and_schema():
                 c.get("/items/1"),
             )[-1],
         ),
-        ("perform_list", lambda c: c.get("/items/")),
+        ("perform_listing", lambda c: c.get("/items/")),
         (
             "perform_update",
             lambda c: (

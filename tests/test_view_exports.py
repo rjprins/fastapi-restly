@@ -35,14 +35,16 @@ def test_timestamp_convenience_bases_are_not_public_api():
 
 def test_rest_view_route_and_hook_names_are_current():
     current_names = (
-        "list",
+        "listing",
         "get",
         "create",
         "update",
         "delete",
-        "perform_list",
+        "perform_listing",
         "build_query",
         "count_listing",
+        "to_listing_response",
+        "to_paginated_listing_response",
         "to_response_schema",
         "perform_get",
         "perform_create",

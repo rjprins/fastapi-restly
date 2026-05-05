@@ -1,4 +1,3 @@
-from collections.abc import Sequence
 from typing import Any, TypeVar, cast
 
 import fastapi
@@ -15,6 +14,7 @@ from ._base import (
     BaseRestView,
     CreateSchemaT,
     IdT,
+    ListingResult,
     ModelT,
     SchemaT,
     UpdateSchemaT,
@@ -96,14 +96,10 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
     session: SessionDep  # type: ignore[reportIncompatibleVariableOverride]
 
     @get("/")
-    def list(self, query_params: Any) -> Any:
+    def listing(self, query_params: Any) -> Any:
         self._reject_unknown_query_params()
-        objs = self.perform_list(query_params)
-        if not self.include_pagination_metadata:
-            return [self.to_response_schema(obj) for obj in objs]
-
-        total = self.count_listing(query_params)
-        return self._build_pagination_payload(query_params, objs, total)
+        listing_result = self.perform_listing(query_params)
+        return self.to_listing_response(query_params, listing_result)
 
     def build_query(self) -> sqlalchemy.Select[Any]:
         """
@@ -120,18 +116,19 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         """
         return sqlalchemy.select(self.model)
 
-    def perform_list(
+    def perform_listing(
         self, query_params: Any, query: sqlalchemy.Select[Any] | None = None
-    ) -> Sequence[ModelT]:
+    ) -> ListingResult[ModelT]:
         """
-        Handle a GET request on "/". This should return a list of objects.
+        Handle a GET request on "/". This should return listed objects and the
+        total count before pagination.
         Accepts a query argument that can be used for narrowing down the selection.
         Feel free to override this method, e.g.:
 
-            def perform_list(self, query_params, query=None):
+            def perform_listing(self, query_params, query=None):
                 query = make_my_query()
-                objs = super().perform_list(query_params, query)
-                return add_my_info(objs)
+                result = super().perform_listing(query_params, query)
+                return ListingResult(add_my_info(result.objects), result.total_count)
 
         ``query_params`` is the validated query-parameter Pydantic model
         injected by FastAPI; pagination bounds (``page`` / ``page_size``)
@@ -144,19 +141,17 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         """
         if query is None:
             query = self.build_query()
+        query = apply_list_params(query_params, query, self.model, self.schema)
+        total_count = self.count_listing(query)
         loader_options = self.get_relationship_loader_options()
         if loader_options:
             query = query.options(*loader_options)
-        query = apply_list_params(query_params, query, self.model, self.schema)
         scalar_result = self.session.scalars(query)
-        return scalar_result.all()
+        return ListingResult(objects=scalar_result.all(), total_count=total_count)
 
-    def count_listing(self, query_params: Any) -> int:
-        filtered_query = apply_list_params(
-            query_params, self.build_query(), self.model, self.schema
-        )
-        filtered_query = filtered_query.order_by(None).limit(None).offset(None)
-        count_query = select(func.count()).select_from(filtered_query.subquery())
+    def count_listing(self, query: sqlalchemy.Select[Any]) -> int:
+        count_source = query.order_by(None).limit(None).offset(None)
+        count_query = select(func.count()).select_from(count_source.subquery())
         return int(self.session.scalar(count_query) or 0)
 
     @get("/{id}")

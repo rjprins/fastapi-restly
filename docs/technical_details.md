@@ -155,7 +155,7 @@ runtime behaviour:
   `"delete"` are also accepted. Routes listed here have their
   `_api_route_args` marker removed during `before_include_view()` so FastAPI
   never registers them.
-- `include_pagination_metadata` — if `True`, the `list` endpoint returns a
+- `include_pagination_metadata` — if `True`, the `listing` endpoint returns a
   paginated envelope with `items`, `total`, `page`, `page_size`, and `total_pages`.
 
 ### include_view()
@@ -186,10 +186,10 @@ attach an `APIRouter` to the parent app/router.
 
 ### Endpoint / Handler Separation
 
-Every CRUD endpoint delegates to a `perform_*` handler (`perform_list`,
+Every CRUD endpoint delegates to a `perform_*` handler (`perform_listing`,
 `perform_get`, `perform_create`, `perform_update`, `perform_delete`). Override
 the `perform_*` handler to change business logic while keeping the endpoint
-wrapper intact, or override the endpoint method itself (e.g. `list`) to replace
+wrapper intact, or override the endpoint method itself (e.g. `listing`) to replace
 the full request/response flow.
 
 ### Nested Response Schemas vs Write Payloads

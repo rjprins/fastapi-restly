@@ -168,7 +168,7 @@ View                   ← class-based view primitive (no CRUD)
   list/get/create/update/delete shape.
 - `BaseRestView` extends `View` with `model`, `schema`, the auto-generated
   create/update schemas, query-modifier configuration, and helper methods
-  like `to_response_schema()`. It declares route methods (`list`, `get`,
+  like `to_response_schema()`. It declares route methods (`listing`, `get`,
   `create`, `update`, `delete`) but provides no implementations — it is an
   abstract scaffold.
 - `RestView` and `AsyncRestView` provide the concrete sync and async
@@ -227,10 +227,10 @@ layered together — see
 ## Override a single method
 
 `AsyncRestView` and `RestView` are designed so you can replace any one piece
-without touching the rest. Override the handler (`perform_list`, `perform_get`,
+without touching the rest. Override the handler (`perform_listing`, `perform_get`,
 `perform_create`, `perform_update`, `perform_delete`) for business-logic changes that should
 fire on both the generated route and any custom callers; override the
-endpoint method itself (`list`, `get`, `create`, `update`, `delete`) when you
+endpoint method itself (`listing`, `get`, `create`, `update`, `delete`) when you
 want full control of the HTTP layer.
 
 ```python

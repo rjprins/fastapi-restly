@@ -203,7 +203,7 @@ class CustomerView(ReactAdminBase):
 
 `AsyncReactAdminView` is a thin subclass of `AsyncRestView` built with the
 [route replacement](howto_override_endpoints.md#replace-a-generated-route)
-pattern. It replaces the `list` route to change the list contract and adds a
+pattern. It replaces the `listing` route to change the list contract and adds a
 `PUT /{id}` route that delegates to the standard `perform_update` handler. All other
 generated routes (`GET /{id}`, `POST /`, `PATCH /{id}`, `DELETE /{id}`) and all
 `perform_*` handlers are inherited unchanged.

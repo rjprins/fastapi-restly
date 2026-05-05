@@ -11,7 +11,7 @@
 
 **Build maintainable CRUD APIs on FastAPI, SQLAlchemy 2.0, and Pydantic v2 — with real class-based views.**
 
-> **Status:** `3.0.0` — first public release. FastAPI-Restly follows
+> **Status:** `3.0.0rc2` — release candidate for the first public release. FastAPI-Restly follows
 > Semantic Versioning; public API breaks after `3.0.0` require a new major
 > version. See the [Changelog](CHANGELOG.md).
 > ```bash
@@ -181,7 +181,7 @@ class OrderRead(fr.IDSchema):
 
 ### Custom endpoints and handlers
 
-Add endpoints with `@fr.get`, `@fr.post`, `@fr.put`, `@fr.patch`, `@fr.delete`, or the generic `@fr.route`. Override `perform_*` handlers (`perform_list`, `perform_get`, `perform_create`, ...) to customise built-in CRUD logic without replacing the endpoint.
+Add endpoints with `@fr.get`, `@fr.post`, `@fr.put`, `@fr.patch`, `@fr.delete`, or the generic `@fr.route`. Override `perform_*` handlers (`perform_listing`, `perform_get`, `perform_create`, ...) to customise built-in CRUD logic without replacing the endpoint.
 
 ```python
 @fr.include_view(app)
@@ -194,9 +194,9 @@ class UserView(fr.AsyncRestView):
     async def download_user(self, id: int):
         return {"id": id, "status": "ok"}
 
-    async def perform_list(self, query_params, query=None):
+    async def perform_listing(self, query_params, query=None):
         # Custom logic here
-        return await super().perform_list(query_params, query=query)
+        return await super().perform_listing(query_params, query=query)
 ```
 
 ### React Admin integration

@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.0rc2] - 2026-05-05
+
 ### Changed
 
 - Renamed `build_listing_query` to `build_query` and broadened its role:
@@ -68,3 +70,4 @@ First public release.
   the pytest plugin path is `fastapi_restly.pytest_fixtures`.
 
 [3.0.0]: https://github.com/rjprins/fastapi-restly/releases/tag/v3.0.0
+[3.0.0rc2]: https://github.com/rjprins/fastapi-restly/releases/tag/v3.0.0rc2

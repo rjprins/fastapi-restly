@@ -47,9 +47,9 @@ class CustomProjectView(
     schema = ProjectRead
 
     @fr.get("/")
-    async def list(self, query_params: Any) -> list[ProjectRead]:
-        objs = await self.perform_list(query_params)
-        return [self.to_response_schema(obj) for obj in objs]
+    async def listing(self, query_params: Any) -> list[ProjectRead]:
+        result = await self.perform_listing(query_params)
+        return [self.to_response_schema(obj) for obj in result.objects]
 
     @fr.get("/{id}")
     async def get(self, id: int) -> ProjectRead:

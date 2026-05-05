@@ -81,7 +81,7 @@ The generic form is useful when you override handlers such as:
 - `perform_create`
 - `perform_update`
 - `perform_delete`
-- `perform_list`
+- `perform_listing`
 
 Without view generics, these handlers still work, but their types are broader.
 With view generics, your editor can infer the concrete model, schema, and id types.
