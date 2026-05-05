@@ -18,6 +18,9 @@ from fastapi_restly.testing import RestlyTestClient
 client = RestlyTestClient(app)
 ```
 
+`RestlyTestClient` is intentionally sync-only. It still works for testing
+async FastAPI routes and `AsyncRestView` endpoints.
+
 The client auto-asserts default status codes:
 - `get` expects `200`
 - `post` expects `201`

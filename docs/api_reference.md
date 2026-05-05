@@ -305,7 +305,7 @@ custom generator owns the transaction lifecycle.
 
 | Symbol | Description |
 |---|---|
-| `fastapi_restly.testing.RestlyTestClient` | Test client wrapper around FastAPI's `TestClient` with default status-code assertions. |
+| `fastapi_restly.testing.RestlyTestClient` | Sync test client wrapper around FastAPI's `TestClient` with default status-code assertions. It can test async FastAPI routes and `AsyncRestView` endpoints. |
 | `fastapi_restly.testing.activate_savepoint_only_mode(make_session)` | **Intended for tests.** Wraps a session factory in savepoint-only mode so test data never commits to the database. Requires the session maker as argument. |
 | `fastapi_restly.testing.deactivate_savepoint_only_mode(make_session)` | Restore normal session behavior after testing. |
 

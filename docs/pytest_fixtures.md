@@ -107,6 +107,9 @@ def restly_app():
 
 Returns a `RestlyTestClient` wrapping the `restly_app` fixture. Automatically asserts status codes on each request:
 
+`RestlyTestClient` is intentionally sync-only. It still works for testing async
+FastAPI routes and `AsyncRestView` endpoints.
+
 | Method   | Default expected status |
 |----------|-------------------------|
 | `get`    | `200`                   |
