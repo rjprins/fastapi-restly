@@ -112,10 +112,10 @@ def test_restly_context_nested_entries_restore_in_lifo_order():
 
 def test_getters_and_sync_proxy_raise_without_configuration():
     with RestlyContext():
-        with pytest.raises(RuntimeError, match="Call fr.configure\\(\\)"):
+        with pytest.raises(fr.RestlyConfigurationError, match="Call fr.configure\\(\\)"):
             get_engine()
 
-        with pytest.raises(RuntimeError, match="Call fr.configure\\(\\)"):
+        with pytest.raises(fr.RestlyConfigurationError, match="Call fr.configure\\(\\)"):
             with proxy_open_session():
                 pass
 
@@ -123,10 +123,10 @@ def test_getters_and_sync_proxy_raise_without_configuration():
 @pytest.mark.asyncio
 async def test_async_getter_and_proxy_raise_without_configuration():
     with RestlyContext():
-        with pytest.raises(RuntimeError, match="Call fr.configure\\(\\)"):
+        with pytest.raises(fr.RestlyConfigurationError, match="Call fr.configure\\(\\)"):
             get_async_engine()
 
-        with pytest.raises(RuntimeError, match="Call fr.configure\\(\\)"):
+        with pytest.raises(fr.RestlyConfigurationError, match="Call fr.configure\\(\\)"):
             async with proxy_open_async_session():
                 pass
 

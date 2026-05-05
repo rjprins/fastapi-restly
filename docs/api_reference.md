@@ -274,6 +274,13 @@ SQLAlchemy directly: provide a custom dependency on a view, or pass a custom
 session generator to `fr.configure(...)`. Restly does not currently provide a
 public multi-context or multi-engine API.
 
+### Exceptions
+
+| Symbol | Description |
+|---|---|
+| `fr.RestlyError` | Base class for FastAPI-Restly framework errors. |
+| `fr.RestlyConfigurationError` | Raised when a public Restly helper needs configuration that has not been set up yet, such as calling `fr.open_session()` before `fr.configure(...)`. |
+
 ### Testing
 
 | Symbol | Description |

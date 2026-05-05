@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session as SA_Session
 from sqlalchemy.orm import sessionmaker
 
 from .._exceptions import register_default_exception_handlers
+from ..exceptions import RestlyConfigurationError
 from ._globals import _fr_globals
 
 try:
@@ -173,14 +174,18 @@ def deactivate_savepoint_only_mode(
 def get_async_engine() -> AsyncEngine:
     """Return the async engine registered via configure()."""
     if _fr_globals.async_make_session is None:
-        raise RuntimeError("Call fr.configure() before using get_async_engine().")
+        raise RestlyConfigurationError(
+            "Call fr.configure() before using get_async_engine()."
+        )
     return _fr_globals.async_make_session.kw["bind"]
 
 
 def get_engine() -> Engine:
     """Return the sync engine registered via configure()."""
     if _fr_globals.make_session is None:
-        raise RuntimeError("Call fr.configure() before using get_engine().")
+        raise RestlyConfigurationError(
+            "Call fr.configure() before using get_engine()."
+        )
     return _fr_globals.make_session.kw["bind"]
 
 

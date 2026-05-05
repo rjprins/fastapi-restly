@@ -11,6 +11,8 @@ fastapi_restly:
   - ReactAdminView
   - ReadOnly
   - RestView
+  - RestlyConfigurationError
+  - RestlyError
   - SessionDep
   - TimestampsMixin
   - TimestampsSchemaMixin
@@ -24,6 +26,7 @@ fastapi_restly:
   - create_list_params_schema
   - db
   - delete
+  - exceptions
   - get
   - get_async_engine
   - get_engine
@@ -53,6 +56,9 @@ fastapi_restly.db:
   - get_engine
   - open_async_session
   - open_session
+fastapi_restly.exceptions:
+  - RestlyConfigurationError
+  - RestlyError
 fastapi_restly.models:
   - CASCADE_ALL_ASYNC
   - CASCADE_ALL_DELETE_ORPHAN_ASYNC
@@ -108,6 +114,7 @@ submodule-only exports:
 fastapi_restly.db:
   - activate_savepoint_only_mode
   - deactivate_savepoint_only_mode
+fastapi_restly.exceptions:
 fastapi_restly.models:
   - CASCADE_ALL_ASYNC
   - CASCADE_ALL_DELETE_ORPHAN_ASYNC

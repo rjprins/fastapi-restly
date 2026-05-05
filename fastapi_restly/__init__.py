@@ -8,6 +8,7 @@ from .db import (
     open_async_session,
     open_session,
 )
+from .exceptions import RestlyConfigurationError, RestlyError
 
 # Model base classes
 from .models import DataclassBase, IDBase, IDMixin, TimestampsMixin
@@ -64,6 +65,9 @@ __all__ = [
     "get_engine",
     # Database — setup & utilities
     "configure",
+    # Exceptions
+    "RestlyError",
+    "RestlyConfigurationError",
     # Models
     "DataclassBase",
     "IDBase",
