@@ -228,7 +228,7 @@ item = client.get(f"/posts/{post.json()['id']}")
 # Automatically asserts status 200
 ```
 
-For test isolation, use the `async_session` or `session` pytest fixtures. These wrap each
+For test isolation, use the `restly_async_session` or `restly_session` pytest fixtures. These wrap each
 test in a database savepoint so changes never persist between tests:
 
 ```python
@@ -238,8 +238,8 @@ pytest_plugins = ["fastapi_restly.pytest_fixtures"]
 
 ```python
 # test_posts.py
-def test_create_post(client):
-    resp = client.post("/posts/", json={"title": "Hi", "content": "...", "published": False})
+def test_create_post(restly_client):
+    resp = restly_client.post("/posts/", json={"title": "Hi", "content": "...", "published": False})
     assert resp.json()["title"] == "Hi"
     # Database changes are rolled back automatically after this test
 ```

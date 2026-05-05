@@ -67,13 +67,11 @@ fastapi_restly.models:
   - IDMixin
   - TimestampsMixin
 fastapi_restly.pytest_fixtures:
-  - app
-  - async_session
-  - autouse_alembic_upgrade
-  - autouse_savepoint_only_mode_sessions
-  - client
-  - project_root
-  - session
+  - restly_app
+  - restly_async_session
+  - restly_client
+  - restly_project_root
+  - restly_session
 fastapi_restly.query:
   - DEFAULT_PAGE_SIZE
   - MAX_PAGE_SIZE
@@ -116,13 +114,11 @@ fastapi_restly.models:
   - CASCADE_ALL_ASYNC
   - CASCADE_ALL_DELETE_ORPHAN_ASYNC
 fastapi_restly.pytest_fixtures:
-  - app
-  - async_session
-  - autouse_alembic_upgrade
-  - autouse_savepoint_only_mode_sessions
-  - client
-  - project_root
-  - session
+  - restly_app
+  - restly_async_session
+  - restly_client
+  - restly_project_root
+  - restly_session
 fastapi_restly.query:
   - DEFAULT_PAGE_SIZE
   - MAX_PAGE_SIZE

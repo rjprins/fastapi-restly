@@ -118,7 +118,7 @@ class TestSorting:
         """Test sorting tasks by priority ascending."""
         setup_test_data(client)
 
-        response = client.get("/tasks/?order_by=priority")
+        response = client.get("/tasks/?sort=priority")
         tasks = response.json()
 
         priorities = [t["priority"] for t in tasks]
@@ -128,7 +128,7 @@ class TestSorting:
         """Test sorting tasks by priority descending."""
         setup_test_data(client)
 
-        response = client.get("/tasks/?order_by=-priority")
+        response = client.get("/tasks/?sort=-priority")
         tasks = response.json()
 
         priorities = [t["priority"] for t in tasks]
@@ -138,7 +138,7 @@ class TestSorting:
         """Test sorting users by name."""
         setup_test_data(client)
 
-        response = client.get("/users/?order_by=name")
+        response = client.get("/users/?sort=name")
         users = response.json()
 
         names = [u["name"] for u in users]
@@ -161,9 +161,9 @@ class TestPagination:
         """``page_size`` + ``page`` gives offset-based pagination."""
         setup_test_data(client)
 
-        response = client.get("/tasks/?order_by=title&page_size=2")
+        response = client.get("/tasks/?sort=title&page_size=2")
         first_page = response.json()
-        response = client.get("/tasks/?order_by=title&page_size=2&page=2")
+        response = client.get("/tasks/?sort=title&page_size=2&page=2")
         second_page = response.json()
 
         assert len(first_page) == 2
@@ -178,7 +178,7 @@ class TestCombinedQueries:
         """Test filtering and sorting together."""
         setup_test_data(client)
 
-        response = client.get("/tasks/?status=todo&order_by=-priority")
+        response = client.get("/tasks/?status=todo&sort=-priority")
         tasks = response.json()
 
         # All should be todo
@@ -191,7 +191,7 @@ class TestCombinedQueries:
         """Test filter, sort, and pagination together."""
         setup_test_data(client)
 
-        response = client.get("/tasks/?status=in_progress&order_by=title&page_size=1")
+        response = client.get("/tasks/?status=in_progress&sort=title&page_size=1")
         tasks = response.json()
 
         assert len(tasks) == 1
@@ -234,10 +234,10 @@ class TestLabelFiltering:
         assert len(labels) >= 1
 
     def test_sort_by_name(self, client):
-        """Sort: ?order_by=name returns labels sorted alphabetically."""
+        """Sort: ?sort=name returns labels sorted alphabetically."""
         self._setup_labels(client)
 
-        response = client.get("/labels/?order_by=name")
+        response = client.get("/labels/?sort=name")
         labels = response.json()
 
         names = [lb["name"] for lb in labels]

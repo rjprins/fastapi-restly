@@ -41,30 +41,25 @@ pytest_plugins = ["fastapi_restly.pytest_fixtures"]
 
 Useful fixtures include:
 
-- `app` — returns a bare `FastAPI()` instance. **You must override this in your own `conftest.py`** to return your actual application, otherwise the `client` fixture wraps an empty app with no routes.
-- `client` — a `RestlyTestClient` wrapping the `app` fixture.
-- `session` — a SQLAlchemy `Session` with savepoint-based isolation.
-- `async_session` — same as `session` but for async code.
+- `restly_app` — returns a bare `FastAPI()` instance. **You must override this in your own `conftest.py`** to return your actual application, otherwise the `restly_client` fixture wraps an empty app with no routes.
+- `restly_client` — a `RestlyTestClient` wrapping the `restly_app` fixture.
+- `restly_session` — a SQLAlchemy `Session` with savepoint-based isolation.
+- `restly_async_session` — same as `restly_session` but for async code.
 
-Two fixtures run automatically for every test session (you do not need to request them):
+Restly does not register autouse fixtures. If you want database isolation for every test, opt in from your own `conftest.py` by requesting the fixture there.
 
-- `autouse_alembic_upgrade` — runs `alembic upgrade head` once before the suite starts. If migrations fail, the entire suite is aborted immediately. Skips silently if no `alembic/` directory is found.
-- `autouse_savepoint_only_mode_sessions` — puts session factories into savepoint-only mode so no test data is committed to the database. Skips if no database connections are configured.
-
-One caveat to be aware of: explicit `with session.begin(): ...` / `async with session.begin(): ...`
+One caveat to be aware of: explicit `with restly_session.begin(): ...` / `async with restly_async_session.begin(): ...`
 blocks inside tests are supported, but the fixture implementation currently documents a visibility
 caveat around those blocks. See [pytest Fixtures Reference](pytest_fixtures.md) for details.
 
-A third fixture, `project_root`, is session-scoped and used internally by `autouse_alembic_upgrade` to locate the project directory. It is not autouse.
-
-Example — override `app` in your `conftest.py`:
+Example — override `restly_app` in your `conftest.py`:
 
 ```python
 import pytest
 from myapp.main import app as myapp
 
 @pytest.fixture
-def app():
+def restly_app():
     return myapp
 ```
 

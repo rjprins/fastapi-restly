@@ -15,7 +15,7 @@ class ProjectStatus(str, Enum):
     ARCHIVED = "archived"
 
 
-class Project(fr.IDStampsBase):
+class Project(fr.TimestampsMixin, fr.IDBase):
     """
     Project belongs to an organization and contains tasks.
     Supports soft delete via deleted_at field.

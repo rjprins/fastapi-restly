@@ -17,7 +17,7 @@ class UserRole(str, Enum):
     HR = "hr"  # Can see salary information
 
 
-class User(fr.IDStampsBase):
+class User(fr.TimestampsMixin, fr.IDBase):
     """
     User belongs to an organization and has a role.
     Users can be assigned to tasks.

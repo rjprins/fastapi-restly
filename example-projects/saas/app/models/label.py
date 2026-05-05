@@ -5,7 +5,7 @@ from sqlalchemy import ForeignKey, orm
 import fastapi_restly as fr
 
 
-class Label(fr.IDStampsBase):
+class Label(fr.TimestampsMixin, fr.IDBase):
     """
     Labels that can be applied to tasks.
     Organization-scoped.
@@ -26,7 +26,7 @@ class Label(fr.IDStampsBase):
     )
 
 
-class TaskLabel(fr.IDStampsBase):
+class TaskLabel(fr.TimestampsMixin, fr.IDBase):
     """
     Association table between Task and Label with extra metadata.
     Tracks who added the label and when.

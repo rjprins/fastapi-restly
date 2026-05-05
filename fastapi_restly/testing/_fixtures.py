@@ -20,7 +20,7 @@ from ._client import RestlyTestClient
 
 
 @pytest.fixture(scope="session")
-def project_root() -> Path:
+def restly_project_root() -> Path:
     """Return the project root directory."""
     # Try to find the project root by looking for pyproject.toml
     current = Path.cwd()
@@ -31,14 +31,13 @@ def project_root() -> Path:
     raise Exception("Could not find a pyproject.toml to establish project root")
 
 
-@pytest.fixture(autouse=True, scope="session")
-def autouse_alembic_upgrade(project_root):
+def _run_alembic_upgrade(project_root: Path) -> None:
     # Only run alembic migrations if the alembic directory exists
     alembic_dir = project_root / "alembic"
     if not alembic_dir.exists():
         return  # Skip if no alembic directory
 
-    # TODO: Move project_root to Settings?
+    # TODO: Move project root discovery to Settings?
     alembic_cfg = alembic.config.Config(project_root / "alembic.ini")
     alembic_cfg.set_main_option("script_location", str(alembic_dir))
     try:
@@ -50,8 +49,7 @@ def autouse_alembic_upgrade(project_root):
         )
 
 
-@pytest.fixture(autouse=True, scope="session")
-def autouse_savepoint_only_mode_sessions() -> None:
+def _activate_savepoint_only_mode_sessions() -> None:
     # Only run if database connections are set up
     if not _fr_globals.async_make_session and not _fr_globals.make_session:
         return  # Skip if no database connections
@@ -65,7 +63,7 @@ def autouse_savepoint_only_mode_sessions() -> None:
 @pytest.fixture
 def _shared_connection():
     # Sync tests need a sync sessionmaker, but async-only projects should still
-    # be able to use the async_session fixture without one.
+    # be able to use the restly_async_session fixture without one.
     if not _fr_globals.make_session:
         yield None
         return
@@ -76,7 +74,7 @@ def _shared_connection():
 
 
 @pytest_asyncio.fixture
-async def async_session(_shared_connection) -> AsyncIterator[SA_AsyncSession]:
+async def restly_async_session(_shared_connection) -> AsyncIterator[SA_AsyncSession]:
     """
     Pytest fixture providing a database session with savepoint-based isolation.
 
@@ -146,7 +144,7 @@ async def async_session(_shared_connection) -> AsyncIterator[SA_AsyncSession]:
 
 
 @pytest.fixture
-def session(_shared_connection) -> Iterator[SA_Session]:
+def restly_session(_shared_connection) -> Iterator[SA_Session]:
     """
     Pytest fixture providing a database session with savepoint-based isolation.
 
@@ -202,12 +200,12 @@ def session(_shared_connection) -> Iterator[SA_Session]:
 
 
 @pytest.fixture
-def app() -> FastAPI:
+def restly_app() -> FastAPI:
     """Create a FastAPI app instance for testing."""
     return FastAPI()
 
 
 @pytest.fixture
-def client(app) -> RestlyTestClient:
+def restly_client(restly_app) -> RestlyTestClient:
     """Create a RestlyTestClient instance for testing."""
-    return RestlyTestClient(app)
+    return RestlyTestClient(restly_app)

@@ -5,7 +5,7 @@ from sqlalchemy import orm
 import fastapi_restly as fr
 
 
-class Organization(fr.IDStampsBase):
+class Organization(fr.TimestampsMixin, fr.IDBase):
     """
     Organization represents a tenant in the multi-tenant system.
     All users, projects, and tasks belong to an organization.

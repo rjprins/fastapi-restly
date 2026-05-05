@@ -15,6 +15,12 @@ from fastapi_restly.db._globals import _fr_globals
 pytest_plugins = ["fastapi_restly.pytest_fixtures"]
 
 
+@pytest.fixture
+def client(restly_client):
+    """Project-local alias for existing framework tests."""
+    return restly_client
+
+
 @pytest.fixture(autouse=True)
 def reset_metadata():
     """Reset global framework state between tests to avoid cross-test leakage."""

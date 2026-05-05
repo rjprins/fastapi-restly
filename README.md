@@ -239,7 +239,7 @@ class UserView(fr.AsyncRestView):
 
 ## Testing
 
-`fastapi_restly.testing` provides pytest fixtures (`app`, `client`, `async_session`, `session`) with **savepoint-based isolation** — each test runs inside a transaction that rolls back automatically, so no data leaks between tests. Add to your `conftest.py`:
+`fastapi_restly.pytest_fixtures` provides namespaced pytest fixtures (`restly_app`, `restly_client`, `restly_async_session`, `restly_session`) for test clients and **savepoint-based isolation**. Add to your `conftest.py`:
 
 Install the testing extra when consuming FastAPI-Restly as a package:
 
@@ -260,13 +260,13 @@ fr.configure(async_database_url="sqlite+aiosqlite:///test.db")
 
 ```python
 # test_users.py
-def test_create_and_fetch_user(client):
+def test_create_and_fetch_user(restly_client):
     # Raises AssertionError if status != 201
-    response = client.post("/users/", json={"name": "John", "email": "john@example.com"})
+    response = restly_client.post("/users/", json={"name": "John", "email": "john@example.com"})
     user_id = response.json()["id"]
 
     # Raises AssertionError if status != 200
-    data = client.get(f"/users/{user_id}").json()
+    data = restly_client.get(f"/users/{user_id}").json()
     assert data["name"] == "John"
 ```
 

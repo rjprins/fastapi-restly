@@ -8,7 +8,7 @@ import fastapi_restly as fr
 
 def test_blog_view_uses_sync_auto_schema():
     assert issubclass(BlogView, fr.RestView)
-    assert BlogView.schema.__name__ == "BlogViewSchema"
+    assert BlogView.schema.__name__ == "BlogRead"
     assert set(BlogView.schema.model_fields) == {"id", "title"}
 
 

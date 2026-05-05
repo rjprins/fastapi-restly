@@ -71,9 +71,9 @@ Run migrations as part of your release / startup pipeline:
 alembic upgrade head
 ```
 
-The test suite has an `autouse_alembic_upgrade` fixture that runs the same
-command before tests, so production and tests share the same migration
-path. See [How-To: Testing](howto_testing.md).
+If you want tests to exercise the same migration path, add a project-local
+fixture that runs `alembic upgrade head` before the suite. Restly's pytest
+plugin does not run migrations automatically. See [How-To: Testing](howto_testing.md).
 
 ## A production `main.py` template
 

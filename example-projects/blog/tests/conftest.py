@@ -6,8 +6,6 @@ from sqlalchemy.pool import StaticPool
 
 import fastapi_restly as fr
 
-pytest_plugins = ["fastapi_restly.pytest_fixtures"]
-
 
 @pytest.fixture(autouse=True)
 def use_in_memory_database():

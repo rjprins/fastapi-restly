@@ -10,8 +10,9 @@ To use the fixtures provided by this module, add the following line to your
 
     pytest_plugins = ["fastapi_restly.pytest_fixtures"]
 
-This imports all fixtures (``app``, ``client``, ``session``, ``async_session``,
-etc.) into your test session without needing to import them individually.
+This imports the namespaced fixtures (``restly_app``, ``restly_client``,
+``restly_session``, ``restly_async_session``, etc.) into your test session
+without needing to import them individually.
 
 .. automodule:: fastapi_restly.testing
    :members:

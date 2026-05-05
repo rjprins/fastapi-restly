@@ -1,13 +1,11 @@
 try:
     from fastapi_restly.testing._fixtures import (
         _shared_connection,
-        app,
-        async_session,
-        autouse_alembic_upgrade,
-        autouse_savepoint_only_mode_sessions,
-        client,
-        project_root,
-        session,
+        restly_app,
+        restly_async_session,
+        restly_client,
+        restly_project_root,
+        restly_session,
     )
 except ModuleNotFoundError as exc:
     if exc.name in {"httpx", "pytest"}:
@@ -18,11 +16,9 @@ except ModuleNotFoundError as exc:
     raise
 
 __all__ = [
-    "app",
-    "async_session",
-    "autouse_alembic_upgrade",
-    "autouse_savepoint_only_mode_sessions",
-    "client",
-    "project_root",
-    "session",
+    "restly_app",
+    "restly_async_session",
+    "restly_client",
+    "restly_project_root",
+    "restly_session",
 ]

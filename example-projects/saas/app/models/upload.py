@@ -23,7 +23,7 @@ from sqlalchemy import ForeignKey, orm
 import fastapi_restly as fr
 
 
-class Upload(fr.IDStampsBase):
+class Upload(fr.TimestampsMixin, fr.IDBase):
     """Parent row for a batch of imported lines."""
 
     filename: orm.Mapped[str]
@@ -39,7 +39,7 @@ class Upload(fr.IDStampsBase):
     )
 
 
-class UploadLine(fr.IDStampsBase):
+class UploadLine(fr.TimestampsMixin, fr.IDBase):
     """One parsed row from the uploaded file."""
 
     upload_id: orm.Mapped[int] = orm.mapped_column(ForeignKey("upload.id"))

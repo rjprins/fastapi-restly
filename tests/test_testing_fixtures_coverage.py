@@ -20,7 +20,7 @@ from fastapi_restly.testing import _fixtures
 from fastapi_restly.testing._client import RestlyTestClient
 
 
-def test_project_root_discovers_pyproject(monkeypatch, tmp_path: Path):
+def test_restly_project_root_discovers_pyproject(monkeypatch, tmp_path: Path):
     project_root = tmp_path / "project"
     nested = project_root / "src" / "deep"
     nested.mkdir(parents=True)
@@ -28,18 +28,18 @@ def test_project_root_discovers_pyproject(monkeypatch, tmp_path: Path):
 
     monkeypatch.chdir(nested)
 
-    assert _fixtures.project_root.__wrapped__() == project_root
+    assert _fixtures.restly_project_root.__wrapped__() == project_root
 
 
-def test_project_root_raises_without_pyproject(monkeypatch, tmp_path: Path):
+def test_restly_project_root_raises_without_pyproject(monkeypatch, tmp_path: Path):
     monkeypatch.chdir(tmp_path)
 
     with pytest.raises(Exception, match="Could not find a pyproject.toml"):
-        _fixtures.project_root.__wrapped__()
+        _fixtures.restly_project_root.__wrapped__()
 
 
-def test_autouse_alembic_upgrade_handles_missing_and_failing_migrations(tmp_path: Path):
-    _fixtures.autouse_alembic_upgrade.__wrapped__(tmp_path)
+def test_run_alembic_upgrade_handles_missing_and_failing_migrations(tmp_path: Path):
+    _fixtures._run_alembic_upgrade(tmp_path)
 
     project_root = tmp_path / "with-alembic"
     alembic_dir = project_root / "alembic"
@@ -48,15 +48,15 @@ def test_autouse_alembic_upgrade_handles_missing_and_failing_migrations(tmp_path
 
     with patch("alembic.command.upgrade", side_effect=RuntimeError("boom")):
         with pytest.raises(Exit, match="Alembic migrations failed: boom"):
-            _fixtures.autouse_alembic_upgrade.__wrapped__(project_root)
+            _fixtures._run_alembic_upgrade(project_root)
 
 
-def test_autouse_savepoint_only_mode_sessions_activates_only_configured_sessions():
+def test_activate_savepoint_only_mode_sessions_activates_only_configured_sessions():
     with RestlyContext():
         with patch(
             "fastapi_restly.testing._fixtures.activate_savepoint_only_mode"
         ) as activate:
-            _fixtures.autouse_savepoint_only_mode_sessions.__wrapped__()
+            _fixtures._activate_savepoint_only_mode_sessions()
             activate.assert_not_called()
 
     sync_engine = create_engine(
@@ -76,7 +76,7 @@ def test_autouse_savepoint_only_mode_sessions_activates_only_configured_sessions
             with patch(
                 "fastapi_restly.testing._fixtures.activate_savepoint_only_mode"
             ) as activate:
-                _fixtures.autouse_savepoint_only_mode_sessions.__wrapped__()
+                _fixtures._activate_savepoint_only_mode_sessions()
                 assert activate.call_count == 2
     finally:
         sync_engine.dispose()
@@ -122,7 +122,7 @@ def test_sync_fixture_wrapper_patches_and_restores_sessionmaker():
             from fastapi_restly.db._globals import _fr_globals
 
             _fr_globals.make_session = make_session
-            gen = _fixtures.session.__wrapped__(None)
+            gen = _fixtures.restly_session.__wrapped__(None)
             session = next(gen)
 
             mocked_make_session = _fr_globals.make_session
@@ -148,7 +148,7 @@ async def test_async_fixture_wrapper_patches_and_restores_sessionmaker():
             from fastapi_restly.db._globals import _fr_globals
 
             _fr_globals.async_make_session = make_session
-            agen = _fixtures.async_session.__wrapped__(None)
+            agen = _fixtures.restly_async_session.__wrapped__(None)
             session = await agen.__anext__()
 
             mocked_make_session = _fr_globals.async_make_session
@@ -163,16 +163,21 @@ async def test_async_fixture_wrapper_patches_and_restores_sessionmaker():
 
 
 def test_fixture_exports_and_client_helpers():
-    app = _fixtures.app.__wrapped__()
+    app = _fixtures.restly_app.__wrapped__()
     assert isinstance(app, FastAPI)
 
-    client = _fixtures.client.__wrapped__(app)
+    client = _fixtures.restly_client.__wrapped__(app)
     assert isinstance(client, RestlyTestClient)
 
-    assert exported_fixtures.app is _fixtures.app
-    assert exported_fixtures.session is _fixtures.session
-    assert "app" in exported_fixtures.__all__
-    assert "session" in exported_fixtures.__all__
+    assert exported_fixtures.restly_app is _fixtures.restly_app
+    assert exported_fixtures.restly_session is _fixtures.restly_session
+    assert "restly_app" in exported_fixtures.__all__
+    assert "restly_session" in exported_fixtures.__all__
+    assert "app" not in exported_fixtures.__all__
+    assert "client" not in exported_fixtures.__all__
+    assert "session" not in exported_fixtures.__all__
+    assert "autouse_alembic_upgrade" not in exported_fixtures.__all__
+    assert "autouse_savepoint_only_mode_sessions" not in exported_fixtures.__all__
     assert testing.__all__ == ["RestlyTestClient"]
     assert not hasattr(testing, "app")
     assert not hasattr(testing, "session")

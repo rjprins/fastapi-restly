@@ -63,7 +63,7 @@ class TaskType(str, Enum):
     FEATURE = "feature"
 
 
-class Task(fr.IDStampsBase):
+class Task(fr.TimestampsMixin, fr.IDBase):
     """
     Task belongs to a project and can be assigned to a user.
     """
