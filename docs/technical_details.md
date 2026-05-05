@@ -137,8 +137,8 @@ runtime behaviour:
 - `creation_schema`, `update_schema` — derived from `schema` if not declared.
 - `model` — the SQLAlchemy model class.
 - `id_type` — Python type for the `{id}` path parameter (default `int`).
-- `exclude_routes` — tuple of method names to suppress (e.g.
-  `exclude_routes = ("delete",)`). Routes listed here have their `_api_route_args`
+- `exclude_routes` — iterable of method names to suppress (e.g.
+  `exclude_routes = ["delete"]`). Routes listed here have their `_api_route_args`
   marker removed during `before_include_view()` so FastAPI never registers them.
 - `include_pagination_metadata` — if `True`, the `index` endpoint returns a
   paginated envelope with `items`, `total`, `page`, `page_size`, and `total_pages`.

@@ -127,12 +127,12 @@ To disable generated endpoints on a view, use:
 class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
-    exclude_routes = ("delete", "patch")
+    exclude_routes = ["delete", "patch"]
 ```
 
 Valid route names for exclusion: `"index"`, `"get"`, `"post"`, `"patch"`, `"delete"`.
 
-`exclude_routes` is typed `ClassVar[tuple[str, ...]]`; a list literal is also accepted at runtime.
+`exclude_routes` accepts any iterable of route-name strings, such as a list or tuple.
 
 ## Response Modeling
 
@@ -165,7 +165,7 @@ Restly to an existing model layer.
 
 | Symbol | Description |
 |---|---|
-| `fr.BaseSchema` | Base Pydantic model with `from_attributes=True`. All schemas should inherit from this. |
+| `fr.BaseSchema` | Recommended Pydantic base with `from_attributes=True`. Plain Pydantic models are also accepted for explicit create/update schemas. |
 | `fr.IDSchema` | Response-schema base class that adds the resource's own read-only `id` field. |
 | `fr.IDRef[Model]` | Scalar FK reference type. Wire format is the raw id (`5`) on request and response; dict input (`{"id": 5}`) is also accepted. Use this for typical REST FK fields and React Admin scalar id arrays. |
 | `fr.IDSchema[Model]` | Nested relationship-object field type. Wire format is `{"id": 5}` on request and response. Use this when a client expects relationship objects instead of scalar FK fields. |
@@ -190,22 +190,22 @@ Restly to an existing model layer.
 | Attribute | Type | Description |
 |---|---|---|
 | `prefix` | `ClassVar[str]` | URL prefix for all routes in the view (e.g. `"/users"`). Required. |
-| `tags` | `ClassVar[list[str] \| None]` | OpenAPI tags. The view class name is always added automatically; set this to add extra tags. |
-| `dependencies` | `ClassVar[list[Any] \| None]` | FastAPI dependencies applied to every route in the view. |
+| `tags` | `ClassVar[Iterable[str] \| None]` | OpenAPI tags. The view class name is always added automatically; set this to add extra tags. |
+| `dependencies` | `ClassVar[Iterable[Any] \| None]` | FastAPI dependencies applied to every route in the view. |
 | `responses` | `ClassVar[dict[int, Any]]` | OpenAPI response overrides. Defaults to `{404: {"description": "Not found"}}`. |
 
 ### View Class Attributes
 
 | Attribute | Type | Description |
 |---|---|---|
-| `schema` | `ClassVar[type[BaseSchema]]` | The read/response schema. If omitted, auto-generated from `model` as `ModelRead`. |
-| `creation_schema` | `ClassVar[type[BaseSchema]]` | Schema for `POST` input. Auto-derived by removing `ReadOnly` fields and named `ModelCreate`. |
-| `update_schema` | `ClassVar[type[BaseSchema]]` | Schema for `PATCH` input. Auto-derived by making all writable fields optional and named `ModelUpdate`. |
+| `schema` | `ClassVar[type[pydantic.BaseModel]]` | The read/response schema. If omitted, auto-generated from `model` as `ModelRead`. |
+| `creation_schema` | `ClassVar[type[pydantic.BaseModel]]` | Schema for `POST` input. Auto-derived by removing `ReadOnly` fields and named `ModelCreate`. |
+| `update_schema` | `ClassVar[type[pydantic.BaseModel]]` | Schema for `PATCH` input. Auto-derived by making all writable fields optional and named `ModelUpdate`. |
 | `model` | `ClassVar[type[DeclarativeBase]]` | The SQLAlchemy model class. |
 | `id_type` | `ClassVar[type]` | Primary key type used in generated `GET /{id}`, `PATCH /{id}`, and `DELETE /{id}` routes. Defaults to `int`. |
 | `include_pagination_metadata` | `ClassVar[bool]` | Set `True` to return the paginated metadata envelope. Defaults to `False`. |
-| `exclude_routes` | `ClassVar[tuple[str, ...]]` | Route names to suppress. |
-| `extra_query_params` | `ClassVar[tuple[str, ...]]` | Query keys to allow on the index endpoint in addition to those derived from the response schema. Use for view-specific parameters consumed outside `apply_list_params` (e.g. an `?include_deleted=true` escape hatch). |
+| `exclude_routes` | `ClassVar[Iterable[str]]` | Route names to suppress. |
+| `extra_query_params` | `ClassVar[Iterable[str]]` | Query keys to allow on the index endpoint in addition to those derived from the response schema. Use for view-specific parameters consumed outside `apply_list_params` (e.g. an `?include_deleted=true` escape hatch). |
 | `default_page_size` | `ClassVar[int \| None]` | Default `?page_size=` for list endpoints. `None` (the default) means "no implicit cap" — every matching row is returned. |
 | `max_page_size` | `ClassVar[int]` | Upper bound for `?page_size=` on list endpoints. Values above are rejected with 422. Defaults to `1000`. |
 

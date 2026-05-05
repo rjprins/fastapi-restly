@@ -2,13 +2,13 @@ from collections.abc import Sequence
 from typing import Any, TypeVar, cast
 
 import fastapi
+import pydantic
 import sqlalchemy
 from sqlalchemy import func, select
 from sqlalchemy.orm import DeclarativeBase, Session
 
 from ..db import SessionDep
 from ..query import apply_list_params
-from ..schemas import BaseSchema
 from ..schemas._base import _resolve_ids_to_sqlalchemy_objects
 from ._base import (
     BaseRestView,
@@ -33,8 +33,8 @@ T = TypeVar("T", bound=DeclarativeBase)
 def make_new_object(
     session: Session,
     model_cls: type[T],
-    schema_obj: BaseSchema,
-    schema_cls: type[BaseSchema] | None = None,
+    schema_obj: pydantic.BaseModel,
+    schema_cls: type[pydantic.BaseModel] | None = None,
 ) -> T:
     """Create a new instance of ``model_cls`` from ``schema_obj`` and add it to
     ``session``. Read-only fields and any unset fields' defaults are handled by
@@ -54,8 +54,8 @@ def make_new_object(
 def update_object(
     session: Session,
     obj: DeclarativeBase,
-    schema_obj: BaseSchema,
-    schema_cls: type[BaseSchema] | None = None,
+    schema_obj: pydantic.BaseModel,
+    schema_cls: type[pydantic.BaseModel] | None = None,
 ) -> DeclarativeBase:
     """Apply writable inputs from ``schema_obj`` onto ``obj``. Only fields the
     caller explicitly set are applied; read-only fields are skipped.
@@ -172,9 +172,7 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         return obj
 
     @post("/")
-    def post(
-        self, schema_obj: BaseSchema
-    ) -> Any:  # schema_obj type is set in before_include_view
+    def post(self, schema_obj: Any) -> Any:
         obj = self.handle_create(schema_obj)
         return self.to_response_schema(obj)
 
@@ -188,7 +186,7 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         return obj
 
     @patch("/{id}")
-    def patch(self, id: Any, schema_obj: BaseSchema) -> Any:
+    def patch(self, id: Any, schema_obj: Any) -> Any:
         obj = self.handle_update(id, schema_obj)
         return self.to_response_schema(obj)
 

@@ -1,5 +1,7 @@
+from typing import Any, ClassVar
+
 import pydantic
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
@@ -21,7 +23,8 @@ class TicketBase(fr.AsyncRestView):
     model = Ticket
     schema = TicketRead
     include_pagination_metadata = True
-    exclude_routes = ("delete",)
+    exclude_routes = ["delete"]
+    dependencies: ClassVar[list[Any]] = [Depends(lambda: None)]
 
 
 @fr.include_view(app)

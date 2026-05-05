@@ -125,6 +125,10 @@ class UserView(
 This looks heavier because it is more explicit. Use it when that extra precision
 is valuable to you.
 
+`fr.BaseSchema` is a convenient default, not a hard requirement for input
+schemas. Explicit `creation_schema` and `update_schema` classes may inherit
+directly from `pydantic.BaseModel` when you do not need Restly's schema helpers.
+
 ---
 
 ## A good rule of thumb

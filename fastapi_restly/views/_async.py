@@ -2,6 +2,7 @@ from collections.abc import Sequence
 from typing import Any, TypeVar, cast
 
 import fastapi
+import pydantic
 import sqlalchemy
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,7 +10,6 @@ from sqlalchemy.orm import DeclarativeBase
 
 from ..db import AsyncSessionDep
 from ..query import apply_list_params
-from ..schemas import BaseSchema
 from ..schemas._base import _async_resolve_ids_to_sqlalchemy_objects
 from ._base import (
     BaseRestView,
@@ -34,8 +34,8 @@ T = TypeVar("T", bound=DeclarativeBase)
 async def async_make_new_object(
     session: AsyncSession,
     model_cls: type[T],
-    schema_obj: BaseSchema,
-    schema_cls: type[BaseSchema] | None = None,
+    schema_obj: pydantic.BaseModel,
+    schema_cls: type[pydantic.BaseModel] | None = None,
 ) -> T:
     """Async equivalent of :func:`fastapi_restly.views.make_new_object`.
 
@@ -57,8 +57,8 @@ async def async_make_new_object(
 async def async_update_object(
     session: AsyncSession,
     obj: DeclarativeBase,
-    schema_obj: BaseSchema,
-    schema_cls: type[BaseSchema] | None = None,
+    schema_obj: pydantic.BaseModel,
+    schema_cls: type[pydantic.BaseModel] | None = None,
 ) -> DeclarativeBase:
     """Async equivalent of :func:`fastapi_restly.views.update_object`.
 
@@ -178,9 +178,7 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         return obj
 
     @post("/")
-    async def post(
-        self, schema_obj: BaseSchema
-    ) -> Any:  # schema_obj type is set in before_include_view
+    async def post(self, schema_obj: Any) -> Any:
         obj = await self.handle_create(schema_obj)
         return self.to_response_schema(obj)
 
@@ -193,7 +191,7 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         return await self.save_object(obj)
 
     @patch("/{id}")
-    async def patch(self, id: Any, schema_obj: BaseSchema) -> Any:
+    async def patch(self, id: Any, schema_obj: Any) -> Any:
         obj = await self.handle_update(id, schema_obj)
         return self.to_response_schema(obj)
 

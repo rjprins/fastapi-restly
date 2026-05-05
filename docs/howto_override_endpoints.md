@@ -581,7 +581,7 @@ Set `exclude_routes` to suppress specific generated endpoints:
 class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
-    exclude_routes = ("delete", "patch")
+    exclude_routes = ["delete", "patch"]
 ```
 
 Valid values are: `"index"`, `"get"`, `"post"`, `"patch"`, `"delete"`. Any
@@ -618,7 +618,7 @@ always available:
 | `self.session` | `AsyncSession` | The current database session |
 | `self.request` | `fastapi.Request` | The live HTTP request |
 | `self.model` | `type[DeclarativeBase]` | The SQLAlchemy model class |
-| `self.schema` | `type[BaseSchema]` | The Pydantic response schema |
+| `self.schema` | `type[pydantic.BaseModel]` | The Pydantic response schema |
 
 Any class-level `Annotated` dependency you declare on the view (e.g. a current
 user) is also injected and available as an instance attribute.

@@ -31,8 +31,8 @@ def _setup_async_database_connection(
     async_database_url: str | None = None,
     *,
     async_engine: AsyncEngine | None = None,
-    async_make_session: async_sessionmaker | None = None,
-) -> async_sessionmaker:
+    async_make_session: async_sessionmaker[Any] | None = None,
+) -> async_sessionmaker[Any]:
     if not async_make_session:
         if not async_engine:
             async_engine = create_async_engine(
@@ -53,8 +53,8 @@ def _setup_database_connection(
     database_url: str | None = None,
     *,
     engine: Engine | None = None,
-    make_session: sessionmaker | None = None,
-) -> sessionmaker:
+    make_session: sessionmaker[Any] | None = None,
+) -> sessionmaker[Any]:
     if make_session is None:
         if engine is None:
             engine = create_engine(
@@ -74,10 +74,10 @@ def configure(
     *,
     async_database_url: str | None = None,
     async_engine: AsyncEngine | None = None,
-    async_make_session: async_sessionmaker | None = None,
+    async_make_session: async_sessionmaker[Any] | None = None,
     database_url: str | None = None,
     engine: Engine | None = None,
-    make_session: sessionmaker | None = None,
+    make_session: sessionmaker[Any] | None = None,
     session_generator: Callable[[], AsyncIterator[SA_AsyncSession]] | None = None,
     sync_session_generator: Callable[[], Iterator[SA_Session]] | None = None,
     install_default_exception_handlers: bool = True,
@@ -122,7 +122,7 @@ def configure(
 
 
 def activate_savepoint_only_mode(
-    make_session: async_sessionmaker | sessionmaker,
+    make_session: async_sessionmaker[Any] | sessionmaker[Any],
 ) -> None:
     """
     Intended for use in tests. Puts the session factory into savepoint-only mode so
@@ -154,7 +154,7 @@ def activate_savepoint_only_mode(
 
 
 def deactivate_savepoint_only_mode(
-    make_session: async_sessionmaker | sessionmaker,
+    make_session: async_sessionmaker[Any] | sessionmaker[Any],
 ) -> None:
     """
     Reverts the effect of `activate_savepoint_only_mode`.
@@ -184,7 +184,7 @@ def get_engine() -> Engine:
     return _fr_globals.make_session.kw["bind"]
 
 
-def _get_sync_engine(make_session: async_sessionmaker | sessionmaker) -> Engine:
+def _get_sync_engine(make_session: async_sessionmaker[Any] | sessionmaker[Any]) -> Engine:
     engine = make_session.kw["bind"]
     if isinstance(engine, AsyncEngine):
         return engine.sync_engine

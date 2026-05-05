@@ -1,5 +1,6 @@
 from collections.abc import AsyncIterator, Callable, Iterator
 from contextvars import ContextVar, Token
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession as SA_AsyncSession
 from sqlalchemy.ext.asyncio import async_sessionmaker
@@ -26,9 +27,9 @@ class RestlyContext:
     )
 
     async_database_url: str | None
-    async_make_session: async_sessionmaker[SA_AsyncSession] | None
+    async_make_session: async_sessionmaker[Any] | None
     database_url: str | None
-    make_session: sessionmaker[SA_Session] | None
+    make_session: sessionmaker[Any] | None
     session_generator: Callable[[], AsyncIterator[SA_AsyncSession]] | None
     sync_session_generator: Callable[[], Iterator[SA_Session]] | None
 

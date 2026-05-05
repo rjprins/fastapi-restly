@@ -66,8 +66,8 @@ A CBV solves all three with one tool: the class itself.
 ```python
 class View:
     prefix: ClassVar[str]
-    tags: ClassVar[list[str] | None] = None
-    dependencies: ClassVar[list[Any] | None] = None
+    tags: ClassVar[Iterable[str] | None] = None
+    dependencies: ClassVar[Iterable[Any] | None] = None
     responses: ClassVar[dict[int, Any]] = {}
 
     @classmethod

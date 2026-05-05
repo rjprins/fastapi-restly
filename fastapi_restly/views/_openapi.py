@@ -5,7 +5,7 @@ Called automatically by include_view() — no public API.
 
 FK columns and SQLAlchemy relationship fields backed by IDSchema/IDRef
 are annotated with ``x-resource-ref: "<resource-name>"`` in the generated spec.
-Full nested-object relationships (plain BaseSchema fields) are left untouched.
+Full nested-object relationships (plain Pydantic model fields) are left untouched.
 """
 
 import inspect
@@ -15,10 +15,11 @@ from dataclasses import dataclass
 from typing import Any, Union, get_args, get_origin
 
 import fastapi
+import pydantic
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.orm import DeclarativeBase
 
-from ..schemas import BaseSchema, IDSchema
+from ..schemas import IDSchema
 
 _PATCHED_ATTR = "_fr_resource_refs_patched"
 
@@ -27,9 +28,9 @@ _PATCHED_ATTR = "_fr_resource_refs_patched"
 class _Entry:
     model: type[DeclarativeBase]
     resource_name: str
-    schema: type[BaseSchema]
-    creation_schema: type[BaseSchema]
-    update_schema: type[BaseSchema]
+    schema: type[pydantic.BaseModel]
+    creation_schema: type[pydantic.BaseModel]
+    update_schema: type[pydantic.BaseModel]
 
 
 _registry: weakref.WeakKeyDictionary[
@@ -92,7 +93,7 @@ def _ensure_patched(app: fastapi.FastAPI | fastapi.APIRouter) -> None:
 def _is_id_ref_annotation(annotation: Any) -> bool:
     """Return True if annotation is IDSchema[X], IDRef[X], or list/Optional thereof.
 
-    Returns False for full nested BaseSchema objects — those are not ID references.
+    Returns False for full nested Pydantic model objects — those are not ID references.
     Concrete user-defined subclasses like ``AuthorRead(IDSchema)`` return False;
     only parametrized generics like ``IDSchema[Author]`` or ``IDRef[Author]``
     return True, since those represent model ID references.
@@ -130,7 +131,7 @@ def _is_id_ref_annotation(annotation: Any) -> bool:
     return False
 
 
-def _field_openapi_key(schema_cls: type[BaseSchema], field_name: str) -> str:
+def _field_openapi_key(schema_cls: type[pydantic.BaseModel], field_name: str) -> str:
     """Return the OpenAPI property key for a field, respecting serialization aliases."""
     field_info = schema_cls.model_fields.get(field_name)
     if field_info is None:
@@ -143,7 +144,7 @@ def _field_openapi_key(schema_cls: type[BaseSchema], field_name: str) -> str:
 
 
 def _compute_refs(
-    schema_cls: type[BaseSchema],
+    schema_cls: type[pydantic.BaseModel],
     model_cls: type[DeclarativeBase],
     model_to_resource: dict[type[DeclarativeBase], str],
 ) -> dict[str, str]:

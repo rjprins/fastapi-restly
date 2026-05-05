@@ -25,6 +25,7 @@ from typing import (
     Callable,
     ClassVar,
     Generic,
+    Iterable,
     Iterator,
     Sequence,
     Union,
@@ -59,9 +60,13 @@ from ..schemas._generator import auto_generate_schema_for_view
 from ._openapi import _register_for_resource_ref
 
 ModelT = TypeVar("ModelT", bound=DeclarativeBase, default=DeclarativeBase)
-SchemaT = TypeVar("SchemaT", bound=BaseSchema, default=BaseSchema)
-CreateSchemaT = TypeVar("CreateSchemaT", bound=BaseSchema, default=BaseSchema)
-UpdateSchemaT = TypeVar("UpdateSchemaT", bound=BaseSchema, default=BaseSchema)
+SchemaT = TypeVar("SchemaT", bound=pydantic.BaseModel, default=BaseSchema)
+CreateSchemaT = TypeVar(
+    "CreateSchemaT", bound=pydantic.BaseModel, default=pydantic.BaseModel
+)
+UpdateSchemaT = TypeVar(
+    "UpdateSchemaT", bound=pydantic.BaseModel, default=pydantic.BaseModel
+)
 IdT = TypeVar("IdT", default=int)
 
 
@@ -132,7 +137,9 @@ def _get_unambiguous_local_fk_name(
     return local_columns[0].key
 
 
-def _is_reference_schema_field(schema_cls: type[BaseSchema], field_name: str) -> bool:
+def _is_reference_schema_field(
+    schema_cls: type[pydantic.BaseModel], field_name: str
+) -> bool:
     field_info = schema_cls.model_fields.get(field_name)
     if field_info is None:
         return False
@@ -168,8 +175,8 @@ def _reference_identity_detail(identity: object) -> Any:
 
 def validate_resolved_reference_consistency(
     model_cls: type[DeclarativeBase],
-    schema_obj: BaseSchema,
-    schema_cls: type[BaseSchema] | None = None,
+    schema_obj: pydantic.BaseModel,
+    schema_cls: type[pydantic.BaseModel] | None = None,
 ) -> None:
     """Validate explicitly supplied FK and relationship fields agree.
 
@@ -215,7 +222,8 @@ def validate_resolved_reference_consistency(
 
 
 def iter_creatable_fields(
-    schema_obj: BaseSchema, schema_cls: type[BaseSchema] | None = None
+    schema_obj: pydantic.BaseModel,
+    schema_cls: type[pydantic.BaseModel] | None = None,
 ) -> Iterator[tuple[str, Any]]:
     """Iterate over (field_name, value) pairs that should be used to construct a new
     ORM object from ``schema_obj``.
@@ -300,8 +308,8 @@ def _add_resolved_reference_to_create_plan(
 
 def build_create_plan(
     model_cls: type[DeclarativeBase],
-    schema_obj: BaseSchema,
-    schema_cls: type[BaseSchema] | None = None,
+    schema_obj: pydantic.BaseModel,
+    schema_cls: type[pydantic.BaseModel] | None = None,
 ) -> _CreatePlan:
     """Translate ``schema_obj`` fields into kwargs for ``model_cls(**kwargs)``.
 
@@ -334,8 +342,8 @@ def build_create_plan(
 
 def build_create_kwargs(
     model_cls: type[DeclarativeBase],
-    schema_obj: BaseSchema,
-    schema_cls: type[BaseSchema] | None = None,
+    schema_obj: pydantic.BaseModel,
+    schema_cls: type[pydantic.BaseModel] | None = None,
 ) -> dict[str, Any]:
     return build_create_plan(model_cls, schema_obj, schema_cls).kwargs
 
@@ -366,8 +374,8 @@ def _apply_resolved_reference_update(
 
 def apply_update_to_object(
     obj: DeclarativeBase,
-    schema_obj: BaseSchema,
-    schema_cls: type[BaseSchema] | None = None,
+    schema_obj: pydantic.BaseModel,
+    schema_cls: type[pydantic.BaseModel] | None = None,
 ) -> None:
     """Apply writable inputs from ``schema_obj`` onto ``obj`` in place.
 
@@ -443,11 +451,11 @@ def _serialize_response_value(annotation: Any, value: Any) -> Any:
     return value
 
 
-def _get_nested_schema_annotation(annotation: Any) -> type[BaseSchema] | None:
+def _get_nested_schema_annotation(annotation: Any) -> type[pydantic.BaseModel] | None:
     annotation = _unwrap_optional_annotation(annotation)
 
     try:
-        if inspect.isclass(annotation) and issubclass(annotation, BaseSchema):
+        if inspect.isclass(annotation) and issubclass(annotation, pydantic.BaseModel):
             return annotation
     except TypeError:
         pass
@@ -477,8 +485,8 @@ class _OmitWriteOnlyMixin(pydantic.BaseModel):
 
 @functools.cache
 def _create_response_validation_schema(
-    schema_cls: type[BaseSchema],
-) -> type[BaseSchema]:
+    schema_cls: type[pydantic.BaseModel],
+) -> type[pydantic.BaseModel]:
     if not any(
         is_writeonly_field(schema_cls, name) for name in schema_cls.model_fields
     ):
@@ -497,8 +505,8 @@ def _create_response_validation_schema(
 
 def _build_relationship_loader_options(
     model_cls: type[DeclarativeBase],
-    schema_cls: type[BaseSchema],
-    seen: set[tuple[type[DeclarativeBase], type[BaseSchema]]] | None = None,
+    schema_cls: type[pydantic.BaseModel],
+    seen: set[tuple[type[DeclarativeBase], type[pydantic.BaseModel]]] | None = None,
 ) -> list[Any]:
     if seen is None:
         seen = set()
@@ -546,8 +554,8 @@ class View:
     """
 
     prefix: ClassVar[str]
-    tags: ClassVar[list[str] | None] = None
-    dependencies: ClassVar[list[Any] | None] = None
+    tags: ClassVar[Any] = None
+    dependencies: ClassVar[Any] = None
     responses: ClassVar[dict[int, Any]] = {}
 
     @classmethod
@@ -682,24 +690,24 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
 
     responses: ClassVar[dict[int, Any]] = {404: {"description": "Not found"}}
 
-    schema: ClassVar[type[BaseSchema]]
+    schema: ClassVar[type[pydantic.BaseModel]]
     # If 'creation_schema' is not defined it will be created from 'schema'
     # using `create_model_without_read_only_fields()`.
-    creation_schema: ClassVar[type[BaseSchema]]
-    update_schema: ClassVar[type[BaseSchema]]
+    creation_schema: ClassVar[type[pydantic.BaseModel]]
+    update_schema: ClassVar[type[pydantic.BaseModel]]
     model: ClassVar[type[DeclarativeBase]]
     id_type: ClassVar[type[Any]] = int
     include_pagination_metadata: ClassVar[bool] = (
         False  # Set True to include count/total in list responses
     )
-    exclude_routes: ClassVar[tuple[str, ...]] = ()
+    exclude_routes: ClassVar[Iterable[str]] = ()
     #: Extra query-parameter keys to allow on the index endpoint in addition
     #: to those derived from the response schema. Use this when a view
     #: intentionally consumes a custom query parameter (e.g. an
     #: ``?include_deleted=true`` escape hatch on a soft-delete mixin) that
     #: isn't a filter on a schema field. Without this, the strict
     #: unknown-key guard would reject the request with 422.
-    extra_query_params: ClassVar[tuple[str, ...]] = ()
+    extra_query_params: ClassVar[Iterable[str]] = ()
     #: Default ``page_size`` for list endpoints. ``None`` means "no implicit
     #: cap" (the framework default). Override per-view.
     default_page_size: ClassVar[int | None] = DEFAULT_PAGE_SIZE
@@ -791,7 +799,7 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
 
     @classmethod
     def _create_pagination_response_schema(
-        cls, response_schema: type[BaseSchema]
+        cls, response_schema: type[pydantic.BaseModel]
     ) -> type[pydantic.BaseModel]:
         return create_model(
             f"{cls.__name__}PaginatedResponse",

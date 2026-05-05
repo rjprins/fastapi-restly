@@ -182,7 +182,7 @@ class IDRef(IDSchema[SQLAlchemyModel], Generic[SQLAlchemyModel]):
 
 
 async def _async_resolve_ids_to_sqlalchemy_objects(
-    session: SA_AsyncSession, schema_obj: BaseSchema
+    session: SA_AsyncSession, schema_obj: pydantic.BaseModel
 ) -> None:
     """
     Go over the Pydantic fields and turn any IDSchema objects into SQLAlchemy instances.
@@ -229,7 +229,7 @@ async def _async_resolve_ids_to_sqlalchemy_objects(
 
 
 def _resolve_ids_to_sqlalchemy_objects(
-    session: SA_Session, schema_obj: BaseSchema
+    session: SA_Session, schema_obj: pydantic.BaseModel
 ) -> None:
     """
     Go over the Pydantic fields and turn any IDSchema objects into SQLAlchemy instances.
@@ -476,7 +476,7 @@ def set_schema_title(schema_cls: type[pydantic.BaseModel]) -> None:
 
 
 def get_writable_inputs(
-    schema_obj: BaseSchema, schema_cls: type[pydantic.BaseModel] | None = None
+    schema_obj: pydantic.BaseModel, schema_cls: type[pydantic.BaseModel] | None = None
 ) -> dict[str, Any]:
     """
     Return a dictionary of field_name: value pairs for writable input fields.

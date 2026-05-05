@@ -1,3 +1,4 @@
+import pydantic
 from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
@@ -24,7 +25,7 @@ class OrderRead(fr.IDSchema[Order]):
     customer: CustomerRead | None = None
 
 
-class OrderInput(fr.BaseSchema):
+class OrderInput(pydantic.BaseModel):
     item_name: str
     quantity: int
     customer_id: int

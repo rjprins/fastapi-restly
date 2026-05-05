@@ -13,6 +13,7 @@ import json
 from typing import Any, ClassVar, Protocol, Sequence, cast
 
 import fastapi
+import pydantic
 import sqlalchemy
 from sqlalchemy import func, select
 from sqlalchemy.orm import DeclarativeBase, RelationshipProperty
@@ -214,8 +215,8 @@ def apply_react_admin_query(
 class _ReactAdminViewProtocol(Protocol):
     request: fastapi.Request
     model: ClassVar[type[DeclarativeBase]]
-    schema: ClassVar[type[BaseSchema]]
-    update_schema: ClassVar[type[BaseSchema]]
+    schema: ClassVar[type[pydantic.BaseModel]]
+    update_schema: ClassVar[type[pydantic.BaseModel]]
     id_type: ClassVar[type[Any]]
     default_page_size: ClassVar[int | None]
     index: ClassVar[Any]
@@ -223,7 +224,7 @@ class _ReactAdminViewProtocol(Protocol):
 
     def get_react_admin_range_unit(self) -> str: ...
     def get_relationship_loader_options(self) -> list[Any]: ...
-    def to_response_schema(self, obj: Any) -> BaseSchema: ...
+    def to_response_schema(self, obj: Any) -> pydantic.BaseModel: ...
 
     @classmethod
     def before_include_view(cls) -> None: ...
@@ -362,7 +363,7 @@ class AsyncReactAdminView(_ReactAdminMixin, AsyncRestView):
         )
 
     @put("/{id}")
-    async def put(self, id: Any, schema_obj: BaseSchema) -> Any:
+    async def put(self, id: Any, schema_obj: Any) -> Any:
         obj = await self.handle_update(id, schema_obj)
         return self.to_response_schema(obj)
 
@@ -387,6 +388,6 @@ class ReactAdminView(_ReactAdminMixin, RestView):
         )
 
     @put("/{id}")
-    def put(self, id: Any, schema_obj: BaseSchema) -> Any:
+    def put(self, id: Any, schema_obj: Any) -> Any:
         obj = self.handle_update(id, schema_obj)
         return self.to_response_schema(obj)
