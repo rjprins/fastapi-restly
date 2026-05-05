@@ -82,7 +82,7 @@ def configure(
     make_session: sessionmaker[Any] | None = None,
     session_generator: Callable[[], AsyncIterator[SA_AsyncSession]] | None = None,
     sync_session_generator: Callable[[], Iterator[SA_Session]] | None = None,
-    commit_session_on_response: bool = True,
+    commit_session_on_response: bool | None = None,
     install_default_exception_handlers: bool = True,
 ) -> None:
     """Configure FastAPI-Restly. Call once at startup.
@@ -97,8 +97,8 @@ def configure(
 
     By default, Restly commits built-in request sessions when an endpoint
     successfully produces a response. Set ``commit_session_on_response=False``
-    to own commit/rollback calls yourself. Custom session generators always
-    own their transaction lifecycle.
+    to own commit/rollback calls yourself. Leave it unset to keep the current
+    default. Custom session generators always own their transaction lifecycle.
 
     Pass your :class:`FastAPI` ``app`` to install fastapi-restly's default
     exception handlers (currently: a translator that turns SQLAlchemy
@@ -107,7 +107,24 @@ def configure(
     pass ``app`` here, the handlers are registered the first time a view is
     mounted via :func:`fastapi_restly.include_view` instead.
     """
-    _fr_globals.commit_session_on_response = commit_session_on_response
+    if not any(
+        (
+            async_database_url is not None,
+            async_engine is not None,
+            async_make_session is not None,
+            database_url is not None,
+            engine is not None,
+            make_session is not None,
+            session_generator is not None,
+            sync_session_generator is not None,
+            commit_session_on_response is not None,
+            app is not None and install_default_exception_handlers,
+        )
+    ):
+        raise TypeError("fr.configure() requires at least one setup argument.")
+
+    if commit_session_on_response is not None:
+        _fr_globals.commit_session_on_response = commit_session_on_response
     if (
         async_database_url is not None
         or async_engine is not None
@@ -210,6 +227,10 @@ async def _async_generate_session() -> AsyncIterator[SA_AsyncSession]:
         async for session in _fr_globals.session_generator():
             yield session
         return
+    if _fr_globals.async_make_session is None:
+        raise RestlyConfigurationError(
+            "Call fr.configure() before using AsyncSessionDep."
+        )
 
     # FastAPI does not support contextmanagers as dependency directly,
     # but it does support generators.
@@ -238,6 +259,8 @@ def _generate_session() -> Iterator[SA_Session]:
     if _fr_globals.sync_session_generator is not None:
         yield from _fr_globals.sync_session_generator()
         return
+    if _fr_globals.make_session is None:
+        raise RestlyConfigurationError("Call fr.configure() before using SessionDep.")
 
     with _fr_globals.make_session() as session:
         yield session

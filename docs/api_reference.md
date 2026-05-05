@@ -269,6 +269,12 @@ application startup:
 fr.configure(async_database_url="sqlite+aiosqlite:///app.db")
 ```
 
+`fr.configure(...)` must receive at least one meaningful setup option, such as
+an app for default exception-handler registration, a database URL, an engine, a
+session maker, a custom session generator, or an explicit
+`commit_session_on_response` policy. A bare `fr.configure()` call raises
+`TypeError`.
+
 Applications that need more than one database can still use FastAPI and
 SQLAlchemy directly: provide a custom dependency on a view, or pass a custom
 session generator to `fr.configure(...)`. Restly does not currently provide a

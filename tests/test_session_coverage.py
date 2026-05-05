@@ -5,7 +5,7 @@ from inspect import signature
 from typing import get_args
 
 import pytest
-from fastapi import Depends
+from fastapi import Depends, FastAPI
 from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import Session, sessionmaker
@@ -107,6 +107,30 @@ def test_restly_context_defaults_to_committing_sessions_on_response():
         assert context.commit_session_on_response is True
 
 
+def test_configure_rejects_noop_calls_and_accepts_commit_policy_only():
+    with RestlyContext() as context:
+        with pytest.raises(TypeError, match="requires at least one setup argument"):
+            configure()
+
+        configure(commit_session_on_response=False)
+        assert context.commit_session_on_response is False
+
+        configure(commit_session_on_response=True)
+        assert context.commit_session_on_response is True
+
+
+def test_configure_rejects_app_only_call_when_handler_install_is_disabled():
+    with RestlyContext():
+        app = FastAPI()
+        with pytest.raises(TypeError, match="requires at least one setup argument"):
+            configure(app=app, install_default_exception_handlers=False)
+
+
+def test_configure_accepts_app_only_call_when_handler_install_is_enabled():
+    with RestlyContext():
+        configure(app=FastAPI())
+
+
 def test_session_dependencies_request_function_scope_when_fastapi_supports_it():
     async_dep = get_args(fr.AsyncSessionDep)[1]
     sync_dep = get_args(fr.SessionDep)[1]
@@ -140,6 +164,15 @@ def test_getters_and_sync_proxy_raise_without_configuration():
                 pass
 
 
+def test_generate_session_raises_clear_error_without_configuration():
+    with RestlyContext():
+        with pytest.raises(
+            fr.RestlyConfigurationError,
+            match="Call fr.configure\\(\\) before using SessionDep\\.",
+        ):
+            list(_generate_session())
+
+
 @pytest.mark.asyncio
 async def test_async_getter_and_proxy_raise_without_configuration():
     with RestlyContext():
@@ -148,6 +181,17 @@ async def test_async_getter_and_proxy_raise_without_configuration():
 
         with pytest.raises(fr.RestlyConfigurationError, match="Call fr.configure\\(\\)"):
             async with proxy_open_async_session():
+                pass
+
+
+@pytest.mark.asyncio
+async def test_async_generate_session_raises_clear_error_without_configuration():
+    with RestlyContext():
+        with pytest.raises(
+            fr.RestlyConfigurationError,
+            match="Call fr.configure\\(\\) before using AsyncSessionDep\\.",
+        ):
+            async for _session in _async_generate_session():
                 pass
 
 
