@@ -17,7 +17,6 @@ fastapi_restly:
   - TimestampsSchemaMixin
   - View
   - WriteOnly
-  - activate_savepoint_only_mode
   - apply_list_params
   - async_make_new_object
   - async_open_session
@@ -26,7 +25,6 @@ fastapi_restly:
   - configure
   - create_list_params_schema
   - db
-  - deactivate_savepoint_only_mode
   - delete
   - get
   - get_async_engine
@@ -87,6 +85,8 @@ fastapi_restly.schemas:
   - create_schema_from_model
 fastapi_restly.testing:
   - RestlyTestClient
+  - activate_savepoint_only_mode
+  - deactivate_savepoint_only_mode
 fastapi_restly.views:
   - AsyncReactAdminView
   - AsyncRestView
@@ -110,6 +110,8 @@ fastapi_restly.views:
 
 submodule-only exports:
 fastapi_restly.db:
+  - activate_savepoint_only_mode
+  - deactivate_savepoint_only_mode
 fastapi_restly.models:
   - CASCADE_ALL_ASYNC
   - CASCADE_ALL_DELETE_ORPHAN_ASYNC
@@ -126,5 +128,7 @@ fastapi_restly.schemas:
   - create_schema_from_model
 fastapi_restly.testing:
   - RestlyTestClient
+  - activate_savepoint_only_mode
+  - deactivate_savepoint_only_mode
 fastapi_restly.views:
   - BaseRestView

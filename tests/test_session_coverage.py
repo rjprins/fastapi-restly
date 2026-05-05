@@ -10,6 +10,7 @@ from sqlalchemy.pool import StaticPool
 
 import fastapi_restly as fr
 import fastapi_restly.db as fr_db
+import fastapi_restly.testing as fr_testing
 from fastapi_restly.db._globals import RestlyContext, _get_restly_context
 from fastapi_restly.db._proxy import async_open_session as proxy_async_open_session
 from fastapi_restly.db._proxy import open_session as proxy_open_session
@@ -59,6 +60,14 @@ def test_public_session_context_manager_exports_use_open_names():
     assert not hasattr(fr, "async_session")
     assert "session" not in fr.__all__
     assert "async_session" not in fr.__all__
+    assert not hasattr(fr, "activate_savepoint_only_mode")
+    assert not hasattr(fr, "deactivate_savepoint_only_mode")
+    assert "activate_savepoint_only_mode" not in fr.__all__
+    assert "deactivate_savepoint_only_mode" not in fr.__all__
+    assert fr_testing.activate_savepoint_only_mode is activate_savepoint_only_mode
+    assert fr_testing.deactivate_savepoint_only_mode is deactivate_savepoint_only_mode
+    assert "activate_savepoint_only_mode" in fr_testing.__all__
+    assert "deactivate_savepoint_only_mode" in fr_testing.__all__
 
 
 def test_restly_context_is_public_context_manager():

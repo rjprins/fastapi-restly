@@ -1,4 +1,9 @@
 try:
+    from fastapi_restly.db import (
+        activate_savepoint_only_mode,
+        deactivate_savepoint_only_mode,
+    )
+
     from ._client import RestlyTestClient
 except ModuleNotFoundError as exc:
     if exc.name == "httpx":
@@ -10,4 +15,6 @@ except ModuleNotFoundError as exc:
 
 __all__ = [
     "RestlyTestClient",
+    "activate_savepoint_only_mode",
+    "deactivate_savepoint_only_mode",
 ]

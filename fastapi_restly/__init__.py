@@ -3,10 +3,8 @@ from .db import (
     AsyncSessionDep,
     RestlyContext,
     SessionDep,
-    activate_savepoint_only_mode,
     async_open_session,
     configure,
-    deactivate_savepoint_only_mode,
     get_async_engine,
     get_engine,
     get_fr_globals,
@@ -68,8 +66,6 @@ __all__ = [
     "get_engine",
     # Database — setup & utilities
     "configure",
-    "activate_savepoint_only_mode",
-    "deactivate_savepoint_only_mode",
     "RestlyContext",
     "get_fr_globals",
     # Models

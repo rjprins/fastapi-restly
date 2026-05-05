@@ -262,8 +262,6 @@ in a custom endpoint) reach for the free functions instead.
 | `fr.RestlyContext()` | Context manager and reusable handle for isolating Restly runtime state, such as configured session factories and database URLs. Most apps do not need this; call `fr.configure(...)` directly unless you run multiple Restly configurations in one process. |
 | `fr.get_async_engine()` | Return the configured `AsyncEngine` instance. |
 | `fr.get_engine()` | Return the configured sync `Engine` instance. |
-| `fr.activate_savepoint_only_mode(make_session)` | **Intended for tests.** Wraps the session factory in a savepoint so test data never commits to the database. Each test rolls back instantly without touching the real data. Requires the session maker as argument. |
-| `fr.deactivate_savepoint_only_mode(make_session)` | Restore normal session behavior after testing. |
 | `fr.get_fr_globals()` | Return the active `RestlyContext`. Prefer `RestlyContext` as a context manager when isolating runtime state. |
 
 Most applications configure Restly once and never need an explicit context:
@@ -294,6 +292,14 @@ with fr.RestlyContext():
     fr.configure(async_database_url="sqlite+aiosqlite:///:memory:")
     ...
 ```
+
+### Testing
+
+| Symbol | Description |
+|---|---|
+| `fastapi_restly.testing.RestlyTestClient` | Test client wrapper around FastAPI's `TestClient` with default status-code assertions. |
+| `fastapi_restly.testing.activate_savepoint_only_mode(make_session)` | **Intended for tests.** Wraps a session factory in savepoint-only mode so test data never commits to the database. Requires the session maker as argument. |
+| `fastapi_restly.testing.deactivate_savepoint_only_mode(make_session)` | Restore normal session behavior after testing. |
 
 ### Default Exception Handling
 
