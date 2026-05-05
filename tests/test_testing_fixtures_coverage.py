@@ -14,6 +14,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 import fastapi_restly.pytest_fixtures as exported_fixtures
+import fastapi_restly.testing as testing
 from fastapi_restly.db._globals import RestlyContext
 from fastapi_restly.testing import _fixtures
 from fastapi_restly.testing._client import RestlyTestClient
@@ -172,6 +173,9 @@ def test_fixture_exports_and_client_helpers():
     assert exported_fixtures.session is _fixtures.session
     assert "app" in exported_fixtures.__all__
     assert "session" in exported_fixtures.__all__
+    assert testing.__all__ == ["RestlyTestClient"]
+    assert not hasattr(testing, "app")
+    assert not hasattr(testing, "session")
 
 
 def _run_with_blocked_httpx(import_statement: str) -> subprocess.CompletedProcess[str]:

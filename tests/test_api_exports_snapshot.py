@@ -26,7 +26,9 @@ def _render_api_exports() -> str:
     for module_name in PUBLIC_MODULES:
         module = loaded_modules[module_name]
         module_exports = sorted(
-            name for name in vars(module) if not name.startswith("_")
+            name
+            for name in vars(module)
+            if name.isidentifier() and not name.startswith("_")
         )
         lines.append(f"{module_name}:")
         lines.extend(f"  - {name}" for name in module_exports)
@@ -38,7 +40,9 @@ def _render_api_exports() -> str:
     for module_name in PUBLIC_MODULES[1:]:
         module = loaded_modules[module_name]
         module_exports = {
-            name for name in vars(module) if not name.startswith("_")
+            name
+            for name in vars(module)
+            if name.isidentifier() and not name.startswith("_")
         }
         submodule_only_exports = sorted(module_exports - top_level_exports)
         lines.append(f"{module_name}:")

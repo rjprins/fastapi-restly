@@ -1,5 +1,6 @@
 try:
     from fastapi_restly.testing._fixtures import (
+        _shared_connection,
         app,
         async_session,
         autouse_alembic_upgrade,

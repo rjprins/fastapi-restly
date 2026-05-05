@@ -12,7 +12,7 @@ from sqlalchemy.pool import StaticPool
 import fastapi_restly as fr
 from fastapi_restly.db._globals import _fr_globals
 
-pytest_plugins = ["fastapi_restly.testing._fixtures"]
+pytest_plugins = ["fastapi_restly.pytest_fixtures"]
 
 
 @pytest.fixture(autouse=True)

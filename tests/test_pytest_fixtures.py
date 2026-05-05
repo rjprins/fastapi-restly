@@ -16,7 +16,7 @@ asyncio_default_fixture_loop_scope = "function"
 import pytest
 import fastapi_restly as fr
 
-pytest_plugins = ["fastapi_restly.testing._fixtures"]
+pytest_plugins = ["fastapi_restly.pytest_fixtures"]
 
 
 @pytest.fixture(autouse=True)

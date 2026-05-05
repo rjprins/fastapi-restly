@@ -89,13 +89,6 @@ fastapi_restly.schemas:
   - create_schema_from_model
 fastapi_restly.testing:
   - RestlyTestClient
-  - app
-  - async_session
-  - autouse_alembic_upgrade
-  - autouse_savepoint_only_mode_sessions
-  - client
-  - project_root
-  - session
 fastapi_restly.views:
   - AsyncReactAdminView
   - AsyncRestView
@@ -137,12 +130,5 @@ fastapi_restly.schemas:
   - create_schema_from_model
 fastapi_restly.testing:
   - RestlyTestClient
-  - app
-  - async_session
-  - autouse_alembic_upgrade
-  - autouse_savepoint_only_mode_sessions
-  - client
-  - project_root
-  - session
 fastapi_restly.views:
   - BaseRestView
