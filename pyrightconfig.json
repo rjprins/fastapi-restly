@@ -1,7 +1,7 @@
 {
     "extraPaths": ["fastapi_restly"],
     "include": ["tests", "fastapi_restly", "example-projects"],
+    "pythonVersion": "3.10",
     "exclude": ["**/node_modules", "**/__pycache__", ".venv", ".venv-py310", "site", ".git-early-history"]
 }
-
 
