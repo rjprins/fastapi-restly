@@ -20,7 +20,9 @@ from typing import Annotated
 
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Mapped, Session, mapped_column, sessionmaker
+from sqlalchemy.pool import StaticPool
 
 import fastapi_restly as fr
 
@@ -365,6 +367,45 @@ def test_instance_level_dependency_inherited(sync_db):
     resp = client.post("/boxes/", json={"label": "small"})
     assert resp.status_code == 201
     assert captured["request_id"] == "req-42"
+
+
+def test_subclass_can_override_the_restly_session_dependency():
+    engine = create_engine(
+        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
+    )
+    make_session = sessionmaker(bind=engine, expire_on_commit=False)
+
+    def get_reporting_db():
+        with make_session() as session:
+            yield session
+
+    class Report(fr.IDBase):
+        title: Mapped[str]
+
+    class ReportRead(fr.IDSchema):
+        title: str
+
+    app = FastAPI()
+
+    @fr.include_view(app)
+    class ReportView(fr.RestView):
+        prefix = "/reports"
+        model = Report
+        schema = ReportRead
+        session: Annotated[Session, Depends(get_reporting_db)]
+
+    try:
+        fr.DataclassBase.metadata.create_all(engine)
+        with make_session() as session:
+            session.add(Report(title="Revenue"))
+            session.commit()
+
+        response = TestClient(app).get("/reports/")
+
+        assert response.status_code == 200
+        assert response.json() == [{"id": 1, "title": "Revenue"}]
+    finally:
+        engine.dispose()
 
 
 # ---------------------------------------------------------------------------

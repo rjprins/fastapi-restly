@@ -278,7 +278,9 @@ session maker, a custom session generator, or an explicit
 Applications that need more than one database can still use FastAPI and
 SQLAlchemy directly: provide a custom dependency on a view, or pass a custom
 session generator to `fr.configure(...)`. Restly does not currently provide a
-public multi-context or multi-engine API.
+public multi-context or multi-engine API. See
+[Use a custom session dependency on one view](howto_existing_project.md#use-a-custom-session-dependency-on-one-view)
+for per-view session wiring.
 
 By default, Restly commits sessions created by `AsyncSessionDep` / `SessionDep`
 when an endpoint successfully produces a response. On FastAPI versions that

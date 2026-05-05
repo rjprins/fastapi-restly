@@ -278,6 +278,10 @@ fr.configure(async_database_url="postgresql+asyncpg://user:pass@localhost/db")
 fr.configure(database_url="sqlite:///app.db")
 ```
 
+Restly has one public process-wide configuration. For per-view databases,
+read replicas, or other custom session wiring, use a normal FastAPI dependency
+on that view; see the existing-project how-to in the documentation.
+
 ## Documentation
 
 - **[Getting Started](https://rjprins.github.io/fastapi-restly/getting_started.html)** — fast path from zero to a working API

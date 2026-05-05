@@ -42,6 +42,56 @@ def my_get_db() -> Iterator[Session]:
 fr.configure(sync_session_generator=my_get_db)
 ```
 
+## Use a Custom Session Dependency on One View
+
+Use `fr.configure(...)` when one session source should be the default for the
+application. If only one view should use a different session source, override
+the view's `session` dependency instead.
+
+```python
+from collections.abc import AsyncIterator
+from typing import Annotated
+
+from fastapi import Depends
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
+import fastapi_restly as fr
+
+
+reporting_engine = create_async_engine("postgresql+asyncpg://user:pass@reports/db")
+ReportingSession = async_sessionmaker(
+    bind=reporting_engine,
+    autoflush=False,
+    expire_on_commit=False,
+)
+
+
+async def get_reporting_db() -> AsyncIterator[AsyncSession]:
+    async with ReportingSession() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+
+
+ReportingSessionDep = Annotated[AsyncSession, Depends(get_reporting_db)]
+
+
+@fr.include_view(app)
+class ReportView(fr.AsyncRestView):
+    prefix = "/reports"
+    model = Report
+    schema = ReportRead
+    session: ReportingSessionDep
+```
+
+The custom dependency owns its own lifecycle, including commit/rollback policy.
+This is the recommended escape hatch for read replicas, reporting databases, or
+other per-view session wiring. Restly does not currently provide named engines
+or named Restly contexts.
+
 You can also use FastAPI-Restly's configured session proxy directly in your
 own code (for example in background tasks):
 

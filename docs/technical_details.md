@@ -125,10 +125,11 @@ custom column types, declare an explicit schema and bypass auto-generation.
 Both `AsyncRestView` (async) and `RestView` (sync) are public API and
 share the same CRUD structure via an internal abstract base class (not exposed
 as `fr.*`). The choice between them is determined by which class you subclass —
-`AsyncRestView` hardcodes `session: AsyncSessionDep` and `RestView` hardcodes
-`session: SessionDep`. The async and sync variants have identical endpoint
-signatures; the only difference is that the async variant uses `await` in its
-process methods.
+`AsyncRestView` declares `session: AsyncSessionDep` and `RestView` declares
+`session: SessionDep`. A subclass can override that `session` annotation with
+its own `Annotated[..., Depends(...)]` dependency for per-view session wiring.
+The async and sync variants have identical endpoint signatures; the only
+difference is that the async variant uses `await` in its process methods.
 
 `AsyncSessionDep` and `SessionDep` use Restly's built-in session generators.
 Those generators yield a SQLAlchemy session to the endpoint and, by default,
