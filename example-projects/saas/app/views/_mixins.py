@@ -4,7 +4,8 @@ These compose by cooperative ``super()`` chains. Application-layer logic
 in concrete views (``ProjectView.handle_create`` etc.) doesn't have to know
 they exist — the mixins inject their behavior into the right framework
 helper/handler (``make_new_object`` / ``update_object`` for *write-side* stamps,
-``build_listing_query`` / ``handle_retrieve`` for *read-side* filters).
+``build_query`` for *read-side* filters that apply to listing, count, and
+retrieve in one place).
 
 The discussion in ``rut-notes/discussion_save_object.md`` warned against
 overriding ``make_new_object`` to layer *application* logic. The mixins
@@ -54,23 +55,16 @@ class TenantScopedMixin:
         def _current_org_id(self) -> int | None: ...
         def _is_admin(self) -> bool: ...
 
-    def build_listing_query(self) -> sa.Select:
-        q = super().build_listing_query()  # type: ignore[misc]
+    def build_query(self) -> sa.Select:
+        # Filters listing, count, AND retrieve via the framework's unified
+        # read seam — no separate handle_retrieve override required.
+        q = super().build_query()  # type: ignore[misc]
         if self._is_admin():
             return q
         org_id = self._current_org_id()
         if org_id is not None and hasattr(self.model, "organization_id"):
             q = q.where(self.model.organization_id == org_id)
         return q
-
-    async def handle_retrieve(self, id: Any) -> Any:
-        obj = await super().handle_retrieve(id)  # type: ignore[misc]
-        if self._is_admin():
-            return obj
-        org_id = self._current_org_id()
-        if org_id is not None and getattr(obj, "organization_id", org_id) != org_id:
-            raise fastapi.HTTPException(404, "Not found")
-        return obj
 
     async def make_new_object(self, schema_obj: Any) -> Any:
         obj = await super().make_new_object(schema_obj)  # type: ignore[misc]
@@ -111,17 +105,11 @@ class SoftDeleteMixin:
             self.request.query_params.get("include_deleted", "false").lower() == "true"
         )
 
-    def build_listing_query(self) -> sa.Select:
-        q = super().build_listing_query()  # type: ignore[misc]
+    def build_query(self) -> sa.Select:
+        q = super().build_query()  # type: ignore[misc]
         if not self._include_deleted() and hasattr(self.model, "deleted_at"):
             q = q.where(self.model.deleted_at.is_(None))
         return q
-
-    async def handle_retrieve(self, id: Any) -> Any:
-        obj = await super().handle_retrieve(id)  # type: ignore[misc]
-        if not self._include_deleted() and getattr(obj, "deleted_at", None) is not None:
-            raise fastapi.HTTPException(404, "Not found")
-        return obj
 
     async def delete_object(self, obj: Any) -> None:
         if hasattr(obj, "deleted_at"):

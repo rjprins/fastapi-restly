@@ -567,8 +567,8 @@ def test_sync_rest_view_dispatches_to_handle_overrides(sync_db):
     assert call_log == ["create", "list", "get", "update", "get", "delete", "get"]
 
 
-def test_sync_build_listing_query_is_consulted_by_list_and_count(sync_db):
-    """Both handle_listing and count_listing must route through build_listing_query so a
+def test_sync_build_query_is_consulted_by_list_and_count(sync_db):
+    """Both handle_listing and count_listing must route through build_query so a
     single override filters listing AND its pagination total."""
     import sqlalchemy
 
@@ -587,8 +587,8 @@ def test_sync_build_listing_query_is_consulted_by_list_and_count(sync_db):
         model = Gadget
         schema = GadgetSchema
 
-        def build_listing_query(self):
-            return super().build_listing_query().where(Gadget.active.is_(True))
+        def build_query(self):
+            return super().build_query().where(Gadget.active.is_(True))
 
     fr.DataclassBase.metadata.create_all(engine)
 
@@ -606,8 +606,8 @@ def test_sync_build_listing_query_is_consulted_by_list_and_count(sync_db):
         view = GadgetView()
         view.session = session
 
-        # Default build_listing_query returns select(self.model).
-        assert str(fr.RestView.build_listing_query(view)) == str(sqlalchemy.select(Gadget))
+        # Default build_query returns select(self.model).
+        assert str(fr.RestView.build_query(view)) == str(sqlalchemy.select(Gadget))
 
         # Override is consulted by both list and count.
         results = view.handle_listing({})

@@ -196,10 +196,10 @@ class TenantScopedView(fr.AsyncRestView):
     """Internal base — never registered directly."""
     dependencies = [Depends(require_logged_in)]
 
-    def build_listing_query(self):
-        # automatic tenant filtering for every list — and every pagination total,
-        # because count_listing consults the same seam.
-        return super().build_listing_query().where(
+    def build_query(self):
+        # automatic tenant filtering for every read — list, pagination
+        # total, AND single-row retrieve all consult this seam.
+        return super().build_query().where(
             self.model.tenant_id == self.request.state.tenant_id
         )
 

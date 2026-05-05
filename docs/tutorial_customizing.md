@@ -79,12 +79,14 @@ Calling `self.handle_retrieve(id)` reuses the same 404 logic as the GET endpoint
 If you later override `handle_retrieve` (for example, to add tenant scoping), `handle_update`
 picks up that change automatically.
 
-### build_listing_query — filter results to the current user
+### build_query — filter results to the current user
 
-The most common real-world override: restrict the list to rows the caller is
-allowed to see. `build_listing_query` is the seam both `handle_listing` and `count_listing`
-consult, so a single override keeps the listed rows and the pagination total
-in sync.
+The most common real-world override: restrict reads to rows the caller is
+allowed to see. `build_query` is the seam `handle_listing`, `count_listing`,
+**and** `handle_retrieve` all consult, so a single override keeps listed
+rows, pagination totals, and single-row fetches in sync — a row hidden
+from listing returns 404 from `GET /{id}` too, and `handle_update` /
+`handle_destroy` inherit the visibility check via `handle_retrieve`.
 
 ```python
 @fr.include_view(app)
@@ -94,12 +96,12 @@ class PostView(fr.AsyncRestView):
     schema = PostRead
     include_pagination_metadata = True
 
-    def build_listing_query(self):
+    def build_query(self):
         user_id = self.request.state.user_id
-        return super().build_listing_query().where(Post.author_id == user_id)
+        return super().build_query().where(Post.author_id == user_id)
 ```
 
-Calling `super().build_listing_query()` and chaining `.where(...)` composes cleanly
+Calling `super().build_query()` and chaining `.where(...)` composes cleanly
 with any base-class or mixin filter. Reach for a `handle_listing` override only when
 you need to do work beyond a `WHERE` clause — see
 [Override Endpoints](howto_override_endpoints.md#scope-filter-the-list-endpoint).

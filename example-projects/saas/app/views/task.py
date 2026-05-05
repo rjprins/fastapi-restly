@@ -63,10 +63,14 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
 
     Mixin-composed: soft delete + audit stamps. Tenant scope is *not*
     applied here — task scoping is by ``assignee_id`` (a row-level
-    permission, not a tenant filter), implemented in ``handle_retrieve`` /
-    ``handle_listing`` below. Demonstrates that views with non-tenant-aligned
-    access models still benefit from the soft-delete + audit mixins,
-    and that mixin composition is a la carte.
+    permission, not a tenant filter), implemented in ``build_query`` below.
+    Because retrieve also routes through ``build_query``, the same predicate
+    that filters listing also returns 404 from ``GET /tasks/{id}`` for tasks
+    not assigned to the current user — and cascades through ``handle_update``
+    and ``handle_destroy`` (both call ``handle_retrieve`` first).
+    Demonstrates that views with non-tenant-aligned access models still
+    benefit from the soft-delete + audit mixins, and that mixin composition
+    is a la carte.
     """
 
     prefix = "/tasks"
@@ -83,31 +87,23 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
                 project.total_story_points -= obj.story_points
         await super().delete_object(obj)
 
-    def build_listing_query(self):
+    def build_query(self):
         """Filter tasks to those assigned to the current user.
 
         Admin requests bypass this filter — they see every task regardless
-        of assignee. Layered through ``build_listing_query`` so the same
-        scope feeds both ``handle_listing`` and ``count_listing`` (and composes
-        with ``SoftDeleteMixin.build_listing_query`` via ``super()``).
+        of assignee. Applied at the ``build_query`` seam so the same scope
+        feeds listing, count, AND retrieve — the row-level permission is
+        enforced at the SQL level on every read path, and cascades through
+        ``handle_update`` / ``handle_destroy`` via ``handle_retrieve``.
+        Composes with ``SoftDeleteMixin.build_query`` via ``super()``.
         """
-        q = super().build_listing_query()
+        q = super().build_query()
         if self._is_admin():
             return q
         current_user = self._current_user_id()
         if current_user is not None:
             q = q.where(Task.assignee_id == current_user)
         return q
-
-    async def handle_retrieve(self, id: int):
-        """Verify row-level access: only the assignee can fetch the task."""
-        task = await super().handle_retrieve(id)
-        if self._is_admin():
-            return task
-        current_user = self._current_user_id()
-        if current_user is not None and task.assignee_id != current_user:
-            raise HTTPException(404, detail="Task not found")
-        return task
 
     async def _validate_cross_resource(self, data: dict) -> None:
         """Validate cross-resource constraints (assignee must be in same org as project)."""

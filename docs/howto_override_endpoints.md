@@ -24,15 +24,16 @@ The API reference also classifies the full view method surface:
 GET /{id}
   └─ retrieve()         ← HTTP contract (replace to change; see below)
        └─ handle_retrieve(id)    ← business-logic handler — override here
+            └─ build_query()    ← same seam as listing — read filters apply here too
 ```
 
 ```
 GET /
   └─ listing()                      ← HTTP contract (replace to change; see below)
        └─ handle_listing(query_params)      ← business-logic handler — override here
-       │    └─ build_listing_query()    ← WHERE-clause seam shared with count_listing
+       │    └─ build_query()    ← WHERE-clause seam shared with count_listing AND retrieve
        └─ count_listing(query_params)  ← only called when include_pagination_metadata = True
-            └─ build_listing_query()    ← same seam — overriding once filters list and total
+            └─ build_query()    ← same seam — overriding once filters list, count, and retrieve
 ```
 
 ### Write path
@@ -140,12 +141,15 @@ from sqlalchemy.orm import selectinload
 
 ---
 
-## Scope-filter the list endpoint
+## Scope-filter reads
 
-The most common real-world override: restrict `GET /` to rows owned by the
-current user. The single seam for this is `build_listing_query`, which both
-`handle_listing` and `count_listing` consult — override it once and pagination
-totals stay aligned with the listed rows.
+The most common real-world override: restrict reads to rows owned by the
+current user. The single seam for this is `build_query`, which
+`handle_listing`, `count_listing`, **and** `handle_retrieve` all consult —
+override it once and pagination totals stay aligned with the listed rows,
+and a row hidden from listing returns 404 from `GET /{id}` as well.
+`handle_update` and `handle_destroy` inherit the visibility check via
+`handle_retrieve`.
 
 ```python
 import sqlalchemy as sa
@@ -157,15 +161,15 @@ class DocumentView(fr.AsyncRestView):
     schema = DocumentRead
     include_pagination_metadata = True
 
-    def build_listing_query(self):
+    def build_query(self):
         user_id = self.request.state.user_id
-        return super().build_listing_query().where(Document.owner_id == user_id)
+        return super().build_query().where(Document.owner_id == user_id)
 ```
 
-Calling `super().build_listing_query()` and chaining `.where(...)` composes
+Calling `super().build_query()` and chaining `.where(...)` composes
 cleanly with any base-class or mixin filter. For multi-tenant scoping,
-soft-delete hiding, or permission-based visibility, this is the seam to
-reach for.
+soft-delete hiding, or row-level permission visibility, this is the seam
+to reach for.
 
 If you need `handle_listing` to also do work *beyond* a `WHERE` clause —
 post-query result decoration, pre-query joins, eager-loading tweaks —
@@ -182,8 +186,9 @@ override `handle_listing` itself and use its optional `query` argument:
 `handle_listing` accepts an optional `query` argument — a SQLAlchemy `Select`
 statement. Pass it to restrict the result set before the list parameters
 (filters, sorting, pagination) are applied on top. A `query` passed this
-way is *not* shared with `count_listing`, so reach for `build_listing_query`
-instead whenever the filter should also apply to pagination totals.
+way is *not* shared with `count_listing` or `handle_retrieve`, so reach
+for `build_query` instead whenever the filter should also apply to
+pagination totals or single-row fetches.
 
 ---
 
@@ -583,11 +588,13 @@ Set `exclude_routes` to suppress specific generated endpoints:
 class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
-    exclude_routes = ["destroy", "update"]
+    exclude_routes = [fr.ViewRoute.DESTROY, fr.ViewRoute.UPDATE]
 ```
 
-Valid values are: `"listing"`, `"retrieve"`, `"create"`, `"update"`, `"destroy"`. Any
-other string raises `AttributeError` at startup.
+Valid values are: `fr.ViewRoute.LISTING`, `fr.ViewRoute.RETRIEVE`,
+`fr.ViewRoute.CREATE`, `fr.ViewRoute.UPDATE`, `fr.ViewRoute.DESTROY`. Route-name
+strings such as `"destroy"` are still accepted for compatibility; any other
+string raises `AttributeError` at startup.
 
 ---
 

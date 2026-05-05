@@ -11,7 +11,7 @@ mixin declaration.
 This guide covers the pattern, the rule that decides whether to use it,
 and two ergonomic gotchas worth knowing up front.
 
-## When to override `make_new_object` / `update_object` / `delete_object` / `build_listing_query`
+## When to override `make_new_object` / `update_object` / `delete_object` / `build_query`
 
 The [Override Endpoints](howto_override_endpoints.md#override-low-level-object-helpers)
 guide warns against overriding these low-level helpers for per-view
@@ -79,23 +79,16 @@ class TenantScopedMixin:
         def _current_org_id(self) -> int | None: ...
         def _is_admin(self) -> bool: ...
 
-    def build_listing_query(self) -> sa.Select:
-        q = super().build_listing_query()  # type: ignore[misc]
+    def build_query(self) -> sa.Select:
+        # Filters listing, count, AND retrieve via the framework's
+        # unified read seam — no separate handle_retrieve override needed.
+        q = super().build_query()  # type: ignore[misc]
         if self._is_admin():
             return q
         org_id = self._current_org_id()
         if org_id is not None and hasattr(self.model, "organization_id"):
             q = q.where(self.model.organization_id == org_id)
         return q
-
-    async def handle_retrieve(self, id: Any) -> Any:
-        obj = await super().handle_retrieve(id)  # type: ignore[misc]
-        if self._is_admin():
-            return obj
-        org_id = self._current_org_id()
-        if org_id is not None and getattr(obj, "organization_id", org_id) != org_id:
-            raise fastapi.HTTPException(404, "Not found")
-        return obj
 
     async def make_new_object(self, schema_obj: Any) -> Any:
         obj = await super().make_new_object(schema_obj)  # type: ignore[misc]
@@ -122,17 +115,11 @@ class SoftDeleteMixin:
     def _include_deleted(self) -> bool:
         return self.request.query_params.get("include_deleted", "false").lower() == "true"
 
-    def build_listing_query(self) -> sa.Select:
-        q = super().build_listing_query()  # type: ignore[misc]
+    def build_query(self) -> sa.Select:
+        q = super().build_query()  # type: ignore[misc]
         if not self._include_deleted() and hasattr(self.model, "deleted_at"):
             q = q.where(self.model.deleted_at.is_(None))
         return q
-
-    async def handle_retrieve(self, id: Any) -> Any:
-        obj = await super().handle_retrieve(id)  # type: ignore[misc]
-        if not self._include_deleted() and getattr(obj, "deleted_at", None) is not None:
-            raise fastapi.HTTPException(404, "Not found")
-        return obj
 
     async def delete_object(self, obj: Any) -> None:
         if hasattr(obj, "deleted_at"):
@@ -184,9 +171,12 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, fr.Asyn
     schema = ProjectRead
 ```
 
-Both `handle_listing` and `count_listing` consult `build_listing_query`, so the
-tenant + soft-delete `WHERE` clauses apply to listing **and** the
-pagination total without further plumbing.
+`handle_listing`, `count_listing`, and `handle_retrieve` all consult
+`build_query`, so the tenant + soft-delete `WHERE` clauses apply to
+listing, the pagination total, **and** single-row fetches (`GET /{id}`)
+without further plumbing. A row hidden from listing returns 404 from
+retrieve too — and `handle_update` / `handle_destroy` inherit the check
+since they call `handle_retrieve` first.
 
 ## Two ergonomic gotchas
 

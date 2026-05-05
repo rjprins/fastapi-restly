@@ -83,8 +83,8 @@ class TenantBase(fr.AsyncRestView):
         """Whether the current request bypasses tenant + row scoping.
 
         Admin requests skip the ``WHERE organization_id = ...`` clause in
-        ``TenantScopedMixin.build_listing_query`` and any per-row scope check on
-        the concrete view (see ``TaskView.handle_retrieve`` for an assignee-scope
+        ``TenantScopedMixin.build_query`` and any per-row scope clause on
+        the concrete view (see ``TaskView.build_query`` for an assignee-scope
         example). The mixins consult this predicate cooperatively, so an
         admin request sees all rows across all tenants by simply having
         the flag set — no separate route tree, no second base view.

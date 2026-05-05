@@ -533,8 +533,8 @@ def test_async_handle_listing_with_custom_query():
     asyncio.run(run())
 
 
-def test_async_build_listing_query_is_consulted_by_list_and_count():
-    """Both handle_listing and count_listing must route through build_listing_query so a
+def test_async_build_query_is_consulted_by_list_and_count():
+    """Both handle_listing and count_listing must route through build_query so a
     single override filters listing AND its pagination total."""
 
     class Gizmo(fr.IDBase):
@@ -550,8 +550,8 @@ def test_async_build_listing_query_is_consulted_by_list_and_count():
         model = Gizmo
         schema = GizmoSchema
 
-        def build_listing_query(self):
-            return super().build_listing_query().where(Gizmo.active.is_(True))
+        def build_query(self):
+            return super().build_query().where(Gizmo.active.is_(True))
 
     async def run():
         engine, make_session = _make_engine_and_session()
@@ -572,8 +572,8 @@ def test_async_build_listing_query_is_consulted_by_list_and_count():
             view = GizmoView()
             view.session = session
 
-            # Default build_listing_query returns select(self.model).
-            assert str(fr.AsyncRestView.build_listing_query(view)) == str(
+            # Default build_query returns select(self.model).
+            assert str(fr.AsyncRestView.build_query(view)) == str(
                 sqlalchemy.select(Gizmo)
             )
 

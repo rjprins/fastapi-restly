@@ -34,6 +34,7 @@ def test_timestamp_convenience_bases_are_not_public_api():
 
 
 def test_rest_view_route_and_listing_hook_names_are_current():
+    legacy_base_query_hook_name = "build_" + "list_query"
     current_names = (
         "listing",
         "retrieve",
@@ -41,7 +42,7 @@ def test_rest_view_route_and_listing_hook_names_are_current():
         "update",
         "destroy",
         "handle_listing",
-        "build_listing_query",
+        "build_query",
         "count_listing",
         "to_response_schema",
         "handle_retrieve",
@@ -52,7 +53,8 @@ def test_rest_view_route_and_listing_hook_names_are_current():
     old_names = (
         "index",
         "handle_list",
-        "build_list_query",
+        legacy_base_query_hook_name,
+        "build_listing_query",
         "count_index",
         "get",
         "post",

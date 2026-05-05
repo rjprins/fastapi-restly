@@ -29,8 +29,8 @@ class TenantScopedView(fr.AsyncRestView[Project, ProjectRead, ProjectRead, Proje
     schema = ProjectRead
     tenant_id: Annotated[int, Depends(current_tenant_id)]
 
-    def build_listing_query(self) -> sqlalchemy.Select[Any]:
-        return super().build_listing_query().where(Project.tenant_id == self.tenant_id)
+    def build_query(self) -> sqlalchemy.Select[Any]:
+        return super().build_query().where(Project.tenant_id == self.tenant_id)
 
 
 @fr.include_view(app)

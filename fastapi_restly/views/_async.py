@@ -5,6 +5,7 @@ import fastapi
 import pydantic
 import sqlalchemy
 from sqlalchemy import func, select
+from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import DeclarativeBase
 
@@ -109,14 +110,18 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         total = await self.count_listing(query_params)
         return self._build_pagination_payload(query_params, objs, total)
 
-    def build_listing_query(self) -> sqlalchemy.Select[Any]:
+    def build_query(self) -> sqlalchemy.Select[Any]:
         """
-        Return the base SQLAlchemy ``Select`` used by both ``handle_listing`` and
-        ``count_listing``. Override to add ``WHERE`` clauses that should apply
-        to listing *and* its pagination total — e.g. tenant scoping, soft-delete
-        filtering, permission-based row visibility. Call
-        ``super().build_listing_query()`` and chain ``.where(...)`` to compose
+        Return the base SQLAlchemy ``Select`` used by every read on this
+        view's model — listing, count, and retrieve. Override to add
+        ``WHERE`` clauses that should apply to all of them — e.g. tenant
+        scoping, soft-delete filtering, row-level permission visibility.
+        Call ``super().build_query()`` and chain ``.where(...)`` to compose
         with any base-class or mixin filters.
+
+        Because retrieve also routes through this query, a row hidden from
+        listing cannot be fetched directly via ``GET /{id}`` — visibility
+        stays consistent across endpoints by construction.
         """
         return sqlalchemy.select(self.model)
 
@@ -139,10 +144,11 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         :func:`fastapi_restly.query.create_list_params_schema`.
 
         For WHERE-clause-only filtering that should also apply to the
-        pagination total, override :meth:`build_listing_query` instead.
+        pagination total *and* to retrieve, override :meth:`build_query`
+        instead.
         """
         if query is None:
-            query = self.build_listing_query()
+            query = self.build_query()
         loader_options = self.get_relationship_loader_options()
         if loader_options:
             query = query.options(*loader_options)
@@ -153,7 +159,7 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
 
     async def count_listing(self, query_params: Any) -> int:
         filtered_query = apply_list_params(
-            query_params, self.build_listing_query(), self.model, self.schema
+            query_params, self.build_query(), self.model, self.schema
         )
         filtered_query = filtered_query.order_by(None).limit(None).offset(None)
         count_query = select(func.count()).select_from(filtered_query.subquery())
@@ -168,17 +174,29 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         """
         Handle a GET request on "/{id}". This should return a single object.
         Return a 404 if not found.
-        Feel free to override this method.
+
+        Routes through :meth:`build_query`, so any read-side filters layered
+        there (tenant scoping, soft-delete, row-level permissions) apply to
+        retrieve as well — a row hidden from listing returns 404 here too,
+        without a separate post-fetch guard.
         """
+        pk_cols = sa_inspect(self.model).primary_key
+        if len(pk_cols) != 1:
+            raise NotImplementedError(
+                f"{self.model.__name__} has a composite primary key; "
+                "override handle_retrieve to fetch it."
+            )
+        query = self.build_query().where(pk_cols[0] == id)
         loader_options = self.get_relationship_loader_options()
-        model_cls = cast(type[ModelT], self.model)
-        obj = await self.session.get(model_cls, id, options=loader_options)
+        if loader_options:
+            query = query.options(*loader_options)
+        obj = (await self.session.scalars(query)).first()
         if obj is None:
             raise fastapi.HTTPException(
                 status_code=404,
                 detail=f"{self.model.__name__} with id {id!r} was not found",
             )
-        return obj
+        return cast(ModelT, obj)
 
     @post("/")
     async def create(self, schema_obj: Any) -> Any:

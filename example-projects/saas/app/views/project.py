@@ -52,15 +52,16 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
     - ``TenantScopedMixin`` — adds ``organization_id`` filter to reads,
       stamps it on writes from auth context.
     - ``TenantBase`` — auth dep, audit ``save_object`` seam, ``_emit``
-      outbox helper. The ``build_listing_query`` seam consumed by the mixins
+      outbox helper. The ``build_query`` seam consumed by the mixins
       above lives on ``AsyncRestView`` itself.
 
-    Each mixin's ``build_listing_query`` calls ``super().build_listing_query()``, so the
+    Each mixin's ``build_query`` calls ``super().build_query()``, so the
     tenant + soft-delete WHERE clauses compose without either mixin
-    knowing the other exists. The same chain feeds both ``handle_listing`` and
-    ``count_listing`` (defined on ``AsyncRestView``), so pagination totals stay
-    aligned with list results — the matrix's "row-based access for
-    GET /" + "count must use same filter" pair, satisfied by inheritance.
+    knowing the other exists. The same chain feeds ``handle_listing``,
+    ``count_listing``, AND ``handle_retrieve`` — pagination totals stay
+    aligned with list results, and a row hidden from listing returns 404
+    from ``GET /{id}`` as well. ``handle_update`` and ``handle_destroy``
+    inherit this visibility check via ``handle_retrieve``.
 
     The view itself only contains *project-specific* logic: slug
     derivation, the response-only ``can_edit`` decoration, the
@@ -71,7 +72,7 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
     model = Project
     schema = ProjectSchema
     include_pagination_metadata = True
-    exclude_routes = ["destroy"]  # replaced by soft_delete below
+    exclude_routes = [fr.ViewRoute.DESTROY]  # replaced by soft_delete below
 
     async def _decorate_project_response(self, project: Project) -> Project:
         """Populate transient response fields that are not stored on Project."""
@@ -140,7 +141,8 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
 
         Audit-stamping (``updated_by_id``) is provided by
         ``AuditStampedMixin.update_object``; tenant-scope enforcement comes
-        from ``TenantScopedMixin.handle_retrieve``. This method only contains the
+        from ``TenantScopedMixin.build_query`` (applied at the SQL level via
+        the framework's ``handle_retrieve``). This method only contains the
         project-specific slug + transition-event logic.
         """
         project = await self.handle_retrieve(id)

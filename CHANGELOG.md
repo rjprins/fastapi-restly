@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- Renamed `build_listing_query` to `build_query` and broadened its role:
+  `handle_retrieve` now also routes through this seam, so a single override
+  filters listing, the pagination total, AND single-row fetches. A row
+  hidden from listing returns 404 from `GET /{id}` too, and `handle_update`
+  / `handle_destroy` inherit the visibility check via `handle_retrieve`.
+  Mixins that previously needed both `build_listing_query` and a
+  `handle_retrieve` override can drop the latter.
+- `handle_retrieve` now issues a `SELECT … WHERE pk = ?` instead of
+  `session.get(...)`. Behaviour is unchanged for single-column primary
+  keys; subclasses with composite primary keys must override
+  `handle_retrieve` themselves (a `NotImplementedError` is raised
+  otherwise with a clear message).
+
 ## [3.0.0] - 2026-05-02
 
 First public release.

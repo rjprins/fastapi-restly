@@ -128,12 +128,14 @@ To disable generated endpoints on a view, use:
 class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
-    exclude_routes = ["destroy", "update"]
+    exclude_routes = [fr.ViewRoute.DESTROY, fr.ViewRoute.UPDATE]
 ```
 
-Valid route names for exclusion: `"listing"`, `"retrieve"`, `"create"`, `"update"`, `"destroy"`.
+Valid route values for exclusion: `fr.ViewRoute.LISTING`, `fr.ViewRoute.RETRIEVE`,
+`fr.ViewRoute.CREATE`, `fr.ViewRoute.UPDATE`, `fr.ViewRoute.DESTROY`.
 
-`exclude_routes` accepts any iterable of route-name strings, such as a list or tuple.
+`exclude_routes` accepts any iterable of `ViewRoute` values. Route-name strings such
+as `"destroy"` are still accepted for compatibility.
 
 ## Response Modeling
 
@@ -206,11 +208,11 @@ Methods on `RestView` / `AsyncRestView` fall into three categories:
 | Route | `update` | `(id, schema_obj)` | response schema | `PATCH /{id}`; serializes the updated object. |
 | Route | `destroy` | `(id)` | `fastapi.Response` | `DELETE /{id}`; returns `204` by default. |
 | Handler hook | `handle_listing` | `(query_params, query=None)` | `Sequence[Model]` | Fetch list rows; override for list business logic beyond query construction. |
-| Handler hook | `handle_retrieve` | `(id)` | `Model` | Fetch one row or raise `404`; override for custom lookup/eager-loading behavior. |
+| Handler hook | `handle_retrieve` | `(id)` | `Model` | Fetch one row through `build_query()` or raise `404`. Read-side filters layered into `build_query` apply here too — so `update`/`destroy` (which call `handle_retrieve`) inherit the visibility check for free. |
 | Handler hook | `handle_create` | `(schema_obj)` | `Model` | Build and save a new row; override for create-time business rules. |
 | Handler hook | `handle_update` | `(id, schema_obj)` | `Model` | Fetch, mutate, and save an existing row; override for update rules. |
 | Handler hook | `handle_destroy` | `(id)` | `fastapi.Response` | Fetch and delete a row; override for delete rules while keeping the HTTP contract. |
-| Public helper | `build_listing_query` | `()` | `sqlalchemy.Select` | Base query shared by listing and pagination totals. |
+| Public helper | `build_query` | `()` | `sqlalchemy.Select` | Base query shared by listing, pagination totals, AND single-row retrieve. |
 | Public helper | `count_listing` | `(query_params)` | `int` | Count filtered rows before pagination. |
 | Public helper | `to_response_schema` | `(obj)` | response schema | Validate and serialize an ORM object with Restly's alias/reference/write-only handling. |
 | Public helper | `make_new_object` | `(schema_obj)` | `Model` | Build and stage a new object without flushing. |
@@ -245,7 +247,7 @@ examples of choosing between handler hooks and route replacement.
 | `model` | `ClassVar[type[DeclarativeBase]]` | The SQLAlchemy model class. |
 | `id_type` | `ClassVar[type]` | Primary key type used in generated `GET /{id}`, `PATCH /{id}`, and `DELETE /{id}` routes. Defaults to `int`. |
 | `include_pagination_metadata` | `ClassVar[bool]` | Set `True` to return the paginated metadata envelope. Defaults to `False`. |
-| `exclude_routes` | `ClassVar[Iterable[str]]` | Route names to suppress. |
+| `exclude_routes` | `ClassVar[Iterable[str \| ViewRoute]]` | Route names to suppress. |
 | `extra_query_params` | `ClassVar[Iterable[str]]` | Query keys to allow on the listing endpoint in addition to those derived from the response schema. Use for view-specific parameters consumed outside `apply_list_params` (e.g. an `?include_deleted=true` escape hatch). |
 | `default_page_size` | `ClassVar[int \| None]` | Default `?page_size=` for list endpoints. `None` (the default) means "no implicit cap" — every matching row is returned. |
 | `max_page_size` | `ClassVar[int]` | Upper bound for `?page_size=` on list endpoints. Values above are rejected with 422. Defaults to `1000`. |
@@ -288,8 +290,8 @@ in a custom endpoint) reach for the free functions instead.
 | `self.update_object(obj, schema_obj, schema_cls=None)` | Wraps `fr.update_object` / `fr.async_update_object`. **Does not flush** — call `self.save_object(obj)` afterwards. |
 | `self.save_object(obj)` | Wraps `fr.save_object` / `fr.async_save_object` against `self.session`. Flush + refresh; this is where writes actually hit the database. |
 | `self.delete_object(obj)` | Delete `obj` via `self.session` and flush. |
-| `self.build_listing_query()` | Return the base SQLAlchemy `Select` used by both `handle_listing` and `count_listing`. Defaults to `sqlalchemy.select(self.model)`. Override to add `WHERE` clauses that should apply to listing **and** its pagination total — tenant scoping, soft-delete filtering, permission-based row visibility. Call `super().build_listing_query()` and chain `.where(...)` to compose with base-class or mixin filters. See [Composing views with mixins](howto_compose_views_with_mixins.md). |
-| `self.count_listing(query_params)` | Return the total row count for the current list query (after filters, before pagination). Called by the default `listing` only when `include_pagination_metadata = True`; available for use in replacement routes regardless. Consults `build_listing_query()` so list and count stay in sync. |
+| `self.build_query()` | Return the base SQLAlchemy `Select` used by every read on this view's model — `handle_listing`, `count_listing`, AND `handle_retrieve`. Defaults to `sqlalchemy.select(self.model)`. Override to add `WHERE` clauses that should apply to all reads — tenant scoping, soft-delete filtering, row-level permission visibility. Because retrieve also routes through this query, a row hidden from listing returns 404 from `GET /{id}` too. Call `super().build_query()` and chain `.where(...)` to compose with base-class or mixin filters. See [Composing views with mixins](howto_compose_views_with_mixins.md). |
+| `self.count_listing(query_params)` | Return the total row count for the current list query (after filters, before pagination). Called by the default `listing` only when `include_pagination_metadata = True`; available for use in replacement routes regardless. Consults `build_query()` so list and count stay in sync. |
 
 ### Database
 
