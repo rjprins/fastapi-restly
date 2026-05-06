@@ -11,19 +11,10 @@
 
 **Build maintainable REST APIs on FastAPI, SQLAlchemy 2.0, and Pydantic v2 — with real class-based views.**
 
-> **Status:** `0.5.0` — my first public beta release after several private
-> production versions of the same idea. The core shape is proven, but this public
-> API is new and intentionally pre-1.0: minor `0.x` releases may still include
-> documented cleanup as real users find the awkward edges. See the
-> [Changelog](CHANGELOG.md).
+> **Status:** `0.5.0` — first public beta release.
 > ```bash
 > pip install "fastapi-restly[standard]"
 > ```
->
-> FastAPI-Restly is a good fit for prototypes, internal tools, and teams
-> comfortable reading the framework code they adopt. For critical production
-> systems, pin versions, read the changelog, and test the override patterns you
-> rely on before upgrading.
 
 **Docs:** <https://rjprins.github.io/fastapi-restly/> · **[Changelog](CHANGELOG.md)** · **[Contributing](CONTRIBUTING.md)** · **[Security](SECURITY.md)** · **[Code of Conduct](CODE_OF_CONDUCT.md)** · **[Examples](example-projects/)**
 
