@@ -92,6 +92,9 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         return ListingResult(objects=scalar_result.all(), total_count=total_count)
 
     async def count_listing(self, query: sqlalchemy.Select[Any]) -> int:
+        # Counts should ignore presentation-layer ordering and pagination.
+        # Wrapping the stripped query as a subquery preserves correct totals
+        # for DISTINCT, GROUP BY, and other user-provided query shapes.
         count_source = query.order_by(None).limit(None).offset(None)
         count_query = select(func.count()).select_from(count_source.subquery())
         return int(await self.session.scalar(count_query) or 0)
