@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- Removed the pre-stable `query=` argument from `perform_listing`. Override
+  `build_query()` for SQL-level base query changes so listing, pagination
+  totals, and single-row fetches stay aligned.
+
 ## [3.0.0rc2] - 2026-05-05
 
 ### Changed

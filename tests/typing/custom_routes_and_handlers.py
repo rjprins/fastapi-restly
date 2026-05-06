@@ -1,6 +1,5 @@
 from typing import Any
 
-import sqlalchemy
 from fastapi import FastAPI, Response
 from sqlalchemy.orm import Mapped
 
@@ -39,10 +38,8 @@ class WidgetView(
     def health(self) -> dict[str, str]:
         return {"status": "ok"}
 
-    def perform_listing(
-        self, query_params: Any, query: sqlalchemy.Select[Any] | None = None
-    ) -> fr.ListingResult[Widget]:
-        return super().perform_listing(query_params, query=query)
+    def perform_listing(self, query_params: Any) -> fr.ListingResult[Widget]:
+        return super().perform_listing(query_params)
 
     def perform_get(self, id: int) -> Widget:
         return super().perform_get(id)

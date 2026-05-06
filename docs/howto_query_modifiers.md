@@ -257,9 +257,8 @@ cleanly with any base-class or mixin filter. See
 [Composing views with mixins](howto_compose_views_with_mixins.md) for the
 multi-layer pattern.
 
-`perform_listing` still accepts an optional `query` argument for the rare
-case where the custom query intentionally should *not* affect
-standalone `count_listing` calls or `perform_get` — for example, a
-list-only result decoration that needs a different join shape. The
-`perform_listing` result's own `total_count` is computed from that supplied
-query. Reach for `build_query` first.
+`perform_listing` no longer accepts a separate `query` argument. Keep SQL-level
+base query changes in `build_query()` so listing, pagination totals, and
+single-row fetches all see the same visibility rules. If a list endpoint needs
+a completely different query shape, override `perform_listing()` and construct
+that query explicitly inside the method.

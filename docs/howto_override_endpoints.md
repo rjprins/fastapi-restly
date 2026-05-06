@@ -175,24 +175,20 @@ soft-delete hiding, or row-level permission visibility, this is the seam
 to reach for.
 
 If you need `perform_listing` to also do work *beyond* a `WHERE` clause —
-post-query result decoration, pre-query joins, eager-loading tweaks —
-override `perform_listing` itself and use its optional `query` argument:
+post-query result decoration or response-side annotation — override
+`perform_listing` itself and delegate to `super()`:
 
 ```python
-    async def perform_listing(self, query_params, query=None):
-        result = await super().perform_listing(query_params, query)
+    async def perform_listing(self, query_params):
+        result = await super().perform_listing(query_params)
         for obj in result.objects:
             obj._display_name = derive_display_name(obj)
         return result
 ```
 
-`perform_listing` accepts an optional `query` argument — a SQLAlchemy `Select`
-statement. Pass it to restrict the result set before the list parameters
-(filters, sorting, pagination) are applied on top. A `query` passed this
-way is used for that `perform_listing` result and its `total_count`, but is not
-shared with standalone `count_listing` calls or `perform_get`, so reach for
-`build_query` instead whenever the filter should also apply to single-row
-fetches or other count calls.
+If the listing needs a different SQL shape, prefer `build_query()` for base
+filters, joins, eager-loading options, and other SQLAlchemy `Select` changes.
+That keeps listing, pagination totals, and single-row fetches aligned.
 
 ---
 
@@ -264,8 +260,8 @@ than re-implementing the handler from scratch. The pattern is consistent across 
 handlers:
 
 ```python
-    async def perform_listing(self, query_params, query=None):
-        result = await super().perform_listing(query_params, query)
+    async def perform_listing(self, query_params):
+        result = await super().perform_listing(query_params)
         # Annotate each object with a computed field before serialization
         for obj in result.objects:
             obj._display_name = f"{obj.first_name} {obj.last_name}"

@@ -445,9 +445,9 @@ def test_async_rest_view_dispatches_to_handle_overrides():
         model = DispatchWidget
         schema = WidgetSchema
 
-        async def perform_listing(self, query_params, query=None):
+        async def perform_listing(self, query_params):
             call_log.append("listing")
-            return await super().perform_listing(query_params, query=query)
+            return await super().perform_listing(query_params)
 
         def to_listing_response(self, query_params, listing_result):
             call_log.append("to_listing_response")
@@ -500,8 +500,8 @@ def test_async_rest_view_dispatches_to_handle_overrides():
     ]
 
 
-def test_async_perform_listing_with_custom_query():
-    """Call perform_listing with an explicit query to cover the query-is-not-None branch."""
+def test_async_perform_listing_uses_build_query():
+    """perform_listing applies list params on top of the view's build_query."""
 
     class Widget(fr.IDBase):
         name: Mapped[str]
@@ -515,6 +515,9 @@ def test_async_perform_listing_with_custom_query():
         prefix = "/widgets"
         model = Widget
         schema = WidgetSchema
+
+        def build_query(self):
+            return super().build_query().where(Widget.active.is_(True))
 
     async def run():
         engine, make_session = _make_engine_and_session()
@@ -534,9 +537,7 @@ def test_async_perform_listing_with_custom_query():
             view = WidgetView()
             view.session = session
 
-            # Pass an explicit custom query (covers the query-is-not-None branch)
-            custom_query = sqlalchemy.select(Widget).where(Widget.active == True)  # noqa: E712
-            results = await view.perform_listing({}, query=custom_query)
+            results = await view.perform_listing({})
 
             assert len(results.objects) == 2
             assert results.total_count == 2

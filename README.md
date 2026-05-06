@@ -203,9 +203,9 @@ class UserView(fr.AsyncRestView):
     async def download_user(self, id: int):
         return {"id": id, "status": "ok"}
 
-    async def perform_listing(self, query_params, query=None):
+    async def perform_listing(self, query_params):
         # Custom logic here
-        return await super().perform_listing(query_params, query=query)
+        return await super().perform_listing(query_params)
 ```
 
 ### React Admin integration

@@ -532,9 +532,9 @@ def test_sync_rest_view_dispatches_to_handle_overrides(sync_db):
         model = DispatchWidget
         schema = WidgetSchema
 
-        def perform_listing(self, query_params, query=None):
+        def perform_listing(self, query_params):
             call_log.append("listing")
-            return super().perform_listing(query_params, query=query)
+            return super().perform_listing(query_params)
 
         def to_listing_response(self, query_params, listing_result):
             call_log.append("to_listing_response")

@@ -217,7 +217,7 @@ Methods on `RestView` / `AsyncRestView` fall into three categories:
 | Route | `create` | `(schema_obj)` | response schema | `POST /`; serializes the created object. |
 | Route | `update` | `(id, schema_obj)` | response schema | `PATCH /{id}`; serializes the updated object. |
 | Route | `delete` | `(id)` | `fastapi.Response` | `DELETE /{id}`; returns `204` by default. |
-| Handler hook | `perform_listing` | `(query_params, query=None)` | `ListingResult[Model]` | Fetch list rows and total count before pagination; override for list business logic beyond query construction. |
+| Handler hook | `perform_listing` | `(query_params)` | `ListingResult[Model]` | Fetch list rows and total count before pagination; override for list business logic after query construction. Use `build_query()` for SQL-level base query changes. |
 | Handler hook | `perform_get` | `(id)` | `Model` | Fetch one row through `build_query()` or raise `404`. Read-side filters layered into `build_query` apply here too — so `update`/`delete` (which call `perform_get`) inherit the visibility check for free. |
 | Handler hook | `perform_create` | `(schema_obj)` | `Model` | Build and save a new row; override for create-time business rules. |
 | Handler hook | `perform_update` | `(id, schema_obj)` | `Model` | Fetch, mutate, and save an existing row; override for update rules. |

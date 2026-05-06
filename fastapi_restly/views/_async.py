@@ -121,18 +121,14 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         """
         return sqlalchemy.select(self.model)
 
-    async def perform_listing(
-        self, query_params: Any, query: sqlalchemy.Select[Any] | None = None
-    ) -> ListingResult[ModelT]:
+    async def perform_listing(self, query_params: Any) -> ListingResult[ModelT]:
         """
         Handle a GET request on "/". This should return listed objects and the
         total count before pagination.
-        Accepts a query argument that can be used for narrowing down the selection.
         Feel free to override this method, e.g.:
 
-            async def perform_listing(self, query_params, query=None):
-                query = make_my_query()
-                result = await super().perform_listing(query_params, query)
+            async def perform_listing(self, query_params):
+                result = await super().perform_listing(query_params)
                 return ListingResult(add_my_info(result.objects), result.total_count)
 
         ``query_params`` is the validated query-parameter Pydantic model
@@ -144,8 +140,7 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         pagination total *and* to retrieve, override :meth:`build_query`
         instead.
         """
-        if query is None:
-            query = self.build_query()
+        query = self.build_query()
         query = apply_list_params(query_params, query, self.model, self.schema)
         total_count = await self.count_listing(query)
         loader_options = self.get_relationship_loader_options()
