@@ -91,7 +91,10 @@ def _shared_connection():
 if pytest_asyncio is None:
 
     @pytest.fixture
-    def restly_async_session(_shared_connection) -> None:
+    def restly_async_session(_shared_connection) -> None:  # pyright: ignore[reportRedeclaration]
+        # The else-branch defines the real async fixture; this stub only
+        # runs when the optional ``pytest_asyncio`` extra isn't installed.
+        # Pyright cannot model mutually exclusive module-level branches.
         raise ModuleNotFoundError(_TESTING_EXTRA_MESSAGE, name="pytest_asyncio")
 
 else:

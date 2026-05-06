@@ -69,10 +69,15 @@ def _register_for_resource_ref(
         _registry[parent_router] = entries
     entries.append(entry)
 
-    _ensure_patched(parent_router)
+    # Only the FastAPI app generates the OpenAPI spec; APIRouter parents have
+    # no ``.openapi`` to patch. Views registered on a router lose x-resource-ref
+    # annotations until the framework can walk to a root app, which is a
+    # separate gap.
+    if isinstance(parent_router, fastapi.FastAPI):
+        _ensure_patched(parent_router)
 
 
-def _ensure_patched(app: fastapi.FastAPI | fastapi.APIRouter) -> None:
+def _ensure_patched(app: fastapi.FastAPI) -> None:
     """Wrap app.openapi() once so annotations are injected on first call."""
     if getattr(app, _PATCHED_ATTR, False):
         return

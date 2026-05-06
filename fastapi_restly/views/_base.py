@@ -27,6 +27,7 @@ from typing import (
     Generic,
     Iterable,
     Iterator,
+    Protocol,
     Sequence,
     Union,
     cast,
@@ -118,6 +119,13 @@ def _requires_init_kwarg(model_cls: type, attr_name: str) -> bool:
 class _CreatePlan:
     kwargs: dict[str, Any]
     post_assignments: dict[str, Any]
+
+
+class _HasID(Protocol):
+    """Anything with an ``id`` attribute. By framework convention, primary
+    keys are named ``id``; ``IDBase`` formalizes this but isn't required."""
+
+    id: Any
 
 
 def _has_model_attr(model_cls: type[DeclarativeBase], attr_name: str) -> bool:
@@ -264,6 +272,7 @@ def _add_resolved_reference_to_create_plan(
     field_name: str,
     value: DeclarativeBase,
 ) -> None:
+    ref = cast(_HasID, value)
     if field_name.endswith("_id"):
         fk_name = field_name
         relation_name = field_name[:-3]
@@ -276,29 +285,29 @@ def _add_resolved_reference_to_create_plan(
             and accepts_relation
             and _requires_init_kwarg(model_cls, relation_name)
         ):
-            plan.kwargs[fk_name] = value.id
+            plan.kwargs[fk_name] = ref.id
             plan.kwargs[relation_name] = value
             return
 
         if accepts_relation and _requires_init_kwarg(model_cls, relation_name):
             plan.kwargs[relation_name] = value
             if _has_model_attr(model_cls, fk_name):
-                plan.post_assignments[fk_name] = value.id
+                plan.post_assignments[fk_name] = ref.id
             return
 
         if _accepts_init_kwarg(model_cls, fk_name):
-            plan.kwargs[fk_name] = value.id
+            plan.kwargs[fk_name] = ref.id
             if _has_model_attr(model_cls, relation_name):
                 plan.post_assignments[relation_name] = value
             return
 
         if accepts_relation:
             plan.kwargs[relation_name] = value
-            plan.post_assignments[fk_name] = value.id
+            plan.post_assignments[fk_name] = ref.id
             return
 
         if _has_model_attr(model_cls, fk_name):
-            plan.post_assignments[fk_name] = value.id
+            plan.post_assignments[fk_name] = ref.id
         if _has_model_attr(model_cls, relation_name):
             plan.post_assignments[relation_name] = value
         return
@@ -310,18 +319,18 @@ def _add_resolved_reference_to_create_plan(
         model_cls, relation_name
     ):
         plan.kwargs[relation_name] = value
-        _add_assignment(plan.post_assignments, fk_name, value.id)
+        _add_assignment(plan.post_assignments, fk_name, ref.id)
         return
 
     if fk_name and _accepts_init_kwarg(model_cls, fk_name):
-        plan.kwargs[fk_name] = value.id
+        plan.kwargs[fk_name] = ref.id
         if _has_model_attr(model_cls, relation_name):
             plan.post_assignments[relation_name] = value
         return
 
     if _has_model_attr(model_cls, relation_name):
         plan.post_assignments[relation_name] = value
-    _add_assignment(plan.post_assignments, fk_name, value.id)
+    _add_assignment(plan.post_assignments, fk_name, ref.id)
 
 
 def build_create_plan(
@@ -374,9 +383,10 @@ def apply_create_assignments(obj: DeclarativeBase, assignments: dict[str, Any]) 
 def _apply_resolved_reference_update(
     obj: DeclarativeBase, field_name: str, value: DeclarativeBase
 ) -> None:
+    ref = cast(_HasID, value)
     model_cls = type(obj)
     if field_name.endswith("_id"):
-        setattr(obj, field_name, value.id)
+        setattr(obj, field_name, ref.id)
         relation_name = field_name[:-3]
         if hasattr(obj, relation_name):
             setattr(obj, relation_name, value)
@@ -387,7 +397,7 @@ def _apply_resolved_reference_update(
 
     fk_name = _get_unambiguous_local_fk_name(model_cls, field_name)
     if fk_name:
-        setattr(obj, fk_name, value.id)
+        setattr(obj, fk_name, ref.id)
 
 
 def apply_update_to_object(
@@ -574,7 +584,7 @@ class View:
     prefix: ClassVar[str]
     tags: ClassVar[Any] = None
     dependencies: ClassVar[Any] = None
-    responses: ClassVar[dict[int, Any]] = {}
+    responses: ClassVar[dict[int | str, dict[str, Any]]] = {}
 
     @classmethod
     def before_include_view(cls):
@@ -706,7 +716,9 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     common CRUD operation logic.
     """
 
-    responses: ClassVar[dict[int, Any]] = {404: {"description": "Not found"}}
+    responses: ClassVar[dict[int | str, dict[str, Any]]] = {
+        404: {"description": "Not found"}
+    }
 
     schema: ClassVar[type[pydantic.BaseModel]]
     # If 'creation_schema' is not defined it will be created from 'schema'
@@ -845,9 +857,11 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
             # page/page_size/total_pages as None.
             return payload
         page = int(params.get("page", "1"))
-        page_size = int(
-            page_size_raw if page_size_raw is not None else self.default_page_size
-        )
+        if page_size_raw is not None:
+            page_size = int(page_size_raw)
+        else:
+            # The early return above guarantees default_page_size is non-None here.
+            page_size = cast(int, self.default_page_size)
         payload["page"] = page
         payload["page_size"] = page_size
         payload["total_pages"] = (
@@ -910,33 +924,37 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
             )
             listing_response_annotation = cls.pagination_response_schema
 
-        if hasattr(cls, "listing"):
+        # ``listing``/``get``/``create``/``update``/``delete`` are defined on
+        # AsyncRestView/RestView subclasses and may be excluded by ``exclude_routes``,
+        # so they aren't visible on BaseRestView. ``getattr`` keeps pyright happy
+        # without falsely advertising them on the base class.
+        if (listing := getattr(cls, "listing", None)) is not None:
             _annotate(
-                cls.listing,
+                listing,
                 return_annotation=listing_response_annotation,
                 query_params=Annotated[cls.listing_param_schema, fastapi.Query()],
             )
-        if hasattr(cls, "get"):
-            _annotate(cls.get, return_annotation=response_schema, id=cls.id_type)
-        if hasattr(cls, "create"):
+        if (get := getattr(cls, "get", None)) is not None:
+            _annotate(get, return_annotation=response_schema, id=cls.id_type)
+        if (create := getattr(cls, "create", None)) is not None:
             _annotate(
-                cls.create,
+                create,
                 return_annotation=response_schema,
                 schema_obj=cls.creation_schema,
             )
-        if hasattr(cls, "update"):
+        if (update := getattr(cls, "update", None)) is not None:
             _annotate(
-                cls.update,
+                update,
                 return_annotation=response_schema,
                 schema_obj=cls.update_schema,
                 id=cls.id_type,
             )
-        if hasattr(cls, "delete"):
-            _annotate(cls.delete, return_annotation=fastapi.Response, id=cls.id_type)
+        if (delete := getattr(cls, "delete", None)) is not None:
+            _annotate(delete, return_annotation=fastapi.Response, id=cls.id_type)
         _exclude_routes(cls)
 
 
-def _exclude_routes(cls: type[View]):
+def _exclude_routes(cls: type[BaseRestView[Any, Any, Any, Any, Any]]):
     for route_name in cls.exclude_routes:
         method_name = (
             route_name.value if isinstance(route_name, ViewRoute) else route_name
@@ -1042,14 +1060,17 @@ def _make_copy(endpoint: Callable, view_cls: type[View]) -> Callable:
     if inspect.iscoroutinefunction(endpoint):
 
         @functools.wraps(endpoint)
-        async def endpoint_wrapper(self, *args, **kwargs):
+        async def _async_wrapper(self, *args, **kwargs):
             return await endpoint(self, *args, **kwargs)
 
+        endpoint_wrapper: Callable = _async_wrapper
     else:
 
         @functools.wraps(endpoint)
-        def endpoint_wrapper(self, *args, **kwargs):
+        def _sync_wrapper(self, *args, **kwargs):
             return endpoint(self, *args, **kwargs)
+
+        endpoint_wrapper = _sync_wrapper
 
     endpoint_wrapper.__annotations__ = endpoint.__annotations__.copy()
     return endpoint_wrapper
