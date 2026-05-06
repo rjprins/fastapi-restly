@@ -149,7 +149,9 @@ runtime behaviour:
 - `schema` — the Pydantic schema class; auto-generated if absent.
 - `creation_schema`, `update_schema` — derived from `schema` if not declared.
 - `model` — the SQLAlchemy model class.
-- `id_type` — Python type for the `{id}` path parameter (default `int`).
+- `id_type` — Python type for the scalar `{id}` path parameter (default `int`).
+  Composite primary keys are outside the generated CRUD route contract; use
+  `View` directly when a resource needs a multi-part identity.
 - `exclude_routes` — iterable of route names to suppress (e.g.
   `exclude_routes = [fr.ViewRoute.DELETE]`). Route-name strings such as
   `"delete"` are also accepted. Routes listed here have their

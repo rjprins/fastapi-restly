@@ -164,6 +164,15 @@ want Restly's dataclass-oriented convenience base; bring your own SQLAlchemy
 base when you prefer standard declarative constructor semantics or are adding
 Restly to an existing model layer.
 
+`RestView` and `AsyncRestView` assume a single resource identifier: one primary
+key column addressable as `/{id}`. That column does not have to be named `id`
+when you provide explicit schemas and `id_type`, but the default CRUD routes,
+`IDSchema[Model]`, `IDRef[Model]`, React Admin integration, and OpenAPI identity
+shape are all scalar-id contracts. Composite primary keys are therefore not
+supported by the generated CRUD views. For composite-key tables, use `fr.View`
+and declare explicit routes such as `@fr.get("/{tenant_id}/{slug}")`, then write
+the SQLAlchemy query that matches that identity.
+
 ### Schema Classes and Utilities
 
 | Symbol | Description |
@@ -247,7 +256,7 @@ examples of choosing between handler hooks and route replacement.
 | `creation_schema` | `ClassVar[type[pydantic.BaseModel]]` | Schema for `POST` input. Auto-derived by removing `ReadOnly` fields and named `ModelCreate`. |
 | `update_schema` | `ClassVar[type[pydantic.BaseModel]]` | Schema for `PATCH` input. Auto-derived by making all writable fields optional and named `ModelUpdate`. |
 | `model` | `ClassVar[type[DeclarativeBase]]` | The SQLAlchemy model class. |
-| `id_type` | `ClassVar[type]` | Primary key type used in generated `GET /{id}`, `PATCH /{id}`, and `DELETE /{id}` routes. Defaults to `int`. |
+| `id_type` | `ClassVar[type]` | Scalar primary-key type used in generated `GET /{id}`, `PATCH /{id}`, and `DELETE /{id}` routes. Defaults to `int`. Composite primary keys are not supported by the generated CRUD route contract; use `fr.View` for custom multi-part identities. |
 | `include_pagination_metadata` | `ClassVar[bool]` | Set `True` to return the paginated metadata envelope. Defaults to `False`. |
 | `exclude_routes` | `ClassVar[Iterable[str \| ViewRoute]]` | Route names to suppress. |
 | `extra_query_params` | `ClassVar[Iterable[str]]` | Query keys to allow on the listing endpoint in addition to those derived from the response schema. Use for view-specific parameters consumed outside `apply_list_params` (e.g. an `?include_deleted=true` escape hatch). |
@@ -417,7 +426,8 @@ fr.configure(app=app, async_database_url="sqlite+aiosqlite:///app.db")
 - Nested schemas are supported for **responses** and relation filtering, including nested aliases
 - Full nested schemas are **not** supported for create/update payloads by the default CRUD flow; write payloads must map directly to model fields, or use model-aware reference fields such as `*_id: IDRef[Model]` and relationship fields typed as `IDSchema[Model]`
 - Ordinary SQLAlchemy `DeclarativeBase` models work with generated CRUD views
-- UUID and other non-`int` primary keys are supported through `id_type`, `IDRef[Model]`, and `IDSchema[Model]`
+- UUID and other non-`int` scalar primary keys are supported through `id_type`, `IDRef[Model]`, and `IDSchema[Model]`
+- Composite primary keys are not supported by generated `RestView` / `AsyncRestView` CRUD routes; use `fr.View` for custom route shapes
 
 ## Minimal Example
 

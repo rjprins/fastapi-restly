@@ -165,14 +165,17 @@ View                   ← class-based view primitive (no CRUD)
 
 - `View` is the bare CBV primitive. Use it for non-CRUD endpoints — auth
   flows, custom RPC, file uploads, anything that does not fit the
-  list/get/create/update/delete shape.
+  list/get/create/update/delete shape. It is also the right fallback when your
+  resource identity is not a single scalar primary key, such as a legacy table
+  addressed by a composite key.
 - `BaseRestView` extends `View` with `model`, `schema`, the auto-generated
   create/update schemas, query-modifier configuration, and helper methods
   like `to_response_schema()`. It declares route methods (`listing`, `get`,
   `create`, `update`, `delete`) but provides no implementations — it is an
   abstract scaffold.
 - `RestView` and `AsyncRestView` provide the concrete sync and async
-  implementations of the CRUD endpoints. **One of these is what you usually
+  implementations of the CRUD endpoints. They assume a single scalar resource
+  id for the generated `/{id}` routes. **One of these is what you usually
   subclass.**
 
 The public method surface is classified in the
