@@ -52,6 +52,47 @@ inputs?
   uniqueness_probe`) → user's `perform_create` / `perform_update`, written from
   scratch (Rule 1).
 
+### Reusing business logic outside the view
+
+`perform_create` / `perform_update` are instance methods — they have access
+to `self.session`, `self.request`, and any view state mixins inject. That
+makes them a natural home for HTTP-flow business logic, but a poor home for
+logic that must also run from a script, a queue consumer, or a fixture.
+
+When you need both, extract the logic to a free function and have
+`perform_*` call it. The view stays composable; the script imports the
+function directly:
+
+```python
+# services/users.py
+def hash_and_set_password(user: User, raw_password: str) -> None:
+    user.password_hash = bcrypt.hashpw(raw_password.encode(), bcrypt.gensalt())
+
+
+# views/users.py
+class UserView(fr.AsyncRestView):
+    model = User
+    schema = UserRead
+
+    async def perform_create(self, schema_obj):
+        user = await fr.async_make_new_object(self.session, User, schema_obj)
+        hash_and_set_password(user, schema_obj.password)
+        await self.save_object(user)
+        return user
+
+
+# scripts/import_users.py
+for row in csv_rows:
+    user = User(email=row.email)
+    hash_and_set_password(user, row.password)
+    session.add(user)
+```
+
+The view composes; it doesn't own the logic. This is the same layering
+you'd reach for in a service / use-case layer of a larger application — FR
+just makes the seam explicit by giving you `perform_*` as the dedicated
+business-logic hook on the HTTP side.
+
 ## Three reusable mixins
 
 The

@@ -43,6 +43,11 @@ async def async_make_new_object(
     Create a new instance of ``model_cls`` from ``schema_obj`` and add it to
     ``session``. Read-only fields and any unset fields' defaults are handled by
     the shared helper. The session is not flushed here.
+
+    **Structural-only.** This helper applies the schema-to-ORM mapping only;
+    it does not run any view-layer business logic. Anything schema-derived
+    (hashing, slug derivation, denormalised rollups) should be applied by the
+    caller. See ``docs/howto_compose_views_with_mixins.md`` for the rule.
     """
     await _async_resolve_ids_to_sqlalchemy_objects(session, schema_obj)
     validate_resolved_reference_consistency(model_cls, schema_obj, schema_cls)
@@ -65,6 +70,11 @@ async def async_update_object(
 
     Apply writable inputs from ``schema_obj`` onto ``obj``. Only fields the
     caller explicitly set are applied; read-only fields are skipped.
+
+    **Structural-only.** This helper applies the schema-to-ORM mapping only;
+    it does not run any view-layer business logic. Anything schema-derived
+    (hashing, slug derivation, denormalised rollups) should be applied by the
+    caller. See ``docs/howto_compose_views_with_mixins.md`` for the rule.
     """
     await _async_resolve_ids_to_sqlalchemy_objects(session, schema_obj)
     validate_resolved_reference_consistency(type(obj), schema_obj, schema_cls)
@@ -243,6 +253,12 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         This does not flush. The default ``perform_create`` calls
         ``save_object`` afterwards; override this method for construction-time
         changes that must happen before that save boundary.
+
+        **Structural-only intent.** Override for stamping or scoping with
+        server-controlled fields (audit columns, tenant id, soft-delete
+        flags). Schema-derived computation (hashing, slug derivation,
+        denormalised rollups) belongs in ``perform_create`` instead. See
+        ``docs/howto_compose_views_with_mixins.md`` for the rule.
         """
         model_cls = cast(type[ModelT], self.model)
         return await async_make_new_object(
@@ -256,6 +272,12 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         This does not flush. The default ``perform_update`` calls
         ``save_object`` afterwards; override this method for update-time changes
         that must happen before that save boundary.
+
+        **Structural-only intent.** Override for stamping or scoping with
+        server-controlled fields (audit columns, tenant id, soft-delete
+        flags). Schema-derived computation (hashing, slug derivation,
+        denormalised rollups) belongs in ``perform_update`` instead. See
+        ``docs/howto_compose_views_with_mixins.md`` for the rule.
         """
         updated_obj = await async_update_object(
             self.session, obj, schema_obj, self.schema
