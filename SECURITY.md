@@ -6,9 +6,10 @@ Only the latest released version of fastapi-restly receives security updates.
 
 ## Reporting a Vulnerability
 
-If you discover a security issue in fastapi-restly, **please do not open a public GitHub issue**. Instead, email the maintainer privately:
+If you discover a security issue in fastapi-restly, **please do not open a
+public GitHub issue**. Instead, report it privately through GitHub:
 
-**rutgerprins@gmail.com**
+<https://github.com/rjprins/fastapi-restly/security/advisories/new>
 
 Include:
 

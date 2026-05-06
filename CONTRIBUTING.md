@@ -4,9 +4,6 @@ Thanks for your interest in contributing! FastAPI-Restly is a small,
 opinionated framework and we welcome bug reports, fixes, docs improvements,
 and well-scoped feature proposals.
 
-This project is in early development (0.1.x), so APIs may still shift. Please
-open an issue to discuss larger changes before sending a PR.
-
 ## Development Setup
 
 The project uses [uv](https://github.com/astral-sh/uv) for dependency

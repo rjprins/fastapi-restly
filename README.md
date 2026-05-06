@@ -73,33 +73,38 @@ copy-paste app, database setup, and run command, see
 For endpoints that are related but not CRUD, start with `View`:
 
 ```python
+from typing import Annotated
 from fastapi import Depends
 
-def require_auth():
+def get_current_user():
     ...
 
 @fr.include_view(app)
-class AuthView(fr.View):
-    prefix = "/auth"
-    tags = ["auth"]
-    dependencies = [Depends(require_auth)]
+class AccountView(fr.View):
+    prefix = "/account"
+    tags = ["account"]
 
-    @fr.post("/login")
-    async def login(self, credentials: LoginRequest) -> Token:
-        ...
+    current_user: Annotated[User, Depends(get_current_user)]
 
-    @fr.post("/refresh")
-    async def refresh(self, token: str) -> Token:
+    @fr.get("/me")
+    async def me(self) -> AccountRead:
+        return AccountRead.from_user(self.current_user)
+
+    @fr.post("/password")
+    async def change_password(self, payload: PasswordChange) -> AccountRead:
         ...
 ```
 
-The same class-level `dependencies` pattern works on `RestView` /
-`AsyncRestView`, so shared auth or tenant guards live on the resource class
-instead of being repeated on every endpoint.
+Annotated dependencies become instance attributes, so shared request context
+lives on the view class instead of being repeated on every endpoint. The same
+pattern works on `RestView` / `AsyncRestView`.
 
 ## Philosophy
 
-Restly is a stack of micro-libraries. Each layer adds convenience while letting you drop down for deeper control. The less customization you need, the more you get out-of-the-box — full customization never requires awkward hacks. Restly stays close to patterns already provided by FastAPI, Pydantic, and SQLAlchemy.
+Restly uses a layered approach. Each layer adds convenience while letting you
+drop down for deeper control. The less customization you need, the more you get
+out-of-the-box — full customization never requires awkward hacks. Restly stays
+close to patterns already provided by FastAPI, Pydantic, and SQLAlchemy.
 
 ## Installation (development)
 
@@ -109,20 +114,12 @@ cd fastapi-restly
 uv sync
 ```
 
-### Typing compatibility
-
-Restly keeps consumer-facing typing fixtures in [`tests/typing/`](tests/typing) checked with Pyright to catch editor regressions:
-
-```bash
-make test-typing
-```
-
 ## Advanced features
 
 ### Manual schema definition
 
-For custom validation, aliases, or stable public contracts, define explicit read,
-create, and update schemas:
+For custom validation, aliases, or stable public contracts, define an explicit
+read schema:
 
 ```python
 from datetime import datetime
@@ -132,6 +129,17 @@ class UserRead(fr.IDSchema):
     email: str
     created_at: fr.ReadOnly[datetime]
 
+@fr.include_view(app)
+class UserView(fr.AsyncRestView):
+    prefix = "/users"
+    model = User
+    schema = UserRead
+```
+
+Restly derives create and update schemas from `UserRead` by default. When you
+need full control over write payloads, declare them explicitly:
+
+```python
 class UserCreate(fr.BaseSchema):
     name: str
     email: str
