@@ -49,7 +49,7 @@ class UserView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantBase
     The ``perform_create`` override below is the canonical illustration of the
     "rewrite from scratch using the helpers" pattern from
     ``rut-notes/discussion_save_object.md``: build the ORM object via
-    ``self.make_new_object`` (which transparently runs through the mixin
+    ``self.build_from_schema`` (which transparently runs through the mixin
     chain to stamp tenant + audit fields), mutate the password, then
     flush+refresh via ``save_object``.
     """
@@ -84,11 +84,11 @@ class UserView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantBase
 
         DO this — build the row with the helpers, mutate, then save::
 
-            user = await self.make_new_object(schema_obj)
+            user = await self.build_from_schema(schema_obj)
             user.password = hash_password(schema_obj.password)
             return await self.save_object(user)
         """
-        user = await self.make_new_object(schema_obj)
+        user = await self.build_from_schema(schema_obj)
         if schema_obj.password:
             user.password = hash_password(schema_obj.password)
         return await self.save_object(user)

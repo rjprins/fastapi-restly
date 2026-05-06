@@ -44,14 +44,14 @@ GET /
 POST /
   └─ create()                      ← FastAPI endpoint (avoid overriding)
        └─ perform_create(schema_obj)    ← operation handler — override here to add fields
-            └─ make_new_object(...)  ← object helper — override to change construction
+            └─ build_from_schema(...)  ← object helper — override to change construction
             └─ save_object(obj)      ← create/update persistence boundary
 
 PATCH /{id}
   └─ update()
        └─ perform_update(id, schema_obj)
             └─ perform_get(id)            ← reuses the same 404 logic
-            └─ update_object(obj, schema_obj)
+            └─ apply_schema(obj, schema_obj)
             └─ save_object(obj)      ← create/update persistence boundary
 
 DELETE /{id}
@@ -61,14 +61,14 @@ DELETE /{id}
             └─ delete_object(obj)    ← delete persistence boundary
 ```
 
-`make_new_object` and `update_object` prepare the ORM object but do not flush
+`build_from_schema` and `apply_schema` prepare the ORM object but do not flush
 the session. The default create and update handlers both call `save_object`
 afterwards; that explicit save step is where the write is flushed and refreshed
 from the database. Deletes use a separate boundary: `delete_object` deletes the
 row and flushes.
 
 **General rule:** prefer overriding `perform_*` handlers for business logic and
-`make_new_object` / `update_object` / `save_object` / `delete_object` for
+`build_from_schema` / `apply_schema` / `save_object` / `delete_object` for
 lower-level structural changes. When you need to change the HTTP contract
 itself — status code, response shape, headers, or query parameter semantics —
 replace the raw endpoint method; see
@@ -93,7 +93,7 @@ class UserView(fr.AsyncRestView):
     schema = UserRead
 
     async def perform_create(self, schema_obj):
-        obj = await self.make_new_object(schema_obj)
+        obj = await self.build_from_schema(schema_obj)
         obj.created_by = self.request.state.user_id  # set from request context
         return await self.save_object(obj)
 ```
@@ -108,7 +108,7 @@ async SQLAlchemy session. Both are available in every handler.
         obj = await self.perform_get(id)  # raises 404 if missing
         if obj.locked:
             raise fastapi.HTTPException(409, "Cannot update a locked record")
-        obj = await self.update_object(obj, schema_obj)
+        obj = await self.apply_schema(obj, schema_obj)
         return await self.save_object(obj)
 ```
 
@@ -199,13 +199,13 @@ When the change you need applies to *all* writes (both create and update), it
 is cleaner to override the low-level helpers rather than duplicate logic in
 `perform_create` and `perform_update`.
 
-Two rules apply to `make_new_object` / `update_object` overrides:
+Two rules apply to `build_from_schema` / `apply_schema` overrides:
 
 - **Per-view application logic** (password hashing, slug derivation,
   status-transition events) belongs in `perform_create` / `perform_update`,
   written from scratch using the
-  [CRUD utility helpers](api_reference.md#crud-utility-free-functions).
-  Layering it through `make_new_object` creates ordering surprises and
+  [advanced object helpers](api_reference.md#advanced-object-helpers).
+  Layering it through `build_from_schema` creates ordering surprises and
   hides where the create flow lives.
 - **Structural cross-cutting concerns** that only stamp server-controlled
   fields (audit IDs, tenant IDs, soft-delete timestamps) *are* the right
@@ -247,22 +247,22 @@ methods and delegate to a shared helper:
         await self._record_write_event(obj, "delete")
 ```
 
-### `make_new_object` — set a default field on creation only
+### `build_from_schema` — set a default field on creation only
 
 ```python
-    async def make_new_object(self, schema_obj):
-        obj = await super().make_new_object(schema_obj)
+    async def build_from_schema(self, schema_obj):
+        obj = await super().build_from_schema(schema_obj)
         obj.tenant_id = self.request.state.tenant_id
         return obj
 ```
 
-### `update_object` — prevent certain fields from being changed
+### `apply_schema` — prevent certain fields from being changed
 
 ```python
-    async def update_object(self, obj, schema_obj):
+    async def apply_schema(self, obj, schema_obj):
         # Ignore any attempt to change `owner_id` via PATCH
         schema_obj.owner_id = None
-        return await super().update_object(obj, schema_obj)
+        return await super().apply_schema(obj, schema_obj)
 ```
 
 ### `delete_object` — implement soft-delete
@@ -416,7 +416,7 @@ still on `self`:
   re-implementing it
 - `self.to_response_schema(obj)` — serialise an ORM object to the configured
   Pydantic schema
-- `self.make_new_object`, `self.update_object`, `self.save_object`,
+- `self.build_from_schema`, `self.apply_schema`, `self.save_object`,
   `self.delete_object`
 
 The example above delegates the 404 check to `self.perform_get(id)` and the
@@ -457,7 +457,7 @@ include `WriteOnly` fields such as passwords or API tokens.
 ### Relationship references in custom routes
 
 Generated `POST` and `PATCH` routes validate the request body before Restly
-calls `make_new_object()` or `update_object()`, so `IDRef[Model]` fields are
+calls `build_from_schema()` or `apply_schema()`, so `IDRef[Model]` fields are
 already `IDRef` instances by the time the resolver runs.
 
 In a custom route, be careful when you construct a schema yourself. Pydantic's
@@ -465,12 +465,15 @@ In a custom route, be careful when you construct a schema yourself. Pydantic's
 you wrap them explicitly:
 
 ```python
+from fastapi_restly.objects import async_build_from_schema
+
+
 link_schema = TaskLabelRead.model_construct(
     task_id=fr.IDRef[Task](id=request.task_id),
     label_id=fr.IDRef[Label](id=label.id),
 )
 
-task_label = await fr.async_make_new_object(
+task_label = await async_build_from_schema(
     self.session,
     TaskLabel,
     link_schema,

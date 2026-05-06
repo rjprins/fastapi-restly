@@ -162,7 +162,7 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
         # Validate cross-resource constraints
         await self._validate_cross_resource(data)
 
-        task = await self.make_new_object(schema_obj)
+        task = await self.build_from_schema(schema_obj)
         if task.story_points and project:
             project.total_story_points += task.story_points
         return await self.save_object(task)
@@ -217,7 +217,7 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
         # respects exclude_unset semantics from the wire). Then bump version
         # explicitly — if the client sent a version it was already validated
         # above, and we always want server-side increment.
-        task = await self.update_object(task, schema_obj)
+        task = await self.apply_schema(task, schema_obj)
         task.version = (
             client_version if client_version is not None else task.version
         ) + 1

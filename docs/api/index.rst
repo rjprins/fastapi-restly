@@ -9,6 +9,7 @@ This section is generated with Sphinx autodoc from the public Python API.
    db
    exceptions
    models
+   objects
    query
    schemas
    views

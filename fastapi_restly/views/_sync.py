@@ -1,15 +1,16 @@
-from typing import Any, TypeVar, cast
+from typing import Any, cast
 
 import fastapi
-import pydantic
 import sqlalchemy
 from sqlalchemy import func, select
 from sqlalchemy import inspect as sa_inspect
-from sqlalchemy.orm import DeclarativeBase, Session
 
 from ..db import SessionDep
+from ..objects import apply_schema as object_apply_schema
+from ..objects import build_from_schema as object_build_from_schema
+from ..objects import delete_object as object_delete_object
+from ..objects import save_object as object_save_object
 from ..query import apply_list_params
-from ..schemas._base import _resolve_ids_to_sqlalchemy_objects
 from ._base import (
     BaseRestView,
     CreateSchemaT,
@@ -18,76 +19,11 @@ from ._base import (
     ModelT,
     SchemaT,
     UpdateSchemaT,
-    apply_create_assignments,
-    apply_update_to_object,
-    build_create_plan,
     delete,
     get,
     patch,
     post,
-    validate_resolved_reference_consistency,
 )
-
-T = TypeVar("T", bound=DeclarativeBase)
-
-
-def make_new_object(
-    session: Session,
-    model_cls: type[T],
-    schema_obj: pydantic.BaseModel,
-    schema_cls: type[pydantic.BaseModel] | None = None,
-) -> T:
-    """Create a new instance of ``model_cls`` from ``schema_obj`` and add it to
-    ``session``. Read-only fields and any unset fields' defaults are handled by
-    the shared helper. The session is not flushed here.
-
-    **Structural-only.** This helper applies the schema-to-ORM mapping only;
-    it does not run any view-layer business logic. Anything schema-derived
-    (hashing, slug derivation, denormalised rollups) should be applied by the
-    caller. See ``docs/howto_compose_views_with_mixins.md`` for the rule.
-
-    See also: :func:`async_make_new_object` for the async equivalent.
-    """
-    _resolve_ids_to_sqlalchemy_objects(session, schema_obj)
-    validate_resolved_reference_consistency(model_cls, schema_obj, schema_cls)
-    create_plan = build_create_plan(model_cls, schema_obj, schema_cls)
-    obj = model_cls(**create_plan.kwargs)
-    apply_create_assignments(obj, create_plan.post_assignments)
-    session.add(obj)
-    return obj
-
-
-def update_object(
-    session: Session,
-    obj: DeclarativeBase,
-    schema_obj: pydantic.BaseModel,
-    schema_cls: type[pydantic.BaseModel] | None = None,
-) -> DeclarativeBase:
-    """Apply writable inputs from ``schema_obj`` onto ``obj``. Only fields the
-    caller explicitly set are applied; read-only fields are skipped.
-
-    **Structural-only.** This helper applies the schema-to-ORM mapping only;
-    it does not run any view-layer business logic. Anything schema-derived
-    (hashing, slug derivation, denormalised rollups) should be applied by the
-    caller. See ``docs/howto_compose_views_with_mixins.md`` for the rule.
-
-    See also: :func:`async_update_object` for the async equivalent.
-    """
-    _resolve_ids_to_sqlalchemy_objects(session, schema_obj)
-    validate_resolved_reference_consistency(type(obj), schema_obj, schema_cls)
-    apply_update_to_object(obj, schema_obj, schema_cls)
-    return obj
-
-
-def save_object(session: Session, obj: DeclarativeBase) -> DeclarativeBase:
-    """Flush the session and refresh ``obj`` so its server-side defaults and
-    generated columns (PKs, timestamps, etc.) are populated.
-
-    See also: :func:`async_save_object` for the async equivalent.
-    """
-    session.flush()
-    session.refresh(obj)
-    return obj
 
 
 class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT]):
@@ -202,7 +138,7 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         Handle a POST request on "/". This should create a new object.
         Feel free to override this method.
         """
-        obj = self.make_new_object(schema_obj)
+        obj = self.build_from_schema(schema_obj)
         obj = self.save_object(obj)
         return obj
 
@@ -218,7 +154,7 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         Feel free to override this method.
         """
         obj = self.perform_get(id)
-        obj = self.update_object(obj, schema_obj)
+        obj = self.apply_schema(obj, schema_obj)
         return self.save_object(obj)
 
     @delete("/{id}")
@@ -238,41 +174,30 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         existing object. Override it to change the deletion mechanics, for
         example to implement soft-delete.
         """
-        self.session.delete(obj)
-        self.session.flush()
+        object_delete_object(self.session, obj)
 
-    def make_new_object(self, schema_obj: CreateSchemaT) -> ModelT:
+    def build_from_schema(self, schema_obj: CreateSchemaT) -> ModelT:
         """
         Build a new ORM object from ``schema_obj`` and add it to the session.
 
         This does not flush. The default ``perform_create`` calls
         ``save_object`` afterwards; override this method for construction-time
         changes that must happen before that save boundary.
-
-        **Structural-only intent.** Override for stamping or scoping with
-        server-controlled fields (audit columns, tenant id, soft-delete
-        flags). Schema-derived computation (hashing, slug derivation,
-        denormalised rollups) belongs in ``perform_create`` instead. See
-        ``docs/howto_compose_views_with_mixins.md`` for the rule.
         """
         model_cls = cast(type[ModelT], self.model)
-        return make_new_object(self.session, model_cls, schema_obj, self.schema)
+        return object_build_from_schema(
+            self.session, model_cls, schema_obj, self.schema
+        )
 
-    def update_object(self, obj: ModelT, schema_obj: UpdateSchemaT) -> ModelT:
+    def apply_schema(self, obj: ModelT, schema_obj: UpdateSchemaT) -> ModelT:
         """
         Apply writable fields from ``schema_obj`` to ``obj``.
 
         This does not flush. The default ``perform_update`` calls
         ``save_object`` afterwards; override this method for update-time changes
         that must happen before that save boundary.
-
-        **Structural-only intent.** Override for stamping or scoping with
-        server-controlled fields (audit columns, tenant id, soft-delete
-        flags). Schema-derived computation (hashing, slug derivation,
-        denormalised rollups) belongs in ``perform_update`` instead. See
-        ``docs/howto_compose_views_with_mixins.md`` for the rule.
         """
-        return cast(ModelT, update_object(self.session, obj, schema_obj, self.schema))
+        return object_apply_schema(self.session, obj, schema_obj, self.schema)
 
     def save_object(self, obj: ModelT) -> ModelT:
         """
@@ -282,4 +207,4 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         update handlers. Override it for behavior that should run after every
         successful create/update flush.
         """
-        return cast(ModelT, save_object(self.session, obj))
+        return object_save_object(self.session, obj)

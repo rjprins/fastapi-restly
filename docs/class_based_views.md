@@ -247,7 +247,7 @@ class UserView(fr.AsyncRestView):
         # Compose the create flow yourself so the password hash is written
         # *before* save_object flushes. Calling super().perform_create() and
         # mutating after would lose the change — the row is already saved.
-        user = await self.make_new_object(schema_obj)
+        user = await self.build_from_schema(schema_obj)
         user.password_hash = hash_password(schema_obj.password)
         return await self.save_object(user)
 ```

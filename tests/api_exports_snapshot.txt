@@ -21,9 +21,6 @@ fastapi_restly:
   - ViewRoute
   - WriteOnly
   - apply_list_params
-  - async_make_new_object
-  - async_save_object
-  - async_update_object
   - configure
   - create_list_params_schema
   - db
@@ -33,8 +30,8 @@ fastapi_restly:
   - get_async_engine
   - get_engine
   - include_view
-  - make_new_object
   - models
+  - objects
   - open_async_session
   - open_session
   - patch
@@ -43,10 +40,8 @@ fastapi_restly:
   - pytest_fixtures
   - query
   - route
-  - save_object
   - schemas
   - testing
-  - update_object
   - views
 fastapi_restly.db:
   - AsyncSessionDep
@@ -68,6 +63,15 @@ fastapi_restly.models:
   - IDBase
   - IDMixin
   - TimestampsMixin
+fastapi_restly.objects:
+  - apply_schema
+  - async_apply_schema
+  - async_build_from_schema
+  - async_delete_object
+  - async_save_object
+  - build_from_schema
+  - delete_object
+  - save_object
 fastapi_restly.pytest_fixtures:
   - restly_app
   - restly_async_session
@@ -100,19 +104,13 @@ fastapi_restly.views:
   - RestView
   - View
   - ViewRoute
-  - async_make_new_object
-  - async_save_object
-  - async_update_object
   - delete
   - get
   - include_view
-  - make_new_object
   - patch
   - post
   - put
   - route
-  - save_object
-  - update_object
 
 submodule-only exports:
 fastapi_restly.db:
@@ -122,6 +120,15 @@ fastapi_restly.exceptions:
 fastapi_restly.models:
   - CASCADE_ALL_ASYNC
   - CASCADE_ALL_DELETE_ORPHAN_ASYNC
+fastapi_restly.objects:
+  - apply_schema
+  - async_apply_schema
+  - async_build_from_schema
+  - async_delete_object
+  - async_save_object
+  - build_from_schema
+  - delete_object
+  - save_object
 fastapi_restly.pytest_fixtures:
   - restly_app
   - restly_async_session

@@ -1,9 +1,4 @@
-from ._async import (
-    AsyncRestView,
-    async_make_new_object,
-    async_save_object,
-    async_update_object,
-)
+from ._async import AsyncRestView
 from ._base import (
     BaseRestView,
     ListingResult,
@@ -18,7 +13,7 @@ from ._base import (
     route,
 )
 from ._react_admin import AsyncReactAdminView, ReactAdminView
-from ._sync import RestView, make_new_object, save_object, update_object
+from ._sync import RestView
 
 # Public API for ``fastapi_restly.views``.
 #
@@ -35,17 +30,11 @@ __all__ = [
     "ListingResult",
     "View",
     "ViewRoute",
-    "async_make_new_object",
-    "async_save_object",
-    "async_update_object",
     "delete",
     "get",
     "include_view",
-    "make_new_object",
     "patch",
     "post",
     "put",
     "route",
-    "save_object",
-    "update_object",
 ]

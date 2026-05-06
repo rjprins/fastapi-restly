@@ -227,8 +227,8 @@ Methods on `RestView` / `AsyncRestView` fall into three categories:
 | Public helper | `to_listing_response` | `(query_params, listing_result)` | response schema list or pagination envelope | Serialize a `ListingResult` into the configured list HTTP response shape. |
 | Public helper | `to_paginated_listing_response` | `(query_params, listing_result)` | pagination envelope | Serialize a `ListingResult` into the paginated list response shape. |
 | Public helper | `to_response_schema` | `(obj)` | response schema | Validate and serialize an ORM object with Restly's alias/reference/write-only handling. |
-| Public helper | `make_new_object` | `(schema_obj)` | `Model` | Build and stage a new object without flushing. |
-| Public helper | `update_object` | `(obj, schema_obj)` | `Model` | Apply writable fields without flushing. |
+| Public helper | `build_from_schema` | `(schema_obj)` | `Model` | Build and stage a new object without flushing. |
+| Public helper | `apply_schema` | `(obj, schema_obj)` | `Model` | Apply writable fields without flushing. |
 | Public helper | `save_object` | `(obj)` | `Model` | Flush and refresh a staged object. Shared by the default create and update flows; deletes use `delete_object`. |
 | Public helper | `delete_object` | `(obj)` | `None` | Delete and flush an existing object. Override alongside `save_object` when you need side effects for every write event. |
 
@@ -263,44 +263,47 @@ examples of choosing between handler hooks and route replacement.
 | `default_page_size` | `ClassVar[int \| None]` | Default `?page_size=` for list endpoints. `None` (the default) means "no implicit cap" — every matching row is returned. |
 | `max_page_size` | `ClassVar[int]` | Upper bound for `?page_size=` on list endpoints. Values above are rejected with 422. Defaults to `1000`. |
 
-### CRUD Utility Free Functions
+### Advanced Object Helpers
 
-These module-level functions are the primitive surface for building, updating,
-and explicitly saving ORM objects from schemas. Use them anywhere you have a
-session — inside `perform_*` handlers, in custom routes, in services, or in test
-setup. Each variant exists in both sync and async form, matching the session type
-you have on hand.
+These advanced helpers live in `fastapi_restly.objects`. They are the primitive
+surface for building, updating, deleting, and explicitly saving ORM objects from
+schemas. Use them when you need the framework's schema-to-object mapping outside
+the view instance methods, for example in custom routes, services, or test setup.
+Each variant exists in both sync and async form, matching the session type you
+have on hand.
 
 | Symbol | Description |
 |---|---|
-| `fr.make_new_object(session, model_cls, schema_obj, schema_cls=None)` | Build a new `model_cls` instance from `schema_obj`, resolve any `IDRef[...]` / `IDSchema[...]` reference fields against the database, and add the object to `session`. **Does not flush.** Call `fr.save_object(session, obj)` afterwards to persist. |
-| `fr.update_object(session, obj, schema_obj, schema_cls=None)` | Apply the schema's writable fields onto an existing ORM `obj` and resolve FK fields. **Does not flush.** Call `fr.save_object(session, obj)` afterwards to persist. |
-| `fr.save_object(session, obj)` | Flush the session and refresh `obj` so server-side defaults and generated columns (PKs, timestamps) are populated. Returns `obj`. This is where writes actually hit the database. |
-| `fr.async_make_new_object(session, model_cls, schema_obj, schema_cls=None)` | Async equivalent of `fr.make_new_object`. Pass an `AsyncSession`. |
-| `fr.async_update_object(session, obj, schema_obj, schema_cls=None)` | Async equivalent of `fr.update_object`. |
-| `fr.async_save_object(session, obj)` | Async equivalent of `fr.save_object`. |
+| `objects.build_from_schema(session, model_cls, schema_obj, schema_cls=None)` | Build a new `model_cls` instance from `schema_obj`, resolve any `IDRef[...]` / `IDSchema[...]` reference fields against the database, and add the object to `session`. **Does not flush.** Call `objects.save_object(session, obj)` afterwards to persist. |
+| `objects.apply_schema(session, obj, schema_obj, schema_cls=None)` | Apply the schema's writable fields onto an existing ORM `obj` and resolve FK fields. **Does not flush.** Call `objects.save_object(session, obj)` afterwards to persist. |
+| `objects.save_object(session, obj)` | Flush the session and refresh `obj` so server-side defaults and generated columns (PKs, timestamps) are populated. Returns `obj`. This is where create/update writes hit the database. |
+| `objects.delete_object(session, obj)` | Delete `obj` and flush the session. |
+| `objects.async_build_from_schema(session, model_cls, schema_obj, schema_cls=None)` | Async equivalent of `objects.build_from_schema`. Pass an `AsyncSession`. |
+| `objects.async_apply_schema(session, obj, schema_obj, schema_cls=None)` | Async equivalent of `objects.apply_schema`. |
+| `objects.async_save_object(session, obj)` | Async equivalent of `objects.save_object`. |
+| `objects.async_delete_object(session, obj)` | Async equivalent of `objects.delete_object`. |
 
 ### View Instance Methods
 
 Every `AsyncRestView` / `RestView` instance exposes ergonomic wrappers
-around the free functions above. The wrappers bind `self.session`,
+around the object helpers above. The wrappers bind `self.session`,
 `self.model`, and `self.schema` so the dominant case
-(`self.make_new_object(schema_obj)`) doesn't have to thread them
-explicitly. The async/sync split is implicit: `AsyncRestView.make_new_object`
-calls `async_make_new_object` under the hood, `RestView.make_new_object`
+(`self.build_from_schema(schema_obj)`) doesn't have to thread them
+explicitly. The async/sync split is implicit: `AsyncRestView.build_from_schema`
+calls `async_build_from_schema` under the hood, `RestView.build_from_schema`
 calls the sync version.
 
 Use these inside `perform_*` handlers or custom route methods. When you need to
 work with a model that isn't `self.model` (e.g. creating a sibling row
-in a custom endpoint) reach for the free functions instead.
+in a custom endpoint) reach for the `fastapi_restly.objects` helpers instead.
 
 | Method | Description |
 |---|---|
 | `self.to_response_schema(obj)` | Serialise an ORM object to the configured response schema, applying alias rules, stripping `WriteOnly` fields, and running Pydantic response validation. Override for custom projections or an intentional `model_construct()` fast path. |
-| `self.make_new_object(schema_obj, schema_cls=None)` | Wraps `fr.make_new_object` / `fr.async_make_new_object` against `self.session`, `self.model`, `self.schema`. **Does not flush** — call `self.save_object(obj)` afterwards. |
-| `self.update_object(obj, schema_obj, schema_cls=None)` | Wraps `fr.update_object` / `fr.async_update_object`. **Does not flush** — call `self.save_object(obj)` afterwards. |
-| `self.save_object(obj)` | Wraps `fr.save_object` / `fr.async_save_object` against `self.session`. Flush + refresh; this is where create/update writes actually hit the database. It does not run for deletes. |
-| `self.delete_object(obj)` | Delete `obj` via `self.session` and flush. Override alongside `save_object` when a side effect must run for create, update, and delete. |
+| `self.build_from_schema(schema_obj, schema_cls=None)` | Wraps `objects.build_from_schema` / `objects.async_build_from_schema` against `self.session`, `self.model`, `self.schema`. **Does not flush** — call `self.save_object(obj)` afterwards. |
+| `self.apply_schema(obj, schema_obj, schema_cls=None)` | Wraps `objects.apply_schema` / `objects.async_apply_schema`. **Does not flush** — call `self.save_object(obj)` afterwards. |
+| `self.save_object(obj)` | Wraps `objects.save_object` / `objects.async_save_object` against `self.session`. Flush + refresh; this is where create/update writes actually hit the database. It does not run for deletes. |
+| `self.delete_object(obj)` | Wraps `objects.delete_object` / `objects.async_delete_object` against `self.session`. Override alongside `save_object` when a side effect must run for create, update, and delete. |
 | `self.build_query()` | Return the base SQLAlchemy `Select` used by every read on this view's model — `perform_listing` and `perform_get`. Defaults to `sqlalchemy.select(self.model)`. Override to add `WHERE` clauses that should apply to all reads — tenant scoping, soft-delete filtering, row-level permission visibility. Because retrieve also routes through this query, a row hidden from listing returns 404 from `GET /{id}` too. Call `super().build_query()` and chain `.where(...)` to compose with base-class or mixin filters. See [Composing views with mixins](howto_compose_views_with_mixins.md). |
 | `self.count_listing(query)` | Return the total row count for an already-built list query. The default `perform_listing` applies list params once, passes that same query to `count_listing`, and `count_listing` removes `ORDER BY`, `LIMIT`, and `OFFSET` before counting. |
 | `self.to_listing_response(query_params, listing_result)` | Convert a `fr.ListingResult` from `perform_listing` into either the default JSON array or the pagination metadata envelope, depending on `include_pagination_metadata`. Override this when only the list response shape needs to change. |

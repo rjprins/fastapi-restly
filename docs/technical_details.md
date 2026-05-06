@@ -202,7 +202,7 @@ Nested schemas serve two different roles in Restly today:
   `selectinload(...)` options for nested relationship fields in the response
   schema, so related objects can be serialized efficiently and with aliases.
 - **Create/update payloads**: not supported in the general case. The default
-  `make_new_object()` / `update_object()` flow expects payload keys to map
+  `build_from_schema()` / `apply_schema()` flow expects payload keys to map
   directly to model attributes, with `*_id: IDRef[Model]` as the usual
   special case for foreign keys. When an `IDRef` / `IDSchema` reference has
   been resolved to an ORM object, the helpers inspect the SQLAlchemy mapper and

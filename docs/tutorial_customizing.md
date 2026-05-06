@@ -53,12 +53,12 @@ class PostView(fr.AsyncRestView):
     schema = PostRead
 
     async def perform_create(self, schema_obj):
-        obj = await self.make_new_object(schema_obj)
+        obj = await self.build_from_schema(schema_obj)
         obj.author_id = self.request.state.user_id   # set server-side
         return await self.save_object(obj)
 ```
 
-`make_new_object` builds the ORM instance from the validated payload.
+`build_from_schema` builds the ORM instance from the validated payload.
 `save_object` flushes and refreshes it. Both are separate steps you can
 intercept individually — more on that in Layer 2.
 
@@ -71,7 +71,7 @@ Block updates based on the current state of the object:
         obj = await self.perform_get(id)          # raises 404 if missing
         if obj.published:
             raise fastapi.HTTPException(409, "Cannot edit a published post")
-        obj = await self.update_object(obj, schema_obj)
+        obj = await self.apply_schema(obj, schema_obj)
         return await self.save_object(obj)
 ```
 
@@ -128,18 +128,18 @@ construction, update, explicit save, and removal. Override them when the same
 change applies to **both** create and update, so you don't repeat yourself.
 
 ```
-perform_create  →  make_new_object(schema_obj)
+perform_create  →  build_from_schema(schema_obj)
            →  save_object(obj)
 
 perform_update  →  perform_get(id)
-           →  update_object(obj, schema_obj)
+           →  apply_schema(obj, schema_obj)
            →  save_object(obj)
 
 perform_delete  →  perform_get(id)
            →  delete_object(obj)
 ```
 
-`make_new_object` and `update_object` do not flush. They prepare the ORM object;
+`build_from_schema` and `apply_schema` do not flush. They prepare the ORM object;
 `save_object` is the explicit flush/refresh step used by the default create and
 update handlers.
 
@@ -158,25 +158,25 @@ invalidate a cache, emit an event — override `save_object`:
 Because `perform_create` and `perform_update` both end with `self.save_object(obj)`,
 this one override covers both operations.
 
-### make_new_object — set a default on creation only
+### build_from_schema — set a default on creation only
 
 If you need to stamp a field only at creation time (not on update):
 
 ```python
-    async def make_new_object(self, schema_obj):
-        obj = await super().make_new_object(schema_obj)
+    async def build_from_schema(self, schema_obj):
+        obj = await super().build_from_schema(schema_obj)
         obj.created_by = self.request.state.user_id
         return obj
 ```
 
-### update_object — guard fields from being changed
+### apply_schema — guard fields from being changed
 
 Strip a field from the payload before it reaches the database:
 
 ```python
-    async def update_object(self, obj, schema_obj):
+    async def apply_schema(self, obj, schema_obj):
         schema_obj.author_id = None   # ignore any attempt to change authorship
-        return await super().update_object(obj, schema_obj)
+        return await super().apply_schema(obj, schema_obj)
 ```
 
 ### delete_object — implement soft-delete
@@ -306,7 +306,7 @@ class AuthoredBase(fr.AsyncRestView):
     current_user: Annotated[User, Depends(get_current_user)]
 
     async def perform_create(self, schema_obj):
-        obj = await self.make_new_object(schema_obj)
+        obj = await self.build_from_schema(schema_obj)
         obj.author_id = self.current_user.id
         return await self.save_object(obj)
 
@@ -462,7 +462,7 @@ class AuthoredBase(fr.AsyncRestView):
     user_id: Annotated[int, Depends(get_current_user_id)]
 
     async def perform_create(self, schema_obj):
-        obj = await self.make_new_object(schema_obj)
+        obj = await self.build_from_schema(schema_obj)
         obj.author_id = self.user_id
         return await self.save_object(obj)
 
@@ -479,7 +479,7 @@ class PostView(AuthoredBase):
         obj = await self.perform_get(id)
         if obj.published:
             raise fastapi.HTTPException(409, "Cannot edit a published post")
-        obj = await self.update_object(obj, schema_obj)
+        obj = await self.apply_schema(obj, schema_obj)
         return await self.save_object(obj)
 
     async def delete_object(self, obj):

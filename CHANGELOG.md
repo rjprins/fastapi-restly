@@ -49,6 +49,10 @@ First public beta release.
   `session.get(...)`. Behaviour is unchanged for single-column primary keys;
   subclasses with composite primary keys must override `perform_get` themselves
   (a `NotImplementedError` is raised otherwise with a clear message).
+- Advanced schema-to-object helpers now live in `fastapi_restly.objects`:
+  `build_from_schema`, `apply_schema`, `save_object`, and `delete_object`,
+  with async equivalents. The view methods use the same names for the mapping
+  hooks and keep persistence at the `save_object` / `delete_object` boundary.
 
 ### Removed
 

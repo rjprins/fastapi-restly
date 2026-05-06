@@ -619,13 +619,13 @@ class TestSiblingCreation:
             # row, the resolver isn't returning a stale cached one.
             assert r1.json()["label_id"] != r2.json()["label_id"]
 
-    def test_async_make_new_object_skips_view_overrides(self, client, auth_context):
-        """Insight worth pinning: the *free function* async_make_new_object
-        does NOT go through ``self.make_new_object`` on TaskLabelView, so
+    def test_async_build_from_schema_skips_view_overrides(self, client, auth_context):
+        """Insight worth pinning: the *free function* async_build_from_schema
+        does NOT go through ``self.build_from_schema`` on TaskLabelView, so
         the ``added_by_id`` stamp (which is in the view's bound override)
         is bypassed. Verified by confirming added_by_id stays None unless
         the route explicitly sets it. If we wanted the stamp, we'd need
-        to either call ``self.make_new_object`` from a TaskLabelView
+        to either call ``self.build_from_schema`` from a TaskLabelView
         instance (we're not in one — we're in TaskLabelView itself but
         building a TaskLabel via the *free* helper), or apply the stamp
         manually in the custom route."""
@@ -645,7 +645,7 @@ class TestSiblingCreation:
             )
             assert response.status_code == 201
             # The route explicitly stamps added_by_id from request.state
-            # — without that explicit step, async_make_new_object alone
+            # — without that explicit step, async_build_from_schema alone
             # wouldn't have stamped it. The test confirms the route's
             # explicit stamp is what keeps the value in sync.
             tl = response.json()

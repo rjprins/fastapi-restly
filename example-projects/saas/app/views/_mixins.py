@@ -3,12 +3,12 @@
 These compose by cooperative ``super()`` chains. Application-layer logic
 in concrete views (``ProjectView.perform_create`` etc.) doesn't have to know
 they exist — the mixins inject their behavior into the right framework
-helper/handler (``make_new_object`` / ``update_object`` for *write-side* stamps,
+helper/handler (``build_from_schema`` / ``apply_schema`` for *write-side* stamps,
 ``build_query`` for *read-side* filters that apply to listing, count, and
 retrieve in one place).
 
 The discussion in ``rut-notes/discussion_save_object.md`` warned against
-overriding ``make_new_object`` to layer *application* logic. The mixins
+overriding ``build_from_schema`` to layer *application* logic. The mixins
 here override it for *structural cross-cutting concerns* (audit, tenant,
 soft-delete) — a different rule with the same shape:
 
@@ -66,8 +66,8 @@ class TenantScopedMixin:
             q = q.where(self.model.organization_id == org_id)
         return q
 
-    async def make_new_object(self, schema_obj: Any) -> Any:
-        obj = await super().make_new_object(schema_obj)  # type: ignore[misc]
+    async def build_from_schema(self, schema_obj: Any) -> Any:
+        obj = await super().build_from_schema(schema_obj)  # type: ignore[misc]
         # Admins still get tenant-stamping by default — they shouldn't be
         # *required* to specify org_id, even though they can see across
         # tenants. If admin's request.state.org_id is unset, the body's
@@ -123,8 +123,8 @@ class AuditStampedMixin:
     """Stamp ``created_by_id`` / ``updated_by_id`` from request state.
 
     Assumes the columns exist on ``self.model``. Stamps in
-    ``make_new_object`` (pre-flush, so the row inserts with the values)
-    and ``update_object`` (also pre-flush). No business logic — purely
+    ``build_from_schema`` (pre-flush, so the row inserts with the values)
+    and ``apply_schema`` (also pre-flush). No business logic — purely
     "who did this write" book-keeping.
     """
 
@@ -136,8 +136,8 @@ class AuditStampedMixin:
     def _current_user_id(self) -> int | None:
         return self.current_user_id
 
-    async def make_new_object(self, schema_obj: Any) -> Any:
-        obj = await super().make_new_object(schema_obj)  # type: ignore[misc]
+    async def build_from_schema(self, schema_obj: Any) -> Any:
+        obj = await super().build_from_schema(schema_obj)  # type: ignore[misc]
         uid = self._current_user_id()
         if hasattr(obj, "created_by_id") and obj.created_by_id is None:
             obj.created_by_id = uid
@@ -145,8 +145,8 @@ class AuditStampedMixin:
             obj.updated_by_id = uid
         return obj
 
-    async def update_object(self, obj: Any, schema_obj: Any) -> Any:
-        obj = await super().update_object(obj, schema_obj)  # type: ignore[misc]
+    async def apply_schema(self, obj: Any, schema_obj: Any) -> Any:
+        obj = await super().apply_schema(obj, schema_obj)  # type: ignore[misc]
         if hasattr(obj, "updated_by_id"):
             obj.updated_by_id = self._current_user_id()
         return obj

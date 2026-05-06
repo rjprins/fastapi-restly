@@ -9,6 +9,7 @@ PUBLIC_MODULES = (
     "fastapi_restly.db",
     "fastapi_restly.exceptions",
     "fastapi_restly.models",
+    "fastapi_restly.objects",
     "fastapi_restly.pytest_fixtures",
     "fastapi_restly.query",
     "fastapi_restly.schemas",

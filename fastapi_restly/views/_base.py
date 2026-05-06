@@ -340,7 +340,7 @@ def build_create_plan(
 ) -> _CreatePlan:
     """Translate ``schema_obj`` fields into kwargs for ``model_cls(**kwargs)``.
 
-    Shared by sync and async ``make_new_object``. Assumes any nested ``IDSchema``
+    Shared by sync and async ``build_from_schema``. Assumes any nested ``IDSchema``
     references on ``schema_obj`` have already been resolved (sync vs async).
     """
     if schema_cls is None:
@@ -407,7 +407,7 @@ def apply_update_to_object(
 ) -> None:
     """Apply writable inputs from ``schema_obj`` onto ``obj`` in place.
 
-    Shared by sync and async ``update_object``. Assumes any nested ``IDSchema``
+    Shared by sync and async ``apply_schema``. Assumes any nested ``IDSchema``
     references on ``schema_obj`` have already been resolved (sync vs async).
     """
     for field_name, value in get_writable_inputs(schema_obj, schema_cls).items():

@@ -11,14 +11,14 @@ mixin declaration.
 This guide covers the pattern, the rule that decides whether to use it,
 and two ergonomic gotchas worth knowing up front.
 
-## When to override `make_new_object` / `update_object` / `delete_object` / `build_query`
+## When to override `build_from_schema` / `apply_schema` / `delete_object` / `build_query`
 
 The [Override Endpoints](howto_override_endpoints.md#override-low-level-object-helpers)
 guide warns against overriding these low-level helpers for per-view
 business logic — password hashing, slug derivation, denormalised rollups,
 status-transition events. Those belong in `perform_create` / `perform_update`,
-written from scratch using the [`make_new_object` /
-`save_object`](api_reference.md#crud-utility-free-functions) helpers.
+written from scratch using the [`build_from_schema` /
+`save_object`](api_reference.md#advanced-object-helpers) helpers.
 
 There is one carve-out where overriding these helpers is the *right*
 answer:
@@ -66,6 +66,9 @@ helper, a small `Client` class — pick the obvious spot; don't manufacture
 a layer for it:
 
 ```python
+from fastapi_restly.objects import async_build_from_schema
+
+
 def hash_and_set_password(user: User, raw_password: str) -> None:
     user.password_hash = bcrypt.hashpw(raw_password.encode(), bcrypt.gensalt())
 
@@ -75,7 +78,7 @@ class UserView(fr.AsyncRestView):
     schema = UserRead
 
     async def perform_create(self, schema_obj):
-        user = await fr.async_make_new_object(self.session, User, schema_obj)
+        user = await async_build_from_schema(self.session, User, schema_obj)
         hash_and_set_password(user, schema_obj.password)
         await self.save_object(user)
         return user
@@ -122,8 +125,8 @@ class TenantScopedMixin:
             q = q.where(self.model.organization_id == org_id)
         return q
 
-    async def make_new_object(self, schema_obj: Any) -> Any:
-        obj = await super().make_new_object(schema_obj)  # type: ignore[misc]
+    async def build_from_schema(self, schema_obj: Any) -> Any:
+        obj = await super().build_from_schema(schema_obj)  # type: ignore[misc]
         org_id = self._current_org_id()
         if org_id is not None and hasattr(obj, "organization_id"):
             obj.organization_id = org_id
@@ -173,8 +176,8 @@ class AuditStampedMixin:
     def _current_user_id(self) -> int | None:
         return getattr(self.request.state, "user_id", None)
 
-    async def make_new_object(self, schema_obj: Any) -> Any:
-        obj = await super().make_new_object(schema_obj)  # type: ignore[misc]
+    async def build_from_schema(self, schema_obj: Any) -> Any:
+        obj = await super().build_from_schema(schema_obj)  # type: ignore[misc]
         uid = self._current_user_id()
         if hasattr(obj, "created_by_id") and obj.created_by_id is None:
             obj.created_by_id = uid
@@ -182,8 +185,8 @@ class AuditStampedMixin:
             obj.updated_by_id = uid
         return obj
 
-    async def update_object(self, obj: Any, schema_obj: Any) -> Any:
-        obj = await super().update_object(obj, schema_obj)  # type: ignore[misc]
+    async def apply_schema(self, obj: Any, schema_obj: Any) -> Any:
+        obj = await super().apply_schema(obj, schema_obj)  # type: ignore[misc]
         if hasattr(obj, "updated_by_id"):
             obj.updated_by_id = self._current_user_id()
         return obj

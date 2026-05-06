@@ -4,13 +4,13 @@ from sqlalchemy import ForeignKey, ForeignKeyConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 import fastapi_restly as fr
+from fastapi_restly.objects import apply_schema, build_from_schema, save_object
 from fastapi_restly.schemas._base import create_model_with_optional_fields
 from fastapi_restly.testing import RestlyTestClient
 from fastapi_restly.views._base import (
     build_create_plan,
     validate_resolved_reference_consistency,
 )
-from fastapi_restly.views._sync import make_new_object, save_object, update_object
 
 
 def test_sync_rest_view_404_response_includes_detail(sync_db):
@@ -70,7 +70,7 @@ def test_sync_object_helpers_handle_readonly_and_relationship_inputs(sync_db):
         create_payload = ArticleSchema(
             id=999, title="Draft", author_id={"id": original_author.id}
         )
-        article = make_new_object(session, Article, create_payload, ArticleSchema)
+        article = build_from_schema(session, Article, create_payload, ArticleSchema)
         session.flush()
 
         assert article.id != 999
@@ -80,14 +80,14 @@ def test_sync_object_helpers_handle_readonly_and_relationship_inputs(sync_db):
         update_payload = ArticleSchema(
             id=12345, title="Published", author_id={"id": replacement_author.id}
         )
-        updated_article = update_object(session, article, update_payload, ArticleSchema)
+        updated_article = apply_schema(session, article, update_payload, ArticleSchema)
 
         assert updated_article.id == article.id
         assert updated_article.title == "Published"
         assert updated_article.author_id == replacement_author.id
         assert updated_article.author.id == replacement_author.id
 
-        assignment = make_new_object(
+        assignment = build_from_schema(
             session,
             Assignment,
             AssignmentSchema(owner_id=fr.IDSchema(id=original_author.id)),
@@ -95,7 +95,7 @@ def test_sync_object_helpers_handle_readonly_and_relationship_inputs(sync_db):
         session.flush()
         assert assignment.owner_id == original_author.id
 
-        updated_assignment = update_object(
+        updated_assignment = apply_schema(
             session,
             assignment,
             AssignmentSchema(owner_id=fr.IDSchema(id=replacement_author.id)),
@@ -118,7 +118,7 @@ def test_sync_save_object_flushes_and_refreshes(sync_db):
     fr.DataclassBase.metadata.create_all(engine)
 
     with make_session() as session:
-        obj = make_new_object(
+        obj = build_from_schema(
             session, Widget, WidgetSchema(id=0, name="gizmo"), WidgetSchema
         )
         # Before save_object the PK should not be assigned.
@@ -130,8 +130,8 @@ def test_sync_save_object_flushes_and_refreshes(sync_db):
         assert saved.name == "gizmo"
 
 
-def test_sync_update_object_only_applies_set_fields(sync_db):
-    """update_object should ignore fields the caller did not explicitly set,
+def test_sync_apply_schema_only_applies_set_fields(sync_db):
+    """apply_schema should ignore fields the caller did not explicitly set,
     matching get_writable_inputs semantics — i.e. PATCH partial-update behaviour."""
     engine, make_session = sync_db
 
@@ -149,7 +149,7 @@ def test_sync_update_object_only_applies_set_fields(sync_db):
     fr.DataclassBase.metadata.create_all(engine)
 
     with make_session() as session:
-        item = make_new_object(
+        item = build_from_schema(
             session, Item, ItemSchema(id=0, name="orig", notes="keep"), ItemSchema
         )
         save_object(session, item)
@@ -157,7 +157,7 @@ def test_sync_update_object_only_applies_set_fields(sync_db):
         # Only ``name`` is set in the partial payload; ``notes`` is unset and
         # should not be overwritten.
         partial = UpdateItemSchema(name="renamed")
-        update_object(session, item, partial, ItemSchema)
+        apply_schema(session, item, partial, ItemSchema)
         assert item.name == "renamed"
         assert item.notes == "keep"
 
@@ -285,7 +285,7 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
             Dd8SyncRelationshipFirstArticle,
             Dd8SyncPostAssignArticle,
         ):
-            article = make_new_object(
+            article = build_from_schema(
                 session,
                 model_cls,
                 FKSchema(title=model_cls.__name__, author_id=first.id),
@@ -294,7 +294,7 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
             assert article.author_id == first.id
             assert article.author is first
 
-            update_object(
+            apply_schema(
                 session,
                 article,
                 FKSchema(title="updated", author_id=second.id),
@@ -363,7 +363,7 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
                 CompositeRelationshipSchema,
             )
 
-        both_explicit = make_new_object(
+        both_explicit = build_from_schema(
             session,
             Dd8SyncRelationshipFirstArticle,
             BothReferenceSchema(
@@ -375,7 +375,7 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
         assert both_explicit.author is first
 
         with pytest.raises(HTTPException) as create_exc:
-            make_new_object(
+            build_from_schema(
                 session,
                 Dd8SyncRelationshipFirstArticle,
                 BothReferenceSchema(
@@ -386,7 +386,7 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
         assert create_exc.value.status_code == 422
 
         with pytest.raises(HTTPException) as update_exc:
-            update_object(
+            apply_schema(
                 session,
                 both_explicit,
                 BothReferenceSchema(
@@ -396,7 +396,7 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
             )
         assert update_exc.value.status_code == 422
 
-        relation_first = make_new_object(
+        relation_first = build_from_schema(
             session,
             Dd8SyncRelationshipFieldFirstArticle,
             RelationshipSchema(title="relation", author={"id": first.id}),
@@ -405,7 +405,7 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
         assert relation_first.author_id == first.id
         assert relation_first.author is first
 
-        relation_fallback = make_new_object(
+        relation_fallback = build_from_schema(
             session,
             Dd8SyncRelationshipFieldFallbackArticle,
             RelationshipSchema(title="fallback", author={"id": first.id}),
@@ -414,7 +414,7 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
         assert relation_fallback.author_id == first.id
         assert relation_fallback.author is first
 
-        declarative_article = make_new_object(
+        declarative_article = build_from_schema(
             session,
             Dd8SyncDeclarativeArticle,
             DeclarativeFKSchema(title="declarative", author_id=declarative_author.id),
