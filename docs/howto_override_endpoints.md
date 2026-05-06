@@ -45,26 +45,27 @@ POST /
   └─ create()                      ← FastAPI endpoint (avoid overriding)
        └─ perform_create(schema_obj)    ← operation handler — override here to add fields
             └─ make_new_object(...)  ← object helper — override to change construction
-            └─ save_object(obj)      ← object helper — override to add side effects
+            └─ save_object(obj)      ← create/update persistence boundary
 
 PATCH /{id}
   └─ update()
        └─ perform_update(id, schema_obj)
             └─ perform_get(id)            ← reuses the same 404 logic
             └─ update_object(obj, schema_obj)
-            └─ save_object(obj)      ← object helper — override to add side effects
+            └─ save_object(obj)      ← create/update persistence boundary
 
 DELETE /{id}
   └─ delete()
        └─ perform_delete(id)
             └─ perform_get(id)
-            └─ delete_object(obj)
+            └─ delete_object(obj)    ← delete persistence boundary
 ```
 
 `make_new_object` and `update_object` prepare the ORM object but do not flush
 the session. The default create and update handlers both call `save_object`
 afterwards; that explicit save step is where the write is flushed and refreshed
-from the database.
+from the database. Deletes use a separate boundary: `delete_object` deletes the
+row and flushes.
 
 **General rule:** prefer overriding `perform_*` handlers for business logic and
 `make_new_object` / `update_object` / `save_object` / `delete_object` for
@@ -213,13 +214,37 @@ Two rules apply to `make_new_object` / `update_object` overrides:
   for the pattern, the discriminator between the two rules, and the
   three reusable mixins from the SaaS example.
 
-### `save_object` — send a notification after every write
+### `save_object` — send a notification after create/update
 
 ```python
     async def save_object(self, obj):
         obj = await super().save_object(obj)
         await notify_subscribers(obj.id)  # your async side-effect
         return obj
+```
+
+`save_object` is shared by the default create and update flows. It does not run
+for deletes; `delete_object` is the delete-side persistence boundary.
+
+If you need one side effect for every successful write event, override both
+methods and delegate to a shared helper:
+
+```python
+    async def _record_write_event(self, obj, action: str) -> None:
+        await audit_log.record(
+            resource=self.model.__name__,
+            object_id=obj.id,
+            action=action,
+        )
+
+    async def save_object(self, obj):
+        obj = await super().save_object(obj)
+        await self._record_write_event(obj, "save")
+        return obj
+
+    async def delete_object(self, obj):
+        await super().delete_object(obj)
+        await self._record_write_event(obj, "delete")
 ```
 
 ### `make_new_object` — set a default field on creation only
