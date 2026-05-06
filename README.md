@@ -11,21 +11,21 @@
 
 **Build maintainable CRUD APIs on FastAPI, SQLAlchemy 2.0, and Pydantic v2 — with real class-based views.**
 
-> **Status:** `3.0.0rc2` — release candidate for the first public release. FastAPI-Restly follows
-> Semantic Versioning; public API breaks after `3.0.0` require a new major
-> version. See the [Changelog](CHANGELOG.md).
+> **Status:** `0.5.0` — first public beta release. FastAPI-Restly follows
+> Semantic Versioning in spirit, but the public API is not yet 1.0-stable:
+> minor `0.x` releases may still include documented API cleanup. See the
+> [Changelog](CHANGELOG.md).
 > ```bash
 > pip install "fastapi-restly[standard]"
 > ```
 >
-> **Release maturity:** FastAPI-Restly 3.0 is the first public release after
-> several private production iterations. The 3.0 release-candidate cycle has
-> included significant API cleanup to settle the public surface before SemVer
-> stability starts. It is a good fit for evaluation, prototypes, internal tools,
-> and teams comfortable reviewing framework code before adoption. For critical
-> production systems, adopt deliberately: pin versions, read the changelog, test
-> the override patterns you rely on, and expect some API polish while the public
-> ecosystem settles.
+> **Release maturity:** FastAPI-Restly 0.5 is the first public beta after
+> several private production iterations. It includes significant API cleanup to
+> settle the public surface before 1.0 stability starts. It is a good fit for
+> evaluation, prototypes, internal tools, and teams comfortable reviewing
+> framework code before adoption. For critical production systems, adopt
+> deliberately: pin versions, read the changelog, test the override patterns you
+> rely on, and expect some API polish while the public ecosystem settles.
 
 **Docs:** <https://rjprins.github.io/fastapi-restly/> · **[Changelog](CHANGELOG.md)** · **[Contributing](CONTRIBUTING.md)** · **[Security](SECURITY.md)** · **[Code of Conduct](CODE_OF_CONDUCT.md)** · **[Examples](example-projects/)**
 

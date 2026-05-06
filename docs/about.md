@@ -25,9 +25,10 @@ rebuilt it from scratch at **Clearblue Markets**, who later allowed me to
 open-source it. That was version 1. A second version was developed and refined
 in production at **Brenntag**. That was version 2.
 
-Version 3.0.0 is the first public release. The version number reflects the
-history — two prior production versions, across three companies, over nearly ten
-years of use.
+Version 0.5.0 is the first public beta. The project has production history —
+two prior private versions, across three companies, over nearly ten years of
+use — but the public API is new and intentionally remains pre-1.0 while broader
+usage shakes out the edges.
 
 ## Honest about where we are
 

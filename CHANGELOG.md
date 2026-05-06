@@ -7,32 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Removed
+## [0.5.0] - 2026-05-06
 
-- Removed the pre-stable `query=` argument from `perform_listing`. Override
-  `build_query()` for SQL-level base query changes so listing, pagination
-  totals, and single-row fetches stay aligned.
-
-## [3.0.0rc2] - 2026-05-05
-
-### Changed
-
-- Renamed `build_listing_query` to `build_query` and broadened its role:
-  `perform_get` now also routes through this seam, so a single override
-  filters listing, the pagination total, AND single-row fetches. A row
-  hidden from listing returns 404 from `GET /{id}` too, and `perform_update`
-  / `perform_delete` inherit the visibility check via `perform_get`.
-  Mixins that previously needed both `build_listing_query` and a
-  `perform_get` override can drop the latter.
-- `perform_get` now issues a `SELECT … WHERE pk = ?` instead of
-  `session.get(...)`. Behaviour is unchanged for single-column primary
-  keys; subclasses with composite primary keys must override
-  `perform_get` themselves (a `NotImplementedError` is raised
-  otherwise with a clear message).
-
-## [3.0.0rc1] - 2026-05-04
-
-First public release candidate.
+First public beta release.
 
 ### Added
 
@@ -63,8 +40,21 @@ First public release candidate.
   case-insensitive matching have distinct public operators.
 - Exposed savepoint-only testing helpers through `fastapi_restly.testing`
   instead of the top-level package namespace.
+- Renamed `build_listing_query` to `build_query` and broadened its role:
+  `perform_get` now also routes through this hook, so a single override filters
+  listing, the pagination total, and single-row fetches. A row hidden from
+  listing returns 404 from `GET /{id}` too, and `perform_update` /
+  `perform_delete` inherit the visibility check via `perform_get`.
+- `perform_get` now issues a `SELECT ... WHERE pk = ?` instead of
+  `session.get(...)`. Behaviour is unchanged for single-column primary keys;
+  subclasses with composite primary keys must override `perform_get` themselves
+  (a `NotImplementedError` is raised otherwise with a clear message).
 
 ### Removed
+
+- Removed the pre-stable `query=` argument from `perform_listing`. Override
+  `build_query()` for SQL-level base query changes so listing, pagination
+  totals, and single-row fetches stay aligned.
 
 - Removed pre-release route and hook names such as `index`, `get`, `post`,
   `patch`, `delete`, `handle_list`, and `handle_get` from the public view API.
@@ -75,5 +65,4 @@ First public release candidate.
 - Removed duplicate pytest fixture exports from `fastapi_restly.testing`;
   the pytest plugin path is `fastapi_restly.pytest_fixtures`.
 
-[3.0.0rc2]: https://github.com/rjprins/fastapi-restly/releases/tag/v3.0.0rc2
-[3.0.0rc1]: https://github.com/rjprins/fastapi-restly/releases/tag/v3.0.0rc1
+[0.5.0]: https://github.com/rjprins/fastapi-restly/releases/tag/v0.5.0
