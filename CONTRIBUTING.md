@@ -7,11 +7,6 @@ and well-scoped feature proposals.
 This project is in early development (0.1.x), so APIs may still shift. Please
 open an issue to discuss larger changes before sending a PR.
 
-## Code of Conduct
-
-This project follows the [Contributor Covenant](CODE_OF_CONDUCT.md). By
-participating, you agree to uphold it.
-
 ## Development Setup
 
 The project uses [uv](https://github.com/astral-sh/uv) for dependency
