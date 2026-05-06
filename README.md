@@ -6,40 +6,52 @@
 [![Coverage](https://rjprins.github.io/fastapi-restly/coverage/badge.svg)](https://rjprins.github.io/fastapi-restly/coverage/)
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/rjprins/fastapi-restly/main/docs/_static/restly-cat.png" alt="FastAPI-Restly logo" width="200">
+  <img src="https://raw.githubusercontent.com/rjprins/fastapi-restly/main/docs/_static/restly-cat-white-bg.png" alt="FastAPI-Restly logo" width="200">
 </p>
 
-**Build maintainable CRUD APIs on FastAPI, SQLAlchemy 2.0, and Pydantic v2 — with real class-based views.**
+**Build maintainable REST APIs on FastAPI, SQLAlchemy 2.0, and Pydantic v2 — with real class-based views.**
 
-> **Status:** `0.5.0` — first public beta release. FastAPI-Restly follows
-> Semantic Versioning in spirit, but the public API is not yet 1.0-stable:
-> minor `0.x` releases may still include documented API cleanup. See the
+> **Status:** `0.5.0` — my first public beta release after several private
+> production versions of the same idea. The core shape is proven, but this public
+> API is new and intentionally pre-1.0: minor `0.x` releases may still include
+> documented cleanup as real users find the awkward edges. See the
 > [Changelog](CHANGELOG.md).
 > ```bash
 > pip install "fastapi-restly[standard]"
 > ```
 >
-> **Release maturity:** FastAPI-Restly 0.5 is the first public beta after
-> several private production iterations. It includes significant API cleanup to
-> settle the public surface before 1.0 stability starts. It is a good fit for
-> evaluation, prototypes, internal tools, and teams comfortable reviewing
-> framework code before adoption. For critical production systems, adopt
-> deliberately: pin versions, read the changelog, test the override patterns you
-> rely on, and expect some API polish while the public ecosystem settles.
+> FastAPI-Restly is a good fit for prototypes, internal tools, and teams
+> comfortable reading the framework code they adopt. For critical production
+> systems, pin versions, read the changelog, and test the override patterns you
+> rely on before upgrading.
 
 **Docs:** <https://rjprins.github.io/fastapi-restly/> · **[Changelog](CHANGELOG.md)** · **[Contributing](CONTRIBUTING.md)** · **[Security](SECURITY.md)** · **[Code of Conduct](CODE_OF_CONDUCT.md)** · **[Examples](example-projects/)**
 
 ## Why FastAPI-Restly?
 
-The differentiator is **true class-based views**. You subclass `RestView` / `AsyncRestView` and override handlers like `perform_get`, `perform_create`, or object helpers like `save_object` — CRUD logic is *methods you can swap*, not opaque generated functions. Share behavior across views via inheritance the way you would with any Python class.
+FastAPI-Restly is a small REST resource layer on top of FastAPI, SQLAlchemy, and Pydantic:
 
-* **CRUD endpoints in minutes** — auto-generates Pydantic schemas from your SQLAlchemy models.
-* **Override anything** — replace an endpoint, or just its business logic, without awkward hacks.
-* **React Admin ready** — `AsyncReactAdminView` speaks the `ra-data-simple-rest` wire contract, no custom data provider needed.
-* **Modern stack** — SQLAlchemy 2.0, Pydantic v2, async and sync support.
-* **Filtering, pagination, sorting** — standard HTTP query interface generated from your response schema.
-* **Field control** — `ReadOnly` / `WriteOnly` markers, plus scalar foreign-key references via `IDRef[...]`.
-* **Testing utilities** — `RestlyTestClient` and savepoint-based isolation fixtures.
+```text
+SQLAlchemy owns persistence.
+Pydantic owns validation and serialization.
+FastAPI owns routing and dependency injection.
+Restly owns repetitive REST resource mechanics.
+```
+
+The base `View` class is the foundation. It gives related endpoints a shared
+prefix, tags, dependencies, and ordinary Python inheritance without forcing a
+model or CRUD shape. `RestView` and `AsyncRestView` build on that foundation for
+the common list/get/create/update/delete case.
+
+- **True class-based views** — group endpoints on real Python classes with inheritance and method overrides.
+- **REST endpoints in minutes** — use `View` for custom resources, or `AsyncRestView` / `RestView` for generated CRUD.
+- **Class-level dependencies** — apply authentication, rate limits, tenant context, or other FastAPI dependencies once per view.
+- **Explicit override points** — replace an endpoint, a business-logic handler, or an object helper without awkward hacks.
+- **Modern stack** — SQLAlchemy 2.0, Pydantic v2, async and sync support.
+- **Filtering, pagination, sorting** — standard HTTP query interface generated from your response schema.
+- **Field control** — `ReadOnly` / `WriteOnly` markers, plus scalar foreign-key references via `IDRef[...]`.
+- **React Admin ready** — `AsyncReactAdminView` speaks the `ra-data-simple-rest` wire contract, no custom data provider needed.
+- **Testing utilities** — `RestlyTestClient` and savepoint-based isolation fixtures.
 
 ## Quickstart
 
@@ -67,22 +79,32 @@ sorting, pagination, and an auto-generated Pydantic schema. For the full
 copy-paste app, database setup, and run command, see
 [Getting Started](docs/getting_started.md).
 
-## How does it compare?
+For endpoints that are related but not CRUD, start with `View`:
 
-[`fastapi-crudrouter`](https://github.com/awtkns/fastapi-crudrouter) and [`fastcrud`](https://github.com/igorbenav/fastcrud) generate CRUD **functions** and register them on a router. FastAPI-Restly generates CRUD **methods on a class you can subclass**.
+```python
+from fastapi import Depends
 
-Unlike SQLModel, Restly does not ask you to wrap SQLAlchemy and Pydantic into one abstraction. Use explicit schemas when correctness matters, or let Restly derive them when the model/schema boundary is simple.
+def require_auth():
+    ...
 
-| | fastapi-crudrouter | fastcrud | **fastapi-restly** |
-|---|---|---|---|
-| Style | Router factory | Router factory | **Class-based views** |
-| Customize an endpoint | Replace the route | Replace the route | Override `perform_get` / `perform_create` / `save_object`, or replace the route |
-| Share behavior across resources | Wrapper functions | Wrapper functions | **Subclass a base view** |
-| Schema generation | Optional | Optional | Optional (auto from model) |
-| SQLAlchemy 2.0 / Pydantic v2 | Partial | Yes | **Yes, native** |
-| React Admin wire contract | No | No | **Built-in (`AsyncReactAdminView`)** |
+@fr.include_view(app)
+class AuthView(fr.View):
+    prefix = "/auth"
+    tags = ["auth"]
+    dependencies = [Depends(require_auth)]
 
-If you want a router that drops in and disappears, the CRUD-router libraries are a good fit. If you want a small object-oriented layer where every operation is a hookable method, that's Restly.
+    @fr.post("/login")
+    async def login(self, credentials: LoginRequest) -> Token:
+        ...
+
+    @fr.post("/refresh")
+    async def refresh(self, token: str) -> Token:
+        ...
+```
+
+The same class-level `dependencies` pattern works on `RestView` /
+`AsyncRestView`, so shared auth or tenant guards live on the resource class
+instead of being repeated on every endpoint.
 
 ## Philosophy
 
@@ -108,20 +130,32 @@ make test-typing
 
 ### Manual schema definition
 
-For custom validation or field aliases:
+For custom validation, aliases, or stable public contracts, define explicit read,
+create, and update schemas:
 
 ```python
+from datetime import datetime
+
 class UserRead(fr.IDSchema):
     name: str
     email: str
-    age: int
-    internal_id: fr.ReadOnly[str]
+    created_at: fr.ReadOnly[datetime]
+
+class UserCreate(fr.BaseSchema):
+    name: str
+    email: str
+
+class UserUpdate(fr.BaseSchema):
+    name: str | None = None
+    email: str | None = None
 
 @fr.include_view(app)
 class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
     schema = UserRead
+    creation_schema = UserCreate
+    update_schema = UserUpdate
 ```
 
 Use **auto-schema** for prototypes and internal tools. Use an **explicit schema** when contract stability and validation control matter (public APIs, aliases, strict response shapes).
