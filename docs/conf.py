@@ -5,6 +5,8 @@
 
 import os
 import sys
+from pathlib import Path
+from xml.etree import ElementTree
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
@@ -64,3 +66,46 @@ html_static_path = ["_static"]
 html_extra_path = ["robots.txt"]
 html_logo = "_static/restly-cat.png"
 html_css_files = ["custom.css"]
+
+
+def _canonical_index_url(app, pagename):
+    if pagename == "index":
+        return app.config.html_baseurl.rstrip("/") + "/"
+    if pagename.endswith("/index"):
+        return f"{app.config.html_baseurl.rstrip('/')}/{pagename[:-6]}/"
+    return None
+
+
+def _canonicalize_index_page(app, pagename, templatename, context, doctree):
+    """Use GitHub Pages directory URLs as canonicals for index pages."""
+    pageurl = _canonical_index_url(app, pagename)
+    if pageurl:
+        context["pageurl"] = pageurl
+
+
+def _canonicalize_sitemap_index(app, exception):
+    if exception:
+        return
+
+    sitemap_path = Path(app.outdir) / app.config.sitemap_filename
+    if not sitemap_path.exists():
+        return
+
+    sitemap_namespace = "http://www.sitemaps.org/schemas/sitemap/0.9"
+    ElementTree.register_namespace("", sitemap_namespace)
+    tree = ElementTree.parse(sitemap_path)
+    namespace = {"sitemap": sitemap_namespace}
+
+    changed = False
+    for loc in tree.findall(".//sitemap:loc", namespace):
+        if loc.text and loc.text.endswith("/index.html"):
+            loc.text = loc.text[: -len("index.html")]
+            changed = True
+
+    if changed:
+        tree.write(sitemap_path, xml_declaration=True, encoding="utf-8")
+
+
+def setup(app):
+    app.connect("html-page-context", _canonicalize_index_page)
+    app.connect("build-finished", _canonicalize_sitemap_index, priority=900)
