@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed `fr.include_view(...)` registration on `fastapi.APIRouter` parents.
+
 ## [0.5.0] - 2026-05-06
 
 First public beta release.

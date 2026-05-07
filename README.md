@@ -36,6 +36,7 @@ the common list/get/create/update/delete case.
 
 - **True class-based views** — group endpoints on real Python classes with inheritance and method overrides.
 - **REST endpoints in minutes** — use `View` for custom resources, or `AsyncRestView` / `RestView` for generated CRUD.
+- **Incremental adoption** — Restly coexists with ordinary FastAPI routes; use it per resource and step out anytime. See [Existing Projects](docs/howto_existing_project.md).
 - **Class-level dependencies** — apply authentication, rate limits, tenant context, or other FastAPI dependencies once per view.
 - **Explicit override points** — replace an endpoint, a business-logic handler, or an object helper without awkward hacks.
 - **Modern stack** — SQLAlchemy 2.0, Pydantic v2, async and sync support.

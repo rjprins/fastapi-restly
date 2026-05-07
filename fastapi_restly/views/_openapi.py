@@ -33,9 +33,48 @@ class _Entry:
     update_schema: type[pydantic.BaseModel]
 
 
-_registry: weakref.WeakKeyDictionary[
-    fastapi.FastAPI | fastapi.APIRouter, list[_Entry]
-] = weakref.WeakKeyDictionary()
+_RegistryKey = int
+_RegistryRef = weakref.ReferenceType[fastapi.FastAPI | fastapi.APIRouter]
+_registry: dict[_RegistryKey, tuple[_RegistryRef, list[_Entry]]] = {}
+
+
+def _registry_entries(
+    parent_router: fastapi.FastAPI | fastapi.APIRouter,
+) -> list[_Entry]:
+    """Return resource-ref entries for ``parent_router``.
+
+    ``APIRouter`` instances are weak-referenceable but not hashable, so
+    ``WeakKeyDictionary`` cannot store them. Key by identity and remove the
+    entry when the router/app is collected.
+    """
+    key = id(parent_router)
+    existing = _registry.get(key)
+    if existing is not None:
+        ref, entries = existing
+        if ref() is parent_router:
+            return entries
+
+    def cleanup(ref: _RegistryRef, key: _RegistryKey = key) -> None:
+        current = _registry.get(key)
+        if current is not None and current[0] is ref:
+            _registry.pop(key, None)
+
+    ref = weakref.ref(parent_router, cleanup)
+    entries: list[_Entry] = []
+    _registry[key] = (ref, entries)
+    return entries
+
+
+def _registered_entries(
+    parent_router: fastapi.FastAPI | fastapi.APIRouter,
+) -> list[_Entry]:
+    existing = _registry.get(id(parent_router))
+    if existing is None:
+        return []
+    ref, entries = existing
+    if ref() is parent_router:
+        return entries
+    return []
 
 
 def _register_for_resource_ref(
@@ -63,10 +102,7 @@ def _register_for_resource_ref(
         update_schema=view_cls.update_schema,
     )
 
-    entries = _registry.get(parent_router)
-    if entries is None:
-        entries = []
-        _registry[parent_router] = entries
+    entries = _registry_entries(parent_router)
     entries.append(entry)
 
     # Only the FastAPI app generates the OpenAPI spec; APIRouter parents have
@@ -86,7 +122,7 @@ def _ensure_patched(app: fastapi.FastAPI) -> None:
 
     def patched_openapi() -> dict[str, Any]:
         spec = original_openapi()
-        entries = _registry.get(app, [])
+        entries = _registered_entries(app)
         model_to_resource = {e.model: e.resource_name for e in entries}
         _annotate_spec(spec, entries, model_to_resource)
         return spec

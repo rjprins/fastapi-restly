@@ -115,7 +115,7 @@ Full fixture reference with isolation model details and async test setup.
 :link: howto_existing_project
 :link-type: doc
 
-Plug FastAPI-Restly into a project that already manages its own sessions.
+Adopt Restly beside existing FastAPI routes, then wire it into your sessions and models.
 :::
 
 :::{grid-item-card} Technical Details

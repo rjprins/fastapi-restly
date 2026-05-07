@@ -1,5 +1,88 @@
 # How-To: Use FastAPI-Restly in an Existing Project
 
+FastAPI-Restly registers ordinary FastAPI path operations. You can mount Restly
+views on the same `FastAPI` app or `APIRouter` as your existing routes, adopt it
+one resource at a time, and move individual endpoints back to plain FastAPI when
+that is the clearer shape.
+
+## Add Restly Next to Existing Routes
+
+Use `fr.include_view(...)` wherever you already compose routes. Existing routers
+and Restly views can share the same parent app or router:
+
+```python
+from fastapi import APIRouter, FastAPI
+import fastapi_restly as fr
+
+from .orders import router as orders_router
+
+app = FastAPI()
+api = APIRouter(prefix="/api")
+
+api.include_router(orders_router, prefix="/orders")  # existing FastAPI routes
+
+
+class UserView(fr.AsyncRestView):
+    prefix = "/users"
+    model = User
+    schema = UserRead
+
+
+fr.include_view(api, UserView)  # generated /api/users routes
+
+app.include_router(api)
+```
+
+Adoption is per resource. In the example above, orders stay hand-written while
+users use Restly. Adding a `ProductView` later does not require changing the
+orders router.
+
+You can also keep plain FastAPI routes beside a Restly resource for endpoints
+that are not part of the CRUD surface:
+
+```python
+@api.get("/users/{id}/export")
+async def export_user(id: int):
+    ...
+```
+
+## Step Out for One Endpoint
+
+If one generated endpoint should be hand-written, exclude only that route and
+add the FastAPI route yourself:
+
+```python
+class UserView(fr.AsyncRestView):
+    prefix = "/users"
+    model = User
+    schema = UserRead
+    exclude_routes = (fr.ViewRoute.DELETE,)
+
+
+fr.include_view(api, UserView)
+
+
+@api.delete("/users/{id}", status_code=204)
+async def delete_user(id: int):
+    ...
+```
+
+That leaves Restly responsible for list, create, read, and update while DELETE
+uses your ordinary FastAPI implementation. For smaller changes that keep the
+same HTTP contract, prefer overriding a `perform_*` handler; for a different
+status code, response shape, or query interface, see
+[Override CRUD Behavior and Add Custom Endpoints](howto_override_endpoints.md).
+
+## Step Out for a Whole Resource
+
+There is no global Restly router to unwind. A resource is included only where
+you call `fr.include_view(...)`. To move a resource back to plain FastAPI,
+remove that include call and register an `APIRouter` with the same prefix and
+path operations.
+
+Your models, Pydantic schemas, dependencies, and database session wiring can
+stay in ordinary application modules. Restly does not need to own the whole app.
+
 ## Provide Your Own Session Generator
 
 If your project already manages its own database sessions, configure
