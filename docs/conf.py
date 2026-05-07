@@ -61,5 +61,6 @@ html_context = {
     "doc_path": "docs",
 }
 html_static_path = ["_static"]
+html_extra_path = ["robots.txt"]
 html_logo = "_static/restly-cat.png"
 html_css_files = ["custom.css"]

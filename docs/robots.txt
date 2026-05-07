@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://rjprins.github.io/fastapi-restly/sitemap.xml
