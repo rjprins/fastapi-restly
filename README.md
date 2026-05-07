@@ -12,27 +12,21 @@
 **Build maintainable REST APIs on FastAPI, SQLAlchemy 2.0, and Pydantic v2 — with real class-based views.**
 
 > **Status:** `0.5.0` — first public beta release.
-> ```bash
-> pip install "fastapi-restly[standard]"
-> ```
+
+```bash
+pip install "fastapi-restly[standard]"
+```
 
 **Docs:** <https://rjprins.github.io/fastapi-restly/> · **[Changelog](CHANGELOG.md)** · **[Contributing](CONTRIBUTING.md)** · **[Security](SECURITY.md)** · **[Examples](example-projects/)**
 
 ## Why FastAPI-Restly?
 
-FastAPI-Restly is a small REST resource layer on top of FastAPI, SQLAlchemy, and Pydantic:
+Restly helps building FastAPI apps faster, with consistent APIs.
 
-```text
-SQLAlchemy owns persistence.
-Pydantic owns validation and serialization.
-FastAPI owns routing and dependency injection.
-Restly owns repetitive REST resource mechanics.
-```
+It features **class-based views** that support inheritance, mixins, and method overrides.
 
-The base `View` class is the foundation. It gives related endpoints a shared
-prefix, tags, dependencies, and ordinary Python inheritance without forcing a
-model or CRUD shape. `RestView` and `AsyncRestView` build on that foundation for
-the common list/get/create/update/delete case.
+Class-based views are essential for re-using code.
+The `RestView` and `AsyncRestView` provide full CRUD with a single class declaration that is still fully customizable by overriding endpoints, hooks, and other class methods.
 
 - **True class-based views** — group endpoints on real Python classes with inheritance and method overrides.
 - **REST endpoints in minutes** — use `View` for custom resources, or `AsyncRestView` / `RestView` for generated CRUD.
