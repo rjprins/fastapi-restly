@@ -1,11 +1,8 @@
 # Tutorial Part 2: Customizing Views
 
-This tutorial extends the blog API from [Part 1](tutorial.md). It introduces every
-layer of the customization system in order, from the simplest override down to
-shared base classes.
+This tutorial extends the blog API from [Part 1](tutorial.md). It introduces every layer of the customization system in order, from the simplest override down to shared base classes.
 
-The examples use `AsyncRestView`. The same handlers and patterns apply to `RestView`
-(sync) — just drop the `async`/`await`.
+The examples use `AsyncRestView`. The same handlers and patterns apply to `RestView` (sync) — just drop the `async`/`await`.
 
 ---
 
@@ -26,8 +23,7 @@ Start at the highest layer that covers what you need. Drop down only when necess
 
 ## Layer 1 — `perform_*` handlers
 
-Each generated endpoint delegates to a `perform_*` handler. Override the handler to change
-the business logic without touching the HTTP contract.
+Each generated endpoint delegates to a `perform_*` handler. Override the handler to change the business logic without touching the HTTP contract.
 
 ```
 GET /          → listing() → perform_listing(query_params)
@@ -37,13 +33,11 @@ PATCH /{id}    → update()  → perform_update(id, schema_obj)
 DELETE /{id}   → delete() → perform_delete(id)
 ```
 
-Inside every handler, `self.session` is the live database session and `self.request`
-is the FastAPI `Request` object.
+Inside every handler, `self.session` is the live database session and `self.request` is the FastAPI `Request` object.
 
 ### perform_create — inject server-side fields
 
-Real APIs rarely accept every field from the client. Say each post should record
-which user created it, taken from the request context rather than from the payload:
+Real APIs rarely accept every field from the client. Say each post should record which user created it, taken from the request context rather than from the payload:
 
 ```python
 @fr.include_view(app)
@@ -58,9 +52,7 @@ class PostView(fr.AsyncRestView):
         return await self.save_object(obj)
 ```
 
-`build_from_schema` builds the ORM instance from the validated payload.
-`save_object` flushes and refreshes it. Both are separate steps you can
-intercept individually — more on that in Layer 2.
+`build_from_schema` builds the ORM instance from the validated payload. `save_object` flushes and refreshes it. Both are separate steps you can intercept individually — more on that in Layer 2.
 
 ### perform_update — validate before saving
 
@@ -75,19 +67,11 @@ Block updates based on the current state of the object:
         return await self.save_object(obj)
 ```
 
-Calling `self.perform_get(id)` reuses the same 404 logic as the GET endpoint.
-If you later override `perform_get` (for example, to add tenant scoping), `perform_update`
-picks up that change automatically.
+Calling `self.perform_get(id)` reuses the same 404 logic as the GET endpoint. If you later override `perform_get` (for example, to add tenant scoping), `perform_update` picks up that change automatically.
 
 ### build_query — filter results to the current user
 
-The most common real-world override: restrict reads to rows the caller is
-allowed to see. `build_query` is the seam `perform_listing` and `perform_get`
-consult, and `count_listing` counts the query built by `perform_listing`. A single
-override keeps listed rows, pagination totals, and single-row fetches in
-sync — a row hidden from listing returns 404 from `GET /{id}` too, and
-`perform_update` /
-`perform_delete` inherit the visibility check via `perform_get`.
+The most common real-world override: restrict reads to rows the caller is allowed to see. `build_query` is the seam `perform_listing` and `perform_get` consult, and `count_listing` counts the query built by `perform_listing`. A single override keeps listed rows, pagination totals, and single-row fetches in sync — a row hidden from listing returns 404 from `GET /{id}` too, and `perform_update` / `perform_delete` inherit the visibility check via `perform_get`.
 
 ```python
 @fr.include_view(app)
@@ -102,10 +86,7 @@ class PostView(fr.AsyncRestView):
         return super().build_query().where(Post.author_id == user_id)
 ```
 
-Calling `super().build_query()` and chaining `.where(...)` composes cleanly
-with any base-class or mixin filter. Reach for a `perform_listing` override only when
-you need to do work beyond a `WHERE` clause — see
-[Override Endpoints](howto_override_endpoints.md#scope-filter-reads).
+Calling `super().build_query()` and chaining `.where(...)` composes cleanly with any base-class or mixin filter. Reach for a `perform_listing` override only when you need to do work beyond a `WHERE` clause — see [Override Endpoints](howto_override_endpoints.md#scope-filter-reads).
 
 ### perform_delete — require explicit confirmation
 
@@ -116,16 +97,13 @@ you need to do work beyond a `WHERE` clause — see
         return await super().perform_delete(id)
 ```
 
-`super().perform_delete(id)` handles the 404 check and the actual deletion.
-Override only the guard; let the base class do the rest.
+`super().perform_delete(id)` handles the 404 check and the actual deletion. Override only the guard; let the base class do the rest.
 
 ---
 
 ## Layer 2 — object helpers
 
-The object helpers sit below the `perform_*` handlers. They handle the mechanics of
-construction, update, explicit save, and removal. Override them when the same
-change applies to **both** create and update, so you don't repeat yourself.
+The object helpers sit below the `perform_*` handlers. They handle the mechanics of construction, update, explicit save, and removal. Override them when the same change applies to **both** create and update, so you don't repeat yourself.
 
 ```
 perform_create  →  build_from_schema(schema_obj)
@@ -139,14 +117,11 @@ perform_delete  →  perform_get(id)
            →  delete_object(obj)
 ```
 
-`build_from_schema` and `apply_schema` do not flush. They prepare the ORM object;
-`save_object` is the explicit flush/refresh step used by the default create and
-update handlers.
+`build_from_schema` and `apply_schema` do not flush. They prepare the ORM object; `save_object` is the explicit flush/refresh step used by the default create and update handlers.
 
 ### save_object — run a side effect after every write
 
-If you need to do something after every successful write — send a webhook,
-invalidate a cache, emit an event — override `save_object`:
+If you need to do something after every successful write — send a webhook, invalidate a cache, emit an event — override `save_object`:
 
 ```python
     async def save_object(self, obj):
@@ -155,8 +130,7 @@ invalidate a cache, emit an event — override `save_object`:
         return obj
 ```
 
-Because `perform_create` and `perform_update` both end with `self.save_object(obj)`,
-this one override covers both operations.
+Because `perform_create` and `perform_update` both end with `self.save_object(obj)`, this one override covers both operations.
 
 ### build_from_schema — set a default on creation only
 
@@ -192,15 +166,15 @@ from datetime import datetime, timezone
         # Do NOT call super() — that would remove the row.
 ```
 
-`DELETE /posts/{id}` now marks the row instead of removing it. The 204 response
-is still returned by `perform_delete`; only the persistence step changes.
+`DELETE /posts/{id}` now marks the row instead of removing it. The 204 response is still returned by `perform_delete`; only the persistence step changes.
 
 ---
 
 ## Layer 3 — custom routes
 
-Use `@fr.get`, `@fr.post`, `@fr.patch`, `@fr.put`, or `@fr.delete` to add
-endpoints alongside the generated ones.
+Use `@fr.get`, `@fr.post`, `@fr.patch`, `@fr.put`, or `@fr.delete` to add endpoints alongside the generated ones.
+
+All route decorator keyword arguments are passed through to FastAPI. Configure class-based routes the same way you configure regular FastAPI routes: use `response_model=`, `status_code=`, `dependencies=`, `responses=`, and the other FastAPI route options as usual.
 
 ### A computed read endpoint
 
@@ -223,8 +197,7 @@ class PostView(fr.AsyncRestView):
         }
 ```
 
-Calling `self.perform_get(id)` gives you the ORM object with the same 404 logic
-as the standard GET endpoint — and picks up any override you may have applied.
+Calling `self.perform_get(id)` gives you the ORM object with the same 404 logic as the standard GET endpoint — and picks up any override you may have applied.
 
 ### A state-change action
 
@@ -243,21 +216,15 @@ import fastapi
         return self.to_response_schema(post)
 ```
 
-`self.to_response_schema(post)` serializes the ORM object using the view's
-configured response schema, exactly as the standard endpoints do.
+`self.to_response_schema(post)` serializes the ORM object using the view's configured response schema, exactly as the standard endpoints do.
 
 ---
 
 ## Database conflict responses
 
-By default, Restly translates SQLAlchemy `IntegrityError` exceptions raised by
-database constraints into `409 Conflict` responses. This is usually what you
-want for duplicate unique values or invalid foreign-key references, and no
-handler code is needed in normal CRUD views.
+By default, Restly translates SQLAlchemy `IntegrityError` exceptions raised by database constraints into `409 Conflict` responses. This is usually what you want for duplicate unique values or invalid foreign-key references, and no handler code is needed in normal CRUD views.
 
-If your app needs a different error envelope, register a handler specifically
-for `sqlalchemy.exc.IntegrityError` before calling `fr.configure(app=...)` or
-before registering views with `fr.include_view(app)`:
+If your app needs a different error envelope, register a handler specifically for `sqlalchemy.exc.IntegrityError` before calling `fr.configure(app=...)` or before registering views with `fr.include_view(app)`:
 
 ```python
 from fastapi.responses import JSONResponse
@@ -271,28 +238,23 @@ async def integrity_error_handler(request, exc):
     )
 ```
 
-Restly respects that handler and does not replace it. You can also opt out of
-the default handler entirely:
+Restly respects that handler and does not replace it. You can also opt out of the default handler entirely:
 
 ```python
 fr.configure(app=app, install_default_exception_handlers=False)
 ```
 
-See [Default Exception Handling](api_reference.md#default-exception-handling)
-for the exact registration behavior.
+See [Default Exception Handling](api_reference.md#default-exception-handling) for the exact registration behavior.
 
 ---
 
 ## Layer 4 — inheritance
 
-All of the above can be promoted from a single view to a shared base class.
-Because views are plain Python classes, normal inheritance works without any
-special framework support.
+All of the above can be promoted from a single view to a shared base class. Because views are plain Python classes, normal inheritance works without any special framework support.
 
 ### Extract authentication into a base class
 
-The blog API has two views that both need a current user. Instead of repeating
-the dependency and the `perform_create` logic:
+The blog API has two views that both need a current user. Instead of repeating the dependency and the `perform_create` logic:
 
 ```python
 from typing import Annotated
@@ -325,9 +287,7 @@ class CommentView(AuthoredBase):
     schema = CommentRead
 ```
 
-`self.current_user` is injected by FastAPI's dependency system and is available
-in every method of every subclass. `AuthoredBase` itself is never passed to
-`include_view` — only the concrete subclasses are registered.
+`self.current_user` is injected by FastAPI's dependency system and is available in every method of every subclass. `AuthoredBase` itself is never passed to `include_view` — only the concrete subclasses are registered.
 
 ### Layer overrides with super()
 
@@ -346,14 +306,11 @@ class PostView(AuthoredBase):
         return await super().perform_create(schema_obj)
 ```
 
-The call chain is `PostView.perform_create` → `AuthoredBase.perform_create` →
-`AsyncRestView.perform_create`. All three layers run in order.
+The call chain is `PostView.perform_create` → `AuthoredBase.perform_create` → `AsyncRestView.perform_create`. All three layers run in order.
 
 ### Apply router-level dependencies
 
-`dependencies = [Depends(fn)]` on a view (or base class) applies `fn` to
-every route the view registers — without the dependency result being injected
-as an attribute. Use this for authentication guards or rate-limiting:
+`dependencies = [Depends(fn)]` on a view (or base class) applies `fn` to every route the view registers — without the dependency result being injected as an attribute. Use this for authentication guards or rate-limiting:
 
 ```python
 class ProtectedBase(fr.AsyncRestView):

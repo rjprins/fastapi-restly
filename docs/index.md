@@ -14,15 +14,15 @@ FastAPI-Restly (`fr`) is a framework that supplements FastAPI with instant CRUD 
 
 FastAPI-Restly implements **true class-based views** — real Python classes that support inheritance and method overrides. Share common behavior across views by subclassing, and override individual CRUD methods without touching the rest. See [Class-Based Views](class_based_views.md) for why this is the heart of the framework.
 
+> **Status:** `0.5.0` — first public beta release.
+>
+> After four years of internal development at two separate companies, Restly is finally ready for its first public release! Right now the goal is to see if the public API of Restly hits the right abstractions, and to stabilize the API for a `1.0.0` release. From `0.5.0` onwards, expect small breaking changes in naming and functionality on the deeper parts of the API surface. Feedback is always appreciated!
+
 ## Quick Start
 
-The maintained copy-paste Quick Start lives in [Getting Started](getting_started.md).
-It covers database setup, dev table creation, async vs sync views, auto-generated
-schemas, explicit schemas, and the generated endpoint surface.
+The maintained copy-paste Quick Start lives in [Getting Started](getting_started.md). It covers database setup, dev table creation, async vs sync views, auto-generated schemas, explicit schemas, and the generated endpoint surface.
 
-Use auto-schema when you want speed and low boilerplate. Use explicit schemas when
-you need strict public API contracts, custom validation, aliases, or field-level
-serialization control.
+Use auto-schema when you want speed and low boilerplate. Use explicit schemas when you need strict public API contracts, custom validation, aliases, or field-level serialization control.
 
 ## Features
 

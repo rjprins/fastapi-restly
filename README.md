@@ -12,6 +12,8 @@
 **Build maintainable REST APIs on FastAPI, SQLAlchemy 2.0, and Pydantic v2 — with real class-based views.**
 
 > **Status:** `0.5.0` — first public beta release.
+>
+> After four years of internal development at two separate companies, Restly is finally ready for its first public release! Right now the goal is to see if the public API of Restly hits the right abstractions, and to stabilize the API for a `1.0.0` release. From `0.5.0` onwards, expect small breaking changes in naming and functionality on the deeper parts of the API surface. Feedback is always appreciated!
 
 ```bash
 pip install "fastapi-restly[standard]"
@@ -25,19 +27,17 @@ Restly helps building FastAPI apps faster, with consistent APIs.
 
 It features **class-based views** that support inheritance, mixins, and method overrides.
 
-Class-based views are essential for re-using code.
-The `RestView` and `AsyncRestView` provide full CRUD with a single class declaration that is still fully customizable by overriding endpoints, hooks, and other class methods.
+Class-based views are essential for re-using code. The `RestView` and `AsyncRestView` provide full CRUD with a single class declaration that is still fully customizable by overriding endpoints, hooks, and other class methods.
 
-- **True class-based views** — group endpoints on real Python classes with inheritance and method overrides.
-- **REST endpoints in minutes** — use `View` for custom resources, or `AsyncRestView` / `RestView` for generated CRUD.
-- **Incremental adoption** — Restly coexists with ordinary FastAPI routes; use it per resource and step out anytime. See [Existing Projects](docs/howto_existing_project.md).
-- **Class-level dependencies** — apply authentication, rate limits, tenant context, or other FastAPI dependencies once per view.
-- **Explicit override points** — replace an endpoint, a business-logic handler, or an object helper without awkward hacks.
-- **Modern stack** — SQLAlchemy 2.0, Pydantic v2, async and sync support.
-- **Filtering, pagination, sorting** — standard HTTP query interface generated from your response schema.
-- **Field control** — `ReadOnly` / `WriteOnly` markers, plus scalar foreign-key references via `IDRef[...]`.
-- **React Admin ready** — `AsyncReactAdminView` speaks the `ra-data-simple-rest` wire contract, no custom data provider needed.
-- **Testing utilities** — `RestlyTestClient` and savepoint-based isolation fixtures.
+- **class-based views**: group endpoints on real Python classes with inheritance and method overrides.
+- **REST endpoints in minutes**: use `View` for custom resources, or `AsyncRestView` / `RestView` for generated CRUD.
+- **Incremental adoption**: Restly doesn't get in your way; use it per resource and step out anytime. See [Existing Projects](docs/howto_existing_project.md).
+- **Class-level dependencies**: Put dependencies that all endpoints need on the class level, and get them as attributes on `self`.
+- **Explicit override points**: Call-chain allows for overriding at multiple levels.
+- **Filtering, pagination, sorting**: Get fully-featured list routes specific to your Pydantic schema.
+- **Field control**: `ReadOnly` / `WriteOnly` markers, plus foreign-key validation in Pydantic schemas via `IDRef[...]`.
+- **React Admin ready**: `AsyncReactAdminView` speaks the `ra-data-simple-rest` wire contract, no custom data provider needed.
+- **General app utilities**: Things most FastAPI apps will need: SQLAlchemy engine and session setup, alembic test fixtures, etc.
 
 ## Quickstart
 
@@ -60,46 +60,17 @@ class UserView(fr.AsyncRestView):
     model = User
 ```
 
-That view exposes list, create, read, patch, and delete endpoints with filtering,
-sorting, pagination, and an auto-generated Pydantic schema. For the full
-copy-paste app, database setup, and run command, see
-[Getting Started](docs/getting_started.md).
+That view exposes these HTTP routes:
 
-For endpoints that are related but not CRUD, start with `View`:
-
-```python
-from typing import Annotated
-from fastapi import Depends
-
-def get_current_user():
-    ...
-
-@fr.include_view(app)
-class AccountView(fr.View):
-    prefix = "/account"
-    tags = ["account"]
-
-    current_user: Annotated[User, Depends(get_current_user)]
-
-    @fr.get("/me")
-    async def me(self) -> AccountRead:
-        return AccountRead.from_user(self.current_user)
-
-    @fr.post("/password")
-    async def change_password(self, payload: PasswordChange) -> AccountRead:
-        ...
+```http
+GET    /users/       # list users, with filtering, sorting, and pagination
+POST   /users/       # create a user
+GET    /users/{id}   # read one user
+PATCH  /users/{id}   # partially update one user
+DELETE /users/{id}   # delete one user
 ```
 
-Annotated dependencies become instance attributes, so shared request context
-lives on the view class instead of being repeated on every endpoint. The same
-pattern works on `RestView` / `AsyncRestView`.
-
-## Philosophy
-
-Restly uses a layered approach. Each layer adds convenience while letting you
-drop down for deeper control. The less customization you need, the more you get
-out-of-the-box — full customization never requires awkward hacks. Restly stays
-close to patterns already provided by FastAPI, Pydantic, and SQLAlchemy.
+Restly generates the Pydantic schemas automatically. For the full copy-paste app see [Getting Started](docs/getting_started.md).
 
 ## Installation (development)
 
@@ -113,8 +84,7 @@ uv sync
 
 ### Manual schema definition
 
-For custom validation, aliases, or stable public contracts, define an explicit
-read schema:
+For custom validation, aliases, or stable public contracts, define an explicit read schema:
 
 ```python
 from datetime import datetime
@@ -122,6 +92,7 @@ from datetime import datetime
 class UserRead(fr.IDSchema):
     name: str
     email: str
+    password: fr.WriteOnly[str]
     created_at: fr.ReadOnly[datetime]
 
 @fr.include_view(app)
@@ -129,10 +100,15 @@ class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
     schema = UserRead
+    # create_schema = UserCreate  # auto-generated from UserRead
+    # update_schema = UserUpdate  # auto-generated from UserCreat
 ```
 
-Restly derives create and update schemas from `UserRead` by default. When you
-need full control over write payloads, declare them explicitly:
+Restly derives create and update schemas from `UserRead` by default.
+The `UserCreate` schema is created by omitting `ReadOnly` fields.
+The `UserUpdate` schema allows for partial updates by making all fields optional.
+
+When you need full control over write payloads, declare them explicitly:
 
 ```python
 class UserCreate(fr.BaseSchema):
@@ -156,8 +132,7 @@ Use **auto-schema** for prototypes and internal tools. Use an **explicit schema*
 
 ### List endpoint query parameters
 
-List endpoints expose a stable URL parameter dialect generated from the
-response schema:
+List endpoints expose a stable URL parameter dialect generated from the response schema:
 
 ```bash
 GET /users/?name=John&age__gte=21
@@ -169,16 +144,9 @@ GET /users/?sort=-created_at,name
 GET /users/?page=2&page_size=10
 ```
 
-Parameter keys follow the **response schema's public names** end-to-end —
-including dotted relation paths. If `ArticleRead.author` has
-`Field(alias="writer")` and `AuthorRead.name` has
-`Field(alias="authorName")`, the URL key is `writer.authorName`. Aliased
-fields are only reachable by their alias; `populate_by_name` does not
-extend the URL surface with the Python field name.
+Parameter keys follow the **response schema's public names** end-to-end — including dotted relation paths. If `ArticleRead.author` has `Field(alias="writer")` and `AuthorRead.name` has `Field(alias="authorName")`, the URL key is `writer.authorName`. Aliased fields are only reachable by their alias; `populate_by_name` does not extend the URL surface with the Python field name.
 
-Pagination is opt-in: omitting `page_size` returns every matching row.
-For public/production endpoints set `default_page_size` and
-`max_page_size` on the view class:
+Pagination is opt-in: omitting `page_size` returns every matching row. For public/production endpoints set `default_page_size` and `max_page_size` on the view class:
 
 ```python
 class UserView(fr.AsyncRestView):
@@ -186,8 +154,7 @@ class UserView(fr.AsyncRestView):
     max_page_size = 200
 ```
 
-See [How-To: Filter, Sort, and Paginate Lists](docs/howto_query_modifiers.md)
-for the full operator surface, alias rules, and pagination guidance.
+See [How-To: Filter, Sort, and Paginate Lists](docs/howto_query_modifiers.md) for the full operator surface, alias rules, and pagination guidance.
 
 ### Read-only and write-only fields
 
@@ -218,7 +185,7 @@ class OrderRead(fr.IDSchema):
 
 ### Custom endpoints and handlers
 
-Add endpoints with `@fr.get`, `@fr.post`, `@fr.put`, `@fr.patch`, `@fr.delete`, or the generic `@fr.route`. Override `perform_*` handlers (`perform_listing`, `perform_get`, `perform_create`, ...) to customise built-in CRUD logic without replacing the endpoint.
+Add endpoints with `@fr.get`, `@fr.post`, `@fr.put`, `@fr.patch`, `@fr.delete`, or the generic `@fr.route`. Route decorator keyword arguments are passed through to FastAPI, so class-based routes are configured the same way as regular FastAPI routes: use `response_model=`, `status_code=`, `dependencies=`, `responses=`, and the other FastAPI route options as usual. Override `perform_*` handlers (`perform_listing`, `perform_get`, `perform_create`, ...) to customise built-in CRUD logic without replacing the endpoint.
 
 ```python
 @fr.include_view(app)
@@ -317,9 +284,7 @@ fr.configure(async_database_url="postgresql+asyncpg://user:pass@localhost/db")
 fr.configure(database_url="sqlite:///app.db")
 ```
 
-Restly has one public process-wide configuration. For per-view databases,
-read replicas, or other custom session wiring, use a normal FastAPI dependency
-on that view; see the existing-project how-to in the documentation.
+Restly has one public process-wide configuration. For per-view databases, read replicas, or other custom session wiring, use a normal FastAPI dependency on that view; see the existing-project how-to in the documentation.
 
 ## Documentation
 

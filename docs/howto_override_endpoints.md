@@ -1,22 +1,14 @@
 # How-To: Override CRUD Behavior and Add Custom Endpoints
 
-FastAPI-Restly generates five standard CRUD endpoints for every view, but real
-applications always need to bend the rules: inject extra fields, restrict which
-rows a user may see, run side effects, or expose non-CRUD operations. This guide
-walks through every layer of the override system, from the highest-level handlers
-down to raw session access.
+FastAPI-Restly generates five standard CRUD endpoints for every view, but real applications always need to bend the rules: inject extra fields, restrict which rows a user may see, run side effects, or expose non-CRUD operations. This guide walks through every layer of the override system, from the highest-level handlers down to raw session access.
 
-Every concrete view class must be registered with `fr.include_view(app, ViewClass)`
-or the decorator shortcut before FastAPI sees its routes. Larger apps are easier
-to organize when view modules define classes and app/router modules include them.
+Every concrete view class must be registered with `fr.include_view(app, ViewClass)` or the decorator shortcut before FastAPI sees its routes. Larger apps are easier to organize when view modules define classes and app/router modules include them.
 
 ---
 
 ## How the handler chain works
 
-Understanding the call chain helps you pick the right layer to override.
-The API reference also classifies the full view method surface:
-[View Method Surface](api_reference.md#view-method-surface).
+Understanding the call chain helps you pick the right layer to override. The API reference also classifies the full view method surface: [View Method Surface](api_reference.md#view-method-surface).
 
 ### Read path
 
@@ -61,25 +53,15 @@ DELETE /{id}
             └─ delete_object(obj)    ← delete persistence boundary
 ```
 
-`build_from_schema` and `apply_schema` prepare the ORM object but do not flush
-the session. The default create and update handlers both call `save_object`
-afterwards; that explicit save step is where the write is flushed and refreshed
-from the database. Deletes use a separate boundary: `delete_object` deletes the
-row and flushes.
+`build_from_schema` and `apply_schema` prepare the ORM object but do not flush the session. The default create and update handlers both call `save_object` afterwards; that explicit save step is where the write is flushed and refreshed from the database. Deletes use a separate boundary: `delete_object` deletes the row and flushes.
 
-**General rule:** prefer overriding `perform_*` handlers for business logic and
-`build_from_schema` / `apply_schema` / `save_object` / `delete_object` for
-lower-level structural changes. When you need to change the HTTP contract
-itself — status code, response shape, headers, or query parameter semantics —
-replace the raw endpoint method; see
-[Replace a generated route](#replace-a-generated-route) below.
+**General rule:** prefer overriding `perform_*` handlers for business logic and `build_from_schema` / `apply_schema` / `save_object` / `delete_object` for lower-level structural changes. When you need to change the HTTP contract itself — status code, response shape, headers, or query parameter semantics — replace the raw endpoint method; see [Replace a generated route](#replace-a-generated-route) below.
 
 ---
 
 ## Override a `perform_*` handler
 
-Each `perform_*` handler maps one-to-one to a generated endpoint. Override the
-one you want to change; the others keep their default implementations.
+Each `perform_*` handler maps one-to-one to a generated endpoint. Override the one you want to change; the others keep their default implementations.
 
 ### `perform_create` — inject server-side fields at creation
 
@@ -98,8 +80,7 @@ class UserView(fr.AsyncRestView):
         return await self.save_object(obj)
 ```
 
-`self.request` is the live FastAPI `Request`. `self.session` is the injected
-async SQLAlchemy session. Both are available in every handler.
+`self.request` is the live FastAPI `Request`. `self.session` is the injected async SQLAlchemy session. Both are available in every handler.
 
 ### `perform_update` — run validation before saving
 
@@ -125,9 +106,7 @@ Using `super()` here keeps the existing 404-checking and deletion logic intact.
 
 ### `perform_get` — eager-load extra relationships
 
-The default `perform_get` relies on the view's `schema` to decide which
-relationships to load. If you need something extra just for one endpoint,
-override and load it manually:
+The default `perform_get` relies on the view's `schema` to decide which relationships to load. If you need something extra just for one endpoint, override and load it manually:
 
 ```python
 from sqlalchemy.orm import selectinload
@@ -146,14 +125,7 @@ from sqlalchemy.orm import selectinload
 
 ## Scope-filter reads
 
-The most common real-world override: restrict reads to rows owned by the
-current user. The single seam for this is `build_query`, which
-`perform_listing` and `perform_get` consult. `count_listing` counts the query
-built by `perform_listing`, so override it once and pagination totals stay
-aligned with the listed rows, and a row hidden from listing returns 404
-from `GET /{id}` as well.
-`perform_update` and `perform_delete` inherit the visibility check via
-`perform_get`.
+The most common real-world override: restrict reads to rows owned by the current user. The single seam for this is `build_query`, which `perform_listing` and `perform_get` consult. `count_listing` counts the query built by `perform_listing`, so override it once and pagination totals stay aligned with the listed rows, and a row hidden from listing returns 404 from `GET /{id}` as well. `perform_update` and `perform_delete` inherit the visibility check via `perform_get`.
 
 ```python
 import sqlalchemy as sa
@@ -170,14 +142,9 @@ class DocumentView(fr.AsyncRestView):
         return super().build_query().where(Document.owner_id == user_id)
 ```
 
-Calling `super().build_query()` and chaining `.where(...)` composes
-cleanly with any base-class or mixin filter. For multi-tenant scoping,
-soft-delete hiding, or row-level permission visibility, this is the seam
-to reach for.
+Calling `super().build_query()` and chaining `.where(...)` composes cleanly with any base-class or mixin filter. For multi-tenant scoping, soft-delete hiding, or row-level permission visibility, this is the seam to reach for.
 
-If you need `perform_listing` to also do work *beyond* a `WHERE` clause —
-post-query result decoration or response-side annotation — override
-`perform_listing` itself and delegate to `super()`:
+If you need `perform_listing` to also do work *beyond* a `WHERE` clause — post-query result decoration or response-side annotation — override `perform_listing` itself and delegate to `super()`:
 
 ```python
     async def perform_listing(self, query_params):
@@ -187,17 +154,13 @@ post-query result decoration or response-side annotation — override
         return result
 ```
 
-If the listing needs a different SQL shape, prefer `build_query()` for base
-filters, joins, eager-loading options, and other SQLAlchemy `Select` changes.
-That keeps listing, pagination totals, and single-row fetches aligned.
+If the listing needs a different SQL shape, prefer `build_query()` for base filters, joins, eager-loading options, and other SQLAlchemy `Select` changes. That keeps listing, pagination totals, and single-row fetches aligned.
 
 ---
 
 ## Override low-level object helpers
 
-When the change you need applies to *all* writes (both create and update), it
-is cleaner to override the low-level helpers rather than duplicate logic in
-`perform_create` and `perform_update`.
+When the change you need applies to *all* writes (both create and update), it is cleaner to override the low-level helpers rather than duplicate logic in `perform_create` and `perform_update`.
 
 Two rules apply to `build_from_schema` / `apply_schema` overrides:
 
@@ -223,11 +186,9 @@ Two rules apply to `build_from_schema` / `apply_schema` overrides:
         return obj
 ```
 
-`save_object` is shared by the default create and update flows. It does not run
-for deletes; `delete_object` is the delete-side persistence boundary.
+`save_object` is shared by the default create and update flows. It does not run for deletes; `delete_object` is the delete-side persistence boundary.
 
-If you need one side effect for every successful write event, override both
-methods and delegate to a shared helper:
+If you need one side effect for every successful write event, override both methods and delegate to a shared helper:
 
 ```python
     async def _record_write_event(self, obj, action: str) -> None:
@@ -280,9 +241,7 @@ Instead of removing the row, mark it as archived:
 
 ## Extend rather than replace with `super()`
 
-For most overrides, calling `super()` and tweaking the result is less error-prone
-than re-implementing the handler from scratch. The pattern is consistent across all
-handlers:
+For most overrides, calling `super()` and tweaking the result is less error-prone than re-implementing the handler from scratch. The pattern is consistent across all handlers:
 
 ```python
     async def perform_listing(self, query_params):
@@ -297,8 +256,7 @@ handlers:
 
 ## Raise HTTP errors from handlers
 
-All `perform_*` handlers run inside a request context, so you can raise
-`fastapi.HTTPException` at any point:
+All `perform_*` handlers run inside a request context, so you can raise `fastapi.HTTPException` at any point:
 
 ```python
 import fastapi
@@ -313,8 +271,7 @@ import fastapi
 
 ## Add a custom read route
 
-Use `@fr.get` to expose computed or summarised data alongside the generated
-endpoints:
+Use `@fr.get` to expose computed or summarised data alongside the generated endpoints:
 
 ```python
 @fr.include_view(app)
@@ -333,15 +290,13 @@ class UserView(fr.AsyncRestView):
         }
 ```
 
-`perform_get` returns the raw ORM object, so you can access all model
-attributes directly.
+`perform_get` returns the raw ORM object, so you can access all model attributes directly.
 
 ---
 
 ## Add a custom action route
 
-Use `@fr.post` (or `@fr.patch`, `@fr.delete`) for explicit state-change
-actions such as archive, publish, or recalculate:
+Use `@fr.post` (or `@fr.patch`, `@fr.delete`) for explicit state-change actions such as archive, publish, or recalculate:
 
 ```python
 @fr.include_view(app)
@@ -364,14 +319,9 @@ class OrderView(fr.AsyncRestView):
 
 ## Replace a generated route
 
-The `perform_*` handlers let you change what happens *inside* a generated route while
-leaving its HTTP contract intact. Sometimes you need more than that: a
-different response shape, custom response headers, a non-standard status code,
-or completely different query parameter semantics. In those cases you can
-replace the generated route itself.
+The `perform_*` handlers let you change what happens *inside* a generated route while leaving its HTTP contract intact. Sometimes you need more than that: a different response shape, custom response headers, a non-standard status code, or completely different query parameter semantics. In those cases you can replace the generated route itself.
 
-To replace a route, define a method with the same name as the generated route
-and add a route decorator to it:
+To replace a route, define a method with the same name as the generated route and add a route decorator to it:
 
 ```python
 @fr.include_view(app)
@@ -388,11 +338,7 @@ class OrderView(fr.AsyncRestView):
         return serialized
 ```
 
-The route decorator is required. When the framework initialises a view it
-checks whether each standard route is already defined directly on the class.
-If it finds `delete` with a route decorator, it uses that version and skips
-the one from `AsyncRestView`. All other generated routes (`GET /`,
-`GET /{id}`, `POST /`, `PATCH /{id}`) remain unchanged.
+The route decorator is required. When the framework initialises a view it checks whether each standard route is already defined directly on the class. If it finds `delete` with a route decorator, it uses that version and skips the one from `AsyncRestView`. All other generated routes (`GET /`, `GET /{id}`, `POST /`, `PATCH /{id}`) remain unchanged.
 
 ### Route Replacement vs Handler Override
 
@@ -403,13 +349,11 @@ These two are easy to conflate:
 | Override a `perform_*` handler | `async def perform_create(self, ...)` — no decorator | Change business logic; keep the HTTP contract |
 | Replace a route | `@fr.delete("/{id}") async def delete(self, ...)` — with decorator | Change the HTTP contract: status code, response shape, headers, query params |
 
-Use handlers for the common case. Route replacement is for the cases where you
-genuinely need to renegotiate what the endpoint looks like on the wire.
+Use handlers for the common case. Route replacement is for the cases where you genuinely need to renegotiate what the endpoint looks like on the wire.
 
 ### What remains available inside a replacement
 
-A replacement is a full view method. Everything the parent view provides is
-still on `self`:
+A replacement is a full view method. Everything the parent view provides is still on `self`:
 
 - `self.session`, `self.request`, `self.model`, `self.schema`
 - All `perform_*` handlers — call them to reuse existing business logic without
@@ -419,22 +363,13 @@ still on `self`:
 - `self.build_from_schema`, `self.apply_schema`, `self.save_object`,
   `self.delete_object`
 
-The example above delegates the 404 check to `self.perform_get(id)` and the
-database removal to `self.delete_object(obj)`. Only the HTTP response layer
-changes.
+The example above delegates the 404 check to `self.perform_get(id)` and the database removal to `self.delete_object(obj)`. Only the HTTP response layer changes.
 
 ### Overriding response serialization
 
-Generated routes call `self.to_response_schema(obj)` before returning ORM
-objects. The default implementation builds a response payload from the configured
-schema, strips `WriteOnly` fields, normalizes relationship id fields, and then
-validates through Pydantic. That means response-side `@field_validator` and
-`@field_serializer` hooks behave the same way they would on an ordinary
-Pydantic response model.
+Generated routes call `self.to_response_schema(obj)` before returning ORM objects. The default implementation builds a response payload from the configured schema, strips `WriteOnly` fields, normalizes relationship id fields, and then validates through Pydantic. That means response-side `@field_validator` and `@field_serializer` hooks behave the same way they would on an ordinary Pydantic response model.
 
-Override `to_response_schema()` when one endpoint family needs a different
-projection, or when you intentionally want a faster path that skips Pydantic
-validation:
+Override `to_response_schema()` when one endpoint family needs a different projection, or when you intentionally want a faster path that skips Pydantic validation:
 
 ```python
 class UserView(fr.AsyncRestView):
@@ -450,19 +385,13 @@ class UserView(fr.AsyncRestView):
         )
 ```
 
-`model_construct()` is an escape hatch: it bypasses validators and required-field
-checks. Keep the payload aligned with your public response contract, and do not
-include `WriteOnly` fields such as passwords or API tokens.
+`model_construct()` is an escape hatch: it bypasses validators and required-field checks. Keep the payload aligned with your public response contract, and do not include `WriteOnly` fields such as passwords or API tokens.
 
 ### Relationship references in custom routes
 
-Generated `POST` and `PATCH` routes validate the request body before Restly
-calls `build_from_schema()` or `apply_schema()`, so `IDRef[Model]` fields are
-already `IDRef` instances by the time the resolver runs.
+Generated `POST` and `PATCH` routes validate the request body before Restly calls `build_from_schema()` or `apply_schema()`, so `IDRef[Model]` fields are already `IDRef` instances by the time the resolver runs.
 
-In a custom route, be careful when you construct a schema yourself. Pydantic's
-`model_construct()` skips validation, so scalar ids stay plain integers unless
-you wrap them explicitly:
+In a custom route, be careful when you construct a schema yourself. Pydantic's `model_construct()` skips validation, so scalar ids stay plain integers unless you wrap them explicitly:
 
 ```python
 from fastapi_restly.objects import async_build_from_schema
@@ -480,17 +409,9 @@ task_label = await async_build_from_schema(
 )
 ```
 
-This keeps the resolver path active: Restly verifies the referenced rows exist
-and then writes the FK columns. It is especially useful when the schema inherits
-from `IDSchema` and validated construction would require response-only fields
-such as `id` or timestamps. In that case, direct construction like
-`TaskLabelRead(task_id=1, label_id=2)` would run the `IDRef` validators, but
-it would also require those response-only values that the route does not have
-yet.
+This keeps the resolver path active: Restly verifies the referenced rows exist and then writes the FK columns. It is especially useful when the schema inherits from `IDSchema` and validated construction would require response-only fields such as `id` or timestamps. In that case, direct construction like `TaskLabelRead(task_id=1, label_id=2)` would run the `IDRef` validators, but it would also require those response-only values that the route does not have yet.
 
-If you instead use `IDSchema[Model]` as a nested relationship-object field in a
-custom response schema, serialize the ORM object through `self.to_response_schema(obj)`
-before returning it:
+If you instead use `IDSchema[Model]` as a nested relationship-object field in a custom response schema, serialize the ORM object through `self.to_response_schema(obj)` before returning it:
 
 ```python
 class TaskLabelNestedRead(fr.IDSchema):
@@ -504,19 +425,13 @@ async def attach(self, request: AttachRequest):
     return self.to_response_schema(obj)
 ```
 
-The raw ORM object usually has scalar FK columns, while the nested schema expects
-relationship-shaped data. `IDRef` fields do not need this extra step because
-their scalar wire format already matches the ORM FK value.
+The raw ORM object usually has scalar FK columns, while the nested schema expects relationship-shaped data. `IDRef` fields do not need this extra step because their scalar wire format already matches the ORM FK value.
 
-The SaaS example's `example-projects/saas/app/views/label.py` shows this in a
-`create_and_attach` route that creates a sibling row, flushes it to get an id,
-and then builds a second row with `IDRef` references.
+The SaaS example's `example-projects/saas/app/views/label.py` shows this in a `create_and_attach` route that creates a sibling row, flushes it to get an id, and then builds a second row with `IDRef` references.
 
 ### Example: return the deleted record
 
-The default `DELETE /{id}` returns `204 No Content`. Some API contracts
-(for instance `ra-data-simple-rest` for react-admin) expect the deleted record
-back as JSON:
+The default `DELETE /{id}` returns `204 No Content`. Some API contracts (for instance `ra-data-simple-rest` for react-admin) expect the deleted record back as JSON:
 
 ```python
 @fr.include_view(app)
@@ -537,11 +452,7 @@ The four other generated routes are unaffected.
 
 ### Example: replace the listing endpoint
 
-Replace `listing` to take full control of how the list is returned — for
-instance to add custom response headers. Note that the replacement takes no
-`query_params` argument; the framework's automatic query parameter injection
-only applies to the standard generated `listing`. Read query parameters directly
-from `self.request.query_params` if you need them:
+Replace `listing` to take full control of how the list is returned — for instance to add custom response headers. Note that the replacement takes no `query_params` argument; the framework's automatic query parameter injection only applies to the standard generated `listing`. Read query parameters directly from `self.request.query_params` if you need them:
 
 ```python
 import fastapi
@@ -569,9 +480,7 @@ class ProductView(fr.AsyncRestView):
 
 ### Share a replacement across views with a mixin
 
-If several views need the same changed contract, put the replacement in a
-mixin. Python's method resolution order ensures the mixin's version is picked
-up before the standard one:
+If several views need the same changed contract, put the replacement in a mixin. Python's method resolution order ensures the mixin's version is picked up before the standard one:
 
 ```python
 class DeleteReturnsObjectMixin:
@@ -597,13 +506,9 @@ class OrderView(DeleteReturnsObjectMixin, fr.AsyncRestView):
     schema = OrderRead
 ```
 
-Both views now return the deleted record as JSON. All other generated routes
-behave normally on both.
+Both views now return the deleted record as JSON. All other generated routes behave normally on both.
 
-The public React Admin views use the same route-replacement pattern
-internally: `fr.AsyncReactAdminView` and `fr.ReactAdminView` replace `listing`
-with one that speaks the `ra-data-simple-rest` wire contract, while preserving
-the standard CRUD handlers for the rest of the view.
+The public React Admin views use the same route-replacement pattern internally: `fr.AsyncReactAdminView` and `fr.ReactAdminView` replace `listing` with one that speaks the `ra-data-simple-rest` wire contract, while preserving the standard CRUD handlers for the rest of the view.
 
 ---
 
@@ -619,23 +524,15 @@ class UserView(fr.AsyncRestView):
     exclude_routes = [fr.ViewRoute.DELETE, fr.ViewRoute.UPDATE]
 ```
 
-Valid values are: `fr.ViewRoute.LIST`, `fr.ViewRoute.GET`,
-`fr.ViewRoute.CREATE`, `fr.ViewRoute.UPDATE`, `fr.ViewRoute.DELETE`. Route-name
-strings such as `"delete"` are also accepted; any other
-string raises `AttributeError` at startup.
+Valid values are: `fr.ViewRoute.LIST`, `fr.ViewRoute.GET`, `fr.ViewRoute.CREATE`, `fr.ViewRoute.UPDATE`, `fr.ViewRoute.DELETE`. Route-name strings such as `"delete"` are also accepted; any other string raises `AttributeError` at startup.
 
 ---
 
 ## Choosing between `@fr.route` and the shorthand decorators
 
-Prefer `@fr.get`, `@fr.post`, `@fr.put`, `@fr.patch`, and `@fr.delete` for
-most endpoints. They set the HTTP method automatically and apply Restly's
-default status codes: `@fr.get`/`@fr.put`/`@fr.patch` use 200, `@fr.post`
-uses 201, and `@fr.delete` uses 204.
+Prefer `@fr.get`, `@fr.post`, `@fr.put`, `@fr.patch`, and `@fr.delete` for most endpoints. They set the HTTP method automatically and apply Restly's default status codes: `@fr.get`/`@fr.put`/`@fr.patch` use 200, `@fr.post` uses 201, and `@fr.delete` uses 204.
 
-Use `@fr.route(path, methods=[...], ...)` only when you need full manual
-control over route options — for example, to register a single path under
-multiple HTTP methods, or to set a non-standard response code:
+Use `@fr.route(path, methods=[...], ...)` only when you need full manual control over route options — for example, to register a single path under multiple HTTP methods, or to set a non-standard response code:
 
 ```python
     @fr.route("/{id}/thumbnail", methods=["GET", "HEAD"], status_code=200)
@@ -643,12 +540,13 @@ multiple HTTP methods, or to set a non-standard response code:
         ...
 ```
 
+Both `@fr.route` and the shorthand decorators pass their keyword arguments through to FastAPI's route registration. Class-based routes therefore use the same configuration surface as regular FastAPI routes, including `response_model=`, `status_code=`, `dependencies=`, `responses=`, `tags=`, and other `APIRouter.add_api_route()` options.
+
 ---
 
 ## What is available on `self`
 
-Inside any handler or custom route method, the following attributes are
-always available:
+Inside any handler or custom route method, the following attributes are always available:
 
 | Attribute | Type | Description |
 |---|---|---|
@@ -657,5 +555,4 @@ always available:
 | `self.model` | `type[DeclarativeBase]` | The SQLAlchemy model class |
 | `self.schema` | `type[pydantic.BaseModel]` | The Pydantic response schema |
 
-Any class-level `Annotated` dependency you declare on the view (e.g. a current
-user) is also injected and available as an instance attribute.
+Any class-level `Annotated` dependency you declare on the view (e.g. a current user) is also injected and available as an instance attribute.
