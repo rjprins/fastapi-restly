@@ -42,4 +42,4 @@ jobs:
 
       - name: Publish to gh-pages
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: uv run ghp-import --no-history --no-jekyll --push site/html
+        run: uv run ghp-import --no-history --no-jekyll --cname www.fastapi-restly.org --push site/html
