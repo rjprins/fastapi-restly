@@ -27,7 +27,7 @@ Restly helps building FastAPI apps faster, with consistent APIs.
 
 It features **class-based views** that support inheritance, mixins, and method overrides.
 
-Class-based views are essential for re-using code. The `RestView` and `AsyncRestView` provide full CRUD with a single class declaration that is still fully customizable by overriding endpoints, hooks, and other class methods.
+Class-based views are essential for re-using code. The `RestView` and `AsyncRestView` provide full CRUD on top of a SQLAlchemy model with a single class declaration. It stays fully customizable by overriding endpoints, perform_* handlers, and other class methods.
 
 - **class-based views**: group endpoints on real Python classes with inheritance and method overrides.
 - **REST endpoints in minutes**: use `View` for custom resources, or `AsyncRestView` / `RestView` for generated CRUD.
@@ -80,7 +80,7 @@ cd fastapi-restly
 uv sync
 ```
 
-## Advanced features
+## Main features
 
 ### Manual schema definition
 
@@ -165,42 +165,51 @@ class UserRead(fr.IDSchema):
     name: str
     email: str
     password: fr.WriteOnly[str]        # stripped by to_response_schema()
-    created_at: fr.ReadOnly[datetime]  # cannot be set in requests
+    created_at: fr.ReadOnly[datetime]  # skipped in `apply_schema()`
 ```
 
-### Relationships
+### Relationship handling
+
+Validate relationships on create and update using `fr.IDRef[...]`.
+SQLAlchemy init is handled smartly; init is with either the foreign key (`customer_id`) or the related object (`Customer`), whichever is in the signature of the SQLAlchemy mapper `__init__`.
 
 ```python
-from sqlalchemy import ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column
-
 class Order(fr.IDBase):
     customer_id: Mapped[int] = mapped_column(ForeignKey("customer.id"))
-    total: Mapped[float]
+    customer: Mapped[Customer] = relationship()
 
 class OrderRead(fr.IDSchema):
-    customer_id: fr.IDRef[Customer]      # wire format: 123 — resolved to FK
-    total: float
+    customer_id: fr.IDRef[Customer]
+    customer: fr.ReadOnly[CustomerRead]
 ```
 
-### Custom endpoints and handlers
+### Custom endpoints
 
-Add endpoints with `@fr.get`, `@fr.post`, `@fr.put`, `@fr.patch`, `@fr.delete`, or the generic `@fr.route`. Route decorator keyword arguments are passed through to FastAPI, so class-based routes are configured the same way as regular FastAPI routes: use `response_model=`, `status_code=`, `dependencies=`, `responses=`, and the other FastAPI route options as usual. Override `perform_*` handlers (`perform_listing`, `perform_get`, `perform_create`, ...) to customise built-in CRUD logic without replacing the endpoint.
+Add custom routes using the same form of decorators you would use for regular FastAPI routes.
+
+- `@fr.get`
+- `@fr.post`
+- `@fr.put`
+- `@fr.patch`
+- `@fr.delete`
+- `@fr.route`
+
+These simply forward all arguments to their standard FastAPI counterparts.
 
 ```python
-@fr.include_view(app)
-class UserView(fr.AsyncRestView):
-    prefix = "/users"
-    model = User
-    schema = UserRead
+class UploadView(fr.AsyncRestView):
+    prefix = "/uploads"
+    model = Upload
 
-    @fr.get("/{id}/download")
-    async def download_user(self, id: int):
-        return {"id": id, "status": "ok"}
+    @fr.get(
+        "/{id}/download",
+        response_class=FileResponse,
+        responses={200: {"content": {EXCEL_MIME_TYPE: {}}}},
+    )
+    async def download_excel(self, id: int):
+        upload = await self.perform_get(id)
+        return to_excel_response(upload)
 
-    async def perform_listing(self, query_params):
-        # Custom logic here
-        return await super().perform_listing(query_params)
 ```
 
 ### React Admin integration
@@ -215,10 +224,7 @@ class ProductView(fr.AsyncReactAdminView):
     schema = ProductRead
 ```
 
-The view speaks the `ra-data-simple-rest` wire contract:
-
-- **List** — translates `sort=["name","ASC"]`, `range=[0,24]`, and `filter={"name":"foo"}` into SQL and returns a JSON array with a `Content-Range: items 0-24/315` header.
-- **All other CRUD** — `GET /{id}`, `POST /`, `PATCH /{id}`, `DELETE /{id}` work unchanged.
+The view speaks the `ra-data-simple-rest` wire contract.
 
 See [React Admin Integration](https://rjprins.github.io/fastapi-restly/howto_react_admin.html) in the docs for CORS setup and customization.
 
