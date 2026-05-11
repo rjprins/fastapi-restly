@@ -46,11 +46,17 @@ FastAPI-Restly turns a SQLAlchemy model into a class-based CRUD resource:
 ```python
 import fastapi_restly as fr
 from fastapi import FastAPI
-from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 app = FastAPI()
 
-class User(fr.IDBase):
+class Base(DeclarativeBase):
+    pass
+
+class User(Base):
+    __tablename__ = "user"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str]
     email: Mapped[str]
 

@@ -38,12 +38,19 @@ from contextlib import asynccontextmanager
 
 import fastapi_restly as fr
 from fastapi import FastAPI
-from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 fr.configure(async_database_url="sqlite+aiosqlite:///app.db")
 
 
-class User(fr.IDBase):
+class Base(DeclarativeBase):
+    pass
+
+
+class User(Base):
+    __tablename__ = "user"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str]
     email: Mapped[str]
 
@@ -54,7 +61,7 @@ async def lifespan(_app: FastAPI):
     # Runs after model classes are declared, so metadata contains every table.
     engine = fr.get_async_engine()
     async with engine.begin() as conn:
-        await conn.run_sync(fr.DataclassBase.metadata.create_all)
+        await conn.run_sync(Base.metadata.create_all)
     yield
 
 
@@ -69,10 +76,10 @@ class UserView(fr.AsyncRestView):
 
 A few things to note:
 
-- The table name is derived automatically from the class name (`User` → `user` table).
-- `fr.DataclassBase` is the explicit dataclass-oriented declarative base.
-- `fr.IDBase` is the convenience alias that combines `DataclassBase` with an auto-incrementing integer `id` primary key.
-- If you prefer standard SQLAlchemy declarative style (without dataclass semantics), define your own `sqlalchemy.orm.DeclarativeBase` as usual — those models also work with the rest of the framework.
+- The model uses standard SQLAlchemy declarative style: your own `DeclarativeBase`,
+  an explicit `__tablename__`, and an explicit primary-key column.
+- If you prefer dataclass-oriented SQLAlchemy models, FastAPI-Restly also provides
+  `fr.DataclassBase` and `fr.IDBase` convenience bases.
 - `RestView` and `AsyncRestView` expect the resource identity to be a single
   primary-key column, exposed through the generated `/{id}` routes. Composite
   primary keys are not supported by the default CRUD view contract; for legacy
