@@ -14,7 +14,7 @@ FastAPI-Restly (`fr`) is a framework that supplements FastAPI with instant CRUD 
 
 FastAPI-Restly implements **true class-based views** — real Python classes that support inheritance and method overrides. Share common behavior across views by subclassing, and override individual CRUD methods without touching the rest. See [Class-Based Views](class_based_views.md) for why this is the heart of the framework.
 
-> **Status:** `0.5.0` — first public beta release.
+> **Status:** `0.5.1` — public beta release.
 >
 > After four years of internal development at two separate companies, Restly is finally ready for its first public release! Right now the goal is to see if the public API of Restly hits the right abstractions, and to stabilize the API for a `1.0.0` release. From `0.5.0` onwards, expect small breaking changes in naming and functionality on the deeper parts of the API surface. Feedback is always appreciated!
 
