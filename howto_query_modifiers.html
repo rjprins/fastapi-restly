@@ -1,0 +1,854 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="./" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>How-To: Filter, Sort, and Paginate Lists &#8212; FastAPI-Restly  documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=64c884be" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=f281be69"></script>
+    <script src="_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'howto_query_modifiers';</script>
+    <link rel="canonical" href="https://rjprins.github.io/fastapi-restly/howto_query_modifiers.html" />
+    <link rel="author" title="About these documents" href="about.html" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="How-To: Work with Foreign Keys Using IDRef" href="howto_relationship_idschema.html" />
+    <link rel="prev" title="How-To: Compose Views with Mixins" href="howto_compose_views_with_mixins.html" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+<meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
+
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="_static/restly-cat.png" class="logo__image only-light" alt="FastAPI-Restly  documentation - Home"/>
+    <img src="_static/restly-cat.png" class="logo__image only-dark pst-js-only" alt="FastAPI-Restly  documentation - Home"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="getting_started.html">
+    Getting Started
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="class_based_views.html">
+    Class-Based Views
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="user_guide.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="deploying.html">
+    Deploying
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="api_reference.html">
+    API Reference
+  </a>
+</li>
+
+            <li class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button"
+                data-bs-toggle="dropdown" aria-expanded="false"
+                aria-controls="pst-nav-more-links">
+                    More
+                </button>
+                <ul id="pst-nav-more-links" class="dropdown-menu">
+                    
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="about.html">
+    About FastAPI-Restly
+  </a>
+</li>
+
+                </ul>
+            </li>
+            
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="getting_started.html">
+    Getting Started
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="class_based_views.html">
+    Class-Based Views
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="user_guide.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="deploying.html">
+    Deploying
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="api_reference.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="about.html">
+    About FastAPI-Restly
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="tutorial.html">Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial_customizing.html">Tutorial Part 2: Customizing Views</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_custom_schema.html">How-To: Use Schemas and Field Types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_typing.html">How-To: Use Type Annotations with FastAPI-Restly</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_override_endpoints.html">How-To: Override CRUD Behavior and Add Custom Endpoints</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_react_admin.html">How-To: React Admin Integration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_inheritance.html">How-To: Share Behaviour with Base Views</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_compose_views_with_mixins.html">How-To: Compose Views with Mixins</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">How-To: Filter, Sort, and Paginate Lists</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">How-To: Work with Foreign Keys Using IDRef</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_testing.html">How-To: Test APIs with RestlyTestClient and Fixtures</a></li>
+<li class="toctree-l1"><a class="reference internal" href="pytest_fixtures.html">pytest Fixtures Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_existing_project.html">How-To: Use FastAPI-Restly in an Existing Project</a></li>
+<li class="toctree-l1"><a class="reference internal" href="technical_details.html">Technical Details</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="user_guide.html" class="nav-link">User Guide</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">How-To: Filter, Sort, and Paginate Lists</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="how-to-filter-sort-and-paginate-lists">
+<h1>How-To: Filter, Sort, and Paginate Lists<a class="headerlink" href="#how-to-filter-sort-and-paginate-lists" title="Link to this heading">#</a></h1>
+<p>List endpoints (<code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/{prefix}/</span></code>) support filtering, sorting, and
+pagination through URL query parameters out of the box. Filter parameters
+are derived from the response schema; sort and pagination use a fixed set
+of names.</p>
+<blockquote>
+<div><p><strong>Pagination is opt-in.</strong> Lists return every matching row when no
+<code class="docutils literal notranslate"><span class="pre">page_size</span></code> is supplied. Pass <code class="docutils literal notranslate"><span class="pre">page_size</span></code> (and optionally <code class="docutils literal notranslate"><span class="pre">page</span></code>) to
+enable pagination, or set <code class="docutils literal notranslate"><span class="pre">default_page_size</span></code> on the view class if you
+want every request to be paginated by default.</p>
+<p><strong>For public or production endpoints, set <code class="docutils literal notranslate"><span class="pre">default_page_size</span></code> and
+<code class="docutils literal notranslate"><span class="pre">max_page_size</span></code> explicitly.</strong> The framework default of “no implicit
+cap” is intentionally honest about what the SQL does, but is not
+the safest production posture — a missing <code class="docutils literal notranslate"><span class="pre">page_size</span></code> will scan the
+entire table.</p>
+<p><strong>Unknown query keys are rejected with 422.</strong> Filters are narrowing
+controls — a typo or unsupported operator silently ignored could
+widen the result set. Generated list endpoints validate the request
+against the schema’s declared parameters and reject anything else.
+If a view consumes a custom query parameter outside the schema
+(e.g. <code class="docutils literal notranslate"><span class="pre">?include_deleted=true</span></code>), declare it on the view:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">extra_query_params</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;include_deleted&quot;</span><span class="p">,)</span>
+</pre></div>
+</div>
+</div></blockquote>
+<hr class="docutils" />
+<section id="filtering">
+<h2>Filtering<a class="headerlink" href="#filtering" title="Link to this heading">#</a></h2>
+<p>Plain equality uses the bare field name:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users/?name=John
+</pre></div>
+</div>
+<p>Suffixes add other operators:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Suffix</p></th>
+<th class="head"><p>SQL equivalent</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><em>(none)</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">field</span> <span class="pre">=</span> <span class="pre">value</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">?name=John</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">__gte</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">field</span> <span class="pre">&gt;=</span> <span class="pre">value</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">?age__gte=18</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">__lte</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">field</span> <span class="pre">&lt;=</span> <span class="pre">value</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">?age__lte=64</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">__gt</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">field</span> <span class="pre">&gt;</span> <span class="pre">value</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">?age__gt=17</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">__lt</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">field</span> <span class="pre">&lt;</span> <span class="pre">value</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">?age__lt=65</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">__in</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">field</span> <span class="pre">IN</span> <span class="pre">(...)</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">?status__in=active,pending</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">__ne</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">field</span> <span class="pre">!=</span> <span class="pre">value</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">?status__ne=archived</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">__contains</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">field</span> <span class="pre">LIKE</span> <span class="pre">'%value%'</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">?email__contains=Example</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">__icontains</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">field</span> <span class="pre">ILIKE</span> <span class="pre">'%value%'</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">?email__icontains=example</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">__isnull</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">field</span> <span class="pre">IS</span> <span class="pre">NULL</span></code> / <code class="docutils literal notranslate"><span class="pre">IS</span> <span class="pre">NOT</span> <span class="pre">NULL</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">?deleted_at__isnull=true</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">__isnull</span></code> accepts a boolean value (<code class="docutils literal notranslate"><span class="pre">true</span></code> or <code class="docutils literal notranslate"><span class="pre">false</span></code>), not the string
+<code class="docutils literal notranslate"><span class="pre">&quot;null&quot;</span></code>.</p>
+<p>Range operators (<code class="docutils literal notranslate"><span class="pre">__gte</span></code>/<code class="docutils literal notranslate"><span class="pre">__lte</span></code>/<code class="docutils literal notranslate"><span class="pre">__gt</span></code>/<code class="docutils literal notranslate"><span class="pre">__lt</span></code>) are only generated for
+orderable column types — they’re omitted for booleans and UUIDs.
+<code class="docutils literal notranslate"><span class="pre">__contains</span></code> and <code class="docutils literal notranslate"><span class="pre">__icontains</span></code> are only generated for string fields.</p>
+<section id="comma-logic-on-bare-equality">
+<h3>Comma logic on bare equality<a class="headerlink" href="#comma-logic-on-bare-equality" title="Link to this heading">#</a></h3>
+<p>Comma-separated values in a plain equality filter are OR-combined:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users/?status=active,pending
+</pre></div>
+</div>
+<p>Produces <code class="docutils literal notranslate"><span class="pre">WHERE</span> <span class="pre">status</span> <span class="pre">=</span> <span class="pre">'active'</span> <span class="pre">OR</span> <span class="pre">status</span> <span class="pre">=</span> <span class="pre">'pending'</span></code>. Equivalent to
+SQL <code class="docutils literal notranslate"><span class="pre">IN</span></code>.</p>
+<p>Use <code class="docutils literal notranslate"><span class="pre">__in</span></code> when you want that same SQL <code class="docutils literal notranslate"><span class="pre">IN</span></code> meaning to be explicit in
+the URL:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users/?status__in=active,pending
+</pre></div>
+</div>
+</section>
+<section id="comma-logic-on-ne-not-in">
+<h3>Comma logic on <code class="docutils literal notranslate"><span class="pre">__ne</span></code> (NOT IN)<a class="headerlink" href="#comma-logic-on-ne-not-in" title="Link to this heading">#</a></h3>
+<p>Comma-separated values in <code class="docutils literal notranslate"><span class="pre">__ne</span></code> are AND-combined — the row must differ
+from every listed value:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users/?status__ne=archived,deleted
+</pre></div>
+</div>
+<p>Produces <code class="docutils literal notranslate"><span class="pre">WHERE</span> <span class="pre">status</span> <span class="pre">!=</span> <span class="pre">'archived'</span> <span class="pre">AND</span> <span class="pre">status</span> <span class="pre">!=</span> <span class="pre">'deleted'</span></code>. Equivalent
+to SQL <code class="docutils literal notranslate"><span class="pre">NOT</span> <span class="pre">IN</span></code>.</p>
+</section>
+<section id="and-combining-multiple-contains-terms">
+<h3>AND-combining multiple contains terms<a class="headerlink" href="#and-combining-multiple-contains-terms" title="Link to this heading">#</a></h3>
+<p>The precise form is to repeat the parameter — each predicate becomes its
+own <code class="docutils literal notranslate"><span class="pre">LIKE</span></code> / <code class="docutils literal notranslate"><span class="pre">ILIKE</span></code> clause and they are AND-combined:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users/?name__contains=john&amp;name__contains=doe
+GET /users/?name__icontains=john&amp;name__icontains=doe
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">__contains</span></code> form produces <code class="docutils literal notranslate"><span class="pre">WHERE</span> <span class="pre">name</span> <span class="pre">LIKE</span> <span class="pre">'%john%'</span> <span class="pre">AND</span> <span class="pre">name</span> <span class="pre">LIKE</span> <span class="pre">'%doe%'</span></code>.
+The <code class="docutils literal notranslate"><span class="pre">__icontains</span></code> form uses <code class="docutils literal notranslate"><span class="pre">ILIKE</span></code> instead.</p>
+<p>As a convenience, whitespace inside one <code class="docutils literal notranslate"><span class="pre">__contains</span></code> or <code class="docutils literal notranslate"><span class="pre">__icontains</span></code>
+value is also AND-split. <code class="docutils literal notranslate"><span class="pre">?name__contains=john%20doe</span></code> is equivalent to
+the repeated-parameter form above.
+Prefer repeated parameters when you control the URL — they are
+unambiguous and survive any client/server quoting changes.</p>
+<p>Literal <code class="docutils literal notranslate"><span class="pre">%</span></code>, <code class="docutils literal notranslate"><span class="pre">_</span></code>, and <code class="docutils literal notranslate"><span class="pre">\</span></code> characters are escaped before building the SQL
+<code class="docutils literal notranslate"><span class="pre">LIKE</span></code> / <code class="docutils literal notranslate"><span class="pre">ILIKE</span></code>, so contains searches behave like literal substring
+matching rather than wildcard matching.</p>
+</section>
+<section id="multiple-filters-on-the-same-field">
+<h3>Multiple filters on the same field<a class="headerlink" href="#multiple-filters-on-the-same-field" title="Link to this heading">#</a></h3>
+<p>Repeat the parameter to add AND conditions:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users/?created_at__gte=2024-01-01&amp;created_at__lt=2025-01-01
+</pre></div>
+</div>
+<p>Produces <code class="docutils literal notranslate"><span class="pre">WHERE</span> <span class="pre">created_at</span> <span class="pre">&gt;=</span> <span class="pre">'2024-01-01'</span> <span class="pre">AND</span> <span class="pre">created_at</span> <span class="pre">&lt;</span> <span class="pre">'2025-01-01'</span></code>.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="sorting">
+<h2>Sorting<a class="headerlink" href="#sorting" title="Link to this heading">#</a></h2>
+<p>Use the <code class="docutils literal notranslate"><span class="pre">sort</span></code> parameter with comma-separated field names. Prefix
+with <code class="docutils literal notranslate"><span class="pre">-</span></code> for descending:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users/?sort=-created_at,name
+</pre></div>
+</div>
+<blockquote>
+<div><p><strong>Default ordering:</strong> When no <code class="docutils literal notranslate"><span class="pre">sort</span></code> parameter is given and the
+model has an <code class="docutils literal notranslate"><span class="pre">id</span></code> column, the framework automatically applies
+<code class="docutils literal notranslate"><span class="pre">ORDER</span> <span class="pre">BY</span> <span class="pre">id</span> <span class="pre">ASC</span></code>. Models without an <code class="docutils literal notranslate"><span class="pre">id</span></code> column return results in an
+unspecified order.</p>
+</div></blockquote>
+</section>
+<hr class="docutils" />
+<section id="pagination">
+<h2>Pagination<a class="headerlink" href="#pagination" title="Link to this heading">#</a></h2>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users/?page=2&amp;page_size=50
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">page</span></code> is 1-based. <code class="docutils literal notranslate"><span class="pre">page_size</span></code> must be <code class="docutils literal notranslate"><span class="pre">&gt;=</span> <span class="pre">1</span></code> and <code class="docutils literal notranslate"><span class="pre">&lt;=</span> <span class="pre">max_page_size</span></code>
+(default 1000). When <code class="docutils literal notranslate"><span class="pre">page_size</span></code> is omitted, the endpoint returns every
+matching row (no implicit cap). To enforce a default page size, set
+<code class="docutils literal notranslate"><span class="pre">default_page_size</span></code> on the view class:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">default_page_size</span> <span class="o">=</span> <span class="mi">25</span>
+    <span class="n">max_page_size</span> <span class="o">=</span> <span class="mi">200</span>
+</pre></div>
+</div>
+<p>Out-of-range pagination values produce a standard <code class="docutils literal notranslate"><span class="pre">422</span></code> response from
+FastAPI.</p>
+</section>
+<hr class="docutils" />
+<section id="alias-support">
+<h2>Alias support<a class="headerlink" href="#alias-support" title="Link to this heading">#</a></h2>
+<p>Query parameter keys follow the Pydantic schema field’s <strong>public name</strong>:
+the alias when one is declared, the Python field name otherwise. The
+public name is the only name the URL surface accepts. <code class="docutils literal notranslate"><span class="pre">populate_by_name</span></code>
+controls how Pydantic parses request bodies; it does <strong>not</strong> extend the
+list-params URL contract with extra Python-name aliases.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserRead</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">user_name</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Field</span><span class="p">(</span><span class="n">alias</span><span class="o">=</span><span class="s2">&quot;userName&quot;</span><span class="p">)]</span>
+</pre></div>
+</div>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users/?userName=Alice        # supported
+GET /users/?user_name=Alice       # rejected — Python name is not exposed
+</pre></div>
+</div>
+<p>If you want a different URL key, change the alias.</p>
+</section>
+<hr class="docutils" />
+<section id="relation-filtering">
+<h2>Relation filtering<a class="headerlink" href="#relation-filtering" title="Link to this heading">#</a></h2>
+<p>Filtering on a related model’s field uses dot notation:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /orders/?user.name=Alice
+GET /orders/?user.name__contains=ali
+</pre></div>
+</div>
+<p>The relation must be defined on both the SQLAlchemy model (as a
+<code class="docutils literal notranslate"><span class="pre">relationship</span></code>) and the Pydantic schema (as a nested schema field).
+Optional nested schemas (<code class="docutils literal notranslate"><span class="pre">UserRead</span> <span class="pre">|</span> <span class="pre">None</span></code>) and deep nesting
+(<code class="docutils literal notranslate"><span class="pre">?blog.author.name=Alice</span></code>) are supported. Lists of nested schemas
+(<code class="docutils literal notranslate"><span class="pre">list[UserRead]</span></code>) are not.</p>
+<p>Aliases apply to <strong>every</strong> segment of the dotted path — both the
+relation field and the nested column. The list-params keys always follow
+the response schema’s public names:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">AuthorRead</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">alias</span><span class="o">=</span><span class="s2">&quot;authorName&quot;</span><span class="p">)</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">ArticleRead</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">author</span><span class="p">:</span> <span class="n">AuthorRead</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">alias</span><span class="o">=</span><span class="s2">&quot;writer&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /articles/?writer.authorName=Alice    # supported (aliased segments)
+GET /articles/?author.name=Alice          # not exposed — canonical names
+                                          # are not part of the public contract
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="quick-reference">
+<h2>Quick reference<a class="headerlink" href="#quick-reference" title="Link to this heading">#</a></h2>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users/?name=John
+GET /users/?status=active,pending
+GET /users/?age__gte=18&amp;age__lt=65
+GET /users/?deleted_at__isnull=true
+GET /users/?email__icontains=example
+GET /users/?name__contains=john doe
+GET /users/?sort=-id
+GET /users/?page=2&amp;page_size=50
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="overriding-query-logic-per-view">
+<h2>Overriding query logic per view<a class="headerlink" href="#overriding-query-logic-per-view" title="Link to this heading">#</a></h2>
+<p>Override <code class="docutils literal notranslate"><span class="pre">build_query</span></code> to inject a base query before the framework
+applies the URL parameters. <code class="docutils literal notranslate"><span class="pre">perform_listing</span></code> and <code class="docutils literal notranslate"><span class="pre">perform_get</span></code> consult this
+seam, and <code class="docutils literal notranslate"><span class="pre">count_listing</span></code> counts the query built by <code class="docutils literal notranslate"><span class="pre">perform_listing</span></code>, so the
+filter applies to listing, the pagination total, <strong>and</strong> single-row fetches
+(<code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/{id}</span></code>) without further plumbing:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">build_query</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">build_query</span><span class="p">()</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">active</span><span class="o">.</span><span class="n">is_</span><span class="p">(</span><span class="kc">True</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>Calling <code class="docutils literal notranslate"><span class="pre">super().build_query()</span></code> and chaining <code class="docutils literal notranslate"><span class="pre">.where(...)</span></code> composes
+cleanly with any base-class or mixin filter. See
+<a class="reference internal" href="howto_compose_views_with_mixins.html"><span class="std std-doc">Composing views with mixins</span></a> for the
+multi-layer pattern.</p>
+<p><code class="docutils literal notranslate"><span class="pre">perform_listing</span></code> no longer accepts a separate <code class="docutils literal notranslate"><span class="pre">query</span></code> argument. Keep SQL-level
+base query changes in <code class="docutils literal notranslate"><span class="pre">build_query()</span></code> so listing, pagination totals, and
+single-row fetches all see the same visibility rules. If a list endpoint needs
+a completely different query shape, override <code class="docutils literal notranslate"><span class="pre">perform_listing()</span></code> and construct
+that query explicitly inside the method.</p>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="howto_compose_views_with_mixins.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">How-To: Compose Views with Mixins</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="howto_relationship_idschema.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">How-To: Work with Foreign Keys Using IDRef</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#filtering">Filtering</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#comma-logic-on-bare-equality">Comma logic on bare equality</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#comma-logic-on-ne-not-in">Comma logic on <code class="docutils literal notranslate"><span class="pre">__ne</span></code> (NOT IN)</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#and-combining-multiple-contains-terms">AND-combining multiple contains terms</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#multiple-filters-on-the-same-field">Multiple filters on the same field</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#sorting">Sorting</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#pagination">Pagination</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#alias-support">Alias support</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#relation-filtering">Relation filtering</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#quick-reference">Quick reference</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#overriding-query-logic-per-view">Overriding query logic per view</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+
+  
+  <div class="tocsection editthispage">
+    <a href="https://github.com/rjprins/fastapi-restly/edit/main/docs/howto_query_modifiers.md">
+      <i class="fa-solid fa-pencil"></i>
+      
+      
+        
+          Edit on GitHub
+        
+      
+    </a>
+  </div>
+</div>
+
+  <div class="sidebar-secondary-item">
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/howto_query_modifiers.md.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, Rutger Prins.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

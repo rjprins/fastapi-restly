@@ -1,0 +1,1147 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="./" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>How-To: Override CRUD Behavior and Add Custom Endpoints &#8212; FastAPI-Restly  documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=64c884be" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=f281be69"></script>
+    <script src="_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'howto_override_endpoints';</script>
+    <link rel="canonical" href="https://rjprins.github.io/fastapi-restly/howto_override_endpoints.html" />
+    <link rel="author" title="About these documents" href="about.html" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="How-To: React Admin Integration" href="howto_react_admin.html" />
+    <link rel="prev" title="How-To: Use Type Annotations with FastAPI-Restly" href="howto_typing.html" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+<meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
+
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="_static/restly-cat.png" class="logo__image only-light" alt="FastAPI-Restly  documentation - Home"/>
+    <img src="_static/restly-cat.png" class="logo__image only-dark pst-js-only" alt="FastAPI-Restly  documentation - Home"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="getting_started.html">
+    Getting Started
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="class_based_views.html">
+    Class-Based Views
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="user_guide.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="deploying.html">
+    Deploying
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="api_reference.html">
+    API Reference
+  </a>
+</li>
+
+            <li class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button"
+                data-bs-toggle="dropdown" aria-expanded="false"
+                aria-controls="pst-nav-more-links">
+                    More
+                </button>
+                <ul id="pst-nav-more-links" class="dropdown-menu">
+                    
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="about.html">
+    About FastAPI-Restly
+  </a>
+</li>
+
+                </ul>
+            </li>
+            
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="getting_started.html">
+    Getting Started
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="class_based_views.html">
+    Class-Based Views
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="user_guide.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="deploying.html">
+    Deploying
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="api_reference.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="about.html">
+    About FastAPI-Restly
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="tutorial.html">Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial_customizing.html">Tutorial Part 2: Customizing Views</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_custom_schema.html">How-To: Use Schemas and Field Types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_typing.html">How-To: Use Type Annotations with FastAPI-Restly</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">How-To: Override CRUD Behavior and Add Custom Endpoints</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_react_admin.html">How-To: React Admin Integration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_inheritance.html">How-To: Share Behaviour with Base Views</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_compose_views_with_mixins.html">How-To: Compose Views with Mixins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_query_modifiers.html">How-To: Filter, Sort, and Paginate Lists</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">How-To: Work with Foreign Keys Using IDRef</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_testing.html">How-To: Test APIs with RestlyTestClient and Fixtures</a></li>
+<li class="toctree-l1"><a class="reference internal" href="pytest_fixtures.html">pytest Fixtures Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_existing_project.html">How-To: Use FastAPI-Restly in an Existing Project</a></li>
+<li class="toctree-l1"><a class="reference internal" href="technical_details.html">Technical Details</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="user_guide.html" class="nav-link">User Guide</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">How-To: Override CRUD Behavior and Add Custom Endpoints</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="how-to-override-crud-behavior-and-add-custom-endpoints">
+<h1>How-To: Override CRUD Behavior and Add Custom Endpoints<a class="headerlink" href="#how-to-override-crud-behavior-and-add-custom-endpoints" title="Link to this heading">#</a></h1>
+<p>FastAPI-Restly generates five standard CRUD endpoints for every view, but real applications always need to bend the rules: inject extra fields, restrict which rows a user may see, run side effects, or expose non-CRUD operations. This guide walks through every layer of the override system, from the highest-level handlers down to raw session access.</p>
+<p>Every concrete view class must be registered with <code class="docutils literal notranslate"><span class="pre">fr.include_view(app,</span> <span class="pre">ViewClass)</span></code> or the decorator shortcut before FastAPI sees its routes. Larger apps are easier to organize when view modules define classes and app/router modules include them.</p>
+<hr class="docutils" />
+<section id="how-the-handler-chain-works">
+<h2>How the handler chain works<a class="headerlink" href="#how-the-handler-chain-works" title="Link to this heading">#</a></h2>
+<p>Understanding the call chain helps you pick the right layer to override. The API reference also classifies the full view method surface: <a class="reference internal" href="api_reference.html#view-method-surface"><span class="std std-ref">View Method Surface</span></a>.</p>
+<section id="read-path">
+<h3>Read path<a class="headerlink" href="#read-path" title="Link to this heading">#</a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>GET /{id}
+  └─ get()         ← HTTP contract (replace to change; see below)
+       └─ perform_get(id)    ← business-logic handler — override here
+            └─ build_query()    ← same seam as listing — read filters apply here too
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>GET /
+  └─ listing()                   ← HTTP contract (replace to change; see below)
+       └─ perform_listing(query_params)      ← business-logic handler — override here
+       │    └─ build_query()    ← WHERE-clause seam shared with retrieve
+       │    └─ apply_list_params(query_params, query, ...)
+       │    └─ count_listing(query)  ← counts the same query after stripping order/limit/offset
+       └─ to_listing_response(query_params, result)  ← response-shape hook
+            └─ to_paginated_listing_response(query_params, result)  ← paginated envelope hook
+</pre></div>
+</div>
+</section>
+<section id="write-path">
+<h3>Write path<a class="headerlink" href="#write-path" title="Link to this heading">#</a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>POST /
+  └─ create()                      ← FastAPI endpoint (avoid overriding)
+       └─ perform_create(schema_obj)    ← operation handler — override here to add fields
+            └─ build_from_schema(...)  ← object helper — override to change construction
+            └─ save_object(obj)      ← create/update persistence boundary
+
+PATCH /{id}
+  └─ update()
+       └─ perform_update(id, schema_obj)
+            └─ perform_get(id)            ← reuses the same 404 logic
+            └─ apply_schema(obj, schema_obj)
+            └─ save_object(obj)      ← create/update persistence boundary
+
+DELETE /{id}
+  └─ delete()
+       └─ perform_delete(id)
+            └─ perform_get(id)
+            └─ delete_object(obj)    ← delete persistence boundary
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">build_from_schema</span></code> and <code class="docutils literal notranslate"><span class="pre">apply_schema</span></code> prepare the ORM object but do not flush the session. The default create and update handlers both call <code class="docutils literal notranslate"><span class="pre">save_object</span></code> afterwards; that explicit save step is where the write is flushed and refreshed from the database. Deletes use a separate boundary: <code class="docutils literal notranslate"><span class="pre">delete_object</span></code> deletes the row and flushes.</p>
+<p><strong>General rule:</strong> prefer overriding <code class="docutils literal notranslate"><span class="pre">perform_*</span></code> handlers for business logic and <code class="docutils literal notranslate"><span class="pre">build_from_schema</span></code> / <code class="docutils literal notranslate"><span class="pre">apply_schema</span></code> / <code class="docutils literal notranslate"><span class="pre">save_object</span></code> / <code class="docutils literal notranslate"><span class="pre">delete_object</span></code> for lower-level structural changes. When you need to change the HTTP contract itself — status code, response shape, headers, or query parameter semantics — replace the raw endpoint method; see <a class="reference internal" href="#replace-a-generated-route">Replace a generated route</a> below.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="override-a-perform-handler">
+<h2>Override a <code class="docutils literal notranslate"><span class="pre">perform_*</span></code> handler<a class="headerlink" href="#override-a-perform-handler" title="Link to this heading">#</a></h2>
+<p>Each <code class="docutils literal notranslate"><span class="pre">perform_*</span></code> handler maps one-to-one to a generated endpoint. Override the one you want to change; the others keep their default implementations.</p>
+<section id="perform-create-inject-server-side-fields-at-creation">
+<h3><code class="docutils literal notranslate"><span class="pre">perform_create</span></code> — inject server-side fields at creation<a class="headerlink" href="#perform-create-inject-server-side-fields-at-creation" title="Link to this heading">#</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
+
+<span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserRead</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">perform_create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">schema_obj</span><span class="p">):</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">build_from_schema</span><span class="p">(</span><span class="n">schema_obj</span><span class="p">)</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">created_by</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">user_id</span>  <span class="c1"># set from request context</span>
+        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">save_object</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">self.request</span></code> is the live FastAPI <code class="docutils literal notranslate"><span class="pre">Request</span></code>. <code class="docutils literal notranslate"><span class="pre">self.session</span></code> is the injected async SQLAlchemy session. Both are available in every handler.</p>
+</section>
+<section id="perform-update-run-validation-before-saving">
+<h3><code class="docutils literal notranslate"><span class="pre">perform_update</span></code> — run validation before saving<a class="headerlink" href="#perform-update-run-validation-before-saving" title="Link to this heading">#</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">perform_update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">,</span> <span class="n">schema_obj</span><span class="p">):</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">perform_get</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>  <span class="c1"># raises 404 if missing</span>
+        <span class="k">if</span> <span class="n">obj</span><span class="o">.</span><span class="n">locked</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">fastapi</span><span class="o">.</span><span class="n">HTTPException</span><span class="p">(</span><span class="mi">409</span><span class="p">,</span> <span class="s2">&quot;Cannot update a locked record&quot;</span><span class="p">)</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">apply_schema</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">schema_obj</span><span class="p">)</span>
+        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">save_object</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="perform-delete-require-a-confirmation-header">
+<h3><code class="docutils literal notranslate"><span class="pre">perform_delete</span></code> — require a confirmation header<a class="headerlink" href="#perform-delete-require-a-confirmation-header" title="Link to this heading">#</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">perform_delete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;X-Confirm-Delete&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="s2">&quot;yes&quot;</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">fastapi</span><span class="o">.</span><span class="n">HTTPException</span><span class="p">(</span><span class="mi">400</span><span class="p">,</span> <span class="s2">&quot;Missing X-Confirm-Delete: yes header&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">perform_delete</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Using <code class="docutils literal notranslate"><span class="pre">super()</span></code> here keeps the existing 404-checking and deletion logic intact.</p>
+</section>
+<section id="perform-get-eager-load-extra-relationships">
+<h3><code class="docutils literal notranslate"><span class="pre">perform_get</span></code> — eager-load extra relationships<a class="headerlink" href="#perform-get-eager-load-extra-relationships" title="Link to this heading">#</a></h3>
+<p>The default <code class="docutils literal notranslate"><span class="pre">perform_get</span></code> relies on the view’s <code class="docutils literal notranslate"><span class="pre">schema</span></code> to decide which relationships to load. If you need something extra just for one endpoint, override and load it manually:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.orm</span><span class="w"> </span><span class="kn">import</span> <span class="n">selectinload</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">perform_get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">):</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="nb">id</span><span class="p">,</span>
+            <span class="n">options</span><span class="o">=</span><span class="p">[</span><span class="n">selectinload</span><span class="p">(</span><span class="n">User</span><span class="o">.</span><span class="n">audit_log</span><span class="p">)]</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">obj</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">fastapi</span><span class="o">.</span><span class="n">HTTPException</span><span class="p">(</span><span class="mi">404</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">obj</span>
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="scope-filter-reads">
+<h2>Scope-filter reads<a class="headerlink" href="#scope-filter-reads" title="Link to this heading">#</a></h2>
+<p>The most common real-world override: restrict reads to rows owned by the current user. The single seam for this is <code class="docutils literal notranslate"><span class="pre">build_query</span></code>, which <code class="docutils literal notranslate"><span class="pre">perform_listing</span></code> and <code class="docutils literal notranslate"><span class="pre">perform_get</span></code> consult. <code class="docutils literal notranslate"><span class="pre">count_listing</span></code> counts the query built by <code class="docutils literal notranslate"><span class="pre">perform_listing</span></code>, so override it once and pagination totals stay aligned with the listed rows, and a row hidden from listing returns 404 from <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/{id}</span></code> as well. <code class="docutils literal notranslate"><span class="pre">perform_update</span></code> and <code class="docutils literal notranslate"><span class="pre">perform_delete</span></code> inherit the visibility check via <code class="docutils literal notranslate"><span class="pre">perform_get</span></code>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sa</span>
+
+<span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">DocumentView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/documents&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Document</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">DocumentRead</span>
+    <span class="n">include_pagination_metadata</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">build_query</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">user_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">user_id</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">build_query</span><span class="p">()</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">Document</span><span class="o">.</span><span class="n">owner_id</span> <span class="o">==</span> <span class="n">user_id</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Calling <code class="docutils literal notranslate"><span class="pre">super().build_query()</span></code> and chaining <code class="docutils literal notranslate"><span class="pre">.where(...)</span></code> composes cleanly with any base-class or mixin filter. For multi-tenant scoping, soft-delete hiding, or row-level permission visibility, this is the seam to reach for.</p>
+<p>If you need <code class="docutils literal notranslate"><span class="pre">perform_listing</span></code> to also do work <em>beyond</em> a <code class="docutils literal notranslate"><span class="pre">WHERE</span></code> clause — post-query result decoration or response-side annotation — override <code class="docutils literal notranslate"><span class="pre">perform_listing</span></code> itself and delegate to <code class="docutils literal notranslate"><span class="pre">super()</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">perform_listing</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query_params</span><span class="p">):</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">perform_listing</span><span class="p">(</span><span class="n">query_params</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">obj</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">objects</span><span class="p">:</span>
+            <span class="n">obj</span><span class="o">.</span><span class="n">_display_name</span> <span class="o">=</span> <span class="n">derive_display_name</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">result</span>
+</pre></div>
+</div>
+<p>If the listing needs a different SQL shape, prefer <code class="docutils literal notranslate"><span class="pre">build_query()</span></code> for base filters, joins, eager-loading options, and other SQLAlchemy <code class="docutils literal notranslate"><span class="pre">Select</span></code> changes. That keeps listing, pagination totals, and single-row fetches aligned.</p>
+</section>
+<hr class="docutils" />
+<section id="override-low-level-object-helpers">
+<h2>Override low-level object helpers<a class="headerlink" href="#override-low-level-object-helpers" title="Link to this heading">#</a></h2>
+<p>When the change you need applies to <em>all</em> writes (both create and update), it is cleaner to override the low-level helpers rather than duplicate logic in <code class="docutils literal notranslate"><span class="pre">perform_create</span></code> and <code class="docutils literal notranslate"><span class="pre">perform_update</span></code>.</p>
+<p>Two rules apply to <code class="docutils literal notranslate"><span class="pre">build_from_schema</span></code> / <code class="docutils literal notranslate"><span class="pre">apply_schema</span></code> overrides:</p>
+<ul class="simple">
+<li><p><strong>Per-view application logic</strong> (password hashing, slug derivation,
+status-transition events) belongs in <code class="docutils literal notranslate"><span class="pre">perform_create</span></code> / <code class="docutils literal notranslate"><span class="pre">perform_update</span></code>,
+written from scratch using the
+<a class="reference internal" href="api_reference.html#advanced-object-helpers"><span class="std std-ref">advanced object helpers</span></a>.
+Layering it through <code class="docutils literal notranslate"><span class="pre">build_from_schema</span></code> creates ordering surprises and
+hides where the create flow lives.</p></li>
+<li><p><strong>Structural cross-cutting concerns</strong> that only stamp server-controlled
+fields (audit IDs, tenant IDs, soft-delete timestamps) <em>are</em> the right
+fit for these helpers, layered through mixins.
+See <a class="reference internal" href="howto_compose_views_with_mixins.html"><span class="std std-doc">Composing views with mixins</span></a>
+for the pattern, the discriminator between the two rules, and the
+three reusable mixins from the SaaS example.</p></li>
+</ul>
+<section id="save-object-send-a-notification-after-create-update">
+<h3><code class="docutils literal notranslate"><span class="pre">save_object</span></code> — send a notification after create/update<a class="headerlink" href="#save-object-send-a-notification-after-create-update" title="Link to this heading">#</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">save_object</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">save_object</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+        <span class="k">await</span> <span class="n">notify_subscribers</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>  <span class="c1"># your async side-effect</span>
+        <span class="k">return</span> <span class="n">obj</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">save_object</span></code> is shared by the default create and update flows. It does not run for deletes; <code class="docutils literal notranslate"><span class="pre">delete_object</span></code> is the delete-side persistence boundary.</p>
+<p>If you need one side effect for every successful write event, override both methods and delegate to a shared helper:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_record_write_event</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">action</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">await</span> <span class="n">audit_log</span><span class="o">.</span><span class="n">record</span><span class="p">(</span>
+            <span class="n">resource</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+            <span class="n">object_id</span><span class="o">=</span><span class="n">obj</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+            <span class="n">action</span><span class="o">=</span><span class="n">action</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">save_object</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">save_object</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_record_write_event</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s2">&quot;save&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">obj</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">delete_object</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">delete_object</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_record_write_event</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s2">&quot;delete&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="build-from-schema-set-a-default-field-on-creation-only">
+<h3><code class="docutils literal notranslate"><span class="pre">build_from_schema</span></code> — set a default field on creation only<a class="headerlink" href="#build-from-schema-set-a-default-field-on-creation-only" title="Link to this heading">#</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">build_from_schema</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">schema_obj</span><span class="p">):</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">build_from_schema</span><span class="p">(</span><span class="n">schema_obj</span><span class="p">)</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">tenant_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">tenant_id</span>
+        <span class="k">return</span> <span class="n">obj</span>
+</pre></div>
+</div>
+</section>
+<section id="apply-schema-prevent-certain-fields-from-being-changed">
+<h3><code class="docutils literal notranslate"><span class="pre">apply_schema</span></code> — prevent certain fields from being changed<a class="headerlink" href="#apply-schema-prevent-certain-fields-from-being-changed" title="Link to this heading">#</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">apply_schema</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">schema_obj</span><span class="p">):</span>
+        <span class="c1"># Ignore any attempt to change `owner_id` via PATCH</span>
+        <span class="n">schema_obj</span><span class="o">.</span><span class="n">owner_id</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">apply_schema</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">schema_obj</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="delete-object-implement-soft-delete">
+<h3><code class="docutils literal notranslate"><span class="pre">delete_object</span></code> — implement soft-delete<a class="headerlink" href="#delete-object-implement-soft-delete" title="Link to this heading">#</a></h3>
+<p>Instead of removing the row, mark it as archived:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">delete_object</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">deleted_at</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">utcnow</span><span class="p">()</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+        <span class="c1"># Do NOT call super() — that would remove the row.</span>
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="extend-rather-than-replace-with-super">
+<h2>Extend rather than replace with <code class="docutils literal notranslate"><span class="pre">super()</span></code><a class="headerlink" href="#extend-rather-than-replace-with-super" title="Link to this heading">#</a></h2>
+<p>For most overrides, calling <code class="docutils literal notranslate"><span class="pre">super()</span></code> and tweaking the result is less error-prone than re-implementing the handler from scratch. The pattern is consistent across all handlers:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">perform_listing</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query_params</span><span class="p">):</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">perform_listing</span><span class="p">(</span><span class="n">query_params</span><span class="p">)</span>
+        <span class="c1"># Annotate each object with a computed field before serialization</span>
+        <span class="k">for</span> <span class="n">obj</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">objects</span><span class="p">:</span>
+            <span class="n">obj</span><span class="o">.</span><span class="n">_display_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">obj</span><span class="o">.</span><span class="n">first_name</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">obj</span><span class="o">.</span><span class="n">last_name</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="k">return</span> <span class="n">result</span>
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="raise-http-errors-from-handlers">
+<h2>Raise HTTP errors from handlers<a class="headerlink" href="#raise-http-errors-from-handlers" title="Link to this heading">#</a></h2>
+<p>All <code class="docutils literal notranslate"><span class="pre">perform_*</span></code> handlers run inside a request context, so you can raise <code class="docutils literal notranslate"><span class="pre">fastapi.HTTPException</span></code> at any point:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">fastapi</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">perform_create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">schema_obj</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">user</span><span class="o">.</span><span class="n">is_admin</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">fastapi</span><span class="o">.</span><span class="n">HTTPException</span><span class="p">(</span><span class="mi">403</span><span class="p">,</span> <span class="s2">&quot;Admin access required&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">perform_create</span><span class="p">(</span><span class="n">schema_obj</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="add-a-custom-read-route">
+<h2>Add a custom read route<a class="headerlink" href="#add-a-custom-read-route" title="Link to this heading">#</a></h2>
+<p>Use <code class="docutils literal notranslate"><span class="pre">&#64;fr.get</span></code> to expose computed or summarised data alongside the generated endpoints:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserRead</span>
+
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">/summary&quot;</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">summary</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="n">user</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">perform_get</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>   <span class="c1"># raises 404 automatically</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">user</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+            <span class="s2">&quot;display_name&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">user</span><span class="o">.</span><span class="n">first_name</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">user</span><span class="o">.</span><span class="n">last_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;email&quot;</span><span class="p">:</span> <span class="n">user</span><span class="o">.</span><span class="n">email</span><span class="p">,</span>
+        <span class="p">}</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">perform_get</span></code> returns the raw ORM object, so you can access all model attributes directly.</p>
+</section>
+<hr class="docutils" />
+<section id="add-a-custom-action-route">
+<h2>Add a custom action route<a class="headerlink" href="#add-a-custom-action-route" title="Link to this heading">#</a></h2>
+<p>Use <code class="docutils literal notranslate"><span class="pre">&#64;fr.post</span></code> (or <code class="docutils literal notranslate"><span class="pre">&#64;fr.patch</span></code>, <code class="docutils literal notranslate"><span class="pre">&#64;fr.delete</span></code>) for explicit state-change actions such as archive, publish, or recalculate:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">OrderView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/orders&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Order</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">OrderRead</span>
+
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">/archive&quot;</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">202</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">archive</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="n">order</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">perform_get</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">order</span><span class="o">.</span><span class="n">archived</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">fastapi</span><span class="o">.</span><span class="n">HTTPException</span><span class="p">(</span><span class="mi">409</span><span class="p">,</span> <span class="s2">&quot;Already archived&quot;</span><span class="p">)</span>
+        <span class="n">order</span><span class="o">.</span><span class="n">archived</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">order</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">save_object</span><span class="p">(</span><span class="n">order</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">order</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s2">&quot;archived&quot;</span><span class="p">:</span> <span class="n">order</span><span class="o">.</span><span class="n">archived</span><span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="replace-a-generated-route">
+<h2>Replace a generated route<a class="headerlink" href="#replace-a-generated-route" title="Link to this heading">#</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">perform_*</span></code> handlers let you change what happens <em>inside</em> a generated route while leaving its HTTP contract intact. Sometimes you need more than that: a different response shape, custom response headers, a non-standard status code, or completely different query parameter semantics. In those cases you can replace the generated route itself.</p>
+<p>To replace a route, define a method with the same name as the generated route and add a route decorator to it:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">OrderView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/orders&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Order</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">OrderRead</span>
+
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">delete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">perform_get</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
+        <span class="n">serialized</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_response_schema</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;json&quot;</span><span class="p">)</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">delete_object</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">serialized</span>
+</pre></div>
+</div>
+<p>The route decorator is required. When the framework initialises a view it checks whether each standard route is already defined directly on the class. If it finds <code class="docutils literal notranslate"><span class="pre">delete</span></code> with a route decorator, it uses that version and skips the one from <code class="docutils literal notranslate"><span class="pre">AsyncRestView</span></code>. All other generated routes (<code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code>, <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/{id}</span></code>, <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/</span></code>, <code class="docutils literal notranslate"><span class="pre">PATCH</span> <span class="pre">/{id}</span></code>) remain unchanged.</p>
+<section id="route-replacement-vs-handler-override">
+<h3>Route Replacement vs Handler Override<a class="headerlink" href="#route-replacement-vs-handler-override" title="Link to this heading">#</a></h3>
+<p>These two are easy to conflate:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Technique</p></th>
+<th class="head"><p>How</p></th>
+<th class="head"><p>When to use</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Override a <code class="docutils literal notranslate"><span class="pre">perform_*</span></code> handler</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">async</span> <span class="pre">def</span> <span class="pre">perform_create(self,</span> <span class="pre">...)</span></code> — no decorator</p></td>
+<td><p>Change business logic; keep the HTTP contract</p></td>
+</tr>
+<tr class="row-odd"><td><p>Replace a route</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&#64;fr.delete(&quot;/{id}&quot;)</span> <span class="pre">async</span> <span class="pre">def</span> <span class="pre">delete(self,</span> <span class="pre">...)</span></code> — with decorator</p></td>
+<td><p>Change the HTTP contract: status code, response shape, headers, query params</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Use handlers for the common case. Route replacement is for the cases where you genuinely need to renegotiate what the endpoint looks like on the wire.</p>
+</section>
+<section id="what-remains-available-inside-a-replacement">
+<h3>What remains available inside a replacement<a class="headerlink" href="#what-remains-available-inside-a-replacement" title="Link to this heading">#</a></h3>
+<p>A replacement is a full view method. Everything the parent view provides is still on <code class="docutils literal notranslate"><span class="pre">self</span></code>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">self.session</span></code>, <code class="docutils literal notranslate"><span class="pre">self.request</span></code>, <code class="docutils literal notranslate"><span class="pre">self.model</span></code>, <code class="docutils literal notranslate"><span class="pre">self.schema</span></code></p></li>
+<li><p>All <code class="docutils literal notranslate"><span class="pre">perform_*</span></code> handlers — call them to reuse existing business logic without
+re-implementing it</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">self.to_response_schema(obj)</span></code> — serialise an ORM object to the configured
+Pydantic schema</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">self.build_from_schema</span></code>, <code class="docutils literal notranslate"><span class="pre">self.apply_schema</span></code>, <code class="docutils literal notranslate"><span class="pre">self.save_object</span></code>,
+<code class="docutils literal notranslate"><span class="pre">self.delete_object</span></code></p></li>
+</ul>
+<p>The example above delegates the 404 check to <code class="docutils literal notranslate"><span class="pre">self.perform_get(id)</span></code> and the database removal to <code class="docutils literal notranslate"><span class="pre">self.delete_object(obj)</span></code>. Only the HTTP response layer changes.</p>
+</section>
+<section id="overriding-response-serialization">
+<h3>Overriding response serialization<a class="headerlink" href="#overriding-response-serialization" title="Link to this heading">#</a></h3>
+<p>Generated routes call <code class="docutils literal notranslate"><span class="pre">self.to_response_schema(obj)</span></code> before returning ORM objects. The default implementation builds a response payload from the configured schema, strips <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> fields, normalizes relationship id fields, and then validates through Pydantic. That means response-side <code class="docutils literal notranslate"><span class="pre">&#64;field_validator</span></code> and <code class="docutils literal notranslate"><span class="pre">&#64;field_serializer</span></code> hooks behave the same way they would on an ordinary Pydantic response model.</p>
+<p>Override <code class="docutils literal notranslate"><span class="pre">to_response_schema()</span></code> when one endpoint family needs a different projection, or when you intentionally want a faster path that skips Pydantic validation:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserRead</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_response_schema</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">:</span> <span class="n">User</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">UserRead</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">model_construct</span><span class="p">(</span>
+            <span class="nb">id</span><span class="o">=</span><span class="n">obj</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="n">obj</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+            <span class="n">email</span><span class="o">=</span><span class="n">obj</span><span class="o">.</span><span class="n">email</span><span class="p">,</span>
+        <span class="p">)</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">model_construct()</span></code> is an escape hatch: it bypasses validators and required-field checks. Keep the payload aligned with your public response contract, and do not include <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> fields such as passwords or API tokens.</p>
+</section>
+<section id="relationship-references-in-custom-routes">
+<h3>Relationship references in custom routes<a class="headerlink" href="#relationship-references-in-custom-routes" title="Link to this heading">#</a></h3>
+<p>Generated <code class="docutils literal notranslate"><span class="pre">POST</span></code> and <code class="docutils literal notranslate"><span class="pre">PATCH</span></code> routes validate the request body before Restly calls <code class="docutils literal notranslate"><span class="pre">build_from_schema()</span></code> or <code class="docutils literal notranslate"><span class="pre">apply_schema()</span></code>, so <code class="docutils literal notranslate"><span class="pre">IDRef[Model]</span></code> fields are already <code class="docutils literal notranslate"><span class="pre">IDRef</span></code> instances by the time the resolver runs.</p>
+<p>In a custom route, be careful when you construct a schema yourself. Pydantic’s <code class="docutils literal notranslate"><span class="pre">model_construct()</span></code> skips validation, so scalar ids stay plain integers unless you wrap them explicitly:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi_restly.objects</span><span class="w"> </span><span class="kn">import</span> <span class="n">async_build_from_schema</span>
+
+
+<span class="n">link_schema</span> <span class="o">=</span> <span class="n">TaskLabelRead</span><span class="o">.</span><span class="n">model_construct</span><span class="p">(</span>
+    <span class="n">task_id</span><span class="o">=</span><span class="n">fr</span><span class="o">.</span><span class="n">IDRef</span><span class="p">[</span><span class="n">Task</span><span class="p">](</span><span class="nb">id</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">task_id</span><span class="p">),</span>
+    <span class="n">label_id</span><span class="o">=</span><span class="n">fr</span><span class="o">.</span><span class="n">IDRef</span><span class="p">[</span><span class="n">Label</span><span class="p">](</span><span class="nb">id</span><span class="o">=</span><span class="n">label</span><span class="o">.</span><span class="n">id</span><span class="p">),</span>
+<span class="p">)</span>
+
+<span class="n">task_label</span> <span class="o">=</span> <span class="k">await</span> <span class="n">async_build_from_schema</span><span class="p">(</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">,</span>
+    <span class="n">TaskLabel</span><span class="p">,</span>
+    <span class="n">link_schema</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>This keeps the resolver path active: Restly verifies the referenced rows exist and then writes the FK columns. It is especially useful when the schema inherits from <code class="docutils literal notranslate"><span class="pre">IDSchema</span></code> and validated construction would require response-only fields such as <code class="docutils literal notranslate"><span class="pre">id</span></code> or timestamps. In that case, direct construction like <code class="docutils literal notranslate"><span class="pre">TaskLabelRead(task_id=1,</span> <span class="pre">label_id=2)</span></code> would run the <code class="docutils literal notranslate"><span class="pre">IDRef</span></code> validators, but it would also require those response-only values that the route does not have yet.</p>
+<p>If you instead use <code class="docutils literal notranslate"><span class="pre">IDSchema[Model]</span></code> as a nested relationship-object field in a custom response schema, serialize the ORM object through <code class="docutils literal notranslate"><span class="pre">self.to_response_schema(obj)</span></code> before returning it:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">TaskLabelNestedRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+    <span class="n">task</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">[</span><span class="n">Task</span><span class="p">]</span>
+    <span class="n">label</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">[</span><span class="n">Label</span><span class="p">]</span>
+
+
+<span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/attach&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">TaskLabelNestedRead</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">201</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">attach</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">AttachRequest</span><span class="p">):</span>
+    <span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="n">create_task_label</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_response_schema</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The raw ORM object usually has scalar FK columns, while the nested schema expects relationship-shaped data. <code class="docutils literal notranslate"><span class="pre">IDRef</span></code> fields do not need this extra step because their scalar wire format already matches the ORM FK value.</p>
+<p>The SaaS example’s <code class="docutils literal notranslate"><span class="pre">example-projects/saas/app/views/label.py</span></code> shows this in a <code class="docutils literal notranslate"><span class="pre">create_and_attach</span></code> route that creates a sibling row, flushes it to get an id, and then builds a second row with <code class="docutils literal notranslate"><span class="pre">IDRef</span></code> references.</p>
+</section>
+<section id="example-return-the-deleted-record">
+<h3>Example: return the deleted record<a class="headerlink" href="#example-return-the-deleted-record" title="Link to this heading">#</a></h3>
+<p>The default <code class="docutils literal notranslate"><span class="pre">DELETE</span> <span class="pre">/{id}</span></code> returns <code class="docutils literal notranslate"><span class="pre">204</span> <span class="pre">No</span> <span class="pre">Content</span></code>. Some API contracts (for instance <code class="docutils literal notranslate"><span class="pre">ra-data-simple-rest</span></code> for react-admin) expect the deleted record back as JSON:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ProductView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/products&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Product</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">ProductRead</span>
+
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">delete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">perform_get</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
+        <span class="n">serialized</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_response_schema</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;json&quot;</span><span class="p">)</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">delete_object</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">serialized</span>
+</pre></div>
+</div>
+<p>The four other generated routes are unaffected.</p>
+</section>
+<section id="example-replace-the-listing-endpoint">
+<h3>Example: replace the listing endpoint<a class="headerlink" href="#example-replace-the-listing-endpoint" title="Link to this heading">#</a></h3>
+<p>Replace <code class="docutils literal notranslate"><span class="pre">listing</span></code> to take full control of how the list is returned — for instance to add custom response headers. Note that the replacement takes no <code class="docutils literal notranslate"><span class="pre">query_params</span></code> argument; the framework’s automatic query parameter injection only applies to the standard generated <code class="docutils literal notranslate"><span class="pre">listing</span></code>. Read query parameters directly from <code class="docutils literal notranslate"><span class="pre">self.request.query_params</span></code> if you need them:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">fastapi</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+
+<span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ProductView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/products&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Product</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">ProductRead</span>
+
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">listing</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">perform_listing</span><span class="p">({})</span>
+        <span class="n">serialized</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">to_response_schema</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;json&quot;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">obj</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">objects</span>
+        <span class="p">]</span>
+        <span class="k">return</span> <span class="n">fastapi</span><span class="o">.</span><span class="n">Response</span><span class="p">(</span>
+            <span class="n">content</span><span class="o">=</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">serialized</span><span class="p">),</span>
+            <span class="n">media_type</span><span class="o">=</span><span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
+            <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;X-Total-Count&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">total_count</span><span class="p">)},</span>
+        <span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="share-a-replacement-across-views-with-a-mixin">
+<h3>Share a replacement across views with a mixin<a class="headerlink" href="#share-a-replacement-across-views-with-a-mixin" title="Link to this heading">#</a></h3>
+<p>If several views need the same changed contract, put the replacement in a mixin. Python’s method resolution order ensures the mixin’s version is picked up before the standard one:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">DeleteReturnsObjectMixin</span><span class="p">:</span>
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">delete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">):</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">perform_get</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
+        <span class="n">serialized</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_response_schema</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;json&quot;</span><span class="p">)</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">delete_object</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">serialized</span>
+
+
+<span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ProductView</span><span class="p">(</span><span class="n">DeleteReturnsObjectMixin</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/products&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Product</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">ProductRead</span>
+
+
+<span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">OrderView</span><span class="p">(</span><span class="n">DeleteReturnsObjectMixin</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/orders&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Order</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">OrderRead</span>
+</pre></div>
+</div>
+<p>Both views now return the deleted record as JSON. All other generated routes behave normally on both.</p>
+<p>The public React Admin views use the same route-replacement pattern internally: <code class="docutils literal notranslate"><span class="pre">fr.AsyncReactAdminView</span></code> and <code class="docutils literal notranslate"><span class="pre">fr.ReactAdminView</span></code> replace <code class="docutils literal notranslate"><span class="pre">listing</span></code> with one that speaks the <code class="docutils literal notranslate"><span class="pre">ra-data-simple-rest</span></code> wire contract, while preserving the standard CRUD handlers for the rest of the view.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="exclude-generated-routes">
+<h2>Exclude generated routes<a class="headerlink" href="#exclude-generated-routes" title="Link to this heading">#</a></h2>
+<p>Set <code class="docutils literal notranslate"><span class="pre">exclude_routes</span></code> to suppress specific generated endpoints:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
+    <span class="n">exclude_routes</span> <span class="o">=</span> <span class="p">[</span><span class="n">fr</span><span class="o">.</span><span class="n">ViewRoute</span><span class="o">.</span><span class="n">DELETE</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">ViewRoute</span><span class="o">.</span><span class="n">UPDATE</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>Valid values are: <code class="docutils literal notranslate"><span class="pre">fr.ViewRoute.LIST</span></code>, <code class="docutils literal notranslate"><span class="pre">fr.ViewRoute.GET</span></code>, <code class="docutils literal notranslate"><span class="pre">fr.ViewRoute.CREATE</span></code>, <code class="docutils literal notranslate"><span class="pre">fr.ViewRoute.UPDATE</span></code>, <code class="docutils literal notranslate"><span class="pre">fr.ViewRoute.DELETE</span></code>. Route-name strings such as <code class="docutils literal notranslate"><span class="pre">&quot;delete&quot;</span></code> are also accepted; any other string raises <code class="docutils literal notranslate"><span class="pre">AttributeError</span></code> at startup.</p>
+</section>
+<hr class="docutils" />
+<section id="choosing-between-fr-route-and-the-shorthand-decorators">
+<h2>Choosing between <code class="docutils literal notranslate"><span class="pre">&#64;fr.route</span></code> and the shorthand decorators<a class="headerlink" href="#choosing-between-fr-route-and-the-shorthand-decorators" title="Link to this heading">#</a></h2>
+<p>Prefer <code class="docutils literal notranslate"><span class="pre">&#64;fr.get</span></code>, <code class="docutils literal notranslate"><span class="pre">&#64;fr.post</span></code>, <code class="docutils literal notranslate"><span class="pre">&#64;fr.put</span></code>, <code class="docutils literal notranslate"><span class="pre">&#64;fr.patch</span></code>, and <code class="docutils literal notranslate"><span class="pre">&#64;fr.delete</span></code> for most endpoints. They set the HTTP method automatically and apply Restly’s default status codes: <code class="docutils literal notranslate"><span class="pre">&#64;fr.get</span></code>/<code class="docutils literal notranslate"><span class="pre">&#64;fr.put</span></code>/<code class="docutils literal notranslate"><span class="pre">&#64;fr.patch</span></code> use 200, <code class="docutils literal notranslate"><span class="pre">&#64;fr.post</span></code> uses 201, and <code class="docutils literal notranslate"><span class="pre">&#64;fr.delete</span></code> uses 204.</p>
+<p>Use <code class="docutils literal notranslate"><span class="pre">&#64;fr.route(path,</span> <span class="pre">methods=[...],</span> <span class="pre">...)</span></code> only when you need full manual control over route options — for example, to register a single path under multiple HTTP methods, or to set a non-standard response code:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="nd">@fr</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">/thumbnail&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="s2">&quot;HEAD&quot;</span><span class="p">],</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">thumbnail</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="o">...</span>
+</pre></div>
+</div>
+<p>Both <code class="docutils literal notranslate"><span class="pre">&#64;fr.route</span></code> and the shorthand decorators pass their keyword arguments through to FastAPI’s route registration. Class-based routes therefore use the same configuration surface as regular FastAPI routes, including <code class="docutils literal notranslate"><span class="pre">response_model=</span></code>, <code class="docutils literal notranslate"><span class="pre">status_code=</span></code>, <code class="docutils literal notranslate"><span class="pre">dependencies=</span></code>, <code class="docutils literal notranslate"><span class="pre">responses=</span></code>, <code class="docutils literal notranslate"><span class="pre">tags=</span></code>, and other <code class="docutils literal notranslate"><span class="pre">APIRouter.add_api_route()</span></code> options.</p>
+</section>
+<hr class="docutils" />
+<section id="what-is-available-on-self">
+<h2>What is available on <code class="docutils literal notranslate"><span class="pre">self</span></code><a class="headerlink" href="#what-is-available-on-self" title="Link to this heading">#</a></h2>
+<p>Inside any handler or custom route method, the following attributes are always available:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Attribute</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">self.session</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">AsyncSession</span></code></p></td>
+<td><p>The current database session</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">self.request</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">fastapi.Request</span></code></p></td>
+<td><p>The live HTTP request</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">self.model</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">type[DeclarativeBase]</span></code></p></td>
+<td><p>The SQLAlchemy model class</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">self.schema</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">type[pydantic.BaseModel]</span></code></p></td>
+<td><p>The Pydantic response schema</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Any class-level <code class="docutils literal notranslate"><span class="pre">Annotated</span></code> dependency you declare on the view (e.g. a current user) is also injected and available as an instance attribute.</p>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="howto_typing.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">How-To: Use Type Annotations with FastAPI-Restly</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="howto_react_admin.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">How-To: React Admin Integration</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#how-the-handler-chain-works">How the handler chain works</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#read-path">Read path</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#write-path">Write path</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#override-a-perform-handler">Override a <code class="docutils literal notranslate"><span class="pre">perform_*</span></code> handler</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#perform-create-inject-server-side-fields-at-creation"><code class="docutils literal notranslate"><span class="pre">perform_create</span></code> — inject server-side fields at creation</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#perform-update-run-validation-before-saving"><code class="docutils literal notranslate"><span class="pre">perform_update</span></code> — run validation before saving</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#perform-delete-require-a-confirmation-header"><code class="docutils literal notranslate"><span class="pre">perform_delete</span></code> — require a confirmation header</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#perform-get-eager-load-extra-relationships"><code class="docutils literal notranslate"><span class="pre">perform_get</span></code> — eager-load extra relationships</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#scope-filter-reads">Scope-filter reads</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#override-low-level-object-helpers">Override low-level object helpers</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#save-object-send-a-notification-after-create-update"><code class="docutils literal notranslate"><span class="pre">save_object</span></code> — send a notification after create/update</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#build-from-schema-set-a-default-field-on-creation-only"><code class="docutils literal notranslate"><span class="pre">build_from_schema</span></code> — set a default field on creation only</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#apply-schema-prevent-certain-fields-from-being-changed"><code class="docutils literal notranslate"><span class="pre">apply_schema</span></code> — prevent certain fields from being changed</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#delete-object-implement-soft-delete"><code class="docutils literal notranslate"><span class="pre">delete_object</span></code> — implement soft-delete</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#extend-rather-than-replace-with-super">Extend rather than replace with <code class="docutils literal notranslate"><span class="pre">super()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#raise-http-errors-from-handlers">Raise HTTP errors from handlers</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#add-a-custom-read-route">Add a custom read route</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#add-a-custom-action-route">Add a custom action route</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#replace-a-generated-route">Replace a generated route</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#route-replacement-vs-handler-override">Route Replacement vs Handler Override</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#what-remains-available-inside-a-replacement">What remains available inside a replacement</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#overriding-response-serialization">Overriding response serialization</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#relationship-references-in-custom-routes">Relationship references in custom routes</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#example-return-the-deleted-record">Example: return the deleted record</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#example-replace-the-listing-endpoint">Example: replace the listing endpoint</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#share-a-replacement-across-views-with-a-mixin">Share a replacement across views with a mixin</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#exclude-generated-routes">Exclude generated routes</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#choosing-between-fr-route-and-the-shorthand-decorators">Choosing between <code class="docutils literal notranslate"><span class="pre">@fr.route</span></code> and the shorthand decorators</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#what-is-available-on-self">What is available on <code class="docutils literal notranslate"><span class="pre">self</span></code></a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+
+  
+  <div class="tocsection editthispage">
+    <a href="https://github.com/rjprins/fastapi-restly/edit/main/docs/howto_override_endpoints.md">
+      <i class="fa-solid fa-pencil"></i>
+      
+      
+        
+          Edit on GitHub
+        
+      
+    </a>
+  </div>
+</div>
+
+  <div class="sidebar-secondary-item">
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/howto_override_endpoints.md.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, Rutger Prins.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

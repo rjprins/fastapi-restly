@@ -1,0 +1,9 @@
+/* Slightly tighten the hero title on the index page */
+.bd-content h1:first-of-type {
+    font-size: 2.4rem;
+}
+
+/* Hide the "Section Navigation" sidebar block when it has no links */
+.bd-docs-nav:has(.bd-toc-item:empty) {
+    display: none;
+}
