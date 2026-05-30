@@ -13,9 +13,9 @@ class UserSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
     """Schema for User model.
 
     ``password`` is plaintext on the wire (write-only) and is never echoed
-    back. The view's ``perform_create`` hashes it into ``User.password_hash``
-    before the row is persisted. ``password_hash`` is intentionally not
-    on the schema — clients should never see it.
+    back. The view's ``create`` (the bare business verb) hashes it into
+    ``User.password_hash`` before the row is persisted. ``password_hash`` is
+    intentionally not on the schema — clients should never see it.
 
     Soft-delete + audit fields are ReadOnly so they appear in responses
     (e.g. ``deleted_at`` after a soft delete) but PATCH bodies can't spoof

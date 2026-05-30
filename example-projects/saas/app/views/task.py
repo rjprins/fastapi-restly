@@ -66,8 +66,8 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
     permission, not a tenant filter), implemented in ``build_query`` below.
     Because retrieve also routes through ``build_query``, the same predicate
     that filters listing also returns 404 from ``GET /tasks/{id}`` for tasks
-    not assigned to the current user — and cascades through ``perform_update``
-    and ``perform_delete`` (both call ``perform_get`` first).
+    not assigned to the current user — and cascades through ``handle_update``
+    and ``handle_delete`` (both load the row through ``get_one`` first).
     Demonstrates that views with non-tenant-aligned access models still
     benefit from the soft-delete + audit mixins, and that mixin composition
     is a la carte.
@@ -94,7 +94,7 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
         of assignee. Applied at the ``build_query`` seam so the same scope
         feeds listing, count, AND retrieve — the row-level permission is
         enforced at the SQL level on every read path, and cascades through
-        ``perform_update`` / ``perform_delete`` via ``perform_get``.
+        ``handle_update`` / ``handle_delete`` (which load via ``get_one``).
         Composes with ``SoftDeleteMixin.build_query`` via ``super()``.
         """
         q = super().build_query()
@@ -134,15 +134,17 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
                 status_code=422, detail="severity is required for bug tasks"
             )
 
-    async def perform_create(self, schema_obj):
+    async def create(self, schema_obj):
         """Validate, build, save, and bump the parent's story-point rollup.
 
+        Overrides the *bare* business ``create`` verb (auth-free, commit-free).
         The denormalized ``Project.total_story_points`` field is kept in
         sync here rather than in a SQLAlchemy event because (a) the math
         depends on the schema's optional ``story_points`` field and (b)
         we want the rollup to live in the same transaction as the task
         write. Both the task insert and the project update flush together
-        when ``save_object`` is called.
+        when ``save_object`` is called; ``handle_create`` then commits the
+        pair atomically.
         """
         from ..models import Project, ProjectStatus
 
@@ -162,13 +164,18 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
         # Validate cross-resource constraints
         await self._validate_cross_resource(data)
 
-        task = await self.build_from_schema(schema_obj)
+        task = await self.make_new_object(schema_obj)
         if task.story_points and project:
             project.total_story_points += task.story_points
         return await self.save_object(task)
 
-    async def perform_update(self, id: int, schema_obj):
+    async def update(self, obj, schema_obj):
         """Optimistic locking + reroll the parent's story-point rollup.
+
+        Overrides the *bare* business ``update`` verb, which receives the
+        already-loaded ``obj``: ``handle_update`` loads it through ``get_one``
+        (which enforces row-level access — assignee match — and 404s), runs
+        ``authorize``, then calls this method, and commits via the bracket.
 
         Pattern from the matrix's "update related object based on updated
         object" row: capture old value before mutation, apply the update,
@@ -185,8 +192,7 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
         """
         from ..models import Project
 
-        # perform_get enforces row-level access (assignee match) and 404s.
-        task = await self.perform_get(id)
+        task = obj
 
         # Check version for optimistic locking before applying the update.
         client_version = getattr(schema_obj, "version", None)
@@ -217,7 +223,7 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
         # respects exclude_unset semantics from the wire). Then bump version
         # explicitly — if the client sent a version it was already validated
         # above, and we always want server-side increment.
-        task = await self.apply_schema(task, schema_obj)
+        task = await self.update_object(task, schema_obj)
         task.version = (
             client_version if client_version is not None else task.version
         ) + 1
@@ -247,7 +253,7 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
                 f"Invalid task transition definition: {source_status.value} -> {target_status.value}"
             )
 
-        task = await self.perform_get(id)
+        task = await self.handle_get_one(id)
         if task.status != source_status:
             raise HTTPException(
                 status_code=400,
@@ -274,9 +280,11 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
         (b) the response is a per-row success/failure report rather than
         a list of created objects.
 
-        Each row is fed through ``perform_create`` via ``TaskCreateSchema``, so
-        every row inherits the same validation chain and rollup as
-        ``POST /tasks/``. Pydantic surfaces field errors per row.
+        Each row is fed through the business ``create`` verb via
+        ``TaskCreateSchema``, so every row inherits the same validation chain
+        and rollup as ``POST /tasks/``. ``create`` flushes but does not commit,
+        so all successful rows ride the single request-level commit together.
+        Pydantic surfaces field errors per row.
         """
         import csv
         import io
@@ -301,7 +309,7 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
                 )
                 if not schema_obj.title:
                     raise ValueError("title is required")
-                await self.perform_create(schema_obj)
+                await self.create(schema_obj)
                 success += 1
             except Exception as exc:  # noqa: BLE001 — surface per-row error
                 failed += 1
@@ -312,9 +320,11 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
     async def bulk_create(self, request: BulkCreateRequest) -> BulkResult:
         """Create multiple tasks at once.
 
-        Delegates each item to ``perform_create`` so the same archived-project
-        guard, conditional-field validation, cross-resource validation, and
-        story-point rollup that apply to ``POST /tasks/`` apply per row.
+        Delegates each item to the business ``create`` verb so the same
+        archived-project guard, conditional-field validation, cross-resource
+        validation, and story-point rollup that apply to ``POST /tasks/`` apply
+        per row. ``create`` flushes without committing, so the successful rows
+        share the single request-level commit.
         """
         success = 0
         failed = 0
@@ -322,7 +332,7 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
 
         for item in request.items:
             try:
-                await self.perform_create(item)
+                await self.create(item)
                 success += 1
             except Exception as e:  # noqa: BLE001 — surface per-row error
                 failed += 1
@@ -334,9 +344,10 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
     async def bulk_delete(self, request: BulkDeleteRequest) -> BulkResult:
         """Delete multiple tasks by IDs.
 
-        Uses ``perform_get`` per id so each delete inherits the row-level access
-        check (only the assignee may see/touch the task). perform_get raises
-        404 for both "missing" and "not yours", which we catch and report.
+        Uses ``handle_get_one`` per id so each delete inherits the row-level
+        access check (only the assignee may see/touch the task).
+        ``handle_get_one`` raises 404 for both "missing" and "not yours", which
+        we catch and report.
         """
         success = 0
         failed = 0
@@ -344,7 +355,7 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
 
         for task_id in request.ids:
             try:
-                task = await self.perform_get(task_id)
+                task = await self.handle_get_one(task_id)
                 await self.delete_object(task)
                 success += 1
             except HTTPException as exc:

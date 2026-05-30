@@ -341,10 +341,10 @@ class TestCrossResourceValidation:
 
 
 class TestDifferentSchemasPerOperation:
-    """Test different schemas per operation (creation_schema, update_schema)."""
+    """Test different schemas per operation (schema_create, schema_update)."""
 
     def test_create_org_with_invalid_slug_fails(self, client):
-        """Test that creation_schema validates slug format."""
+        """Test that schema_create validates slug format."""
         # Try to create with uppercase slug - should fail
         response = client.post(
             "/organizations/",
@@ -356,7 +356,7 @@ class TestDifferentSchemasPerOperation:
         assert any("slug" in str(e).lower() for e in error.get("detail", []))
 
     def test_create_org_with_spaces_in_slug_fails(self, client):
-        """Test that creation_schema rejects slugs with spaces."""
+        """Test that schema_create rejects slugs with spaces."""
         response = client.post(
             "/organizations/",
             json={"name": "Test Org", "slug": "has spaces"},
@@ -366,7 +366,7 @@ class TestDifferentSchemasPerOperation:
         assert any("slug" in str(e).lower() for e in error.get("detail", []))
 
     def test_create_org_with_valid_slug_succeeds(self, client):
-        """Test that creation_schema accepts valid slugs."""
+        """Test that schema_create accepts valid slugs."""
         response = client.post(
             "/organizations/", json={"name": "Valid Org", "slug": "valid-slug-123"}
         )
@@ -376,7 +376,7 @@ class TestDifferentSchemasPerOperation:
         assert org["name"] == "Valid Org"
 
     def test_create_org_with_short_name_fails(self, client):
-        """Test that creation_schema requires minimum name length."""
+        """Test that schema_create requires minimum name length."""
         response = client.post(
             "/organizations/",
             json={"name": "X", "slug": "short-name"},
@@ -386,7 +386,7 @@ class TestDifferentSchemasPerOperation:
         assert any("name" in str(e).lower() for e in error.get("detail", []))
 
     def test_update_org_name_only(self, client):
-        """Test that update_schema only allows name updates."""
+        """Test that schema_update only allows name updates."""
         # Create org
         response = client.post(
             "/organizations/",
@@ -404,7 +404,7 @@ class TestDifferentSchemasPerOperation:
         assert updated["slug"] == "update-schema-test"  # Slug unchanged
 
     def test_update_org_slug_ignored(self, client):
-        """Test that update_schema ignores slug changes (not in schema)."""
+        """Test that schema_update ignores slug changes (not in schema)."""
         # Create org
         response = client.post(
             "/organizations/",
@@ -412,11 +412,11 @@ class TestDifferentSchemasPerOperation:
         )
         org_id = response.json()["id"]
 
-        # Try to update slug - should be ignored (not in update_schema)
+        # Try to update slug - should be ignored (not in schema_update)
         response = client.patch(f"/organizations/{org_id}", json={"slug": "new-slug"})
         updated = response.json()
 
-        # Slug should be unchanged (field not in update_schema)
+        # Slug should be unchanged (field not in schema_update)
         assert updated["slug"] == "original-slug"
 
 
@@ -424,7 +424,7 @@ class TestTenantIsolation:
     """Test tenant isolation (org scoping) for projects."""
 
     def test_tenant_isolation_filters_list(self, client, auth_context):
-        """Test that perform_list filters by current org when set."""
+        """Test that the list (get_many) read scope filters by current org when set."""
         # Create two orgs
         response = client.post(
             "/organizations/", json={"name": "Tenant Org 1", "slug": "tenant-org-1"}
@@ -463,7 +463,7 @@ class TestTenantIsolation:
             assert org2_project_id not in filtered_ids
 
     def test_tenant_isolation_blocks_get_other_org(self, client, auth_context):
-        """Test that perform_get returns 404 for other org's resources."""
+        """Test that get_one returns 404 for other org's resources."""
         # Create two orgs
         response = client.post(
             "/organizations/",
@@ -491,7 +491,7 @@ class TestTenantIsolation:
             )
 
     def test_tenant_isolation_allows_own_org(self, client, auth_context):
-        """Test that perform_get allows access to own org's resources."""
+        """Test that get_one allows access to own org's resources."""
         # Create org
         response = client.post(
             "/organizations/", json={"name": "Own Tenant Org", "slug": "own-tenant-org"}
@@ -515,7 +515,7 @@ class TestRowLevelPermissions:
     """Test row-level permissions (filter results by user permissions)."""
 
     def test_row_level_filters_task_list(self, client, auth_context):
-        """Test that perform_list filters tasks by current user."""
+        """Test that the list (get_many) read scope filters tasks by current user."""
         # Create org, users, and project
         response = client.post(
             "/organizations/", json={"name": "Row Level Org", "slug": "row-level-org"}
@@ -584,7 +584,7 @@ class TestRowLevelPermissions:
             assert user2_task_id not in filtered_ids
 
     def test_row_level_blocks_get_other_user_task(self, client, auth_context):
-        """Test that perform_get returns 404 for other user's tasks."""
+        """Test that get_one returns 404 for other user's tasks."""
         # Create org, users, and project
         response = client.post(
             "/organizations/",
@@ -633,7 +633,7 @@ class TestRowLevelPermissions:
             response = client.get(f"/tasks/{user2_task_id}", assert_status_code=404)
 
     def test_row_level_allows_own_task(self, client, auth_context):
-        """Test that perform_get allows access to user's own tasks."""
+        """Test that get_one allows access to user's own tasks."""
         # Create org, user, and project
         response = client.post(
             "/organizations/", json={"name": "Own Task Org", "slug": "own-task-org"}

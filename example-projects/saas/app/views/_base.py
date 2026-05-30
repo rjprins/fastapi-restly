@@ -102,8 +102,10 @@ class TenantBase(fr.AsyncRestView):
         """Flush, refresh, then emit an audit event.
 
         Overriding ``save_object`` is the right place for side effects that
-        should run after *every* write — both create and update — because
-        both ``perform_create`` and ``perform_update`` end by calling ``self.save_object``.
+        should run after *every* write — both create and update — because the
+        business ``create`` and ``update`` ops both end by calling
+        ``self.save_object`` (``save_object`` flushes but does NOT commit; the
+        ``handle_<verb>`` layer owns the commit).
         """
         obj = await super().save_object(obj)
         # In production: publish to an audit log or event bus.

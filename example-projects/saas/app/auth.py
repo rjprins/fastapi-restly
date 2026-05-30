@@ -6,11 +6,13 @@ hashes so the example can demonstrate the security-relevant flow:
 the request body's plaintext ``password`` is converted into a stored
 ``password_hash`` *before* persistence.
 
-The whole reason this helper exists is to make the mistake from
-``rut-notes/discussion_save_object.md`` reproducible: if ``perform_create``
-calls ``super().perform_create()`` and only then sets ``password_hash``, the
-in-memory mutation never reaches the database — the row is committed
-with ``password_hash = ""``.
+The whole reason this helper exists is to demonstrate the canonical
+three-tier override: ``UserView`` overrides the *bare* business ``create``
+verb (auth-free, commit-free), builds the row with ``make_new_object``, sets
+``password_hash``, then ``save_object`` (flush, no commit). Because the commit
+happens later in ``handle_create``, the hash is on the row before it is
+persisted — the old "set the hash after a post-flush commit and watch the
+plaintext leak" trap is structurally gone.
 """
 
 from __future__ import annotations

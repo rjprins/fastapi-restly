@@ -5,7 +5,7 @@ from fastapi import HTTPException
 from pydantic import BaseModel
 
 import fastapi_restly as fr
-from fastapi_restly.objects import async_build_from_schema, async_save_object
+from fastapi_restly.objects import async_make_new_object, async_save_object
 from fastapi_restly.schemas import IDRef
 
 from ..models import Label, Task, TaskLabel
@@ -49,7 +49,7 @@ class LabelView(TenantScopedMixin, TenantBase):
 class TaskLabelView(TenantBase):
     """CRUD for task-label associations.
 
-    Demonstrates ``build_from_schema`` to stamp the ``added_by_id`` field from
+    Demonstrates ``make_new_object`` to stamp the ``added_by_id`` field from
     the injected auth context rather than requiring the client to provide it.
     """
 
@@ -57,9 +57,9 @@ class TaskLabelView(TenantBase):
     model = TaskLabel
     schema = TaskLabelSchema
 
-    async def build_from_schema(self, schema_obj):
+    async def make_new_object(self, schema_obj):
         """Stamp added_by_id from auth context if the client did not provide it."""
-        obj = await super().build_from_schema(schema_obj)
+        obj = await super().make_new_object(schema_obj)
         if obj.added_by_id is None:
             obj.added_by_id = self._current_user_id()
         return obj
@@ -77,7 +77,7 @@ class TaskLabelView(TenantBase):
 
         1) **Build the Label and flush before constructing the TaskLabel.**
            This is required because the next step uses
-           ``async_build_from_schema`` with a ``TaskLabelSchema`` that
+           ``async_make_new_object`` with a ``TaskLabelSchema`` that
            carries ``label_id: IDRef[Label]`` — and the schema
            resolver runs ``select(Label).where(id=...)`` to verify the
            reference. A not-yet-flushed Label has no PK yet, so we
@@ -85,14 +85,14 @@ class TaskLabelView(TenantBase):
            the cost of going through the resolver path.
 
         2) **Direct ORM construction after flush.** We use
-           ``async_build_from_schema`` rather than the model constructor
+           ``async_make_new_object`` rather than the model constructor
            directly so the framework's writable-field filtering + readonly
            handling apply. The ``TaskLabelSchema`` has ``label_id`` typed
            as ``IDRef[Label]`` — the resolver replaces that with the
            Label instance, which the framework then converts back to
            ``label_id = label.id`` via the resolver path.
         """
-        # Tenant scope is enforced via TaskView.perform_get-style checks here:
+        # Tenant scope is enforced via TaskView.get_one-style checks here:
         # we don't go through TaskView, so we re-validate the task fits
         # the current org to avoid a cross-tenant attach.
         task = await self.session.get(Task, request.task_id)
@@ -124,10 +124,10 @@ class TaskLabelView(TenantBase):
         link_schema = TaskLabelSchema.model_construct(
             task_id=IDRef[Task](id=request.task_id), label_id=IDRef[Label](id=label.id)
         )
-        task_label = await async_build_from_schema(self.session, TaskLabel, link_schema)
+        task_label = await async_make_new_object(self.session, TaskLabel, link_schema)
         # added_by_id stamping isn't auto-applied here because
-        # async_build_from_schema is the *free function*, not the bound
-        # ``self.build_from_schema`` method that this view overrides for
+        # async_make_new_object is the *free function*, not the bound
+        # ``self.make_new_object`` method that this view overrides for
         # the stamp. Worth flagging for the helper-design discussion.
         if task_label.added_by_id is None:
             task_label.added_by_id = self._current_user_id()

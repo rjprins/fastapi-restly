@@ -1,6 +1,6 @@
 """Upload view — multipart import with early-flush-for-PK pattern.
 
-This view is the canonical illustration of why ``build_from_schema`` and
+This view is the canonical illustration of why ``make_new_object`` and
 ``save_object`` need to be public utilities (per option B' in
 ``rut-notes/discussion_save_object.md``). The multipart upload flow:
 
@@ -52,7 +52,7 @@ class UploadView(TenantBase):
     ) -> Upload:
         """Parse a CSV file and create an Upload + UploadLine rows.
 
-        The flow is the entire reason ``build_from_schema`` /
+        The flow is the entire reason ``make_new_object`` /
         ``session.flush()`` / ``save_object`` are separate public steps —
         no single helper would absorb the flush-for-PK requirement.
         """
@@ -65,9 +65,9 @@ class UploadView(TenantBase):
         except UnicodeDecodeError as exc:
             raise fastapi.HTTPException(422, f"file is not utf-8: {exc}") from exc
 
-        # 1) Build parent. ``build_from_schema`` is overkill here because we're
+        # 1) Build parent. ``make_new_object`` is overkill here because we're
         #    not coming from a JSON body schema, so we construct directly. The
-        #    framework call style (``self.build_from_schema``) is also valid if
+        #    framework call style (``self.make_new_object``) is also valid if
         #    you do have a schema_obj.
         upload = Upload(
             filename=file.filename,

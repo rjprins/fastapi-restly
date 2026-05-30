@@ -23,8 +23,8 @@ class User(fr.TimestampsMixin, fr.IDBase):
     Users can be assigned to tasks.
 
     The ``password`` column stores the *hashed* digest, never plaintext.
-    ``UserView.perform_create`` hashes the incoming plaintext from the
-    ``password`` schema field before the row is persisted. The schema
+    ``UserView.create`` (the bare business verb) hashes the incoming plaintext
+    from the ``password`` schema field before the row is persisted. The schema
     marks ``password`` as ``WriteOnly``, so it never appears in responses.
     """
 
@@ -34,8 +34,8 @@ class User(fr.TimestampsMixin, fr.IDBase):
     # Foreign keys
     organization_id: orm.Mapped[int] = orm.mapped_column(ForeignKey("organization.id"))
 
-    # Stores the hashed password (see UserView.perform_create). The wire-format
-    # field shares the name; perform_create swaps plaintext for digest before flush.
+    # Stores the hashed password (see UserView.create). The wire-format field
+    # shares the name; create swaps plaintext for digest before flush.
     password: orm.Mapped[str] = orm.mapped_column(default="")
     role: orm.Mapped[UserRole] = orm.mapped_column(default=UserRole.MEMBER)
     # Sensitive field - only visible to HR role
