@@ -11,32 +11,42 @@ mixin declaration.
 This guide covers the pattern, the rule that decides whether to use it,
 and two ergonomic gotchas worth knowing up front.
 
-## When to override `build_from_schema` / `apply_schema` / `delete_object` / `build_query`
+## The structural override points
 
-The [Override Endpoints](howto_override_endpoints.md#override-low-level-object-helpers)
-guide warns against overriding these low-level helpers for per-view
-business logic — password hashing, slug derivation, denormalised rollups,
-status-transition events. Those belong in `perform_create` / `perform_update`,
-written from scratch using the [`build_from_schema` /
-`save_object`](api_reference.md#advanced-object-helpers) helpers.
+Three [override points](howto_override_endpoints.md) carry almost all
+structural concerns:
 
-There is one carve-out where overriding these helpers is the *right*
-answer:
+- `build_query` — the unified **read scope**. List, count, and retrieve
+  all route through it, so one `.where(...)` clause filters every read.
+- `prepare_create` / `prepare_update` — **cooperative field stamping**.
+  Each returns a `dict` of *extra* server-controlled fields to set on the
+  object; the framework applies them. Mixins layer by calling `super()`,
+  merging their fields into the dict.
+- the `delete` business verb — to replace a physical delete with a flag
+  flip (soft delete).
 
-**Rule 1 — don't override these helpers for per-view application logic.**
-Hashing a password, deriving a slug with a uniqueness probe, computing a
-denormalised rollup, dispatching outbox events on a status transition —
-all of these belong in `perform_create` / `perform_update` so the call site is
-explicit about what happens on this resource's create.
+These are deliberately not the place for per-view *application* logic.
 
-**Rule 2 — do override these helpers for structural cross-cutting
+**Rule 1 — don't use these override points for per-view application
+logic.** Hashing a password, deriving a slug with a uniqueness probe,
+computing a denormalised rollup, dispatching outbox events on a status
+transition — all of these belong in a per-view `create` / `update`
+business verb so the call site is explicit about what happens on this
+resource's write. (See
+[Override Endpoints](howto_override_endpoints.md) for that pattern.)
+
+**Rule 2 — do use these override points for structural cross-cutting
 concerns**, layered through mixins. Stamping `created_by_id` /
 `updated_by_id` from auth context, stamping `organization_id` from the
 current tenant, filtering reads to non-soft-deleted rows, replacing
 physical delete with a timestamp flip — all of these are safe to layer
 because:
 
-- They run *before* `save_object` (no flush-timing trap).
+- `prepare_create` / `prepare_update` return *extra* fields rather than
+  mutating a half-built object, so they compose cleanly and never fight
+  the schema's own writes.
+- They run inside the commit-free business verb, before the handler's
+  commit, so there's no flush-timing trap.
 - They only stamp/scope; they don't compute business values from
   schema inputs.
 - They compose linearly via cooperative `super()` calls, so combinations
@@ -49,15 +59,15 @@ inputs?
   flags) and writes server-controlled fields → mixin (Rule 2).
 - If it reads schema fields and computes values from them
   (`hash_password(schema.password)`, `slugify(schema.name) +
-  uniqueness_probe`) → user's `perform_create` / `perform_update`, written from
-  scratch (Rule 1).
+  uniqueness_probe`) → a per-view `create` / `update` override, written
+  from scratch (Rule 1).
 
 ### Reusing logic outside the view
 
-`perform_create` / `perform_update` are instance methods — they have access
-to `self.session`, `self.request`, and any view state mixins inject.
-That's almost always what you want, and the view is the right home for
-the logic.
+A per-view `create` / `update` override is an instance method — it has
+access to `self.session`, `self.request`, and any view state mixins
+inject. That's almost always what you want, and the view is the right
+home for the logic.
 
 On the rare occasion the same logic must also run from a script or a
 background job, extract a plain function and call it from both. Put the
@@ -66,7 +76,7 @@ helper, a small `Client` class — pick the obvious spot; don't manufacture
 a layer for it:
 
 ```python
-from fastapi_restly.objects import async_build_from_schema
+from fastapi_restly.objects import async_make_new_object
 
 
 def hash_and_set_password(user: User, raw_password: str) -> None:
@@ -77,12 +87,21 @@ class UserView(fr.AsyncRestView):
     model = User
     schema = UserRead
 
-    async def perform_create(self, schema_obj):
-        user = await async_build_from_schema(self.session, User, schema_obj)
+    async def create(self, schema_obj):
+        user = await self.make_new_object(schema_obj)
         hash_and_set_password(user, schema_obj.password)
-        await self.save_object(user)
-        return user
+        return await self.save_object(user)
 ```
+
+`create` is commit-free — the request handler owns the commit — so
+setting `password_hash` here persists correctly. The old "mutate after
+save" trap is gone: there is no flush between `make_new_object` and
+`save_object` that could strand your write.
+
+The `make_new_object` / `save_object` instance methods are thin wrappers
+over the `async_make_new_object` / `async_save_object` free functions in
+`fastapi_restly.objects`; import those when you need the same behaviour
+from a worker with a bare session instead of a view.
 
 Don't preempt this. Most business logic only ever runs from the view;
 extract a function when the second caller actually exists, not before.
@@ -115,8 +134,8 @@ class TenantScopedMixin:
         def _is_admin(self) -> bool: ...
 
     def build_query(self) -> sa.Select:
-        # Filters listing, count, AND retrieve via the framework's
-        # unified read seam — no separate perform_get override needed.
+        # Filters get_many, count, AND get_one via the framework's unified
+        # read scope -- no separate retrieve override needed.
         q = super().build_query()  # type: ignore[misc]
         if self._is_admin():
             return q
@@ -125,12 +144,12 @@ class TenantScopedMixin:
             q = q.where(self.model.organization_id == org_id)
         return q
 
-    async def build_from_schema(self, schema_obj: Any) -> Any:
-        obj = await super().build_from_schema(schema_obj)  # type: ignore[misc]
+    async def prepare_create(self, schema_obj: Any) -> dict[str, Any]:
+        fields = await super().prepare_create(schema_obj)  # type: ignore[misc]
         org_id = self._current_org_id()
-        if org_id is not None and hasattr(obj, "organization_id"):
-            obj.organization_id = org_id
-        return obj
+        if org_id is not None and hasattr(self.model, "organization_id"):
+            fields["organization_id"] = org_id
+        return fields
 ```
 
 ### `SoftDeleteMixin` — hide deleted rows
@@ -140,12 +159,13 @@ from datetime import datetime, timezone
 
 
 class SoftDeleteMixin:
-    """Hide deleted rows; ``delete_object`` sets ``deleted_at`` instead."""
+    """Hide deleted rows; ``delete`` flips ``deleted_at`` instead."""
 
     if TYPE_CHECKING:
         request: fastapi.Request
         session: AsyncSession
         model: type[DeclarativeBase]
+        def save_object(self, obj: Any) -> Any: ...
 
     def _include_deleted(self) -> bool:
         return self.request.query_params.get("include_deleted", "false").lower() == "true"
@@ -156,13 +176,21 @@ class SoftDeleteMixin:
             q = q.where(self.model.deleted_at.is_(None))
         return q
 
-    async def delete_object(self, obj: Any) -> None:
+    async def delete(self, obj: Any) -> None:
         if hasattr(obj, "deleted_at"):
             obj.deleted_at = datetime.now(timezone.utc)
-            await self.session.flush()
+            await self.save_object(obj)
             return
-        await super().delete_object(obj)  # type: ignore[misc]
+        await super().delete(obj)  # type: ignore[misc]
 ```
+
+The soft-delete flip overrides the bare `delete` business verb, not the
+handler. That keeps it auth-free and commit-free: `handle_delete` still
+loads the row through `get_one` (so it 404s on an already-hidden row),
+runs `authorize`, and owns the commit — the mixin only changes *what
+"delete" means* for this view. Calling `save_object` (rather than
+committing) leaves the commit to the handler, so `after_commit` hooks
+still fire after durability.
 
 ### `AuditStampedMixin` — record who created/updated each row
 
@@ -176,21 +204,26 @@ class AuditStampedMixin:
     def _current_user_id(self) -> int | None:
         return getattr(self.request.state, "user_id", None)
 
-    async def build_from_schema(self, schema_obj: Any) -> Any:
-        obj = await super().build_from_schema(schema_obj)  # type: ignore[misc]
+    async def prepare_create(self, schema_obj: Any) -> dict[str, Any]:
+        fields = await super().prepare_create(schema_obj)  # type: ignore[misc]
         uid = self._current_user_id()
-        if hasattr(obj, "created_by_id") and obj.created_by_id is None:
-            obj.created_by_id = uid
-        if hasattr(obj, "updated_by_id"):
-            obj.updated_by_id = uid
-        return obj
+        fields["created_by_id"] = uid
+        fields["updated_by_id"] = uid
+        return fields
 
-    async def apply_schema(self, obj: Any, schema_obj: Any) -> Any:
-        obj = await super().apply_schema(obj, schema_obj)  # type: ignore[misc]
-        if hasattr(obj, "updated_by_id"):
-            obj.updated_by_id = self._current_user_id()
-        return obj
+    async def prepare_update(self, obj: Any, schema_obj: Any) -> dict[str, Any]:
+        fields = await super().prepare_update(obj, schema_obj)  # type: ignore[misc]
+        fields["updated_by_id"] = self._current_user_id()
+        return fields
 ```
+
+Each mixin's `prepare_create` / `prepare_update` starts by calling
+`super()` to collect the fields lower layers contributed, adds its own
+keys, and returns the merged dict. The framework sets every key on the
+object after building/applying the schema, so stamps never collide with
+schema-driven writes and the layers compose in any order. `prepare_update`
+takes the already-loaded `obj` as well as the update schema, so a mixin
+can compare against the current row if it needs to.
 
 ## Composing mixins on a view
 
@@ -206,12 +239,12 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, fr.Asyn
     schema = ProjectRead
 ```
 
-`perform_listing` and `perform_get` consult `build_query`; `count_listing` counts
-the query built by `perform_listing`. The tenant + soft-delete `WHERE` clauses
-therefore apply to listing, the pagination total, **and** single-row fetches
-(`GET /{id}`) without further plumbing. A row hidden from listing returns 404 from
-retrieve too — and `perform_update` / `perform_delete` inherit the check
-since they call `perform_get` first.
+`get_many` and `get_one` consult `build_query`; `count` counts the query
+built for the list. The tenant + soft-delete `WHERE` clauses therefore
+apply to listing, the pagination total, **and** single-row fetches
+(`GET /{id}`) without further plumbing. A row hidden from the list returns
+404 from retrieve too — and update/delete inherit the check, because
+`handle_update` / `handle_delete` load the target through `get_one` first.
 
 ## Two ergonomic gotchas
 
@@ -275,10 +308,17 @@ a different base query, parallel `AdminProjectView` etc.) gives you
 class-time guarantees at the cost of a parallel hierarchy. Pick
 whichever trade-off matches the access model you actually have.
 
+Read scope is *visibility*; it is not a substitute for *policy*. A row
+hidden by `build_query` 404s for everyone, which is the right default,
+but coarse allow/deny decisions ("only managers may create") belong in
+`authorize`, consulted by the request handlers. See
+[Override Endpoints](howto_override_endpoints.md) for the `authorize`
+override point and the declarative `permissions` dict.
+
 ## Cross-references
 
-- [Override Endpoints](howto_override_endpoints.md) — single-base-class
-  overrides and the call chain.
+- [Override Endpoints](howto_override_endpoints.md) — the three tiers,
+  single-base overrides, and the call chain.
 - [Class-Based Views](class_based_views.md#dependency-injection-on-class-attributes)
   — the marker-based DI rule that makes mixin type stubs safe.
 - [Share Behaviour with Base Views](howto_inheritance.md) — single-base

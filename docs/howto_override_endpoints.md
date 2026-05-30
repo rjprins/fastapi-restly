@@ -1,69 +1,81 @@
 # How-To: Override CRUD Behavior and Add Custom Endpoints
 
-FastAPI-Restly generates five standard CRUD endpoints for every view, but real applications always need to bend the rules: inject extra fields, restrict which rows a user may see, run side effects, or expose non-CRUD operations. This guide walks through every layer of the override system, from the highest-level handlers down to raw session access.
+FastAPI-Restly generates five standard CRUD endpoints for every view, but real applications always need to bend the rules: inject extra fields, restrict which rows a user may see, run side effects, or expose non-CRUD operations. This guide walks through the override system from the highest-level route shell down to raw session access.
+
+Every CRUD verb is structured as **three tiers**. Picking the right tier is the whole skill: most overrides belong in the lowest one. This page shows what to override where. For the full conceptual model — why the tiers are split this way and how the commit bracket works — read [The Handle Design](the_handle_design.md). The API reference also classifies the full view method surface: [View Method Surface](api_reference.md#view-method-surface).
 
 Every concrete view class must be registered with `fr.include_view(app, ViewClass)` or the decorator shortcut before FastAPI sees its routes. Larger apps are easier to organize when view modules define classes and app/router modules include them.
 
 ---
 
-## How the handler chain works
+## The three tiers of a CRUD verb
 
-Understanding the call chain helps you pick the right layer to override. The API reference also classifies the full view method surface: [View Method Surface](api_reference.md#view-method-surface).
+Take any verb — `create`, say. It is implemented as three methods, each at a different altitude:
 
-### Read path
+| Tier | Methods | Owns | Override to… |
+|---|---|---|---|
+| **1. Route shell** (wire) | `create_endpoint`, `get_many_endpoint`, `get_one_endpoint`, `update_endpoint`, `delete_endpoint` | The `@route`, the FastAPI signature, `response_model`, and `to_response` | Change the **HTTP contract** (status code, response shape, headers) |
+| **2. Request handler** | `handle_create`, `handle_get_many`, `handle_get_one`, `handle_update`, `handle_delete` | `authorize` and the commit bracket (`before_commit` → commit → `after_commit`); returns the domain object | Change **orchestration / timing** (custom transaction, async delete) without re-declaring the route |
+| **3. Business verb** (domain) | `create`, `get_many`, `get_one`, `update`, `delete` | The domain operation: build / apply / save. **Auth-free and commit-free.** | Change **domain logic** (hash a password, derive a slug, compute a field) — the usual override point |
 
-```
-GET /{id}
-  └─ get()         ← HTTP contract (replace to change; see below)
-       └─ perform_get(id)    ← business-logic handler — override here
-            └─ build_query()    ← same seam as listing — read filters apply here too
-```
-
-```
-GET /
-  └─ listing()                   ← HTTP contract (replace to change; see below)
-       └─ perform_listing(query_params)      ← business-logic handler — override here
-       │    └─ build_query()    ← WHERE-clause seam shared with retrieve
-       │    └─ apply_list_params(query_params, query, ...)
-       │    └─ count_listing(query)  ← counts the same query after stripping order/limit/offset
-       └─ to_listing_response(query_params, result)  ← response-shape hook
-            └─ to_paginated_listing_response(query_params, result)  ← paginated envelope hook
-```
-
-### Write path
+The call chain for `POST /` is:
 
 ```
 POST /
-  └─ create()                      ← FastAPI endpoint (avoid overriding)
-       └─ perform_create(schema_obj)    ← operation handler — override here to add fields
-            └─ build_from_schema(...)  ← object helper — override to change construction
-            └─ save_object(obj)      ← create/update persistence boundary
-
-PATCH /{id}
-  └─ update()
-       └─ perform_update(id, schema_obj)
-            └─ perform_get(id)            ← reuses the same 404 logic
-            └─ apply_schema(obj, schema_obj)
-            └─ save_object(obj)      ← create/update persistence boundary
-
-DELETE /{id}
-  └─ delete()
-       └─ perform_delete(id)
-            └─ perform_get(id)
-            └─ delete_object(obj)    ← delete persistence boundary
+  └─ create_endpoint(schema_obj)        ← tier 1: route shell (wire)
+       └─ handle_create(schema_obj)      ← tier 2: authorize + commit bracket
+            ├─ authorize("create", data=schema_obj)
+            ├─ create(schema_obj)        ← tier 3: domain op — the usual override point
+            │    ├─ make_new_object(schema_obj)
+            │    └─ save_object(obj)
+            ├─ before_commit("create", new=obj)
+            ├─ commit            ← the framework owns the commit
+            └─ after_commit("create", new=obj)
 ```
 
-`build_from_schema` and `apply_schema` prepare the ORM object but do not flush the session. The default create and update handlers both call `save_object` afterwards; that explicit save step is where the write is flushed and refreshed from the database. Deletes use a separate boundary: `delete_object` deletes the row and flushes.
+The same shape holds for every verb. `GET /{id}` is the simplest:
 
-**General rule:** prefer overriding `perform_*` handlers for business logic and `build_from_schema` / `apply_schema` / `save_object` / `delete_object` for lower-level structural changes. When you need to change the HTTP contract itself — status code, response shape, headers, or query parameter semantics — replace the raw endpoint method; see [Replace a generated route](#replace-a-generated-route) below.
+```
+GET /{id}
+  └─ get_one_endpoint(id)               ← tier 1: route shell
+       └─ handle_get_one(id)            ← tier 2: scoped load + read-auth
+            ├─ get_one(id)              ← tier 3: load via build_query (404 by visibility)
+            └─ authorize("get_one", obj=obj)
+```
+
+`GET /` (list) routes its domain op through three read methods:
+
+```
+GET /
+  └─ get_many_endpoint(query_params)    ← tier 1: route shell
+       └─ handle_get_many(query_params) ← tier 2: authorize + get_many
+            ├─ authorize("get_many")
+            └─ get_many(query_params)   ← tier 3: domain read
+                 ├─ build_query()       ← read scope (shared with get_one)
+                 ├─ apply_query_params(query, query_params)
+                 └─ count(query)
+```
+
+**The default rule:** override the **business verb** (tier 3) for domain logic. Reach up to **`handle_<verb>`** (tier 2) only when you need to change orchestration or the transaction, and to the **route shell** (tier 1) only when you need to renegotiate the HTTP contract on the wire.
+
+### Why commit-free domain verbs matter
+
+The framework owns the `commit` inside `handle_<verb>`, *after* the business verb returns. So `after_commit` runs after the write is durable, and — crucially — the business verb never commits. That kills the old "mutate-after-save" trap: you can build an object, set a derived field, save it, and return it, all in `create`, and it persists correctly because the commit happens later.
+
+```python
+async def create(self, schema_obj):
+    obj = await self.make_new_object(schema_obj)
+    obj.password_hash = hash_password(schema_obj.password)
+    return await self.save_object(obj)
+```
 
 ---
 
-## Override a `perform_*` handler
+## Tier 3: override the business verb (the common case)
 
-Each `perform_*` handler maps one-to-one to a generated endpoint. Override the one you want to change; the others keep their default implementations.
+Each business verb maps to one domain operation. Override the one you want to change; the others keep their defaults. These methods are **auth-free and commit-free** — `handle_<verb>` adds the `authorize` call and owns the commit around them, so you only write domain logic.
 
-### `perform_create` — inject server-side fields at creation
+### `create` — inject server-side fields at creation
 
 ```python
 import fastapi_restly as fr
@@ -74,58 +86,88 @@ class UserView(fr.AsyncRestView):
     model = User
     schema = UserRead
 
-    async def perform_create(self, schema_obj):
-        obj = await self.build_from_schema(schema_obj)
+    async def create(self, schema_obj):
+        obj = await self.make_new_object(schema_obj)
         obj.created_by = self.request.state.user_id  # set from request context
         return await self.save_object(obj)
 ```
 
-`self.request` is the live FastAPI `Request`. `self.session` is the injected async SQLAlchemy session. Both are available in every handler.
+`self.request` is the live FastAPI `Request`. `self.session` is the injected async SQLAlchemy session. Both are available in every method.
 
-### `perform_update` — run validation before saving
+### `update` — run validation before saving
+
+`update` receives the already-loaded object (fetched and visibility-scoped by `handle_update`), not the id:
 
 ```python
-    async def perform_update(self, id, schema_obj):
-        obj = await self.perform_get(id)  # raises 404 if missing
+    async def update(self, obj, schema_obj):
         if obj.locked:
             raise fastapi.HTTPException(409, "Cannot update a locked record")
-        obj = await self.apply_schema(obj, schema_obj)
+        obj = await self.update_object(obj, schema_obj)
         return await self.save_object(obj)
 ```
 
-### `perform_delete` — require a confirmation header
+### `delete` — soft-delete instead of removing the row
+
+`delete` also receives the loaded object. Flip a timestamp instead of deleting:
 
 ```python
-    async def perform_delete(self, id):
-        if self.request.headers.get("X-Confirm-Delete") != "yes":
-            raise fastapi.HTTPException(400, "Missing X-Confirm-Delete: yes header")
-        return await super().perform_delete(id)
+    async def delete(self, obj):
+        obj.deleted_at = datetime.utcnow()
+        await self.session.flush()
+        # Do NOT call super() — that would remove the row.
 ```
 
-Using `super()` here keeps the existing 404-checking and deletion logic intact.
+(For a reusable soft-delete that also hides the rows on read, see the `SoftDeleteMixin` in [Composing views with mixins](howto_compose_views_with_mixins.md).)
 
-### `perform_get` — eager-load extra relationships
+### `get_one` — eager-load extra relationships
 
-The default `perform_get` relies on the view's `schema` to decide which relationships to load. If you need something extra just for one endpoint, override and load it manually:
+The default `get_one` loads through `build_query` and the view's schema-derived loader options. If you need something extra just for one endpoint, override and load it manually — but keep routing through `build_query` so visibility scoping still applies:
 
 ```python
+from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.orm import selectinload
 
-    async def perform_get(self, id):
-        obj = await self.session.get(
-            self.model, id,
-            options=[selectinload(User.audit_log)]
+    async def get_one(self, id):
+        pk = sa_inspect(self.model).primary_key[0]
+        query = self.build_query().where(pk == id).options(
+            selectinload(User.audit_log)
         )
+        obj = (await self.session.scalars(query)).first()
         if obj is None:
-            raise fastapi.HTTPException(404)
+            raise fr.NotFound(f"User {id!r} not found")
         return obj
+```
+
+### `get_many` — decorate results after the query
+
+When you need work *beyond* a `WHERE` clause — post-query result decoration or response-side annotation — override `get_many` and delegate to `super()`. (For base filters/joins/eager-loading, prefer `build_query` instead; see below.)
+
+```python
+    async def get_many(self, query_params):
+        result = await super().get_many(query_params)
+        for obj in result.objects:
+            obj._display_name = derive_display_name(obj)
+        return result
 ```
 
 ---
 
-## Scope-filter reads
+## Read scope: `build_query` + `authorize`
 
-The most common real-world override: restrict reads to rows owned by the current user. The single seam for this is `build_query`, which `perform_listing` and `perform_get` consult. `count_listing` counts the query built by `perform_listing`, so override it once and pagination totals stay aligned with the listed rows, and a row hidden from listing returns 404 from `GET /{id}` as well. `perform_update` and `perform_delete` inherit the visibility check via `perform_get`.
+Read access is two independent concerns:
+
+- **Visibility** — which rows exist at all for this caller — lives in `build_query`.
+- **Policy** — whether this caller may perform the action — lives in `authorize`, called by the handler.
+
+### `build_query` — scope every read at once
+
+The single override point for read scoping is `build_query`, which `get_many` (list + count) and `get_one` (retrieve) both route through. Override it once and tenant scoping, soft-delete hiding, or row-level visibility apply uniformly:
+
+- the listed page,
+- the pagination total (`count` counts the same scoped query),
+- and single-row fetches — a row hidden from the list returns **404** from `GET /{id}` as well, with no extra code.
+
+Because `handle_update` and `handle_delete` load through `get_one` first, they inherit the same visibility check.
 
 ```python
 import sqlalchemy as sa
@@ -142,136 +184,240 @@ class DocumentView(fr.AsyncRestView):
         return super().build_query().where(Document.owner_id == user_id)
 ```
 
-Calling `super().build_query()` and chaining `.where(...)` composes cleanly with any base-class or mixin filter. For multi-tenant scoping, soft-delete hiding, or row-level permission visibility, this is the seam to reach for.
+Calling `super().build_query()` and chaining `.where(...)` composes cleanly with any base-class or mixin filter. `build_query` is also the place for joins, eager-loading `.options(...)`, and other `Select` reshaping that should apply to every read. That keeps listing, pagination totals, and single-row fetches aligned by construction.
 
-If you need `perform_listing` to also do work *beyond* a `WHERE` clause — post-query result decoration or response-side annotation — override `perform_listing` itself and delegate to `super()`:
+Note `get_one` stays **auth-free** even though it 404s on hidden rows: visibility is structural (the row isn't in the query), so every caller — including custom action routes that call `get_one(id)` — gets the same scoping for free.
+
+### `authorize` — gate the action
+
+`authorize(action, obj=None, data=None)` runs inside `handle_<verb>` at the right phase: before the write for `create`, and *after* the object is loaded for `get_one` / `update` / `delete`, so you can make row-level decisions on `obj`. The default consults a declarative `permissions` dict:
 
 ```python
-    async def perform_listing(self, query_params):
-        result = await super().perform_listing(query_params)
-        for obj in result.objects:
-            obj._display_name = derive_display_name(obj)
-        return result
+@fr.include_view(app)
+class InvoiceView(fr.AsyncRestView):
+    prefix = "/invoices"
+    model = Invoice
+    schema = InvoiceRead
+
+    permissions = {
+        "create": "invoice:write",
+        "update": "invoice:write",
+        "delete": "invoice:admin",
+    }
 ```
 
-If the listing needs a different SQL shape, prefer `build_query()` for base filters, joins, eager-loading options, and other SQLAlchemy `Select` changes. That keeps listing, pagination totals, and single-row fetches aligned.
+Each value is a permission string; the default `authorize` calls `self.request.user.has_permission(perm)` and raises `fr.Forbidden` on failure. Override `authorize` for row-level or data-aware checks:
+
+```python
+    async def authorize(self, action, obj=None, data=None):
+        await super().authorize(action, obj=obj, data=data)  # keep the permissions check
+        if action == "update" and obj.posted:
+            raise fr.Forbidden("Posted invoices are immutable")
+```
+
+Visibility belongs in `build_query`, not here — raising from `authorize` produces a 403, whereas hiding a row through `build_query` produces a 404.
 
 ---
 
-## Override low-level object helpers
+## Tier 2: override `handle_<verb>` for orchestration
 
-When the change you need applies to *all* writes (both create and update), it is cleaner to override the low-level helpers rather than duplicate logic in `perform_create` and `perform_update`.
+Reach for `handle_<verb>` when you need to change *how* a verb is orchestrated — the transaction, the timing of side effects, the order of authorize-and-load — **without** re-declaring the route. The handler is where `authorize` and the commit bracket live.
 
-Two rules apply to `build_from_schema` / `apply_schema` overrides:
-
-- **Per-view application logic** (password hashing, slug derivation,
-  status-transition events) belongs in `perform_create` / `perform_update`,
-  written from scratch using the
-  [advanced object helpers](api_reference.md#advanced-object-helpers).
-  Layering it through `build_from_schema` creates ordering surprises and
-  hides where the create flow lives.
-- **Structural cross-cutting concerns** that only stamp server-controlled
-  fields (audit IDs, tenant IDs, soft-delete timestamps) *are* the right
-  fit for these helpers, layered through mixins.
-  See [Composing views with mixins](howto_compose_views_with_mixins.md)
-  for the pattern, the discriminator between the two rules, and the
-  three reusable mixins from the SaaS example.
-
-### `save_object` — send a notification after create/update
+A common case: stamp server-controlled fields cooperatively. Prefer `prepare_create` / `prepare_update` (below) for that. Use a full `handle_<verb>` override when the *bracket itself* must change — for example, deleting through a background job so the HTTP response returns before the row is gone:
 
 ```python
-    async def save_object(self, obj):
-        obj = await super().save_object(obj)
-        await notify_subscribers(obj.id)  # your async side-effect
-        return obj
+    async def handle_delete(self, id):
+        obj = await self.get_one(id)
+        await self.authorize("delete", obj=obj)
+        obj.status = "pending_deletion"
+        await self.save_object(obj)
+        await self._commit()
+        await enqueue_async_delete(obj.id)  # actual delete happens off-request
 ```
 
-`save_object` is shared by the default create and update flows. It does not run for deletes; `delete_object` is the delete-side persistence boundary.
+Because you call the tier-3 verbs (`get_one`) and utilities (`save_object`, `_commit`) yourself, you keep full control of orchestration while the route shell and response stay untouched.
 
-If you need one side effect for every successful write event, override both methods and delegate to a shared helper:
+### Transaction hooks: `before_commit` / `after_commit`
+
+For most timing needs you do **not** need to override the handler — the bracket exposes two hooks the framework calls for you:
+
+- `before_commit(action, new, old=None)` — runs inside the transaction, committed atomically with the write. Use it for outbox rows or audit rows.
+- `after_commit(action, new, old=None)` — runs after the write is durable. Use it for email, webhooks, or cache invalidation.
+
+`old` is a snapshot dict of the object's column values before the mutation (see `snapshot`), which enables dirty detection:
 
 ```python
-    async def _record_write_event(self, obj, action: str) -> None:
-        await audit_log.record(
-            resource=self.model.__name__,
-            object_id=obj.id,
-            action=action,
+    async def after_commit(self, action, new, old=None):
+        if action == "update" and old["status"] != new.status:
+            await notify_status_change(new.id, new.status)
+```
+
+### Cooperative field stamping: `prepare_create` / `prepare_update`
+
+When the only thing you need is to stamp extra server-controlled fields (audit ids, tenant id, ownership), return them as a dict from `prepare_create` / `prepare_update`. `make_new_object` / `update_object` apply them. These layer cooperatively through mixins, which is exactly what structural concerns want:
+
+```python
+    async def prepare_create(self, schema_obj):
+        fields = await super().prepare_create(schema_obj)
+        fields["tenant_id"] = self.request.state.tenant_id
+        return fields
+```
+
+See [Composing views with mixins](howto_compose_views_with_mixins.md) for the discriminator between this (structural stamping → mixin) and per-view business logic (compute a value from schema inputs → override the business verb).
+
+---
+
+## Domain utilities — call, don't override
+
+The business verbs are built from a handful of low-level utilities. **Call** them from your `create` / `update` / `delete`; they are not the override point.
+
+| Method | What it does |
+|---|---|
+| `self.make_new_object(schema_obj)` | Construct a new ORM object from the schema and add it to the session (runs `prepare_create`). **Does not flush.** |
+| `self.update_object(obj, schema_obj)` | Apply writable fields onto an existing object (runs `prepare_update`). **Does not flush.** |
+| `self.save_object(obj)` | Flush and refresh `obj` from the database. **Does not commit.** |
+| `self.delete_object(obj)` | Remove `obj` and flush. **Does not commit.** |
+
+The same operations are available as free functions for use outside a view — scripts, workers, services: `fr.objects.async_make_new_object`, `async_update_object`, `async_save_object`, `async_delete_object` (and their sync counterparts). See [Advanced Object Helpers](api_reference.md#advanced-object-helpers).
+
+```python
+from fastapi_restly.objects import async_make_new_object, async_save_object
+
+
+async def import_user(session, payload) -> User:
+    user = await async_make_new_object(session, User, payload, UserRead)
+    user.password_hash = hash_password(payload.password)
+    await async_save_object(session, user)
+    await session.commit()
+    return user
+```
+
+Because none of these commit, the same `create`/`update` code works identically inside a view (the handler commits) and inside a worker (you commit).
+
+---
+
+## Tier 1: replace a route shell to change the HTTP contract
+
+The business verbs and handlers let you change what happens *inside* a generated route while leaving its wire contract intact. When you need a different response shape, custom headers, a non-standard status code, or different query-parameter semantics, replace the route shell itself.
+
+To replace a route, define a method with the same name as the generated route shell (`get_many_endpoint`, `get_one_endpoint`, `create_endpoint`, `update_endpoint`, `delete_endpoint`) and add a route decorator. In most replacements you do **not** want to re-implement the commit bracket by hand — delegate to the handler, which already runs authorize, the bracket, and returns the domain object, then just reshape the response:
+
+```python
+@fr.include_view(app)
+class ProductView(fr.AsyncRestView):
+    prefix = "/products"
+    model = Product
+    schema = ProductRead
+
+    @fr.delete("/{id}", status_code=200)
+    async def delete_endpoint(self, id: int):
+        obj = await self.get_one(id)               # load (scoped, 404)
+        serialized = self.to_response_schema(obj).model_dump(mode="json")
+        await self.handle_delete(id)               # authorize + delete + commit
+        return serialized
+```
+
+When the framework initializes a view it checks whether each standard route shell is already defined directly on the class. If it finds `delete_endpoint` with a route decorator, it uses that version and skips the one from `AsyncRestView`. All other generated routes remain unchanged.
+
+The default `DELETE /{id}` returns `204 No Content`. The version above returns the deleted record as JSON instead — useful for contracts like `ra-data-simple-rest` (react-admin) that expect the body back. The four other routes are unaffected.
+
+### Route shell vs handler vs business verb
+
+These are easy to conflate:
+
+| Technique | How | When to use |
+|---|---|---|
+| Override a business verb | `async def create(self, schema_obj)` — no decorator | Change domain logic; keep auth, commit, and HTTP contract |
+| Override `handle_<verb>` | `async def handle_create(self, schema_obj)` — no decorator | Change orchestration / transaction; keep the HTTP contract |
+| Replace a route shell | `@fr.delete("/{id}") async def delete_endpoint(self, ...)` — with decorator | Change the HTTP contract: status code, response shape, headers, query params |
+
+Use the business verb for the common case. Climb a tier only when the change genuinely belongs at that altitude.
+
+### `to_response` — the one response method
+
+Generated route shells return their result through `self.to_response(obj_or_list, action)`. This is the single wire-side response method: it produces the `204` on delete, the list envelope on `get_many`, and the validated response schema otherwise. Override it for envelopes, per-action projection, or a custom status code (return a `fastapi.Response`) without replacing each route shell:
+
+```python
+    def to_response(self, obj_or_list, action):
+        if action == "create":
+            return fastapi.Response(
+                content=self.to_response_schema(obj_or_list).model_dump_json(),
+                media_type="application/json",
+                status_code=201,
+                headers={"Location": f"{self.prefix}/{obj_or_list.id}"},
+            )
+        return super().to_response(obj_or_list, action)
+```
+
+For the per-object serialization itself, `to_response_schema(obj)` builds a response payload from the configured schema, strips `WriteOnly` fields, normalizes relationship id fields, and validates through Pydantic — so response-side `@field_validator` / `@field_serializer` hooks behave exactly as they would on an ordinary Pydantic model. Override `to_response_schema` when one endpoint family needs a different projection, or a faster path that skips validation:
+
+```python
+    def to_response_schema(self, obj: User) -> UserRead:
+        return self.schema.model_construct(
+            id=obj.id,
+            name=obj.name,
+            email=obj.email,
         )
-
-    async def save_object(self, obj):
-        obj = await super().save_object(obj)
-        await self._record_write_event(obj, "save")
-        return obj
-
-    async def delete_object(self, obj):
-        await super().delete_object(obj)
-        await self._record_write_event(obj, "delete")
 ```
 
-### `build_from_schema` — set a default field on creation only
+`model_construct()` is an escape hatch: it bypasses validators and required-field checks. Keep the payload aligned with your public response contract, and never include `WriteOnly` fields such as passwords or API tokens.
 
-```python
-    async def build_from_schema(self, schema_obj):
-        obj = await super().build_from_schema(schema_obj)
-        obj.tenant_id = self.request.state.tenant_id
-        return obj
-```
+### Replace the list route shell
 
-### `apply_schema` — prevent certain fields from being changed
-
-```python
-    async def apply_schema(self, obj, schema_obj):
-        # Ignore any attempt to change `owner_id` via PATCH
-        schema_obj.owner_id = None
-        return await super().apply_schema(obj, schema_obj)
-```
-
-### `delete_object` — implement soft-delete
-
-Instead of removing the row, mark it as archived:
-
-```python
-    async def delete_object(self, obj):
-        obj.deleted_at = datetime.utcnow()
-        await self.session.flush()
-        # Do NOT call super() — that would remove the row.
-```
-
----
-
-## Extend rather than replace with `super()`
-
-For most overrides, calling `super()` and tweaking the result is less error-prone than re-implementing the handler from scratch. The pattern is consistent across all handlers:
-
-```python
-    async def perform_listing(self, query_params):
-        result = await super().perform_listing(query_params)
-        # Annotate each object with a computed field before serialization
-        for obj in result.objects:
-            obj._display_name = f"{obj.first_name} {obj.last_name}"
-        return result
-```
-
----
-
-## Raise HTTP errors from handlers
-
-All `perform_*` handlers run inside a request context, so you can raise `fastapi.HTTPException` at any point:
+Replace `get_many_endpoint` to take full control of how the list is returned — for instance to add custom response headers. The replacement takes no `query_params` argument; the framework's automatic query-parameter injection only applies to the standard generated shell. Read query parameters from `self.request.query_params` if you need them:
 
 ```python
 import fastapi
+import json
 
-    async def perform_create(self, schema_obj):
-        if not self.request.state.user.is_admin:
-            raise fastapi.HTTPException(403, "Admin access required")
-        return await super().perform_create(schema_obj)
+@fr.include_view(app)
+class ProductView(fr.AsyncRestView):
+    prefix = "/products"
+    model = Product
+    schema = ProductRead
+
+    @fr.get("/")
+    async def get_many_endpoint(self):
+        result = await self.handle_get_many({})
+        serialized = [
+            self.to_response_schema(obj).model_dump(mode="json")
+            for obj in result.objects
+        ]
+        return fastapi.Response(
+            content=json.dumps(serialized),
+            media_type="application/json",
+            headers={"X-Total-Count": str(result.total_count)},
+        )
 ```
+
+### Share a replacement across views with a mixin
+
+If several views need the same changed contract, put the replacement in a mixin. Python's MRO ensures the mixin's version is picked up before the standard one:
+
+```python
+class DeleteReturnsObjectMixin:
+    @fr.delete("/{id}", status_code=200)
+    async def delete_endpoint(self, id):
+        obj = await self.get_one(id)
+        serialized = self.to_response_schema(obj).model_dump(mode="json")
+        await self.handle_delete(id)
+        return serialized
+
+
+@fr.include_view(app)
+class ProductView(DeleteReturnsObjectMixin, fr.AsyncRestView):
+    prefix = "/products"
+    model = Product
+    schema = ProductRead
+```
+
+The public React Admin views use the same route-shell-replacement pattern internally: `fr.AsyncReactAdminView` and `fr.ReactAdminView` replace `get_many_endpoint` with one that speaks the `ra-data-simple-rest` wire contract, while preserving the standard CRUD verbs and handlers for the rest of the view.
 
 ---
 
 ## Add a custom read route
 
-Use `@fr.get` to expose computed or summarised data alongside the generated endpoints:
+Use `@fr.get` to expose computed or summarised data alongside the generated endpoints. Call `get_one(id)` (the auth-free load) or `handle_get_one(id)` (load + read-auth) to reuse the view's scoping and 404 behavior:
 
 ```python
 @fr.include_view(app)
@@ -282,7 +428,7 @@ class UserView(fr.AsyncRestView):
 
     @fr.get("/{id}/summary")
     async def summary(self, id: int):
-        user = await self.perform_get(id)   # raises 404 automatically
+        user = await self.handle_get_one(id)   # scoped load + read-auth + 404
         return {
             "id": user.id,
             "display_name": f"{user.first_name} {user.last_name}",
@@ -290,13 +436,15 @@ class UserView(fr.AsyncRestView):
         }
 ```
 
-`perform_get` returns the raw ORM object, so you can access all model attributes directly.
+`get_one` / `handle_get_one` return the raw ORM object, so you can access all model attributes directly.
 
 ---
 
 ## Add a custom action route
 
-Use `@fr.post` (or `@fr.patch`, `@fr.delete`) for explicit state-change actions such as archive, publish, or recalculate:
+Use `@fr.post` (or `@fr.patch`, `@fr.delete`) for explicit state-change actions such as archive, publish, or recalculate. A custom action has two good shapes:
+
+**Compose the domain verbs and reuse a handler's bracket.** Load with `get_one(id)`, mutate, and let `handle_update` (or `handle_create`) run the authorize-and-commit bracket so durability and post-commit hooks behave like a normal write:
 
 ```python
 @fr.include_view(app)
@@ -307,94 +455,36 @@ class OrderView(fr.AsyncRestView):
 
     @fr.post("/{id}/archive", status_code=202)
     async def archive(self, id: int):
-        order = await self.perform_get(id)
+        order = await self.get_one(id)
         if order.archived:
             raise fastapi.HTTPException(409, "Already archived")
         order.archived = True
-        order = await self.save_object(order)
+        await self.save_object(order)
+        await self._commit()
         return {"id": order.id, "archived": order.archived}
 ```
 
----
-
-## Replace a generated route
-
-The `perform_*` handlers let you change what happens *inside* a generated route while leaving its HTTP contract intact. Sometimes you need more than that: a different response shape, custom response headers, a non-standard status code, or completely different query parameter semantics. In those cases you can replace the generated route itself.
-
-To replace a route, define a method with the same name as the generated route and add a route decorator to it:
+**Run a full create/update through a handler.** When an action *is* a create or update under a different URL, build the input schema and call `handle_create` / `handle_update` to get authorize + the commit bracket for free:
 
 ```python
-@fr.include_view(app)
-class OrderView(fr.AsyncRestView):
-    prefix = "/orders"
-    model = Order
-    schema = OrderRead
-
-    @fr.delete("/{id}", status_code=200)
-    async def delete(self, id: int):
-        obj = await self.perform_get(id)
-        serialized = self.to_response_schema(obj).model_dump(mode="json")
-        await self.delete_object(obj)
-        return serialized
+    @fr.post("/{id}/duplicate", status_code=201)
+    async def duplicate(self, id: int):
+        original = await self.get_one(id)
+        payload = self.schema_create(name=f"{original.name} (copy)", ...)
+        new_order = await self.handle_create(payload)
+        return self.to_response_schema(new_order)
 ```
 
-The route decorator is required. When the framework initialises a view it checks whether each standard route is already defined directly on the class. If it finds `delete` with a route decorator, it uses that version and skips the one from `AsyncRestView`. All other generated routes (`GET /`, `GET /{id}`, `POST /`, `PATCH /{id}`) remain unchanged.
-
-### Route Replacement vs Handler Override
-
-These two are easy to conflate:
-
-| Technique | How | When to use |
-|---|---|---|
-| Override a `perform_*` handler | `async def perform_create(self, ...)` — no decorator | Change business logic; keep the HTTP contract |
-| Replace a route | `@fr.delete("/{id}") async def delete(self, ...)` — with decorator | Change the HTTP contract: status code, response shape, headers, query params |
-
-Use handlers for the common case. Route replacement is for the cases where you genuinely need to renegotiate what the endpoint looks like on the wire.
-
-### What remains available inside a replacement
-
-A replacement is a full view method. Everything the parent view provides is still on `self`:
-
-- `self.session`, `self.request`, `self.model`, `self.schema`
-- All `perform_*` handlers — call them to reuse existing business logic without
-  re-implementing it
-- `self.to_response_schema(obj)` — serialise an ORM object to the configured
-  Pydantic schema
-- `self.build_from_schema`, `self.apply_schema`, `self.save_object`,
-  `self.delete_object`
-
-The example above delegates the 404 check to `self.perform_get(id)` and the database removal to `self.delete_object(obj)`. Only the HTTP response layer changes.
-
-### Overriding response serialization
-
-Generated routes call `self.to_response_schema(obj)` before returning ORM objects. The default implementation builds a response payload from the configured schema, strips `WriteOnly` fields, normalizes relationship id fields, and then validates through Pydantic. That means response-side `@field_validator` and `@field_serializer` hooks behave the same way they would on an ordinary Pydantic response model.
-
-Override `to_response_schema()` when one endpoint family needs a different projection, or when you intentionally want a faster path that skips Pydantic validation:
-
-```python
-class UserView(fr.AsyncRestView):
-    prefix = "/users"
-    model = User
-    schema = UserRead
-
-    def to_response_schema(self, obj: User) -> UserRead:
-        return self.schema.model_construct(
-            id=obj.id,
-            name=obj.name,
-            email=obj.email,
-        )
-```
-
-`model_construct()` is an escape hatch: it bypasses validators and required-field checks. Keep the payload aligned with your public response contract, and do not include `WriteOnly` fields such as passwords or API tokens.
+Reusing `handle_<verb>` from custom actions is the intended way to inherit the commit bracket — you get `before_commit` / commit / `after_commit` without re-declaring any of it.
 
 ### Relationship references in custom routes
 
-Generated `POST` and `PATCH` routes validate the request body before Restly calls `build_from_schema()` or `apply_schema()`, so `IDRef[Model]` fields are already `IDRef` instances by the time the resolver runs.
+Generated `POST` and `PATCH` routes validate the request body before Restly calls `make_new_object()` or `update_object()`, so `IDRef[Model]` fields are already `IDRef` instances by the time the resolver runs.
 
 In a custom route, be careful when you construct a schema yourself. Pydantic's `model_construct()` skips validation, so scalar ids stay plain integers unless you wrap them explicitly:
 
 ```python
-from fastapi_restly.objects import async_build_from_schema
+from fastapi_restly.objects import async_make_new_object
 
 
 link_schema = TaskLabelRead.model_construct(
@@ -402,14 +492,14 @@ link_schema = TaskLabelRead.model_construct(
     label_id=fr.IDRef[Label](id=label.id),
 )
 
-task_label = await async_build_from_schema(
+task_label = await async_make_new_object(
     self.session,
     TaskLabel,
     link_schema,
 )
 ```
 
-This keeps the resolver path active: Restly verifies the referenced rows exist and then writes the FK columns. It is especially useful when the schema inherits from `IDSchema` and validated construction would require response-only fields such as `id` or timestamps. In that case, direct construction like `TaskLabelRead(task_id=1, label_id=2)` would run the `IDRef` validators, but it would also require those response-only values that the route does not have yet.
+This keeps the resolver path active: Restly verifies the referenced rows exist and then writes the FK columns. It is especially useful when the schema inherits from `IDSchema` and validated construction would require response-only fields such as `id` or timestamps.
 
 If you instead use `IDSchema[Model]` as a nested relationship-object field in a custom response schema, serialize the ORM object through `self.to_response_schema(obj)` before returning it:
 
@@ -429,86 +519,22 @@ The raw ORM object usually has scalar FK columns, while the nested schema expect
 
 The SaaS example's `example-projects/saas/app/views/label.py` shows this in a `create_and_attach` route that creates a sibling row, flushes it to get an id, and then builds a second row with `IDRef` references.
 
-### Example: return the deleted record
+---
 
-The default `DELETE /{id}` returns `204 No Content`. Some API contracts (for instance `ra-data-simple-rest` for react-admin) expect the deleted record back as JSON:
+## Raise HTTP errors from any method
 
-```python
-@fr.include_view(app)
-class ProductView(fr.AsyncRestView):
-    prefix = "/products"
-    model = Product
-    schema = ProductRead
-
-    @fr.delete("/{id}", status_code=200)
-    async def delete(self, id: int):
-        obj = await self.perform_get(id)
-        serialized = self.to_response_schema(obj).model_dump(mode="json")
-        await self.delete_object(obj)
-        return serialized
-```
-
-The four other generated routes are unaffected.
-
-### Example: replace the listing endpoint
-
-Replace `listing` to take full control of how the list is returned — for instance to add custom response headers. Note that the replacement takes no `query_params` argument; the framework's automatic query parameter injection only applies to the standard generated `listing`. Read query parameters directly from `self.request.query_params` if you need them:
+Every method runs inside a request context, so you can raise `fastapi.HTTPException` (or `fr.Forbidden` / `fr.NotFound`) at any point:
 
 ```python
 import fastapi
-import json
 
-@fr.include_view(app)
-class ProductView(fr.AsyncRestView):
-    prefix = "/products"
-    model = Product
-    schema = ProductRead
-
-    @fr.get("/")
-    async def listing(self):
-        result = await self.perform_listing({})
-        serialized = [
-            self.to_response_schema(obj).model_dump(mode="json")
-            for obj in result.objects
-        ]
-        return fastapi.Response(
-            content=json.dumps(serialized),
-            media_type="application/json",
-            headers={"X-Total-Count": str(result.total_count)},
-        )
+    async def create(self, schema_obj):
+        if not self.request.state.user.is_admin:
+            raise fastapi.HTTPException(403, "Admin access required")
+        return await super().create(schema_obj)
 ```
 
-### Share a replacement across views with a mixin
-
-If several views need the same changed contract, put the replacement in a mixin. Python's method resolution order ensures the mixin's version is picked up before the standard one:
-
-```python
-class DeleteReturnsObjectMixin:
-    @fr.delete("/{id}", status_code=200)
-    async def delete(self, id):
-        obj = await self.perform_get(id)
-        serialized = self.to_response_schema(obj).model_dump(mode="json")
-        await self.delete_object(obj)
-        return serialized
-
-
-@fr.include_view(app)
-class ProductView(DeleteReturnsObjectMixin, fr.AsyncRestView):
-    prefix = "/products"
-    model = Product
-    schema = ProductRead
-
-
-@fr.include_view(app)
-class OrderView(DeleteReturnsObjectMixin, fr.AsyncRestView):
-    prefix = "/orders"
-    model = Order
-    schema = OrderRead
-```
-
-Both views now return the deleted record as JSON. All other generated routes behave normally on both.
-
-The public React Admin views use the same route-replacement pattern internally: `fr.AsyncReactAdminView` and `fr.ReactAdminView` replace `listing` with one that speaks the `ra-data-simple-rest` wire contract, while preserving the standard CRUD handlers for the rest of the view.
+For permission gating specifically, prefer `authorize` and the `permissions` dict (above) — it runs at the right phase of the handler and keeps the business verb auth-free.
 
 ---
 
@@ -524,7 +550,7 @@ class UserView(fr.AsyncRestView):
     exclude_routes = [fr.ViewRoute.DELETE, fr.ViewRoute.UPDATE]
 ```
 
-Valid values are: `fr.ViewRoute.LIST`, `fr.ViewRoute.GET`, `fr.ViewRoute.CREATE`, `fr.ViewRoute.UPDATE`, `fr.ViewRoute.DELETE`. Route-name strings such as `"delete"` are also accepted; any other string raises `AttributeError` at startup.
+Valid values are: `fr.ViewRoute.GET_MANY`, `fr.ViewRoute.GET_ONE`, `fr.ViewRoute.CREATE`, `fr.ViewRoute.UPDATE`, `fr.ViewRoute.DELETE`. Route-shell-name strings such as `"delete_endpoint"` are also accepted; any other string raises `AttributeError` at startup.
 
 ---
 
@@ -546,7 +572,7 @@ Both `@fr.route` and the shorthand decorators pass their keyword arguments throu
 
 ## What is available on `self`
 
-Inside any handler or custom route method, the following attributes are always available:
+Inside any method or custom route, the following attributes are always available:
 
 | Attribute | Type | Description |
 |---|---|---|
@@ -556,3 +582,9 @@ Inside any handler or custom route method, the following attributes are always a
 | `self.schema` | `type[pydantic.BaseModel]` | The Pydantic response schema |
 
 Any class-level `Annotated` dependency you declare on the view (e.g. a current user) is also injected and available as an instance attribute.
+
+## See also
+
+- [The Handle Design](the_handle_design.md) — the full three-tier model and the commit bracket.
+- [Composing views with mixins](howto_compose_views_with_mixins.md) — structural stamping and scoping through cooperative mixins.
+- [View Method Surface](api_reference.md#view-method-surface) — the complete classified method list.

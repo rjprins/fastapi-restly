@@ -165,23 +165,28 @@ View                   ← class-based view primitive (no CRUD)
 
 - `View` is the bare CBV primitive. Use it for non-CRUD endpoints — auth
   flows, custom RPC, file uploads, anything that does not fit the
-  list/get/create/update/delete shape. It is also the right fallback when your
+  get-many/get-one/create/update/delete shape. It is also the right fallback when your
   resource identity is not a single scalar primary key, such as a legacy table
   addressed by a composite key.
 - `BaseRestView` extends `View` with `model`, `schema`, the auto-generated
-  create/update schemas, query-modifier configuration, and helper methods
-  like `to_response_schema()`. It declares route methods (`listing`, `get`,
-  `create`, `update`, `delete`) but provides no implementations — it is an
-  abstract scaffold.
+  create/update schemas (`schema_create` / `schema_update`), query-modifier
+  configuration, and helper methods like `to_response()` and
+  `to_response_schema()`. The concrete CRUD methods live on `RestView` /
+  `AsyncRestView`; `BaseRestView` is an abstract scaffold with no endpoints of
+  its own.
 - `RestView` and `AsyncRestView` provide the concrete sync and async
   implementations of the CRUD endpoints. They assume a single scalar resource
   id for the generated `/{id}` routes. **One of these is what you usually
   subclass.**
 
 The public method surface is classified in the
-[API reference](api_reference.md#view-method-surface): route methods define the
-HTTP contract, `perform_*` methods are override hooks, and object/query helpers
-are public utilities for handlers and custom routes.
+[API reference](api_reference.md#view-method-surface). Each CRUD verb is split
+into three tiers — the `<verb>_endpoint` route shell (HTTP contract), the
+`handle_<verb>` request handler (authorization + the commit bracket), and the
+bare `<verb>` business method (the domain operation, and the usual override
+point) — with cross-cutting override points (`build_query`, `authorize`,
+`before_commit` / `after_commit`, `to_response`) and object/query helpers
+alongside them.
 
 ## A complete example: shared base view
 
@@ -201,7 +206,7 @@ class TenantScopedView(fr.AsyncRestView):
 
     def build_query(self):
         # automatic tenant filtering for every read — list, pagination
-        # total, AND single-row retrieve all consult this seam.
+        # total, AND single-row retrieve all route through this method.
         return super().build_query().where(
             self.model.tenant_id == self.request.state.tenant_id
         )
@@ -227,14 +232,31 @@ elaborate compositions — soft delete, audit stamps, permission scoping
 layered together — see
 [Composing views with mixins](howto_compose_views_with_mixins.md).
 
-## Override a single method
+## Override a single tier
 
-`AsyncRestView` and `RestView` are designed so you can replace any one piece
-without touching the rest. Override the handler (`perform_listing`, `perform_get`,
-`perform_create`, `perform_update`, `perform_delete`) for business-logic changes that should
-fire on both the generated route and any custom callers; override the
-endpoint method itself (`listing`, `get`, `create`, `update`, `delete`) when you
-want full control of the HTTP layer.
+`AsyncRestView` and `RestView` split each CRUD verb into three tiers so you can
+replace exactly one without touching the rest:
+
+- **`<verb>_endpoint`** (`get_many_endpoint`, `get_one_endpoint`,
+  `create_endpoint`, `update_endpoint`, `delete_endpoint`) — the route shell.
+  This is the wire boundary: the `@route`, the FastAPI signature and
+  `response_model`, and the call to `to_response`. Override only to change the
+  HTTP contract (status code, response shape, extra path/query parameters).
+- **`handle_<verb>`** (`handle_get_many`, `handle_get_one`, `handle_create`,
+  `handle_update`, `handle_delete`) — the request handler. It runs `authorize`
+  and the commit bracket (`before_commit` → commit → `after_commit`) and
+  returns the domain object. Override to change orchestration or timing (a
+  custom transaction, an async delete) without re-declaring the route. Reuse it
+  from a custom action to inherit the bracket.
+- **`<verb>`** (`get_many`, `get_one`, `create`, `update`, `delete`) — the
+  business method. This is the domain operation (build / apply / save) and is
+  the usual override point. It is **auth-free** and **commit-free**: the
+  framework owns the commit inside `handle_<verb>`, so your override cannot
+  break the transaction.
+
+Because the business method does **not** commit, overriding `create` to build
+the object, set a derived field, save, and return persists correctly — the old
+"mutate after save" trap is gone:
 
 ```python
 @fr.include_view(app)
@@ -243,11 +265,11 @@ class UserView(fr.AsyncRestView):
     model = User
     schema = UserRead
 
-    async def perform_create(self, schema_obj: UserCreate) -> User:
-        # Compose the create flow yourself so the password hash is written
-        # *before* save_object flushes. Calling super().perform_create() and
-        # mutating after would lose the change — the row is already saved.
-        user = await self.build_from_schema(schema_obj)
+    async def create(self, schema_obj: UserCreate) -> User:
+        # Build the object, stamp the derived field, then save. No commit
+        # happens here — handle_create owns the commit — so the password
+        # hash is durably written.
+        user = await self.make_new_object(schema_obj)
         user.password_hash = hash_password(schema_obj.password)
         return await self.save_object(user)
 ```
@@ -270,8 +292,8 @@ for the full event API.
 
 Everything else — listing, retrieval, update, delete, schema generation,
 pagination — keeps working unchanged. See
-[Override Endpoints](howto_override_endpoints.md) for the full list of handlers
-and the call chain.
+[Override Endpoints](howto_override_endpoints.md) for the full set of tiers and
+the call chain.
 
 ## Dependency injection on class attributes
 
@@ -352,7 +374,7 @@ co-located. Don't reach for them just for the sake of structure.
 
 ## Cross-references
 
-- [Override Endpoints](howto_override_endpoints.md) — every handler on
+- [Override Endpoints](howto_override_endpoints.md) — every tier on
   `AsyncRestView` / `RestView`, with call-chain diagrams.
 - [Share Behaviour with Base Views](howto_inheritance.md) — patterns for
   multi-tenant scoping, role-based filtering, and shared mixins.

@@ -3,7 +3,7 @@
 FastAPI-Restly supports two typing styles:
 
 - **Low-friction mode**: keep your view classes simple and let the framework do the work.
-- **Stronger typing mode**: add explicit type parameters when you want better editor help for `perform_*` overrides.
+- **Stronger typing mode**: add explicit type parameters when you want better editor help for the methods you override.
 
 This guide focuses on practical usage with Pyright and VS Code with Pylance.
 
@@ -75,15 +75,20 @@ That tells Restly which model should be resolved from the scalar id payload.
 
 `AsyncRestView` and `RestView` can be parameterized, but this is optional.
 
-The generic form is useful when you override handlers such as:
+The generic form is useful when you override methods on one of the three tiers.
+Most overrides land on the **business verbs**, so those benefit most:
 
-- `perform_get`
-- `perform_create`
-- `perform_update`
-- `perform_delete`
-- `perform_listing`
+- `get_one`
+- `create`
+- `update`
+- `delete`
+- `get_many`
 
-Without view generics, these handlers still work, but their types are broader.
+It also sharpens the **request handlers** (`handle_create`, `handle_update`,
+`handle_get_one`, …) and the cooperative stamping methods (`prepare_create`,
+`prepare_update`) when you override them.
+
+Without view generics, these methods still work, but their types are broader.
 With view generics, your editor can infer the concrete model, schema, and id types.
 
 ```python
@@ -109,24 +114,39 @@ class UserView(
     prefix = "/users"
     model = User
     schema = UserRead
-    creation_schema = UserCreate
-    update_schema = UserUpdate
+    schema_create = UserCreate
+    schema_update = UserUpdate
 
-    async def perform_get(self, id: int) -> User:
-        return await super().perform_get(id)
+    async def get_one(self, id: int) -> User:
+        return await super().get_one(id)
 
-    async def perform_create(self, schema_obj: UserCreate) -> User:
-        return await super().perform_create(schema_obj)
+    async def create(self, schema_obj: UserCreate) -> User:
+        return await super().create(schema_obj)
 
-    async def perform_update(self, id: int, schema_obj: UserUpdate) -> User:
-        return await super().perform_update(id, schema_obj)
+    async def update(self, obj: User, schema_obj: UserUpdate) -> User:
+        return await super().update(obj, schema_obj)
+```
+
+The type parameters are, in order: the **model**, the **response schema**, the
+**create schema**, the **update schema**, and the **id** type. With them in place,
+`schema_obj` in `create` is a `UserCreate`, `obj` in `update` is a `User`, and the
+return types are checked too.
+
+Note the signatures: `create` takes the create schema and returns the model;
+`update` takes the already-loaded `obj` plus the update schema (id resolution and
+the 404 happen one tier up, in `handle_update`). If you instead override at the
+handler tier, the id-taking signatures live there:
+
+```python
+    async def handle_update(self, id: int, schema_obj: UserUpdate) -> User:
+        return await super().handle_update(id, schema_obj)
 ```
 
 This looks heavier because it is more explicit. Use it when that extra precision
 is valuable to you.
 
 `fr.BaseSchema` is a convenient default, not a hard requirement for input
-schemas. Explicit `creation_schema` and `update_schema` classes may inherit
+schemas. Explicit `schema_create` and `schema_update` classes may inherit
 directly from `pydantic.BaseModel` when you do not need Restly's schema helpers.
 
 ---
@@ -138,7 +158,7 @@ Use the simplest form that gives you the typing help you want:
 - **No generics at all** for normal CRUD views
 - **`IDRef[RelatedModel]`** for foreign-key fields
 - **`IDSchema[RelatedModel]`** only when you intentionally want a nested relationship object field
-- **View generics** only when you want precise `perform_*` handler typing
+- **View generics** only when you want precise typing on the methods you override
 
 That keeps everyday usage clean while still allowing stricter typing for
 projects that want it.
@@ -163,6 +183,10 @@ class UserView(fr.AsyncRestView):
 
 For extra endpoints like this, normal Python return annotations are usually enough.
 
+When a custom action reuses the standard machinery — for example loading the
+target with `get_one(id)` and running a write through `handle_update(id, schema)`
+— parameterizing the view gives those calls precise types too.
+
 ---
 
 ## What the type checker cannot fully model
@@ -176,8 +200,10 @@ not understand every detail of that process.
 The practical takeaway is:
 
 - Type checkers are best at the **public contract**: models, schemas, `IDSchema[...]`,
-  `IDRef[...]`, class attributes, and `perform_*` handlers.
-- Type checkers are less useful for the internal signature-rewriting machinery.
+  `IDRef[...]`, class attributes, and the methods on the three tiers (`get_one`,
+  `create`, `handle_update`, and so on).
+- Type checkers are less useful for the internal signature-rewriting machinery that
+  produces the route shells (`*_endpoint`).
 
 You usually do not need to care about that distinction unless you are modifying
 the framework itself.
@@ -198,5 +224,6 @@ with Pyright. The repository keeps a dedicated set of consumer typing fixtures u
 - `IDRef[Model]` is preferred for foreign-key fields.
 - `IDSchema[Model]` is available for nested relationship-object fields.
 - Bare `RestView` / `AsyncRestView` are the default.
-- Parameterized views are optional and mainly help with `perform_*` handler typing.
+- Parameterized views are optional and mainly help when you override methods on
+  the three tiers (business verbs, request handlers, stamping methods).
 - Custom route methods work well with ordinary Python annotations.

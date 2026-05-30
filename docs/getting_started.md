@@ -6,15 +6,6 @@ This guide walks from zero to a working CRUD API with FastAPI-Restly.
 
 ## 1. Install
 
-From the repository root:
-
-```bash
-uv sync
-```
-
-When installing FastAPI-Restly into an application, use the standard extra for the
-docs path:
-
 ```bash
 pip install "fastapi-restly[standard]"
 ```
@@ -22,12 +13,6 @@ pip install "fastapi-restly[standard]"
 The base package intentionally stays small. The standard extra adds FastAPI's
 standard development server dependencies, `aiosqlite` for the async SQLite
 examples, and FastAPI-Restly's testing dependencies.
-
-If you want example project dependencies too:
-
-```bash
-make install-dev
-```
 
 ## 2. Create an App
 
@@ -144,7 +129,7 @@ class UserView(fr.AsyncRestView):
 ```
 
 `schema` is the read/response contract. Restly derives `UserCreate` and
-`UserUpdate` from it unless you override `creation_schema` or `update_schema`.
+`UserUpdate` from it unless you override `schema_create` or `schema_update`.
 `fr.IDSchema` already includes the `id` field as `fr.ReadOnly` (excluded from create/update requests, present in responses). You can apply the same marker to your own fields: `fr.ReadOnly[str]` keeps a field out of write operations. `fr.WriteOnly[T]` does the opposite — accepted on input, omitted from responses (useful for passwords).
 
 Choose explicit schemas when you need:

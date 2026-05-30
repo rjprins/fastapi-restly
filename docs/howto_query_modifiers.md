@@ -237,8 +237,8 @@ GET /users/?page=2&page_size=50
 ## Overriding query logic per view
 
 Override `build_query` to inject a base query before the framework
-applies the URL parameters. `perform_listing` and `perform_get` consult this
-seam, and `count_listing` counts the query built by `perform_listing`, so the
+applies the URL parameters. The `get_many` and `get_one` business verbs consult
+this override point, and `count` counts the query built by `get_many`, so the
 filter applies to listing, the pagination total, **and** single-row fetches
 (`GET /{id}`) without further plumbing:
 
@@ -257,8 +257,8 @@ cleanly with any base-class or mixin filter. See
 [Composing views with mixins](howto_compose_views_with_mixins.md) for the
 multi-layer pattern.
 
-`perform_listing` no longer accepts a separate `query` argument. Keep SQL-level
-base query changes in `build_query()` so listing, pagination totals, and
-single-row fetches all see the same visibility rules. If a list endpoint needs
-a completely different query shape, override `perform_listing()` and construct
+The `get_many` business verb does not accept a separate `query` argument. Keep
+SQL-level base query changes in `build_query()` so listing, pagination totals,
+and single-row fetches all see the same visibility rules. If a list endpoint
+needs a completely different query shape, override `get_many()` and construct
 that query explicitly inside the method.

@@ -69,8 +69,9 @@ async def delete_user(id: int):
 
 That leaves Restly responsible for list, create, read, and update while DELETE
 uses your ordinary FastAPI implementation. For smaller changes that keep the
-same HTTP contract, prefer overriding a `perform_*` handler; for a different
-status code, response shape, or query interface, see
+same HTTP contract, prefer overriding the business verb (`get_many`, `get_one`,
+`create`, `update`, `delete`) or its `handle_<verb>` request handler; for a
+different status code, response shape, or query interface, see
 [Override CRUD Behavior and Add Custom Endpoints](howto_override_endpoints.md).
 
 ## Step Out for a Whole Resource

@@ -35,13 +35,13 @@ model's actual primary-key type.
 For a view schema `UserRead`, Restly derives two input schemas in
 `before_include_view()`:
 
-- `creation_schema`: produced by `create_model_without_read_only_fields()`,
+- `schema_create`: produced by `create_model_without_read_only_fields()`,
   which creates a subclass mixing in `OmitReadOnlyMixin` before `UserRead` in
   the MRO. `OmitReadOnlyMixin.__pydantic_init_subclass__` directly deletes
   `ReadOnly` entries from `cls.model_fields` and calls `model_rebuild(force=True)`.
   The subclass still inherits validators from `UserRead` for the fields that
   remain.
-- `update_schema`: produced by `create_model_with_optional_fields()`, which
+- `schema_update`: produced by `create_model_with_optional_fields()`, which
   mixes in both `PatchMixin` and `OmitReadOnlyMixin`. After `OmitReadOnlyMixin`
   strips the read-only fields, `PatchMixin.__pydantic_init_subclass__` sets
   `field.default = None` and wraps every remaining annotation in `Optional[...]`.
@@ -57,7 +57,7 @@ response schema.
 
 Both derived schemas are stored as class attributes on the view and are frozen
 at registration time (see [List Parameters Lifecycle](#list-parameters-lifecycle)).
-They can be overridden by declaring `creation_schema` or `update_schema` directly
+They can be overridden by declaring `schema_create` or `schema_update` directly
 on the view class before `include_view()` is called.
 
 (auto-generated-schemas)=
@@ -147,7 +147,7 @@ Both views expose several class variables that affect endpoint registration and
 runtime behaviour:
 
 - `schema` — the Pydantic schema class; auto-generated if absent.
-- `creation_schema`, `update_schema` — derived from `schema` if not declared.
+- `schema_create`, `schema_update` — derived from `schema` if not declared.
 - `model` — the SQLAlchemy model class.
 - `id_type` — Python type for the scalar `{id}` path parameter (default `int`).
   Composite primary keys are outside the generated CRUD route contract; use
@@ -157,8 +157,9 @@ runtime behaviour:
   `"delete"` are also accepted. Routes listed here have their
   `_api_route_args` marker removed during `before_include_view()` so FastAPI
   never registers them.
-- `include_pagination_metadata` — if `True`, the `listing` endpoint returns a
-  paginated envelope with `items`, `total`, `page`, `page_size`, and `total_pages`.
+- `include_pagination_metadata` — if `True`, the `get_many_endpoint` route
+  returns a paginated envelope with `items`, `total`, `page`, `page_size`, and
+  `total_pages`.
 
 ### include_view()
 
@@ -186,13 +187,34 @@ Both forms call `before_include_view()` (which generates derived schemas,
 annotates endpoint signatures, and registers the `listing_param_schema`), then
 attach an `APIRouter` to the parent app/router.
 
-### Endpoint / Handler Separation
+### The Three Tiers of a CRUD Verb
 
-Every CRUD endpoint delegates to a `perform_*` handler (`perform_listing`,
-`perform_get`, `perform_create`, `perform_update`, `perform_delete`). Override
-the `perform_*` handler to change business logic while keeping the endpoint
-wrapper intact, or override the endpoint method itself (e.g. `listing`) to replace
-the full request/response flow.
+Every CRUD verb is split into three tiers, so you can override at the altitude
+that matches your change without re-declaring anything above it:
+
+1. **Route shell** — `<verb>_endpoint` (`get_many_endpoint`, `get_one_endpoint`,
+   `create_endpoint`, `update_endpoint`, `delete_endpoint`). The wire boundary:
+   the `@route`, the FastAPI signature, `response_model`, and the `to_response`
+   call. Override only to change the HTTP contract itself.
+2. **Request handler** — `handle_<verb>` (`handle_get_many`, `handle_get_one`,
+   `handle_create`, `handle_update`, `handle_delete`). The request logic: it runs
+   `authorize` and the commit bracket (`before_commit` -> commit ->
+   `after_commit`) and returns the domain object. Override to change
+   orchestration or timing (e.g. an async delete, a custom transaction) without
+   re-declaring the route. Reuse it from a custom action to get the bracket for
+   free.
+3. **Business verb** — `get_many`, `get_one`, `create`, `update`, `delete`. The
+   domain operation (build / apply / save). Auth-free and commit-free; this is
+   the usual override point (hash a password, derive a slug, compute a field).
+
+The framework owns the commit inside `handle_<verb>`, so `after_commit` runs
+after durability. Because the business verb never commits, overriding `create`
+to build the object, set a `password_hash`, call `save_object`, and return it
+persists correctly — there is no "mutate-after-save" trap.
+
+The route shell calls `to_response(obj, action)`, the single response method.
+`to_response` in turn delegates to `to_response_schema(obj)` for the per-object
+serialization (`WriteOnly` filtering, relationship-id normalization).
 
 ### Nested Response Schemas vs Write Payloads
 
@@ -202,7 +224,7 @@ Nested schemas serve two different roles in Restly today:
   `selectinload(...)` options for nested relationship fields in the response
   schema, so related objects can be serialized efficiently and with aliases.
 - **Create/update payloads**: not supported in the general case. The default
-  `build_from_schema()` / `apply_schema()` flow expects payload keys to map
+  `make_new_object()` / `update_object()` flow expects payload keys to map
   directly to model attributes, with `*_id: IDRef[Model]` as the usual
   special case for foreign keys. When an `IDRef` / `IDSchema` reference has
   been resolved to an ORM object, the helpers inspect the SQLAlchemy mapper and
@@ -218,8 +240,8 @@ Nested schemas serve two different roles in Restly today:
 If you declare a nested input field like `address: AddressRead` on a write
 schema, the default CRUD implementation will pass that nested Pydantic object
 through to the SQLAlchemy model constructor or attribute setter, which usually
-does not match the ORM model shape. Use a flattened schema or override
-`perform_create()` / `perform_update()` to transform the payload first.
+does not match the ORM model shape. Use a flattened schema or override the
+`create()` / `update()` business verbs to transform the payload first.
 
 (list-parameters-lifecycle)=
 ## List Parameters Lifecycle

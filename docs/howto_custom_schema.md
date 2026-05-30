@@ -94,8 +94,8 @@ class UserRead(fr.IDSchema):
     password: fr.WriteOnly[str]
 ```
 
-Restly applies `ReadOnly` when it generates `creation_schema` and
-`update_schema`, and when its object helpers construct or update ORM objects.
+Restly applies `ReadOnly` when it generates `schema_create` and
+`schema_update`, and when its object helpers construct or update ORM objects.
 `WriteOnly` is removed from responses by `to_response_schema()`. If you return
 a schema object directly to FastAPI or call Pydantic serialization yourself,
 `WriteOnly` is schema metadata only and is not removed automatically.

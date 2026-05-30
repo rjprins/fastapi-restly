@@ -103,16 +103,16 @@ class UserView(fr.AsyncRestView):
     exclude_routes = [fr.ViewRoute.DELETE, fr.ViewRoute.UPDATE]
 ```
 
-Valid route values for exclusion: `fr.ViewRoute.LIST`, `fr.ViewRoute.GET`, `fr.ViewRoute.CREATE`, `fr.ViewRoute.UPDATE`, `fr.ViewRoute.DELETE`.
+Valid route values for exclusion: `fr.ViewRoute.GET_MANY`, `fr.ViewRoute.GET_ONE`, `fr.ViewRoute.CREATE`, `fr.ViewRoute.UPDATE`, `fr.ViewRoute.DELETE`.
 
-`exclude_routes` accepts any iterable of `ViewRoute` values. Current route-name strings such as `"delete"` are also accepted.
+`exclude_routes` accepts any iterable of `ViewRoute` values. Each `ViewRoute` value is the name of the route-shell method it suppresses (`"get_many_endpoint"`, `"get_one_endpoint"`, `"create_endpoint"`, `"update_endpoint"`, `"delete_endpoint"`); those strings are also accepted directly.
 
 ## Response Modeling
 
 For generated CRUD endpoints:
 - Response schema defaults to `schema` (or an auto-generated `*Read` schema when omitted).
-- Input schema for `POST` defaults to schema without read-only fields (`creation_schema`, generated as `*Create`).
-- Input schema for `PATCH` defaults to optionalized schema (`update_schema`, generated as `*Update`).
+- Input schema for `POST` defaults to schema without read-only fields (`schema_create`, generated as `*Create`).
+- Input schema for `PATCH` defaults to optionalized schema (`schema_update`, generated as `*Update`).
 - Alias-aware serialization is applied so response payload keys follow schema aliases.
 
 ## Key Public Symbols
@@ -153,47 +153,75 @@ FastAPI-Restly also works with ordinary SQLAlchemy declarative models that inher
 | `fastapi_restly.views.BaseRestView` | Supported advanced base class for custom CRUD foundations shared by sync and async views. Import from `fastapi_restly.views`; it is intentionally not exported at the top level. |
 | `fr.AsyncRestView` | Async CRUD view. Use with async SQLAlchemy sessions. |
 | `fr.RestView` | Sync CRUD view. Use with sync SQLAlchemy sessions. |
-| `fr.ListingResult` | Value object returned by `perform_listing`, with `.objects` and `.total_count`, before `to_listing_response` formats the HTTP response. |
+| `fr.ListingResult` | Value object returned by `get_many` (and `handle_get_many`), with `.objects`, `.total_count`, and `.query_params`, before `to_listing_response` formats the HTTP response. |
 | `fr.AsyncReactAdminView` | Async CRUD view that speaks the `ra-data-simple-rest` wire contract used by [react-admin](https://marmelab.com/react-admin/). See [How-To: React Admin Integration](howto_react_admin.md). |
 | `fr.ReactAdminView` | Sync variant of `AsyncReactAdminView`. |
 
 ### View Method Surface
 
-Methods on `RestView` / `AsyncRestView` fall into three categories:
+Each CRUD verb on `RestView` / `AsyncRestView` is split into three tiers, so you
+can override exactly the layer you need:
 
-- **Route methods** define the HTTP contract and are decorated as FastAPI
-  endpoints. Override these only when you need to change status codes, response
-  shape, headers, or request parameters.
-- **Handler hooks** contain the default CRUD business logic and are the normal
-  customization point.
-- **Public helpers** are utility methods intended for use inside handlers or
-  custom routes.
+1. **Route shell** (`<verb>_endpoint`) — the wire boundary: the `@route`, the
+   FastAPI signature / `response_model`, and the call to `to_response`. Override
+   only to change the HTTP contract.
+2. **Request handler** (`handle_<verb>`) — the request logic: it runs
+   `authorize` and the commit bracket (`before_commit` → commit →
+   `after_commit`) and returns the domain object. Override to change
+   orchestration/timing without re-declaring the route; reuse it from a custom
+   action to inherit the bracket.
+3. **Business method** (`<verb>`) — the domain operation (build / apply / save).
+   It is **auth-free** and **commit-free**, and is the usual override point
+   (hash a password, derive a slug, compute a field). The framework owns the
+   commit in `handle_<verb>`, so overriding the business method cannot break the
+   transaction.
 
-| Category | Method | Signature | Return | Purpose |
+Alongside the tiers are cross-cutting **override points** (`build_query`,
+`apply_query_params`, `count`, `authorize`, `prepare_create` / `prepare_update`,
+`before_commit` / `after_commit`, `to_response`, `snapshot`) and **domain
+utilities** you call rather than override (`make_new_object`, `update_object`,
+`save_object`, `delete_object`).
+
+On `AsyncRestView` every method below is `async`; the signatures are otherwise identical.
+
+| Tier / kind | Method | Signature | Return | Purpose |
 |---|---|---|---|---|
-| Route | `listing` | `(query_params)` | response schema list or pagination envelope | `GET /`; validates query parameters and serializes listing results. |
-| Route | `get` | `(id)` | response schema | `GET /{id}`; serializes one retrieved object. |
-| Route | `create` | `(schema_obj)` | response schema | `POST /`; serializes the created object. |
-| Route | `update` | `(id, schema_obj)` | response schema | `PATCH /{id}`; serializes the updated object. |
-| Route | `delete` | `(id)` | `fastapi.Response` | `DELETE /{id}`; returns `204` by default. |
-| Handler hook | `perform_listing` | `(query_params)` | `ListingResult[Model]` | Fetch list rows and total count before pagination; override for list business logic after query construction. Use `build_query()` for SQL-level base query changes. |
-| Handler hook | `perform_get` | `(id)` | `Model` | Fetch one row through `build_query()` or raise `404`. Read-side filters layered into `build_query` apply here too — so `update`/`delete` (which call `perform_get`) inherit the visibility check for free. |
-| Handler hook | `perform_create` | `(schema_obj)` | `Model` | Build and save a new row; override for create-time business rules. |
-| Handler hook | `perform_update` | `(id, schema_obj)` | `Model` | Fetch, mutate, and save an existing row; override for update rules. |
-| Handler hook | `perform_delete` | `(id)` | `fastapi.Response` | Fetch and delete a row; override for delete rules while keeping the HTTP contract. |
-| Public helper | `build_query` | `()` | `sqlalchemy.Select` | Base query shared by listing and single-row retrieve. |
-| Public helper | `count_listing` | `(query)` | `int` | Count an already-built list query after removing ordering and pagination. |
-| Public helper | `to_listing_response` | `(query_params, listing_result)` | response schema list or pagination envelope | Serialize a `ListingResult` into the configured list HTTP response shape. |
-| Public helper | `to_paginated_listing_response` | `(query_params, listing_result)` | pagination envelope | Serialize a `ListingResult` into the paginated list response shape. |
-| Public helper | `to_response_schema` | `(obj)` | response schema | Validate and serialize an ORM object with Restly's alias/reference/write-only handling. |
-| Public helper | `build_from_schema` | `(schema_obj)` | `Model` | Build and stage a new object without flushing. |
-| Public helper | `apply_schema` | `(obj, schema_obj)` | `Model` | Apply writable fields without flushing. |
-| Public helper | `save_object` | `(obj)` | `Model` | Flush and refresh a staged object. Shared by the default create and update flows; deletes use `delete_object`. |
-| Public helper | `delete_object` | `(obj)` | `None` | Delete and flush an existing object. Override alongside `save_object` when you need side effects for every write event. |
+| Route shell | `get_many_endpoint` | `(query_params)` | response schema list or pagination envelope | `GET /`; validates query parameters and serializes the listing result via `to_response`. |
+| Route shell | `get_one_endpoint` | `(id)` | response schema | `GET /{id}`; serializes one retrieved object. |
+| Route shell | `create_endpoint` | `(schema_obj)` | response schema | `POST /`; serializes the created object. |
+| Route shell | `update_endpoint` | `(id, schema_obj)` | response schema | `PATCH /{id}`; serializes the updated object. |
+| Route shell | `delete_endpoint` | `(id)` | `fastapi.Response` | `DELETE /{id}`; returns `204` by default. |
+| Request handler | `handle_get_many` | `(query_params)` | `ListingResult[Model]` | Run `authorize("get_many")`, then `get_many`. |
+| Request handler | `handle_get_one` | `(id)` | `Model` | Load through `get_one` (scoped, 404), then `authorize("get_one", obj=...)`. Reusable from a custom action as "scoped load + 404 + read-auth". |
+| Request handler | `handle_create` | `(schema_obj)` | `Model` | Authorize, run `create`, then the commit bracket. |
+| Request handler | `handle_update` | `(id, schema_obj)` | `Model` | Load, authorize, snapshot, run `update`, then the commit bracket. |
+| Request handler | `handle_delete` | `(id)` | `None` | Load, authorize, snapshot, run `delete`, then the commit bracket. |
+| Business method | `get_many` | `(query_params)` | `ListingResult[Model]` | Scoped, filtered, paginated page plus total count, via `build_query` + `apply_query_params` + `count`. Auth-free. |
+| Business method | `get_one` | `(id)` | `Model` | Load one row through `build_query` or raise `fr.NotFound`. Visibility comes from `build_query`, so a hidden row is a clean 404 for every caller. Auth-free. |
+| Business method | `create` | `(schema_obj)` | `Model` | Build a new object and save it. Commit-free — the usual create override point. |
+| Business method | `update` | `(obj, schema_obj)` | `Model` | Apply the update payload to `obj` and save it. Commit-free. |
+| Business method | `delete` | `(obj)` | `None` | Delete `obj`. Override (e.g. on a soft-delete mixin) to flip a timestamp instead. |
+| Override point | `build_query` | `()` | `sqlalchemy.Select` | Base read query shared by `get_many`, `count`, and `get_one` — add `WHERE` clauses here for scope/soft-delete/visibility. |
+| Override point | `apply_query_params` | `(query, query_params)` | `sqlalchemy.Select` | Apply URL filter/sort/pagination to `query`. Override for a non-default URL grammar. |
+| Override point | `count` | `(query)` | `int` | Total for the list, ignoring ordering/pagination. Override for estimated counts on huge tables. |
+| Override point | `authorize` | `(action, obj=None, data=None)` | `None` | Gate a verb. Default consults `permissions`; raise `fr.Forbidden` / `fr.NotFound` to reject. Row *visibility* belongs in `build_query`. |
+| Override point | `prepare_create` | `(schema_obj)` | `dict[str, Any]` | Return EXTRA fields to stamp on a new object (tenant id, ownership). Cooperative — call `super()` and add keys. |
+| Override point | `prepare_update` | `(obj, schema_obj)` | `dict[str, Any]` | Return EXTRA fields to stamp on update. Same cooperative pattern. |
+| Override point | `before_commit` | `(action, new, old=None)` | `None` | In-transaction side effect (outbox/audit rows), atomic with the write. `old` is the pre-mutation snapshot dict. |
+| Override point | `after_commit` | `(action, new, old=None)` | `None` | Post-commit side effect (email, webhook, cache invalidation). `old` enables dirty detection. |
+| Override point | `to_response` | `(obj_or_list, action)` | response payload | The single wire-level response method, called by the route shells. Override for envelopes or custom status codes. |
+| Override point | `snapshot` | `(obj)` | `dict[str, Any]` | Frozen capture of an object's column values at load time, passed as `old` to the commit hooks. |
+| Helper | `to_response_schema` | `(obj)` | response schema | Validate and serialize an ORM object with Restly's alias/reference/write-only handling. |
+| Helper | `to_listing_response` | `(query_params, listing_result)` | response schema list or pagination envelope | Serialize a `ListingResult` into the configured list HTTP response shape. |
+| Helper | `to_paginated_listing_response` | `(query_params, listing_result)` | pagination envelope | Serialize a `ListingResult` into the paginated list response shape. |
+| Domain utility | `make_new_object` | `(schema_obj)` | `Model` | Build and stage a new object (applies `prepare_create`) without flushing. |
+| Domain utility | `update_object` | `(obj, schema_obj)` | `Model` | Apply writable fields (plus `prepare_update`) without flushing. |
+| Domain utility | `save_object` | `(obj)` | `Model` | Flush and refresh a staged object. Does not commit — `handle_<verb>` owns the commit. |
+| Domain utility | `delete_object` | `(obj)` | `None` | Delete and flush an existing object. Does not commit. |
 
-Internal methods prefixed with `_`, including `_reject_unknown_query_params`, are implementation details even though they are visible on instances.
+Internal methods prefixed with `_`, including `_reject_unknown_query_params` and `_commit`, are implementation details even though they are visible on instances.
 
-See [Class-Based Views](class_based_views.md#the-view-hierarchy) for the class hierarchy and [How-To: Override Endpoints](howto_override_endpoints.md) for examples of choosing between handler hooks and route replacement.
+See [Class-Based Views](class_based_views.md#the-view-hierarchy) for the class hierarchy and [How-To: Override Endpoints](howto_override_endpoints.md) for examples of choosing which tier to override.
 
 `fr.View` class attributes:
 
@@ -209,9 +237,10 @@ See [Class-Based Views](class_based_views.md#the-view-hierarchy) for the class h
 | Attribute | Type | Description |
 |---|---|---|
 | `schema` | `ClassVar[type[pydantic.BaseModel]]` | The read/response schema. If omitted, auto-generated from `model` as `ModelRead`. |
-| `creation_schema` | `ClassVar[type[pydantic.BaseModel]]` | Schema for `POST` input. Auto-derived by removing `ReadOnly` fields and named `ModelCreate`. |
-| `update_schema` | `ClassVar[type[pydantic.BaseModel]]` | Schema for `PATCH` input. Auto-derived by making all writable fields optional and named `ModelUpdate`. |
+| `schema_create` | `ClassVar[type[pydantic.BaseModel]]` | Schema for `POST` input. Auto-derived by removing `ReadOnly` fields and named `ModelCreate`. |
+| `schema_update` | `ClassVar[type[pydantic.BaseModel]]` | Schema for `PATCH` input. Auto-derived by making all writable fields optional and named `ModelUpdate`. |
 | `model` | `ClassVar[type[DeclarativeBase]]` | The SQLAlchemy model class. |
+| `permissions` | `ClassVar[dict[str, str]]` | Declarative authorization map from an action name (`"get_many"` / `"get_one"` / `"create"` / `"update"` / `"delete"` or a custom action) to a required permission string. The default `authorize` consults this and calls `self.request.user.has_permission(perm)`. Defaults to `{}` (no checks). |
 | `id_type` | `ClassVar[type]` | Scalar primary-key type used in generated `GET /{id}`, `PATCH /{id}`, and `DELETE /{id}` routes. Defaults to `int`. Composite primary keys are not supported by the generated CRUD route contract; use `fr.View` for custom multi-part identities. |
 | `include_pagination_metadata` | `ClassVar[bool]` | Set `True` to return the paginated metadata envelope. Defaults to `False`. |
 | `exclude_routes` | `ClassVar[Iterable[str \| ViewRoute]]` | Route names to suppress. |
@@ -221,35 +250,37 @@ See [Class-Based Views](class_based_views.md#the-view-hierarchy) for the class h
 
 ### Advanced Object Helpers
 
-These advanced helpers live in `fastapi_restly.objects`. They are the primitive surface for building, updating, deleting, and explicitly saving ORM objects from schemas. Use them when you need the framework's schema-to-object mapping outside the view instance methods, for example in custom routes, services, or test setup. Each variant exists in both sync and async form, matching the session type you have on hand.
+These helpers are the primitive surface for building, updating, deleting, and explicitly saving ORM objects from schemas. Use them when you need the framework's schema-to-object mapping outside the view instance methods, for example in custom routes, services, background workers, or test setup. Each variant exists in both sync and async form, matching the session type you have on hand. They are exported both at the top level (`fr.make_new_object`, `fr.async_save_object`, ...) and from `fastapi_restly.objects`.
 
 | Symbol | Description |
 |---|---|
-| `objects.build_from_schema(session, model_cls, schema_obj, schema_cls=None)` | Build a new `model_cls` instance from `schema_obj`, resolve any `IDRef[...]` / `IDSchema[...]` reference fields against the database, and add the object to `session`. **Does not flush.** Call `objects.save_object(session, obj)` afterwards to persist. |
-| `objects.apply_schema(session, obj, schema_obj, schema_cls=None)` | Apply the schema's writable fields onto an existing ORM `obj` and resolve FK fields. **Does not flush.** Call `objects.save_object(session, obj)` afterwards to persist. |
-| `objects.save_object(session, obj)` | Flush the session and refresh `obj` so server-side defaults and generated columns (PKs, timestamps) are populated. Returns `obj`. This is where create/update writes hit the database. |
-| `objects.delete_object(session, obj)` | Delete `obj` and flush the session. |
-| `objects.async_build_from_schema(session, model_cls, schema_obj, schema_cls=None)` | Async equivalent of `objects.build_from_schema`. Pass an `AsyncSession`. |
-| `objects.async_apply_schema(session, obj, schema_obj, schema_cls=None)` | Async equivalent of `objects.apply_schema`. |
-| `objects.async_save_object(session, obj)` | Async equivalent of `objects.save_object`. |
-| `objects.async_delete_object(session, obj)` | Async equivalent of `objects.delete_object`. |
+| `fr.make_new_object(session, model_cls, schema_obj, schema_cls=None)` | Build a new `model_cls` instance from `schema_obj`, resolve any `IDRef[...]` / `IDSchema[...]` reference fields against the database, and add the object to `session`. **Does not flush.** Call `fr.save_object(session, obj)` afterwards to persist. |
+| `fr.update_object(session, obj, schema_obj, schema_cls=None)` | Apply the schema's writable fields onto an existing ORM `obj` and resolve FK fields. **Does not flush.** Call `fr.save_object(session, obj)` afterwards to persist. |
+| `fr.save_object(session, obj)` | Flush the session and refresh `obj` so server-side defaults and generated columns (PKs, timestamps) are populated. Returns `obj`. This is where create/update writes hit the database. |
+| `fr.delete_object(session, obj)` | Delete `obj` and flush the session. |
+| `fr.async_make_new_object(session, model_cls, schema_obj, schema_cls=None)` | Async equivalent of `fr.make_new_object`. Pass an `AsyncSession`. |
+| `fr.async_update_object(session, obj, schema_obj, schema_cls=None)` | Async equivalent of `fr.update_object`. |
+| `fr.async_save_object(session, obj)` | Async equivalent of `fr.save_object`. |
+| `fr.async_delete_object(session, obj)` | Async equivalent of `fr.delete_object`. |
 
 ### View Instance Methods
 
-Every `AsyncRestView` / `RestView` instance exposes ergonomic wrappers around the object helpers above. The wrappers bind `self.session`, `self.model`, and `self.schema` so the dominant case (`self.build_from_schema(schema_obj)`) doesn't have to thread them explicitly. The async/sync split is implicit: `AsyncRestView.build_from_schema` calls `async_build_from_schema` under the hood, `RestView.build_from_schema` calls the sync version.
+Every `AsyncRestView` / `RestView` instance exposes ergonomic wrappers around the object helpers above. The wrappers bind `self.session`, `self.model`, and `self.schema` so the dominant case (`self.make_new_object(schema_obj)`) doesn't have to thread them explicitly. The async/sync split is implicit: `AsyncRestView.make_new_object` calls `fr.async_make_new_object` under the hood, `RestView.make_new_object` calls the sync version.
 
-Use these inside `perform_*` handlers or custom route methods. When you need to work with a model that isn't `self.model` (e.g. creating a sibling row in a custom endpoint) reach for the `fastapi_restly.objects` helpers instead.
+Use these inside the business methods (`create`, `update`) or custom route methods. When you need to work with a model that isn't `self.model` (e.g. creating a sibling row in a custom endpoint) reach for the top-level `fr.*` / `fastapi_restly.objects` helpers instead.
 
 | Method | Description |
 |---|---|
 | `self.to_response_schema(obj)` | Serialise an ORM object to the configured response schema, applying alias rules, stripping `WriteOnly` fields, and running Pydantic response validation. Override for custom projections or an intentional `model_construct()` fast path. |
-| `self.build_from_schema(schema_obj, schema_cls=None)` | Wraps `objects.build_from_schema` / `objects.async_build_from_schema` against `self.session`, `self.model`, `self.schema`. **Does not flush** — call `self.save_object(obj)` afterwards. |
-| `self.apply_schema(obj, schema_obj, schema_cls=None)` | Wraps `objects.apply_schema` / `objects.async_apply_schema`. **Does not flush** — call `self.save_object(obj)` afterwards. |
-| `self.save_object(obj)` | Wraps `objects.save_object` / `objects.async_save_object` against `self.session`. Flush + refresh; this is where create/update writes actually hit the database. It does not run for deletes. |
-| `self.delete_object(obj)` | Wraps `objects.delete_object` / `objects.async_delete_object` against `self.session`. Override alongside `save_object` when a side effect must run for create, update, and delete. |
-| `self.build_query()` | Return the base SQLAlchemy `Select` used by every read on this view's model — `perform_listing` and `perform_get`. Defaults to `sqlalchemy.select(self.model)`. Override to add `WHERE` clauses that should apply to all reads — tenant scoping, soft-delete filtering, row-level permission visibility. Because retrieve also routes through this query, a row hidden from listing returns 404 from `GET /{id}` too. Call `super().build_query()` and chain `.where(...)` to compose with base-class or mixin filters. See [Composing views with mixins](howto_compose_views_with_mixins.md). |
-| `self.count_listing(query)` | Return the total row count for an already-built list query. The default `perform_listing` applies list params once, passes that same query to `count_listing`, and `count_listing` removes `ORDER BY`, `LIMIT`, and `OFFSET` before counting. |
-| `self.to_listing_response(query_params, listing_result)` | Convert a `fr.ListingResult` from `perform_listing` into either the default JSON array or the pagination metadata envelope, depending on `include_pagination_metadata`. Override this when only the list response shape needs to change. |
+| `self.make_new_object(schema_obj)` | Wraps `make_new_object` / `async_make_new_object` against `self.session`, `self.model`, `self.schema`, and applies `prepare_create`. **Does not flush** — call `self.save_object(obj)` afterwards. |
+| `self.update_object(obj, schema_obj)` | Wraps `update_object` / `async_update_object`, and applies `prepare_update`. **Does not flush** — call `self.save_object(obj)` afterwards. |
+| `self.save_object(obj)` | Wraps `save_object` / `async_save_object` against `self.session`. Flush + refresh; this is where create/update writes hit the database. It does **not** commit — `handle_<verb>` owns the commit. |
+| `self.delete_object(obj)` | Wraps `delete_object` / `async_delete_object` against `self.session`. Delete + flush, no commit. |
+| `self.build_query()` | Return the base SQLAlchemy `Select` used by every read on this view's model — `get_many`, `count`, and `get_one`. Defaults to `sqlalchemy.select(self.model)`. Override to add `WHERE` clauses that should apply to all reads — tenant scoping, soft-delete filtering, row-level permission visibility. Because retrieve also routes through this query, a row hidden from listing returns 404 from `GET /{id}` too. Call `super().build_query()` and chain `.where(...)` to compose with base-class or mixin filters. See [Composing views with mixins](howto_compose_views_with_mixins.md). |
+| `self.apply_query_params(query, query_params)` | Apply URL filter/sort/pagination to an already-built `query`. Override for a non-default URL grammar. |
+| `self.count(query)` | Return the total row count for an already-built list query. The default `get_many` applies list params once, passes that same query to `count`, and `count` removes `ORDER BY`, `LIMIT`, and `OFFSET` before counting. Override for estimated counts on huge tables. |
+| `self.to_response(obj_or_list, action)` | The single wire-level response method, called by the route shells with the action name (`"get_many"` / `"get_one"` / `"create"` / `"update"` / `"delete"`). Returns the listing response for `get_many`, a `204` `Response` for `delete`, and `to_response_schema(...)` otherwise. Override for envelopes, custom status codes, or per-action projection. |
+| `self.to_listing_response(query_params, listing_result)` | Convert a `fr.ListingResult` into either the default JSON array or the pagination metadata envelope, depending on `include_pagination_metadata`. Override this when only the list response shape needs to change. |
 | `self.to_paginated_listing_response(query_params, listing_result)` | Convert a `fr.ListingResult` into the paginated response envelope with `items`, `total`, `page`, `page_size`, and `total_pages`. Called by `to_listing_response` when `include_pagination_metadata = True`; override this when only the paginated envelope should change. |
 
 ### Database
@@ -280,10 +311,17 @@ Set `commit_session_on_response=False` if your handlers should call `commit()` /
 
 ### Exceptions
 
+There are two families. Configuration-time errors subclass `RestlyError`; request-time HTTP errors subclass `fastapi.HTTPException` (via `RestlyHTTPError`), so raising them produces the same default response as raising `HTTPException` directly. The typed classes give callers a target for `app.add_exception_handler(fr.NotFound, ...)` to reshape Restly's errors distinctly (e.g. into RFC 7807 problem+json).
+
 | Symbol | Description |
 |---|---|
-| `fr.RestlyError` | Base class for FastAPI-Restly framework errors. |
+| `fr.RestlyError` | Base class for FastAPI-Restly framework (configuration-time) errors. |
 | `fr.RestlyConfigurationError` | Raised when a public Restly helper needs configuration that has not been set up yet, such as calling `fr.open_session()` before `fr.configure(...)`. |
+| `fr.RestlyHTTPError` | Base for Restly's request-time HTTP errors. Subclass of `fastapi.HTTPException`; each subclass sets a status code. |
+| `fr.NotFound` | HTTP `404`. Raised by `get_one` when a row does not exist or is hidden by `build_query`; also raisable from `authorize` to hide a row's existence. |
+| `fr.Forbidden` | HTTP `403`. Raised by the default `authorize` when a required `permissions` entry is not satisfied. |
+| `fr.Conflict` | HTTP `409`. For request conflicts with the current resource state. |
+| `fr.BadQueryParam` | HTTP `400`. For an invalid filter/sort/pagination query parameter. |
 
 ### Testing
 

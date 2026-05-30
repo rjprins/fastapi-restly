@@ -98,6 +98,7 @@ uv run pytest
 
 getting_started
 class_based_views
+the_handle_design
 user_guide
 deploying
 api_reference

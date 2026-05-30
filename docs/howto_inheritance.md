@@ -2,14 +2,22 @@
 
 FastAPI-Restly views are plain Python classes. There are no decorator wrappers or metaclass tricks that would prevent normal inheritance from working. This means you can build base view classes that capture shared logic — CRUD overrides, dependencies, access control, URL namespaces — and reuse it across every view in your project without repetition.
 
+Each CRUD verb is three tiers (see [Override Endpoints](howto_override_endpoints.md) for the full model):
+
+- The **route shell** (`create_endpoint`, `get_one_endpoint`, …) — the wire boundary. Rarely overridden on a base class.
+- The **request handler** (`handle_create`, `handle_get_one`, …) — runs `authorize` and the commit bracket. Override on a base class to change orchestration for every subclass.
+- The **business verb** (`create`, `get_one`, `update`, `delete`, `get_many`) — the auth-free, commit-free domain operation. This is the usual place to put shared logic.
+
+The business verb is the natural home for shared behaviour, so most of the examples below override it.
+
 ## Share a CRUD override across multiple views
 
-Override any `perform_*` handler on a base class and every subclass picks it up automatically:
+Override a business verb on a base class and every subclass picks it up automatically:
 
 ```python
 class AuditBase(fr.RestView):
-    def perform_create(self, schema_obj):
-        obj = super().perform_create(schema_obj)
+    def create(self, schema_obj):
+        obj = super().create(schema_obj)
         audit_log.record("created", obj)
         return obj
 
@@ -28,14 +36,16 @@ class OrderView(AuditBase):
 
 `audit_log.record` is called on every `POST` to `/users/` and `/orders/` without repeating the override. The base class itself is never registered — only the concrete subclasses are passed to `include_view`.
 
+Because `create` is commit-free (the handler owns the commit), the recorded object is the same one that gets persisted — there is no risk of mutating after a flush has already happened.
+
 ## Call super() to layer overrides
 
-A subclass can override a `perform_*` handler and call `super()` to build on top of the base implementation rather than replace it:
+A subclass can override a business verb and call `super()` to build on top of the base implementation rather than replace it:
 
 ```python
 class AuditBase(fr.RestView):
-    def perform_create(self, schema_obj):
-        obj = super().perform_create(schema_obj)
+    def create(self, schema_obj):
+        obj = super().create(schema_obj)
         audit_log.record("created", obj)
         return obj
 
@@ -45,12 +55,27 @@ class OrderView(AuditBase):
     model = Order
     schema = OrderRead
 
-    def perform_create(self, schema_obj):
+    def create(self, schema_obj):
         schema_obj.created_by = current_user()
-        return super().perform_create(schema_obj)
+        return super().create(schema_obj)
 ```
 
-The call chain is `OrderView.perform_create` → `AuditBase.perform_create` → `RestView.perform_create`. All three layers run in order.
+The call chain is `OrderView.create` → `AuditBase.create` → `RestView.create`. All three layers run in order.
+
+## Share an orchestration override
+
+When the shared behaviour is about *timing* rather than the domain object itself — running a check before authorization, emitting an event after durability, wrapping the write in a custom transaction — override the request handler instead of the business verb. The handler keeps the route untouched while letting you reshape the orchestration:
+
+```python
+class NotifyBase(fr.RestView):
+    def handle_create(self, schema_obj):
+        obj = super().handle_create(schema_obj)
+        # super().handle_create has already committed, so the row is durable.
+        notify_created(obj)
+        return obj
+```
+
+Every subclass of `NotifyBase` now fires `notify_created` only after the create has committed. For most after-the-fact side effects, prefer the `after_commit` hook; reach for a handler override when you need to change the surrounding control flow.
 
 ## Inherit a shared dependency
 
@@ -63,9 +88,10 @@ from fastapi import Depends
 class AuthBase(fr.RestView):
     current_user: Annotated[User, Depends(get_current_user)]
 
-    def perform_create(self, schema_obj):
-        schema_obj.owner_id = self.current_user.id
-        return super().perform_create(schema_obj)
+    def create(self, schema_obj):
+        obj = super().create(schema_obj)
+        obj.owner_id = self.current_user.id
+        return obj
 
 @fr.include_view(app)
 class NoteView(AuthBase):
@@ -74,7 +100,7 @@ class NoteView(AuthBase):
     schema = NoteRead
 ```
 
-`self.current_user` is available in every method of `NoteView` and any other subclass of `AuthBase`.
+`self.current_user` is available in every method of `NoteView` and any other subclass of `AuthBase`. Because `create` runs before the commit, stamping `owner_id` here persists correctly.
 
 ## Apply router-level dependencies to all routes
 
@@ -170,17 +196,17 @@ class ProductView(ReadOnlyBase):
     schema = ProductRead
 ```
 
-`ProductView` only exposes `GET /products/` and `GET /products/{id}`.
+`ProductView` only exposes `GET /products/` and `GET /products/{id}`. The `ViewRoute` members name the route shells: `GET_MANY`, `GET_ONE`, `CREATE`, `UPDATE`, and `DELETE`.
 
 ## Implement soft-delete once
 
-Override `delete_object` on a base class to change how deletion works for every subclass:
+Override the `delete` business verb on a base class to change how deletion works for every subclass:
 
 ```python
 class SoftDeleteBase(fr.RestView):
-    def delete_object(self, obj):
+    def delete(self, obj):
         obj.deleted = True
-        self.session.flush()
+        self.save_object(obj)
 
 @fr.include_view(app)
 class ArticleView(SoftDeleteBase):
@@ -189,4 +215,9 @@ class ArticleView(SoftDeleteBase):
     schema = ArticleRead
 ```
 
-`DELETE /articles/{id}` now sets `deleted = True` instead of removing the row. Every subclass of `SoftDeleteBase` gets this behaviour.
+`DELETE /articles/{id}` now sets `deleted = True` instead of removing the row. Every subclass of `SoftDeleteBase` gets this behaviour, and because `delete` is commit-free the flip is committed by the handler along with the rest of the request. Pair this with a `build_query` override that hides flagged rows so they disappear from reads as well — see [Compose Views with Mixins](howto_compose_views_with_mixins.md) for the full soft-delete pattern.
+
+## Cross-references
+
+- [Override Endpoints](howto_override_endpoints.md) — the three-tier model and the call chain.
+- [Compose Views with Mixins](howto_compose_views_with_mixins.md) — layering structural concerns cooperatively, the richer cousin to single-base inheritance.

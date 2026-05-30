@@ -91,9 +91,10 @@ for `getMany` calls. It translates to `WHERE id IN (1, 2, 3)`.
 default `PATCH /{id}` is also kept available, so clients that prefer partial
 updates continue to work.
 
-The PUT route delegates to the same `perform_update` handler as PATCH and accepts the
-view's standard `update_schema` payload. Override `perform_update` (or replace the
-PUT route directly) if you need different write semantics for the two methods.
+The PUT route delegates to the same `handle_update` request handler as PATCH and
+accepts the view's standard `schema_update` payload. Override the `update`
+business verb (or `handle_update`, or replace the PUT route directly) if you need
+different write semantics for the two methods.
 
 ---
 
@@ -112,7 +113,7 @@ class OrderRead(fr.IDSchema[Order]):
 
 `IDRef` accepts both raw scalars and `{"id": ...}` shapes on input, so it
 doubles as a permissive write-side type for FK lists when paired with a custom
-`perform_create` / `perform_update` that resolves them. For relationship objects
+`create` / `update` business verb that resolves them. For relationship objects
 that must stay nested on the wire, use `fr.IDSchema[Model]` instead.
 
 ---
@@ -202,11 +203,12 @@ class CustomerView(ReactAdminBase):
 ## Under the hood
 
 `AsyncReactAdminView` is a thin subclass of `AsyncRestView` built with the
-[route replacement](howto_override_endpoints.md#replace-a-generated-route)
-pattern. It replaces the `listing` route to change the list contract and adds a
-`PUT /{id}` route that delegates to the standard `perform_update` handler. All other
-generated routes (`GET /{id}`, `POST /`, `PATCH /{id}`, `DELETE /{id}`) and all
-`perform_*` handlers are inherited unchanged.
+[route replacement](howto_override_endpoints.md#tier-1-replace-a-route-shell-to-change-the-http-contract)
+pattern. It replaces the `get_many_endpoint` route to change the list contract
+and adds a `PUT /{id}` route that delegates to the standard `handle_update`
+request handler. All other generated routes (`GET /{id}`, `POST /`,
+`PATCH /{id}`, `DELETE /{id}`) and all `handle_<verb>` / business-verb tiers are
+inherited unchanged.
 
 The shared parsing and response logic is an internal implementation detail of
 the concrete React Admin view classes.
