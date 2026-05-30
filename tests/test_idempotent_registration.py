@@ -22,6 +22,7 @@ registering the same View twice would:
   ``cls.pagination_response_schema``).
 """
 
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Mapped
@@ -261,3 +262,199 @@ def test_subclass_of_registered_base_still_registers_independently(sync_db):
     # FancyKnobView's prefix concatenates with the inherited "/knobs" base.
     resp = client_b.post("/knobs/fancy-knobs/", json={"label": "fancy"})
     assert resp.status_code == 201, resp.text
+
+
+def _duplicate_routes(app):
+    """Return {(path, methods): count} for any route registered more than once."""
+    from collections import Counter
+
+    counts = Counter(
+        (r.path, frozenset(r.methods))
+        for r in app.routes
+        if hasattr(r, "methods")
+    )
+    return {key: n for key, n in counts.items() if n > 1}
+
+
+def test_subclass_and_parent_on_same_app_have_no_duplicate_routes(sync_db):
+    """Regression for bug naa.
+
+    Registering a base View AND a subclass of it on the SAME app must not
+    duplicate the child's routes. Registering the base copies its CRUD
+    endpoints into the base's ``__dict__``; walking the child's MRO then saw
+    each endpoint twice (base original + base copy) and registered every child
+    route x2. ``test_subclass_of_registered_base_still_registers_independently``
+    above uses separate apps, so it never exercised the collision.
+    """
+    engine, _ = sync_db
+
+    class Dial(fr.IDBase):
+        label: Mapped[str]
+
+    class DialSchema(fr.IDSchema):
+        label: str
+
+    class DialBase(fr.RestView):
+        prefix = "/dials"
+        model = Dial
+        schema = DialSchema
+
+    class FancyDialView(DialBase):
+        prefix = "/fancy"
+
+    app = FastAPI()
+    fr.include_view(app, DialBase)
+    fr.include_view(app, FancyDialView)
+
+    assert _duplicate_routes(app) == {}
+
+    paths = {r.path for r in app.routes if hasattr(r, "methods")}
+    # The child's CRUD routes exist (once) under the composed prefix.
+    assert "/dials/fancy/" in paths
+    assert "/dials/fancy/{id}" in paths
+
+    fr.DataclassBase.metadata.create_all(engine)
+    client = TestClient(app)
+    resp = client.post("/dials/fancy/", json={"label": "f"})
+    assert resp.status_code == 201, resp.text
+
+
+def test_inherited_custom_route_registered_once_on_same_app(sync_db):
+    """A custom route declared on the base is inherited by a co-registered
+    subclass exactly once (not duplicated)."""
+    engine, _ = sync_db
+
+    class Meter(fr.IDBase):
+        label: Mapped[str]
+
+    class MeterSchema(fr.IDSchema):
+        label: str
+
+    class MeterBase(fr.RestView):
+        prefix = "/meters"
+        model = Meter
+        schema = MeterSchema
+
+        @fr.get("/health")
+        def health(self):
+            return {"src": "base"}
+
+    class SubMeterView(MeterBase):
+        prefix = "/sub"
+
+    app = FastAPI()
+    fr.include_view(app, MeterBase)
+    fr.include_view(app, SubMeterView)
+
+    assert _duplicate_routes(app) == {}
+    paths = {r.path for r in app.routes if hasattr(r, "methods")}
+    assert "/meters/health" in paths
+    assert "/meters/sub/health" in paths
+
+    fr.DataclassBase.metadata.create_all(engine)
+    client = TestClient(app)
+    assert client.get("/meters/health").json() == {"src": "base"}
+    assert client.get("/meters/sub/health").json() == {"src": "base"}
+
+
+def test_subclass_route_override_wins_on_same_app(sync_db):
+    """A subclass overriding an inherited custom route routes to its own
+    version; the base keeps its own. No duplication, correct resolution."""
+    engine, _ = sync_db
+
+    class Lever(fr.IDBase):
+        label: Mapped[str]
+
+    class LeverSchema(fr.IDSchema):
+        label: str
+
+    class LeverBase(fr.RestView):
+        prefix = "/levers"
+        model = Lever
+        schema = LeverSchema
+
+        @fr.get("/health")
+        def health(self):
+            return {"src": "base"}
+
+    class SubLeverView(LeverBase):
+        prefix = "/sub"
+
+        @fr.get("/health")
+        def health(self):
+            return {"src": "sub"}
+
+    app = FastAPI()
+    fr.include_view(app, LeverBase)
+    fr.include_view(app, SubLeverView)
+
+    assert _duplicate_routes(app) == {}
+
+    fr.DataclassBase.metadata.create_all(engine)
+    client = TestClient(app)
+    assert client.get("/levers/health").json() == {"src": "base"}
+    assert client.get("/levers/sub/health").json() == {"src": "sub"}
+
+
+def test_parent_exclude_routes_with_coregistered_subclass_does_not_crash(sync_db):
+    """Regression for the exclude-routes interaction surfaced while fixing naa.
+
+    A parent that excludes a route, co-registered with a subclass that inherits
+    ``exclude_routes``, must register cleanly. The subclass inherits the
+    exclusion (and never receives a routable copy of the excluded endpoint), so
+    re-running ``_exclude_routes`` for the already-excluded name must be a
+    no-op, not an ``AttributeError``. Both end up without the route; nothing is
+    duplicated.
+    """
+    engine, _ = sync_db
+
+    class Relay(fr.IDBase):
+        label: Mapped[str]
+
+    class RelaySchema(fr.IDSchema):
+        label: str
+
+    class RelayBase(fr.RestView):
+        prefix = "/relays"
+        model = Relay
+        schema = RelaySchema
+        exclude_routes = ("delete_endpoint",)
+
+    class SubRelayView(RelayBase):
+        prefix = "/sub"
+
+    app = FastAPI()
+    fr.include_view(app, RelayBase)
+    fr.include_view(app, SubRelayView)  # previously raised AttributeError
+
+    assert _duplicate_routes(app) == {}
+
+    fr.DataclassBase.metadata.create_all(engine)
+    client = TestClient(app)
+    assert client.get("/relays/").status_code == 200
+    assert client.get("/relays/sub/").status_code == 200
+    # delete is excluded on BOTH the parent and the subclass.
+    assert client.delete("/relays/1").status_code in (404, 405)
+    assert client.delete("/relays/sub/1").status_code in (404, 405)
+
+
+def test_exclude_routes_unknown_name_still_raises():
+    """``exclude_routes`` listing a name that is no route anywhere in the
+    lineage (e.g. the business-verb name ``get_one`` instead of the route name
+    ``get_one_endpoint``) is a genuine mistake and still raises."""
+
+    class Sprocket(fr.IDBase):
+        label: Mapped[str]
+
+    class SprocketSchema(fr.IDSchema):
+        label: str
+
+    class SprocketView(fr.RestView):
+        prefix = "/sprockets"
+        model = Sprocket
+        schema = SprocketSchema
+        exclude_routes = ("get_one",)  # business verb, not the route name
+
+    app = FastAPI()
+    with pytest.raises(AttributeError, match="not a route"):
+        fr.include_view(app, SprocketView)

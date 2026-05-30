@@ -1024,13 +1024,30 @@ def _exclude_routes(cls: type[BaseRestView[Any, Any, Any, Any, Any]]):
         )
         # @route decorator adds `_api_route_args` to a method to create the route later.
         # By removing it from the method, the method will no longer be added as a route.
-        try:
-            view_func = getattr(cls, method_name)
-        except AttributeError:
+        view_func = getattr(cls, method_name, None)
+        if view_func is not None and hasattr(view_func, "_api_route_args"):
+            del view_func._api_route_args
+            continue
+        # Not a live route on this class. Tolerate an exclusion that is *already*
+        # satisfied: a subclass that inherits ``exclude_routes`` from a parent
+        # which already excluded the route never receives a routable copy, so
+        # there is nothing to strip. The name is still a genuine route elsewhere
+        # in the lineage -- only raise when it is no route at all (a typo, or the
+        # business verb name instead of the ``*_endpoint`` route name).
+        if not _is_route_name_in_lineage(cls, method_name):
             raise AttributeError(f"{method_name!r} is not a route on {cls.__name__}")
-        if not hasattr(view_func, "_api_route_args"):
-            raise AttributeError(f"{method_name!r} is not a route on {cls.__name__}")
-        del view_func._api_route_args
+
+
+def _is_route_name_in_lineage(
+    cls: type[BaseRestView[Any, Any, Any, Any, Any]], method_name: str
+) -> bool:
+    """True if any class in ``cls``'s MRO defines a routable endpoint of this
+    name -- so the name is a real route that may merely be already-excluded here.
+    """
+    return any(
+        hasattr(klass.__dict__.get(method_name), "_api_route_args")
+        for klass in cls.mro()
+    )
 
 
 def _init_view_cls_and_add_to_router(
@@ -1052,7 +1069,13 @@ def _init_view_cls_and_add_to_router(
     schema generation, dataclass-style __init__) only runs once per View class —
     subsequent calls to ``include_view()`` reuse the prepared class and only
     construct a fresh APIRouter to mount on the new parent. This makes
-    registering the same view on multiple routers safe.
+    registering the same view on *different* routers safe (e.g. a public app and
+    an admin app, or ``/v1`` and ``/v2`` sub-apps).
+
+    Re-mounting the same view on the *same* router, however, duplicates its
+    routes (each call still runs ``include_router``); don't register a view more
+    than once on a given parent. (Tracked: bug for a same-router idempotency
+    guard.)
     """
     _prepare_view_class(view_cls)
     api_router = _init_api_router(view_cls)
@@ -1093,21 +1116,25 @@ def _copy_all_parent_class_endpoints_into_this_subclass(view_cls: type[View]):
     then AsyncRestView.get() and all other subclasses will get the FooRead
     annotation as well.
     """
-    for endpoint in _get_all_parent_endpoints(view_cls):
-        # Use `cls.__dict__` to check what attributes are directly on the class.
-        # This way we side-step the method resolution.
-        if endpoint.__name__ in view_cls.__dict__:
+    for name, endpoint in _get_all_parent_endpoints(view_cls).items():
+        # `name` is the attribute key (e.g. "get_many_endpoint"), which is stable
+        # across copies; `endpoint.__name__` may have been mangled by a parent's
+        # own registration (e.g. "parentview_get_many_endpoint"), so key off the
+        # attribute name throughout.
+        if name in view_cls.__dict__:
             # This endpoint is already overridden!
             continue
 
         # The original endpoint might be shared between subclasses.
         # So make a copy and put that on the view_cls.
         endpoint_wrapper = _make_copy(endpoint, view_cls)
+        # Reset the copy's name to the canonical attribute name so downstream
+        # renaming produces "<view>_<name>" cleanly even when the source was a
+        # parent's already-renamed copy.
+        endpoint_wrapper.__name__ = name
         # Set explicit __qualname__ for debugging purposes.
-        endpoint_wrapper.__qualname__ = (
-            f"{view_cls.__name__}_{endpoint.__qualname__}_wrapper"
-        )
-        setattr(view_cls, endpoint.__name__, endpoint_wrapper)
+        endpoint_wrapper.__qualname__ = f"{view_cls.__name__}_{name}_wrapper"
+        setattr(view_cls, name, endpoint_wrapper)
 
 
 def _make_copy(endpoint: Callable, view_cls: type[View]) -> Callable:
@@ -1171,14 +1198,31 @@ def _annotate(func: Callable, return_annotation: Any = None, **param_annotations
     )
 
 
-def _get_all_parent_endpoints(view_cls: type[View]) -> list[Callable]:
-    endpoints = []
+def _get_all_parent_endpoints(view_cls: type[View]) -> dict[str, Callable]:
+    """Map attribute-name -> endpoint for every ``@route`` endpoint defined on a
+    parent class, resolved the way Python resolves attributes: the most-derived
+    definition of each name wins, and each name appears once.
+
+    Walking the MRO and collecting every ``__dict__`` entry naively double-counts
+    when an intermediate parent was *itself* registered: registration copies the
+    base endpoints into that parent's ``__dict__``, so the same logical endpoint
+    is present both as the base original and as the parent's renamed copy. Keying
+    by attribute name (most-derived first, shadowed names skipped) collapses those
+    to one entry -- and respects a parent that genuinely overrode the endpoint.
+    """
+    endpoints: dict[str, Callable] = {}
+    seen: set[str] = set()
     for cls in view_cls.mro():
         if cls is view_cls:
             continue
         for name, value in cls.__dict__.items():
+            if name in seen:
+                # A more-derived class already defined this name; it shadows the
+                # base regardless of whether that override is itself a route.
+                continue
+            seen.add(name)
             if hasattr(value, "_api_route_args"):
-                endpoints.append(value)
+                endpoints[name] = value
     return endpoints
 
 
