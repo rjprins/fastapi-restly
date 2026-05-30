@@ -257,7 +257,13 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
     def after_commit(
         self, action: str, new: ModelT | None, old: dict[str, Any] | None = None
     ) -> None:
-        """Post-commit side effect (email, webhook, cache)."""
+        """Post-commit side effect (email, webhook, cache).
+
+        For *external* effects only: the write is already durable, so mutating
+        ``new`` or the database here is NOT persisted (and a mutation to ``new``
+        leaks into this request's response while being discarded from storage).
+        Do the mutation in the business verb or ``before_commit`` instead.
+        """
 
     def _commit(self) -> None:
         """Commit the current transaction. The handle design makes this the

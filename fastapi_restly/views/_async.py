@@ -334,6 +334,12 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     ) -> None:
         """Post-commit side effect (email, webhook, cache invalidation). ``old``
         enables dirty detection ("notify only if the status changed").
+
+        For *external* effects only: the write is already durable, so mutating
+        ``new`` or the database here is NOT persisted. A mutation to ``new`` also
+        leaks into this request's response (which serializes ``new`` after this
+        hook) while being silently discarded from storage -- do the mutation in
+        the business verb or ``before_commit`` instead.
         """
 
     async def _commit(self) -> None:
