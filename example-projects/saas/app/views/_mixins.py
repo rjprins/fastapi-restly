@@ -3,12 +3,12 @@
 These compose by cooperative ``super()`` chains. Application-layer logic
 in concrete views (``ProjectView.create`` etc.) doesn't have to know
 they exist — the mixins inject their behavior into the right framework
-helper/seam (``make_new_object`` / ``update_object`` for *write-side* stamps,
+helper/override point (``make_new_object`` / ``update_object`` for *write-side* stamps,
 ``build_query`` for *read-side* filters that apply to listing, count, and
 retrieve in one place).
 
 Structural stamping like this is also expressible through the framework's
-``prepare_create`` / ``prepare_update`` seams (return a dict of EXTRA fields
+``prepare_create`` / ``prepare_update`` override points (return a dict of EXTRA fields
 to stamp; mixins layer cooperatively via ``super()``). These mixins instead
 override ``make_new_object`` / ``update_object`` directly, which is equally
 valid for the same structural cross-cutting concerns (audit, tenant,
@@ -59,7 +59,7 @@ class TenantScopedMixin:
 
     def build_query(self) -> sa.Select:
         # Filters listing, count, AND retrieve via the framework's unified
-        # read seam — no separate get_one override required.
+        # read override point — no separate get_one override required.
         q = super().build_query()  # type: ignore[misc]
         if self._is_admin():
             return q

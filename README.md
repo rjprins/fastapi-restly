@@ -27,7 +27,7 @@ Restly helps building FastAPI apps faster, with consistent APIs.
 
 It features **class-based views** that support inheritance, mixins, and method overrides.
 
-Class-based views are essential for re-using code. The `RestView` and `AsyncRestView` provide full CRUD on top of a SQLAlchemy model with a single class declaration. It stays fully customizable by overriding endpoints, perform_* handlers, and other class methods.
+Class-based views are essential for re-using code. The `RestView` and `AsyncRestView` provide full CRUD on top of a SQLAlchemy model with a single class declaration. It stays fully customizable by overriding endpoints, `handle_*` request handlers, the business verbs, and other class methods.
 
 - **class-based views**: group endpoints on real Python classes with inheritance and method overrides.
 - **REST endpoints in minutes**: use `View` for custom resources, or `AsyncRestView` / `RestView` for generated CRUD.
@@ -78,12 +78,10 @@ DELETE /users/{id}   # delete one user
 
 Restly generates the Pydantic schemas automatically. For the full copy-paste app see [Getting Started](docs/getting_started.md).
 
-## Installation (development)
+## Installation
 
 ```bash
-git clone https://github.com/rjprins/fastapi-restly.git
-cd fastapi-restly
-uv sync
+pip install "fastapi-restly[standard]"
 ```
 
 ## Main features
@@ -106,8 +104,8 @@ class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
     schema = UserRead
-    # create_schema = UserCreate  # auto-generated from UserRead
-    # update_schema = UserUpdate  # auto-generated from UserCreat
+    # schema_create = UserCreate  # auto-generated from UserRead
+    # schema_update = UserUpdate  # auto-generated from UserRead
 ```
 
 Restly derives create and update schemas from `UserRead` by default.
@@ -130,8 +128,8 @@ class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
     schema = UserRead
-    creation_schema = UserCreate
-    update_schema = UserUpdate
+    schema_create = UserCreate
+    schema_update = UserUpdate
 ```
 
 Use **auto-schema** for prototypes and internal tools. Use an **explicit schema** when contract stability and validation control matter (public APIs, aliases, strict response shapes).
@@ -171,7 +169,7 @@ class UserRead(fr.IDSchema):
     name: str
     email: str
     password: fr.WriteOnly[str]        # stripped by to_response_schema()
-    created_at: fr.ReadOnly[datetime]  # skipped in `apply_schema()`
+    created_at: fr.ReadOnly[datetime]  # excluded from schema_create / schema_update
 ```
 
 ### Relationship handling
@@ -213,7 +211,7 @@ class UploadView(fr.AsyncRestView):
         responses={200: {"content": {EXCEL_MIME_TYPE: {}}}},
     )
     async def download_excel(self, id: int):
-        upload = await self.perform_get(id)
+        upload = await self.handle_get_one(id)
         return to_excel_response(upload)
 
 ```

@@ -7,7 +7,6 @@ from typing import Annotated, Any, Callable, Iterator, Optional, cast
 
 import pydantic
 import sqlalchemy
-from fastapi import HTTPException
 from pydantic import Field
 from pydantic.fields import FieldInfo
 from sqlalchemy import ColumnElement, Select
@@ -16,6 +15,7 @@ from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.properties import ColumnProperty
 from starlette.datastructures import QueryParams
 
+from ..exceptions import BadQueryParam
 from ._shared import _escape_like_value, _unwrap_optional_annotation
 
 SchemaType = type[pydantic.BaseModel]
@@ -323,8 +323,7 @@ def _get_int(query_params: QueryParams, param_name: str) -> Optional[int]:
     try:
         return int(value)
     except ValueError:
-        raise HTTPException(
-            400,
+        raise BadQueryParam(
             f"Invalid value for URL query parameter {param_name}: "
             f"{value} is not an integer",
         )
@@ -426,31 +425,31 @@ def _resolve_column(
     while "." in name:
         relation, _, name = name.partition(".")
         if current_schema is None:
-            raise HTTPException(400, f"Invalid attribute in URL query: {column_path}")
+            raise BadQueryParam(f"Invalid attribute in URL query: {column_path}")
         field_name = _resolve_field_name(current_schema, relation)
         if field_name is None:
-            raise HTTPException(400, f"Invalid attribute in URL query: {column_path}")
+            raise BadQueryParam(f"Invalid attribute in URL query: {column_path}")
         rel = getattr(current_model, field_name, None)
         if not isinstance(rel, InstrumentedAttribute) or not hasattr(
             rel.property, "mapper"
         ):
-            raise HTTPException(400, f"Invalid attribute in URL query: {column_path}")
+            raise BadQueryParam(f"Invalid attribute in URL query: {column_path}")
         joins.append(rel)
         current_model = rel.property.mapper.class_
         current_schema = _get_nested_schema(current_schema.model_fields[field_name])
 
     if current_schema is None:
-        raise HTTPException(400, f"Invalid attribute in URL query: {column_path}")
+        raise BadQueryParam(f"Invalid attribute in URL query: {column_path}")
     field_name = _resolve_field_name(current_schema, name)
     if field_name is None:
-        raise HTTPException(400, f"Invalid attribute in URL query: {column_path}")
+        raise BadQueryParam(f"Invalid attribute in URL query: {column_path}")
     column = getattr(current_model, field_name, None)
     if (
         column is None
         or not isinstance(column, InstrumentedAttribute)
         or not isinstance(column.property, ColumnProperty)
     ):
-        raise HTTPException(400, f"Invalid attribute in URL query: {column_path}")
+        raise BadQueryParam(f"Invalid attribute in URL query: {column_path}")
     return joins, cast(InstrumentedAttribute[Any], column)
 
 
@@ -490,8 +489,7 @@ def _apply_filtering(
             try:
                 value = pydantic.TypeAdapter(bool).validate_python(raw_value)
             except pydantic.ValidationError as exc:
-                raise HTTPException(
-                    400, f"Invalid value for URL query parameter {key}"
+                raise BadQueryParam( f"Invalid value for URL query parameter {key}"
                 ) from exc
             filters[column].append(column.is_(None) if value else column.isnot(None))
             continue
@@ -544,12 +542,12 @@ def _parse_value(schema_cls: SchemaType, column_name: str, value: str) -> Any:
         field = schema_cls.model_fields.get(relation_field_name)
         nested = _get_nested_schema(field)
         if nested is None:
-            raise HTTPException(400, f"Invalid attribute in URL query: {column_name}")
+            raise BadQueryParam(f"Invalid attribute in URL query: {column_name}")
         return _parse_value(nested, column_part, value)
 
     field_name = _resolve_field_name(schema_cls, column_name)
     if field_name is None:
-        raise HTTPException(400, f"Invalid attribute in URL query: {column_name}")
+        raise BadQueryParam(f"Invalid attribute in URL query: {column_name}")
 
     try:
         obj = schema_cls.__pydantic_validator__.validate_assignment(
@@ -557,7 +555,7 @@ def _parse_value(schema_cls: SchemaType, column_name: str, value: str) -> Any:
         )
         return getattr(obj, field_name)
     except Exception:
-        raise HTTPException(400, f"Invalid attribute in URL query: {column_name}")
+        raise BadQueryParam(f"Invalid attribute in URL query: {column_name}")
 
 
 def _get_nested_schema(field: FieldInfo | None) -> SchemaType | None:
@@ -591,4 +589,4 @@ def _make_where_clause(
         return column.ilike(f"%{_escape_like_value(filter_value)}%", escape="\\")
     if op == "eq":
         return column == parser(filter_value)
-    raise HTTPException(400, f"Unsupported filter operator: {op!r}")
+    raise BadQueryParam(f"Unsupported filter operator: {op!r}")

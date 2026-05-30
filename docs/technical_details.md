@@ -132,16 +132,17 @@ The async and sync variants have identical endpoint signatures; the only
 difference is that the async variant uses `await` in its process methods.
 
 `AsyncSessionDep` and `SessionDep` use Restly's built-in session generators.
-Those generators yield a SQLAlchemy session to the endpoint and, by default,
-commit when the endpoint successfully produces a response. On FastAPI versions
-where `Depends(..., scope="function")` exists, Restly requests that scope so
-the commit runs before FastAPI sends the response. On older FastAPI versions,
-cleanup timing follows FastAPI's default `yield` dependency behavior and may
-run after the response has already been sent. Set
-`commit_session_on_response=False` in `fr.configure(...)` to disable the
-built-in commit and manage transactions explicitly. Custom session generators
-configured with `session_generator` or `sync_session_generator` are passed
-through unchanged; their generator body owns transaction handling.
+Those generators yield a SQLAlchemy session to the endpoint and manage only its
+lifecycle: the session's context manager rolls back and closes on the way out.
+They do **not** commit on response — the commit is owned by `handle_<verb>` (see
+the verb call chain below), which runs `before_commit` → commit → `after_commit`
+around your domain logic, so a write is committed exactly once before the
+response is built. A change a handler did not commit (e.g. a custom write route
+that forgets `await self._commit()`) is discarded when the session closes. Set
+`commit_session_on_response=False` in `fr.configure(...)` to take over every
+commit yourself (handlers will not commit). Custom session generators configured
+with `session_generator` or `sync_session_generator` are passed through
+unchanged; their generator body owns transaction handling.
 
 Both views expose several class variables that affect endpoint registration and
 runtime behaviour:

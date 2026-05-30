@@ -4,7 +4,6 @@ from datetime import datetime
 from typing import Annotated, Any, Generic, Optional, Union, get_args, get_origin
 
 import pydantic
-from fastapi import HTTPException
 from pydantic.fields import Field, FieldInfo
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
@@ -12,6 +11,8 @@ from sqlalchemy.ext.asyncio.session import AsyncSession as SA_AsyncSession
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm.session import Session as SA_Session
 from typing_extensions import TypeVar
+
+from ..exceptions import NotFound
 
 
 class BaseSchema(pydantic.BaseModel):
@@ -214,9 +215,7 @@ async def _async_resolve_ids_to_sqlalchemy_objects(
             try:
                 sql_model_obj = await session.get_one(sql_model, value.id)
             except NoResultFound as e:
-                raise HTTPException(
-                    status_code=404, detail=f"Id not found for {field}: {value.id}"
-                ) from e
+                raise NotFound(f"Id not found for {field}: {value.id}") from e
             setattr(schema_obj, field, sql_model_obj)
 
         elif isinstance(value, list) and any(isinstance(i, IDSchema) for i in value):
@@ -232,9 +231,7 @@ async def _async_resolve_ids_to_sqlalchemy_objects(
 
             if len(ids) != len(sql_model_objs):
                 missing_ids = set(ids).difference(o.id for o in sql_model_objs)
-                raise HTTPException(
-                    status_code=404, detail=f"Id not found for {field}: {missing_ids}"
-                )
+                raise NotFound(f"Id not found for {field}: {missing_ids}")
 
             setattr(schema_obj, field, sql_model_objs)
 
@@ -261,9 +258,7 @@ def _resolve_ids_to_sqlalchemy_objects(
             try:
                 sql_model_obj = session.get_one(sql_model, value.id)
             except NoResultFound as e:
-                raise HTTPException(
-                    status_code=404, detail=f"Id not found for {field}: {value.id}"
-                ) from e
+                raise NotFound(f"Id not found for {field}: {value.id}") from e
             setattr(schema_obj, field, sql_model_obj)
 
         elif isinstance(value, list) and any(isinstance(i, IDSchema) for i in value):
@@ -279,9 +274,7 @@ def _resolve_ids_to_sqlalchemy_objects(
 
             if len(ids) != len(sql_model_objs):
                 missing_ids = set(ids).difference(o.id for o in sql_model_objs)
-                raise HTTPException(
-                    status_code=404, detail=f"Id not found for {field}: {missing_ids}"
-                )
+                raise NotFound(f"Id not found for {field}: {missing_ids}")
 
             setattr(schema_obj, field, sql_model_objs)
 

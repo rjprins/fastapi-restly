@@ -15,10 +15,9 @@ from typing import Any, ClassVar, Protocol, Sequence, cast
 import fastapi
 import pydantic
 import sqlalchemy
-from sqlalchemy import func, select
 from sqlalchemy.orm import DeclarativeBase, RelationshipProperty
 
-from ..schemas import BaseSchema
+from ..exceptions import BadQueryParam
 from ._async import AsyncRestView
 from ._base import _annotate, get, put
 from ._sync import RestView
@@ -46,7 +45,7 @@ def parse_react_admin_sort(sort_raw: str | None) -> tuple[str, str] | None:
     try:
         parsed = json.loads(sort_raw)
     except json.JSONDecodeError:
-        raise fastapi.HTTPException(400, "Invalid sort parameter: must be a JSON array")
+        raise BadQueryParam("Invalid sort parameter: must be a JSON array")
     if not isinstance(parsed, list) or len(parsed) != 2:
         raise fastapi.HTTPException(
             400, "Invalid sort parameter: must be [field, direction]"
@@ -116,27 +115,38 @@ def _resolve_column(
     model: type[DeclarativeBase], schema_cls: Any, field_name: str
 ) -> Any:
     """
-    Resolve a field name to a SQLAlchemy column.
+    Resolve a PUBLIC schema field name (or alias) to its SQLAlchemy column.
 
-    Checks model attributes directly, then falls back to schema alias resolution.
-    Raises HTTPException 400 if the field cannot be resolved.
+    Strict: only fields exposed on the response schema may be filtered or
+    sorted. A column that exists on the model but is omitted from the schema
+    (or marked write-only) is rejected, so the list endpoint cannot be used as
+    an oracle to filter/sort on -- and thereby probe -- hidden data. Mirrors the
+    standard REST dialect's schema-driven resolution.
+
+    Raises HTTPException 400 if the field is not a public, filterable schema field.
     """
-    col = getattr(model, field_name, None)
-    if col is not None:
-        if hasattr(col, "property") and isinstance(col.property, RelationshipProperty):
-            raise fastapi.HTTPException(
-                400, f"Cannot sort or filter by relationship field: {field_name!r}"
-            )
-        return col
+    from ..schemas._base import is_writeonly_field
 
+    resolved_name: str | None = None
     if schema_cls is not None:
         for name, field in schema_cls.model_fields.items():
-            if field.alias == field_name:
-                col = getattr(model, name, None)
-                if col is not None:
-                    return col
+            if is_writeonly_field(schema_cls, name):
+                continue
+            if name == field_name or field.alias == field_name:
+                resolved_name = name
+                break
 
-    raise fastapi.HTTPException(400, f"Unknown filter field: {field_name!r}")
+    if resolved_name is None:
+        raise BadQueryParam(f"Unknown filter field: {field_name!r}")
+
+    col = getattr(model, resolved_name, None)
+    if col is None:
+        raise BadQueryParam(f"Unknown filter field: {field_name!r}")
+    if hasattr(col, "property") and isinstance(col.property, RelationshipProperty):
+        raise fastapi.HTTPException(
+            400, f"Cannot sort or filter by relationship field: {field_name!r}"
+        )
+    return col
 
 
 def _coerce_value(col: Any, value: Any) -> Any:
@@ -296,16 +306,16 @@ class _ReactAdminMixin:
         )
 
     def _build_count_query(self, filters: dict) -> sqlalchemy.Select:
-        """Count query: filters only, no sort or pagination.
+        """Scoped + filtered query (model rows) for the list total.
 
         Starts from ``build_query()`` so the react-admin list respects the same
         read scope (tenant, soft-delete, row-level visibility) as every other
-        read on the view.
+        read on the view. The total is produced by the view's ``count`` method
+        (so a ``count`` override -- e.g. estimated counts -- applies here too).
         """
         view = cast(_ReactAdminViewProtocol, self)
         base = view.build_query()
-        filtered = _apply_react_admin_filters(base, view.model, view.schema, filters)
-        return select(func.count()).select_from(filtered.subquery())
+        return _apply_react_admin_filters(base, view.model, view.schema, filters)
 
     def _build_listing_query(
         self,
@@ -360,7 +370,7 @@ class AsyncReactAdminView(_ReactAdminMixin, AsyncRestView):
     async def get_many_endpoint(self) -> Any:
         await self.authorize("get_many")
         sort, (start, end), filters = self._parse_react_admin_params()
-        total = int(await self.session.scalar(self._build_count_query(filters)) or 0)
+        total = await self.count(self._build_count_query(filters))
         items = (
             await self.session.scalars(
                 self._build_listing_query(sort, start, end, filters)
@@ -373,7 +383,7 @@ class AsyncReactAdminView(_ReactAdminMixin, AsyncRestView):
     @put("/{id}")
     async def put(self, id: Any, schema_obj: Any) -> Any:
         obj = await self.handle_update(id, schema_obj)
-        return self.to_response_schema(obj)
+        return self.to_response(obj, "update")
 
 
 class ReactAdminView(_ReactAdminMixin, RestView):
@@ -388,7 +398,7 @@ class ReactAdminView(_ReactAdminMixin, RestView):
     def get_many_endpoint(self) -> Any:
         self.authorize("get_many")
         sort, (start, end), filters = self._parse_react_admin_params()
-        total = int(self.session.scalar(self._build_count_query(filters)) or 0)
+        total = self.count(self._build_count_query(filters))
         items = self.session.scalars(
             self._build_listing_query(sort, start, end, filters)
         ).all()
@@ -399,4 +409,4 @@ class ReactAdminView(_ReactAdminMixin, RestView):
     @put("/{id}")
     def put(self, id: Any, schema_obj: Any) -> Any:
         obj = self.handle_update(id, schema_obj)
-        return self.to_response_schema(obj)
+        return self.to_response(obj, "update")

@@ -5,4 +5,4 @@ Views API
    :members:
    :undoc-members:
    :show-inheritance:
-   :exclude-members: build_from_schema, apply_schema, save_object, delete_object
+   :exclude-members: make_new_object, update_object, save_object, delete_object

@@ -12,7 +12,7 @@ insert the related ``UploadLine`` rows. The flow is::
     upload = await self.save_object(upload)   # final flush + refresh
 
 This is the *one* canonical reason ``save_object`` and ``make_new_object``
-both have to be public utilities (not just override seams) — the flow
+both have to be public utilities (not just override override points) — the flow
 needs two distinct flush points and a mutate step in between.
 """
 

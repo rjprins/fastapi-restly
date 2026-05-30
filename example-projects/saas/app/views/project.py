@@ -49,8 +49,8 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
       via ``make_new_object`` / ``update_object`` (pre-flush, no trap).
     - ``TenantScopedMixin`` — adds ``organization_id`` filter to reads,
       stamps it on writes from auth context.
-    - ``TenantBase`` — auth dep, audit ``save_object`` seam, ``_emit``
-      outbox helper. The ``build_query`` seam consumed by the mixins
+    - ``TenantBase`` — auth dep, audit ``save_object`` override point, ``_emit``
+      outbox helper. The ``build_query`` override point consumed by the mixins
       above lives on ``AsyncRestView`` itself.
 
     Each mixin's ``build_query`` calls ``super().build_query()``, so the
@@ -112,7 +112,7 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
 
     async def get_one(self, id: int):
         # The mixins enforce tenant scope + soft-delete filtering already.
-        # ``get_one`` is the auth-free load+scope+404 seam; we layer only
+        # ``get_one`` is the auth-free load+scope+404 override point; we layer only
         # project-specific response decoration on top. ``handle_get_one``
         # (and therefore every read path) routes through here.
         project = await super().get_one(id)

@@ -305,9 +305,11 @@ fr.configure(async_database_url="sqlite+aiosqlite:///app.db")
 
 Applications that need more than one database can still use FastAPI and SQLAlchemy directly: provide a custom dependency on a view, or pass a custom session generator to `fr.configure(...)`. Restly does not currently provide a public multi-context or multi-engine API. See [Use a custom session dependency on one view](howto_existing_project.md#use-a-custom-session-dependency-on-one-view) for per-view session wiring.
 
-By default, Restly commits sessions created by `AsyncSessionDep` / `SessionDep` when an endpoint successfully produces a response. On FastAPI versions that support dependency scopes, Restly requests function scope so this commit runs before the response is sent. On older FastAPI versions, commit timing follows FastAPI's default `yield` dependency cleanup timing and may run after the response has been sent.
+Restly's write handlers (`handle_create` / `handle_update` / `handle_delete`) own the commit: each runs `before_commit` → commit → `after_commit` around your domain logic, so a write is committed exactly once, just before the response is built (see [The handle design](the_handle_design.md)). The session dependencies (`AsyncSessionDep` / `SessionDep`) do **not** commit on response — they only manage the session lifecycle (roll back and close on the way out), so any change a handler did not commit is discarded.
 
-Set `commit_session_on_response=False` if your handlers should call `commit()` / `rollback()` explicitly. If you pass `session_generator` or `sync_session_generator`, Restly does not add commit/rollback behavior; that custom generator owns the transaction lifecycle.
+A **custom (non-CRUD) write route** must commit its own work with `await self._commit()` (or reuse a handler) — otherwise its writes are rolled back when the request ends.
+
+Set `commit_session_on_response=False` to own every `commit()` / `rollback()` yourself (handlers will not commit). If you pass `session_generator` or `sync_session_generator`, that custom generator owns the transaction lifecycle and Restly defers to it.
 
 ### Exceptions
 

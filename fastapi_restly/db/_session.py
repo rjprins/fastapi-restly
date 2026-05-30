@@ -1,3 +1,4 @@
+import warnings
 from collections.abc import AsyncIterator, Callable, Iterator
 from inspect import signature
 from typing import Annotated, Any, cast
@@ -44,6 +45,18 @@ def _setup_async_database_connection(
             )
         async_make_session = async_sessionmaker(
             bind=async_engine, autoflush=False, expire_on_commit=False
+        )
+
+    factory_kw = getattr(async_make_session, "kw", None)
+    if factory_kw is not None and factory_kw.get("expire_on_commit", True):
+        warnings.warn(
+            "The async session factory passed to fr.configure() has "
+            "expire_on_commit=True. Restly's write handlers commit before "
+            "building the response, so committed ORM attributes will expire "
+            "and the async serializer will trigger a lazy reload outside the "
+            "async context (MissingGreenlet). Pass expire_on_commit=False to "
+            "your async_sessionmaker.",
+            stacklevel=3,
         )
 
     _fr_globals.async_database_url = async_database_url

@@ -899,18 +899,32 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         return self.to_response_schema(obj_or_list)
 
     def snapshot(self, obj: Any) -> dict[str, Any]:
-        """Frozen capture of an object's column values at load time, passed as
-        ``old`` to ``before_commit``/``after_commit`` for dirty detection. Not
-        ``copy(obj)`` (which shares SQLAlchemy instance state).
+        """Frozen capture of an object's *already-loaded* column values, passed
+        as ``old`` to ``before_commit``/``after_commit`` for dirty detection.
+        Not ``copy(obj)`` (which shares SQLAlchemy instance state).
+
+        Reads only attributes already present on the instance, so it never
+        triggers a lazy load -- a deferred/unloaded column is skipped rather
+        than forcing a blocking SELECT (which on an async session would raise
+        ``MissingGreenlet``).
         """
         from sqlalchemy import inspect as sa_inspect
 
-        mapper = sa_inspect(type(obj))
-        return {c.key: getattr(obj, c.key) for c in mapper.column_attrs}
+        state = sa_inspect(obj)
+        loaded = state.dict
+        return {
+            attr.key: loaded[attr.key]
+            for attr in state.mapper.column_attrs
+            if attr.key in loaded
+        }
 
     def _check_permission(self, action: str) -> None:
         """Default ``authorize`` body, shared by sync and async views. Consults
         :attr:`permissions`; no-op when the action has no required permission.
+
+        Fails *closed*: a missing ``AuthenticationMiddleware`` (Starlette's
+        ``request.user`` raises ``AssertionError``) or an unauthenticated user
+        (no ``has_permission``) results in 403, never a 500.
         """
         perm = self.permissions.get(action)
         if not perm:
@@ -918,8 +932,12 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         from ..exceptions import Forbidden
 
         request = getattr(self, "request", None)
-        user = getattr(request, "user", None) if request is not None else None
-        if user is None or not user.has_permission(perm):
+        try:
+            user = request.user if request is not None else None
+        except (AssertionError, AttributeError):
+            user = None
+        has_permission = getattr(user, "has_permission", None)
+        if has_permission is None or not has_permission(perm):
             raise Forbidden()
 
     @classmethod

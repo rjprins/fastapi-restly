@@ -319,13 +319,13 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
 
     async def _commit(self) -> None:
         """Commit the current transaction. The handle design makes this the
-        single commit point for a write request. No-op when a custom async
-        session generator owns the lifecycle, or when the caller opted out via
-        ``commit_session_on_response=False``.
+        single commit point for a write request. No-op only when the caller
+        opted out via ``commit_session_on_response=False`` (then you own the
+        commit). A custom session generator manages close/rollback, but the
+        handler still owns the commit -- set ``commit_session_on_response=False``
+        if the generator manages its own transaction boundary.
         """
         from ..db._globals import _fr_globals
 
-        if _fr_globals.session_generator is not None:
-            return
         if _fr_globals.commit_session_on_response:
             await self.session.commit()

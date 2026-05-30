@@ -91,7 +91,7 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
         """Filter tasks to those assigned to the current user.
 
         Admin requests bypass this filter — they see every task regardless
-        of assignee. Applied at the ``build_query`` seam so the same scope
+        of assignee. Applied at the ``build_query`` override point so the same scope
         feeds listing, count, AND retrieve — the row-level permission is
         enforced at the SQL level on every read path, and cascades through
         ``handle_update`` / ``handle_delete`` (which load via ``get_one``).
@@ -311,7 +311,9 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
         -- and the request-session dependency no longer commits on response --
         so this custom route owns the commit: a single ``self._commit()`` at
         the end persists all successful rows together. Pydantic surfaces field
-        errors per row.
+        errors per row; each row also runs inside its own ``begin_nested()``
+        SAVEPOINT, so a row that fails at flush (e.g. a DB constraint) rolls
+        back only itself and the rest of the batch still persists.
         """
         import csv
         import io
@@ -336,7 +338,15 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
                 )
                 if not schema_obj.title:
                     raise ValueError("title is required")
-                await self.create(schema_obj)
+                # The business ``create`` verb is auth-free by design, so a
+                # custom route that calls it directly must gate the action
+                # itself (mirrors ``handle_create``).
+                await self.authorize("create", data=schema_obj)
+                # Per-row SAVEPOINT: a row that fails at flush rolls back just
+                # its savepoint, keeping the outer transaction usable so the
+                # remaining good rows still persist.
+                async with self.session.begin_nested():
+                    await self.create(schema_obj)
                 success += 1
             except Exception as exc:  # noqa: BLE001 — surface per-row error
                 failed += 1
@@ -355,7 +365,8 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
         per row. ``create`` flushes without committing, so this custom route
         owns the commit -- the request-session dependency no longer commits on
         response, so a single ``self._commit()`` at the end persists every
-        successful row together.
+        successful row together. Each row runs in its own ``begin_nested()``
+        SAVEPOINT so one row failing at flush can't abort the whole batch.
         """
         success = 0
         failed = 0
@@ -363,7 +374,10 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
 
         for item in request.items:
             try:
-                await self.create(item)
+                # ``create`` is auth-free; gate each row like ``handle_create``.
+                await self.authorize("create", data=item)
+                async with self.session.begin_nested():
+                    await self.create(item)
                 success += 1
             except Exception as e:  # noqa: BLE001 — surface per-row error
                 failed += 1
@@ -386,8 +400,9 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
         verb), so it owns its commit. ``delete_object`` flushes but does NOT
         commit -- the request-session dependency no longer commits on response,
         so without the trailing ``self._commit()`` every soft-delete here would
-        be silently rolled back. We commit ONCE at the end so all successful
-        rows persist together (and a mid-loop failure doesn't half-commit).
+        be silently rolled back. Each id runs in its own ``begin_nested()``
+        SAVEPOINT (so one failure can't poison the rest), and we commit ONCE at
+        the end so all successful rows persist together.
         """
         success = 0
         failed = 0
@@ -395,8 +410,12 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
 
         for task_id in request.ids:
             try:
-                task = await self.handle_get_one(task_id)
-                await self.delete_object(task)
+                async with self.session.begin_nested():
+                    task = await self.handle_get_one(task_id)
+                    # handle_get_one gates "get_one"; the delete action needs
+                    # its own gate (the business delete is auth-free).
+                    await self.authorize("delete", obj=task)
+                    await self.delete_object(task)
                 success += 1
             except HTTPException as exc:
                 failed += 1
