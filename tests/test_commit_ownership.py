@@ -6,11 +6,19 @@ dependency no longer commits on response. So an ORM mutation made inside
 a second commit -- it is discarded when the session closes.
 """
 
+import pytest
 from sqlalchemy.orm import Mapped, mapped_column
 
 import fastapi_restly as fr
 
 from .conftest import create_tables
+
+# These tests deliberately leave writes uncommitted to prove they are discarded,
+# which (correctly) trips RestlyUncommittedChangesWarning. That behaviour has its
+# own coverage in test_uncommitted_warning.py; silence the noise here.
+pytestmark = pytest.mark.filterwarnings(
+    "ignore::fastapi_restly.exceptions.RestlyUncommittedChangesWarning"
+)
 
 
 def test_after_commit_orm_mutation_is_not_persisted(client):

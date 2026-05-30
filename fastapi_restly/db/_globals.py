@@ -19,6 +19,7 @@ class RestlyContext:
         "make_session",
         "session_generator",
         "sync_session_generator",
+        "warn_on_uncommitted",
     )
 
     async_database_url: str | None
@@ -28,6 +29,7 @@ class RestlyContext:
     make_session: sessionmaker[Any] | None
     session_generator: Callable[[], AsyncIterator[SA_AsyncSession]] | None
     sync_session_generator: Callable[[], Iterator[SA_Session]] | None
+    warn_on_uncommitted: bool
 
     def __init__(self) -> None:
         self.async_database_url = None
@@ -37,6 +39,7 @@ class RestlyContext:
         self.make_session = None
         self.session_generator = None
         self.sync_session_generator = None
+        self.warn_on_uncommitted = True
 
     def __enter__(self) -> "RestlyContext":
         token = _restly_context_ctx.set(self)

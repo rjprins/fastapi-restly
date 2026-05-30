@@ -19,6 +19,7 @@ from .exceptions import (
     RestlyConfigurationError,
     RestlyError,
     RestlyHTTPError,
+    RestlyUncommittedChangesWarning,
 )
 
 # Model base classes
@@ -95,6 +96,7 @@ __all__ = [
     # Exceptions — configuration-time
     "RestlyError",
     "RestlyConfigurationError",
+    "RestlyUncommittedChangesWarning",
     # Exceptions — request-time HTTP (subclass fastapi.HTTPException)
     "RestlyHTTPError",
     "NotFound",

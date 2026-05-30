@@ -19,6 +19,7 @@ fastapi_restly:
   - RestlyConfigurationError
   - RestlyError
   - RestlyHTTPError
+  - RestlyUncommittedChangesWarning
   - SessionDep
   - TimestampsMixin
   - TimestampsSchemaMixin
@@ -76,6 +77,7 @@ fastapi_restly.exceptions:
   - RestlyConfigurationError
   - RestlyError
   - RestlyHTTPError
+  - RestlyUncommittedChangesWarning
   - fastapi
 fastapi_restly.models:
   - CASCADE_ALL_ASYNC

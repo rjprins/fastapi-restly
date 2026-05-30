@@ -65,6 +65,17 @@ class BadQueryParam(RestlyHTTPError):
     default_detail = "Invalid query parameter"
 
 
+class RestlyUncommittedChangesWarning(UserWarning):
+    """Emitted when a request finishes with uncommitted changes in the session.
+
+    The write handlers own the commit, so a custom write route that flushes
+    (e.g. via ``save_object``) but never commits would have its changes silently
+    rolled back when the session closes. Filter or disable it with
+    ``warnings.filterwarnings(..., category=fr.RestlyUncommittedChangesWarning)``
+    or ``fr.configure(warn_on_uncommitted=False)``.
+    """
+
+
 __all__ = [
     "BadQueryParam",
     "Conflict",
@@ -73,4 +84,5 @@ __all__ = [
     "RestlyConfigurationError",
     "RestlyError",
     "RestlyHTTPError",
+    "RestlyUncommittedChangesWarning",
 ]
