@@ -58,6 +58,7 @@ from .views import (
     RestView,
     View,
     ViewRoute,
+    async_run_write_action,
     delete,
     get,
     include_view,
@@ -65,6 +66,7 @@ from .views import (
     post,
     put,
     route,
+    run_write_action,
 )
 
 try:
@@ -108,6 +110,9 @@ __all__ = [
     "async_update_object",
     "async_save_object",
     "async_delete_object",
+    # Write lifecycle (self-free; `handle_write` is the bound view method)
+    "run_write_action",
+    "async_run_write_action",
     # Models
     "DataclassBase",
     "IDBase",

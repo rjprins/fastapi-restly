@@ -1,4 +1,5 @@
-from typing import Any, cast
+from collections.abc import Callable
+from typing import Any, TypeVar, cast
 
 import sqlalchemy
 from sqlalchemy import func, select
@@ -24,6 +25,10 @@ from ._base import (
     patch,
     post,
 )
+from ._lifecycle import run_write_action
+
+#: Return type of a ``mutate`` thunk passed to ``handle_write``.
+_WriteT = TypeVar("_WriteT")
 
 
 class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT]):
@@ -87,32 +92,40 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         self.authorize("get_one", obj=obj)
         return obj
 
+    def handle_write(
+        self,
+        action: str,
+        *,
+        obj: Any = None,
+        data: Any = None,
+        mutate: Callable[[], _WriteT],
+    ) -> _WriteT:
+        """General write handler: run ``mutate`` through the full request
+        bracket -- ``authorize`` -> ``snapshot`` (when ``obj`` is given) ->
+        ``mutate`` -> ``before_commit`` -> commit -> ``after_commit`` -- and
+        return its result. The CRUD write handlers delegate here, and custom
+        write actions should too. Override to wrap or change the lifecycle for
+        the whole view; the default delegates to :func:`run_write_action`.
+        """
+        return run_write_action(self, action, obj=obj, data=data, mutate=mutate)
+
     def handle_create(self, schema_obj: CreateSchemaT) -> ModelT:
-        self.authorize("create", data=schema_obj)
-        obj = self.create(schema_obj)
-        self.before_commit("create", new=obj)
-        self._commit()
-        self.after_commit("create", new=obj)
-        return obj
+        return self.handle_write(
+            "create", data=schema_obj, mutate=lambda: self.create(schema_obj)
+        )
 
     def handle_update(self, id: IdT, schema_obj: UpdateSchemaT) -> ModelT:
         obj = self.get_one(id)
-        self.authorize("update", obj=obj, data=schema_obj)
-        old = self.snapshot(obj)
-        new = self.update(obj, schema_obj)
-        self.before_commit("update", new=new, old=old)
-        self._commit()
-        self.after_commit("update", new=new, old=old)
-        return new
+        return self.handle_write(
+            "update",
+            obj=obj,
+            data=schema_obj,
+            mutate=lambda: self.update(obj, schema_obj),
+        )
 
     def handle_delete(self, id: IdT) -> None:
         obj = self.get_one(id)
-        self.authorize("delete", obj=obj)
-        old = self.snapshot(obj)
-        self.delete(obj)
-        self.before_commit("delete", new=None, old=old)
-        self._commit()
-        self.after_commit("delete", new=None, old=old)
+        self.handle_write("delete", obj=obj, mutate=lambda: self.delete(obj))
 
     # ====================================================================
     # Domain operations (auth-free, commit-free) -- the common override point

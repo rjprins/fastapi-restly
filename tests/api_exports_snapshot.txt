@@ -28,6 +28,7 @@ fastapi_restly:
   - apply_list_params
   - async_delete_object
   - async_make_new_object
+  - async_run_write_action
   - async_save_object
   - async_update_object
   - configure
@@ -51,6 +52,7 @@ fastapi_restly:
   - pytest_fixtures
   - query
   - route
+  - run_write_action
   - save_object
   - schemas
   - testing
@@ -123,6 +125,7 @@ fastapi_restly.views:
   - RestView
   - View
   - ViewRoute
+  - async_run_write_action
   - delete
   - get
   - include_view
@@ -130,6 +133,7 @@ fastapi_restly.views:
   - post
   - put
   - route
+  - run_write_action
 
 submodule-only exports:
 fastapi_restly.db:

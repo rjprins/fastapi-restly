@@ -12,6 +12,7 @@ from ._base import (
     put,
     route,
 )
+from ._lifecycle import async_run_write_action, run_write_action
 from ._react_admin import AsyncReactAdminView, ReactAdminView
 from ._sync import RestView
 
@@ -30,6 +31,8 @@ __all__ = [
     "ListingResult",
     "View",
     "ViewRoute",
+    "async_run_write_action",
+    "run_write_action",
     "delete",
     "get",
     "include_view",
