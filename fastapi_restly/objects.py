@@ -13,7 +13,7 @@ from .schemas._base import (
 _T = _TypeVar("_T", bound=_DeclarativeBase)
 
 
-def build_from_schema(
+def make_new_object(
     session: _Session,
     model_cls: type[_T],
     schema_obj: _pydantic.BaseModel,
@@ -23,8 +23,8 @@ def build_from_schema(
 
     This is the schema-to-ORM mapping primitive. It resolves Restly reference
     fields, skips read-only inputs, applies schema defaults, and stages the
-    object in the session. It does not flush and does not run view-level
-    ``perform_create`` business logic.
+    object in the session. It does not flush and does not run a view's
+    ``create`` business logic.
     """
     from .views._base import (
         apply_create_assignments,
@@ -41,7 +41,7 @@ def build_from_schema(
     return obj
 
 
-def apply_schema(
+def update_object(
     session: _Session,
     obj: _T,
     schema_obj: _pydantic.BaseModel,
@@ -51,7 +51,7 @@ def apply_schema(
 
     This is the schema-to-ORM update primitive. It resolves Restly reference
     fields and applies only writable inputs. It does not flush and does not run
-    view-level ``perform_update`` business logic.
+    a view's ``update`` business logic.
     """
     from .views._base import (
         apply_update_to_object,
@@ -77,13 +77,13 @@ def delete_object(session: _Session, obj: _DeclarativeBase) -> None:
     session.flush()
 
 
-async def async_build_from_schema(
+async def async_make_new_object(
     session: _AsyncSession,
     model_cls: type[_T],
     schema_obj: _pydantic.BaseModel,
     schema_cls: type[_pydantic.BaseModel] | None = None,
 ) -> _T:
-    """Async equivalent of :func:`build_from_schema`."""
+    """Async equivalent of :func:`make_new_object`."""
     from .views._base import (
         apply_create_assignments,
         build_create_plan,
@@ -99,13 +99,13 @@ async def async_build_from_schema(
     return obj
 
 
-async def async_apply_schema(
+async def async_update_object(
     session: _AsyncSession,
     obj: _T,
     schema_obj: _pydantic.BaseModel,
     schema_cls: type[_pydantic.BaseModel] | None = None,
 ) -> _T:
-    """Async equivalent of :func:`apply_schema`."""
+    """Async equivalent of :func:`update_object`."""
     from .views._base import (
         apply_update_to_object,
         validate_resolved_reference_consistency,
@@ -133,12 +133,12 @@ async def async_delete_object(
 
 
 __all__ = [
-    "apply_schema",
-    "async_apply_schema",
-    "async_build_from_schema",
     "async_delete_object",
+    "async_make_new_object",
     "async_save_object",
-    "build_from_schema",
+    "async_update_object",
     "delete_object",
+    "make_new_object",
     "save_object",
+    "update_object",
 ]

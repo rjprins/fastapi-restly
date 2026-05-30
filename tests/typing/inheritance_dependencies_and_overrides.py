@@ -48,21 +48,22 @@ class CustomProjectView(
 
     @fr.get("/")
     async def listing(self, query_params: Any) -> list[ProjectRead]:
-        result = await self.perform_listing(query_params)
+        result = await self.handle_get_many(query_params)
         return [self.to_response_schema(obj) for obj in result.objects]
 
     @fr.get("/{id}")
     async def get(self, id: int) -> ProjectRead:
-        return self.to_response_schema(await self.perform_get(id))
+        return self.to_response_schema(await self.handle_get_one(id))
 
     @fr.post("/")
     async def create(self, schema_obj: ProjectRead) -> ProjectRead:
-        return self.to_response_schema(await self.perform_create(schema_obj))
+        return self.to_response_schema(await self.handle_create(schema_obj))
 
     @fr.patch("/{id}")
     async def update(self, id: int, schema_obj: ProjectRead) -> ProjectRead:
-        return self.to_response_schema(await self.perform_update(id, schema_obj))
+        return self.to_response_schema(await self.handle_update(id, schema_obj))
 
     @fr.delete("/{id}")
     async def delete(self, id: int) -> Response:
-        return await self.perform_delete(id)
+        await self.handle_delete(id)
+        return Response(status_code=204)

@@ -2,18 +2,23 @@ fastapi_restly:
   - AsyncReactAdminView
   - AsyncRestView
   - AsyncSessionDep
+  - BadQueryParam
   - BaseSchema
+  - Conflict
   - DataclassBase
+  - Forbidden
   - IDBase
   - IDMixin
   - IDRef
   - IDSchema
   - ListingResult
+  - NotFound
   - ReactAdminView
   - ReadOnly
   - RestView
   - RestlyConfigurationError
   - RestlyError
+  - RestlyHTTPError
   - SessionDep
   - TimestampsMixin
   - TimestampsSchemaMixin
@@ -21,15 +26,21 @@ fastapi_restly:
   - ViewRoute
   - WriteOnly
   - apply_list_params
+  - async_delete_object
+  - async_make_new_object
+  - async_save_object
+  - async_update_object
   - configure
   - create_list_params_schema
   - db
   - delete
+  - delete_object
   - exceptions
   - get
   - get_async_engine
   - get_engine
   - include_view
+  - make_new_object
   - models
   - objects
   - open_async_session
@@ -40,8 +51,10 @@ fastapi_restly:
   - pytest_fixtures
   - query
   - route
+  - save_object
   - schemas
   - testing
+  - update_object
   - views
 fastapi_restly.db:
   - AsyncSessionDep
@@ -54,8 +67,14 @@ fastapi_restly.db:
   - open_async_session
   - open_session
 fastapi_restly.exceptions:
+  - BadQueryParam
+  - Conflict
+  - Forbidden
+  - NotFound
   - RestlyConfigurationError
   - RestlyError
+  - RestlyHTTPError
+  - fastapi
 fastapi_restly.models:
   - CASCADE_ALL_ASYNC
   - CASCADE_ALL_DELETE_ORPHAN_ASYNC
@@ -64,14 +83,14 @@ fastapi_restly.models:
   - IDMixin
   - TimestampsMixin
 fastapi_restly.objects:
-  - apply_schema
-  - async_apply_schema
-  - async_build_from_schema
   - async_delete_object
+  - async_make_new_object
   - async_save_object
-  - build_from_schema
+  - async_update_object
   - delete_object
+  - make_new_object
   - save_object
+  - update_object
 fastapi_restly.pytest_fixtures:
   - restly_app
   - restly_async_session
@@ -117,18 +136,11 @@ fastapi_restly.db:
   - activate_savepoint_only_mode
   - deactivate_savepoint_only_mode
 fastapi_restly.exceptions:
+  - fastapi
 fastapi_restly.models:
   - CASCADE_ALL_ASYNC
   - CASCADE_ALL_DELETE_ORPHAN_ASYNC
 fastapi_restly.objects:
-  - apply_schema
-  - async_apply_schema
-  - async_build_from_schema
-  - async_delete_object
-  - async_save_object
-  - build_from_schema
-  - delete_object
-  - save_object
 fastapi_restly.pytest_fixtures:
   - restly_app
   - restly_async_session

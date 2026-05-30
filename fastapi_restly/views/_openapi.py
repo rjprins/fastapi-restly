@@ -29,8 +29,8 @@ class _Entry:
     model: type[DeclarativeBase]
     resource_name: str
     schema: type[pydantic.BaseModel]
-    creation_schema: type[pydantic.BaseModel]
-    update_schema: type[pydantic.BaseModel]
+    schema_create: type[pydantic.BaseModel]
+    schema_update: type[pydantic.BaseModel]
 
 
 _RegistryKey = int
@@ -98,8 +98,8 @@ def _register_for_resource_ref(
         model=model,
         resource_name=resource_name,
         schema=view_cls.schema,
-        creation_schema=view_cls.creation_schema,
-        update_schema=view_cls.update_schema,
+        schema_create=view_cls.schema_create,
+        schema_update=view_cls.schema_update,
     )
 
     entries = _registry_entries(parent_router)
@@ -235,7 +235,7 @@ def _annotate_spec(
         if not refs:
             continue
 
-        for schema_cls in (entry.schema, entry.creation_schema, entry.update_schema):
+        for schema_cls in (entry.schema, entry.schema_create, entry.schema_update):
             props = schemas.get(schema_cls.__name__, {}).get("properties", {})
             for prop_key, resource_name in refs.items():
                 if prop_key in props:

@@ -4,7 +4,7 @@ from sqlalchemy import ForeignKey, ForeignKeyConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 import fastapi_restly as fr
-from fastapi_restly.objects import apply_schema, build_from_schema, save_object
+from fastapi_restly.objects import make_new_object, save_object, update_object
 from fastapi_restly.schemas._base import create_model_with_optional_fields
 from fastapi_restly.testing import RestlyTestClient
 from fastapi_restly.views._base import (
@@ -70,7 +70,7 @@ def test_sync_object_helpers_handle_readonly_and_relationship_inputs(sync_db):
         create_payload = ArticleSchema(
             id=999, title="Draft", author_id={"id": original_author.id}
         )
-        article = build_from_schema(session, Article, create_payload, ArticleSchema)
+        article = make_new_object(session, Article, create_payload, ArticleSchema)
         session.flush()
 
         assert article.id != 999
@@ -80,14 +80,14 @@ def test_sync_object_helpers_handle_readonly_and_relationship_inputs(sync_db):
         update_payload = ArticleSchema(
             id=12345, title="Published", author_id={"id": replacement_author.id}
         )
-        updated_article = apply_schema(session, article, update_payload, ArticleSchema)
+        updated_article = update_object(session, article, update_payload, ArticleSchema)
 
         assert updated_article.id == article.id
         assert updated_article.title == "Published"
         assert updated_article.author_id == replacement_author.id
         assert updated_article.author.id == replacement_author.id
 
-        assignment = build_from_schema(
+        assignment = make_new_object(
             session,
             Assignment,
             AssignmentSchema(owner_id=fr.IDSchema(id=original_author.id)),
@@ -95,7 +95,7 @@ def test_sync_object_helpers_handle_readonly_and_relationship_inputs(sync_db):
         session.flush()
         assert assignment.owner_id == original_author.id
 
-        updated_assignment = apply_schema(
+        updated_assignment = update_object(
             session,
             assignment,
             AssignmentSchema(owner_id=fr.IDSchema(id=replacement_author.id)),
@@ -118,7 +118,7 @@ def test_sync_save_object_flushes_and_refreshes(sync_db):
     fr.DataclassBase.metadata.create_all(engine)
 
     with make_session() as session:
-        obj = build_from_schema(
+        obj = make_new_object(
             session, Widget, WidgetSchema(id=0, name="gizmo"), WidgetSchema
         )
         # Before save_object the PK should not be assigned.
@@ -131,7 +131,7 @@ def test_sync_save_object_flushes_and_refreshes(sync_db):
 
 
 def test_sync_apply_schema_only_applies_set_fields(sync_db):
-    """apply_schema should ignore fields the caller did not explicitly set,
+    """update_object should ignore fields the caller did not explicitly set,
     matching get_writable_inputs semantics — i.e. PATCH partial-update behaviour."""
     engine, make_session = sync_db
 
@@ -149,7 +149,7 @@ def test_sync_apply_schema_only_applies_set_fields(sync_db):
     fr.DataclassBase.metadata.create_all(engine)
 
     with make_session() as session:
-        item = build_from_schema(
+        item = make_new_object(
             session, Item, ItemSchema(id=0, name="orig", notes="keep"), ItemSchema
         )
         save_object(session, item)
@@ -157,7 +157,7 @@ def test_sync_apply_schema_only_applies_set_fields(sync_db):
         # Only ``name`` is set in the partial payload; ``notes`` is unset and
         # should not be overwritten.
         partial = UpdateItemSchema(name="renamed")
-        apply_schema(session, item, partial, ItemSchema)
+        update_object(session, item, partial, ItemSchema)
         assert item.name == "renamed"
         assert item.notes == "keep"
 
@@ -285,7 +285,7 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
             Dd8SyncRelationshipFirstArticle,
             Dd8SyncPostAssignArticle,
         ):
-            article = build_from_schema(
+            article = make_new_object(
                 session,
                 model_cls,
                 FKSchema(title=model_cls.__name__, author_id=first.id),
@@ -294,7 +294,7 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
             assert article.author_id == first.id
             assert article.author is first
 
-            apply_schema(
+            update_object(
                 session,
                 article,
                 FKSchema(title="updated", author_id=second.id),
@@ -363,7 +363,7 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
                 CompositeRelationshipSchema,
             )
 
-        both_explicit = build_from_schema(
+        both_explicit = make_new_object(
             session,
             Dd8SyncRelationshipFirstArticle,
             BothReferenceSchema(
@@ -375,7 +375,7 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
         assert both_explicit.author is first
 
         with pytest.raises(HTTPException) as create_exc:
-            build_from_schema(
+            make_new_object(
                 session,
                 Dd8SyncRelationshipFirstArticle,
                 BothReferenceSchema(
@@ -386,7 +386,7 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
         assert create_exc.value.status_code == 422
 
         with pytest.raises(HTTPException) as update_exc:
-            apply_schema(
+            update_object(
                 session,
                 both_explicit,
                 BothReferenceSchema(
@@ -396,7 +396,7 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
             )
         assert update_exc.value.status_code == 422
 
-        relation_first = build_from_schema(
+        relation_first = make_new_object(
             session,
             Dd8SyncRelationshipFieldFirstArticle,
             RelationshipSchema(title="relation", author={"id": first.id}),
@@ -405,7 +405,7 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
         assert relation_first.author_id == first.id
         assert relation_first.author is first
 
-        relation_fallback = build_from_schema(
+        relation_fallback = make_new_object(
             session,
             Dd8SyncRelationshipFieldFallbackArticle,
             RelationshipSchema(title="fallback", author={"id": first.id}),
@@ -414,7 +414,7 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
         assert relation_fallback.author_id == first.id
         assert relation_fallback.author is first
 
-        declarative_article = build_from_schema(
+        declarative_article = make_new_object(
             session,
             Dd8SyncDeclarativeArticle,
             DeclarativeFKSchema(title="declarative", author_id=declarative_author.id),
@@ -463,8 +463,8 @@ def test_sync_rest_view_crud_and_pagination(sync_db):
         prefix = "/sync-orders"
         model = Order
         schema = OrderSchema
-        creation_schema = OrderInputSchema
-        update_schema = OrderInputSchema
+        schema_create = OrderInputSchema
+        schema_update = OrderInputSchema
         include_pagination_metadata = True
 
     Base.metadata.create_all(engine)
@@ -479,28 +479,28 @@ def test_sync_rest_view_crud_and_pagination(sync_db):
         view = OrderView()
         view.session = session
 
-        first = view.create(
+        first = view.create_endpoint(
             OrderInputSchema(item_name="Keyboard", quantity=1, customer_id=customer_id)
         )
-        second = view.create(
+        second = view.create_endpoint(
             OrderInputSchema(item_name="Mouse", quantity=2, customer_id=customer_id)
         )
 
         assert first.customer.name == "Acme"
         assert second.customer.name == "Acme"
 
-        paginated = view.listing({"page": "1", "page_size": "10"})
+        paginated = view.get_many_endpoint({"page": "1", "page_size": "10"})
         assert paginated["total"] == 2
         assert paginated["page"] == 1
         assert paginated["page_size"] == 10
         assert paginated["total_pages"] == 1
         assert {item.item_name for item in paginated["items"]} == {"Keyboard", "Mouse"}
 
-        detail = view.get(first.id)
+        detail = view.get_one_endpoint(first.id)
         assert detail.customer.name == "Acme"
         assert detail.quantity == 1
 
-        updated = view.update(
+        updated = view.update_endpoint(
             first.id,
             OrderInputSchema(
                 item_name="Keyboard Pro", quantity=3, customer_id=customer_id
@@ -509,11 +509,11 @@ def test_sync_rest_view_crud_and_pagination(sync_db):
         assert updated.item_name == "Keyboard Pro"
         assert updated.quantity == 3
 
-        delete_response = view.delete(second.id)
+        delete_response = view.delete_endpoint(second.id)
         assert delete_response.status_code == 204
 
         with pytest.raises(HTTPException):
-            view.get(second.id)
+            view.get_one_endpoint(second.id)
 
 
 def test_sync_rest_view_dispatches_to_handle_overrides(sync_db):
@@ -532,29 +532,29 @@ def test_sync_rest_view_dispatches_to_handle_overrides(sync_db):
         model = DispatchWidget
         schema = WidgetSchema
 
-        def perform_listing(self, query_params):
+        def get_many(self, query_params):
             call_log.append("listing")
-            return super().perform_listing(query_params)
+            return super().get_many(query_params)
 
         def to_listing_response(self, query_params, listing_result):
             call_log.append("to_listing_response")
             return super().to_listing_response(query_params, listing_result)
 
-        def perform_get(self, id):
+        def get_one(self, id):
             call_log.append("get")
-            return super().perform_get(id)
+            return super().get_one(id)
 
-        def perform_create(self, schema_obj):
+        def create(self, schema_obj):
             call_log.append("create")
-            return super().perform_create(schema_obj)
+            return super().create(schema_obj)
 
-        def perform_update(self, id, schema_obj):
+        def update(self, obj, schema_obj):
             call_log.append("update")
-            return super().perform_update(id, schema_obj)
+            return super().update(obj, schema_obj)
 
-        def perform_delete(self, id):
+        def delete(self, obj):
             call_log.append("delete")
-            return super().perform_delete(id)
+            return super().delete(obj)
 
     fr.DataclassBase.metadata.create_all(engine)
 
@@ -562,26 +562,26 @@ def test_sync_rest_view_dispatches_to_handle_overrides(sync_db):
         view = WidgetView()
         view.session = session
 
-        created = view.create(WidgetSchema(id=0, name="alpha"))
-        view.listing({})
-        view.get(created.id)
-        view.update(created.id, WidgetSchema(id=created.id, name="beta"))
-        view.delete(created.id)
+        created = view.create_endpoint(WidgetSchema(id=0, name="alpha"))
+        view.get_many_endpoint({})
+        view.get_one_endpoint(created.id)
+        view.update_endpoint(created.id, WidgetSchema(id=created.id, name="beta"))
+        view.delete_endpoint(created.id)
 
     assert call_log == [
         "create",
         "listing",
         "to_listing_response",
         "get",
+        "get",
         "update",
         "get",
         "delete",
-        "get",
     ]
 
 
 def test_sync_build_query_is_consulted_by_list_and_count(sync_db):
-    """perform_listing routes through build_query and count_listing uses that query so a
+    """get_many routes through build_query and count uses that query so a
     single override filters listing AND its pagination total."""
     import sqlalchemy
 
@@ -623,11 +623,11 @@ def test_sync_build_query_is_consulted_by_list_and_count(sync_db):
         assert str(fr.RestView.build_query(view)) == str(sqlalchemy.select(Gadget))
 
         # Override is consulted by both list and count.
-        results = view.perform_listing({})
+        results = view.get_many({})
         assert len(results.objects) == 2
         assert results.total_count == 2
         assert all(g.active for g in results.objects)
 
         query = fr.apply_list_params({}, view.build_query(), Gadget, GadgetSchema)
-        total = view.count_listing(query)
+        total = view.count(query)
         assert total == 2

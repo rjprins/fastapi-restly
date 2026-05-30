@@ -6,8 +6,9 @@ full Python inheritance model applies:
 
   - Class variables (model, schema, exclude_routes, include_pagination_metadata,
     id_type, dependencies) are inherited and can be overridden per-subclass.
-  - perform_* handlers and custom routes defined on a base view are shared by all
-    subclasses; each subclass can further override and call super().
+  - Business verb overrides (create/update/delete/get_one/get_many) and custom
+    routes defined on a base view are shared by all subclasses; each subclass can
+    further override and call super().
   - Instance-level FastAPI dependencies declared as annotations on a base class
     are available on all subclasses as self.<name>.
   - Class-level `dependencies = [Depends(...)]` is inherited and applied to all
@@ -58,21 +59,21 @@ def test_inherit_model_and_schema(sync_db):
         assert created.name == "Cog"
         assert created.id is not None
 
-        fetched = view.get(created.id)
+        fetched = view.get_one(created.id)
         assert fetched.name == "Cog"
 
-        items = view.listing({})
+        items = view.get_many({}).objects
         assert len(items) == 1
 
 
 # ---------------------------------------------------------------------------
-# 2. perform_* override shared across multiple subclasses
+# 2. business-verb override shared across multiple subclasses
 # ---------------------------------------------------------------------------
 
 
 def test_handler_override_shared_across_subclasses(sync_db):
     """
-    A perform_* override on a base view applies to every subclass.
+    A business-verb override on a base view applies to every subclass.
     Two independent views that inherit the same base both exhibit the override.
     """
     engine, _ = sync_db
@@ -89,9 +90,9 @@ def test_handler_override_shared_across_subclasses(sync_db):
         model = Tag
         schema = TagSchema
 
-        def perform_create(self, schema_obj):
+        def create(self, schema_obj):
             call_log.append("audit")
-            return super().perform_create(schema_obj)
+            return super().create(schema_obj)
 
     class ViewA(AuditBase):
         prefix = "/tags-a"
@@ -119,7 +120,7 @@ def test_handler_override_shared_across_subclasses(sync_db):
 
 
 def test_super_chain_in_handler_override(sync_db):
-    """Subclass can override perform_* and call super() to chain with the base."""
+    """Subclass can override a business verb and call super() to chain with the base."""
     engine, _ = sync_db
 
     call_log: list[str] = []
@@ -134,18 +135,18 @@ def test_super_chain_in_handler_override(sync_db):
         model = Note
         schema = NoteSchema
 
-        def perform_create(self, schema_obj):
+        def create(self, schema_obj):
             call_log.append("base_pre")
-            result = super().perform_create(schema_obj)
+            result = super().create(schema_obj)
             call_log.append("base_post")
             return result
 
     class NoteView(LogBase):
         prefix = "/notes"
 
-        def perform_create(self, schema_obj):
+        def create(self, schema_obj):
             call_log.append("sub_pre")
-            result = super().perform_create(schema_obj)
+            result = super().create(schema_obj)
             call_log.append("sub_post")
             return result
 
@@ -177,7 +178,7 @@ def test_inherit_exclude_routes(sync_db):
     class ReadOnlyBase(fr.RestView):
         model = Entry
         schema = EntrySchema
-        exclude_routes = ("create", "update", "delete")
+        exclude_routes = ("create_endpoint", "update_endpoint", "delete_endpoint")
 
     app = FastAPI()
 
@@ -256,7 +257,9 @@ def test_inherit_include_pagination_metadata(sync_db):
         view.create(TicketSchema(id=0, title="Bug"))
         view.create(TicketSchema(id=0, title="Feature"))
 
-        result = view.listing({"page": "1", "page_size": "10"})
+        query_params = {"page": "1", "page_size": "10"}
+        listing_result = view.get_many(query_params)
+        result = view.to_listing_response(query_params, listing_result)
 
     assert isinstance(result, dict)
     assert result["total"] == 2
@@ -304,10 +307,10 @@ def test_inherit_soft_delete_via_delete_object(sync_db):
         rec = view.create(RecordSchema(id=0, name="doc", deleted=False))
         assert rec.deleted is False
 
-        view.delete(rec.id)
+        view.handle_delete(rec.id)
 
         # Still exists in database but is flagged deleted
-        fetched = view.get(rec.id)
+        fetched = view.get_one(rec.id)
         assert fetched.deleted is True
 
 
@@ -376,9 +379,9 @@ def test_instance_level_dependency_inherited(sync_db):
         model = Box
         schema = BoxSchema
 
-        def perform_create(self, schema_obj):
+        def create(self, schema_obj):
             captured["request_id"] = self.request_id
-            return super().perform_create(schema_obj)
+            return super().create(schema_obj)
 
     app = FastAPI()
 

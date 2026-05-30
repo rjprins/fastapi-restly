@@ -1,15 +1,15 @@
 from typing import Any, cast
 
-import fastapi
 import sqlalchemy
 from sqlalchemy import func, select
 from sqlalchemy import inspect as sa_inspect
 
 from ..db import SessionDep
-from ..objects import apply_schema as object_apply_schema
-from ..objects import build_from_schema as object_build_from_schema
+from ..exceptions import NotFound
 from ..objects import delete_object as object_delete_object
+from ..objects import make_new_object as object_make_new_object
 from ..objects import save_object as object_save_object
+from ..objects import update_object as object_update_object
 from ..query import apply_list_params
 from ._base import (
     BaseRestView,
@@ -28,7 +28,7 @@ from ._base import (
 
 class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT]):
     """
-    RestView creates a synchronous CRUD/REST interface for database objects.
+    RestView creates a sync CRUD/REST interface for database objects.
     Basic usage::
 
         class FooView(RestView):
@@ -36,88 +36,108 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
             schema = FooRead
             model = Foo
 
-    Where ``Foo`` is a SQLAlchemy model and ``FooRead`` a Pydantic model.
+    Each verb is three tiers (see "the handle design" in the docs): the
+    ``<verb>_endpoint`` route shell, the ``handle_<verb>`` request handler
+    (authorize + commit bracket), and the bare verb ``<verb>`` (the domain
+    operation -- the common override point).
     """
 
-    session: SessionDep  # type: ignore[reportIncompatibleVariableOverride]
+    session: SessionDep
+
+    # ====================================================================
+    # Route shells (wire boundary)
+    # ====================================================================
 
     @get("/")
-    def listing(self, query_params: Any) -> Any:
+    def get_many_endpoint(self, query_params: Any) -> Any:
         self._reject_unknown_query_params()
-        listing_result = self.perform_listing(query_params)
-        return self.to_listing_response(query_params, listing_result)
+        result = self.handle_get_many(query_params)
+        return self.to_response(result, "get_many")
 
-    def build_query(self) -> sqlalchemy.Select[Any]:
-        """
-        Return the base SQLAlchemy ``Select`` used by every read on this
-        view's model — listing, count, and retrieve. Override to add
-        ``WHERE`` clauses that should apply to all of them — e.g. tenant
-        scoping, soft-delete filtering, row-level permission visibility.
-        Call ``super().build_query()`` and chain ``.where(...)`` to compose
-        with any base-class or mixin filters.
+    @get("/{id}")
+    def get_one_endpoint(self, id: Any) -> Any:
+        obj = self.handle_get_one(id)
+        return self.to_response(obj, "get_one")
 
-        Because retrieve also routes through this query, a row hidden from
-        listing cannot be fetched directly via ``GET /{id}`` — visibility
-        stays consistent across endpoints by construction.
-        """
-        return sqlalchemy.select(self.model)
+    @post("/")
+    def create_endpoint(self, schema_obj: Any) -> Any:
+        obj = self.handle_create(schema_obj)
+        return self.to_response(obj, "create")
 
-    def perform_listing(self, query_params: Any) -> ListingResult[ModelT]:
-        """
-        Handle a GET request on "/". This should return listed objects and the
-        total count before pagination.
-        Feel free to override this method, e.g.:
+    @patch("/{id}")
+    def update_endpoint(self, id: Any, schema_obj: Any) -> Any:
+        obj = self.handle_update(id, schema_obj)
+        return self.to_response(obj, "update")
 
-            def perform_listing(self, query_params):
-                result = super().perform_listing(query_params)
-                return ListingResult(add_my_info(result.objects), result.total_count)
+    @delete("/{id}")
+    def delete_endpoint(self, id: Any) -> Any:
+        self.handle_delete(id)
+        return self.to_response(None, "delete")
 
-        ``query_params`` is the validated query-parameter Pydantic model
-        injected by FastAPI; pagination bounds (``page`` / ``page_size``)
-        have already been validated by the schema returned from
-        :func:`fastapi_restly.query.create_list_params_schema`.
+    # ====================================================================
+    # Request handlers (authorize + commit bracket)
+    # ====================================================================
 
-        For WHERE-clause-only filtering that should also apply to the
-        pagination total *and* to retrieve, override :meth:`build_query`
-        instead.
-        """
+    def handle_get_many(self, query_params: Any) -> ListingResult[ModelT]:
+        self.authorize("get_many")
+        return self.get_many(query_params)
+
+    def handle_get_one(self, id: IdT) -> ModelT:
+        obj = self.get_one(id)
+        self.authorize("get_one", obj=obj)
+        return obj
+
+    def handle_create(self, schema_obj: CreateSchemaT) -> ModelT:
+        self.authorize("create", data=schema_obj)
+        obj = self.create(schema_obj)
+        self.before_commit("create", new=obj)
+        self._commit()
+        self.after_commit("create", new=obj)
+        return obj
+
+    def handle_update(self, id: IdT, schema_obj: UpdateSchemaT) -> ModelT:
+        obj = self.get_one(id)
+        self.authorize("update", obj=obj, data=schema_obj)
+        old = self.snapshot(obj)
+        new = self.update(obj, schema_obj)
+        self.before_commit("update", new=new, old=old)
+        self._commit()
+        self.after_commit("update", new=new, old=old)
+        return new
+
+    def handle_delete(self, id: IdT) -> None:
+        obj = self.get_one(id)
+        self.authorize("delete", obj=obj)
+        old = self.snapshot(obj)
+        self.delete(obj)
+        self.before_commit("delete", new=None, old=old)
+        self._commit()
+        self.after_commit("delete", new=None, old=old)
+
+    # ====================================================================
+    # Domain operations (auth-free, commit-free) -- the common override point
+    # ====================================================================
+
+    def get_many(self, query_params: Any) -> ListingResult[ModelT]:
         query = self.build_query()
-        query = apply_list_params(query_params, query, self.model, self.schema)
-        total_count = self.count_listing(query)
+        query = self.apply_query_params(query, query_params)
+        total_count = self.count(query)
         loader_options = self.get_relationship_loader_options()
         if loader_options:
             query = query.options(*loader_options)
         scalar_result = self.session.scalars(query)
-        return ListingResult(objects=scalar_result.all(), total_count=total_count)
+        return ListingResult(
+            objects=scalar_result.all(),
+            total_count=total_count,
+            query_params=query_params,
+        )
 
-    def count_listing(self, query: sqlalchemy.Select[Any]) -> int:
-        # Counts should ignore presentation-layer ordering and pagination.
-        # Wrapping the stripped query as a subquery preserves correct totals
-        # for DISTINCT, GROUP BY, and other user-provided query shapes.
-        count_source = query.order_by(None).limit(None).offset(None)
-        count_query = select(func.count()).select_from(count_source.subquery())
-        return int(self.session.scalar(count_query) or 0)
-
-    @get("/{id}")
-    def get(self, id: Any) -> Any:
-        obj = self.perform_get(id)
-        return self.to_response_schema(obj)
-
-    def perform_get(self, id: IdT) -> ModelT:
-        """
-        Handle a GET request on "/{id}". This should return a single object.
-        Return a 404 if not found.
-
-        Routes through :meth:`build_query`, so any read-side filters layered
-        there (tenant scoping, soft-delete, row-level permissions) apply to
-        retrieve as well — a row hidden from listing returns 404 here too,
-        without a separate post-fetch guard.
-        """
+    def get_one(self, id: IdT) -> ModelT:
         pk_cols = sa_inspect(self.model).primary_key
         if len(pk_cols) != 1:
             raise NotImplementedError(
                 f"{self.model.__name__} has a composite primary key; "
-                "override perform_get to fetch it."
+                "override get_one to fetch it."
             )
         query = self.build_query().where(pk_cols[0] == id)
         loader_options = self.get_relationship_loader_options()
@@ -125,89 +145,107 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
             query = query.options(*loader_options)
         obj = self.session.scalars(query).first()
         if obj is None:
-            raise fastapi.HTTPException(
-                status_code=404,
-                detail=f"{self.model.__name__} with id {id!r} was not found",
+            raise NotFound(
+                f"{self.model.__name__} with id {id!r} was not found"
             )
         return cast(ModelT, obj)
 
-    @post("/")
-    def create(self, schema_obj: Any) -> Any:
-        obj = self.perform_create(schema_obj)
-        return self.to_response_schema(obj)
-
-    def perform_create(self, schema_obj: CreateSchemaT) -> ModelT:
-        """
-        Handle a POST request on "/". This should create a new object.
-        Feel free to override this method.
-        """
-        obj = self.build_from_schema(schema_obj)
-        obj = self.save_object(obj)
-        return obj
-
-    @patch("/{id}")
-    def update(self, id: Any, schema_obj: Any) -> Any:
-        obj = self.perform_update(id, schema_obj)
-        return self.to_response_schema(obj)
-
-    def perform_update(self, id: IdT, schema_obj: UpdateSchemaT) -> ModelT:
-        """
-        Handle a PATCH request on "/{id}". This should partially update an existing
-        object.
-        Feel free to override this method.
-        """
-        obj = self.perform_get(id)
-        obj = self.apply_schema(obj, schema_obj)
+    def create(self, schema_obj: CreateSchemaT) -> ModelT:
+        obj = self.make_new_object(schema_obj)
         return self.save_object(obj)
 
-    @delete("/{id}")
-    def delete(self, id: Any) -> fastapi.Response:
-        return self.perform_delete(id)
+    def update(self, obj: ModelT, schema_obj: UpdateSchemaT) -> ModelT:
+        obj = self.update_object(obj, schema_obj)
+        return self.save_object(obj)
 
-    def perform_delete(self, id: IdT) -> fastapi.Response:
-        obj = self.perform_get(id)
+    def delete(self, obj: ModelT) -> None:
         self.delete_object(obj)
-        return fastapi.Response(status_code=204)
 
-    def delete_object(self, obj: ModelT) -> None:
-        """
-        Delete ``obj`` and flush the session.
+    # ====================================================================
+    # Read seams
+    # ====================================================================
 
-        ``perform_delete`` calls ``perform_get`` first, so this method receives an
-        existing object. Override it to change the deletion mechanics, for
-        example to implement soft-delete.
+    def build_query(self) -> sqlalchemy.Select[Any]:
+        """Return the base SQLAlchemy ``Select`` used by every read -- list,
+        count, and retrieve. Override to add ``WHERE`` clauses (tenant scope,
+        soft-delete, row-level visibility) that apply to all three.
         """
-        object_delete_object(self.session, obj)
+        return sqlalchemy.select(self.model)
 
-    def build_from_schema(self, schema_obj: CreateSchemaT) -> ModelT:
-        """
-        Build a new ORM object from ``schema_obj`` and add it to the session.
+    def apply_query_params(
+        self, query: sqlalchemy.Select[Any], query_params: Any
+    ) -> sqlalchemy.Select[Any]:
+        """Apply URL filter/sort/pagination to ``query``."""
+        return apply_list_params(query_params, query, self.model, self.schema)
 
-        This does not flush. The default ``perform_create`` calls
-        ``save_object`` afterwards; override this method for construction-time
-        changes that must happen before that save boundary.
-        """
+    def count(self, query: sqlalchemy.Select[Any]) -> int:
+        """Total for the list, ignoring presentation ordering/pagination."""
+        count_source = query.order_by(None).limit(None).offset(None)
+        count_query = select(func.count()).select_from(count_source.subquery())
+        return int(self.session.scalar(count_query) or 0)
+
+    # ====================================================================
+    # Domain utilities (call from `create`/`update`; not override seams)
+    # ====================================================================
+
+    def make_new_object(self, schema_obj: CreateSchemaT) -> ModelT:
         model_cls = cast(type[ModelT], self.model)
-        return object_build_from_schema(
-            self.session, model_cls, schema_obj, self.schema
-        )
+        obj = object_make_new_object(self.session, model_cls, schema_obj, self.schema)
+        for key, value in self.prepare_create(schema_obj).items():
+            setattr(obj, key, value)
+        return obj
 
-    def apply_schema(self, obj: ModelT, schema_obj: UpdateSchemaT) -> ModelT:
-        """
-        Apply writable fields from ``schema_obj`` to ``obj``.
-
-        This does not flush. The default ``perform_update`` calls
-        ``save_object`` afterwards; override this method for update-time changes
-        that must happen before that save boundary.
-        """
-        return object_apply_schema(self.session, obj, schema_obj, self.schema)
+    def update_object(self, obj: ModelT, schema_obj: UpdateSchemaT) -> ModelT:
+        obj = object_update_object(self.session, obj, schema_obj, self.schema)
+        for key, value in self.prepare_update(obj, schema_obj).items():
+            setattr(obj, key, value)
+        return obj
 
     def save_object(self, obj: ModelT) -> ModelT:
-        """
-        Flush the session and refresh ``obj`` from the database.
-
-        This is the explicit persistence boundary used by the default create and
-        update handlers. Override it for behavior that should run after every
-        successful create/update flush.
-        """
+        """Flush + refresh. Does not commit -- ``handle_<verb>`` owns the commit."""
         return object_save_object(self.session, obj)
+
+    def delete_object(self, obj: ModelT) -> None:
+        object_delete_object(self.session, obj)
+
+    # ====================================================================
+    # Cooperative stamping seams (extra fields; structural mixins override)
+    # ====================================================================
+
+    def prepare_create(self, schema_obj: CreateSchemaT) -> dict[str, Any]:
+        """Return EXTRA fields to stamp on a new object (audit ids, tenant id).
+        Structural mixins layer cooperatively via ``super()``.
+        """
+        return {}
+
+    def prepare_update(
+        self, obj: ModelT, schema_obj: UpdateSchemaT
+    ) -> dict[str, Any]:
+        """Return EXTRA fields to stamp on update."""
+        return {}
+
+    # ====================================================================
+    # Request-logic seams (authorize + transaction hooks)
+    # ====================================================================
+
+    def authorize(
+        self, action: str, obj: ModelT | None = None, data: Any = None
+    ) -> None:
+        """Gate a verb. The default consults :attr:`permissions`. Override for
+        row-level (``obj``) or data-aware (``data``) checks.
+        """
+        self._check_permission(action)
+
+    def before_commit(
+        self, action: str, new: ModelT | None, old: dict[str, Any] | None = None
+    ) -> None:
+        """In-transaction side effect (outbox/audit), atomic with the write."""
+
+    def after_commit(
+        self, action: str, new: ModelT | None, old: dict[str, Any] | None = None
+    ) -> None:
+        """Post-commit side effect (email, webhook, cache)."""
+
+    def _commit(self) -> None:
+        if self._should_commit():
+            self.session.commit()

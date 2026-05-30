@@ -73,20 +73,24 @@ IdT = TypeVar("IdT", default=int)
 
 @dataclasses.dataclass(frozen=True)
 class ListingResult(Generic[ModelT]):
-    """Result returned by ``perform_listing`` before HTTP response formatting."""
+    """Result returned by ``get_many`` before HTTP response formatting."""
 
     objects: Sequence[ModelT]
     total_count: int
+    query_params: Any = None
 
 
 class ViewRoute(str, Enum):
-    """Generated CRUD routes that can be referenced by view options."""
+    """Generated CRUD routes that can be referenced by view options.
 
-    LIST = "listing"
-    GET = "get"
-    CREATE = "create"
-    UPDATE = "update"
-    DELETE = "delete"
+    Values are the route-shell method names so ``exclude_routes`` can drop them.
+    """
+
+    GET_MANY = "get_many_endpoint"
+    GET_ONE = "get_one_endpoint"
+    CREATE = "create_endpoint"
+    UPDATE = "update_endpoint"
+    DELETE = "delete_endpoint"
 
 
 def _accepts_init_kwarg(model_cls: type, attr_name: str) -> bool:
@@ -340,7 +344,7 @@ def build_create_plan(
 ) -> _CreatePlan:
     """Translate ``schema_obj`` fields into kwargs for ``model_cls(**kwargs)``.
 
-    Shared by sync and async ``build_from_schema``. Assumes any nested ``IDSchema``
+    Shared by sync and async ``make_new_object``. Assumes any nested ``IDSchema``
     references on ``schema_obj`` have already been resolved (sync vs async).
     """
     if schema_cls is None:
@@ -407,7 +411,7 @@ def apply_update_to_object(
 ) -> None:
     """Apply writable inputs from ``schema_obj`` onto ``obj`` in place.
 
-    Shared by sync and async ``apply_schema``. Assumes any nested ``IDSchema``
+    Shared by sync and async ``update_object``. Assumes any nested ``IDSchema``
     references on ``schema_obj`` have already been resolved (sync vs async).
     """
     for field_name, value in get_writable_inputs(schema_obj, schema_cls).items():
@@ -721,12 +725,17 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     }
 
     schema: ClassVar[type[pydantic.BaseModel]]
-    # If 'creation_schema' is not defined it will be created from 'schema'
+    # If 'schema_create' is not defined it will be created from 'schema'
     # using `create_model_without_read_only_fields()`.
-    creation_schema: ClassVar[type[pydantic.BaseModel]]
-    update_schema: ClassVar[type[pydantic.BaseModel]]
+    schema_create: ClassVar[type[pydantic.BaseModel]]
+    schema_update: ClassVar[type[pydantic.BaseModel]]
     model: ClassVar[type[DeclarativeBase]]
     id_type: ClassVar[type[Any]] = int
+    #: Declarative authorization shortcut: maps an action name
+    #: (``"get_many"``/``"get_one"``/``"create"``/``"update"``/``"delete"`` or a
+    #: custom action) to a required permission string. The default ``authorize``
+    #: consults this and calls ``self.request.user.has_permission(perm)``.
+    permissions: ClassVar[dict[str, str]] = {}
     include_pagination_metadata: ClassVar[bool] = (
         False  # Set True to include count/total in list responses
     )
@@ -877,6 +886,52 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
 
         return self.to_paginated_listing_response(query_params, listing_result)
 
+    def to_response(self, obj_or_list: Any, action: str) -> Any:
+        """Single response chokepoint -- the WIRE boundary, called by the route
+        shells. Override for envelopes, custom status codes (return a
+        ``fastapi.Response``), or per-action field projection. Error bodies are
+        shaped at the FastAPI exception-handler layer, not here.
+        """
+        if action == "delete":
+            return fastapi.Response(status_code=204)
+        if action == "get_many":
+            return self.to_listing_response(obj_or_list.query_params, obj_or_list)
+        return self.to_response_schema(obj_or_list)
+
+    def snapshot(self, obj: Any) -> dict[str, Any]:
+        """Frozen capture of an object's column values at load time, passed as
+        ``old`` to ``before_commit``/``after_commit`` for dirty detection. Not
+        ``copy(obj)`` (which shares SQLAlchemy instance state).
+        """
+        from sqlalchemy import inspect as sa_inspect
+
+        mapper = sa_inspect(type(obj))
+        return {c.key: getattr(obj, c.key) for c in mapper.column_attrs}
+
+    def _check_permission(self, action: str) -> None:
+        """Default ``authorize`` body, shared by sync and async views. Consults
+        :attr:`permissions`; no-op when the action has no required permission.
+        """
+        perm = self.permissions.get(action)
+        if not perm:
+            return
+        from ..exceptions import Forbidden
+
+        request = getattr(self, "request", None)
+        user = getattr(request, "user", None) if request is not None else None
+        if user is None or not user.has_permission(perm):
+            raise Forbidden()
+
+    @staticmethod
+    def _should_commit() -> bool:
+        """Whether ``handle_<verb>`` issues the commit. The framework owns the
+        commit (handle design); ``commit_session_on_response=False`` opts the
+        caller into owning it instead.
+        """
+        from ..db._globals import _fr_globals
+
+        return bool(_fr_globals.commit_session_on_response)
+
     @classmethod
     def before_include_view(cls):
         """
@@ -905,12 +960,12 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
                 default_page_size=cls.default_page_size,
                 max_page_size=cls.max_page_size,
             )
-        if "creation_schema" not in cls.__dict__:
-            cls.creation_schema = cast(
+        if "schema_create" not in cls.__dict__:
+            cls.schema_create = cast(
                 type[CreateSchemaT], create_model_without_read_only_fields(cls.schema)
             )
-        if "update_schema" not in cls.__dict__:
-            cls.update_schema = cast(
+        if "schema_update" not in cls.__dict__:
+            cls.schema_update = cast(
                 type[UpdateSchemaT], create_model_with_optional_fields(cls.schema)
             )
 
@@ -924,33 +979,33 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
             )
             listing_response_annotation = cls.pagination_response_schema
 
-        # ``listing``/``get``/``create``/``update``/``delete`` are defined on
-        # AsyncRestView/RestView subclasses and may be excluded by ``exclude_routes``,
-        # so they aren't visible on BaseRestView. ``getattr`` keeps pyright happy
-        # without falsely advertising them on the base class.
-        if (listing := getattr(cls, "listing", None)) is not None:
+        # The ``*_endpoint`` route shells are defined on AsyncRestView/RestView
+        # subclasses and may be excluded by ``exclude_routes``, so they aren't
+        # visible on BaseRestView. ``getattr`` keeps pyright happy without
+        # falsely advertising them on the base class.
+        if (ep := getattr(cls, "get_many_endpoint", None)) is not None:
             _annotate(
-                listing,
+                ep,
                 return_annotation=listing_response_annotation,
                 query_params=Annotated[cls.listing_param_schema, fastapi.Query()],
             )
-        if (get := getattr(cls, "get", None)) is not None:
-            _annotate(get, return_annotation=response_schema, id=cls.id_type)
-        if (create := getattr(cls, "create", None)) is not None:
+        if (ep := getattr(cls, "get_one_endpoint", None)) is not None:
+            _annotate(ep, return_annotation=response_schema, id=cls.id_type)
+        if (ep := getattr(cls, "create_endpoint", None)) is not None:
             _annotate(
-                create,
+                ep,
                 return_annotation=response_schema,
-                schema_obj=cls.creation_schema,
+                schema_obj=cls.schema_create,
             )
-        if (update := getattr(cls, "update", None)) is not None:
+        if (ep := getattr(cls, "update_endpoint", None)) is not None:
             _annotate(
-                update,
+                ep,
                 return_annotation=response_schema,
-                schema_obj=cls.update_schema,
+                schema_obj=cls.schema_update,
                 id=cls.id_type,
             )
-        if (delete := getattr(cls, "delete", None)) is not None:
-            _annotate(delete, return_annotation=fastapi.Response, id=cls.id_type)
+        if (ep := getattr(cls, "delete_endpoint", None)) is not None:
+            _annotate(ep, return_annotation=fastapi.Response, id=cls.id_type)
         _exclude_routes(cls)
 
 
@@ -1179,7 +1234,7 @@ def _should_add_collection_route_alias(
         return False
     if path != "/":
         return False
-    return endpoint.__name__.endswith(("_listing", "_create"))
+    return endpoint.__name__.endswith(("get_many_endpoint", "create_endpoint"))
 
 
 def _annotate_self(view_cls: type[View], endpoint: Callable) -> None:

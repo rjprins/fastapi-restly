@@ -1,6 +1,6 @@
 from typing import Any
 
-from fastapi import FastAPI, Response
+from fastapi import FastAPI
 from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
@@ -27,8 +27,8 @@ class WidgetView(
     prefix = "/widgets"
     model = Widget
     schema = WidgetRead
-    creation_schema = WidgetInput
-    update_schema = WidgetInput
+    schema_create = WidgetInput
+    schema_update = WidgetInput
 
     @fr.get("/ping")
     def ping(self) -> dict[str, bool]:
@@ -38,17 +38,26 @@ class WidgetView(
     def health(self) -> dict[str, str]:
         return {"status": "ok"}
 
-    def perform_listing(self, query_params: Any) -> fr.ListingResult[Widget]:
-        return super().perform_listing(query_params)
+    # Domain operations (auth-free, commit-free) -- the common override point.
+    def get_many(self, query_params: Any) -> fr.ListingResult[Widget]:
+        return super().get_many(query_params)
 
-    def perform_get(self, id: int) -> Widget:
-        return super().perform_get(id)
+    def get_one(self, id: int) -> Widget:
+        return super().get_one(id)
 
-    def perform_create(self, schema_obj: WidgetInput) -> Widget:
-        return super().perform_create(schema_obj)
+    def create(self, schema_obj: WidgetInput) -> Widget:
+        return super().create(schema_obj)
 
-    def perform_update(self, id: int, schema_obj: WidgetInput) -> Widget:
-        return super().perform_update(id, schema_obj)
+    def update(self, obj: Widget, schema_obj: WidgetInput) -> Widget:
+        return super().update(obj, schema_obj)
 
-    def perform_delete(self, id: int) -> Response:
-        return super().perform_delete(id)
+    def delete(self, obj: Widget) -> None:
+        super().delete(obj)
+
+    # Request handlers (authorize + commit bracket) -- full ops returning the
+    # domain object, reusable from custom actions.
+    def handle_update(self, id: int, schema_obj: WidgetInput) -> Widget:
+        return super().handle_update(id, schema_obj)
+
+    def handle_delete(self, id: int) -> None:
+        super().handle_delete(id)

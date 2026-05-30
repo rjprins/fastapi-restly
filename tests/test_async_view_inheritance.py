@@ -1,5 +1,5 @@
 """
-Async parity for view inheritance / perform_* hook chaining.
+Async parity for view inheritance / handle-design hook chaining.
 
 The Python super() mechanism is identical for sync and async methods, but the
 framework copies endpoint methods onto subclasses at @include_view time and
@@ -37,26 +37,26 @@ def _model_and_schema():
     "hook_name, exercise",
     [
         (
-            "perform_create",
+            "create",
             lambda c: c.post("/items/", json={"name": "x"}, assert_status_code=201),
         ),
         (
-            "perform_get",
+            "get_one",
             lambda c: (
                 c.post("/items/", json={"name": "x"}, assert_status_code=201),
                 c.get("/items/1"),
             )[-1],
         ),
-        ("perform_listing", lambda c: c.get("/items/")),
+        ("get_many", lambda c: c.get("/items/")),
         (
-            "perform_update",
+            "handle_update",
             lambda c: (
                 c.post("/items/", json={"name": "x"}, assert_status_code=201),
                 c.patch("/items/1", json={"name": "y"}),
             )[-1],
         ),
         (
-            "perform_delete",
+            "handle_delete",
             lambda c: (
                 c.post("/items/", json={"name": "x"}, assert_status_code=201),
                 c.delete("/items/1", assert_status_code=204),
@@ -70,9 +70,9 @@ def test_async_super_chain_three_level_mro(
     """
     Three-level chain (Child → Mixin → Base) for an AsyncRestView.
 
-    Verifies cooperative ``await super().<perform_*>(...)`` traverses the full
-    MRO under the framework's endpoint-rewriting registration path, for every
-    perform_* hook.
+    Verifies cooperative ``await super().<hook>(...)`` traverses the full MRO
+    under the framework's endpoint-rewriting registration path, for every
+    handle-design hook (business verbs and request handlers alike).
     """
     Item, ItemSchema = _model_and_schema()
 
@@ -148,20 +148,20 @@ def test_async_super_chain_mutates_object_through_chain(client) -> None:
         model = Stamped
         schema = StampedSchema
 
-        async def perform_create(self, schema_obj):
+        async def create(self, schema_obj):
             object.__setattr__(schema_obj, "suffix", "from_base")
-            return await super().perform_create(schema_obj)
+            return await super().create(schema_obj)
 
     @fr.include_view(client.app)
     class StampingView(StampingBase):
         prefix = "/stamped"
 
-        async def perform_create(self, schema_obj):
+        async def create(self, schema_obj):
             # Child runs first, awaits super(), so the base override below
             # overwrites ``suffix`` after this method's mutation. The
             # response value proves the base ran after the child awaited.
             object.__setattr__(schema_obj, "suffix", "from_child")
-            return await super().perform_create(schema_obj)
+            return await super().create(schema_obj)
 
     create_tables()
 

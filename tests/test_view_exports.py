@@ -35,21 +35,30 @@ def test_timestamp_convenience_bases_are_not_public_api():
 
 def test_rest_view_route_and_hook_names_are_current():
     current_names = (
-        "listing",
-        "get",
+        # Route shells (wire boundary)
+        "get_many_endpoint",
+        "get_one_endpoint",
+        "create_endpoint",
+        "update_endpoint",
+        "delete_endpoint",
+        # Request handlers (authorize + commit bracket)
+        "handle_get_many",
+        "handle_get_one",
+        "handle_create",
+        "handle_update",
+        "handle_delete",
+        # Domain operations (auth-free, commit-free)
+        "get_many",
+        "get_one",
         "create",
         "update",
         "delete",
-        "perform_listing",
+        # Read / response helpers
         "build_query",
-        "count_listing",
+        "count",
         "to_listing_response",
         "to_paginated_listing_response",
         "to_response_schema",
-        "perform_get",
-        "perform_create",
-        "perform_update",
-        "perform_delete",
     )
 
     for view_cls in (fr.RestView, fr.AsyncRestView):

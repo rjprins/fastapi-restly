@@ -9,9 +9,9 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 import fastapi_restly as fr
 from fastapi_restly.objects import (
-    async_apply_schema,
-    async_build_from_schema,
+    async_make_new_object,
     async_save_object,
+    async_update_object,
 )
 from fastapi_restly.schemas._base import create_model_with_optional_fields
 
@@ -25,7 +25,7 @@ def _make_engine_and_session():
 
 
 def test_async_object_helpers_handle_readonly_and_relationship_inputs():
-    """Directly call build_from_schema and apply_schema to cover the IDSchema and
+    """Directly call make_new_object and update_object to cover the IDSchema and
     DeclarativeBase FK resolution branches, mirroring test_sync_views.py."""
 
     class Author(fr.IDBase):
@@ -74,7 +74,7 @@ def test_async_object_helpers_handle_readonly_and_relationship_inputs():
             create_payload = ArticleSchema(
                 id=999, title="Draft", author_id={"id": original_author.id}
             )
-            article = await article_view.build_from_schema(create_payload)
+            article = await article_view.make_new_object(create_payload)
             await session.flush()
 
             assert article.id != 999
@@ -84,7 +84,7 @@ def test_async_object_helpers_handle_readonly_and_relationship_inputs():
             update_payload = ArticleSchema(
                 id=12345, title="Published", author_id={"id": replacement_author.id}
             )
-            updated_article = await article_view.apply_schema(article, update_payload)
+            updated_article = await article_view.update_object(article, update_payload)
 
             assert updated_article.id == article.id
             assert updated_article.title == "Published"
@@ -95,13 +95,13 @@ def test_async_object_helpers_handle_readonly_and_relationship_inputs():
             assign_view = AssignmentView()
             assign_view.session = session
 
-            assignment = await assign_view.build_from_schema(
+            assignment = await assign_view.make_new_object(
                 AssignmentSchema(owner_id=fr.IDSchema(id=original_author.id))
             )
             await session.flush()
             assert assignment.owner_id == original_author.id
 
-            updated_assignment = await assign_view.apply_schema(
+            updated_assignment = await assign_view.update_object(
                 assignment,
                 AssignmentSchema(owner_id=fr.IDSchema(id=replacement_author.id)),
             )
@@ -114,7 +114,7 @@ def test_async_object_helpers_handle_readonly_and_relationship_inputs():
 
 def test_async_free_functions_handle_readonly_and_relationship_inputs():
     """Mirror of test_sync_object_helpers_handle_readonly_and_relationship_inputs
-    but exercising the module-level async_build_from_schema / async_apply_schema
+    but exercising the module-level async_make_new_object / async_update_object
     / async_save_object helpers instead of the view methods."""
 
     class Author(fr.IDBase):
@@ -150,7 +150,7 @@ def test_async_free_functions_handle_readonly_and_relationship_inputs():
             create_payload = ArticleSchema(
                 id=999, title="Draft", author_id={"id": original_author.id}
             )
-            article = await async_build_from_schema(
+            article = await async_make_new_object(
                 session, Article, create_payload, ArticleSchema
             )
             saved = await async_save_object(session, article)
@@ -162,13 +162,13 @@ def test_async_free_functions_handle_readonly_and_relationship_inputs():
             update_payload = ArticleSchema(
                 id=12345, title="Published", author_id={"id": replacement_author.id}
             )
-            await async_apply_schema(session, article, update_payload, ArticleSchema)
+            await async_update_object(session, article, update_payload, ArticleSchema)
             assert article.title == "Published"
             assert article.author_id == replacement_author.id
             assert article.author.id == replacement_author.id
 
             # Bare IDSchema (no model annotation) should still resolve via .id.
-            assignment = await async_build_from_schema(
+            assignment = await async_make_new_object(
                 session,
                 Assignment,
                 AssignmentSchema(owner_id=fr.IDSchema(id=original_author.id)),
@@ -176,7 +176,7 @@ def test_async_free_functions_handle_readonly_and_relationship_inputs():
             await session.flush()
             assert assignment.owner_id == original_author.id
 
-            await async_apply_schema(
+            await async_update_object(
                 session,
                 assignment,
                 AssignmentSchema(owner_id=fr.IDSchema(id=replacement_author.id)),
@@ -188,8 +188,8 @@ def test_async_free_functions_handle_readonly_and_relationship_inputs():
     asyncio.run(run())
 
 
-def test_async_apply_schema_only_applies_set_fields():
-    """async_apply_schema should ignore fields the caller did not explicitly
+def test_async_update_object_only_applies_set_fields():
+    """async_update_object should ignore fields the caller did not explicitly
     set, matching get_writable_inputs / PATCH partial-update semantics."""
 
     class Item(fr.IDBase):
@@ -209,13 +209,13 @@ def test_async_apply_schema_only_applies_set_fields():
             await conn.run_sync(fr.DataclassBase.metadata.create_all)
 
         async with make_session() as session:
-            item = await async_build_from_schema(
+            item = await async_make_new_object(
                 session, Item, ItemSchema(id=0, name="orig", notes="keep"), ItemSchema
             )
             await async_save_object(session, item)
 
             partial = UpdateItemSchema(name="renamed")
-            await async_apply_schema(session, item, partial, ItemSchema)
+            await async_update_object(session, item, partial, ItemSchema)
             assert item.name == "renamed"
             assert item.notes == "keep"
 
@@ -264,7 +264,7 @@ def test_async_object_helpers_are_dataclass_init_aware_for_resolved_refs():
             session.add_all([first, second])
             await session.flush()
 
-            article = await async_build_from_schema(
+            article = await async_make_new_object(
                 session,
                 Dd8AsyncRelationshipFirstArticle,
                 FKSchema(title="async", author_id=first.id),
@@ -273,7 +273,7 @@ def test_async_object_helpers_are_dataclass_init_aware_for_resolved_refs():
             assert article.author_id == first.id
             assert article.author is first
 
-            await async_apply_schema(
+            await async_update_object(
                 session,
                 article,
                 FKSchema(title="updated", author_id=second.id),
@@ -283,7 +283,7 @@ def test_async_object_helpers_are_dataclass_init_aware_for_resolved_refs():
             assert article.author is second
 
             with pytest.raises(HTTPException) as create_exc:
-                await async_build_from_schema(
+                await async_make_new_object(
                     session,
                     Dd8AsyncRelationshipFirstArticle,
                     BothReferenceSchema(
@@ -294,7 +294,7 @@ def test_async_object_helpers_are_dataclass_init_aware_for_resolved_refs():
             assert create_exc.value.status_code == 422
 
             with pytest.raises(HTTPException) as update_exc:
-                await async_apply_schema(
+                await async_update_object(
                     session,
                     article,
                     BothReferenceSchema(
@@ -304,7 +304,7 @@ def test_async_object_helpers_are_dataclass_init_aware_for_resolved_refs():
                 )
             assert update_exc.value.status_code == 422
 
-            fallback = await async_build_from_schema(
+            fallback = await async_make_new_object(
                 session,
                 Dd8AsyncRelationshipFieldFallbackArticle,
                 RelationshipSchema(title="fallback", author={"id": first.id}),
@@ -323,9 +323,9 @@ def test_async_object_helpers_importable_from_objects_module():
     ``fastapi_restly.objects``."""
     import fastapi_restly.objects as objects
 
-    assert objects.async_build_from_schema is async_build_from_schema
+    assert objects.async_make_new_object is async_make_new_object
     assert objects.async_save_object is async_save_object
-    assert objects.async_apply_schema is async_apply_schema
+    assert objects.async_update_object is async_update_object
 
 
 def test_async_rest_view_crud_and_pagination():
@@ -368,8 +368,8 @@ def test_async_rest_view_crud_and_pagination():
         prefix = "/async-orders"
         model = Order
         schema = OrderSchema
-        creation_schema = OrderInputSchema
-        update_schema = OrderInputSchema
+        schema_create = OrderInputSchema
+        schema_update = OrderInputSchema
         include_pagination_metadata = True
 
     async def run():
@@ -398,7 +398,7 @@ def test_async_rest_view_crud_and_pagination():
             assert first.item_name == "Keyboard"
             assert second.item_name == "Mouse"
 
-            paginated = await view.listing({"page": "1", "page_size": "10"})
+            paginated = await view.get_many_endpoint({"page": "1", "page_size": "10"})
             assert paginated["total"] == 2
             assert paginated["page"] == 1
             assert paginated["page_size"] == 10
@@ -408,10 +408,10 @@ def test_async_rest_view_crud_and_pagination():
                 "Mouse",
             }
 
-            detail = await view.get(first.id)
+            detail = await view.get_one_endpoint(first.id)
             assert detail.quantity == 1
 
-            updated = await view.update(
+            updated = await view.update_endpoint(
                 first.id,
                 OrderInputSchema(
                     item_name="Keyboard Pro", quantity=3, customer_id=customer_id
@@ -420,11 +420,11 @@ def test_async_rest_view_crud_and_pagination():
             assert updated.item_name == "Keyboard Pro"
             assert updated.quantity == 3
 
-            delete_response = await view.delete(second.id)
+            delete_response = await view.delete_endpoint(second.id)
             assert delete_response.status_code == 204
 
             with pytest.raises(HTTPException):
-                await view.get(second.id)
+                await view.get_one_endpoint(second.id)
 
         await engine.dispose()
 
@@ -445,29 +445,29 @@ def test_async_rest_view_dispatches_to_handle_overrides():
         model = DispatchWidget
         schema = WidgetSchema
 
-        async def perform_listing(self, query_params):
+        async def get_many(self, query_params):
             call_log.append("listing")
-            return await super().perform_listing(query_params)
+            return await super().get_many(query_params)
 
         def to_listing_response(self, query_params, listing_result):
             call_log.append("to_listing_response")
             return super().to_listing_response(query_params, listing_result)
 
-        async def perform_get(self, id):
+        async def get_one(self, id):
             call_log.append("get")
-            return await super().perform_get(id)
+            return await super().get_one(id)
 
-        async def perform_create(self, schema_obj):
+        async def create(self, schema_obj):
             call_log.append("create")
-            return await super().perform_create(schema_obj)
+            return await super().create(schema_obj)
 
-        async def perform_update(self, id, schema_obj):
+        async def update(self, obj, schema_obj):
             call_log.append("update")
-            return await super().perform_update(id, schema_obj)
+            return await super().update(obj, schema_obj)
 
-        async def perform_delete(self, id):
+        async def delete(self, obj):
             call_log.append("delete")
-            return await super().perform_delete(id)
+            return await super().delete(obj)
 
     async def run():
         engine, make_session = _make_engine_and_session()
@@ -478,11 +478,13 @@ def test_async_rest_view_dispatches_to_handle_overrides():
             view = WidgetView()
             view.session = session
 
-            created = await view.create(WidgetSchema(id=0, name="alpha"))
-            await view.listing({})
-            await view.get(created.id)
-            await view.update(created.id, WidgetSchema(id=created.id, name="beta"))
-            await view.delete(created.id)
+            created = await view.create_endpoint(WidgetSchema(id=0, name="alpha"))
+            await view.get_many_endpoint({})
+            await view.get_one_endpoint(created.id)
+            await view.update_endpoint(
+                created.id, WidgetSchema(id=created.id, name="beta")
+            )
+            await view.delete_endpoint(created.id)
 
         await engine.dispose()
 
@@ -493,15 +495,15 @@ def test_async_rest_view_dispatches_to_handle_overrides():
         "listing",
         "to_listing_response",
         "get",
+        "get",
         "update",
         "get",
         "delete",
-        "get",
     ]
 
 
 def test_async_perform_listing_uses_build_query():
-    """perform_listing applies list params on top of the view's build_query."""
+    """get_many applies list params on top of the view's build_query."""
 
     class Widget(fr.IDBase):
         name: Mapped[str]
@@ -537,7 +539,7 @@ def test_async_perform_listing_uses_build_query():
             view = WidgetView()
             view.session = session
 
-            results = await view.perform_listing({})
+            results = await view.get_many({})
 
             assert len(results.objects) == 2
             assert results.total_count == 2
@@ -549,7 +551,7 @@ def test_async_perform_listing_uses_build_query():
 
 
 def test_async_build_query_is_consulted_by_list_and_count():
-    """perform_listing routes through build_query and count_listing uses that query so a
+    """get_many routes through build_query and count uses that query so a
     single override filters listing AND its pagination total."""
 
     class Gizmo(fr.IDBase):
@@ -593,13 +595,13 @@ def test_async_build_query_is_consulted_by_list_and_count():
             )
 
             # Override is consulted by both list and count.
-            results = await view.perform_listing({})
+            results = await view.get_many({})
             assert len(results.objects) == 2
             assert results.total_count == 2
             assert all(g.active for g in results.objects)
 
             query = fr.apply_list_params({}, view.build_query(), Gizmo, GizmoSchema)
-            total = await view.count_listing(query)
+            total = await view.count(query)
             assert total == 2
 
         await engine.dispose()

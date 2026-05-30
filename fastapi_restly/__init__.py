@@ -11,10 +11,30 @@ from .db import (
     open_async_session,
     open_session,
 )
-from .exceptions import RestlyConfigurationError, RestlyError
+from .exceptions import (
+    BadQueryParam,
+    Conflict,
+    Forbidden,
+    NotFound,
+    RestlyConfigurationError,
+    RestlyError,
+    RestlyHTTPError,
+)
 
 # Model base classes
 from .models import DataclassBase, IDBase, IDMixin, TimestampsMixin
+
+# Domain object helpers (callable from custom actions, services, fixtures)
+from .objects import (
+    async_delete_object,
+    async_make_new_object,
+    async_save_object,
+    async_update_object,
+    delete_object,
+    make_new_object,
+    save_object,
+    update_object,
+)
 
 # List endpoint query parameters
 from .query import apply_list_params, create_list_params_schema
@@ -70,9 +90,24 @@ __all__ = [
     "get_engine",
     # Database — setup & utilities
     "configure",
-    # Exceptions
+    # Exceptions — configuration-time
     "RestlyError",
     "RestlyConfigurationError",
+    # Exceptions — request-time HTTP (subclass fastapi.HTTPException)
+    "RestlyHTTPError",
+    "NotFound",
+    "Forbidden",
+    "Conflict",
+    "BadQueryParam",
+    # Domain object helpers
+    "make_new_object",
+    "update_object",
+    "save_object",
+    "delete_object",
+    "async_make_new_object",
+    "async_update_object",
+    "async_save_object",
+    "async_delete_object",
     # Models
     "DataclassBase",
     "IDBase",

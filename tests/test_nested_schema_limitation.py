@@ -12,7 +12,7 @@ from .conftest import create_tables
 
 @pytest.mark.xfail(reason="Nested schemas not supported for input")
 def test_nested_schema_limitation_demonstration(client):
-    """Nested schemas fail because build_from_schema passes a Pydantic object to the
+    """Nested schemas fail because make_new_object passes a Pydantic object to the
     SQLAlchemy model constructor instead of flattened fields. Use flattened schemas
     with aliases as a workaround (see test_working_flattened_approach)."""
 

@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Reworks the class-based view API around a three-tier "handle" design. This is a
+breaking change; views written for 0.5.x need updating.
+
+### Changed (breaking)
+
+- Each CRUD verb is now three tiers: a route shell (`get_many_endpoint`,
+  `get_one_endpoint`, `create_endpoint`, `update_endpoint`, `delete_endpoint`)
+  that owns the wire shape; a request handler (`handle_get_many`,
+  `handle_get_one`, `handle_create`, `handle_update`, `handle_delete`) that runs
+  `authorize` and the commit bracket; and a bare domain verb (`get_many`,
+  `get_one`, `create`, `update`, `delete`) that is auth-free and commit-free —
+  the usual override point. This replaces the `listing`/`get`/`create`/`update`/
+  `delete` endpoints and the single `perform_*` tier.
+- The framework now owns the commit inside `handle_<verb>`, so `after_commit`
+  runs after the write is durable (gated by `commit_session_on_response`).
+- Renamed: `creation_schema`/`update_schema` → `schema_create`/`schema_update`;
+  `build_from_schema`/`apply_schema` → `make_new_object`/`update_object`;
+  `count_listing` → `count`. Response shaping goes through a single
+  `to_response(obj_or_list, action)` method. `ViewRoute.LIST`/`GET` →
+  `ViewRoute.GET_MANY`/`GET_ONE`.
+
+### Added
+
+- `authorize(action, obj, data)` override plus a declarative `permissions` dict.
+- Cooperative `prepare_create` / `prepare_update` field-stamping overrides.
+- `before_commit` / `after_commit` transaction hooks and a `snapshot()` helper
+  for old-vs-new comparison.
+- Typed request-time exceptions `NotFound`, `Forbidden`, `Conflict`, and
+  `BadQueryParam`, subclassing `fastapi.HTTPException` (so a single
+  `app.add_exception_handler(fr.NotFound, ...)` can reshape them).
+- Top-level `make_new_object` / `update_object` / `save_object` /
+  `delete_object` helpers (and their `async_*` variants) for use outside a view.
+
 ## [0.5.1] - 2026-05-11
 
 ### Fixed

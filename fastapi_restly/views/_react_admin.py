@@ -216,10 +216,10 @@ class _ReactAdminViewProtocol(Protocol):
     request: fastapi.Request
     model: ClassVar[type[DeclarativeBase]]
     schema: ClassVar[type[pydantic.BaseModel]]
-    update_schema: ClassVar[type[pydantic.BaseModel]]
+    schema_update: ClassVar[type[pydantic.BaseModel]]
     id_type: ClassVar[type[Any]]
     default_page_size: ClassVar[int | None]
-    listing: ClassVar[Any]
+    get_many_endpoint: ClassVar[Any]
     put: ClassVar[Any]
 
     def get_react_admin_range_unit(self) -> str: ...
@@ -322,16 +322,16 @@ class _ReactAdminMixin:
     def before_include_view(cls) -> None:
         cast(Any, super()).before_include_view()
         view_cls = cast(type[_ReactAdminViewProtocol], cls)
-        # Override the listing return annotation set by BaseRestView to Response,
+        # Override the list return annotation set by BaseRestView to Response,
         # since we return a raw Response with Content-Range header.
-        if hasattr(view_cls, "listing"):
-            _annotate(view_cls.listing, return_annotation=fastapi.Response)
+        if hasattr(view_cls, "get_many_endpoint"):
+            _annotate(view_cls.get_many_endpoint, return_annotation=fastapi.Response)
         # Annotate the PUT handler with the same schema/types as PATCH.
         if hasattr(view_cls, "put"):
             _annotate(
                 view_cls.put,
                 return_annotation=view_cls.schema,
-                schema_obj=view_cls.update_schema,
+                schema_obj=view_cls.schema_update,
                 id=view_cls.id_type,
             )
 
@@ -350,7 +350,7 @@ class AsyncReactAdminView(_ReactAdminMixin, AsyncRestView):
     """
 
     @get("/")
-    async def listing(self) -> Any:
+    async def get_many_endpoint(self) -> Any:
         sort, (start, end), filters = self._parse_react_admin_params()
         total = int(await self.session.scalar(self._build_count_query(filters)) or 0)
         items = (
@@ -364,7 +364,7 @@ class AsyncReactAdminView(_ReactAdminMixin, AsyncRestView):
 
     @put("/{id}")
     async def put(self, id: Any, schema_obj: Any) -> Any:
-        obj = await self.perform_update(id, schema_obj)
+        obj = await self.handle_update(id, schema_obj)
         return self.to_response_schema(obj)
 
 
@@ -377,7 +377,7 @@ class ReactAdminView(_ReactAdminMixin, RestView):
     """
 
     @get("/")
-    def listing(self) -> Any:
+    def get_many_endpoint(self) -> Any:
         sort, (start, end), filters = self._parse_react_admin_params()
         total = int(self.session.scalar(self._build_count_query(filters)) or 0)
         items = self.session.scalars(
@@ -389,5 +389,5 @@ class ReactAdminView(_ReactAdminMixin, RestView):
 
     @put("/{id}")
     def put(self, id: Any, schema_obj: Any) -> Any:
-        obj = self.perform_update(id, schema_obj)
+        obj = self.handle_update(id, schema_obj)
         return self.to_response_schema(obj)

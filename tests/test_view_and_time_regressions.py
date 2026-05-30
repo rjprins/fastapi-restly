@@ -42,8 +42,8 @@ class _DummyAsyncView(AsyncRestView):
 
 
 @pytest.mark.asyncio
-async def test_async_perform_listing_uses_validated_query_params(monkeypatch):
-    """``perform_listing`` forwards the FastAPI-validated Pydantic model to the
+async def test_async_get_many_uses_validated_query_params(monkeypatch):
+    """``get_many`` forwards the FastAPI-validated Pydantic model to the
     query-modifier dispatcher rather than the raw request query string.
 
     Pinned because raw ``request.query_params`` could contain unvalidated
@@ -71,7 +71,7 @@ async def test_async_perform_listing_uses_validated_query_params(monkeypatch):
         validated: str
 
     params = QueryModel(validated="value")
-    await view.perform_listing(params)
+    await view.get_many(params)
 
     # The validated Pydantic model is passed through verbatim — the modifier
     # is responsible for unpacking it. The raw request query params must not

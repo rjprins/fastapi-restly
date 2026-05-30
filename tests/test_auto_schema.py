@@ -57,8 +57,8 @@ def test_auto_generated_schema_in_view(client):
         # No schema specified - should be auto-generated!
 
     assert UserView.schema.__name__ == "UserRead"
-    assert UserView.creation_schema.__name__ == "UserCreate"
-    assert UserView.update_schema.__name__ == "UserUpdate"
+    assert UserView.schema_create.__name__ == "UserCreate"
+    assert UserView.schema_update.__name__ == "UserUpdate"
 
     create_tables()
 

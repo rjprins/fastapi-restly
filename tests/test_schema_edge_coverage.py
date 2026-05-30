@@ -315,10 +315,10 @@ def test_schema_helper_utilities_cover_readonly_optional_and_config_rebasing():
     assert "id" not in writable
     assert writable["password"] == "pw"
 
-    update_schema = create_model_with_optional_fields(DemoSchema)
-    assert update_schema().name is None
-    assert type(None) in get_args(update_schema.model_fields["name"].annotation)
-    assert type(None) in get_args(update_schema.model_fields["email"].annotation)
+    schema_update = create_model_with_optional_fields(DemoSchema)
+    assert schema_update().name is None
+    assert type(None) in get_args(schema_update.model_fields["name"].annotation)
+    assert type(None) in get_args(schema_update.model_fields["email"].annotation)
 
     create_schema = create_model_without_read_only_fields(DemoSchema)
     assert "id" not in create_schema.model_fields
