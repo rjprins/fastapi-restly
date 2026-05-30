@@ -1088,6 +1088,28 @@ def _init_view_cls_and_add_to_router(
         register_default_exception_handlers(parent_router)
 
 
+#: Bare business-verb method names. A ``@route``-decorated method must not be
+#: named like one of these: it would shadow the verb (which the handlers and
+#: ``handle_write`` call) and collide with the ``<verb>_endpoint`` route shell
+#: at the same path. Override the bare verb *without* a decorator for domain
+#: logic; use ``<verb>_endpoint`` or a distinct name for a custom route.
+_BARE_VERB_NAMES = frozenset(
+    {"get_many", "get_one", "create", "update", "delete"}
+)
+
+
+def _reject_bare_verb_route_names(view_cls: type[View]) -> None:
+    for name, value in view_cls.__dict__.items():
+        if name in _BARE_VERB_NAMES and hasattr(value, "_api_route_args"):
+            raise TypeError(
+                f"{view_cls.__name__}.{name}() is a route method named like the "
+                f"business verb '{name}'. A route by that name shadows the verb "
+                f"and collides with the '{name}_endpoint' route shell. Rename it "
+                f"to '{name}_endpoint' (to replace the shell) or give the custom "
+                f"action its own name."
+            )
+
+
 def _prepare_view_class(view_cls: type[View]) -> None:
     """Run the one-time class-level setup for a View.
 
@@ -1098,6 +1120,7 @@ def _prepare_view_class(view_cls: type[View]) -> None:
     if view_cls.__dict__.get("_fr_initialised", False):
         return
     _copy_all_parent_class_endpoints_into_this_subclass(view_cls)
+    _reject_bare_verb_route_names(view_cls)
     _init_all_endpoints(view_cls)
     view_cls.before_include_view()
     _init_class_based_view(view_cls)
