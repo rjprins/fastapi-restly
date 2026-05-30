@@ -20,8 +20,13 @@ breaking change; views written for 0.5.x need updating.
   `get_one`, `create`, `update`, `delete`) that is auth-free and commit-free —
   the usual override point. This replaces the `listing`/`get`/`create`/`update`/
   `delete` endpoints and the single `perform_*` tier.
-- The framework now owns the commit inside `handle_<verb>`, so `after_commit`
-  runs after the write is durable (gated by `commit_session_on_response`).
+- The commit now has a **single owner**. `handle_<verb>` runs `before_commit` →
+  commit → `after_commit` around your domain logic, and the request-session
+  dependency (`AsyncSessionDep` / `SessionDep`) **no longer commits on
+  response**. `after_commit` therefore runs after the write is durable. A custom
+  (non-CRUD) write route must commit itself with `await self._commit()` (or
+  reuse `handle_<verb>`). Setting `commit_session_on_response=False`, or
+  configuring a custom session generator, opts out of / takes over the commit.
 - Renamed: `creation_schema`/`update_schema` → `schema_create`/`schema_update`;
   `build_from_schema`/`apply_schema` → `make_new_object`/`update_object`;
   `count_listing` → `count`. Response shaping goes through a single

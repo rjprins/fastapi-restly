@@ -109,7 +109,14 @@ class UserView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantBase
         different (proof-of-possession via ``current_password``, no public
         body fields). Calls ``handle_get_one`` for the scoped fetch+404+read-auth
         (so any row-level access checks layered into ``authorize`` apply here
-        too) and uses ``save_object`` as a utility for the final flush+refresh.
+        too), then runs the action bracket by hand: authorize / snapshot /
+        before_commit / after_commit around the hash swap.
+
+        The route OWNS the commit. ``handle_<verb>`` owns the commit for the
+        generated CRUD routes, but the request-session dependency no longer
+        commits on response, so this custom write must call ``self._commit()``
+        itself — ``save_object`` only flushes + refreshes, so without the commit
+        the new hash would be silently rolled back.
         """
         user = await self.handle_get_one(id)
         if not verify_password(request.current_password, user.password):
@@ -117,8 +124,13 @@ class UserView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantBase
         if not request.new_password:
             raise HTTPException(422, "new_password is required")
 
+        await self.authorize("change_password", obj=user)
+        old = self.snapshot(user)
         user.password = hash_password(request.new_password)
         user = await self.save_object(user)
+        await self.before_commit("change_password", new=user, old=old)
+        await self._commit()
+        await self.after_commit("change_password", new=user, old=old)
         return self.to_response_schema(user)
 
     @fr.get("/{id}/with-permissions", response_model=dict)

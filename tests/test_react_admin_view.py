@@ -423,3 +423,39 @@ def test_default_page_size_class_attribute_overrides_default(client):
     # No explicit range → default_page_size kicks in → only 3 items returned.
     data = client.get("/widgets/").json()
     assert len(data) == 3
+
+
+# ---------------------------------------------------------------------------
+# Read scope / authorization contract (regression)
+# ---------------------------------------------------------------------------
+
+
+def test_react_admin_list_respects_build_query_scope(client):
+    """The React Admin list must route through build_query, so a row hidden by
+    the read scope is not leaked, and Content-Range total reflects the scope."""
+
+    class ScopedItem(fr.IDBase):
+        name: Mapped[str]
+        hidden: Mapped[bool]
+
+    class ScopedItemSchema(fr.IDSchema):
+        name: str
+        hidden: bool
+
+    @fr.include_view(client.app)
+    class ScopedItemView(fr.AsyncReactAdminView):
+        prefix = "/scoped-items"
+        model = ScopedItem
+        schema = ScopedItemSchema
+
+        def build_query(self):
+            return super().build_query().where(ScopedItem.hidden.is_(False))
+
+    create_tables()
+    client.post("/scoped-items/", json={"name": "visible", "hidden": False})
+    client.post("/scoped-items/", json={"name": "hidden", "hidden": True})
+
+    resp = client.get("/scoped-items/")
+    names = sorted(item["name"] for item in resp.json())
+    assert names == ["visible"]  # the hidden row is not leaked by the RA list
+    assert resp.headers["Content-Range"].endswith("/1")  # total respects scope

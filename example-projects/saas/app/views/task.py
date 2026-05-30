@@ -248,11 +248,26 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
     async def _transition_task(
         self, id: int, source_status: TaskStatus, target_status: TaskStatus, action: str
     ) -> Task:
+        """Run a status transition as a genuinely-custom write action.
+
+        A transition is *update-shaped* but not a plain PATCH (the input is
+        the route itself, the allowed moves are gated by a state machine), so
+        instead of reusing ``handle_update`` we run the explicit custom-action
+        bracket. Crucially the route now OWNS its commit: ``handle_<verb>``
+        owns the commit for the CRUD verbs, but the request-session dependency
+        no longer commits on response, so any custom write that mutates the DB
+        must call ``self._commit()`` itself or the change is silently lost.
+
+        The bracket below mirrors ``handle_update`` so the transition still gets
+        authorize / snapshot / before_commit / after_commit — skipping those is
+        exactly what the handle design is built to prevent.
+        """
         if target_status not in VALID_TRANSITIONS.get(source_status, []):
             raise RuntimeError(
                 f"Invalid task transition definition: {source_status.value} -> {target_status.value}"
             )
 
+        # Load with scope + 404 + read-auth via the canonical read handler.
         task = await self.handle_get_one(id)
         if task.status != source_status:
             raise HTTPException(
@@ -263,8 +278,18 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
                 ),
             )
 
+        # Action-specific policy gate + pre-mutation snapshot for the hooks.
+        await self.authorize(action, obj=task)
+        old = self.snapshot(task)
         task.status = target_status
         task.version += 1
+        await self.save_object(task)
+
+        # The route owns the bracket: before_commit (in-transaction side
+        # effects) -> commit -> after_commit (post-commit side effects).
+        await self.before_commit(action, new=task, old=old)
+        await self._commit()
+        await self.after_commit(action, new=task, old=old)
         return task
 
     @fr.post("/import-csv", response_model=BulkResult)
@@ -282,9 +307,11 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
 
         Each row is fed through the business ``create`` verb via
         ``TaskCreateSchema``, so every row inherits the same validation chain
-        and rollup as ``POST /tasks/``. ``create`` flushes but does not commit,
-        so all successful rows ride the single request-level commit together.
-        Pydantic surfaces field errors per row.
+        and rollup as ``POST /tasks/``. ``create`` flushes but does NOT commit
+        -- and the request-session dependency no longer commits on response --
+        so this custom route owns the commit: a single ``self._commit()`` at
+        the end persists all successful rows together. Pydantic surfaces field
+        errors per row.
         """
         import csv
         import io
@@ -314,6 +341,8 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
             except Exception as exc:  # noqa: BLE001 — surface per-row error
                 failed += 1
                 errors.append(f"row {row_no}: {exc}")
+        # The route owns the commit now: persist every successfully-built row.
+        await self._commit()
         return BulkResult(success=success, failed=failed, errors=errors)
 
     @fr.post("/bulk", response_model=BulkResult)
@@ -323,8 +352,10 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
         Delegates each item to the business ``create`` verb so the same
         archived-project guard, conditional-field validation, cross-resource
         validation, and story-point rollup that apply to ``POST /tasks/`` apply
-        per row. ``create`` flushes without committing, so the successful rows
-        share the single request-level commit.
+        per row. ``create`` flushes without committing, so this custom route
+        owns the commit -- the request-session dependency no longer commits on
+        response, so a single ``self._commit()`` at the end persists every
+        successful row together.
         """
         success = 0
         failed = 0
@@ -338,6 +369,8 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
                 failed += 1
                 errors.append(f"Failed to create task '{item.title}': {e!s}")
 
+        # The route owns the commit now: persist every successfully-built row.
+        await self._commit()
         return BulkResult(success=success, failed=failed, errors=errors)
 
     @fr.post("/bulk-delete", response_model=BulkResult)
@@ -348,6 +381,13 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
         access check (only the assignee may see/touch the task).
         ``handle_get_one`` raises 404 for both "missing" and "not yours", which
         we catch and report.
+
+        This is a genuinely-custom write (a multi-row report, not a single
+        verb), so it owns its commit. ``delete_object`` flushes but does NOT
+        commit -- the request-session dependency no longer commits on response,
+        so without the trailing ``self._commit()`` every soft-delete here would
+        be silently rolled back. We commit ONCE at the end so all successful
+        rows persist together (and a mid-loop failure doesn't half-commit).
         """
         success = 0
         failed = 0
@@ -368,6 +408,8 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
                 failed += 1
                 errors.append(f"Failed to delete task {task_id}: {e!s}")
 
+        # The route owns the commit now: persist all successful deletes.
+        await self._commit()
         return BulkResult(success=success, failed=failed, errors=errors)
 
     @fr.post("/{id}/start", response_model=TaskSchema)

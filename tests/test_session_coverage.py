@@ -302,137 +302,112 @@ async def test_activate_and_deactivate_savepoint_only_mode_for_async_sessionmake
         await async_engine.dispose()
 
 
-def test_generate_session_commits_and_rolls_back_on_failure():
+def test_generate_session_does_not_commit_and_exits_context_on_failure():
+    """The session dependency yields the session and never commits -- the
+    commit is owned by ``handle_<verb>`` (the handle design). Lifecycle
+    (close/rollback) is delegated to the session context manager, which is
+    entered on yield and exited (with the exception, if any) afterwards."""
+
     class DummySyncSession:
-        def __init__(self, fail_commit: bool = False):
-            self.fail_commit = fail_commit
+        def __init__(self):
             self.is_active = True
             self.committed = 0
-            self.rolled_back = 0
 
         def commit(self):
             self.committed += 1
-            if self.fail_commit:
-                raise RuntimeError("boom")
-
-        def rollback(self):
-            self.rolled_back += 1
 
     class DummySyncContext:
         def __init__(self, session: DummySyncSession):
             self.session = session
+            self.exit_exc: object = "unset"
 
         def __enter__(self):
             return self.session
 
         def __exit__(self, exc_type, exc, tb):
+            self.exit_exc = exc_type
             return False
 
     class DummySyncMaker:
         def __init__(self, session: DummySyncSession):
             self.session = session
+            self.context: DummySyncContext | None = None
 
         def __call__(self):
-            return DummySyncContext(self.session)
+            self.context = DummySyncContext(self.session)
+            return self.context
 
+    # Success: yields the session, never commits, exits cleanly.
     with RestlyContext():
-        successful = DummySyncSession()
-        configure(make_session=DummySyncMaker(successful))  # type: ignore[arg-type]
+        session = DummySyncSession()
+        maker = DummySyncMaker(session)
+        configure(make_session=maker)  # type: ignore[arg-type]
         yielded = list(_generate_session())
-        assert yielded == [successful]
-        assert successful.committed == 1
-        assert successful.rolled_back == 0
+        assert yielded == [session]
+        assert session.committed == 0
+        assert maker.context is not None and maker.context.exit_exc is None
 
+    # An exception thrown into the dependency (a failing endpoint) propagates,
+    # and the session context manager sees it (a real Session rolls back).
     with RestlyContext():
-        manual_commit = DummySyncSession()
-        configure(
-            make_session=DummySyncMaker(manual_commit),  # type: ignore[arg-type]
-            commit_session_on_response=False,
-        )
-        yielded = list(_generate_session())
-        assert yielded == [manual_commit]
-        assert manual_commit.committed == 0
-        assert manual_commit.rolled_back == 0
-
-    with RestlyContext():
-        failing = DummySyncSession(fail_commit=True)
-        configure(make_session=DummySyncMaker(failing))  # type: ignore[arg-type]
+        session = DummySyncSession()
+        maker = DummySyncMaker(session)
+        configure(make_session=maker)  # type: ignore[arg-type]
+        gen = _generate_session()
+        next(gen)
         with pytest.raises(RuntimeError, match="boom"):
-            list(_generate_session())
-        assert failing.committed == 1
-        assert failing.rolled_back == 1
+            gen.throw(RuntimeError("boom"))
+        assert session.committed == 0
+        assert maker.context is not None and maker.context.exit_exc is RuntimeError
 
 
 @pytest.mark.asyncio
-async def test_async_generate_session_commits_and_rolls_back_on_failure():
+async def test_async_generate_session_does_not_commit_and_exits_context_on_failure():
     class DummyAsyncSession:
-        def __init__(self, fail_commit: bool = False):
-            self.fail_commit = fail_commit
+        def __init__(self):
             self.is_active = True
             self.committed = 0
-            self.rolled_back = 0
 
         async def commit(self):
             self.committed += 1
-            if self.fail_commit:
-                raise RuntimeError("boom")
-
-        async def rollback(self):
-            self.rolled_back += 1
 
     class DummyAsyncContext:
         def __init__(self, session: DummyAsyncSession):
             self.session = session
+            self.exit_exc: object = "unset"
 
         async def __aenter__(self):
             return self.session
 
         async def __aexit__(self, exc_type, exc, tb):
+            self.exit_exc = exc_type
             return False
 
     class DummyAsyncMaker:
         def __init__(self, session: DummyAsyncSession):
             self.session = session
+            self.context: DummyAsyncContext | None = None
 
         def __call__(self):
-            return DummyAsyncContext(self.session)
+            self.context = DummyAsyncContext(self.session)
+            return self.context
 
     with RestlyContext():
-        successful = DummyAsyncSession()
-        configure(
-            async_make_session=DummyAsyncMaker(successful)  # type: ignore[arg-type]
-        )
-
-        yielded = []
-        async for session in _async_generate_session():
-            yielded.append(session)
-
-        assert yielded == [successful]
-        assert successful.committed == 1
-        assert successful.rolled_back == 0
+        session = DummyAsyncSession()
+        maker = DummyAsyncMaker(session)
+        configure(async_make_session=maker)  # type: ignore[arg-type]
+        yielded = [s async for s in _async_generate_session()]
+        assert yielded == [session]
+        assert session.committed == 0
+        assert maker.context is not None and maker.context.exit_exc is None
 
     with RestlyContext():
-        manual_commit = DummyAsyncSession()
-        configure(
-            async_make_session=DummyAsyncMaker(manual_commit),  # type: ignore[arg-type]
-            commit_session_on_response=False,
-        )
-
-        yielded = []
-        async for session in _async_generate_session():
-            yielded.append(session)
-
-        assert yielded == [manual_commit]
-        assert manual_commit.committed == 0
-        assert manual_commit.rolled_back == 0
-
-    with RestlyContext():
-        failing = DummyAsyncSession(fail_commit=True)
-        configure(async_make_session=DummyAsyncMaker(failing))  # type: ignore[arg-type]
-
+        session = DummyAsyncSession()
+        maker = DummyAsyncMaker(session)
+        configure(async_make_session=maker)  # type: ignore[arg-type]
+        gen = _async_generate_session()
+        await gen.__anext__()
         with pytest.raises(RuntimeError, match="boom"):
-            async for _session in _async_generate_session():
-                pass
-
-        assert failing.committed == 1
-        assert failing.rolled_back == 1
+            await gen.athrow(RuntimeError("boom"))
+        assert session.committed == 0
+        assert maker.context is not None and maker.context.exit_exc is RuntimeError

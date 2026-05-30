@@ -55,6 +55,12 @@ class UploadView(TenantBase):
         The flow is the entire reason ``make_new_object`` /
         ``session.flush()`` / ``save_object`` are separate public steps —
         no single helper would absorb the flush-for-PK requirement.
+
+        This is a genuinely-custom multipart write (parent + sibling lines),
+        so the route OWNS the commit. None of ``session.flush()`` /
+        ``save_object`` commit, and the request-session dependency no longer
+        commits on response, so the final ``self._commit()`` is what actually
+        persists the Upload and its UploadLine rows.
         """
         if not file.filename:
             raise fastapi.HTTPException(422, "filename is required")
@@ -99,6 +105,11 @@ class UploadView(TenantBase):
         #    UploadLine rows and the updated columns on Upload.
         upload = await self.save_object(upload)
         self._emit("upload.completed", upload, {"line_count": upload.line_count})
+
+        # 5) The route owns the commit: persist the parent, the lines, and the
+        #    outbox event atomically. ``save_object``/``_emit`` only stage rows
+        #    in the session; without this commit they would be silently lost.
+        await self._commit()
         return upload
 
     @fr.get("/{id}/lines", response_model=list[UploadLineSchema])

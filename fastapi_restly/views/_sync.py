@@ -247,5 +247,14 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         """Post-commit side effect (email, webhook, cache)."""
 
     def _commit(self) -> None:
-        if self._should_commit():
+        """Commit the current transaction. The handle design makes this the
+        single commit point for a write request. No-op when a custom sync
+        session generator owns the lifecycle, or when the caller opted out via
+        ``commit_session_on_response=False``.
+        """
+        from ..db._globals import _fr_globals
+
+        if _fr_globals.sync_session_generator is not None:
+            return
+        if _fr_globals.commit_session_on_response:
             self.session.commit()

@@ -95,10 +95,13 @@ def configure(
     Use ``session_generator`` / ``sync_session_generator`` to plug in a
     custom session factory instead of the built-in one.
 
-    By default, Restly commits built-in request sessions when an endpoint
-    successfully produces a response. Set ``commit_session_on_response=False``
-    to own commit/rollback calls yourself. Leave it unset to keep the current
-    default. Custom session generators always own their transaction lifecycle.
+    Restly's write handlers (``handle_create`` / ``handle_update`` /
+    ``handle_delete``) own the commit: they call ``before_commit`` -> commit ->
+    ``after_commit`` around your domain logic. A custom (non-CRUD) write route
+    must commit itself with ``await self._commit()`` (or ``self.session.commit()``).
+    Set ``commit_session_on_response=False`` to own all commit/rollback calls
+    yourself (handlers will not commit). Custom session generators always own
+    their transaction lifecycle, and handlers defer their commit to them.
 
     Pass your :class:`FastAPI` ``app`` to install fastapi-restly's default
     exception handlers (currently: a translator that turns SQLAlchemy
@@ -233,15 +236,13 @@ async def _async_generate_session() -> AsyncIterator[SA_AsyncSession]:
         )
 
     # FastAPI does not support contextmanagers as dependency directly,
-    # but it does support generators.
+    # but it does support generators. The commit is owned by ``handle_<verb>``
+    # (the handle design), so this dependency only manages the session
+    # lifecycle: the context manager rolls back and closes on the way out, and
+    # any change not committed by a handler (or an explicit ``self._commit()``
+    # in a custom route) is discarded.
     async with _fr_globals.async_make_session() as session:
         yield session
-        if _fr_globals.commit_session_on_response and session.is_active:
-            try:
-                await session.commit()
-            except Exception:
-                await session.rollback()
-                raise
 
 
 def _session_dependency(dependency: Callable[..., Any]) -> Any:
@@ -264,12 +265,6 @@ def _generate_session() -> Iterator[SA_Session]:
 
     with _fr_globals.make_session() as session:
         yield session
-        if _fr_globals.commit_session_on_response and session.is_active:
-            try:
-                session.commit()
-            except Exception:
-                session.rollback()
-                raise
 
 
 SessionDep = Annotated[SA_Session, _session_dependency(_generate_session)]

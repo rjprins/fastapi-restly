@@ -225,6 +225,7 @@ class _ReactAdminViewProtocol(Protocol):
     def get_react_admin_range_unit(self) -> str: ...
     def get_relationship_loader_options(self) -> list[Any]: ...
     def to_response_schema(self, obj: Any) -> pydantic.BaseModel: ...
+    def build_query(self) -> sqlalchemy.Select: ...
 
     @classmethod
     def before_include_view(cls) -> None: ...
@@ -295,9 +296,14 @@ class _ReactAdminMixin:
         )
 
     def _build_count_query(self, filters: dict) -> sqlalchemy.Select:
-        """Count query: filters only, no sort or pagination."""
+        """Count query: filters only, no sort or pagination.
+
+        Starts from ``build_query()`` so the react-admin list respects the same
+        read scope (tenant, soft-delete, row-level visibility) as every other
+        read on the view.
+        """
         view = cast(_ReactAdminViewProtocol, self)
-        base = sqlalchemy.select(view.model)
+        base = view.build_query()
         filtered = _apply_react_admin_filters(base, view.model, view.schema, filters)
         return select(func.count()).select_from(filtered.subquery())
 
@@ -308,9 +314,10 @@ class _ReactAdminMixin:
         end: int,
         filters: dict,
     ) -> sqlalchemy.Select:
-        """List query: filters, sort, and range applied."""
+        """List query: filters, sort, and range applied, over the scoped
+        ``build_query()`` base (same visibility as every other read)."""
         view = cast(_ReactAdminViewProtocol, self)
-        base = sqlalchemy.select(view.model)
+        base = view.build_query()
         loader_options = view.get_relationship_loader_options()
         if loader_options:
             base = base.options(*loader_options)
@@ -351,6 +358,7 @@ class AsyncReactAdminView(_ReactAdminMixin, AsyncRestView):
 
     @get("/")
     async def get_many_endpoint(self) -> Any:
+        await self.authorize("get_many")
         sort, (start, end), filters = self._parse_react_admin_params()
         total = int(await self.session.scalar(self._build_count_query(filters)) or 0)
         items = (
@@ -378,6 +386,7 @@ class ReactAdminView(_ReactAdminMixin, RestView):
 
     @get("/")
     def get_many_endpoint(self) -> Any:
+        self.authorize("get_many")
         sort, (start, end), filters = self._parse_react_admin_params()
         total = int(self.session.scalar(self._build_count_query(filters)) or 0)
         items = self.session.scalars(

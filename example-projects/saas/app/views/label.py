@@ -91,6 +91,12 @@ class TaskLabelView(TenantBase):
            as ``IDRef[Label]`` — the resolver replaces that with the
            Label instance, which the framework then converts back to
            ``label_id = label.id`` via the resolver path.
+
+        Sibling-creation is a genuinely-custom write (two rows, two models),
+        so the route OWNS the commit. ``session.flush()`` /
+        ``async_save_object`` only stage and flush; the request-session
+        dependency no longer commits on response, so the trailing
+        ``self._commit()`` is what persists both the Label and the TaskLabel.
         """
         # Tenant scope is enforced via TaskView.get_one-style checks here:
         # we don't go through TaskView, so we re-validate the task fits
@@ -133,6 +139,8 @@ class TaskLabelView(TenantBase):
             task_label.added_by_id = self._current_user_id()
 
         task_label = await async_save_object(self.session, task_label)
+        # The route owns the commit: persist the Label + TaskLabel pair.
+        await self._commit()
         # IDRef serializes as a bare scalar both ways. FastAPI's
         # response_model coercion handles the ORM int directly.
         return task_label

@@ -46,24 +46,27 @@ class CustomProjectView(
     model = Project
     schema = ProjectRead
 
+    # Custom route shells override the generated ``*_endpoint`` methods. They
+    # must NOT be named after the business verbs (get_many/create/...), which
+    # would shadow them and make handle_<verb> -> self.<verb> recurse.
     @fr.get("/")
-    async def listing(self, query_params: Any) -> list[ProjectRead]:
+    async def get_many_endpoint(self, query_params: Any) -> list[ProjectRead]:
         result = await self.handle_get_many(query_params)
         return [self.to_response_schema(obj) for obj in result.objects]
 
     @fr.get("/{id}")
-    async def get(self, id: int) -> ProjectRead:
+    async def get_one_endpoint(self, id: int) -> ProjectRead:
         return self.to_response_schema(await self.handle_get_one(id))
 
     @fr.post("/")
-    async def create(self, schema_obj: ProjectRead) -> ProjectRead:
+    async def create_endpoint(self, schema_obj: ProjectRead) -> ProjectRead:
         return self.to_response_schema(await self.handle_create(schema_obj))
 
     @fr.patch("/{id}")
-    async def update(self, id: int, schema_obj: ProjectRead) -> ProjectRead:
+    async def update_endpoint(self, id: int, schema_obj: ProjectRead) -> ProjectRead:
         return self.to_response_schema(await self.handle_update(id, schema_obj))
 
     @fr.delete("/{id}")
-    async def delete(self, id: int) -> Response:
+    async def delete_endpoint(self, id: int) -> Response:
         await self.handle_delete(id)
         return Response(status_code=204)

@@ -922,16 +922,6 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         if user is None or not user.has_permission(perm):
             raise Forbidden()
 
-    @staticmethod
-    def _should_commit() -> bool:
-        """Whether ``handle_<verb>`` issues the commit. The framework owns the
-        commit (handle design); ``commit_session_on_response=False`` opts the
-        caller into owning it instead.
-        """
-        from ..db._globals import _fr_globals
-
-        return bool(_fr_globals.commit_session_on_response)
-
     @classmethod
     def before_include_view(cls):
         """
