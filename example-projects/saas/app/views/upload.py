@@ -56,11 +56,10 @@ class UploadView(TenantBase):
         ``session.flush()`` / ``save_object`` are separate public steps —
         no single helper would absorb the flush-for-PK requirement.
 
-        This is a genuinely-custom multipart write (parent + sibling lines),
-        so the route OWNS the commit. None of ``session.flush()`` /
-        ``save_object`` commit, and the request-session dependency no longer
-        commits on response, so the final ``self._commit()`` is what actually
-        persists the Upload and its UploadLine rows.
+        This is a genuinely-custom multipart write (parent + sibling lines). The
+        whole construction runs inside ``handle_write("create", ...)``, so the
+        Upload, its UploadLine rows, and the outbox event commit atomically
+        through the one bracket.
         """
         if not file.filename:
             raise fastapi.HTTPException(422, "filename is required")
@@ -71,46 +70,45 @@ class UploadView(TenantBase):
         except UnicodeDecodeError as exc:
             raise fastapi.HTTPException(422, f"file is not utf-8: {exc}") from exc
 
-        # 1) Build parent. ``make_new_object`` is overkill here because we're
-        #    not coming from a JSON body schema, so we construct directly. The
-        #    framework call style (``self.make_new_object``) is also valid if
-        #    you do have a schema_obj.
-        upload = Upload(
-            filename=file.filename,
-            organization_id=organization_id,
-            uploaded_by_id=self._current_user_id(),
-        )
-        self.session.add(upload)
-
-        # 2) Early flush — gives upload.id its autoincrement value before we
-        #    use it as a FK below.
-        await self.session.flush()
-
-        # 3) Mutate: build related rows referencing the parent's PK.
-        for n, row in enumerate(rows, start=1):
-            line = UploadLine(
-                upload_id=upload.id,
-                row_number=n,
-                title=row.get("title", ""),
-                amount=int(row.get("amount") or 0),
+        async def _upload():
+            # 1) Build parent. ``make_new_object`` is overkill here because
+            #    we're not coming from a JSON body schema, so we construct
+            #    directly. The framework call style (``self.make_new_object``)
+            #    is also valid if you do have a schema_obj.
+            upload = Upload(
+                filename=file.filename,
+                organization_id=organization_id,
+                uploaded_by_id=self._current_user_id(),
             )
-            self.session.add(line)
+            self.session.add(upload)
 
-        upload.line_count = len(rows)
-        from datetime import datetime, timezone
+            # 2) Early flush — gives upload.id its autoincrement value before
+            #    we use it as a FK below.
+            await self.session.flush()
 
-        upload.completed_at = datetime.now(timezone.utc)
+            # 3) Build related rows referencing the parent's PK.
+            for n, row in enumerate(rows, start=1):
+                line = UploadLine(
+                    upload_id=upload.id,
+                    row_number=n,
+                    title=row.get("title", ""),
+                    amount=int(row.get("amount") or 0),
+                )
+                self.session.add(line)
 
-        # 4) Final flush + refresh — picks up server-side defaults on the
-        #    UploadLine rows and the updated columns on Upload.
-        upload = await self.save_object(upload)
-        self._emit("upload.completed", upload, {"line_count": upload.line_count})
+            upload.line_count = len(rows)
+            from datetime import datetime, timezone
 
-        # 5) The route owns the commit: persist the parent, the lines, and the
-        #    outbox event atomically. ``save_object``/``_emit`` only stage rows
-        #    in the session; without this commit they would be silently lost.
-        await self._commit()
-        return upload
+            upload.completed_at = datetime.now(timezone.utc)
+
+            # 4) Final flush + refresh — picks up server-side defaults on the
+            #    UploadLine rows and the updated columns on Upload.
+            saved = await self.save_object(upload)
+            self._emit("upload.completed", saved, {"line_count": saved.line_count})
+            return saved
+
+        # The bracket commits the parent, the lines, and the outbox event.
+        return await self.handle_write("create", mutate=_upload)
 
     @fr.get("/{id}/lines", response_model=list[UploadLineSchema])
     async def list_lines(self, id: int) -> list[UploadLine]:

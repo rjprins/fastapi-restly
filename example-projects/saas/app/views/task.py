@@ -250,17 +250,13 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
     ) -> Task:
         """Run a status transition as a genuinely-custom write action.
 
-        A transition is *update-shaped* but not a plain PATCH (the input is
-        the route itself, the allowed moves are gated by a state machine), so
-        instead of reusing ``handle_update`` we run the explicit custom-action
-        bracket. Crucially the route now OWNS its commit: ``handle_<verb>``
-        owns the commit for the CRUD verbs, but the request-session dependency
-        no longer commits on response, so any custom write that mutates the DB
-        must call ``self._commit()`` itself or the change is silently lost.
-
-        The bracket below mirrors ``handle_update`` so the transition still gets
-        authorize / snapshot / before_commit / after_commit — skipping those is
-        exactly what the handle design is built to prevent.
+        A transition is *update-shaped* but not a plain PATCH (the input is the
+        route itself, the allowed moves are gated by a state machine), so instead
+        of reusing ``handle_update`` we drive the mutation through
+        ``handle_write`` with a custom action name. ``handle_write`` runs the
+        whole bracket -- authorize(action, obj) -> snapshot -> the mutation ->
+        before_commit -> commit -> after_commit -- so the transition gets the
+        same lifecycle as every other write without hand-rolling it.
         """
         if target_status not in VALID_TRANSITIONS.get(source_status, []):
             raise RuntimeError(
@@ -278,19 +274,12 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
                 ),
             )
 
-        # Action-specific policy gate + pre-mutation snapshot for the hooks.
-        await self.authorize(action, obj=task)
-        old = self.snapshot(task)
-        task.status = target_status
-        task.version += 1
-        await self.save_object(task)
+        async def _transition():
+            task.status = target_status
+            task.version += 1
+            return await self.save_object(task)
 
-        # The route owns the bracket: before_commit (in-transaction side
-        # effects) -> commit -> after_commit (post-commit side effects).
-        await self.before_commit(action, new=task, old=old)
-        await self._commit()
-        await self.after_commit(action, new=task, old=old)
-        return task
+        return await self.handle_write(action, obj=task, mutate=_transition)
 
     @fr.post("/import-csv", response_model=BulkResult)
     async def import_csv(

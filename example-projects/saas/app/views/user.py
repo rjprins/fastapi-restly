@@ -109,14 +109,10 @@ class UserView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantBase
         different (proof-of-possession via ``current_password``, no public
         body fields). Calls ``handle_get_one`` for the scoped fetch+404+read-auth
         (so any row-level access checks layered into ``authorize`` apply here
-        too), then runs the action bracket by hand: authorize / snapshot /
-        before_commit / after_commit around the hash swap.
-
-        The route OWNS the commit. ``handle_<verb>`` owns the commit for the
-        generated CRUD routes, but the request-session dependency no longer
-        commits on response, so this custom write must call ``self._commit()``
-        itself — ``save_object`` only flushes + refreshes, so without the commit
-        the new hash would be silently rolled back.
+        too), then drives the hash swap through ``handle_write`` with the
+        ``"change_password"`` action -- so it runs the full bracket (authorize
+        -> snapshot -> mutate -> before_commit -> commit -> after_commit)
+        without owning the commit by hand.
         """
         user = await self.handle_get_one(id)
         if not verify_password(request.current_password, user.password):
@@ -124,14 +120,14 @@ class UserView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantBase
         if not request.new_password:
             raise HTTPException(422, "new_password is required")
 
-        await self.authorize("change_password", obj=user)
-        old = self.snapshot(user)
-        user.password = hash_password(request.new_password)
-        user = await self.save_object(user)
-        await self.before_commit("change_password", new=user, old=old)
-        await self._commit()
-        await self.after_commit("change_password", new=user, old=old)
-        return self.to_response_schema(user)
+        async def _change_password():
+            user.password = hash_password(request.new_password)
+            return await self.save_object(user)
+
+        updated = await self.handle_write(
+            "change_password", obj=user, mutate=_change_password
+        )
+        return self.to_response_schema(updated)
 
     @fr.get("/{id}/with-permissions", response_model=dict)
     async def get_user_with_field_permissions(self, id: int) -> dict[str, Any]:

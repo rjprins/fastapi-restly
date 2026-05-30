@@ -92,11 +92,10 @@ class TaskLabelView(TenantBase):
            Label instance, which the framework then converts back to
            ``label_id = label.id`` via the resolver path.
 
-        Sibling-creation is a genuinely-custom write (two rows, two models),
-        so the route OWNS the commit. ``session.flush()`` /
-        ``async_save_object`` only stage and flush; the request-session
-        dependency no longer commits on response, so the trailing
-        ``self._commit()`` is what persists both the Label and the TaskLabel.
+        Sibling-creation is a genuinely-custom write (two rows, two models).
+        The whole construction runs inside ``handle_write("create", ...)``, so
+        the Label + TaskLabel pair commits atomically through the one bracket --
+        and the action picks up authorize + the commit hooks for free.
         """
         # Tenant scope is enforced via TaskView.get_one-style checks here:
         # we don't go through TaskView, so we re-validate the task fits
@@ -108,39 +107,42 @@ class TaskLabelView(TenantBase):
         if org_id is None:
             raise HTTPException(400, "Cannot create labels without an org context")
 
-        # 1) Build sibling #1 (Label) and flush — needed because the
-        #    next step's IDRef resolver requires an existing PK.
-        label = Label(
-            name=request.label_name, color=request.color, organization_id=org_id
-        )
-        self.session.add(label)
-        await self.session.flush()  # <-- the resolver path's hard requirement
+        async def _create_and_attach():
+            # 1) Build sibling #1 (Label) and flush — needed because the
+            #    next step's IDRef resolver requires an existing PK.
+            label = Label(
+                name=request.label_name, color=request.color, organization_id=org_id
+            )
+            self.session.add(label)
+            await self.session.flush()  # <-- the resolver path's hard requirement
 
-        # 2) Build sibling #2 (TaskLabel) referencing #1 via IDRef.
-        #    The fields on TaskLabelSchema are typed IDRef[T] so the
-        #    wire format is scalar (``"task_id": 5``) but the framework
-        #    resolver still verifies the row exists. ``model_construct``
-        #    skips Pydantic validation, so we pass IDRef instances
-        #    directly rather than scalars — that keeps the resolver path
-        #    happy. (Passing a scalar would leave a plain int that the
-        #    resolver doesn't recognize, falling through to assignment
-        #    against the ORM column, which happens to work because the
-        #    column is also an int. But that path skips the existence
-        #    check, which is the whole point of the type.)
-        link_schema = TaskLabelSchema.model_construct(
-            task_id=IDRef[Task](id=request.task_id), label_id=IDRef[Label](id=label.id)
-        )
-        task_label = await async_make_new_object(self.session, TaskLabel, link_schema)
-        # added_by_id stamping isn't auto-applied here because
-        # async_make_new_object is the *free function*, not the bound
-        # ``self.make_new_object`` method that this view overrides for
-        # the stamp. Worth flagging for the helper-design discussion.
-        if task_label.added_by_id is None:
-            task_label.added_by_id = self._current_user_id()
+            # 2) Build sibling #2 (TaskLabel) referencing #1 via IDRef.
+            #    The fields on TaskLabelSchema are typed IDRef[T] so the
+            #    wire format is scalar (``"task_id": 5``) but the framework
+            #    resolver still verifies the row exists. ``model_construct``
+            #    skips Pydantic validation, so we pass IDRef instances
+            #    directly rather than scalars — that keeps the resolver path
+            #    happy. (Passing a scalar would leave a plain int that the
+            #    resolver doesn't recognize, falling through to assignment
+            #    against the ORM column, which happens to work because the
+            #    column is also an int. But that path skips the existence
+            #    check, which is the whole point of the type.)
+            link_schema = TaskLabelSchema.model_construct(
+                task_id=IDRef[Task](id=request.task_id),
+                label_id=IDRef[Label](id=label.id),
+            )
+            task_label = await async_make_new_object(
+                self.session, TaskLabel, link_schema
+            )
+            # added_by_id stamping isn't auto-applied here because
+            # async_make_new_object is the *free function*, not the bound
+            # ``self.make_new_object`` method that this view overrides for
+            # the stamp.
+            if task_label.added_by_id is None:
+                task_label.added_by_id = self._current_user_id()
+            return await async_save_object(self.session, task_label)
 
-        task_label = await async_save_object(self.session, task_label)
-        # The route owns the commit: persist the Label + TaskLabel pair.
-        await self._commit()
-        # IDRef serializes as a bare scalar both ways. FastAPI's
-        # response_model coercion handles the ORM int directly.
-        return task_label
+        # The bracket commits the Label + TaskLabel pair atomically.
+        # IDRef serializes as a bare scalar both ways; FastAPI's response_model
+        # coercion handles the ORM int directly.
+        return await self.handle_write("create", data=request, mutate=_create_and_attach)

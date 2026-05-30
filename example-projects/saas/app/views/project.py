@@ -218,20 +218,18 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
         requires a 200 + body contract — that's a route-level HTTP
         decision, not a behavior change.
 
-        ``delete`` is verb-shaped, so we run the same bracket ``handle_delete``
-        would (authorize / snapshot / before_commit / commit / after_commit)
-        rather than skipping it. The route OWNS the commit: ``handle_<verb>``
-        owns the commit for the generated CRUD routes, but the request-session
-        dependency no longer commits on response, so a custom write must call
-        ``self._commit()`` itself or the ``deleted_at`` flip is silently lost.
+        Drives the soft-delete through ``handle_write`` so it runs the same
+        bracket as ``handle_delete`` (authorize / snapshot / before_commit /
+        commit / after_commit). The mutation returns the (soft-deleted) project
+        so the hooks see ``new=project`` rather than ``None``.
         """
         project = await self.handle_get_one(id)
-        await self.authorize("delete", obj=project)
-        old = self.snapshot(project)
-        await self.delete_object(project)
-        await self.before_commit("delete", new=project, old=old)
-        await self._commit()
-        await self.after_commit("delete", new=project, old=old)
+
+        async def _soft_delete():
+            await self.delete_object(project)
+            return project
+
+        await self.handle_write("delete", obj=project, mutate=_soft_delete)
         return await self._decorate_project_response(project)
 
     @fr.post("/{id}/restore", response_model=ProjectSchema)
@@ -240,11 +238,9 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
 
         Genuinely-custom action: it deliberately bypasses the mixin's
         ``deleted_at IS NULL`` filter (we *want* to find a deleted row), so it
-        cannot reuse ``handle_get_one``/``handle_update``. It therefore owns its
-        whole bracket. Tenant scope is re-checked by hand. The route OWNS the
-        commit -- the request-session dependency no longer commits on response,
-        so without ``self._commit()`` the ``deleted_at = None`` clear would be
-        silently rolled back.
+        cannot reuse ``handle_get_one``. Tenant scope is re-checked by hand,
+        then the clear runs through ``handle_write("restore", ...)`` for the
+        full bracket.
         """
         project = await self.session.get(Project, id)
         if project is None:
@@ -255,13 +251,11 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
         if project.deleted_at is None:
             raise HTTPException(status_code=400, detail="Project is not deleted")
 
-        await self.authorize("restore", obj=project)
-        old = self.snapshot(project)
-        project.deleted_at = None
-        project = await self.save_object(project)
-        await self.before_commit("restore", new=project, old=old)
-        await self._commit()
-        await self.after_commit("restore", new=project, old=old)
+        async def _restore():
+            project.deleted_at = None
+            return await self.save_object(project)
+
+        project = await self.handle_write("restore", obj=project, mutate=_restore)
         return await self._decorate_project_response(project)
 
     @fr.post("/{id}/archive", response_model=ProjectSchema)
@@ -269,23 +263,19 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
         """Archive a project (prevents new task creation).
 
         Update-shaped custom action: load via ``handle_get_one`` (scope + 404 +
-        read-auth), then run the action bracket by hand so authorize / snapshot
-        / before_commit / after_commit still fire. The route OWNS the commit --
-        the request-session dependency no longer commits on response, so the
-        ``status = ARCHIVED`` flip needs an explicit ``self._commit()`` to
-        persist.
+        read-auth), then drive the ``status = ARCHIVED`` flip through
+        ``handle_write("archive", ...)`` so authorize / snapshot / before_commit
+        / commit / after_commit all fire.
         """
         project = await self.handle_get_one(id)
         if project.status == ProjectStatus.ARCHIVED:
             raise HTTPException(status_code=400, detail="Project is already archived")
 
-        await self.authorize("archive", obj=project)
-        old = self.snapshot(project)
-        project.status = ProjectStatus.ARCHIVED
-        project = await self.save_object(project)
-        await self.before_commit("archive", new=project, old=old)
-        await self._commit()
-        await self.after_commit("archive", new=project, old=old)
+        async def _archive():
+            project.status = ProjectStatus.ARCHIVED
+            return await self.save_object(project)
+
+        project = await self.handle_write("archive", obj=project, mutate=_archive)
         return await self._decorate_project_response(project)
 
     @fr.post("/{id}/clone", response_model=ProjectSchema)
@@ -424,10 +414,9 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
         and keeps the row's autogenerated columns populated for the
         response.
 
-        Sibling/different-model create: the route OWNS the commit. The
-        request-session dependency no longer commits on response, so after
-        ``async_save_object`` (flush + refresh only) the route must call
-        ``self._commit()`` or the new task is silently rolled back.
+        Sibling/different-model create: the task insert + the project's
+        story-point rollup run through ``handle_write("create", ...)`` so they
+        commit atomically through the one bracket.
         """
         from fastapi_restly.objects import async_save_object
 
@@ -437,21 +426,22 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
                 status_code=400, detail="Cannot create tasks in an archived project"
             )
 
-        task = Task(
-            title=request.title,
-            description=request.description,
-            status=request.status,
-            priority=request.priority,
-            task_type=request.task_type,
-            project_id=id,
-            assignee_id=request.assignee_id,
-        )
-        self.session.add(task)
-        if task.story_points:
-            project.total_story_points += task.story_points
-        task = await async_save_object(self.session, task)
-        await self._commit()
-        return task
+        async def _create_task():
+            task = Task(
+                title=request.title,
+                description=request.description,
+                status=request.status,
+                priority=request.priority,
+                task_type=request.task_type,
+                project_id=id,
+                assignee_id=request.assignee_id,
+            )
+            self.session.add(task)
+            if task.story_points:
+                project.total_story_points += task.story_points
+            return await async_save_object(self.session, task)
+
+        return await self.handle_write("create", data=request, mutate=_create_task)
 
 
 class TaskCreateRequest(BaseModel):
