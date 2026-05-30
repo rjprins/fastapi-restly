@@ -139,7 +139,10 @@ the verb call chain below), which runs `before_commit` → commit → `after_com
 around your domain logic, so a write is committed exactly once before the
 response is built. A custom write route gets the same bracket by running its
 mutation through `handle_write(action, ..., mutate=...)`; a change that no
-handler committed is discarded when the session closes. Set
+handler committed is discarded when the session closes — and Restly warns
+(`RestlyUncommittedChangesWarning`, default on, `warn_on_uncommitted=False` to
+disable) when a request ends with such uncommitted changes, so the forgotten
+commit surfaces in dev instead of vanishing silently. Set
 `commit_session_on_response=False` in `fr.configure(...)` to take over every
 commit yourself (handlers will not commit). Custom session generators configured
 with `session_generator` or `sync_session_generator` are passed through

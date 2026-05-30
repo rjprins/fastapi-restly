@@ -292,7 +292,7 @@ Use these inside the business methods (`create`, `update`) or custom route metho
 | `fr.SessionDep` | FastAPI `Depends`-compatible sync session dependency. |
 | `fr.open_async_session()` | Open an async SQLAlchemy session context manager for use outside request handling, for example in background jobs or scripts. |
 | `fr.open_session()` | Open a sync SQLAlchemy session context manager for use outside request handling, for example in background jobs or scripts. |
-| `fr.configure(async_database_url=..., ...)` | Configure the framework. Accepts async/sync URLs, engines, session makers, custom session generators, and `commit_session_on_response`. |
+| `fr.configure(async_database_url=..., ...)` | Configure the framework. Accepts async/sync URLs, engines, session makers, custom session generators, `commit_session_on_response`, and `warn_on_uncommitted`. |
 | `fr.get_async_engine()` | Return the configured `AsyncEngine` instance. |
 | `fr.get_engine()` | Return the configured sync `Engine` instance. |
 
@@ -309,6 +309,8 @@ Applications that need more than one database can still use FastAPI and SQLAlche
 Restly's write handlers (`handle_create` / `handle_update` / `handle_delete`) own the commit: each runs `before_commit` → commit → `after_commit` around your domain logic, so a write is committed exactly once, just before the response is built (see [The handle design](the_handle_design.md)). The session dependencies (`AsyncSessionDep` / `SessionDep`) do **not** commit on response — they only manage the session lifecycle (roll back and close on the way out), so any change a handler did not commit is discarded.
 
 A **custom (non-CRUD) write route** should run its mutation through `handle_write(action, ..., mutate=...)` (or reuse `handle_create` / `handle_update` / `handle_delete`) — that applies the same authorize + commit bracket and commits exactly once. Only reach for `await self._commit()` directly when you're doing something the bracket doesn't model (e.g. a batch write that commits once after many rows); otherwise an un-committed write is rolled back when the request ends.
+
+As a safety net for that last case, Restly **warns** (`RestlyUncommittedChangesWarning`) when a request finishes with uncommitted changes still in the session — the tell of a write route that forgot to commit. It's on by default; disable with `fr.configure(warn_on_uncommitted=False)`, or suppress a deliberate validate-then-rollback dry run by setting `session.info["_fr_suppress_uncommitted"] = True` in the route. The check is skipped when `commit_session_on_response=False` (you own the commits) and for custom session generators.
 
 Set `commit_session_on_response=False` to own every `commit()` / `rollback()` yourself (handlers will not commit). If you pass `session_generator` or `sync_session_generator`, that custom generator owns the transaction lifecycle and Restly defers to it.
 
