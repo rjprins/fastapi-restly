@@ -137,8 +137,9 @@ lifecycle: the session's context manager rolls back and closes on the way out.
 They do **not** commit on response — the commit is owned by `handle_<verb>` (see
 the verb call chain below), which runs `before_commit` → commit → `after_commit`
 around your domain logic, so a write is committed exactly once before the
-response is built. A change a handler did not commit (e.g. a custom write route
-that forgets `await self._commit()`) is discarded when the session closes. Set
+response is built. A custom write route gets the same bracket by running its
+mutation through `handle_write(action, ..., mutate=...)`; a change that no
+handler committed is discarded when the session closes. Set
 `commit_session_on_response=False` in `fr.configure(...)` to take over every
 commit yourself (handlers will not commit). Custom session generators configured
 with `session_generator` or `sync_session_generator` are passed through

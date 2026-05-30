@@ -228,14 +228,18 @@ A common case: stamp server-controlled fields cooperatively. Prefer `prepare_cre
 ```python
     async def handle_delete(self, id):
         obj = await self.get_one(id)
-        await self.authorize("delete", obj=obj)
-        obj.status = "pending_deletion"
-        await self.save_object(obj)
-        await self._commit()
+
+        async def _mark_pending():
+            obj.status = "pending_deletion"
+            return await self.save_object(obj)
+
+        # handle_write runs the same bracket the default handle_delete uses:
+        # authorize("delete", obj) -> snapshot -> mutate -> before/after_commit.
+        await self.handle_write("delete", obj=obj, mutate=_mark_pending)
         await enqueue_async_delete(obj.id)  # actual delete happens off-request
 ```
 
-Because you call the tier-3 verbs (`get_one`) and utilities (`save_object`, `_commit`) yourself, you keep full control of orchestration while the route shell and response stay untouched.
+Because you load through the tier-3 verb (`get_one`) and drive the write through `handle_write` yourself, you keep full control of orchestration — the bracket still runs in one place — while the route shell and response stay untouched.
 
 ### Transaction hooks: `before_commit` / `after_commit`
 
@@ -444,7 +448,7 @@ class UserView(fr.AsyncRestView):
 
 Use `@fr.post` (or `@fr.patch`, `@fr.delete`) for explicit state-change actions such as archive, publish, or recalculate. A custom action has two good shapes:
 
-**Compose the domain verbs and reuse a handler's bracket.** Load with `get_one(id)`, mutate, and let `handle_update` (or `handle_create`) run the authorize-and-commit bracket so durability and post-commit hooks behave like a normal write:
+**Drive the mutation through `handle_write`.** Load with `handle_get_one(id)` (scope + 404 + read-auth), then run the change through `handle_write` with a custom action name — it applies the same authorize-and-commit bracket the CRUD writes use, so durability and post-commit hooks behave like a normal write:
 
 ```python
 @fr.include_view(app)
@@ -455,12 +459,15 @@ class OrderView(fr.AsyncRestView):
 
     @fr.post("/{id}/archive", status_code=202)
     async def archive(self, id: int):
-        order = await self.get_one(id)
+        order = await self.handle_get_one(id)
         if order.archived:
             raise fastapi.HTTPException(409, "Already archived")
-        order.archived = True
-        await self.save_object(order)
-        await self._commit()
+
+        async def _archive():
+            order.archived = True
+            return await self.save_object(order)
+
+        await self.handle_write("archive", obj=order, mutate=_archive)
         return {"id": order.id, "archived": order.archived}
 ```
 

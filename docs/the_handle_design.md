@@ -165,27 +165,30 @@ commit bracket, and the `before_commit` / `after_commit` side effects:
 If you want the full write orchestration for the action, route through
 `handle_update` / `handle_create` as above — you get `authorize`, the commit
 bracket, and `before_commit` / `after_commit` for free. If you instead need a
-bespoke step that is neither a plain create nor update, compose the domain
-utilities directly and let the bracket run once:
+bespoke step that is neither a plain create nor update, give the action its own
+name and run it through `handle_write` — the general write handler that
+`handle_create` / `handle_update` / `handle_delete` themselves delegate to:
 
 ```python
     @fr.post("/{id}/publish")
     async def publish(self, id: int):
-        article = await self.handle_get_one(id)
-        await self.authorize("publish", obj=article)
-        old = self.snapshot(article)
-        article.status = "published"
-        article = await self.save_object(article)        # flush + refresh, no commit
-        await self.before_commit("publish", new=article, old=old)
-        await self._commit()
-        await self.after_commit("publish", new=article, old=old)
-        return self.to_response(article, "update")
+        article = await self.handle_get_one(id)   # scope + 404 + read-auth
+
+        async def _publish():
+            article.status = "published"
+            return await self.save_object(article)  # flush + refresh, no commit
+
+        published = await self.handle_write("publish", obj=article, mutate=_publish)
+        return self.to_response(published, "update")
 ```
 
-The second form is exactly what `handle_update` does internally — reach for it
-only when your action does not map onto an existing verb. For the common case,
-reusing `handle_update` / `handle_create` is shorter and keeps the bracket in
-one place.
+`handle_write(action, *, obj=None, data=None, mutate)` runs the whole bracket —
+`authorize(action, obj, data)` → `snapshot` → your `mutate` → `before_commit` →
+commit → `after_commit` — and returns whatever `mutate` returns. You never call
+`_commit()` by hand or reassemble the steps; the lifecycle lives in one place
+(the self-free function `fr.run_write_action`, which `handle_write` delegates
+to), and overriding `handle_write` changes it for every write on the view at
+once.
 
 ## The domain utilities
 
