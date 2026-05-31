@@ -24,34 +24,39 @@ breaking change; views written for 0.5.x need updating.
   commit → `after_commit` around your domain logic, and the request-session
   dependency (`AsyncSessionDep` / `SessionDep`) **no longer commits on
   response**. `after_commit` therefore runs after the write is durable. A custom
-  (non-CRUD) write route brackets its mutation with `async with
-  self.write_action(action, ...)` (or reuses `handle_<verb>`) to get the same
-  bracket; `_commit()` is internal. Setting `commit_session_on_response=False`,
-  or configuring a custom session generator, opts out of / takes over the commit.
+  (non-CRUD) write route should reuse `handle_<verb>` or bracket its mutation
+  with `with` / `async with self.write_action(action, ...)` to get the same
+  lifecycle; a route that deliberately manages the lifecycle itself must commit
+  explicitly with `_commit()` / `session.commit()`. Setting
+  `commit_session_on_response=False`, or configuring a custom session generator,
+  opts out of / takes over the commit.
 - Renamed: `creation_schema`/`update_schema` → `schema_create`/`schema_update`;
   `build_from_schema`/`apply_schema` → `make_new_object`/`update_object`;
   `count_listing` → `count`. Response shaping goes through a single
-  `to_response(obj_or_list, action)` method. `ViewRoute.LIST`/`GET` →
-  `ViewRoute.GET_MANY`/`GET_ONE`.
+  `to_response(obj_or_list, shape=ResponseShape.SINGLE)` method.
+  `ViewRoute.LIST`/`GET` → `ViewRoute.GET_MANY`/`GET_ONE`.
 
 ### Added
 
 - `authorize(action, obj, data)` override — an empty seam by default; raise
   `fr.Forbidden` / `fr.NotFound` to gate a verb (row visibility goes in
   `build_query`).
-- Cooperative `prepare_create` / `prepare_update` field-stamping overrides.
 - `before_commit` / `after_commit` transaction hooks and a `snapshot()` helper
   for old-vs-new comparison.
 - Typed request-time exceptions `NotFound`, `Forbidden`, `Conflict`, and
   `BadQueryParam`, subclassing `fastapi.HTTPException` (so a single
   `app.add_exception_handler(fr.NotFound, ...)` can reshape them).
 - Top-level `make_new_object` / `update_object` / `save_object` /
-  `delete_object` helpers (and their `async_*` variants) for use outside a view.
+  `delete_object` / `snapshot` helpers (and their `async_*` variants where
+  applicable) for use outside a view.
 - `write_action(action, *, obj, data)` — a context manager for custom write
   *actions* (`async with self.write_action("publish", obj=...): ...`) that runs
   the same authorize + commit bracket the CRUD handlers do. Plus the self-free
-  `run_write_action` / `async_run_write_action` (exported) underneath, usable off
-  the HTTP path.
+  `run_write_action` / `async_run_write_action` (in `fastapi_restly.views`)
+  underneath, usable off the HTTP path. Create-shaped actions that omit `obj=`
+  must assign the yielded handle's `.obj` before the block exits, otherwise a
+  clean exit raises instead of committing with hooks unable to see the new
+  object.
 - `RestlyUncommittedChangesWarning` (default on; `warn_on_uncommitted=False` to
   disable) when a request finishes with uncommitted changes — the tell of a
   write route that forgot to commit.
@@ -63,6 +68,9 @@ breaking change; views written for 0.5.x need updating.
   and collided with its `*_endpoint` route shell.
 - Registering a View subclass alongside its parent on the same app no longer
   duplicates the child's routes.
+- React Admin list/count/update paths now use the same `build_query`, `count`,
+  authorization, and commit lifecycle as standard REST views; filter/sort
+  resolution is limited to public schema fields.
 
 ## [0.5.1] - 2026-05-11
 
