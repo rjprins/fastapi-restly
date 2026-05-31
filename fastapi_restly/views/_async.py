@@ -26,7 +26,7 @@ from ._base import (
     patch,
     post,
 )
-from ._lifecycle import async_run_write_action, async_write_action
+from ._lifecycle import _UNSET, async_run_write_action, async_write_action
 
 
 class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT]):
@@ -101,7 +101,7 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         await self.authorize(Action.GET_ONE, obj=obj)
         return obj
 
-    def write_action(self, action: str, *, obj: Any = None, data: Any = None):
+    def write_action(self, action: str, *, obj: Any = _UNSET, data: Any = None):
         """Run a custom write *action* through the full request bracket.
 
         Used as an async context manager from a custom write route: it runs
@@ -111,15 +111,20 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         a state transition); CRUD-shaped logic belongs in the ``create`` /
         ``update`` / ``delete`` overrides instead::
 
-            async with self.write_action("publish", obj=article):
+            async with self.write_action("publish", obj=article):  # in-place
                 article.status = "published"
 
-        For a create-shaped action, deposit the new object on the handle::
+        For a create-shaped action -- where no ``obj`` exists yet -- pass no
+        ``obj`` and deposit the new object on the handle::
 
             async with self.write_action("create", data=req) as w:
                 w.obj = await self.make_new_object(req)
 
-        A raise inside the block skips the commit (the write rolls back).
+        Forgetting that deposit is guarded: a create-shaped block (no ``obj=``)
+        that never sets ``handle.obj`` raises ``RuntimeError`` on exit instead of
+        silently committing the row with the hooks blind to it. For a write with
+        no single object, pass ``obj=None`` explicitly. A raise inside the block
+        skips the commit (the write rolls back).
         """
         return async_write_action(self, action, obj=obj, data=data)
 

@@ -6,6 +6,7 @@ bracket -- authorize -> snapshot -> (your inline body) -> before_commit -> commi
 create-shaped action you deposit the new object on ``w.obj`` and read it back.
 """
 
+import pytest
 from sqlalchemy.orm import Mapped, mapped_column
 
 import fastapi_restly as fr
@@ -126,3 +127,71 @@ def test_create_shaped_action_returns_via_handle(client):
     cloned = client.post(f"/items/clone/{a['id']}").json()
     assert cloned["name"] == "x (copy)"
     assert len(client.get("/items/").json()) == 2
+
+
+def test_create_shaped_action_without_deposit_raises_and_rolls_back(client):
+    """The create-shaped footgun: a block with no ``obj=`` that builds a row but
+    forgets to set ``w.obj`` raises ``RuntimeError`` on exit (instead of silently
+    committing the row with the hooks blind to it), and the write rolls back."""
+
+    class Thing(fr.IDBase):
+        name: Mapped[str]
+
+    class ThingSchema(fr.IDSchema):
+        name: str
+
+    @fr.include_view(client.app)
+    class ThingView(fr.AsyncRestView):
+        prefix = "/things"
+        model = Thing
+        schema = ThingSchema
+
+        @fr.post("/sneaky")
+        async def sneaky(self):
+            # create-shaped (no obj=): build a row but FORGET to deposit w.obj.
+            async with self.write_action("create"):
+                self.session.add(Thing(name="ghost"))
+                await self.session.flush()
+            return {"never": "reached"}
+
+    create_tables()
+
+    with pytest.raises(RuntimeError, match="create-shaped"):
+        client.post("/things/sneaky")
+
+    # The guard fired before commit, so the flushed row never persisted.
+    assert client.get("/things/").json() == []
+
+
+def test_explicit_no_object_write_is_allowed(client):
+    """Passing ``obj=None`` explicitly is a no-object write: no guard fires and
+    the commit hooks see ``new=None``."""
+    seen: dict = {}
+
+    class Widget(fr.IDBase):
+        name: Mapped[str]
+
+    class WidgetSchema(fr.IDSchema):
+        name: str
+
+    @fr.include_view(client.app)
+    class WidgetView(fr.AsyncRestView):
+        prefix = "/widgets"
+        model = Widget
+        schema = WidgetSchema
+
+        async def after_commit(self, action, new, old=None):
+            seen["action"] = action
+            seen["new"] = new
+
+        @fr.post("/recompute")
+        async def recompute(self):
+            # No single object -> pass obj=None explicitly; the guard stays quiet.
+            async with self.write_action("recompute", obj=None):
+                pass
+            return {"ok": True}
+
+    create_tables()
+
+    assert client.post("/widgets/recompute").json() == {"ok": True}
+    assert seen == {"action": "recompute", "new": None}

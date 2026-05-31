@@ -20,11 +20,18 @@ from typing import Any, Protocol, TypeVar
 
 T = TypeVar("T")
 
+#: Marks "no ``obj`` was passed to ``write_action``" -- distinguishes a
+#: create-shaped action (you MUST deposit ``handle.obj``) from an in-place action
+#: (``obj=<row>``) and from an explicit no-object write (``obj=None``). See the
+#: exit guard in the context managers below.
+_UNSET: Any = object()
+
 
 class _WriteHandle:
-    """Yielded by the ``write_action`` context manager. ``obj`` defaults to the
-    object passed in (mutate it in place); reassign it for a create-shaped action
-    where the object does not exist until the body runs. It is what the commit
+    """Yielded by the ``write_action`` context manager. ``obj`` starts as the
+    object passed in (mutate it in place); for a create-shaped action -- where no
+    ``obj`` was passed -- it starts as the ``_UNSET`` sentinel and you must assign
+    the new object (``w.obj = ...``) before the block exits. It is what the commit
     hooks see as ``new`` and what you read after the block.
     """
 
@@ -32,6 +39,23 @@ class _WriteHandle:
 
     def __init__(self, obj: Any) -> None:
         self.obj = obj
+
+
+def _require_deposited_obj(action: str, handle: _WriteHandle) -> None:
+    """Guard the create-shaped block: raise if the body never set ``handle.obj``.
+
+    Reached on a clean exit only when no ``obj`` was passed to ``write_action``
+    and nothing was deposited -- the create-shaped footgun, where the built row
+    would otherwise commit while the commit hooks (and the caller's read-back)
+    see ``None``. Turns that silent-wrong-result into a loud error.
+    """
+    if handle.obj is _UNSET:
+        raise RuntimeError(
+            f"write_action({action!r}) is create-shaped (no obj= was passed) but "
+            "the block never set handle.obj. Assign the new object "
+            "(`w.obj = <object>`) inside the block; pass obj=<row> for an in-place "
+            "write, or obj=None for an explicit no-object write."
+        )
 
 
 class AsyncWriteHost(Protocol):
@@ -56,19 +80,30 @@ class WriteHost(Protocol):
 
 @contextlib.asynccontextmanager
 async def async_write_action(
-    host: AsyncWriteHost, action: str, *, obj: Any = None, data: Any = None
+    host: AsyncWriteHost, action: str, *, obj: Any = _UNSET, data: Any = None
 ):
     """The async write bracket as a context manager.
 
     ``__aenter__`` runs ``authorize`` + ``snapshot`` and yields a handle; your
-    body mutates (in place, or sets ``handle.obj`` for a create); on a clean exit
-    it runs ``before_commit`` -> commit -> ``after_commit``. A raise in the body
-    skips the commit and propagates (the session dependency rolls back).
+    body mutates (in place when ``obj=`` was passed, or sets ``handle.obj`` for a
+    create); on a clean exit it runs ``before_commit`` -> commit ->
+    ``after_commit``. A raise in the body skips the commit and propagates (the
+    session dependency rolls back).
+
+    The shape is selected by whether ``obj`` is passed:
+
+    * ``obj=<row>`` -- in-place: the hooks see that row as ``new``.
+    * ``obj=None`` -- explicit no-object write: the hooks see ``new=None``.
+    * not passed -- create-shaped: you MUST set ``handle.obj`` in the block, or a
+      clean exit raises ``RuntimeError`` (otherwise the row would commit with the
+      hooks -- and your read-back -- blind to it).
     """
-    await host.authorize(action, obj=obj, data=data)
-    old = host.snapshot(obj) if obj is not None else None
+    passed = obj is not _UNSET
+    await host.authorize(action, obj=obj if passed else None, data=data)
+    old = host.snapshot(obj) if (passed and obj is not None) else None
     handle = _WriteHandle(obj)
     yield handle
+    _require_deposited_obj(action, handle)
     await host.before_commit(action, new=handle.obj, old=old)
     await host._commit()
     await host.after_commit(action, new=handle.obj, old=old)
@@ -76,13 +111,16 @@ async def async_write_action(
 
 @contextlib.contextmanager
 def sync_write_action(
-    host: WriteHost, action: str, *, obj: Any = None, data: Any = None
+    host: WriteHost, action: str, *, obj: Any = _UNSET, data: Any = None
 ):
-    """Sync variant of :func:`async_write_action`."""
-    host.authorize(action, obj=obj, data=data)
-    old = host.snapshot(obj) if obj is not None else None
+    """Sync variant of :func:`async_write_action` (same three shapes and the same
+    create-shaped exit guard)."""
+    passed = obj is not _UNSET
+    host.authorize(action, obj=obj if passed else None, data=data)
+    old = host.snapshot(obj) if (passed and obj is not None) else None
     handle = _WriteHandle(obj)
     yield handle
+    _require_deposited_obj(action, handle)
     host.before_commit(action, new=handle.obj, old=old)
     host._commit()
     host.after_commit(action, new=handle.obj, old=old)

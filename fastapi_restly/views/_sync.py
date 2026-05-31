@@ -26,7 +26,7 @@ from ._base import (
     patch,
     post,
 )
-from ._lifecycle import run_write_action, sync_write_action
+from ._lifecycle import _UNSET, run_write_action, sync_write_action
 
 
 class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT]):
@@ -90,7 +90,7 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         self.authorize(Action.GET_ONE, obj=obj)
         return obj
 
-    def write_action(self, action: str, *, obj: Any = None, data: Any = None):
+    def write_action(self, action: str, *, obj: Any = _UNSET, data: Any = None):
         """Run a custom write *action* through the full request bracket.
 
         Used as a context manager from a custom write route: it runs
@@ -102,8 +102,11 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
             with self.write_action("publish", obj=article):
                 article.status = "published"
 
-        For a create-shaped action, deposit the new object on the handle
-        (``as w: w.obj = ...``). A raise inside the block skips the commit.
+        For a create-shaped action (no ``obj=``), deposit the new object on the
+        handle (``as w: w.obj = ...``); forgetting that deposit raises
+        ``RuntimeError`` on exit instead of silently committing the row. Pass
+        ``obj=None`` for a write with no single object. A raise inside the block
+        skips the commit.
         """
         return sync_write_action(self, action, obj=obj, data=data)
 
