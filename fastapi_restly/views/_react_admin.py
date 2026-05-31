@@ -19,7 +19,7 @@ from sqlalchemy.orm import DeclarativeBase, RelationshipProperty
 
 from ..exceptions import BadQueryParam
 from ._async import AsyncRestView
-from ._base import _annotate, get, put
+from ._base import Action, _annotate, get, put
 from ._sync import RestView
 
 #: Default page size used when the react-admin client does not send a `range`
@@ -368,7 +368,7 @@ class AsyncReactAdminView(_ReactAdminMixin, AsyncRestView):
 
     @get("/")
     async def get_many_endpoint(self) -> Any:
-        await self.authorize("get_many")
+        await self.authorize(Action.GET_MANY)
         sort, (start, end), filters = self._parse_react_admin_params()
         total = await self.count(self._build_count_query(filters))
         items = (
@@ -383,7 +383,7 @@ class AsyncReactAdminView(_ReactAdminMixin, AsyncRestView):
     @put("/{id}")
     async def put(self, id: Any, schema_obj: Any) -> Any:
         obj = await self.handle_update(id, schema_obj)
-        return self.to_response(obj, "update")
+        return self.to_response(obj)
 
 
 class ReactAdminView(_ReactAdminMixin, RestView):
@@ -396,7 +396,7 @@ class ReactAdminView(_ReactAdminMixin, RestView):
 
     @get("/")
     def get_many_endpoint(self) -> Any:
-        self.authorize("get_many")
+        self.authorize(Action.GET_MANY)
         sort, (start, end), filters = self._parse_react_admin_params()
         total = self.count(self._build_count_query(filters))
         items = self.session.scalars(
@@ -409,4 +409,4 @@ class ReactAdminView(_ReactAdminMixin, RestView):
     @put("/{id}")
     def put(self, id: Any, schema_obj: Any) -> Any:
         obj = self.handle_update(id, schema_obj)
-        return self.to_response(obj, "update")
+        return self.to_response(obj)

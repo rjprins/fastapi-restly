@@ -217,7 +217,7 @@ after durability. Because the business verb never commits, overriding `create`
 to build the object, set a `password_hash`, call `save_object`, and return it
 persists correctly — there is no "mutate-after-save" trap.
 
-The route shell calls `to_response(obj, action)`, the single response method.
+The route shell calls `to_response(obj, shape)`, the single response method.
 `to_response` in turn delegates to `to_response_schema(obj)` for the per-object
 serialization (`WriteOnly` filtering, relationship-id normalization).
 

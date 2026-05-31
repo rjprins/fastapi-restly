@@ -104,13 +104,46 @@ def test_permissions_allows_user_with_permission(client):
     assert resp.json()["name"] == "x"
 
 
-def test_unlisted_action_is_unrestricted(client):
-    """An action absent from ``permissions`` is a no-op check (open)."""
+def test_undeclared_write_action_fails_closed_in_declarative_mode(client):
+    """Once any permission is declared, an *undeclared write* fails closed.
+
+    ``delete`` is declared, so the view is in declarative mode; ``create`` has
+    no entry, so it is denied rather than silently open. This is the guard that
+    catches a typo'd/forgotten custom write (``write_action("pubish")``)
+    dropping its gate.
+    """
     client.app.add_middleware(_PermsMiddleware)
     _make_item_view(client.app, permissions={"delete": "items:delete"})
 
-    # create has no entry -> allowed even with no user (default asserts 201).
+    # create has no entry -> denied (even though delete is the only listed perm).
+    client.post(
+        "/items/",
+        json={"name": "x", "hidden": False},
+        headers={"X-Perms": "items:delete"},
+        assert_status_code=403,
+    )
+
+
+def test_declared_public_action_is_open(client):
+    """A falsy permission value (``""``) declares an action intentionally open,
+    so it is allowed even with no authenticated user."""
+    client.app.add_middleware(_PermsMiddleware)
+    _make_item_view(
+        client.app, permissions={"create": "", "delete": "items:delete"}
+    )
+
+    # create is declared public -> allowed with no user (default asserts 2xx).
     client.post("/items/", json={"name": "x", "hidden": False})
+
+
+def test_undeclared_read_stays_open_in_declarative_mode(client):
+    """Reads (``get_one`` / ``get_many``) stay open by default even in
+    declarative mode -- only writes fail closed when undeclared."""
+    client.app.add_middleware(_PermsMiddleware)
+    _make_item_view(client.app, permissions={"create": "items:create"})
+
+    # get_many has no entry but is a read -> still allowed.
+    assert client.get("/items/").json() == []
 
 
 # ---------------------------------------------------------------------------

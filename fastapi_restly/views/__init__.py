@@ -1,7 +1,9 @@
 from ._async import AsyncRestView
 from ._base import (
+    Action,
     BaseRestView,
     ListingResult,
+    ResponseShape,
     View,
     ViewRoute,
     delete,
@@ -29,6 +31,8 @@ __all__ = [
     "ReactAdminView",
     "BaseRestView",
     "ListingResult",
+    "Action",
+    "ResponseShape",
     "View",
     "ViewRoute",
     "async_run_write_action",

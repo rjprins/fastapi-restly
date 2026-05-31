@@ -93,6 +93,51 @@ class ViewRoute(str, Enum):
     DELETE = "delete_endpoint"
 
 
+class ResponseShape(str, Enum):
+    """The wire shape a route shell asks :meth:`BaseRestView.to_response` to
+    produce.
+
+    A *closed* set of exactly three shapes -- unlike the open write-action
+    namespace -- so an ``Enum`` is the right model: it will never be extended,
+    and a shell can only ever want one of these. This is the response
+    selector; it is deliberately NOT the write-action string (``"publish"`` and
+    friends), which keeps the two concerns from being conflated.
+    """
+
+    SINGLE = "single"  # one serialized object
+    LISTING = "listing"  # a ListingResult -> array / paginated envelope
+    EMPTY = "empty"  # 204 No Content
+
+
+class Action:
+    """Canonical CRUD action names passed to ``authorize`` / ``before_commit``
+    / ``after_commit`` and used as ``permissions`` keys.
+
+    A plain constants class, **not an Enum**: the action namespace is *open* --
+    custom write actions contribute their own names (``"publish"``,
+    ``"restore"``), and mixins add more -- and a Python ``Enum`` cannot be
+    extended once it has members, which would break the framework's mixin
+    composition. Reference these constants (and declare your own as siblings:
+    ``class TaskActions: PUBLISH = "publish"``) so a typo is an
+    ``AttributeError`` at import time rather than a silently-missed check at
+    runtime.
+    """
+
+    GET_MANY = "get_many"
+    GET_ONE = "get_one"
+    CREATE = "create"
+    UPDATE = "update"
+    DELETE = "delete"
+
+
+# The only actions that reach ``authorize`` as *reads*. A custom read route
+# reuses ``handle_get_one`` rather than authorizing a name of its own, so every
+# other action string that reaches ``_check_permission`` is a write. That
+# invariant is what lets the declarative-permissions check fail closed on an
+# undeclared *write* while leaving reads open by default.
+_READ_ACTIONS = frozenset({Action.GET_MANY, Action.GET_ONE})
+
+
 def _accepts_init_kwarg(model_cls: type, attr_name: str) -> bool:
     """Return True if attr_name can be passed as a keyword argument to model_cls.__init__.
 
@@ -886,15 +931,25 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
 
         return self.to_paginated_listing_response(query_params, listing_result)
 
-    def to_response(self, obj_or_list: Any, action: str) -> Any:
+    def to_response(
+        self, obj_or_list: Any, shape: ResponseShape = ResponseShape.SINGLE
+    ) -> Any:
         """Single response chokepoint -- the WIRE boundary, called by the route
-        shells. Override for envelopes, custom status codes (return a
-        ``fastapi.Response``), or per-action field projection. Error bodies are
+        shells. ``shape`` is a closed ``{single, listing, empty}`` selector, NOT
+        the open write-action name: a response only ever needs to know which
+        wire shape to emit, so the write action (``"publish"``) and the
+        response shape are kept as separate concerns. A custom write route just
+        calls ``self.to_response(obj)`` (single is the default).
+
+        Override for envelopes or custom status codes (return a
+        ``fastapi.Response``); branch on ``shape`` if the envelope differs by
+        shape. Genuinely per-endpoint projection belongs in the specific
+        ``*_endpoint`` shell, which already owns the wire. Error bodies are
         shaped at the FastAPI exception-handler layer, not here.
         """
-        if action == "delete":
+        if shape is ResponseShape.EMPTY:
             return fastapi.Response(status_code=204)
-        if action == "get_many":
+        if shape is ResponseShape.LISTING:
             return self.to_listing_response(obj_or_list.query_params, obj_or_list)
         return self.to_response_schema(obj_or_list)
 
@@ -920,24 +975,42 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
 
     def _check_permission(self, action: str) -> None:
         """Default ``authorize`` body, shared by sync and async views. Consults
-        :attr:`permissions`; no-op when the action has no required permission.
+        :attr:`permissions` and fails *closed*:
 
-        Fails *closed*: a missing ``AuthenticationMiddleware`` (Starlette's
-        ``request.user`` raises ``AssertionError``) or an unauthenticated user
-        (no ``has_permission``) results in 403, never a 500.
+        * A **declared** action enforces its permission against
+          ``request.user``. A missing ``AuthenticationMiddleware`` (Starlette's
+          ``request.user`` raises ``AssertionError``) or an unauthenticated user
+          (no ``has_permission``) is a 403, never a 500. Mapping an action to a
+          falsy value (``""``) declares it intentionally **public**.
+        * Once *any* permission is declared, the view is in declarative mode and
+          an **undeclared write** action is denied rather than silently open --
+          so a typo'd or forgotten custom write (``write_action("pubish")``)
+          fails closed instead of dropping its gate. Reads (``get_one`` /
+          ``get_many``) stay open by default; declare them to gate them.
+        * With **no** ``permissions`` declared at all, every action is open
+          (authorization is handled elsewhere -- middleware, or a custom
+          ``authorize`` override).
         """
-        perm = self.permissions.get(action)
-        if not perm:
-            return
         from ..exceptions import Forbidden
 
-        request = getattr(self, "request", None)
-        try:
-            user = request.user if request is not None else None
-        except (AssertionError, AttributeError):
-            user = None
-        has_permission = getattr(user, "has_permission", None)
-        if has_permission is None or not has_permission(perm):
+        if action in self.permissions:
+            perm = self.permissions[action]
+            if not perm:
+                return  # declared public
+            request = getattr(self, "request", None)
+            try:
+                user = request.user if request is not None else None
+            except (AssertionError, AttributeError):
+                user = None
+            has_permission = getattr(user, "has_permission", None)
+            if has_permission is None or not has_permission(perm):
+                raise Forbidden()
+            return
+
+        # Action is not declared. In declarative mode an undeclared *write*
+        # fails closed (every non-read action reaching here is a write); reads
+        # and the no-permissions-at-all case stay open.
+        if self.permissions and action not in _READ_ACTIONS:
             raise Forbidden()
 
     @classmethod

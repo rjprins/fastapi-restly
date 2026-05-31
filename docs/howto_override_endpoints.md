@@ -336,18 +336,27 @@ Use the business verb for the common case. Climb a tier only when the change gen
 
 ### `to_response` — the one response method
 
-Generated route shells return their result through `self.to_response(obj_or_list, action)`. This is the single wire-side response method: it produces the `204` on delete, the list envelope on `get_many`, and the validated response schema otherwise. Override it for envelopes, per-action projection, or a custom status code (return a `fastapi.Response`) without replacing each route shell:
+Generated route shells return their result through `self.to_response(obj_or_list, shape)`, where `shape` is a closed `fr.ResponseShape` — `SINGLE`, `LISTING`, or `EMPTY`. This is the single wire-side response method: it produces the `204` on delete (`EMPTY`), the list envelope on `get_many` (`LISTING`), and the validated response schema otherwise (`SINGLE`, the default). Override it for an envelope or a custom status code that applies across a shape, without replacing each route shell:
 
 ```python
-    def to_response(self, obj_or_list, action):
-        if action == "create":
-            return fastapi.Response(
-                content=self.to_response_schema(obj_or_list).model_dump_json(),
-                media_type="application/json",
-                status_code=201,
-                headers={"Location": f"{self.prefix}/{obj_or_list.id}"},
-            )
-        return super().to_response(obj_or_list, action)
+    def to_response(self, obj_or_list, shape=fr.ResponseShape.SINGLE):
+        if shape is fr.ResponseShape.SINGLE:
+            return {"data": self.to_response_schema(obj_or_list)}
+        return super().to_response(obj_or_list, shape)
+```
+
+`to_response` is keyed on the wire *shape*, not the write action, so it cannot tell a `create` response from a `get_one` response — both are `SINGLE`. When the HTTP contract for *one specific verb* has to change (a `201` with a `Location` header on create), override that verb's **route shell**, which owns the wire:
+
+```python
+    @fr.post("/")
+    async def create_endpoint(self, schema_obj):
+        obj = await self.handle_create(schema_obj)
+        return fastapi.Response(
+            content=self.to_response_schema(obj).model_dump_json(),
+            media_type="application/json",
+            status_code=201,
+            headers={"Location": f"{self.prefix}/{obj.id}"},
+        )
 ```
 
 For the per-object serialization itself, `to_response_schema(obj)` builds a response payload from the configured schema, strips `WriteOnly` fields, normalizes relationship id fields, and validates through Pydantic — so response-side `@field_validator` / `@field_serializer` hooks behave exactly as they would on an ordinary Pydantic model. Override `to_response_schema` when one endpoint family needs a different projection, or a faster path that skips validation:

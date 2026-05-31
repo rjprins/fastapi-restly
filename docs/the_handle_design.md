@@ -63,7 +63,7 @@ POST /
             ├─ before_commit("create", new=obj)
             ├─ commit                             # the framework owns this
             └─ after_commit("create", new=obj)    # runs after durability
-       └─ to_response(obj, "create")          # back at the wire boundary
+       └─ to_response(obj)                     # back at the wire boundary (single)
 ```
 
 `update` and `delete` follow the same shape. Their handlers first load the row
@@ -84,7 +84,7 @@ GET /{id}
             │    └─ build_query()    # VISIBILITY: scope (tenant, soft-delete, row-level)
             │                        #   → a hidden row is a clean 404 for every caller
             └─ authorize("get_one", obj=obj)   # POLICY: read-auth on the loaded row
-       └─ to_response(obj, "get_one")
+       └─ to_response(obj)
 ```
 
 Because `get_one` routes through `build_query`, **visibility lives in one
@@ -175,19 +175,23 @@ the same lifecycle the CRUD handlers do:
         article = await self.handle_get_one(id)   # scope + 404 + read-auth
         async with self.write_action("publish", obj=article):
             article.status = "published"
-        return self.to_response(article, "update")
+        return self.to_response(article)
 ```
 
 `__aenter__` runs `authorize(action, obj, data)` + `snapshot`; your inline body
 mutates; `__aexit__` runs `before_commit` → commit → `after_commit` (a raise in
 the body skips the commit). You never call `_commit()` by hand or reassemble the
-steps. For a **create-shaped** action — where the object does not exist until the
-body runs — deposit it on the yielded handle and read it back:
+steps. Note the response is simply `to_response(article)`: the write *action*
+(`"publish"`) drives authorization and the commit hooks, while the response only
+needs the wire *shape* (`single`, the default) — they are separate concerns, so
+you never pass the action name to `to_response`. For a **create-shaped** action —
+where the object does not exist until the body runs — deposit it on the yielded
+handle and read it back:
 
 ```python
     async with self.write_action("create", data=req) as w:
         w.obj = await self.make_new_object(req)
-    return self.to_response(w.obj, "create")
+    return self.to_response(w.obj)
 ```
 
 Under the hood `write_action` and the CRUD handlers share one implementation:

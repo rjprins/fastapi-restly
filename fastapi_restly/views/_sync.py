@@ -12,11 +12,13 @@ from ..objects import save_object as object_save_object
 from ..objects import update_object as object_update_object
 from ..query import apply_list_params
 from ._base import (
+    Action,
     BaseRestView,
     CreateSchemaT,
     IdT,
     ListingResult,
     ModelT,
+    ResponseShape,
     SchemaT,
     UpdateSchemaT,
     delete,
@@ -53,39 +55,39 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
     def get_many_endpoint(self, query_params: Any) -> Any:
         self._reject_unknown_query_params()
         result = self.handle_get_many(query_params)
-        return self.to_response(result, "get_many")
+        return self.to_response(result, ResponseShape.LISTING)
 
     @get("/{id}")
     def get_one_endpoint(self, id: Any) -> Any:
         obj = self.handle_get_one(id)
-        return self.to_response(obj, "get_one")
+        return self.to_response(obj)
 
     @post("/")
     def create_endpoint(self, schema_obj: Any) -> Any:
         obj = self.handle_create(schema_obj)
-        return self.to_response(obj, "create")
+        return self.to_response(obj)
 
     @patch("/{id}")
     def update_endpoint(self, id: Any, schema_obj: Any) -> Any:
         obj = self.handle_update(id, schema_obj)
-        return self.to_response(obj, "update")
+        return self.to_response(obj)
 
     @delete("/{id}")
     def delete_endpoint(self, id: Any) -> Any:
         self.handle_delete(id)
-        return self.to_response(None, "delete")
+        return self.to_response(None, ResponseShape.EMPTY)
 
     # ====================================================================
     # Request handlers (authorize + commit bracket)
     # ====================================================================
 
     def handle_get_many(self, query_params: Any) -> ListingResult[ModelT]:
-        self.authorize("get_many")
+        self.authorize(Action.GET_MANY)
         return self.get_many(query_params)
 
     def handle_get_one(self, id: IdT) -> ModelT:
         obj = self.get_one(id)
-        self.authorize("get_one", obj=obj)
+        self.authorize(Action.GET_ONE, obj=obj)
         return obj
 
     def write_action(self, action: str, *, obj: Any = None, data: Any = None):
@@ -107,14 +109,14 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
 
     def handle_create(self, schema_obj: CreateSchemaT) -> ModelT:
         return run_write_action(
-            self, "create", data=schema_obj, mutate=lambda: self.create(schema_obj)
+            self, Action.CREATE, data=schema_obj, mutate=lambda: self.create(schema_obj)
         )
 
     def handle_update(self, id: IdT, schema_obj: UpdateSchemaT) -> ModelT:
         obj = self.get_one(id)
         return run_write_action(
             self,
-            "update",
+            Action.UPDATE,
             obj=obj,
             data=schema_obj,
             mutate=lambda: self.update(obj, schema_obj),
@@ -122,7 +124,7 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
 
     def handle_delete(self, id: IdT) -> None:
         obj = self.get_one(id)
-        run_write_action(self, "delete", obj=obj, mutate=lambda: self.delete(obj))
+        run_write_action(self, Action.DELETE, obj=obj, mutate=lambda: self.delete(obj))
 
     # ====================================================================
     # Domain operations (auth-free, commit-free) -- the common override point

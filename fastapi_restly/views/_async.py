@@ -12,11 +12,13 @@ from ..objects import async_save_object as object_async_save_object
 from ..objects import async_update_object as object_async_update_object
 from ..query import apply_list_params
 from ._base import (
+    Action,
     BaseRestView,
     CreateSchemaT,
     IdT,
     ListingResult,
     ModelT,
+    ResponseShape,
     SchemaT,
     UpdateSchemaT,
     delete,
@@ -59,27 +61,27 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     async def get_many_endpoint(self, query_params: Any) -> Any:
         self._reject_unknown_query_params()
         result = await self.handle_get_many(query_params)
-        return self.to_response(result, "get_many")
+        return self.to_response(result, ResponseShape.LISTING)
 
     @get("/{id}")
     async def get_one_endpoint(self, id: Any) -> Any:
         obj = await self.handle_get_one(id)
-        return self.to_response(obj, "get_one")
+        return self.to_response(obj)
 
     @post("/")
     async def create_endpoint(self, schema_obj: Any) -> Any:
         obj = await self.handle_create(schema_obj)
-        return self.to_response(obj, "create")
+        return self.to_response(obj)
 
     @patch("/{id}")
     async def update_endpoint(self, id: Any, schema_obj: Any) -> Any:
         obj = await self.handle_update(id, schema_obj)
-        return self.to_response(obj, "update")
+        return self.to_response(obj)
 
     @delete("/{id}")
     async def delete_endpoint(self, id: Any) -> Any:
         await self.handle_delete(id)
-        return self.to_response(None, "delete")
+        return self.to_response(None, ResponseShape.EMPTY)
 
     # ====================================================================
     # Request handlers (authorize + commit bracket)
@@ -87,7 +89,7 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
 
     async def handle_get_many(self, query_params: Any) -> ListingResult[ModelT]:
         """List request handler: ``authorize`` then the ``get_many`` domain op."""
-        await self.authorize("get_many")
+        await self.authorize(Action.GET_MANY)
         return await self.get_many(query_params)
 
     async def handle_get_one(self, id: IdT) -> ModelT:
@@ -96,7 +98,7 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         Reusable from custom actions as "load with scope + 404 + read-auth".
         """
         obj = await self.get_one(id)
-        await self.authorize("get_one", obj=obj)
+        await self.authorize(Action.GET_ONE, obj=obj)
         return obj
 
     def write_action(self, action: str, *, obj: Any = None, data: Any = None):
@@ -123,14 +125,14 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
 
     async def handle_create(self, schema_obj: CreateSchemaT) -> ModelT:
         return await async_run_write_action(
-            self, "create", data=schema_obj, mutate=lambda: self.create(schema_obj)
+            self, Action.CREATE, data=schema_obj, mutate=lambda: self.create(schema_obj)
         )
 
     async def handle_update(self, id: IdT, schema_obj: UpdateSchemaT) -> ModelT:
         obj = await self.get_one(id)
         return await async_run_write_action(
             self,
-            "update",
+            Action.UPDATE,
             obj=obj,
             data=schema_obj,
             mutate=lambda: self.update(obj, schema_obj),
@@ -139,7 +141,7 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     async def handle_delete(self, id: IdT) -> None:
         obj = await self.get_one(id)
         await async_run_write_action(
-            self, "delete", obj=obj, mutate=lambda: self.delete(obj)
+            self, Action.DELETE, obj=obj, mutate=lambda: self.delete(obj)
         )
 
     # ====================================================================

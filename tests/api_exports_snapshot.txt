@@ -1,4 +1,5 @@
 fastapi_restly:
+  - Action
   - AsyncReactAdminView
   - AsyncRestView
   - AsyncSessionDep
@@ -15,6 +16,7 @@ fastapi_restly:
   - NotFound
   - ReactAdminView
   - ReadOnly
+  - ResponseShape
   - RestView
   - RestlyConfigurationError
   - RestlyError
@@ -119,11 +121,13 @@ fastapi_restly.testing:
   - activate_savepoint_only_mode
   - deactivate_savepoint_only_mode
 fastapi_restly.views:
+  - Action
   - AsyncReactAdminView
   - AsyncRestView
   - BaseRestView
   - ListingResult
   - ReactAdminView
+  - ResponseShape
   - RestView
   - View
   - ViewRoute
