@@ -109,7 +109,7 @@ class UserView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantBase
         different (proof-of-possession via ``current_password``, no public
         body fields). Calls ``handle_get_one`` for the scoped fetch+404+read-auth
         (so any row-level access checks layered into ``authorize`` apply here
-        too), then drives the hash swap through ``handle_write`` with the
+        too), then brackets the hash swap with ``write_action`` under the
         ``"change_password"`` action -- so it runs the full bracket (authorize
         -> snapshot -> mutate -> before_commit -> commit -> after_commit)
         without owning the commit by hand.
@@ -120,14 +120,10 @@ class UserView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantBase
         if not request.new_password:
             raise HTTPException(422, "new_password is required")
 
-        async def _change_password():
+        async with self.write_action("change_password", obj=user):
             user.password = hash_password(request.new_password)
-            return await self.save_object(user)
-
-        updated = await self.handle_write(
-            "change_password", obj=user, mutate=_change_password
-        )
-        return self.to_response_schema(updated)
+            await self.save_object(user)
+        return self.to_response_schema(user)
 
     @fr.get("/{id}/with-permissions", response_model=dict)
     async def get_user_with_field_permissions(self, id: int) -> dict[str, Any]:

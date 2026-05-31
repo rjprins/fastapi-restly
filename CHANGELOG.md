@@ -24,10 +24,10 @@ breaking change; views written for 0.5.x need updating.
   commit → `after_commit` around your domain logic, and the request-session
   dependency (`AsyncSessionDep` / `SessionDep`) **no longer commits on
   response**. `after_commit` therefore runs after the write is durable. A custom
-  (non-CRUD) write route runs its mutation through `handle_write(action, ...,
-  mutate=...)` (or reuses `handle_<verb>`) to get the same bracket; `_commit()`
-  is internal. Setting `commit_session_on_response=False`, or configuring a
-  custom session generator, opts out of / takes over the commit.
+  (non-CRUD) write route brackets its mutation with `async with
+  self.write_action(action, ...)` (or reuses `handle_<verb>`) to get the same
+  bracket; `_commit()` is internal. Setting `commit_session_on_response=False`,
+  or configuring a custom session generator, opts out of / takes over the commit.
 - Renamed: `creation_schema`/`update_schema` → `schema_create`/`schema_update`;
   `build_from_schema`/`apply_schema` → `make_new_object`/`update_object`;
   `count_listing` → `count`. Response shaping goes through a single
@@ -45,10 +45,11 @@ breaking change; views written for 0.5.x need updating.
   `app.add_exception_handler(fr.NotFound, ...)` can reshape them).
 - Top-level `make_new_object` / `update_object` / `save_object` /
   `delete_object` helpers (and their `async_*` variants) for use outside a view.
-- `handle_write(action, *, obj, data, mutate)` — the general write handler the
-  CRUD handlers delegate to; drive custom write actions through it instead of
-  hand-rolling the bracket. Plus self-free `run_write_action` /
-  `async_run_write_action` (exported) that run the lifecycle off the HTTP path.
+- `write_action(action, *, obj, data)` — a context manager for custom write
+  *actions* (`async with self.write_action("publish", obj=...): ...`) that runs
+  the same authorize + commit bracket the CRUD handlers do. Plus the self-free
+  `run_write_action` / `async_run_write_action` (exported) underneath, usable off
+  the HTTP path.
 - `RestlyUncommittedChangesWarning` (default on; `warn_on_uncommitted=False` to
   disable) when a request finishes with uncommitted changes — the tell of a
   write route that forgot to commit.

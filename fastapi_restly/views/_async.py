@@ -1,5 +1,4 @@
-from collections.abc import Awaitable, Callable
-from typing import Any, TypeVar, cast
+from typing import Any, cast
 
 import sqlalchemy
 from sqlalchemy import func, select
@@ -25,10 +24,7 @@ from ._base import (
     patch,
     post,
 )
-from ._lifecycle import async_run_write_action
-
-#: Return type of a ``mutate`` thunk passed to ``handle_write``.
-_WriteT = TypeVar("_WriteT")
+from ._lifecycle import async_run_write_action, async_write_action
 
 
 class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT]):
@@ -103,37 +99,37 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         await self.authorize("get_one", obj=obj)
         return obj
 
-    async def handle_write(
-        self,
-        action: str,
-        *,
-        obj: Any = None,
-        data: Any = None,
-        mutate: Callable[[], Awaitable[_WriteT]],
-    ) -> _WriteT:
-        """General write handler: run ``mutate`` through the full request
-        bracket -- ``authorize`` -> ``snapshot`` (when ``obj`` is given) ->
-        ``mutate`` -> ``before_commit`` -> commit -> ``after_commit`` -- and
-        return its result.
+    def write_action(self, action: str, *, obj: Any = None, data: Any = None):
+        """Run a custom write *action* through the full request bracket.
 
-        The CRUD write handlers delegate here, and custom write actions should
-        too (load with ``handle_get_one`` first for scope + 404 + read-auth,
-        then call ``handle_write`` instead of hand-rolling the bracket). Override
-        to wrap or change the lifecycle for the whole view; the default delegates
-        to :func:`async_run_write_action`.
+        Used as an async context manager from a custom write route: it runs
+        ``authorize`` + ``snapshot`` on entry, your body mutates the object, then
+        ``before_commit`` -> commit -> ``after_commit`` on exit. Reach for it when
+        an action is not a plain create/update/delete (publish, change-password,
+        a state transition); CRUD-shaped logic belongs in the ``create`` /
+        ``update`` / ``delete`` overrides instead::
+
+            async with self.write_action("publish", obj=article):
+                article.status = "published"
+
+        For a create-shaped action, deposit the new object on the handle::
+
+            async with self.write_action("create", data=req) as w:
+                w.obj = await self.make_new_object(req)
+
+        A raise inside the block skips the commit (the write rolls back).
         """
-        return await async_run_write_action(
-            self, action, obj=obj, data=data, mutate=mutate
-        )
+        return async_write_action(self, action, obj=obj, data=data)
 
     async def handle_create(self, schema_obj: CreateSchemaT) -> ModelT:
-        return await self.handle_write(
-            "create", data=schema_obj, mutate=lambda: self.create(schema_obj)
+        return await async_run_write_action(
+            self, "create", data=schema_obj, mutate=lambda: self.create(schema_obj)
         )
 
     async def handle_update(self, id: IdT, schema_obj: UpdateSchemaT) -> ModelT:
         obj = await self.get_one(id)
-        return await self.handle_write(
+        return await async_run_write_action(
+            self,
             "update",
             obj=obj,
             data=schema_obj,
@@ -142,7 +138,9 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
 
     async def handle_delete(self, id: IdT) -> None:
         obj = await self.get_one(id)
-        await self.handle_write("delete", obj=obj, mutate=lambda: self.delete(obj))
+        await async_run_write_action(
+            self, "delete", obj=obj, mutate=lambda: self.delete(obj)
+        )
 
     # ====================================================================
     # Domain operations (auth-free, commit-free) -- the common override point

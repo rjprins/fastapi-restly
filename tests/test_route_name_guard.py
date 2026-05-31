@@ -1,8 +1,8 @@
 """The bare verbs (get_many/get_one/create/update/delete) are reserved names.
 
 A ``@route``-decorated method named like a bare verb shadows the verb (which the
-handlers and ``handle_write`` call) and collides with the ``<verb>_endpoint``
-route shell at the same path -- the duplicate-route + recursion footgun. Such a
+``handle_<verb>`` handlers call) and collides with the ``<verb>_endpoint`` route
+shell at the same path -- the duplicate-route + recursion footgun. Such a
 definition is rejected at registration. Overriding a bare verb *without* a
 decorator (the intended domain-logic path) is unaffected.
 """

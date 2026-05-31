@@ -57,9 +57,9 @@ class UploadView(TenantBase):
         no single helper would absorb the flush-for-PK requirement.
 
         This is a genuinely-custom multipart write (parent + sibling lines). The
-        whole construction runs inside ``handle_write("create", ...)``, so the
-        Upload, its UploadLine rows, and the outbox event commit atomically
-        through the one bracket.
+        whole construction runs inside a ``write_action("create", ...)`` block,
+        so the Upload, its UploadLine rows, and the outbox event commit
+        atomically through the one bracket.
         """
         if not file.filename:
             raise fastapi.HTTPException(422, "filename is required")
@@ -70,7 +70,8 @@ class UploadView(TenantBase):
         except UnicodeDecodeError as exc:
             raise fastapi.HTTPException(422, f"file is not utf-8: {exc}") from exc
 
-        async def _upload():
+        # The bracket commits the parent, the lines, and the outbox event.
+        async with self.write_action("create") as w:
             # 1) Build parent. ``make_new_object`` is overkill here because
             #    we're not coming from a JSON body schema, so we construct
             #    directly. The framework call style (``self.make_new_object``)
@@ -105,10 +106,8 @@ class UploadView(TenantBase):
             #    UploadLine rows and the updated columns on Upload.
             saved = await self.save_object(upload)
             self._emit("upload.completed", saved, {"line_count": saved.line_count})
-            return saved
-
-        # The bracket commits the parent, the lines, and the outbox event.
-        return await self.handle_write("create", mutate=_upload)
+            w.obj = saved
+        return w.obj
 
     @fr.get("/{id}/lines", response_model=list[UploadLineSchema])
     async def list_lines(self, id: int) -> list[UploadLine]:

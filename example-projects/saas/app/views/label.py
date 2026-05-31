@@ -93,9 +93,9 @@ class TaskLabelView(TenantBase):
            ``label_id = label.id`` via the resolver path.
 
         Sibling-creation is a genuinely-custom write (two rows, two models).
-        The whole construction runs inside ``handle_write("create", ...)``, so
-        the Label + TaskLabel pair commits atomically through the one bracket --
-        and the action picks up authorize + the commit hooks for free.
+        The whole construction runs inside a ``write_action("create", ...)``
+        block, so the Label + TaskLabel pair commits atomically through the one
+        bracket -- and the action picks up authorize + the commit hooks for free.
         """
         # Tenant scope is enforced via TaskView.get_one-style checks here:
         # we don't go through TaskView, so we re-validate the task fits
@@ -107,7 +107,10 @@ class TaskLabelView(TenantBase):
         if org_id is None:
             raise HTTPException(400, "Cannot create labels without an org context")
 
-        async def _create_and_attach():
+        # The bracket commits the Label + TaskLabel pair atomically. IDRef
+        # serializes as a bare scalar both ways; FastAPI's response_model
+        # coercion handles the ORM int directly.
+        async with self.write_action("create", data=request) as w:
             # 1) Build sibling #1 (Label) and flush — needed because the
             #    next step's IDRef resolver requires an existing PK.
             label = Label(
@@ -140,9 +143,5 @@ class TaskLabelView(TenantBase):
             # the stamp.
             if task_label.added_by_id is None:
                 task_label.added_by_id = self._current_user_id()
-            return await async_save_object(self.session, task_label)
-
-        # The bracket commits the Label + TaskLabel pair atomically.
-        # IDRef serializes as a bare scalar both ways; FastAPI's response_model
-        # coercion handles the ORM int directly.
-        return await self.handle_write("create", data=request, mutate=_create_and_attach)
+            w.obj = await async_save_object(self.session, task_label)
+        return w.obj

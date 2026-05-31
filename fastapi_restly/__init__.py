@@ -112,7 +112,7 @@ __all__ = [
     "async_update_object",
     "async_save_object",
     "async_delete_object",
-    # Write lifecycle (self-free; `handle_write` is the bound view method)
+    # Write lifecycle (self-free; `write_action` is the bound view CM)
     "run_write_action",
     "async_run_write_action",
     # Models

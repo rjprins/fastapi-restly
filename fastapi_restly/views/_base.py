@@ -1089,10 +1089,10 @@ def _init_view_cls_and_add_to_router(
 
 
 #: Bare business-verb method names. A ``@route``-decorated method must not be
-#: named like one of these: it would shadow the verb (which the handlers and
-#: ``handle_write`` call) and collide with the ``<verb>_endpoint`` route shell
-#: at the same path. Override the bare verb *without* a decorator for domain
-#: logic; use ``<verb>_endpoint`` or a distinct name for a custom route.
+#: named like one of these: it would shadow the verb (which the ``handle_<verb>``
+#: handlers call) and collide with the ``<verb>_endpoint`` route shell at the
+#: same path. Override the bare verb *without* a decorator for domain logic; use
+#: ``<verb>_endpoint`` or a distinct name for a custom route.
 _BARE_VERB_NAMES = frozenset(
     {"get_many", "get_one", "create", "update", "delete"}
 )

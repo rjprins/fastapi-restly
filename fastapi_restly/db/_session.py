@@ -307,7 +307,7 @@ def _warn_if_uncommitted(session: SA_AsyncSession | SA_Session) -> None:
         warnings.warn(
             "Request finished with uncommitted changes in the database session; "
             "they will be rolled back when the session closes. A custom write "
-            "route must commit through handle_write(...) (or await self._commit()). "
+            "route must commit through write_action(...) (or await self._commit()). "
             "If this is intentional (e.g. a validate-then-rollback dry run), set "
             'session.info["_fr_suppress_uncommitted"] = True in the route, or pass '
             "warn_on_uncommitted=False to fr.configure().",

@@ -252,8 +252,8 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
 
         A transition is *update-shaped* but not a plain PATCH (the input is the
         route itself, the allowed moves are gated by a state machine), so instead
-        of reusing ``handle_update`` we drive the mutation through
-        ``handle_write`` with a custom action name. ``handle_write`` runs the
+        of reusing ``handle_update`` we bracket the mutation with
+        ``write_action`` under a custom action name. The context manager runs the
         whole bracket -- authorize(action, obj) -> snapshot -> the mutation ->
         before_commit -> commit -> after_commit -- so the transition gets the
         same lifecycle as every other write without hand-rolling it.
@@ -274,12 +274,11 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
                 ),
             )
 
-        async def _transition():
+        async with self.write_action(action, obj=task):
             task.status = target_status
             task.version += 1
-            return await self.save_object(task)
-
-        return await self.handle_write(action, obj=task, mutate=_transition)
+            await self.save_object(task)
+        return task
 
     @fr.post("/import-csv", response_model=BulkResult)
     async def import_csv(

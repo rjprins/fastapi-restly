@@ -137,8 +137,8 @@ lifecycle: the session's context manager rolls back and closes on the way out.
 They do **not** commit on response — the commit is owned by `handle_<verb>` (see
 the verb call chain below), which runs `before_commit` → commit → `after_commit`
 around your domain logic, so a write is committed exactly once before the
-response is built. A custom write route gets the same bracket by running its
-mutation through `handle_write(action, ..., mutate=...)`; a change that no
+response is built. A custom write route gets the same bracket by bracketing its
+mutation with `async with self.write_action(action, ...)`; a change that no
 handler committed is discarded when the session closes — and Restly warns
 (`RestlyUncommittedChangesWarning`, default on, `warn_on_uncommitted=False` to
 disable) when a request ends with such uncommitted changes, so the forgotten

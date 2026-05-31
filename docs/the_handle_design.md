@@ -166,29 +166,32 @@ If you want the full write orchestration for the action, route through
 `handle_update` / `handle_create` as above — you get `authorize`, the commit
 bracket, and `before_commit` / `after_commit` for free. If you instead need a
 bespoke step that is neither a plain create nor update, give the action its own
-name and run it through `handle_write` — the general write handler that
-`handle_create` / `handle_update` / `handle_delete` themselves delegate to:
+name and bracket it with `self.write_action(...)` — a context manager that runs
+the same lifecycle the CRUD handlers do:
 
 ```python
     @fr.post("/{id}/publish")
     async def publish(self, id: int):
         article = await self.handle_get_one(id)   # scope + 404 + read-auth
-
-        async def _publish():
+        async with self.write_action("publish", obj=article):
             article.status = "published"
-            return await self.save_object(article)  # flush + refresh, no commit
-
-        published = await self.handle_write("publish", obj=article, mutate=_publish)
-        return self.to_response(published, "update")
+        return self.to_response(article, "update")
 ```
 
-`handle_write(action, *, obj=None, data=None, mutate)` runs the whole bracket —
-`authorize(action, obj, data)` → `snapshot` → your `mutate` → `before_commit` →
-commit → `after_commit` — and returns whatever `mutate` returns. You never call
-`_commit()` by hand or reassemble the steps; the lifecycle lives in one place
-(the self-free function `fr.run_write_action`, which `handle_write` delegates
-to), and overriding `handle_write` changes it for every write on the view at
-once.
+`__aenter__` runs `authorize(action, obj, data)` + `snapshot`; your inline body
+mutates; `__aexit__` runs `before_commit` → commit → `after_commit` (a raise in
+the body skips the commit). You never call `_commit()` by hand or reassemble the
+steps. For a **create-shaped** action — where the object does not exist until the
+body runs — deposit it on the yielded handle and read it back:
+
+```python
+    async with self.write_action("create", data=req) as w:
+        w.obj = await self.make_new_object(req)
+    return self.to_response(w.obj, "create")
+```
+
+Under the hood `write_action` and the CRUD handlers share one implementation:
+the self-free function `fr.run_write_action`.
 
 ## The domain utilities
 

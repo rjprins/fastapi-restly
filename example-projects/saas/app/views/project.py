@@ -218,18 +218,15 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
         requires a 200 + body contract — that's a route-level HTTP
         decision, not a behavior change.
 
-        Drives the soft-delete through ``handle_write`` so it runs the same
-        bracket as ``handle_delete`` (authorize / snapshot / before_commit /
-        commit / after_commit). The mutation returns the (soft-deleted) project
-        so the hooks see ``new=project`` rather than ``None``.
+        Brackets the soft-delete with ``write_action`` so it runs the same
+        sequence as ``handle_delete`` (authorize / snapshot / before_commit /
+        commit / after_commit). ``obj=project`` means the hooks see
+        ``new=project`` (the soft-deleted row) rather than ``None``.
         """
         project = await self.handle_get_one(id)
 
-        async def _soft_delete():
+        async with self.write_action("delete", obj=project):
             await self.delete_object(project)
-            return project
-
-        await self.handle_write("delete", obj=project, mutate=_soft_delete)
         return await self._decorate_project_response(project)
 
     @fr.post("/{id}/restore", response_model=ProjectSchema)
@@ -239,7 +236,7 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
         Genuinely-custom action: it deliberately bypasses the mixin's
         ``deleted_at IS NULL`` filter (we *want* to find a deleted row), so it
         cannot reuse ``handle_get_one``. Tenant scope is re-checked by hand,
-        then the clear runs through ``handle_write("restore", ...)`` for the
+        then the clear runs in a ``write_action("restore", ...)`` block for the
         full bracket.
         """
         project = await self.session.get(Project, id)
@@ -251,11 +248,9 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
         if project.deleted_at is None:
             raise HTTPException(status_code=400, detail="Project is not deleted")
 
-        async def _restore():
+        async with self.write_action("restore", obj=project):
             project.deleted_at = None
-            return await self.save_object(project)
-
-        project = await self.handle_write("restore", obj=project, mutate=_restore)
+            await self.save_object(project)
         return await self._decorate_project_response(project)
 
     @fr.post("/{id}/archive", response_model=ProjectSchema)
@@ -263,19 +258,17 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
         """Archive a project (prevents new task creation).
 
         Update-shaped custom action: load via ``handle_get_one`` (scope + 404 +
-        read-auth), then drive the ``status = ARCHIVED`` flip through
-        ``handle_write("archive", ...)`` so authorize / snapshot / before_commit
+        read-auth), then bracket the ``status = ARCHIVED`` flip with
+        ``write_action("archive", ...)`` so authorize / snapshot / before_commit
         / commit / after_commit all fire.
         """
         project = await self.handle_get_one(id)
         if project.status == ProjectStatus.ARCHIVED:
             raise HTTPException(status_code=400, detail="Project is already archived")
 
-        async def _archive():
+        async with self.write_action("archive", obj=project):
             project.status = ProjectStatus.ARCHIVED
-            return await self.save_object(project)
-
-        project = await self.handle_write("archive", obj=project, mutate=_archive)
+            await self.save_object(project)
         return await self._decorate_project_response(project)
 
     @fr.post("/{id}/clone", response_model=ProjectSchema)
@@ -415,8 +408,8 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
         response.
 
         Sibling/different-model create: the task insert + the project's
-        story-point rollup run through ``handle_write("create", ...)`` so they
-        commit atomically through the one bracket.
+        story-point rollup run inside a ``write_action("create", ...)`` block so
+        they commit atomically through the one bracket.
         """
         from fastapi_restly.objects import async_save_object
 
@@ -426,7 +419,7 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
                 status_code=400, detail="Cannot create tasks in an archived project"
             )
 
-        async def _create_task():
+        async with self.write_action("create", data=request) as w:
             task = Task(
                 title=request.title,
                 description=request.description,
@@ -439,9 +432,8 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
             self.session.add(task)
             if task.story_points:
                 project.total_story_points += task.story_points
-            return await async_save_object(self.session, task)
-
-        return await self.handle_write("create", data=request, mutate=_create_task)
+            w.obj = await async_save_object(self.session, task)
+        return w.obj
 
 
 class TaskCreateRequest(BaseModel):

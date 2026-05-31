@@ -1,26 +1,41 @@
-"""The canonical write lifecycle, reified as a self-free function.
+"""The canonical write lifecycle.
 
-Every write request runs one invariant sequence -- ``authorize`` -> ``snapshot``
--> the domain mutation -> ``before_commit`` -> commit -> ``after_commit``. This
-module puts that sequence in exactly one place: the built-in write handlers and
-any custom action go through it, so they cannot drift apart, and it runs against
-any *host* that supplies the hooks (normally the view, but anything implementing
-them -- e.g. a background-job context -- so the lifecycle is not bound to an HTTP
-request).
+Every write runs one invariant sequence -- ``authorize`` -> ``snapshot`` -> the
+domain mutation -> ``before_commit`` -> commit -> ``after_commit``. This module
+puts that sequence in exactly one place. Two entry shapes share it:
 
-The view exposes the bound, overridable entry point ``handle_write``; these
-free functions are the underlying mechanism, mirroring how ``save_object`` on
-the view sits over ``async_save_object`` in :mod:`fastapi_restly.objects`.
+* ``write_action`` on the view -- an (async) context manager for custom write
+  *actions* (publish, change-password, ...): you mutate inline, and for a
+  create-shaped action you deposit the new object on the yielded handle's
+  ``.obj``. This is the user-facing tool.
+* ``run_write_action`` / ``async_run_write_action`` -- the free-function thunk
+  form the built-in CRUD handlers delegate to, and usable off the HTTP path
+  against any *host* that supplies the hooks. They wrap the context managers, so
+  there is exactly one implementation of the sequence.
 """
 
+import contextlib
 from collections.abc import Awaitable, Callable
 from typing import Any, Protocol, TypeVar
 
 T = TypeVar("T")
 
 
+class _WriteHandle:
+    """Yielded by the ``write_action`` context manager. ``obj`` defaults to the
+    object passed in (mutate it in place); reassign it for a create-shaped action
+    where the object does not exist until the body runs. It is what the commit
+    hooks see as ``new`` and what you read after the block.
+    """
+
+    __slots__ = ("obj",)
+
+    def __init__(self, obj: Any) -> None:
+        self.obj = obj
+
+
 class AsyncWriteHost(Protocol):
-    """The hooks :func:`async_run_write_action` drives; async views satisfy it."""
+    """The hooks the async write lifecycle drives; async views satisfy it."""
 
     async def authorize(self, action: str, obj: Any = None, data: Any = None) -> None: ...
     def snapshot(self, obj: Any) -> dict[str, Any]: ...
@@ -39,6 +54,40 @@ class WriteHost(Protocol):
     def _commit(self) -> None: ...
 
 
+@contextlib.asynccontextmanager
+async def async_write_action(
+    host: AsyncWriteHost, action: str, *, obj: Any = None, data: Any = None
+):
+    """The async write bracket as a context manager.
+
+    ``__aenter__`` runs ``authorize`` + ``snapshot`` and yields a handle; your
+    body mutates (in place, or sets ``handle.obj`` for a create); on a clean exit
+    it runs ``before_commit`` -> commit -> ``after_commit``. A raise in the body
+    skips the commit and propagates (the session dependency rolls back).
+    """
+    await host.authorize(action, obj=obj, data=data)
+    old = host.snapshot(obj) if obj is not None else None
+    handle = _WriteHandle(obj)
+    yield handle
+    await host.before_commit(action, new=handle.obj, old=old)
+    await host._commit()
+    await host.after_commit(action, new=handle.obj, old=old)
+
+
+@contextlib.contextmanager
+def sync_write_action(
+    host: WriteHost, action: str, *, obj: Any = None, data: Any = None
+):
+    """Sync variant of :func:`async_write_action`."""
+    host.authorize(action, obj=obj, data=data)
+    old = host.snapshot(obj) if obj is not None else None
+    handle = _WriteHandle(obj)
+    yield handle
+    host.before_commit(action, new=handle.obj, old=old)
+    host._commit()
+    host.after_commit(action, new=handle.obj, old=old)
+
+
 async def async_run_write_action(
     host: AsyncWriteHost,
     action: str,
@@ -47,19 +96,13 @@ async def async_run_write_action(
     data: Any = None,
     mutate: Callable[[], Awaitable[T]],
 ) -> T:
-    """Run ``mutate`` inside the full write bracket and return its result.
-
-    The invariant sequence: ``authorize`` -> ``snapshot`` (only when ``obj`` is
-    given) -> ``mutate`` -> ``before_commit`` -> commit -> ``after_commit``.
-    ``host`` supplies the hooks -- normally the view (``self``).
+    """Thunk form of the async write bracket: run ``mutate`` inside it and return
+    its result. The built-in CRUD handlers use this; also usable off the HTTP
+    path against any ``host`` that supplies the hooks.
     """
-    await host.authorize(action, obj=obj, data=data)
-    old = host.snapshot(obj) if obj is not None else None
-    new = await mutate()
-    await host.before_commit(action, new=new, old=old)
-    await host._commit()
-    await host.after_commit(action, new=new, old=old)
-    return new
+    async with async_write_action(host, action, obj=obj, data=data) as w:
+        w.obj = await mutate()
+    return w.obj
 
 
 def run_write_action(
@@ -71,10 +114,6 @@ def run_write_action(
     mutate: Callable[[], T],
 ) -> T:
     """Sync variant of :func:`async_run_write_action`."""
-    host.authorize(action, obj=obj, data=data)
-    old = host.snapshot(obj) if obj is not None else None
-    new = mutate()
-    host.before_commit(action, new=new, old=old)
-    host._commit()
-    host.after_commit(action, new=new, old=old)
-    return new
+    with sync_write_action(host, action, obj=obj, data=data) as w:
+        w.obj = mutate()
+    return w.obj

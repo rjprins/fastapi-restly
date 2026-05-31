@@ -216,7 +216,7 @@ Calling `self.handle_get_one(id)` gives you the ORM object with the same read sc
 
 ### A state-change action
 
-Add a `publish` action that transitions a post to a published state. Load with `handle_get_one`, then run the change through `handle_write` with a custom action name — it applies the same authorize → snapshot → `before_commit` → commit → `after_commit` bracket the CRUD writes use, so you never own the commit by hand:
+Add a `publish` action that transitions a post to a published state. Load with `handle_get_one`, then bracket the change with `self.write_action` under a custom action name — it applies the same authorize → snapshot → `before_commit` → commit → `after_commit` bracket the CRUD writes use, so you never own the commit by hand:
 
 ```python
 import fastapi
@@ -226,13 +226,9 @@ import fastapi
         post = await self.handle_get_one(id)
         if post.published:
             raise fastapi.HTTPException(409, "Already published")
-
-        async def _publish():
+        async with self.write_action("publish", obj=post):
             post.published = True
-            return await self.save_object(post)
-
-        published = await self.handle_write("publish", obj=post, mutate=_publish)
-        return self.to_response_schema(published)
+        return self.to_response_schema(post)
 ```
 
 `self.to_response_schema(post)` serializes the ORM object using the view's configured response schema, exactly as the standard endpoints do.
@@ -478,13 +474,9 @@ class PostView(AuthoredBase):
         post = await self.handle_get_one(id)
         if post.published:
             raise fastapi.HTTPException(409, "Already published")
-
-        async def _publish():
+        async with self.write_action("publish", obj=post):
             post.published = True
-            return await self.save_object(post)
-
-        published = await self.handle_write("publish", obj=post, mutate=_publish)
-        return self.to_response_schema(published)
+        return self.to_response_schema(post)
 
 
 @fr.include_view(app)

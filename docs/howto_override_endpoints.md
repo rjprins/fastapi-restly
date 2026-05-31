@@ -228,18 +228,15 @@ A common case: stamp server-controlled fields cooperatively. Prefer `prepare_cre
 ```python
     async def handle_delete(self, id):
         obj = await self.get_one(id)
-
-        async def _mark_pending():
+        # write_action runs the same bracket the default handle_delete uses:
+        # authorize("delete", obj) -> snapshot -> body -> before/after_commit.
+        async with self.write_action("delete", obj=obj):
             obj.status = "pending_deletion"
-            return await self.save_object(obj)
-
-        # handle_write runs the same bracket the default handle_delete uses:
-        # authorize("delete", obj) -> snapshot -> mutate -> before/after_commit.
-        await self.handle_write("delete", obj=obj, mutate=_mark_pending)
+            await self.save_object(obj)
         await enqueue_async_delete(obj.id)  # actual delete happens off-request
 ```
 
-Because you load through the tier-3 verb (`get_one`) and drive the write through `handle_write` yourself, you keep full control of orchestration — the bracket still runs in one place — while the route shell and response stay untouched.
+Because you load through the tier-3 verb (`get_one`) and bracket the write with `write_action` yourself, you keep full control of orchestration — the bracket still runs in one place — while the route shell and response stay untouched.
 
 ### Transaction hooks: `before_commit` / `after_commit`
 
@@ -448,7 +445,7 @@ class UserView(fr.AsyncRestView):
 
 Use `@fr.post` (or `@fr.patch`, `@fr.delete`) for explicit state-change actions such as archive, publish, or recalculate. A custom action has two good shapes:
 
-**Drive the mutation through `handle_write`.** Load with `handle_get_one(id)` (scope + 404 + read-auth), then run the change through `handle_write` with a custom action name — it applies the same authorize-and-commit bracket the CRUD writes use, so durability and post-commit hooks behave like a normal write:
+**Bracket the mutation with `write_action`.** Load with `handle_get_one(id)` (scope + 404 + read-auth), then bracket the change with `self.write_action` under a custom action name — it applies the same authorize-and-commit bracket the CRUD writes use, so durability and post-commit hooks behave like a normal write:
 
 ```python
 @fr.include_view(app)
@@ -462,12 +459,8 @@ class OrderView(fr.AsyncRestView):
         order = await self.handle_get_one(id)
         if order.archived:
             raise fastapi.HTTPException(409, "Already archived")
-
-        async def _archive():
+        async with self.write_action("archive", obj=order):
             order.archived = True
-            return await self.save_object(order)
-
-        await self.handle_write("archive", obj=order, mutate=_archive)
         return {"id": order.id, "archived": order.archived}
 ```
 
