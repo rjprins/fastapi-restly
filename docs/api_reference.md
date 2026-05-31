@@ -205,7 +205,7 @@ On `AsyncRestView` every method below is `async`; the signatures are otherwise i
 | Override point | `build_query` | `()` | `sqlalchemy.Select` | Base read query shared by `get_many`, `count`, and `get_one` — add `WHERE` clauses here for scope/soft-delete/visibility. |
 | Override point | `apply_query_params` | `(query, query_params)` | `sqlalchemy.Select` | Apply URL filter/sort/pagination to `query`. Override for a non-default URL grammar. |
 | Override point | `count` | `(query)` | `int` | Total for the list, ignoring ordering/pagination. Override for estimated counts on huge tables. |
-| Override point | `authorize` | `(action, obj=None, data=None)` | `None` | Gate a verb. Default consults `permissions`; raise `fr.Forbidden` / `fr.NotFound` to reject. Row *visibility* belongs in `build_query`. |
+| Override point | `authorize` | `(action, obj=None, data=None)` | `None` | Gate a verb. A no-op by default; override to enforce policy and raise `fr.Forbidden` / `fr.NotFound` to reject. Row *visibility* belongs in `build_query`. |
 | Override point | `prepare_create` | `(schema_obj)` | `dict[str, Any]` | Return EXTRA fields to stamp on a new object (tenant id, ownership). Cooperative — call `super()` and add keys. |
 | Override point | `prepare_update` | `(obj, schema_obj)` | `dict[str, Any]` | Return EXTRA fields to stamp on update. Same cooperative pattern. |
 | Override point | `before_commit` | `(action, new, old=None)` | `None` | In-transaction side effect (outbox/audit rows), atomic with the write. `old` is the pre-mutation snapshot dict. |
@@ -241,7 +241,6 @@ See [Class-Based Views](class_based_views.md#the-view-hierarchy) for the class h
 | `schema_create` | `ClassVar[type[pydantic.BaseModel]]` | Schema for `POST` input. Auto-derived by removing `ReadOnly` fields and named `ModelCreate`. |
 | `schema_update` | `ClassVar[type[pydantic.BaseModel]]` | Schema for `PATCH` input. Auto-derived by making all writable fields optional and named `ModelUpdate`. |
 | `model` | `ClassVar[type[DeclarativeBase]]` | The SQLAlchemy model class. |
-| `permissions` | `ClassVar[dict[str, str]]` | Declarative authorization map from an action name (`"get_many"` / `"get_one"` / `"create"` / `"update"` / `"delete"` or a custom action) to a required permission string. The default `authorize` consults this and calls `self.request.user.has_permission(perm)`. Defaults to `{}` (no checks). |
 | `id_type` | `ClassVar[type]` | Scalar primary-key type used in generated `GET /{id}`, `PATCH /{id}`, and `DELETE /{id}` routes. Defaults to `int`. Composite primary keys are not supported by the generated CRUD route contract; use `fr.View` for custom multi-part identities. |
 | `include_pagination_metadata` | `ClassVar[bool]` | Set `True` to return the paginated metadata envelope. Defaults to `False`. |
 | `exclude_routes` | `ClassVar[Iterable[str \| ViewRoute]]` | Route names to suppress. |
@@ -324,7 +323,7 @@ There are two families. Configuration-time errors subclass `RestlyError`; reques
 | `fr.RestlyConfigurationError` | Raised when a public Restly helper needs configuration that has not been set up yet, such as calling `fr.open_session()` before `fr.configure(...)`. |
 | `fr.RestlyHTTPError` | Base for Restly's request-time HTTP errors. Subclass of `fastapi.HTTPException`; each subclass sets a status code. |
 | `fr.NotFound` | HTTP `404`. Raised by `get_one` when a row does not exist or is hidden by `build_query`; also raisable from `authorize` to hide a row's existence. |
-| `fr.Forbidden` | HTTP `403`. Raised by the default `authorize` when a required `permissions` entry is not satisfied. |
+| `fr.Forbidden` | HTTP `403`. Raise from an `authorize` override to reject a verb. |
 | `fr.Conflict` | HTTP `409`. For request conflicts with the current resource state. |
 | `fr.BadQueryParam` | HTTP `400`. For an invalid filter/sort/pagination query parameter. |
 

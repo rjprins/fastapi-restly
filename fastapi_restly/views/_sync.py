@@ -243,10 +243,11 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
     def authorize(
         self, action: str, obj: ModelT | None = None, data: Any = None
     ) -> None:
-        """Gate a verb. The default consults :attr:`permissions`. Override for
-        row-level (``obj``) or data-aware (``data``) checks.
+        """Gate a verb. Sync counterpart of :meth:`AsyncRestView.authorize` -- a
+        **no-op** by default; override to enforce policy and raise
+        ``fr.Forbidden`` / ``fr.NotFound`` to reject. Row *visibility* belongs in
+        ``build_query``.
         """
-        self._check_permission(action)
 
     def before_commit(
         self, action: str, new: ModelT | None, old: dict[str, Any] | None = None

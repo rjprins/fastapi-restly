@@ -315,12 +315,16 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     async def authorize(
         self, action: str, obj: ModelT | None = None, data: Any = None
     ) -> None:
-        """Gate a verb. Called by ``handle_<verb>`` at the right phase. The
-        default consults :attr:`permissions`. Override to add row-level
-        (``obj``) or data-aware (``data``) checks; raise ``fr.Forbidden`` /
-        ``fr.NotFound`` to reject. Row *visibility* belongs in ``build_query``.
+        """Gate a verb. Called by ``handle_<verb>`` at the right phase: before
+        the write for ``create``, and after the scoped load for ``update`` /
+        ``delete`` / ``get_one`` (so ``obj`` is available for row-level checks).
+
+        The default is a **no-op** -- override to enforce policy, raising
+        ``fr.Forbidden`` / ``fr.NotFound`` to reject (``action`` says which verb;
+        ``obj`` / ``data`` carry the loaded row and the request payload). Row
+        *visibility* -- hiding a row from every caller -- belongs in
+        ``build_query``, not here.
         """
-        self._check_permission(action)
 
     async def before_commit(
         self, action: str, new: ModelT | None, old: dict[str, Any] | None = None

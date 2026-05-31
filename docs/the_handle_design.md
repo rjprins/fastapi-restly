@@ -108,7 +108,7 @@ the handler through `authorize`.
 | Read scope / row visibility             | `build_query`                     | read extension point   |
 | Filter / sort / pagination grammar      | `apply_query_params`              | read extension point   |
 | The list total                          | `count`                           | read extension point   |
-| Authorization / policy                  | `authorize` + `permissions` dict  | request-logic hook     |
+| Authorization / policy                  | `authorize` (override to gate)    | request-logic hook     |
 | Server-stamped fields (audit/tenant)    | `prepare_create` / `prepare_update` | cooperative stamping  |
 | In-transaction side effects             | `before_commit`                   | transaction hook       |
 | Post-commit side effects (email/webhook)| `after_commit`                    | transaction hook       |

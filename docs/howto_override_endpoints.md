@@ -190,7 +190,7 @@ Note `get_one` stays **auth-free** even though it 404s on hidden rows: visibilit
 
 ### `authorize` — gate the action
 
-`authorize(action, obj=None, data=None)` runs inside `handle_<verb>` at the right phase: before the write for `create`, and *after* the object is loaded for `get_one` / `update` / `delete`, so you can make row-level decisions on `obj`. The default consults a declarative `permissions` dict:
+`authorize(action, obj=None, data=None)` runs inside `handle_<verb>` at the right phase: before the write for `create`, and *after* the object is loaded for `get_one` / `update` / `delete`, so you can make row-level decisions on `obj`. The default is a **no-op** — override it to enforce policy, raising `fr.Forbidden` / `fr.NotFound` to reject:
 
 ```python
 @fr.include_view(app)
@@ -199,21 +199,15 @@ class InvoiceView(fr.AsyncRestView):
     model = Invoice
     schema = InvoiceRead
 
-    permissions = {
-        "create": "invoice:write",
-        "update": "invoice:write",
-        "delete": "invoice:admin",
-    }
-```
-
-Each value is a permission string; the default `authorize` calls `self.request.user.has_permission(perm)` and raises `fr.Forbidden` on failure. Override `authorize` for row-level or data-aware checks:
-
-```python
     async def authorize(self, action, obj=None, data=None):
-        await super().authorize(action, obj=obj, data=data)  # keep the permissions check
+        user = self.request.user  # populated by your auth middleware
+        if action in ("create", "update", "delete") and not user.is_staff:
+            raise fr.Forbidden()
         if action == "update" and obj.posted:
             raise fr.Forbidden("Posted invoices are immutable")
 ```
+
+`action` says which verb is running; `obj` is the loaded row (on `get_one` / `update` / `delete`) and `data` the validated request payload (on `create` / `update`). Authentication itself — populating `self.request.user` — is yours to wire (e.g. Starlette's `AuthenticationMiddleware`); Restly only calls `authorize` at the right moment and turns a raised `fr.Forbidden` / `fr.NotFound` into the HTTP response.
 
 Visibility belongs in `build_query`, not here — raising from `authorize` produces a 403, whereas hiding a row through `build_query` produces a 404.
 
@@ -543,7 +537,7 @@ import fastapi
         return await super().create(schema_obj)
 ```
 
-For permission gating specifically, prefer `authorize` and the `permissions` dict (above) — it runs at the right phase of the handler and keeps the business verb auth-free.
+For permission gating specifically, prefer `authorize` (above) — it runs at the right phase of the handler and keeps the business verb auth-free.
 
 ---
 

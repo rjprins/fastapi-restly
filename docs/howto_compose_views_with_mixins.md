@@ -313,7 +313,7 @@ hidden by `build_query` 404s for everyone, which is the right default,
 but coarse allow/deny decisions ("only managers may create") belong in
 `authorize`, consulted by the request handlers. See
 [Override Endpoints](howto_override_endpoints.md) for the `authorize`
-override point and the declarative `permissions` dict.
+override point.
 
 ## Cross-references
 

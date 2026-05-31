@@ -36,7 +36,9 @@ breaking change; views written for 0.5.x need updating.
 
 ### Added
 
-- `authorize(action, obj, data)` override plus a declarative `permissions` dict.
+- `authorize(action, obj, data)` override — an empty seam by default; raise
+  `fr.Forbidden` / `fr.NotFound` to gate a verb (row visibility goes in
+  `build_query`).
 - Cooperative `prepare_create` / `prepare_update` field-stamping overrides.
 - `before_commit` / `after_commit` transaction hooks and a `snapshot()` helper
   for old-vs-new comparison.

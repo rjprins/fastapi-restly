@@ -111,7 +111,7 @@ class ResponseShape(str, Enum):
 
 class Action:
     """Canonical CRUD action names passed to ``authorize`` / ``before_commit``
-    / ``after_commit`` and used as ``permissions`` keys.
+    / ``after_commit``.
 
     A plain constants class, **not an Enum**: the action namespace is *open* --
     custom write actions contribute their own names (``"publish"``,
@@ -128,14 +128,6 @@ class Action:
     CREATE = "create"
     UPDATE = "update"
     DELETE = "delete"
-
-
-# The only actions that reach ``authorize`` as *reads*. A custom read route
-# reuses ``handle_get_one`` rather than authorizing a name of its own, so every
-# other action string that reaches ``_check_permission`` is a write. That
-# invariant is what lets the declarative-permissions check fail closed on an
-# undeclared *write* while leaving reads open by default.
-_READ_ACTIONS = frozenset({Action.GET_MANY, Action.GET_ONE})
 
 
 def _accepts_init_kwarg(model_cls: type, attr_name: str) -> bool:
@@ -776,11 +768,6 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     schema_update: ClassVar[type[pydantic.BaseModel]]
     model: ClassVar[type[DeclarativeBase]]
     id_type: ClassVar[type[Any]] = int
-    #: Declarative authorization shortcut: maps an action name
-    #: (``"get_many"``/``"get_one"``/``"create"``/``"update"``/``"delete"`` or a
-    #: custom action) to a required permission string. The default ``authorize``
-    #: consults this and calls ``self.request.user.has_permission(perm)``.
-    permissions: ClassVar[dict[str, str]] = {}
     include_pagination_metadata: ClassVar[bool] = (
         False  # Set True to include count/total in list responses
     )
@@ -972,46 +959,6 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
             for attr in state.mapper.column_attrs
             if attr.key in loaded
         }
-
-    def _check_permission(self, action: str) -> None:
-        """Default ``authorize`` body, shared by sync and async views. Consults
-        :attr:`permissions` and fails *closed*:
-
-        * A **declared** action enforces its permission against
-          ``request.user``. A missing ``AuthenticationMiddleware`` (Starlette's
-          ``request.user`` raises ``AssertionError``) or an unauthenticated user
-          (no ``has_permission``) is a 403, never a 500. Mapping an action to a
-          falsy value (``""``) declares it intentionally **public**.
-        * Once *any* permission is declared, the view is in declarative mode and
-          an **undeclared write** action is denied rather than silently open --
-          so a typo'd or forgotten custom write (``write_action("pubish")``)
-          fails closed instead of dropping its gate. Reads (``get_one`` /
-          ``get_many``) stay open by default; declare them to gate them.
-        * With **no** ``permissions`` declared at all, every action is open
-          (authorization is handled elsewhere -- middleware, or a custom
-          ``authorize`` override).
-        """
-        from ..exceptions import Forbidden
-
-        if action in self.permissions:
-            perm = self.permissions[action]
-            if not perm:
-                return  # declared public
-            request = getattr(self, "request", None)
-            try:
-                user = request.user if request is not None else None
-            except (AssertionError, AttributeError):
-                user = None
-            has_permission = getattr(user, "has_permission", None)
-            if has_permission is None or not has_permission(perm):
-                raise Forbidden()
-            return
-
-        # Action is not declared. In declarative mode an undeclared *write*
-        # fails closed (every non-read action reaching here is a write); reads
-        # and the no-permissions-at-all case stay open.
-        if self.permissions and action not in _READ_ACTIONS:
-            raise Forbidden()
 
     @classmethod
     def before_include_view(cls):
