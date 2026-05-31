@@ -52,6 +52,10 @@ from .schemas import (
 )
 
 # Views
+# (run_write_action / async_run_write_action are intentionally NOT re-exported at
+# the top level: they're the self-free primitive the CRUD handlers and
+# write_action share, and the off-HTTP use case that would justify a public name
+# isn't built yet. They remain importable from fastapi_restly.views.)
 from .views import (
     Action,
     AsyncReactAdminView,
@@ -62,7 +66,6 @@ from .views import (
     RestView,
     View,
     ViewRoute,
-    async_run_write_action,
     delete,
     get,
     include_view,
@@ -70,7 +73,6 @@ from .views import (
     post,
     put,
     route,
-    run_write_action,
 )
 
 try:
@@ -116,9 +118,6 @@ __all__ = [
     "async_update_object",
     "async_save_object",
     "async_delete_object",
-    # Write lifecycle (self-free; `write_action` is the bound view CM)
-    "run_write_action",
-    "async_run_write_action",
     # Models
     "DataclassBase",
     "IDBase",

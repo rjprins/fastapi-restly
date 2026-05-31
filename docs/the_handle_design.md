@@ -151,23 +151,30 @@ touch the route, the authorization, or the transaction — only the domain step.
 
 ## Worked example: a custom action route
 
-A non-CRUD action — `POST /{id}/publish` — composes the tiers you already have.
-The shortest form reuses a write path, so the action inherits `authorize`, the
-commit bracket, and the `before_commit` / `after_commit` side effects:
+A non-CRUD route composes the tiers you already have. There are two shapes, and
+which you reach for is decided by one question:
+
+> **Is the action just a create/update/delete under a different URL** — same
+> shape, no distinct policy or event? Reuse `handle_<verb>`. **Does it have its
+> own identity** — a name in `authorize` / the hooks, its own validation, or a
+> non-CRUD mutation (a transition, multiple rows)? Use `write_action`.
+
+**Reuse a handler** when the action *is* a create/update/delete. A `clone` is a
+create under a different URL, so it routes straight through `handle_create` and
+inherits `authorize`, the commit bracket, and the `before_commit` /
+`after_commit` side effects:
 
 ```python
-    @fr.post("/{id}/publish")
-    async def publish(self, id: int):
-        # handle_update loads through get_one (scope + 404), authorizes, and commits.
-        return await self.handle_update(id, ArticleUpdate(status="published"))
+    @fr.post("/{id}/clone")
+    async def clone(self, id: int):
+        original = await self.handle_get_one(id)   # scope + 404 + read-auth
+        payload = ArticleCreate(title=f"{original.title} (copy)")
+        return self.to_response(await self.handle_create(payload))
 ```
 
-If you want the full write orchestration for the action, route through
-`handle_update` / `handle_create` as above — you get `authorize`, the commit
-bracket, and `before_commit` / `after_commit` for free. If you instead need a
-bespoke step that is neither a plain create nor update, give the action its own
-name and bracket it with `self.write_action(...)` — a context manager that runs
-the same lifecycle the CRUD handlers do:
+**Use `write_action`** when the action has its own identity. `publish` is a state
+transition: it authorizes `"publish"` distinctly and its hooks fire under that
+name, not `"update"`. Give it a name and bracket the mutation:
 
 ```python
     @fr.post("/{id}/publish")
@@ -195,7 +202,7 @@ handle and read it back:
 ```
 
 Under the hood `write_action` and the CRUD handlers share one implementation:
-the self-free function `fr.run_write_action`.
+the self-free function `run_write_action` (in `fastapi_restly.views`).
 
 ## The domain utilities
 

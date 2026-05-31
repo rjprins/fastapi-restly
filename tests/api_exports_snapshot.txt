@@ -31,7 +31,6 @@ fastapi_restly:
   - apply_list_params
   - async_delete_object
   - async_make_new_object
-  - async_run_write_action
   - async_save_object
   - async_update_object
   - configure
@@ -55,7 +54,6 @@ fastapi_restly:
   - pytest_fixtures
   - query
   - route
-  - run_write_action
   - save_object
   - schemas
   - snapshot
@@ -170,3 +168,5 @@ fastapi_restly.testing:
   - deactivate_savepoint_only_mode
 fastapi_restly.views:
   - BaseRestView
+  - async_run_write_action
+  - run_write_action
