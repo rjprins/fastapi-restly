@@ -58,6 +58,7 @@ fastapi_restly:
   - run_write_action
   - save_object
   - schemas
+  - snapshot
   - testing
   - update_object
   - views
@@ -96,6 +97,7 @@ fastapi_restly.objects:
   - delete_object
   - make_new_object
   - save_object
+  - snapshot
   - update_object
 fastapi_restly.pytest_fixtures:
   - restly_app

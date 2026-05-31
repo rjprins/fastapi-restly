@@ -1,3 +1,4 @@
+from typing import Any as _Any
 from typing import TypeVar as _TypeVar
 
 import pydantic as _pydantic
@@ -77,6 +78,27 @@ def delete_object(session: _Session, obj: _DeclarativeBase) -> None:
     session.flush()
 
 
+def snapshot(obj: _DeclarativeBase) -> dict[str, _Any]:
+    """Frozen capture of an object's *already-loaded* column values, for
+    old-vs-new dirty detection in the commit hooks.
+
+    Not ``copy(obj)`` (which shares SQLAlchemy instance state). Reads only
+    attributes already present on the instance, so it never triggers a lazy
+    load -- a deferred/unloaded column is skipped rather than forcing a blocking
+    SELECT (which on an async session would raise ``MissingGreenlet``). No
+    session argument: it reads state already on the instance.
+    """
+    from sqlalchemy import inspect as _sa_inspect
+
+    state = _sa_inspect(obj)
+    loaded = state.dict
+    return {
+        attr.key: loaded[attr.key]
+        for attr in state.mapper.column_attrs
+        if attr.key in loaded
+    }
+
+
 async def async_make_new_object(
     session: _AsyncSession,
     model_cls: type[_T],
@@ -140,5 +162,6 @@ __all__ = [
     "delete_object",
     "make_new_object",
     "save_object",
+    "snapshot",
     "update_object",
 ]

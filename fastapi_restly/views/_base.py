@@ -48,6 +48,7 @@ from starlette.datastructures import QueryParams
 from typing_extensions import TypeVar
 
 from .._exception_handlers import register_default_exception_handlers
+from ..objects import snapshot as _object_snapshot
 from ..query import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, create_list_params_schema
 from ..schemas import BaseSchema, IDRef, IDSchema
 from ..schemas._base import (
@@ -941,24 +942,12 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         return self.to_response_schema(obj_or_list)
 
     def snapshot(self, obj: Any) -> dict[str, Any]:
-        """Frozen capture of an object's *already-loaded* column values, passed
-        as ``old`` to ``before_commit``/``after_commit`` for dirty detection.
-        Not ``copy(obj)`` (which shares SQLAlchemy instance state).
-
-        Reads only attributes already present on the instance, so it never
-        triggers a lazy load -- a deferred/unloaded column is skipped rather
-        than forcing a blocking SELECT (which on an async session would raise
-        ``MissingGreenlet``).
+        """Frozen capture of an object's already-loaded column values, passed as
+        ``old`` to ``before_commit`` / ``after_commit`` for dirty detection.
+        Override to change what ``old`` captures (e.g. include a relationship's
+        prior state); the default delegates to :func:`fastapi_restly.snapshot`.
         """
-        from sqlalchemy import inspect as sa_inspect
-
-        state = sa_inspect(obj)
-        loaded = state.dict
-        return {
-            attr.key: loaded[attr.key]
-            for attr in state.mapper.column_attrs
-            if attr.key in loaded
-        }
+        return _object_snapshot(obj)
 
     @classmethod
     def before_include_view(cls):

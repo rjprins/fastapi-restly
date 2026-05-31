@@ -34,6 +34,7 @@ from .objects import (
     delete_object,
     make_new_object,
     save_object,
+    snapshot,
     update_object,
 )
 
@@ -110,6 +111,7 @@ __all__ = [
     "update_object",
     "save_object",
     "delete_object",
+    "snapshot",
     "async_make_new_object",
     "async_update_object",
     "async_save_object",
