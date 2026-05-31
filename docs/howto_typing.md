@@ -85,8 +85,8 @@ Most overrides land on the **business verbs**, so those benefit most:
 - `get_many`
 
 It also sharpens the **request handlers** (`handle_create`, `handle_update`,
-`handle_get_one`, …) and the cooperative stamping methods (`prepare_create`,
-`prepare_update`) when you override them.
+`handle_get_one`, …) and the cooperative stamping methods (`make_new_object`,
+`update_object`) when you override them.
 
 Without view generics, these methods still work, but their types are broader.
 With view generics, your editor can infer the concrete model, schema, and id types.

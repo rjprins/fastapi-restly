@@ -204,17 +204,17 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
     # ====================================================================
 
     def make_new_object(self, schema_obj: CreateSchemaT) -> ModelT:
+        """Construct a new ORM object and add it to the session (no flush).
+        Override cooperatively (call ``super()``, then mutate) to stamp
+        structural fields like an audit id or a tenant id.
+        """
         model_cls = cast(type[ModelT], self.model)
-        obj = object_make_new_object(self.session, model_cls, schema_obj, self.schema)
-        for key, value in self.prepare_create(schema_obj).items():
-            setattr(obj, key, value)
-        return obj
+        return object_make_new_object(self.session, model_cls, schema_obj, self.schema)
 
     def update_object(self, obj: ModelT, schema_obj: UpdateSchemaT) -> ModelT:
-        obj = object_update_object(self.session, obj, schema_obj, self.schema)
-        for key, value in self.prepare_update(obj, schema_obj).items():
-            setattr(obj, key, value)
-        return obj
+        """Apply writable fields to ``obj`` (no flush). Override cooperatively to
+        stamp structural fields such as ``updated_by``."""
+        return object_update_object(self.session, obj, schema_obj, self.schema)
 
     def save_object(self, obj: ModelT) -> ModelT:
         """Flush + refresh. Does not commit -- ``handle_<verb>`` owns the commit."""
@@ -222,22 +222,6 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
 
     def delete_object(self, obj: ModelT) -> None:
         object_delete_object(self.session, obj)
-
-    # ====================================================================
-    # Cooperative stamping seams (extra fields; structural mixins override)
-    # ====================================================================
-
-    def prepare_create(self, schema_obj: CreateSchemaT) -> dict[str, Any]:
-        """Return EXTRA fields to stamp on a new object (audit ids, tenant id).
-        Structural mixins layer cooperatively via ``super()``.
-        """
-        return {}
-
-    def prepare_update(
-        self, obj: ModelT, schema_obj: UpdateSchemaT
-    ) -> dict[str, Any]:
-        """Return EXTRA fields to stamp on update."""
-        return {}
 
     # ====================================================================
     # Request-logic seams (authorize + transaction hooks)

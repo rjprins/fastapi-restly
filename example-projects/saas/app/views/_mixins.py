@@ -7,12 +7,10 @@ helper/override point (``make_new_object`` / ``update_object`` for *write-side* 
 ``build_query`` for *read-side* filters that apply to listing, count, and
 retrieve in one place).
 
-Structural stamping like this is also expressible through the framework's
-``prepare_create`` / ``prepare_update`` override points (return a dict of EXTRA fields
-to stamp; mixins layer cooperatively via ``super()``). These mixins instead
-override ``make_new_object`` / ``update_object`` directly, which is equally
-valid for the same structural cross-cutting concerns (audit, tenant,
-soft-delete) — the rule is the same:
+Structural cross-cutting stamps override ``make_new_object`` / ``update_object``
+cooperatively (call ``super()``, then mutate the returned object); read-side
+scoping overrides ``build_query``; soft-delete overrides ``delete_object``. The
+rules are the same across the board (audit, tenant, soft-delete):
 
 - They run *before* ``save_object`` (no flush-timing trap).
 - They only stamp/scope; they don't compute business values.

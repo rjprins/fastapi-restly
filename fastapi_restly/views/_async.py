@@ -256,29 +256,26 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
 
     async def make_new_object(self, schema_obj: CreateSchemaT) -> ModelT:
         """Construct a new ORM object from ``schema_obj`` and add it to the
-        session. Calls :meth:`prepare_create` so structural mixins can stamp
-        extra fields. Does not flush -- :meth:`save_object` does.
+        session. Does not flush -- :meth:`save_object` does. Override
+        cooperatively (call ``super()``, then mutate the returned object) to
+        stamp structural fields like an audit id or a tenant id; see the SaaS
+        example mixins.
         """
         model_cls = cast(type[ModelT], self.model)
-        obj = await object_async_make_new_object(
+        return await object_async_make_new_object(
             self.session, model_cls, schema_obj, self.schema
         )
-        for key, value in (await self.prepare_create(schema_obj)).items():
-            setattr(obj, key, value)
-        return obj
 
     async def update_object(
         self, obj: ModelT, schema_obj: UpdateSchemaT
     ) -> ModelT:
-        """Apply writable fields from ``schema_obj`` to ``obj`` (plus any
-        :meth:`prepare_update` stamps). Does not flush.
+        """Apply writable fields from ``schema_obj`` to ``obj``. Does not flush.
+        Override cooperatively (same shape as :meth:`make_new_object`) to stamp
+        structural fields such as ``updated_by``.
         """
-        obj = await object_async_update_object(
+        return await object_async_update_object(
             self.session, obj, schema_obj, self.schema
         )
-        for key, value in (await self.prepare_update(obj, schema_obj)).items():
-            setattr(obj, key, value)
-        return obj
 
     async def save_object(self, obj: ModelT) -> ModelT:
         """Flush the session and refresh ``obj`` from the database. Does not
@@ -289,29 +286,6 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     async def delete_object(self, obj: ModelT) -> None:
         """Remove ``obj`` from the session and flush. Does not commit."""
         await object_async_delete_object(self.session, obj)
-
-    # ====================================================================
-    # Cooperative stamping seams (extra fields; structural mixins override)
-    # ====================================================================
-
-    async def prepare_create(self, schema_obj: CreateSchemaT) -> dict[str, Any]:
-        """Return a dict of EXTRA fields to stamp on a new object (audit ids,
-        tenant id, ownership). Structural mixins layer cooperatively::
-
-            async def prepare_create(self, schema_obj):
-                fields = await super().prepare_create(schema_obj)
-                fields["tenant_id"] = self.request.user.tenant_id
-                return fields
-        """
-        return {}
-
-    async def prepare_update(
-        self, obj: ModelT, schema_obj: UpdateSchemaT
-    ) -> dict[str, Any]:
-        """Return a dict of EXTRA fields to stamp on update. Same cooperative
-        pattern as :meth:`prepare_create`.
-        """
-        return {}
 
     # ====================================================================
     # Request-logic seams (authorize + transaction hooks)

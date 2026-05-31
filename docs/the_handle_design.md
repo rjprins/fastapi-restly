@@ -58,7 +58,7 @@ POST /
        └─ handle_create(schema_obj)           # request handler
             ├─ authorize("create", data=schema_obj)
             ├─ create(schema_obj)              # business verb (your override point)
-            │    ├─ make_new_object(schema_obj)   # → prepare_create stamps extra fields
+            │    ├─ make_new_object(schema_obj)   # override to stamp extra fields
             │    └─ save_object(obj)              # flush + refresh (no commit)
             ├─ before_commit("create", new=obj)
             ├─ commit                             # the framework owns this
@@ -109,7 +109,7 @@ the handler through `authorize`.
 | Filter / sort / pagination grammar      | `apply_query_params`              | read extension point   |
 | The list total                          | `count`                           | read extension point   |
 | Authorization / policy                  | `authorize` (override to gate)    | request-logic hook     |
-| Server-stamped fields (audit/tenant)    | `prepare_create` / `prepare_update` | cooperative stamping  |
+| Server-stamped fields (audit/tenant)    | `make_new_object` / `update_object` (override cooperatively) | cooperative stamping  |
 | In-transaction side effects             | `before_commit`                   | transaction hook       |
 | Post-commit side effects (email/webhook)| `after_commit`                    | transaction hook       |
 | The response shape                      | `to_response`                     | wire boundary          |

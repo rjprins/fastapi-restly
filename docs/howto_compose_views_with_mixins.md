@@ -18,10 +18,10 @@ structural concerns:
 
 - `build_query` — the unified **read scope**. List, count, and retrieve
   all route through it, so one `.where(...)` clause filters every read.
-- `prepare_create` / `prepare_update` — **cooperative field stamping**.
-  Each returns a `dict` of *extra* server-controlled fields to set on the
-  object; the framework applies them. Mixins layer by calling `super()`,
-  merging their fields into the dict.
+- `make_new_object` / `update_object` — **cooperative field stamping**.
+  Each calls `super()` to get the constructed object, mutates the
+  server-controlled fields it owns, and returns the object. Mixins layer
+  by chaining `super()`, each stamping its own fields on the way out.
 - the `delete` business verb — to replace a physical delete with a flag
   flip (soft delete).
 
@@ -42,9 +42,9 @@ current tenant, filtering reads to non-soft-deleted rows, replacing
 physical delete with a timestamp flip — all of these are safe to layer
 because:
 
-- `prepare_create` / `prepare_update` return *extra* fields rather than
-  mutating a half-built object, so they compose cleanly and never fight
-  the schema's own writes.
+- `make_new_object` / `update_object` mutate the object *after* the
+  schema's own writes are applied, so they compose cleanly and never
+  fight the schema's writes.
 - They run inside the commit-free business verb, before the handler's
   commit, so there's no flush-timing trap.
 - They only stamp/scope; they don't compute business values from
@@ -144,12 +144,12 @@ class TenantScopedMixin:
             q = q.where(self.model.organization_id == org_id)
         return q
 
-    async def prepare_create(self, schema_obj: Any) -> dict[str, Any]:
-        fields = await super().prepare_create(schema_obj)  # type: ignore[misc]
+    async def make_new_object(self, schema_obj: Any) -> Any:
+        obj = await super().make_new_object(schema_obj)  # type: ignore[misc]
         org_id = self._current_org_id()
         if org_id is not None and hasattr(self.model, "organization_id"):
-            fields["organization_id"] = org_id
-        return fields
+            obj.organization_id = org_id
+        return obj
 ```
 
 ### `SoftDeleteMixin` — hide deleted rows
@@ -204,26 +204,26 @@ class AuditStampedMixin:
     def _current_user_id(self) -> int | None:
         return getattr(self.request.state, "user_id", None)
 
-    async def prepare_create(self, schema_obj: Any) -> dict[str, Any]:
-        fields = await super().prepare_create(schema_obj)  # type: ignore[misc]
+    async def make_new_object(self, schema_obj: Any) -> Any:
+        obj = await super().make_new_object(schema_obj)  # type: ignore[misc]
         uid = self._current_user_id()
-        fields["created_by_id"] = uid
-        fields["updated_by_id"] = uid
-        return fields
+        obj.created_by_id = uid
+        obj.updated_by_id = uid
+        return obj
 
-    async def prepare_update(self, obj: Any, schema_obj: Any) -> dict[str, Any]:
-        fields = await super().prepare_update(obj, schema_obj)  # type: ignore[misc]
-        fields["updated_by_id"] = self._current_user_id()
-        return fields
+    async def update_object(self, obj: Any, schema_obj: Any) -> Any:
+        obj = await super().update_object(obj, schema_obj)  # type: ignore[misc]
+        obj.updated_by_id = self._current_user_id()
+        return obj
 ```
 
-Each mixin's `prepare_create` / `prepare_update` starts by calling
-`super()` to collect the fields lower layers contributed, adds its own
-keys, and returns the merged dict. The framework sets every key on the
-object after building/applying the schema, so stamps never collide with
-schema-driven writes and the layers compose in any order. `prepare_update`
-takes the already-loaded `obj` as well as the update schema, so a mixin
-can compare against the current row if it needs to.
+Each mixin's `make_new_object` / `update_object` starts by calling
+`super()` to get the object the lower layers built, stamps its own
+fields on it, and returns it. Because the schema's own writes are already
+applied by the time `super()` returns, stamps never collide with
+schema-driven writes and the layers compose in any order. `update_object`
+gets the already-loaded `obj` with the update schema applied, so a mixin
+can read the object's current state if it needs to.
 
 ## Composing mixins on a view
 

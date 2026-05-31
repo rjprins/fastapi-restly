@@ -58,7 +58,7 @@ class PostView(fr.AsyncRestView):
         return await self.save_object(obj)
 ```
 
-`make_new_object` builds the ORM instance from the validated payload. `save_object` flushes and refreshes it. Because `create` does not commit, setting a field after `save_object` still persists — the flush happens inside `save_object`, and the commit happens later in `handle_create`. (For a field stamped on *both* create and update, prefer `prepare_create` / `prepare_update`; see [Stamping extra fields](#stamping-extra-fields).)
+`make_new_object` builds the ORM instance from the validated payload. `save_object` flushes and refreshes it. Because `create` does not commit, setting a field after `save_object` still persists — the flush happens inside `save_object`, and the commit happens later in `handle_create`. (For a field stamped on *both* create and update, override `make_new_object` / `update_object` cooperatively; see [Stamping extra fields](#stamping-extra-fields).)
 
 ### update — validate before saving
 
@@ -154,16 +154,21 @@ You rarely override `handle_<verb>` itself. The hooks above cover the common cas
 
 ## Stamping extra fields
 
-When the same field must be stamped on **both** create and update — an audit id, a tenant id, an ownership column — override `prepare_create` / `prepare_update` instead of the business verbs. Each returns a dict of *extra* fields to set, and they layer cooperatively, so base classes and mixins compose:
+When the same field must be stamped on **both** create and update — an audit id, a tenant id, an ownership column — override `make_new_object` / `update_object` cooperatively instead of the business verbs. Call `super()`, then mutate the constructed object and return it. Because each override builds on the one above it, base classes and mixins compose:
 
 ```python
-    async def prepare_create(self, schema_obj):
-        fields = await super().prepare_create(schema_obj)
-        fields["created_by"] = self.request.state.user_id
-        return fields
+    async def make_new_object(self, schema_obj):
+        obj = await super().make_new_object(schema_obj)
+        obj.created_by = self.request.state.user_id   # stamp the constructed object
+        return obj
+
+    async def update_object(self, obj, schema_obj):
+        obj = await super().update_object(obj, schema_obj)
+        obj.updated_by = self.request.state.user_id
+        return obj
 ```
 
-`make_new_object` (inside `create`) applies whatever `prepare_create` returns, and `update_object` (inside `update`) applies `prepare_update`. Because they only return extra fields, you do not have to touch the business verb at all.
+`make_new_object` (inside `create`) builds the ORM object and `update_object` (inside `update`) applies the payload. Overriding them lets you stamp the field after the object exists — so you can read its current state — without touching the business verb at all.
 
 ---
 
@@ -172,10 +177,10 @@ When the same field must be stamped on **both** create and update — an audit i
 The business verbs are built from a small set of object utilities. These are **utilities you call**, not override points:
 
 ```
-create  →  make_new_object(schema_obj)   # build ORM object, run prepare_create
+create  →  make_new_object(schema_obj)   # build ORM object (override point for stamping)
         →  save_object(obj)              # flush + refresh (no commit)
 
-update  →  update_object(obj, schema_obj)  # apply payload, run prepare_update
+update  →  update_object(obj, schema_obj)  # apply payload (override point for stamping)
         →  save_object(obj)
 
 delete  →  delete_object(obj)              # delete + flush (no commit)

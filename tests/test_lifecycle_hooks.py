@@ -1,84 +1,16 @@
-"""Tests for the handle-design lifecycle seams.
+"""Tests for the handle-design transaction bracket.
 
-Covers the cooperative stamping seams (``prepare_create`` / ``prepare_update``)
-and the transaction bracket (``snapshot`` -> ``before_commit`` -> commit ->
-``after_commit``): that stamped fields land on the row, that ``old`` is the
-pre-mutation snapshot, and that a ``before_commit`` failure aborts the write
-(it runs *inside* the transaction).
+Covers ``snapshot`` -> ``before_commit`` -> commit -> ``after_commit``: that
+``old`` is the pre-mutation snapshot, that ``after_commit`` runs after the write
+is durable, and that a ``before_commit`` failure aborts the write (it runs
+*inside* the transaction).
 """
 
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
 
 from .conftest import create_tables
-
-
-def _slug(title: str) -> str:
-    return title.lower().replace(" ", "-")
-
-
-def test_prepare_create_stamps_extra_field(client):
-    """``prepare_create`` extras are applied after construction and win over
-    whatever the client sent for that field."""
-
-    class Doc(fr.IDBase):
-        title: Mapped[str]
-        slug: Mapped[str] = mapped_column(default="")
-
-    class DocSchema(fr.IDSchema):
-        title: str
-        slug: str
-
-    @fr.include_view(client.app)
-    class DocView(fr.AsyncRestView):
-        prefix = "/docs"
-        model = Doc
-        schema = DocSchema
-
-        async def prepare_create(self, schema_obj):
-            fields = await super().prepare_create(schema_obj)
-            fields["slug"] = _slug(schema_obj.title)
-            return fields
-
-    create_tables()
-
-    created = client.post(
-        "/docs/", json={"title": "Hello World", "slug": "client-sent"}
-    ).json()
-    assert created["slug"] == "hello-world"  # stamped, not the client value
-
-
-def test_prepare_update_stamps_extra_field(client):
-    """``prepare_update`` can derive a server-controlled field from the loaded
-    object on every update."""
-
-    class Doc(fr.IDBase):
-        title: Mapped[str]
-        revision: Mapped[int] = mapped_column(default=0)
-
-    class DocSchema(fr.IDSchema):
-        title: str
-        revision: int
-
-    @fr.include_view(client.app)
-    class DocView(fr.AsyncRestView):
-        prefix = "/docs"
-        model = Doc
-        schema = DocSchema
-
-        async def prepare_update(self, obj, schema_obj):
-            fields = await super().prepare_update(obj, schema_obj)
-            fields["revision"] = obj.revision + 1
-            return fields
-
-    create_tables()
-
-    doc = client.post("/docs/", json={"title": "v1", "revision": 0}).json()
-    assert doc["revision"] == 0
-
-    updated = client.patch(f"/docs/{doc['id']}", json={"title": "v2"}).json()
-    assert updated["revision"] == 1  # bumped by prepare_update
 
 
 def test_snapshot_is_pre_mutation_old_in_after_commit(client):

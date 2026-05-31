@@ -80,8 +80,8 @@ access control across multiple views.
 
 Layer cross-cutting concerns — tenant scoping, soft delete, audit stamping —
 through cooperative mixins. Includes the rule for when to layer in a mixin (e.g.
-via `prepare_create` / `prepare_update`) vs. write logic in the `create` /
-`update` business methods.
+by overriding `make_new_object` / `update_object` cooperatively) vs. write logic
+in the `create` / `update` business methods.
 :::
 
 :::{grid-item-card} Filter, Sort, and Paginate

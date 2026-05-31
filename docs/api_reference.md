@@ -177,10 +177,11 @@ can override exactly the layer you need:
    transaction.
 
 Alongside the tiers are cross-cutting **override points** (`build_query`,
-`apply_query_params`, `count`, `authorize`, `prepare_create` / `prepare_update`,
+`apply_query_params`, `count`, `authorize`,
 `before_commit` / `after_commit`, `to_response`, `snapshot`) and **domain
 utilities** you call rather than override (`make_new_object`, `update_object`,
-`save_object`, `delete_object`).
+`save_object`, `delete_object`) — `make_new_object` / `update_object` are also
+the cooperative override point for stamping extra fields (tenant id, ownership).
 
 On `AsyncRestView` every method below is `async`; the signatures are otherwise identical.
 
@@ -206,8 +207,6 @@ On `AsyncRestView` every method below is `async`; the signatures are otherwise i
 | Override point | `apply_query_params` | `(query, query_params)` | `sqlalchemy.Select` | Apply URL filter/sort/pagination to `query`. Override for a non-default URL grammar. |
 | Override point | `count` | `(query)` | `int` | Total for the list, ignoring ordering/pagination. Override for estimated counts on huge tables. |
 | Override point | `authorize` | `(action, obj=None, data=None)` | `None` | Gate a verb. A no-op by default; override to enforce policy and raise `fr.Forbidden` / `fr.NotFound` to reject. Row *visibility* belongs in `build_query`. |
-| Override point | `prepare_create` | `(schema_obj)` | `dict[str, Any]` | Return EXTRA fields to stamp on a new object (tenant id, ownership). Cooperative — call `super()` and add keys. |
-| Override point | `prepare_update` | `(obj, schema_obj)` | `dict[str, Any]` | Return EXTRA fields to stamp on update. Same cooperative pattern. |
 | Override point | `before_commit` | `(action, new, old=None)` | `None` | In-transaction side effect (outbox/audit rows), atomic with the write. `old` is the pre-mutation snapshot dict. |
 | Override point | `after_commit` | `(action, new, old=None)` | `None` | Post-commit side effect (email, webhook, cache invalidation). `old` enables dirty detection. |
 | Override point | `to_response` | `(obj_or_list, shape=ResponseShape.SINGLE)` | response payload | The single wire-level response method, called by the route shells with the wire `ResponseShape` (`SINGLE` / `LISTING` / `EMPTY`) — not the write action. Override for envelopes or custom status codes; for a per-verb HTTP contract change, override that verb's route shell. |
@@ -215,8 +214,8 @@ On `AsyncRestView` every method below is `async`; the signatures are otherwise i
 | Helper | `to_response_schema` | `(obj)` | response schema | Validate and serialize an ORM object with Restly's alias/reference/write-only handling. |
 | Helper | `to_listing_response` | `(query_params, listing_result)` | response schema list or pagination envelope | Serialize a `ListingResult` into the configured list HTTP response shape. |
 | Helper | `to_paginated_listing_response` | `(query_params, listing_result)` | pagination envelope | Serialize a `ListingResult` into the paginated list response shape. |
-| Domain utility | `make_new_object` | `(schema_obj)` | `Model` | Build and stage a new object (applies `prepare_create`) without flushing. |
-| Domain utility | `update_object` | `(obj, schema_obj)` | `Model` | Apply writable fields (plus `prepare_update`) without flushing. |
+| Domain utility | `make_new_object` | `(schema_obj)` | `Model` | Build and stage a new object without flushing. The cooperative override point for stamping extra fields on create — call `super()`, then mutate the returned object. |
+| Domain utility | `update_object` | `(obj, schema_obj)` | `Model` | Apply writable fields without flushing. The cooperative override point for stamping extra fields on update — call `super()`, then mutate the returned object. |
 | Domain utility | `save_object` | `(obj)` | `Model` | Flush and refresh a staged object. Does not commit — `handle_<verb>` owns the commit. |
 | Domain utility | `delete_object` | `(obj)` | `None` | Delete and flush an existing object. Does not commit. |
 
@@ -272,8 +271,8 @@ Use these inside the business methods (`create`, `update`) or custom route metho
 | Method | Description |
 |---|---|
 | `self.to_response_schema(obj)` | Serialise an ORM object to the configured response schema, applying alias rules, stripping `WriteOnly` fields, and running Pydantic response validation. Override for custom projections or an intentional `model_construct()` fast path. |
-| `self.make_new_object(schema_obj)` | Wraps `make_new_object` / `async_make_new_object` against `self.session`, `self.model`, `self.schema`, and applies `prepare_create`. **Does not flush** — call `self.save_object(obj)` afterwards. |
-| `self.update_object(obj, schema_obj)` | Wraps `update_object` / `async_update_object`, and applies `prepare_update`. **Does not flush** — call `self.save_object(obj)` afterwards. |
+| `self.make_new_object(schema_obj)` | Wraps `make_new_object` / `async_make_new_object` against `self.session`, `self.model`, `self.schema`. The cooperative override point for stamping extra fields on create — call `super()`, then mutate the returned object. **Does not flush** — call `self.save_object(obj)` afterwards. |
+| `self.update_object(obj, schema_obj)` | Wraps `update_object` / `async_update_object`. The cooperative override point for stamping extra fields on update — call `super()`, then mutate the returned object. **Does not flush** — call `self.save_object(obj)` afterwards. |
 | `self.save_object(obj)` | Wraps `save_object` / `async_save_object` against `self.session`. Flush + refresh; this is where create/update writes hit the database. It does **not** commit — `handle_<verb>` owns the commit. |
 | `self.delete_object(obj)` | Wraps `delete_object` / `async_delete_object` against `self.session`. Delete + flush, no commit. |
 | `self.build_query()` | Return the base SQLAlchemy `Select` used by every read on this view's model — `get_many`, `count`, and `get_one`. Defaults to `sqlalchemy.select(self.model)`. Override to add `WHERE` clauses that should apply to all reads — tenant scoping, soft-delete filtering, row-level permission visibility. Because retrieve also routes through this query, a row hidden from listing returns 404 from `GET /{id}` too. Call `super().build_query()` and chain `.where(...)` to compose with base-class or mixin filters. See [Composing views with mixins](howto_compose_views_with_mixins.md). |

@@ -217,7 +217,7 @@ Visibility belongs in `build_query`, not here — raising from `authorize` produ
 
 Reach for `handle_<verb>` when you need to change *how* a verb is orchestrated — the transaction, the timing of side effects, the order of authorize-and-load — **without** re-declaring the route. The handler is where `authorize` and the commit bracket live.
 
-A common case: stamp server-controlled fields cooperatively. Prefer `prepare_create` / `prepare_update` (below) for that. Use a full `handle_<verb>` override when the *bracket itself* must change — for example, deleting through a background job so the HTTP response returns before the row is gone:
+A common case: stamp server-controlled fields cooperatively. Prefer overriding `make_new_object` / `update_object` cooperatively (below) for that. Use a full `handle_<verb>` override when the *bracket itself* must change — for example, deleting through a background job so the HTTP response returns before the row is gone:
 
 ```python
     async def handle_delete(self, id):
@@ -247,15 +247,15 @@ For most timing needs you do **not** need to override the handler — the bracke
             await notify_status_change(new.id, new.status)
 ```
 
-### Cooperative field stamping: `prepare_create` / `prepare_update`
+### Cooperative field stamping: override `make_new_object` / `update_object`
 
-When the only thing you need is to stamp extra server-controlled fields (audit ids, tenant id, ownership), return them as a dict from `prepare_create` / `prepare_update`. `make_new_object` / `update_object` apply them. These layer cooperatively through mixins, which is exactly what structural concerns want:
+When the only thing you need is to stamp extra server-controlled fields (audit ids, tenant id, ownership), override `make_new_object` / `update_object` cooperatively: call `super()`, then mutate the constructed object and return it. These layer cooperatively through mixins, which is exactly what structural concerns want:
 
 ```python
-    async def prepare_create(self, schema_obj):
-        fields = await super().prepare_create(schema_obj)
-        fields["tenant_id"] = self.request.state.tenant_id
-        return fields
+    async def make_new_object(self, schema_obj):
+        obj = await super().make_new_object(schema_obj)
+        obj.tenant_id = self.request.state.tenant_id  # stamp the constructed object
+        return obj
 ```
 
 See [Composing views with mixins](howto_compose_views_with_mixins.md) for the discriminator between this (structural stamping → mixin) and per-view business logic (compute a value from schema inputs → override the business verb).
@@ -268,8 +268,8 @@ The business verbs are built from a handful of low-level utilities. **Call** the
 
 | Method | What it does |
 |---|---|
-| `self.make_new_object(schema_obj)` | Construct a new ORM object from the schema and add it to the session (runs `prepare_create`). **Does not flush.** |
-| `self.update_object(obj, schema_obj)` | Apply writable fields onto an existing object (runs `prepare_update`). **Does not flush.** |
+| `self.make_new_object(schema_obj)` | Construct a new ORM object from the schema and add it to the session (the cooperative override point for create-time field stamping). **Does not flush.** |
+| `self.update_object(obj, schema_obj)` | Apply writable fields onto an existing object (the cooperative override point for update-time field stamping). **Does not flush.** |
 | `self.save_object(obj)` | Flush and refresh `obj` from the database. **Does not commit.** |
 | `self.delete_object(obj)` | Remove `obj` and flush. **Does not commit.** |
 
