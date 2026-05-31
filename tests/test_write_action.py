@@ -27,7 +27,7 @@ def _publish_view(client, **attrs):
         async with self.write_action("publish", obj=doc):
             doc.published = True
             await self.save_object(doc)
-        return self.to_response(doc, "update")
+        return self.to_response(doc)
 
     async def boom_endpoint(self, id: int):
         doc = await self.handle_get_one(id)
@@ -35,7 +35,7 @@ def _publish_view(client, **attrs):
             doc.published = True
             await self.save_object(doc)
             raise fr.Conflict("nope")  # fails inside the block
-        return self.to_response(doc, "update")
+        return self.to_response(doc)
 
     namespace = {
         "prefix": "/docs",
@@ -118,7 +118,7 @@ def test_create_shaped_action_returns_via_handle(client):
                 w.obj = await self.make_new_object(
                     ItemSchema.model_construct(name=original.name + " (copy)")
                 )
-            return self.to_response(w.obj, "create")
+            return self.to_response(w.obj)
 
     create_tables()
 

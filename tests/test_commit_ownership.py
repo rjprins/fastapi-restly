@@ -76,7 +76,7 @@ def test_custom_route_must_commit_explicitly(client):
             obj = await self.get_one(id)
             obj.value += 1
             await self.save_object(obj)  # flush only -- no commit
-            return self.to_response(obj, "update")
+            return self.to_response(obj)
 
         @fr.post("/{id}/bump")
         async def bump(self, id: int):
@@ -84,7 +84,7 @@ def test_custom_route_must_commit_explicitly(client):
             obj.value += 1
             await self.save_object(obj)
             await self._commit()  # the custom route owns the commit
-            return self.to_response(obj, "update")
+            return self.to_response(obj)
 
     create_tables()
     created = client.post("/counters/", json={"label": "c", "value": 0}).json()
