@@ -187,8 +187,7 @@ name, not `"update"`. Give it a name and bracket the mutation:
 
 `__aenter__` runs `authorize(action, obj, data)` + `snapshot`; your inline body
 mutates; `__aexit__` runs `before_commit` → commit → `after_commit` (a raise in
-the body skips the commit). You never call `_commit()` by hand or reassemble the
-steps. Note the response is simply `to_response(article)`: the write *action*
+the body skips the commit). You never commit or reassemble the steps by hand. Note the response is simply `to_response(article)`: the write *action*
 (`"publish"`) drives authorization and the commit hooks, while the response only
 needs the wire *shape* (`single`, the default) — they are separate concerns, so
 you never pass the action name to `to_response`. For a **create-shaped** action —

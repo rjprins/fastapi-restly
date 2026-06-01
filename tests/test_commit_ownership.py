@@ -55,7 +55,7 @@ def test_after_commit_orm_mutation_is_not_persisted(client):
 
 def test_custom_route_must_commit_explicitly(client):
     """A custom write route that does not use a handler owns its own commit:
-    without ``self._commit()`` the write is discarded; with it, it persists."""
+    without ``self.session.commit()`` the write is discarded; with it, it persists."""
 
     class Counter(fr.IDBase):
         label: Mapped[str]
@@ -83,7 +83,7 @@ def test_custom_route_must_commit_explicitly(client):
             obj = await self.get_one(id)
             obj.value += 1
             await self.save_object(obj)
-            await self._commit()  # the custom route owns the commit
+            await self.session.commit()  # the custom route owns the commit
             return self.to_response(obj)
 
     create_tables()

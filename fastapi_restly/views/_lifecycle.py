@@ -59,23 +59,24 @@ def _require_deposited_obj(action: str, handle: _WriteHandle) -> None:
 
 
 class AsyncWriteHost(Protocol):
-    """The hooks the async write lifecycle drives; async views satisfy it."""
+    """What the async write lifecycle needs from a host: the ``session`` it
+    commits and the hooks it drives. Async views satisfy it."""
 
+    session: Any
     async def authorize(self, action: str, obj: Any = None, data: Any = None) -> None: ...
     def snapshot(self, obj: Any) -> dict[str, Any]: ...
     async def before_commit(self, action: str, new: Any, old: Any = None) -> None: ...
     async def after_commit(self, action: str, new: Any, old: Any = None) -> None: ...
-    async def _commit(self) -> None: ...
 
 
 class WriteHost(Protocol):
     """Sync counterpart of :class:`AsyncWriteHost`; sync views satisfy it."""
 
+    session: Any
     def authorize(self, action: str, obj: Any = None, data: Any = None) -> None: ...
     def snapshot(self, obj: Any) -> dict[str, Any]: ...
     def before_commit(self, action: str, new: Any, old: Any = None) -> None: ...
     def after_commit(self, action: str, new: Any, old: Any = None) -> None: ...
-    def _commit(self) -> None: ...
 
 
 @contextlib.asynccontextmanager
@@ -105,7 +106,7 @@ async def async_write_action(
     yield handle
     _require_deposited_obj(action, handle)
     await host.before_commit(action, new=handle.obj, old=old)
-    await host._commit()
+    await host.session.commit()
     await host.after_commit(action, new=handle.obj, old=old)
 
 
@@ -122,7 +123,7 @@ def sync_write_action(
     yield handle
     _require_deposited_obj(action, handle)
     host.before_commit(action, new=handle.obj, old=old)
-    host._commit()
+    host.session.commit()
     host.after_commit(action, new=handle.obj, old=old)
 
 

@@ -251,9 +251,3 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         leaks into this request's response while being discarded from storage).
         Do the mutation in the business verb or ``before_commit`` instead.
         """
-
-    def _commit(self) -> None:
-        """Sync variant of the async ``_commit`` -- the single commit point the
-        write bracket invokes. Equivalent to ``self.session.commit()``.
-        """
-        self.session.commit()

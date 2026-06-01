@@ -219,7 +219,7 @@ On `AsyncRestView` every method below is `async`; the signatures are otherwise i
 | Domain utility | `save_object` | `(obj)` | `Model` | Flush and refresh a staged object. Does not commit — `handle_<verb>` owns the commit. |
 | Domain utility | `delete_object` | `(obj)` | `None` | Delete and flush an existing object. Does not commit. |
 
-Internal methods prefixed with `_`, including `_reject_unknown_query_params` and `_commit`, are implementation details even though they are visible on instances.
+Internal methods prefixed with `_`, such as `_reject_unknown_query_params`, are implementation details even though they are visible on instances.
 
 See [Class-Based Views](class_based_views.md#the-view-hierarchy) for the class hierarchy and [How-To: Override Endpoints](howto_override_endpoints.md) for examples of choosing which tier to override.
 

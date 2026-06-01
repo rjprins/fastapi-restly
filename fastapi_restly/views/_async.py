@@ -324,12 +324,3 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         hook) while being silently discarded from storage -- do the mutation in
         the business verb or ``before_commit`` instead.
         """
-
-    async def _commit(self) -> None:
-        """Commit the current write. The handle design routes every write through
-        this single point: the ``write_action`` bracket calls it after
-        ``before_commit`` and before ``after_commit``. Equivalent to
-        ``self.session.commit()`` -- override only to customize how the framework
-        commits (e.g. add a retry).
-        """
-        await self.session.commit()

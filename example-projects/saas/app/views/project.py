@@ -326,7 +326,7 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
             # route owns this commit. Without it the cloned tasks (and the
             # bumped story-point rollup) would be silently rolled back.
             await async_save_object(self.session, new_project)
-            await self._commit()
+            await self.session.commit()
 
         return await self._decorate_project_response(new_project)
 

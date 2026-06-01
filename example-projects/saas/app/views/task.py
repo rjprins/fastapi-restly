@@ -297,8 +297,8 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
         ``TaskCreateSchema``, so every row inherits the same validation chain
         and rollup as ``POST /tasks/``. ``create`` flushes but does NOT commit
         -- and the request-session dependency no longer commits on response --
-        so this custom route owns the commit: a single ``self._commit()`` at
-        the end persists all successful rows together. Pydantic surfaces field
+        so this custom route owns the commit: a single ``self.session.commit()``
+        at the end persists all successful rows together. Pydantic surfaces field
         errors per row; each row also runs inside its own ``begin_nested()``
         SAVEPOINT, so a row that fails at flush (e.g. a DB constraint) rolls
         back only itself and the rest of the batch still persists.
@@ -340,7 +340,7 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
                 failed += 1
                 errors.append(f"row {row_no}: {exc}")
         # The route owns the commit now: persist every successfully-built row.
-        await self._commit()
+        await self.session.commit()
         return BulkResult(success=success, failed=failed, errors=errors)
 
     @fr.post("/bulk", response_model=BulkResult)
@@ -352,7 +352,7 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
         validation, and story-point rollup that apply to ``POST /tasks/`` apply
         per row. ``create`` flushes without committing, so this custom route
         owns the commit -- the request-session dependency no longer commits on
-        response, so a single ``self._commit()`` at the end persists every
+        response, so a single ``self.session.commit()`` at the end persists every
         successful row together. Each row runs in its own ``begin_nested()``
         SAVEPOINT so one row failing at flush can't abort the whole batch.
         """
@@ -372,7 +372,7 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
                 errors.append(f"Failed to create task '{item.title}': {e!s}")
 
         # The route owns the commit now: persist every successfully-built row.
-        await self._commit()
+        await self.session.commit()
         return BulkResult(success=success, failed=failed, errors=errors)
 
     @fr.post("/bulk-delete", response_model=BulkResult)
@@ -387,8 +387,8 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
         This is a genuinely-custom write (a multi-row report, not a single
         verb), so it owns its commit. ``delete_object`` flushes but does NOT
         commit -- the request-session dependency no longer commits on response,
-        so without the trailing ``self._commit()`` every soft-delete here would
-        be silently rolled back. Each id runs in its own ``begin_nested()``
+        so without the trailing ``self.session.commit()`` every soft-delete here
+        would be silently rolled back. Each id runs in its own ``begin_nested()``
         SAVEPOINT (so one failure can't poison the rest), and we commit ONCE at
         the end so all successful rows persist together.
         """
@@ -416,7 +416,7 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
                 errors.append(f"Failed to delete task {task_id}: {e!s}")
 
         # The route owns the commit now: persist all successful deletes.
-        await self._commit()
+        await self.session.commit()
         return BulkResult(success=success, failed=failed, errors=errors)
 
     @fr.post("/{id}/start", response_model=TaskSchema)
