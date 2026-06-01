@@ -204,11 +204,16 @@ class CustomerView(ReactAdminBase):
 
 `AsyncReactAdminView` is a thin subclass of `AsyncRestView` built with the
 [route replacement](howto_override_endpoints.md#tier-1-replace-a-route-shell-to-change-the-http-contract)
-pattern. It replaces the `get_many_endpoint` route to change the list contract
-and adds a `PUT /{id}` route that delegates to the standard `handle_update`
+pattern. It replaces the `get_many_endpoint` route shell to parse the
+react-admin query string, then delegates to the standard `handle_get_many` /
+`get_many` flow. The react-admin dialect itself lives in `apply_query_params`
+(JSON `sort` / `range` / `filter`) and `to_response(..., ResponseShape.LISTING)`
+(plain array body plus `Content-Range`).
+
+It also adds a `PUT /{id}` route that delegates to the standard `handle_update`
 request handler. All other generated routes (`GET /{id}`, `POST /`,
-`PATCH /{id}`, `DELETE /{id}`) and all `handle_<verb>` / business-verb tiers are
-inherited unchanged.
+`PATCH /{id}`, `DELETE /{id}`) and write business-verb tiers are inherited
+unchanged.
 
 The shared parsing and response logic is an internal implementation detail of
 the concrete React Admin view classes.

@@ -459,3 +459,100 @@ def test_react_admin_list_respects_build_query_scope(client):
     names = sorted(item["name"] for item in resp.json())
     assert names == ["visible"]  # the hidden row is not leaked by the RA list
     assert resp.headers["Content-Range"].endswith("/1")  # total respects scope
+
+
+def test_react_admin_list_uses_handle_get_many_get_many_and_response_seams(client):
+    """React Admin list is still a route-shell replacement: it should delegate
+    through the standard request handler, domain method, and response chokepoint."""
+
+    events: list[tuple[str, object | None]] = []
+
+    class SeamItem(fr.IDBase):
+        name: Mapped[str]
+
+    class SeamItemSchema(fr.IDSchema):
+        name: str
+
+    @fr.include_view(client.app)
+    class SeamItemView(fr.AsyncReactAdminView):
+        prefix = "/seam-items"
+        model = SeamItem
+        schema = SeamItemSchema
+
+        async def handle_get_many(self, query_params):
+            events.append(("handle_get_many", None))
+            result = await super().handle_get_many(query_params)
+            return fr.ListingResult(
+                result.objects, result.total_count + 10, result.query_params
+            )
+
+        async def get_many(self, query_params):
+            events.append(("get_many", None))
+            return await super().get_many(query_params)
+
+        def to_response(self, obj_or_list, shape=fr.ResponseShape.SINGLE):
+            events.append(("to_response", shape))
+            return super().to_response(obj_or_list, shape)
+
+    create_tables()
+    client.post("/seam-items/", json={"name": "a"})
+    events.clear()
+
+    response = client.get("/seam-items/")
+
+    assert [name for name, _ in events] == [
+        "handle_get_many",
+        "get_many",
+        "to_response",
+    ]
+    assert events[-1] == ("to_response", fr.ResponseShape.LISTING)
+    assert response.json()[0]["name"] == "a"
+    assert response.headers["Content-Range"].endswith("/11")
+
+
+def test_sync_react_admin_list_uses_handle_get_many_get_many_and_response_seams(
+    sync_client,
+):
+    events: list[tuple[str, object | None]] = []
+
+    class SyncSeamItem(fr.IDBase):
+        name: Mapped[str]
+
+    class SyncSeamItemSchema(fr.IDSchema):
+        name: str
+
+    @fr.include_view(sync_client.app)
+    class SyncSeamItemView(fr.ReactAdminView):
+        prefix = "/sync-seam-items"
+        model = SyncSeamItem
+        schema = SyncSeamItemSchema
+
+        def handle_get_many(self, query_params):
+            events.append(("handle_get_many", None))
+            result = super().handle_get_many(query_params)
+            return fr.ListingResult(
+                result.objects, result.total_count + 10, result.query_params
+            )
+
+        def get_many(self, query_params):
+            events.append(("get_many", None))
+            return super().get_many(query_params)
+
+        def to_response(self, obj_or_list, shape=fr.ResponseShape.SINGLE):
+            events.append(("to_response", shape))
+            return super().to_response(obj_or_list, shape)
+
+    fr.DataclassBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
+    sync_client.post("/sync-seam-items/", json={"name": "a"})
+    events.clear()
+
+    response = sync_client.get("/sync-seam-items/")
+
+    assert [name for name, _ in events] == [
+        "handle_get_many",
+        "get_many",
+        "to_response",
+    ]
+    assert events[-1] == ("to_response", fr.ResponseShape.LISTING)
+    assert response.json()[0]["name"] == "a"
+    assert response.headers["Content-Range"].endswith("/11")

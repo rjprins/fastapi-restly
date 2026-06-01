@@ -10,6 +10,7 @@ Implements the ra-data-simple-rest wire contract for list:
 """
 
 import json
+from dataclasses import dataclass
 from typing import Any, ClassVar, Protocol, Sequence, cast
 
 import fastapi
@@ -19,12 +20,20 @@ from sqlalchemy.orm import DeclarativeBase, RelationshipProperty
 
 from ..exceptions import BadQueryParam
 from ._async import AsyncRestView
-from ._base import Action, _annotate, get, put
+from ._base import ListingResult, ResponseShape, _annotate, get, put
 from ._sync import RestView
 
 #: Default page size used when the react-admin client does not send a `range`
 #: query parameter. Override per-view via ``default_page_size``.
 DEFAULT_REACT_ADMIN_PAGE_SIZE = 25
+
+
+@dataclass(frozen=True)
+class _ReactAdminListParams:
+    sort: tuple[str, str] | None
+    start: int
+    end: int
+    filters: dict
 
 
 # ---------------------------------------------------------------------------
@@ -263,19 +272,58 @@ class _ReactAdminMixin:
         """Return the unit string used in the Content-Range header."""
         return "items"
 
-    def _parse_react_admin_params(
-        self,
-    ) -> tuple[tuple[str, str] | None, tuple[int, int], dict]:
+    def _parse_react_admin_params(self) -> _ReactAdminListParams:
         """Parse sort, range, and filter from the current request query string."""
         view = cast(_ReactAdminViewProtocol, self)
-        params = view.request.query_params
+        return self._coerce_react_admin_params(view.request.query_params)
+
+    def _coerce_react_admin_params(self, params: Any) -> _ReactAdminListParams:
+        if isinstance(params, _ReactAdminListParams):
+            return params
+
+        view = cast(_ReactAdminViewProtocol, self)
         default_page_size = view.default_page_size or DEFAULT_REACT_ADMIN_PAGE_SIZE
-        sort = parse_react_admin_sort(params.get("sort"))
-        start, end = parse_react_admin_range(
-            params.get("range"), default_page_size=default_page_size
+        sort_raw = params.get("sort") if hasattr(params, "get") else None
+        range_raw = params.get("range") if hasattr(params, "get") else None
+        filter_raw = params.get("filter") if hasattr(params, "get") else None
+
+        sort = (
+            tuple(sort_raw)
+            if isinstance(sort_raw, list | tuple)
+            else parse_react_admin_sort(sort_raw)
         )
-        filters = parse_react_admin_filter(params.get("filter"))
-        return sort, (start, end), filters
+        if isinstance(range_raw, list | tuple):
+            if len(range_raw) != 2:
+                raise fastapi.HTTPException(
+                    400, "Invalid range parameter: must be [start, end]"
+                )
+            start, end = range_raw
+        else:
+            start, end = parse_react_admin_range(
+                range_raw, default_page_size=default_page_size
+            )
+        filters = (
+            filter_raw
+            if isinstance(filter_raw, dict)
+            else parse_react_admin_filter(filter_raw)
+        )
+        return _ReactAdminListParams(sort=sort, start=start, end=end, filters=filters)
+
+    def apply_query_params(
+        self, query: sqlalchemy.Select, query_params: Any
+    ) -> sqlalchemy.Select:
+        """Apply the react-admin list grammar to the scoped base query."""
+        view = cast(_ReactAdminViewProtocol, self)
+        params = self._coerce_react_admin_params(query_params)
+        return apply_react_admin_query(
+            query,
+            view.model,
+            view.schema,
+            params.sort,
+            params.start,
+            params.end,
+            params.filters,
+        )
 
     def _serialize_items(self, items: Sequence[Any]) -> list[dict]:
         """Serialize ORM objects to JSON-compatible dicts via the view's response schema."""
@@ -286,11 +334,7 @@ class _ReactAdminMixin:
         ]
 
     def _build_react_admin_list_response(
-        self,
-        serialized_items: list[dict],
-        total: int,
-        start: int,
-        end: int,
+        self, serialized_items: list[dict], total: int, start: int, end: int
     ) -> fastapi.Response:
         """Build a JSON array response with a Content-Range header."""
         view = cast(_ReactAdminViewProtocol, self)
@@ -305,35 +349,23 @@ class _ReactAdminMixin:
             },
         )
 
-    def _build_count_query(self, filters: dict) -> sqlalchemy.Select:
-        """Scoped + filtered query (model rows) for the list total.
-
-        Starts from ``build_query()`` so the react-admin list respects the same
-        read scope (tenant, soft-delete, row-level visibility) as every other
-        read on the view. The total is produced by the view's ``count`` method
-        (so a ``count`` override -- e.g. estimated counts -- applies here too).
-        """
-        view = cast(_ReactAdminViewProtocol, self)
-        base = view.build_query()
-        return _apply_react_admin_filters(base, view.model, view.schema, filters)
-
-    def _build_listing_query(
-        self,
-        sort: tuple[str, str] | None,
-        start: int,
-        end: int,
-        filters: dict,
-    ) -> sqlalchemy.Select:
-        """List query: filters, sort, and range applied, over the scoped
-        ``build_query()`` base (same visibility as every other read)."""
-        view = cast(_ReactAdminViewProtocol, self)
-        base = view.build_query()
-        loader_options = view.get_relationship_loader_options()
-        if loader_options:
-            base = base.options(*loader_options)
-        return apply_react_admin_query(
-            base, view.model, view.schema, sort, start, end, filters
+    def to_react_admin_listing_response(
+        self, listing_result: ListingResult[Any]
+    ) -> fastapi.Response:
+        params = self._coerce_react_admin_params(listing_result.query_params)
+        return self._build_react_admin_list_response(
+            self._serialize_items(listing_result.objects),
+            listing_result.total_count,
+            params.start,
+            params.end,
         )
+
+    def to_response(
+        self, obj_or_list: Any, shape: ResponseShape = ResponseShape.SINGLE
+    ) -> Any:
+        if shape is ResponseShape.LISTING:
+            return self.to_react_admin_listing_response(obj_or_list)
+        return cast(Any, super()).to_response(obj_or_list, shape)
 
     @classmethod
     def before_include_view(cls) -> None:
@@ -368,17 +400,8 @@ class AsyncReactAdminView(_ReactAdminMixin, AsyncRestView):
 
     @get("/")
     async def get_many_endpoint(self) -> Any:
-        await self.authorize(Action.GET_MANY)
-        sort, (start, end), filters = self._parse_react_admin_params()
-        total = await self.count(self._build_count_query(filters))
-        items = (
-            await self.session.scalars(
-                self._build_listing_query(sort, start, end, filters)
-            )
-        ).all()
-        return self._build_react_admin_list_response(
-            self._serialize_items(items), total, start, end
-        )
+        result = await self.handle_get_many(self._parse_react_admin_params())
+        return self.to_response(result, ResponseShape.LISTING)
 
     @put("/{id}")
     async def put(self, id: Any, schema_obj: Any) -> Any:
@@ -396,15 +419,8 @@ class ReactAdminView(_ReactAdminMixin, RestView):
 
     @get("/")
     def get_many_endpoint(self) -> Any:
-        self.authorize(Action.GET_MANY)
-        sort, (start, end), filters = self._parse_react_admin_params()
-        total = self.count(self._build_count_query(filters))
-        items = self.session.scalars(
-            self._build_listing_query(sort, start, end, filters)
-        ).all()
-        return self._build_react_admin_list_response(
-            self._serialize_items(items), total, start, end
-        )
+        result = self.handle_get_many(self._parse_react_admin_params())
+        return self.to_response(result, ResponseShape.LISTING)
 
     @put("/{id}")
     def put(self, id: Any, schema_obj: Any) -> Any:
