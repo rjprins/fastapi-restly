@@ -212,15 +212,18 @@ def apply_react_admin_query(
     """
     query = _apply_react_admin_filters(query, model, schema_cls, filters)
 
+    id_col = getattr(model, "id", None)
     if sort:
         field, direction = sort
         col = _resolve_column(model, schema_cls, field)
         order_fn = sqlalchemy.desc if direction == "DESC" else sqlalchemy.asc
         query = query.order_by(order_fn(col))
-    else:
-        id_col = getattr(model, "id", None)
-        if id_col is not None:
+        # Append the PK as a final tiebreaker so pagination is deterministic on
+        # a non-unique sort column (mirrors _apply_sorting in query/_impl.py).
+        if id_col is not None and col is not id_col:
             query = query.order_by(id_col)
+    elif id_col is not None:
+        query = query.order_by(id_col)
 
     query = query.limit(end - start + 1).offset(start)
     return query

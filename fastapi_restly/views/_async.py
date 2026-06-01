@@ -168,7 +168,9 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
             query = query.options(*loader_options)
         scalar_result = await self.session.scalars(query)
         return ListingResult(
-            objects=scalar_result.all(),
+            # unique(): collapse the row fan-out a to-many JOIN in build_query
+            # would produce, so the page never repeats the same entity.
+            objects=scalar_result.unique().all(),
             total_count=total_count,
             query_params=query_params,
         )
@@ -242,11 +244,12 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     async def count(self, query: sqlalchemy.Select[Any]) -> int:
         """Total for the list, ignoring presentation-layer ordering/pagination.
 
-        Wrapping the stripped query as a subquery preserves correct totals for
-        DISTINCT, GROUP BY, and other user-provided query shapes. Override for
-        estimated counts on huge tables.
+        The stripped query is made ``DISTINCT`` and wrapped as a subquery, so the
+        total is correct across user-provided query shapes -- including a
+        ``build_query`` that joins a to-many relationship, whose row fan-out would
+        otherwise inflate the count. Override for estimated counts on huge tables.
         """
-        count_source = query.order_by(None).limit(None).offset(None)
+        count_source = query.order_by(None).limit(None).offset(None).distinct()
         count_query = select(func.count()).select_from(count_source.subquery())
         return int(await self.session.scalar(count_query) or 0)
 

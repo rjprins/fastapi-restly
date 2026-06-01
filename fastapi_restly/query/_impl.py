@@ -335,13 +335,14 @@ def _apply_sorting(
     model: type[DeclarativeBase],
     schema_cls: SchemaType,
 ) -> Select[Any]:
+    id_column = getattr(model, "id", None)
     sort_string = query_params.get("sort")
     if not sort_string:
-        id_column = getattr(model, "id", None)
         if id_column is not None:
             return select_query.order_by(id_column)
         return select_query
 
+    sorted_on_pk = False
     for column_name in sort_string.split(","):
         order = sqlalchemy.asc
         if column_name.startswith("-"):
@@ -351,6 +352,16 @@ def _apply_sorting(
         for join in joins:
             select_query = select_query.join(join)
         select_query = select_query.order_by(order(column))
+        if column is id_column:
+            sorted_on_pk = True
+    # Append the primary key (the conventional ``id``) as a final tiebreaker so
+    # pagination stays deterministic when the user sorts on a non-unique column
+    # -- without it, equal-valued rows can be skipped or repeated across pages.
+    # Skipped when the user already sorts by the PK. Models without a single
+    # ``id`` primary key (composite/custom) get no tiebreaker, matching the
+    # no-sort path and the framework's wider single-``id`` assumption.
+    if id_column is not None and not sorted_on_pk:
+        select_query = select_query.order_by(id_column)
     return select_query
 
 

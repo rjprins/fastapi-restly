@@ -142,7 +142,9 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
             query = query.options(*loader_options)
         scalar_result = self.session.scalars(query)
         return ListingResult(
-            objects=scalar_result.all(),
+            # unique(): collapse the row fan-out a to-many JOIN in build_query
+            # would produce, so the page never repeats the same entity.
+            objects=scalar_result.unique().all(),
             total_count=total_count,
             query_params=query_params,
         )
@@ -194,8 +196,12 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         return apply_list_params(query_params, query, self.model, self.schema)
 
     def count(self, query: sqlalchemy.Select[Any]) -> int:
-        """Total for the list, ignoring presentation ordering/pagination."""
-        count_source = query.order_by(None).limit(None).offset(None)
+        """Total for the list, ignoring presentation ordering/pagination.
+
+        Made ``DISTINCT`` before counting so a ``build_query`` that joins a
+        to-many relationship doesn't inflate the total via row fan-out.
+        """
+        count_source = query.order_by(None).limit(None).offset(None).distinct()
         count_query = select(func.count()).select_from(count_source.subquery())
         return int(self.session.scalar(count_query) or 0)
 

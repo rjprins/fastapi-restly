@@ -23,6 +23,9 @@ class QueryUserSchema(BaseModel):
 
 
 class _DummyScalarResult:
+    def unique(self):  # mirror ScalarResult.unique() -> returns self for chaining
+        return self
+
     def all(self):
         return []
 
