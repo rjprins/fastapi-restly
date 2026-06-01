@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   under the savepoint test fixtures: the patched `commit` clears the
   pending-changes flag (mimicking the real `after_commit`), while a genuinely
   forgotten commit still warns.
+- An `IDRef` list field that references the same id more than once no longer
+  raises a confusing `Id not found: set()` 404 when the referenced rows all
+  exist; a genuinely missing id is now named in the error.
 
 ## [0.6.0] - 2026-06-01
 

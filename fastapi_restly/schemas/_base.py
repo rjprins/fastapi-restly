@@ -251,9 +251,13 @@ async def _async_resolve_ids_to_sqlalchemy_objects(
             query = select(sql_model).where(sql_model.id.in_(ids))
             sql_model_objs = list(await session.scalars(query))
 
-            if len(ids) != len(sql_model_objs):
-                missing_ids = set(ids).difference(o.id for o in sql_model_objs)
-                raise NotFound(f"Id not found for {field}: {missing_ids}")
+            # Existence by SET, not count: ``IN`` returns DISTINCT rows, so a
+            # repeated id makes len(ids) > len(rows) and would spuriously 404
+            # (with an empty id list). Name the ids that are genuinely missing.
+            found = {o.id for o in sql_model_objs}
+            missing = [i for i in dict.fromkeys(ids) if i not in found]
+            if missing:
+                raise NotFound(f"Id not found for {field}: {missing}")
 
             setattr(schema_obj, field, sql_model_objs)
 
@@ -299,9 +303,13 @@ def _resolve_ids_to_sqlalchemy_objects(
             query = select(sql_model).where(sql_model.id.in_(ids))
             sql_model_objs = list(session.scalars(query))
 
-            if len(ids) != len(sql_model_objs):
-                missing_ids = set(ids).difference(o.id for o in sql_model_objs)
-                raise NotFound(f"Id not found for {field}: {missing_ids}")
+            # Existence by SET, not count: ``IN`` returns DISTINCT rows, so a
+            # repeated id makes len(ids) > len(rows) and would spuriously 404
+            # (with an empty id list). Name the ids that are genuinely missing.
+            found = {o.id for o in sql_model_objs}
+            missing = [i for i in dict.fromkeys(ids) if i not in found]
+            if missing:
+                raise NotFound(f"Id not found for {field}: {missing}")
 
             setattr(schema_obj, field, sql_model_objs)
 
