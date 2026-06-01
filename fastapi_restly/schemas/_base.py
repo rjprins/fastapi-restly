@@ -159,6 +159,14 @@ class IDRef(IDSchema[SQLAlchemyModel], Generic[SQLAlchemyModel]):
     ``IDSchema[T]`` instead.
 
         products: list[IDRef[Product]]  # serializes as ["uuid1", "uuid2"]
+
+    Resolution is an UNSCOPED existence check: the row is fetched by primary key
+    only, with no view ``build_query`` scoping (tenant, soft-delete, row-level
+    visibility), so a reference to a row the caller cannot otherwise see still
+    resolves. If references must respect visibility, gate them in ``authorize``
+    (``data.<field>.id`` is the requested id, before resolution) or
+    ``before_commit`` (the resolved row is on the built object). See the IDRef
+    how-to, "Visibility and Multi-Tenancy".
     """
 
     def __init__(self, value: Any = _IDREF_UNSET, **data: Any) -> None:
@@ -200,6 +208,11 @@ async def _async_resolve_ids_to_sqlalchemy_objects(
     Go over the Pydantic fields and turn any IDSchema objects into SQLAlchemy instances.
     A database request is made for each IDSchema to look up the related row in the database.
     If an id is not found in the database `sqlalchemy.orm.exc.NoResultFound` is raised.
+
+    This is an UNSCOPED existence check: the lookup is a bare primary-key fetch
+    with no view ``build_query`` scoping. Tenant / row-level visibility of
+    references is the caller's responsibility (gate in ``authorize`` /
+    ``before_commit``); see the ``IDRef`` docstring.
     """
     # Go over all Pydantic fields and check if any of them are an IDSchema object or
     # a list of IDSchema objects.
@@ -243,6 +256,11 @@ def _resolve_ids_to_sqlalchemy_objects(
     Go over the Pydantic fields and turn any IDSchema objects into SQLAlchemy instances.
     A database request is made for each IDSchema to look up the related row in the database.
     If an id is not found in the database `sqlalchemy.orm.exc.NoResultFound` is raised.
+
+    This is an UNSCOPED existence check: the lookup is a bare primary-key fetch
+    with no view ``build_query`` scoping. Tenant / row-level visibility of
+    references is the caller's responsibility (gate in ``authorize`` /
+    ``before_commit``); see the ``IDRef`` docstring.
     """
     # Go over all Pydantic fields and check if any of them are an IDSchema object or
     # a list of IDSchema objects.

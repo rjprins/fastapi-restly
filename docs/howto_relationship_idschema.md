@@ -74,7 +74,48 @@ class ArticleView(fr.AsyncRestView):
 ```
 
 On create and update, Restly looks up the `Author` with `id=1`. If it does not
-exist, the request returns `404`.
+exist, the request returns `404`. That lookup is an *unscoped* existence check —
+see [Visibility and Multi-Tenancy](#visibility-and-multi-tenancy) below.
+
+## Visibility and Multi-Tenancy
+
+Reference resolution is an **unscoped existence check**. Restly fetches the
+referenced row by primary key only (`session.get(Author, id)`), with **no view
+`build_query` scoping** — tenant, soft-delete, and row-level visibility are not
+applied. A reference to a row the caller cannot otherwise see (another tenant's
+row, a soft-deleted row) still resolves and can be attached as a foreign key.
+
+This is deliberate: the resolver only knows the referenced *model* (from
+`IDRef[Model]`), not which view or scope governs it. References are therefore a
+**policy** concern — gate them yourself, the same way you gate any other write.
+
+Gate in **`authorize`**, where `data` carries the *unresolved* reference, so
+`data.<field>.id` is the requested id (before the row is fetched). A list field
+is a list of references:
+
+```python
+@fr.include_view(app)
+class ArticleView(fr.AsyncRestView):
+    prefix = "/articles"
+    model = Article
+    schema = ArticleSchema
+
+    async def authorize(self, action, obj=None, data=None):
+        if data is not None and data.author_id is not None:
+            if not await self.author_visible(data.author_id.id):
+                # 404 (not 403) so you don't leak that the id exists elsewhere.
+                raise fr.NotFound("author not found")
+```
+
+The resolved ORM object is not available yet at `authorize` — resolution runs in
+the business verb, after it. If you need to inspect the *resolved* row, check in
+`before_commit` instead, where the built object carries it (e.g.
+`new.author.org_id`). Prefer `authorize`: it rejects before the unscoped fetch
+and is the standard policy seam.
+
+A future release may add an opt-in scoped-resolution hook; until then, references
+are gated in `authorize` / `before_commit` like any other write-path
+authorization.
 
 ## Naming Convention
 
@@ -231,6 +272,9 @@ resolver. The difference is the API shape.
 
 - `IDRef[Model]` uses scalar id wire format on request and response.
 - Missing related IDs return `404`.
+- Reference resolution is an **unscoped existence check** (bare PK lookup, no
+  `build_query` scoping). Gate cross-tenant / visibility references in
+  `authorize` or `before_commit` — see [Visibility and Multi-Tenancy](#visibility-and-multi-tenancy).
 - The `_id` field name triggers FK resolution.
 - A matching SQLAlchemy relationship lets Restly keep the FK column and
   relationship attribute in sync.
