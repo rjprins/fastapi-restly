@@ -832,9 +832,26 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         raise fastapi.HTTPException(status_code=422, detail=detail)
 
     def to_response_schema(self, obj: ModelT | SchemaT) -> SchemaT:
-        """Serialize an ORM object to the configured response schema."""
+        """Serialize an ORM object (or a pre-built schema instance) to the
+        configured response schema, with WriteOnly fields removed."""
+        response_schema = _create_response_validation_schema(self.schema)
+
         if isinstance(obj, self.schema):
-            return cast(SchemaT, obj)
+            # A pre-built schema instance -- a custom verb, or a get_one /
+            # get_many override that returns schema instances. ``self.schema``
+            # still declares the WriteOnly fields, so returning it unfiltered
+            # leaks them (the generated response_model no longer catches it
+            # either). Rebuild it on the WriteOnly-omitting response schema,
+            # carrying the already-validated field values over with
+            # ``model_construct`` -- which skips re-running validators, so an
+            # after-validator can neither double-apply nor crash reading a
+            # now-removed WriteOnly field.
+            data = {
+                name: getattr(obj, name)
+                for name in self.schema.model_fields
+                if not is_writeonly_field(self.schema, name)
+            }
+            return cast(SchemaT, response_schema.model_construct(**data))
 
         # Build a payload using canonical field names. Alias rendering happens
         # when FastAPI serializes the response model.
@@ -850,7 +867,6 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
             elif field_info.alias and hasattr(obj, field_info.alias):
                 payload[field_name] = getattr(obj, field_info.alias)
 
-        response_schema = _create_response_validation_schema(self.schema)
         return cast(
             SchemaT,
             response_schema.model_validate(payload, by_alias=False, by_name=True),
@@ -986,7 +1002,15 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
                 type[UpdateSchemaT], create_model_with_optional_fields(cls.schema)
             )
 
-        response_schema = cls.schema
+        # Defense-in-depth: the generated CRUD endpoints' response_model omits
+        # WriteOnly fields, so FastAPI never emits one on those routes even if a
+        # handler override bypasses to_response_schema. (A custom @route that
+        # supplies its own ``-> self.schema`` return annotation opts back into
+        # the full schema -- return ``self.to_response(...)``, which strips
+        # WriteOnly, or annotate the omitting schema there.) A no-op for schemas
+        # without WriteOnly fields (returns ``cls.schema`` unchanged), so the
+        # OpenAPI name only changes (to ``Response<Schema>``) where one exists.
+        response_schema = _create_response_validation_schema(cls.schema)
 
         # Only annotate if the methods exist (they will be overridden in subclasses)
         listing_response_annotation: Any = Sequence[response_schema]
