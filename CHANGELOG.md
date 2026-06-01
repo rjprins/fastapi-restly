@@ -73,6 +73,12 @@ breaking change; views written for 0.5.x need updating.
 - React Admin list/count/update paths now use the same `build_query`, `count`,
   authorization, and commit lifecycle as standard REST views; filter/sort
   resolution is limited to public schema fields.
+- A paginated list sorted on a non-unique column now appends the primary key as
+  a final `ORDER BY` tiebreaker, so rows are no longer skipped or repeated across
+  pages. Applies to both the standard and React Admin sort paths.
+- A `build_query` that joins a to-many relationship no longer fans out: `get_many`
+  de-duplicates entities and the list total counts distinct rows, so the page and
+  `total_count` agree. A no-op for queries without such a join.
 
 ## [0.5.1] - 2026-05-11
 
