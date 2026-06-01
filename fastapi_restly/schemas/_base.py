@@ -12,7 +12,7 @@ from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm.session import Session as SA_Session
 from typing_extensions import TypeVar
 
-from ..exceptions import NotFound
+from ..exceptions import NotFound, RestlyConfigurationError
 
 
 class BaseSchema(pydantic.BaseModel):
@@ -30,6 +30,16 @@ class BaseSchema(pydantic.BaseModel):
     """
 
     model_config = pydantic.ConfigDict(from_attributes=True)
+
+    @classmethod
+    def __pydantic_init_subclass__(cls, **kwargs: Any) -> None:
+        super().__pydantic_init_subclass__(**kwargs)
+        # Reject a ReadOnly/WriteOnly marker buried inside a union member, where
+        # it silently no-ops (see ``_reject_buried_markers``). This fires as the
+        # schema class is defined, so the mistake surfaces at import time. Views
+        # also re-check the schemas they use, to cover schemas that do not derive
+        # from ``BaseSchema``.
+        _reject_buried_markers(cls)
 
 
 class _Marker:
@@ -58,6 +68,44 @@ WriteOnly = Annotated[
     writeonly_marker,
     Field(json_schema_extra={"writeOnly": True}, exclude=True),
 ]
+
+
+# A ReadOnly/WriteOnly marker only takes effect as the OUTER annotation of a
+# field: its ``Annotated`` metadata has to sit at the field's top level. Buried
+# inside a union member (``Optional[ReadOnly[T]]``, ``WriteOnly[T] | None``) the
+# marker silently no-ops -- ReadOnly fails to drop the field from create/update
+# (it stays writable) and WriteOnly fails to exclude it from responses (it
+# leaks). The guards below detect that misuse and reject it loudly.
+def _find_buried_marker_fields(
+    model_cls: type[pydantic.BaseModel],
+) -> list[tuple[str, _Marker]]:
+    """Return ``(field_name, marker)`` for each field whose ReadOnly/WriteOnly
+    marker appears only inside a union member, where it does not take effect."""
+    buried: list[tuple[str, _Marker]] = []
+    for name, field_info in model_cls.model_fields.items():
+        annotation = field_info.annotation
+        if get_origin(annotation) not in (Union, types.UnionType):
+            continue
+        top_level = getattr(field_info, "metadata", None) or ()
+        union_args = get_args(annotation)
+        for marker in (readonly_marker, writeonly_marker):
+            if marker in top_level:
+                continue
+            if any(marker in getattr(arg, "__metadata__", ()) for arg in union_args):
+                buried.append((name, marker))
+    return buried
+
+
+def _reject_buried_markers(model_cls: type[pydantic.BaseModel]) -> None:
+    """Raise if any field buries a ReadOnly/WriteOnly marker inside a union."""
+    for name, marker in _find_buried_marker_fields(model_cls):
+        raise RestlyConfigurationError(
+            f"{model_cls.__name__}.{name} buries the {marker.name} marker inside "
+            f"a union (e.g. Optional[{marker.name}[T]] or {marker.name}[T] | None). "
+            f"The marker only takes effect as the outer annotation, so here it is "
+            f"silently ignored and {marker.name} is not applied. "
+            f"Use {marker.name}[Optional[T]] instead."
+        )
 
 
 class TimestampsSchemaMixin(pydantic.BaseModel):

@@ -52,6 +52,7 @@ from ..objects import snapshot as _object_snapshot
 from ..query import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, create_list_params_schema
 from ..schemas import BaseSchema, IDRef, IDSchema
 from ..schemas._base import (
+    _reject_buried_markers,
     create_model_with_optional_fields,
     create_model_without_read_only_fields,
     get_writable_inputs,
@@ -1109,6 +1110,24 @@ def _reject_bare_verb_route_names(view_cls: type[View]) -> None:
             )
 
 
+def _reject_buried_markers_in_view_schemas(view_cls: type[View]) -> None:
+    """Backstop the ``BaseSchema`` import-time check at view registration.
+
+    ``BaseSchema.__pydantic_init_subclass__`` already rejects a buried
+    ReadOnly/WriteOnly marker as the schema class is defined, but a view may use
+    a schema (and derived create/update schemas) that does not subclass
+    ``BaseSchema``. Re-check the schemas this view actually uses so those are
+    covered too.
+    """
+    checked: set[type] = set()
+    for attr in ("schema", "schema_create", "schema_update"):
+        schema = getattr(view_cls, attr, None)
+        if schema is None or schema in checked:
+            continue
+        checked.add(schema)
+        _reject_buried_markers(schema)
+
+
 def _prepare_view_class(view_cls: type[View]) -> None:
     """Run the one-time class-level setup for a View.
 
@@ -1122,6 +1141,7 @@ def _prepare_view_class(view_cls: type[View]) -> None:
     _reject_bare_verb_route_names(view_cls)
     _init_all_endpoints(view_cls)
     view_cls.before_include_view()
+    _reject_buried_markers_in_view_schemas(view_cls)
     _init_class_based_view(view_cls)
     view_cls._fr_initialised = True  # type: ignore[attr-defined]
 

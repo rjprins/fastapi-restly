@@ -19,6 +19,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - An `IDRef` list field now resolves in the client-sent order instead of
   silently reordering to the database's primary-key order (duplicate ids are
   collapsed, first occurrence wins).
+- A `ReadOnly` or `WriteOnly` marker buried inside a union member (such as
+  `Optional[WriteOnly[str]]` or `WriteOnly[str] | None`) is now rejected with a
+  `RestlyConfigurationError` instead of silently no-op'ing. Buried there the
+  marker has no effect — a `WriteOnly` field would leak into responses and a
+  `ReadOnly` field would stay writable — so the framework now raises when the
+  schema is defined (and again at view registration for schemas that do not
+  derive from `BaseSchema`), pointing to the safe `Marker[Optional[T]]` form.
 
 ## [0.6.0] - 2026-06-01
 
