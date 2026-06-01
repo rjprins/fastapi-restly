@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `RestlyUncommittedChangesWarning` no longer false-positives on every write run
+  under the savepoint test fixtures: the patched `commit` clears the
+  pending-changes flag (mimicking the real `after_commit`), while a genuinely
+  forgotten commit still warns.
+
 ## [0.6.0] - 2026-06-01
 
 Reworks the class-based view API around a three-tier "handle" design. This is a
