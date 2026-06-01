@@ -246,20 +246,19 @@ async def _async_resolve_ids_to_sqlalchemy_objects(
             if not sql_model:
                 continue
 
-            # Replace all IDSchema objects with SQLAlchemy instances
+            # Resolve via an id -> row map: keeps the client's order (first
+            # appearance, deduped) and makes a missing id one absent from the map,
+            # so a repeated id can't spuriously 404 (``IN`` dedups and reorders).
             ids = [obj.id for obj in value]
-            query = select(sql_model).where(sql_model.id.in_(ids))
-            sql_model_objs = list(await session.scalars(query))
+            unique_ids = list(dict.fromkeys(ids))
+            query = select(sql_model).where(sql_model.id.in_(unique_ids))
+            by_id = {o.id: o for o in await session.scalars(query)}
 
-            # Existence by SET, not count: ``IN`` returns DISTINCT rows, so a
-            # repeated id makes len(ids) > len(rows) and would spuriously 404
-            # (with an empty id list). Name the ids that are genuinely missing.
-            found = {o.id for o in sql_model_objs}
-            missing = [i for i in dict.fromkeys(ids) if i not in found]
+            missing = [i for i in unique_ids if i not in by_id]
             if missing:
                 raise NotFound(f"Id not found for {field}: {missing}")
 
-            setattr(schema_obj, field, sql_model_objs)
+            setattr(schema_obj, field, [by_id[i] for i in unique_ids])
 
 
 def _resolve_ids_to_sqlalchemy_objects(
@@ -298,20 +297,19 @@ def _resolve_ids_to_sqlalchemy_objects(
             if not sql_model:
                 continue
 
-            # Replace all IDSchema objects with SQLAlchemy instances
+            # Resolve via an id -> row map: keeps the client's order (first
+            # appearance, deduped) and makes a missing id one absent from the map,
+            # so a repeated id can't spuriously 404 (``IN`` dedups and reorders).
             ids = [obj.id for obj in value]
-            query = select(sql_model).where(sql_model.id.in_(ids))
-            sql_model_objs = list(session.scalars(query))
+            unique_ids = list(dict.fromkeys(ids))
+            query = select(sql_model).where(sql_model.id.in_(unique_ids))
+            by_id = {o.id: o for o in session.scalars(query)}
 
-            # Existence by SET, not count: ``IN`` returns DISTINCT rows, so a
-            # repeated id makes len(ids) > len(rows) and would spuriously 404
-            # (with an empty id list). Name the ids that are genuinely missing.
-            found = {o.id for o in sql_model_objs}
-            missing = [i for i in dict.fromkeys(ids) if i not in found]
+            missing = [i for i in unique_ids if i not in by_id]
             if missing:
                 raise NotFound(f"Id not found for {field}: {missing}")
 
-            setattr(schema_obj, field, sql_model_objs)
+            setattr(schema_obj, field, [by_id[i] for i in unique_ids])
 
 
 def get_read_only_fields(model_cls: type[pydantic.BaseModel]) -> list[str]:

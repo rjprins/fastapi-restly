@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - An `IDRef` list field that references the same id more than once no longer
   raises a confusing `Id not found: set()` 404 when the referenced rows all
   exist; a genuinely missing id is now named in the error.
+- An `IDRef` list field now resolves in the client-sent order instead of
+  silently reordering to the database's primary-key order (duplicate ids are
+  collapsed, first occurrence wins).
 
 ## [0.6.0] - 2026-06-01
 

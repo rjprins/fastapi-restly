@@ -1,15 +1,15 @@
-"""Regression for ticket bb6: an IDRef LIST field with a DUPLICATE id must not
-404 when every referenced row exists, and a genuinely missing id must 404 with
-a message that NAMES it.
+"""Regression for tickets bb6 + cyv: IDRef LIST resolution.
 
-The list branch resolved references with ``select(model).where(id.in_(ids))``
-then compared ``len(ids) != len(rows)``. ``IN`` returns DISTINCT rows, so any
-repeated id made the lengths differ and raised ``Id not found for <field>: set()``
--- a 404 that named nothing -- even though all rows existed. The fix checks
-existence by set membership and names the genuinely-missing ids.
+bb6: a DUPLICATE id must not 404 when all referenced rows exist; a missing id
+must 404 naming it. (The old code compared ``len(ids) != len(rows)``, but ``IN``
+returns DISTINCT rows, so any repeat raised ``Id not found: set()``.)
 
-These exercise the resolver directly (sync + async), matching how this code is
-already tested in test_schema_edge_coverage.py (``NotFound`` is the 404).
+cyv: the resolved list follows the CLIENT's order, not the ``IN`` query's DB/PK
+order -- the resolver builds an id -> row map and rebuilds in first-appearance
+order (deduped), which also subsumes the existence check.
+
+Exercises the resolver directly (sync + async), as in
+test_schema_edge_coverage.py (``NotFound`` is the 404).
 """
 
 from __future__ import annotations
@@ -29,7 +29,7 @@ from fastapi_restly.schemas._base import (
 
 
 @pytest.mark.asyncio
-async def test_async_idref_list_duplicate_existing_resolves_missing_names_id():
+async def test_async_idref_list_resolution_order_dedup_and_missing():
     async_engine = create_async_engine("sqlite+aiosqlite:///:memory:")
 
     class Bb6TagAsync(fr.IDBase):
@@ -47,10 +47,11 @@ async def test_async_idref_list_duplicate_existing_resolves_missing_names_id():
             session.add_all([t1, t2])
             await session.commit()
 
-            # A duplicate of an existing id must NOT 404 (the bb6 bug).
-            payload = TagRefSchema(tags=[t1.id, t1.id, t2.id])
+            # Duplicate-of-existing must NOT 404; the client's order is kept and
+            # deduped (cyv): [t2, t2, t1] -> [t2, t1], not the IN/PK order.
+            payload = TagRefSchema(tags=[t2.id, t2.id, t1.id])
             await _async_resolve_ids_to_sqlalchemy_objects(session, payload)
-            assert {t.id for t in payload.tags} == {t1.id, t2.id}
+            assert [t.id for t in payload.tags] == [t2.id, t1.id]
 
             # A genuinely missing id 404s and NAMES the id (not the old "set()").
             missing_id = t2.id + 100
@@ -64,7 +65,7 @@ async def test_async_idref_list_duplicate_existing_resolves_missing_names_id():
         await async_engine.dispose()
 
 
-def test_sync_idref_list_duplicate_existing_resolves_missing_names_id():
+def test_sync_idref_list_resolution_order_dedup_and_missing():
     engine = create_engine(
         "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
     )
@@ -83,9 +84,11 @@ def test_sync_idref_list_duplicate_existing_resolves_missing_names_id():
             session.add_all([t1, t2])
             session.commit()
 
-            payload = TagRefSchema(tags=[t1.id, t1.id, t2.id])
+            # Duplicate-of-existing must NOT 404; the client's order is kept and
+            # deduped (cyv): [t2, t2, t1] -> [t2, t1], not the IN/PK order.
+            payload = TagRefSchema(tags=[t2.id, t2.id, t1.id])
             _resolve_ids_to_sqlalchemy_objects(session, payload)
-            assert {t.id for t in payload.tags} == {t1.id, t2.id}
+            assert [t.id for t in payload.tags] == [t2.id, t1.id]
 
             missing_id = t2.id + 100
             with pytest.raises(HTTPException) as exc:
