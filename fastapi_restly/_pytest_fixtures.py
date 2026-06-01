@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session as SA_Session
 
 from .db import activate_savepoint_only_mode
 from .db._globals import _fr_globals, _get_restly_context
+from .db._session import _clear_uncommitted
 
 if TYPE_CHECKING:
     from .testing._client import RestlyTestClient
@@ -165,6 +166,13 @@ else:
                 async def patched_commit(self):
                     await sess.flush()
                     await sess.begin_nested()
+                    # The savepoint is this fixture's stand-in for a commit, so
+                    # mimic after_commit and clear the uncommitted-changes flag
+                    # the flush set. Without this the request-end check false-
+                    # warns on every write (after_commit never fires under the
+                    # patched commit). A genuinely forgotten commit -- one that
+                    # never calls commit() -- still leaves the flag set and warns.
+                    _clear_uncommitted(getattr(sess, "sync_session", sess))
 
                 globals_obj = _get_restly_context()
                 original_async_make_session = globals_obj.async_make_session
@@ -222,6 +230,10 @@ def restly_session(_shared_connection) -> Iterator[SA_Session]:
         def patched_commit(self):
             sess.flush()
             sess.begin_nested()
+            # Mimic after_commit (see the async fixture for the full rationale):
+            # clear the uncommitted-changes flag so the request-end check does not
+            # false-warn under savepoint mode.
+            _clear_uncommitted(getattr(sess, "sync_session", sess))
 
         globals_obj = _get_restly_context()
         original_make_session = globals_obj.make_session
