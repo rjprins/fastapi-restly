@@ -88,9 +88,9 @@ def test_standard_create_and_get_do_not_echo_writeonly(client):
 
 
 def test_schema_instance_path_does_not_rerun_validators(client):
-    """The schema-instance path uses ``model_construct``, so an after-validator
-    runs exactly once: a non-idempotent one isn't double-applied (and one that
-    reads a WriteOnly field can't crash on the omitting response schema)."""
+    """A returned schema instance is serialized as-is (WriteOnly is stripped by
+    the marker's ``exclude``), so an after-validator runs once at construction
+    and is not re-applied on the way out."""
     from pydantic import model_validator
 
     class Acct(fr.IDBase):
@@ -121,3 +121,56 @@ def test_schema_instance_path_does_not_rerun_validators(client):
     body = client.get("/accts/echo").json()
     assert body["name"] == "x!"  # validator applied once at construction, not "x!!"
     assert "token" not in body
+
+
+def test_writeonly_stripped_in_nested_schema():
+    """`exclude` on the marker recurses: a WriteOnly field on a NESTED response
+    schema is stripped from serialization too (ticket aajo). The top-level loop
+    in to_response_schema never reached this -- the field-level exclude does."""
+
+    class OrgNested(fr.IDSchema):
+        name: str
+        api_key: fr.WriteOnly[str]
+
+    class MemberSchema(fr.IDSchema):
+        name: str
+        org: OrgNested
+
+    member = MemberSchema(
+        id=1, name="bob", org=OrgNested(id=1, name="acme", api_key="TOPSECRET")
+    )
+
+    dumped = member.model_dump()
+    assert dumped["org"]["name"] == "acme"
+    assert "api_key" not in dumped["org"]  # nested WriteOnly stripped
+    assert "TOPSECRET" not in member.model_dump_json()
+
+
+def test_writeonly_marker_excludes_from_dump_but_stays_writable():
+    """Pin that `exclude` takes effect on the parameterized `WriteOnly[T]` alias
+    form (guards against the cosmetic 'exclude has no effect' warning ever
+    becoming a real dropped-exclude), while the field stays a writable input."""
+
+    class S(fr.IDSchema):
+        name: str
+        secret: fr.WriteOnly[str]
+
+    s = S(id=1, name="x", secret="z")
+    assert "secret" not in s.model_dump()
+    assert "secret" not in s.model_dump(by_alias=True)
+    # exclude is serialization-only: the field is still accepted on input.
+    assert S.model_validate({"id": 1, "name": "x", "secret": "z"}).secret == "z"
+
+
+def test_writeonly_optional_recommended_form_is_stripped():
+    """`WriteOnly[Optional[T]]` is the recommended way to make a WriteOnly field
+    optional, and it is stripped. (Prefer it over `Optional[WriteOnly[T]]`, where
+    the marker is only a union member so the exclude does not apply.)"""
+    from typing import Optional
+
+    class S(fr.IDSchema):
+        name: str
+        secret: fr.WriteOnly[Optional[str]] = None
+
+    assert "secret" not in S(id=1, name="x", secret="z").model_dump()
+    assert "secret" not in S(id=1, name="x").model_dump()

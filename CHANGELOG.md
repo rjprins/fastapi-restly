@@ -79,13 +79,13 @@ breaking change; views written for 0.5.x need updating.
 - A `build_query` that joins a to-many relationship no longer fans out: `get_many`
   de-duplicates entities and the list total counts distinct rows, so the page and
   `total_count` agree. A no-op for queries without such a join.
-- A `WriteOnly` field no longer leaks into a response. `to_response_schema` now
-  strips `WriteOnly` fields even when handed a schema instance (a custom verb, or
-  a `get_*` override that returns one) instead of returning it unfiltered, and
-  the generated CRUD `response_model` is the `WriteOnly`-omitting response schema,
-  so FastAPI can't emit one even if `to_response` is bypassed. The OpenAPI
-  response schema for a model with `WriteOnly` fields is named `Response<Schema>`
-  accordingly; request schemas are unchanged.
+- A `WriteOnly` field no longer leaks into a response, including from a nested
+  response schema. `WriteOnly` fields are now excluded from serialization at the
+  field level (`exclude=True` on the marker), so they are stripped recursively on
+  the wire and dropped from the OpenAPI response schema, while staying required,
+  documented request inputs. Prefer `WriteOnly[Optional[T]]` over
+  `Optional[WriteOnly[T]]` — a `WriteOnly` marker buried only inside a union is
+  not excluded.
 
 ## [0.5.1] - 2026-05-11
 

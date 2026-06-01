@@ -46,8 +46,17 @@ writeonly_marker = _Marker("WriteOnly")
 _T = TypeVar("_T")
 
 ReadOnly = Annotated[_T, readonly_marker, Field(json_schema_extra={"readOnly": True})]
+# ``exclude=True`` strips the field from serialization at the field level, so it
+# is dropped from every response -- recursively, including in nested schemas, and
+# from the OpenAPI response schema -- while staying a writable request input
+# (exclude does not affect validation). Prefer ``WriteOnly[Optional[T]]`` over
+# ``Optional[WriteOnly[T]]`` / ``WriteOnly[T] | None``: when the marker is only a
+# union member the exclude rides on the inner type and does NOT apply, so the
+# field would leak.
 WriteOnly = Annotated[
-    _T, writeonly_marker, Field(json_schema_extra={"writeOnly": True})
+    _T,
+    writeonly_marker,
+    Field(json_schema_extra={"writeOnly": True}, exclude=True),
 ]
 
 

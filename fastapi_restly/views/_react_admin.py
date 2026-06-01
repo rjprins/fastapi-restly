@@ -20,14 +20,7 @@ from sqlalchemy.orm import DeclarativeBase, RelationshipProperty
 
 from ..exceptions import BadQueryParam
 from ._async import AsyncRestView
-from ._base import (
-    ListingResult,
-    ResponseShape,
-    _annotate,
-    _create_response_validation_schema,
-    get,
-    put,
-)
+from ._base import ListingResult, ResponseShape, _annotate, get, put
 from ._sync import RestView
 
 #: Default page size used when the react-admin client does not send a `range`
@@ -389,7 +382,7 @@ class _ReactAdminMixin:
         if hasattr(view_cls, "put"):
             _annotate(
                 view_cls.put,
-                return_annotation=_create_response_validation_schema(view_cls.schema),
+                return_annotation=view_cls.schema,
                 schema_obj=view_cls.schema_update,
                 id=view_cls.id_type,
             )
