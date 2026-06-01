@@ -20,10 +20,13 @@ from .conftest import create_tables
 
 @pytest.fixture(autouse=True)
 def _restore_config():
-    """The flags live on a process-wide context; restore them after each test."""
+    """The config lives on a process-wide context; restore it after each test."""
+    original_async_gen = _fr_globals.session_generator
+    original_sync_gen = _fr_globals.sync_session_generator
     yield
-    _fr_globals.commit_session_on_response = True
     _fr_globals.warn_on_uncommitted = True
+    _fr_globals.session_generator = original_async_gen
+    _fr_globals.sync_session_generator = original_sync_gen
 
 
 def _build(client):
@@ -107,14 +110,22 @@ def test_failed_request_does_not_warn(client):
     assert _warn_count(lambda: client.post("/things/boom", assert_status_code=409)) == 0
 
 
+def test_custom_generator_forgot_commit_warns(client):
+    """The warning fires through the full arm -> flush -> warn path on a custom
+    ``session_generator`` too, not only the built-in factory: a custom generator
+    constructs/yields/cleans-up (no commit), so a route that forgot to commit is
+    still caught."""
+    _build(client)
+
+    async def custom_gen():
+        async with _fr_globals.async_make_session() as session:
+            yield session
+
+    fr.configure(session_generator=custom_gen)
+    assert _warn_count(lambda: client.post("/things/forgot")) >= 1
+
+
 def test_warn_on_uncommitted_false_disables(client):
     _build(client)
     fr.configure(warn_on_uncommitted=False)
-    assert _warn_count(lambda: client.post("/things/forgot")) == 0
-
-
-def test_commit_flag_off_suppresses(client):
-    _build(client)
-    # commit_session_on_response=False -> the caller owns commits; don't warn.
-    fr.configure(commit_session_on_response=False)
     assert _warn_count(lambda: client.post("/things/forgot")) == 0

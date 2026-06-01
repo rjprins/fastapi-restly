@@ -290,7 +290,7 @@ Use these inside the business methods (`create`, `update`) or custom route metho
 | `fr.SessionDep` | FastAPI `Depends`-compatible sync session dependency. |
 | `fr.open_async_session()` | Open an async SQLAlchemy session context manager for use outside request handling, for example in background jobs or scripts. |
 | `fr.open_session()` | Open a sync SQLAlchemy session context manager for use outside request handling, for example in background jobs or scripts. |
-| `fr.configure(async_database_url=..., ...)` | Configure the framework. Accepts async/sync URLs, engines, session makers, custom session generators, `commit_session_on_response`, and `warn_on_uncommitted`. |
+| `fr.configure(async_database_url=..., ...)` | Configure the framework. Accepts async/sync URLs, engines, session makers, custom session generators, and `warn_on_uncommitted`. |
 | `fr.get_async_engine()` | Return the configured `AsyncEngine` instance. |
 | `fr.get_engine()` | Return the configured sync `Engine` instance. |
 
@@ -300,17 +300,17 @@ Restly has one public process-wide configuration. Configure it once during appli
 fr.configure(async_database_url="sqlite+aiosqlite:///app.db")
 ```
 
-`fr.configure(...)` must receive at least one meaningful setup option, such as an app for default exception-handler registration, a database URL, an engine, a session maker, a custom session generator, or an explicit `commit_session_on_response` policy. A bare `fr.configure()` call raises `TypeError`.
+`fr.configure(...)` must receive at least one meaningful setup option, such as an app for default exception-handler registration, a database URL, an engine, a session maker, a custom session generator, or a `warn_on_uncommitted` setting. A bare `fr.configure()` call raises `TypeError`.
 
 Applications that need more than one database can still use FastAPI and SQLAlchemy directly: provide a custom dependency on a view, or pass a custom session generator to `fr.configure(...)`. Restly does not currently provide a public multi-context or multi-engine API. See [Use a custom session dependency on one view](howto_existing_project.md#use-a-custom-session-dependency-on-one-view) for per-view session wiring.
 
 Restly's write handlers (`handle_create` / `handle_update` / `handle_delete`) own the commit: each runs `before_commit` → commit → `after_commit` around your domain logic, so a write is committed exactly once, just before the response is built (see [The handle design](the_handle_design.md)). The session dependencies (`AsyncSessionDep` / `SessionDep`) do **not** commit on response — they only manage the session lifecycle (roll back and close on the way out), so any change a handler did not commit is discarded.
 
-A **custom (non-CRUD) write route** should bracket its mutation with `async with self.write_action(action, ...)` (or reuse `handle_create` / `handle_update` / `handle_delete`) — that applies the same authorize + commit bracket and commits exactly once. Only reach for `await self._commit()` directly when you're doing something the bracket doesn't model (e.g. a batch write that commits once after many rows); otherwise an un-committed write is rolled back when the request ends.
+A **custom (non-CRUD) write route** should bracket its mutation with `async with self.write_action(action, ...)` (or reuse `handle_create` / `handle_update` / `handle_delete`) — that applies the same authorize + commit bracket and commits exactly once. Only reach for `await self.session.commit()` directly when you're doing something the bracket doesn't model (e.g. a batch write that commits once after many rows); otherwise an un-committed write is rolled back when the request ends.
 
-As a safety net for that last case, Restly **warns** (`RestlyUncommittedChangesWarning`) when a request finishes with uncommitted changes still in the session — the tell of a write route that forgot to commit. It's on by default; disable with `fr.configure(warn_on_uncommitted=False)`, or suppress a deliberate validate-then-rollback dry run by setting `session.info["_fr_suppress_uncommitted"] = True` in the route. The check is skipped when `commit_session_on_response=False` (you own the commits) and for custom session generators.
+As a safety net for that last case, Restly **warns** (`RestlyUncommittedChangesWarning`) when a request finishes with uncommitted changes still in the session — the tell of a write route that forgot to commit. It's on by default; disable with `fr.configure(warn_on_uncommitted=False)`, or suppress a deliberate validate-then-rollback dry run by setting `session.info["_fr_suppress_uncommitted"] = True` in the route. The check applies to every session source, built-in or custom.
 
-Set `commit_session_on_response=False` to own every `commit()` / `rollback()` yourself (handlers will not commit). If you pass `session_generator` or `sync_session_generator`, that custom generator owns the transaction lifecycle and Restly defers to it.
+Restly owns the commit. A custom `session_generator` / `sync_session_generator` lets you construct sessions your way but does **not** own the commit — it constructs, yields, and cleans up (close / rollback); Restly commits. Customizing session construction never takes the commit away from Restly.
 
 ### Exceptions
 

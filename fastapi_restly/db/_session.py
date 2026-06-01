@@ -95,7 +95,6 @@ def configure(
     make_session: sessionmaker[Any] | None = None,
     session_generator: Callable[[], AsyncIterator[SA_AsyncSession]] | None = None,
     sync_session_generator: Callable[[], Iterator[SA_Session]] | None = None,
-    commit_session_on_response: bool | None = None,
     warn_on_uncommitted: bool | None = None,
     install_default_exception_handlers: bool = True,
 ) -> None:
@@ -106,24 +105,28 @@ def configure(
     (``database_url``, ``engine``, or ``make_session``) for sync support,
     or both if your application uses both.
 
-    Use ``session_generator`` / ``sync_session_generator`` to plug in a
-    custom session factory instead of the built-in one.
+    Use ``session_generator`` / ``sync_session_generator`` (or ``engine`` /
+    ``make_session``) to construct sessions your way -- a custom engine,
+    isolation level, ``search_path``, logging, an existing ``sessionmaker``. A
+    custom generator's job is to **construct, yield, and clean up** (close /
+    roll back on the way out); it must **not** commit. Customizing how a session
+    is built never takes the commit away from Restly.
 
-    Restly's write handlers (``handle_create`` / ``handle_update`` /
-    ``handle_delete``) own the commit: they call ``before_commit`` -> commit ->
-    ``after_commit`` around your domain logic. A custom (non-CRUD) write route
-    must commit itself with ``await self._commit()`` (or ``self.session.commit()``).
-    Set ``commit_session_on_response=False`` to own all commit/rollback calls
-    yourself (handlers will not commit). Custom session generators always own
-    their transaction lifecycle, and handlers defer their commit to them.
+    Restly owns the commit. Every write -- the CRUD handlers (``handle_create``
+    / ``handle_update`` / ``handle_delete``) and ``write_action`` -- runs
+    ``before_commit`` -> commit -> ``after_commit`` around your domain logic;
+    the commit is the framework's single responsibility. A custom (non-CRUD)
+    write route either brackets its mutation with ``write_action(...)``
+    (recommended) or commits the session itself with ``await
+    self.session.commit()``.
 
     By default Restly warns (:class:`RestlyUncommittedChangesWarning`) when a
-    request finishes with uncommitted changes still in the session -- the tell of
-    a custom write route that forgot to commit. Pass ``warn_on_uncommitted=False``
-    to disable it, or set ``session.info["_fr_suppress_uncommitted"] = True`` in a
-    route that intentionally leaves a flush uncommitted (a validate-then-rollback
-    dry run). The check is skipped when ``commit_session_on_response=False`` (you
-    own the commits) and for custom session generators.
+    request finishes with uncommitted changes still in the session -- the tell
+    of a custom write route that forgot to commit. This applies to every session
+    source, built-in or custom. Pass ``warn_on_uncommitted=False`` to disable
+    it, or set ``session.info["_fr_suppress_uncommitted"] = True`` in a route
+    that intentionally leaves a flush uncommitted (a validate-then-rollback dry
+    run).
 
     Pass your :class:`FastAPI` ``app`` to install fastapi-restly's default
     exception handlers (currently: a translator that turns SQLAlchemy
@@ -142,15 +145,12 @@ def configure(
             make_session is not None,
             session_generator is not None,
             sync_session_generator is not None,
-            commit_session_on_response is not None,
             warn_on_uncommitted is not None,
             app is not None and install_default_exception_handlers,
         )
     ):
         raise TypeError("fr.configure() requires at least one setup argument.")
 
-    if commit_session_on_response is not None:
-        _fr_globals.commit_session_on_response = commit_session_on_response
     if warn_on_uncommitted is not None:
         _fr_globals.warn_on_uncommitted = warn_on_uncommitted
     if (
@@ -250,11 +250,11 @@ def _get_sync_engine(make_session: async_sessionmaker[Any] | sessionmaker[Any]) 
 
 
 def _should_warn_uncommitted() -> bool:
-    """The uncommitted-changes check applies only in the default mode where the
-    framework owns the commit. With ``commit_session_on_response=False`` the
-    caller owns commits, and custom session generators bypass this dependency.
+    """The uncommitted-changes check applies whenever ``warn_on_uncommitted`` is
+    on. Restly owns the commit, so changes still pending when a request ends are
+    the tell of a custom write route that never committed.
     """
-    return _fr_globals.warn_on_uncommitted and _fr_globals.commit_session_on_response
+    return _fr_globals.warn_on_uncommitted
 
 
 def _mark_uncommitted(session: SA_Session, flush_context: Any = None) -> None:
@@ -307,7 +307,8 @@ def _warn_if_uncommitted(session: SA_AsyncSession | SA_Session) -> None:
         warnings.warn(
             "Request finished with uncommitted changes in the database session; "
             "they will be rolled back when the session closes. A custom write "
-            "route must commit through write_action(...) (or await self._commit()). "
+            "route must commit its changes -- bracket the mutation with "
+            "write_action(...), or commit the session yourself. "
             "If this is intentional (e.g. a validate-then-rollback dry run), set "
             'session.info["_fr_suppress_uncommitted"] = True in the route, or pass '
             "warn_on_uncommitted=False to fr.configure().",
@@ -320,7 +321,9 @@ async def _async_generate_session() -> AsyncIterator[SA_AsyncSession]:
     """FastAPI dependency for async database session."""
     if _fr_globals.session_generator is not None:
         async for session in _fr_globals.session_generator():
+            _arm_uncommitted_warning(session)
             yield session
+            _warn_if_uncommitted(session)
         return
     if _fr_globals.async_make_session is None:
         raise RestlyConfigurationError(
@@ -328,11 +331,11 @@ async def _async_generate_session() -> AsyncIterator[SA_AsyncSession]:
         )
 
     # FastAPI does not support contextmanagers as dependency directly,
-    # but it does support generators. The commit is owned by ``handle_<verb>``
-    # (the handle design), so this dependency only manages the session
-    # lifecycle: the context manager rolls back and closes on the way out, and
-    # any change not committed by a handler (or an explicit ``self._commit()``
-    # in a custom route) is discarded.
+    # but it does support generators. Restly owns the commit (the handle
+    # design runs it inside ``handle_<verb>`` / ``write_action``), so this
+    # dependency only manages the session lifecycle: the context manager rolls
+    # back and closes on the way out, and any change a custom route flushed but
+    # never committed is discarded (and warned about).
     async with _fr_globals.async_make_session() as session:
         _arm_uncommitted_warning(session)
         yield session
@@ -352,7 +355,10 @@ AsyncSessionDep = Annotated[SA_AsyncSession, _session_dependency(_async_generate
 def _generate_session() -> Iterator[SA_Session]:
     """FastAPI dependency for sync database session."""
     if _fr_globals.sync_session_generator is not None:
-        yield from _fr_globals.sync_session_generator()
+        for session in _fr_globals.sync_session_generator():
+            _arm_uncommitted_warning(session)
+            yield session
+            _warn_if_uncommitted(session)
         return
     if _fr_globals.make_session is None:
         raise RestlyConfigurationError("Call fr.configure() before using SessionDep.")

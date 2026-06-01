@@ -14,7 +14,6 @@ class RestlyContext:
     __slots__ = (
         "async_database_url",
         "async_make_session",
-        "commit_session_on_response",
         "database_url",
         "make_session",
         "session_generator",
@@ -24,7 +23,6 @@ class RestlyContext:
 
     async_database_url: str | None
     async_make_session: async_sessionmaker[Any] | None
-    commit_session_on_response: bool
     database_url: str | None
     make_session: sessionmaker[Any] | None
     session_generator: Callable[[], AsyncIterator[SA_AsyncSession]] | None
@@ -34,7 +32,6 @@ class RestlyContext:
     def __init__(self) -> None:
         self.async_database_url = None
         self.async_make_session = None
-        self.commit_session_on_response = True
         self.database_url = None
         self.make_session = None
         self.session_generator = None

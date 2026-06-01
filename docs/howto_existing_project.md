@@ -94,8 +94,10 @@ session options match the behavior your views rely on. Restly's built-in
 factories intentionally use different autoflush defaults for sync and async
 sessions and keep `expire_on_commit=False` for both; see
 [Session Factory Defaults](technical_details.md#session-factory-defaults).
-Custom generators also own transaction handling: Restly does not add its
-`commit_session_on_response` behavior around them.
+A custom generator constructs sessions your way but does **not** own the
+commit: it should construct, yield, and clean up (close / roll back on the way
+out); Restly commits. Customizing how a session is built never takes the commit
+away from Restly.
 
 For async views (`AsyncRestView`), pass an async generator to
 `fr.configure()`:
@@ -151,13 +153,10 @@ ReportingSession = async_sessionmaker(
 
 
 async def get_reporting_db() -> AsyncIterator[AsyncSession]:
+    # Construct, yield, and clean up -- do NOT commit. Restly owns the commit;
+    # the ``async with`` rolls back and closes the session on the way out.
     async with ReportingSession() as session:
-        try:
-            yield session
-            await session.commit()
-        except Exception:
-            await session.rollback()
-            raise
+        yield session
 
 
 ReportingSessionDep = Annotated[AsyncSession, Depends(get_reporting_db)]
@@ -171,10 +170,10 @@ class ReportView(fr.AsyncRestView):
     session: ReportingSessionDep
 ```
 
-The custom dependency owns its own lifecycle, including commit/rollback policy.
-This is the recommended escape hatch for read replicas, reporting databases, or
-other per-view session wiring. Restly does not currently provide named engines
-or named Restly contexts.
+The custom dependency owns session construction and cleanup (close / rollback);
+Restly still owns the commit. This is the recommended escape hatch for read
+replicas, reporting databases, or other per-view session wiring. Restly does not
+currently provide named engines or named Restly contexts.
 
 You can also use FastAPI-Restly's configured session proxy directly in your
 own code (for example in background tasks):

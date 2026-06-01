@@ -102,21 +102,16 @@ def test_restly_context_can_be_used_anonymously():
     assert _get_restly_context() is original_context
 
 
-def test_restly_context_defaults_to_committing_sessions_on_response():
-    with RestlyContext() as context:
-        assert context.commit_session_on_response is True
-
-
-def test_configure_rejects_noop_calls_and_accepts_commit_policy_only():
+def test_configure_rejects_noop_calls_and_accepts_a_single_flag():
     with RestlyContext() as context:
         with pytest.raises(TypeError, match="requires at least one setup argument"):
             configure()
 
-        configure(commit_session_on_response=False)
-        assert context.commit_session_on_response is False
+        configure(warn_on_uncommitted=False)
+        assert context.warn_on_uncommitted is False
 
-        configure(commit_session_on_response=True)
-        assert context.commit_session_on_response is True
+        configure(warn_on_uncommitted=True)
+        assert context.warn_on_uncommitted is True
 
 
 def test_configure_rejects_app_only_call_when_handler_install_is_disabled():

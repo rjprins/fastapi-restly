@@ -142,11 +142,10 @@ mutation with `async with self.write_action(action, ...)`; a change that no
 handler committed is discarded when the session closes — and Restly warns
 (`RestlyUncommittedChangesWarning`, default on, `warn_on_uncommitted=False` to
 disable) when a request ends with such uncommitted changes, so the forgotten
-commit surfaces in dev instead of vanishing silently. Set
-`commit_session_on_response=False` in `fr.configure(...)` to take over every
-commit yourself (handlers will not commit). Custom session generators configured
-with `session_generator` or `sync_session_generator` are passed through
-unchanged; their generator body owns transaction handling.
+commit surfaces in dev instead of vanishing silently. Restly owns the commit:
+custom session generators configured with `session_generator` or
+`sync_session_generator` let you construct sessions your way, but the generator
+only constructs, yields, and cleans up (close / rollback) — it must not commit.
 
 Both views expose several class variables that affect endpoint registration and
 runtime behaviour:
@@ -282,8 +281,7 @@ fr.configure(async_database_url="sqlite+aiosqlite:///app.db")
 
 `fr.configure(...)` rejects no-op calls. Pass at least one setup option: an app
 for default exception-handler registration, a database URL, an engine, a session
-maker, a custom session generator, or an explicit
-`commit_session_on_response` policy.
+maker, a custom session generator, or a `warn_on_uncommitted` setting.
 
 Internally, Restly keeps a private context object so its own tests and fixtures
 can isolate runtime state. That context is not a public multi-engine feature.

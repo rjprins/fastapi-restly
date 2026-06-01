@@ -20,16 +20,18 @@ breaking change; views written for 0.5.x need updating.
   `get_one`, `create`, `update`, `delete`) that is auth-free and commit-free —
   the usual override point. This replaces the `listing`/`get`/`create`/`update`/
   `delete` endpoints and the single `perform_*` tier.
-- The commit now has a **single owner**. `handle_<verb>` runs `before_commit` →
-  commit → `after_commit` around your domain logic, and the request-session
-  dependency (`AsyncSessionDep` / `SessionDep`) **no longer commits on
-  response**. `after_commit` therefore runs after the write is durable. A custom
-  (non-CRUD) write route should reuse `handle_<verb>` or bracket its mutation
-  with `with` / `async with self.write_action(action, ...)` to get the same
-  lifecycle; a route that deliberately manages the lifecycle itself must commit
-  explicitly with `_commit()` / `session.commit()`. Setting
-  `commit_session_on_response=False`, or configuring a custom session generator,
-  opts out of / takes over the commit.
+- The commit now has a **single owner: the framework**. `handle_<verb>` and
+  `write_action` run `before_commit` → commit → `after_commit` around your
+  domain logic, and the request-session dependency (`AsyncSessionDep` /
+  `SessionDep`) **no longer commits on response**. `after_commit` therefore
+  always runs after the write is durable. A custom (non-CRUD) write route should
+  reuse `handle_<verb>` or bracket its mutation with `with` / `async with
+  self.write_action(action, ...)`; only a route doing something the bracket
+  doesn't model (e.g. a batch commit) reaches for `await self.session.commit()`
+  itself. The
+  `commit_session_on_response` option is **removed**: custom session generators
+  (`session_generator` / `sync_session_generator`) construct sessions your way
+  but never own the commit — there is no opt-out.
 - Renamed: `creation_schema`/`update_schema` → `schema_create`/`schema_update`;
   `build_from_schema`/`apply_schema` → `make_new_object`/`update_object`;
   `count_listing` → `count`. Response shaping goes through a single
@@ -38,7 +40,7 @@ breaking change; views written for 0.5.x need updating.
 
 ### Added
 
-- `authorize(action, obj, data)` override — an empty seam by default; raise
+- `authorize(action, obj, data)` override — an empty override by default; raise
   `fr.Forbidden` / `fr.NotFound` to gate a verb (row visibility goes in
   `build_query`).
 - `before_commit` / `after_commit` transaction hooks and a `snapshot()` helper
