@@ -24,26 +24,17 @@ breaking change; views written for 0.5.x need updating.
 
 ### Changed (breaking)
 
-- Each CRUD verb is now three tiers: a route shell (`get_many_endpoint`,
-  `get_one_endpoint`, `create_endpoint`, `update_endpoint`, `delete_endpoint`)
-  that owns the wire shape; a request handler (`handle_get_many`,
-  `handle_get_one`, `handle_create`, `handle_update`, `handle_delete`) that runs
-  `authorize` and the commit bracket; and a bare domain verb (`get_many`,
-  `get_one`, `create`, `update`, `delete`) that is auth-free and commit-free —
-  the usual override point. This replaces the `listing`/`get`/`create`/`update`/
+- Each CRUD verb now has three tiers: route shell (`*_endpoint`), request
+  handler (`handle_*`), and domain verb (`get_many`, `get_one`, `create`,
+  `update`, `delete`). This replaces the `listing`/`get`/`create`/`update`/
   `delete` endpoints and the single `perform_*` tier.
-- The commit now has a **single owner: the framework**. `handle_<verb>` and
-  `write_action` run `before_commit` → commit → `after_commit` around your
-  domain logic, and the request-session dependency (`AsyncSessionDep` /
-  `SessionDep`) **no longer commits on response**. `after_commit` therefore
-  always runs after the write is durable. A custom (non-CRUD) write route should
-  reuse `handle_<verb>` or bracket its mutation with `with` / `async with
-  self.write_action(action, ...)`; only a route doing something the bracket
-  doesn't model (e.g. a batch commit) reaches for `await self.session.commit()`
-  itself. The
-  `commit_session_on_response` option is **removed**: custom session generators
-  (`session_generator` / `sync_session_generator`) construct sessions your way
-  but never own the commit — there is no opt-out.
+- The framework owns commits. `handle_<verb>` and `write_action` run
+  `before_commit` → commit → `after_commit`; request-session dependencies no
+  longer commit on response. Custom write routes should reuse `handle_<verb>` or
+  bracket mutations with `self.write_action(...)`. Manual `session.commit()` is
+  only for shapes the bracket does not model, such as batch commits.
+  `commit_session_on_response` is removed; custom session generators construct
+  and clean up sessions but do not own commits.
 - Renamed: `creation_schema`/`update_schema` → `schema_create`/`schema_update`;
   `build_from_schema`/`apply_schema` → `make_new_object`/`update_object`;
   `count_listing` → `count`. Response shaping goes through a single
@@ -64,13 +55,8 @@ breaking change; views written for 0.5.x need updating.
   `delete_object` / `snapshot` helpers (and their `async_*` variants where
   applicable) for use outside a view.
 - `write_action(action, *, obj, data)` — a context manager for custom write
-  *actions* (`async with self.write_action("publish", obj=...): ...`) that runs
-  the same authorize + commit bracket the CRUD handlers do. Plus the self-free
-  `run_write_action` / `async_run_write_action` (in `fastapi_restly.views`)
-  underneath, usable off the HTTP path. Create-shaped actions that omit `obj=`
-  must assign the yielded handle's `.obj` before the block exits, otherwise a
-  clean exit raises instead of committing with hooks unable to see the new
-  object.
+  actions. It shares the CRUD authorize + commit bracket. Create-shaped actions
+  that omit `obj=` must assign the yielded handle's `.obj` before exit.
 - `RestlyUncommittedChangesWarning` (default on; `warn_on_uncommitted=False` to
   disable) when a request finishes with uncommitted changes — the tell of a
   write route that forgot to commit.
@@ -133,7 +119,7 @@ First public beta release.
   `perform_create`, `perform_update`, and `perform_delete`.
 - Standardized schema component names on `ModelRead`, `ModelCreate`, and
   `ModelUpdate`.
-- Made `sort` the canonical list ordering parameter.
+- Made `sort` the standard list ordering parameter.
 - Split `__contains` and `__icontains` so case-sensitive and
   case-insensitive matching have distinct public operators.
 - Exposed savepoint-only testing helpers through `fastapi_restly.testing`
@@ -143,10 +129,9 @@ First public beta release.
   listing, the pagination total, and single-row fetches. A row hidden from
   listing returns 404 from `GET /{id}` too, and `perform_update` /
   `perform_delete` inherit the visibility check via `perform_get`.
-- `perform_get` now issues a `SELECT ... WHERE pk = ?` instead of
-  `session.get(...)`. Behaviour is unchanged for single-column primary keys;
-  subclasses with composite primary keys must override `perform_get` themselves
-  (a `NotImplementedError` is raised otherwise with a clear message).
+- `perform_get` now issues `SELECT ... WHERE pk = ?` instead of
+  `session.get(...)`. Single-column primary-key behavior is unchanged.
+  Composite-primary-key subclasses must override `perform_get`.
 - Advanced schema-to-object helpers now live in `fastapi_restly.objects`:
   `build_from_schema`, `apply_schema`, `save_object`, and `delete_object`,
   with async equivalents. The view methods use the same names for the mapping

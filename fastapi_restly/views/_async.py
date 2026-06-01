@@ -102,29 +102,20 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         return obj
 
     def write_action(self, action: str, *, obj: Any = _UNSET, data: Any = None):
-        """Run a custom write *action* through the full request bracket.
+        """Run a custom write action through the standard write bracket.
 
-        Used as an async context manager from a custom write route: it runs
-        ``authorize`` + ``snapshot`` on entry, your body mutates the object, then
-        ``before_commit`` -> commit -> ``after_commit`` on exit. Reach for it when
-        an action is not a plain create/update/delete (publish, change-password,
-        a state transition); CRUD-shaped logic belongs in the ``create`` /
-        ``update`` / ``delete`` overrides instead::
+        Use this for non-CRUD actions such as publish or change-password::
 
             async with self.write_action("publish", obj=article):  # in-place
                 article.status = "published"
 
-        For a create-shaped action -- where no ``obj`` exists yet -- pass no
-        ``obj`` and deposit the new object on the handle::
+        For create-shaped actions, omit ``obj`` and set ``w.obj`` before exit::
 
             async with self.write_action("create", data=req) as w:
                 w.obj = await self.make_new_object(req)
 
-        Forgetting that deposit is guarded: a create-shaped block (no ``obj=``)
-        that never sets ``handle.obj`` raises ``RuntimeError`` on exit instead of
-        silently committing the row with the hooks blind to it. For a write with
-        no single object, pass ``obj=None`` explicitly. A raise inside the block
-        skips the commit (the write rolls back).
+        Pass ``obj=None`` for writes with no single object. Exceptions skip the
+        commit.
         """
         return async_write_action(self, action, obj=obj, data=data)
 
@@ -193,9 +184,7 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
             query = query.options(*loader_options)
         obj = (await self.session.scalars(query)).first()
         if obj is None:
-            raise NotFound(
-                f"{self.model.__name__} with id {id!r} was not found"
-            )
+            raise NotFound(f"{self.model.__name__} with id {id!r} was not found")
         return cast(ModelT, obj)
 
     async def create(self, schema_obj: CreateSchemaT) -> ModelT:
@@ -227,9 +216,8 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         filtering, row-level permission visibility). Call ``super().build_query()``
         and chain ``.where(...)`` to compose with base-class or mixin filters.
 
-        Because retrieve also routes through this query, a row hidden from the
-        list cannot be fetched directly via ``GET /{id}`` -- visibility stays
-        consistent across endpoints by construction.
+        Retrieve also routes through this query, so a row hidden from the list
+        returns 404 from ``GET /{id}``.
         """
         return sqlalchemy.select(self.model)
 
@@ -269,9 +257,7 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
             self.session, model_cls, schema_obj, self.schema
         )
 
-    async def update_object(
-        self, obj: ModelT, schema_obj: UpdateSchemaT
-    ) -> ModelT:
+    async def update_object(self, obj: ModelT, schema_obj: UpdateSchemaT) -> ModelT:
         """Apply writable fields from ``schema_obj`` to ``obj``. Does not flush.
         Override cooperatively (same shape as :meth:`make_new_object`) to stamp
         structural fields such as ``updated_by``.

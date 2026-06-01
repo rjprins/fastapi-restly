@@ -1,18 +1,10 @@
 """Cross-cutting mixins for the SaaS example.
 
-These compose by cooperative ``super()`` chains. Application-layer logic
-in concrete views (``ProjectView.create`` etc.) doesn't have to know
-they exist — the mixins inject their behavior into the right framework
-helper/override point (``make_new_object`` / ``update_object`` for *write-side* stamps,
-``build_query`` for *read-side* filters that apply to listing, count, and
-retrieve in one place).
+These compose through cooperative ``super()`` chains. Write-side stamps use
+``make_new_object`` / ``update_object``; read-side filters use ``build_query``;
+soft-delete uses ``delete_object``.
 
-Structural cross-cutting stamps override ``make_new_object`` / ``update_object``
-cooperatively (call ``super()``, then mutate the returned object); read-side
-scoping overrides ``build_query``; soft-delete overrides ``delete_object``. The
-rules are the same across the board (audit, tenant, soft-delete):
-
-- They run *before* ``save_object`` (no flush-timing trap).
+- They run *before* ``save_object`` (no flush-timing issue).
 - They only stamp/scope; they don't compute business values.
 - They compose linearly via ``super()`` so combinations work without
   ordering surprises.
@@ -36,17 +28,11 @@ class TenantScopedMixin:
     views inherit this *before* ``TenantBase`` so ``_current_org_id`` is
     available via the cooperative chain.
 
-    Type stubs below describe what the mixin requires from its host
-    class. Since fastapi-restly's class-level DI is now marker-based,
-    bare type annotations like these no longer shadow inherited DI
-    wiring (``session: AsyncSessionDep`` on ``AsyncRestView``) — they're
-    simply pyright-visible documentation of the host's interface.
+    Type stubs below describe what the mixin expects from its host class.
     """
 
     # Required from the host class (TenantBase / AsyncRestView).
-    # Bare type annotations rather than executable stubs — a real method
-    # body would shadow the host's implementation via MRO, even if just
-    # ``...``. Pyright is satisfied; runtime sees the inherited method.
+    # Keep stubs under TYPE_CHECKING so runtime MRO uses the host implementation.
     if TYPE_CHECKING:
         request: fastapi.Request
         session: AsyncSession
@@ -56,8 +42,7 @@ class TenantScopedMixin:
         def _is_admin(self) -> bool: ...
 
     def build_query(self) -> sa.Select:
-        # Filters listing, count, AND retrieve via the framework's unified
-        # read override point — no separate get_one override required.
+        # Filters listing, count, and retrieve through one read hook.
         q = super().build_query()  # type: ignore[misc]
         if self._is_admin():
             return q
@@ -68,10 +53,7 @@ class TenantScopedMixin:
 
     async def make_new_object(self, schema_obj: Any) -> Any:
         obj = await super().make_new_object(schema_obj)  # type: ignore[misc]
-        # Admins still get tenant-stamping by default — they shouldn't be
-        # *required* to specify org_id, even though they can see across
-        # tenants. If admin's request.state.org_id is unset, the body's
-        # value wins (fall-through behavior).
+        # Admins get tenant-stamping when request context provides an org.
         org_id = self._current_org_id()
         if org_id is not None and hasattr(obj, "organization_id"):
             obj.organization_id = org_id
@@ -84,10 +66,8 @@ class SoftDeleteMixin:
     Assumes ``self.model`` has a ``deleted_at: datetime | None`` column.
     Pass ``?include_deleted=true`` on list/get to bypass the filter.
 
-    Concrete views typically also replace the generated DELETE route
-    with a ``200 + body`` contract — that's a *route-level* HTTP-contract
-    decision (matrix: "Return deleted record instead of 204"), separate
-    from the soft-delete behavior the mixin provides.
+    Concrete views can still replace the DELETE route when they need a
+    different HTTP contract, such as ``200 + body``.
     """
 
     # Required from the host class.
@@ -96,8 +76,8 @@ class SoftDeleteMixin:
         session: AsyncSession
         model: type[DeclarativeBase]
 
-    # Allow the ``?include_deleted=true`` escape hatch through the strict
-    # unknown-query-param guard on the listing endpoint.
+    # Allow ``?include_deleted=true`` through the listing endpoint's
+    # unknown-query-param guard.
     extra_query_params = ("include_deleted",)
 
     def _include_deleted(self) -> bool:
@@ -122,10 +102,8 @@ class SoftDeleteMixin:
 class AuditStampedMixin:
     """Stamp ``created_by_id`` / ``updated_by_id`` from request state.
 
-    Assumes the columns exist on ``self.model``. Stamps in
-    ``make_new_object`` (pre-flush, so the row inserts with the values)
-    and ``update_object`` (also pre-flush). No business logic — purely
-    "who did this write" book-keeping.
+    Assumes the columns exist on ``self.model``. Stamps before flush in
+    ``make_new_object`` and ``update_object``.
     """
 
     # Required from the host class.

@@ -101,7 +101,9 @@ if pytest_asyncio is None:
 else:
 
     @pytest_asyncio.fixture
-    async def restly_async_session(_shared_connection) -> AsyncIterator[SA_AsyncSession]:
+    async def restly_async_session(
+        _shared_connection,
+    ) -> AsyncIterator[SA_AsyncSession]:
         """
         Pytest fixture providing a database session with savepoint-based isolation.
 
@@ -135,6 +137,7 @@ else:
 
         async with get_bound_async_connection() as async_conn:
             async with _fr_globals.async_make_session(bind=async_conn) as sess:
+
                 class AsyncSessionContext:
                     def __init__(self, *, flush_on_success: bool) -> None:
                         self.flush_on_success = flush_on_success
@@ -166,12 +169,9 @@ else:
                 async def patched_commit(self):
                     await sess.flush()
                     await sess.begin_nested()
-                    # The savepoint is this fixture's stand-in for a commit, so
-                    # mimic after_commit and clear the uncommitted-changes flag
-                    # the flush set. Without this the request-end check false-
-                    # warns on every write (after_commit never fires under the
-                    # patched commit). A genuinely forgotten commit -- one that
-                    # never calls commit() -- still leaves the flag set and warns.
+                    # Treat the savepoint as this fixture's commit boundary.
+                    # Clear the pending-change flag set by flush; a write that
+                    # never calls commit() still leaves the flag set and warns.
                     _clear_uncommitted(getattr(sess, "sync_session", sess))
 
                 globals_obj = _get_restly_context()

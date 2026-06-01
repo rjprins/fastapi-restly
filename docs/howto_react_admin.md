@@ -6,9 +6,8 @@ expects a specific REST wire contract that differs from the default Restly
 contract in several ways: JSON-encoded sort and range parameters, a plain
 array response body, and a `Content-Range` header for pagination.
 
-`AsyncReactAdminView` and `ReactAdminView` implement this contract. Switch
-to one of these view classes and `ra-data-simple-rest` works without a custom
-data provider.
+`AsyncReactAdminView` and `ReactAdminView` implement this contract, so
+`ra-data-simple-rest` works without a custom data provider.
 
 ---
 
@@ -50,7 +49,7 @@ export default () => (
 );
 ```
 
-No custom data provider, no adapter layer.
+No custom data provider or adapter layer is needed.
 
 ---
 
@@ -140,8 +139,7 @@ app.add_middleware(
 ```
 
 `AsyncReactAdminView` also sets `Access-Control-Expose-Headers: Content-Range`
-on every list response as a per-response fallback, but the middleware approach
-is more reliable and is the recommended setup for production.
+on list responses as a fallback. Prefer middleware in production.
 
 ---
 
@@ -215,5 +213,4 @@ request handler. All other generated routes (`GET /{id}`, `POST /`,
 `PATCH /{id}`, `DELETE /{id}`) and write business-verb tiers are inherited
 unchanged.
 
-The shared parsing and response logic is an internal implementation detail of
-the concrete React Admin view classes.
+The shared parsing and response helpers are internal.

@@ -80,33 +80,11 @@ class TenantBase(fr.AsyncRestView):
         return self.current_user_id
 
     def _is_admin(self) -> bool:
-        """Whether the current request bypasses tenant + row scoping.
-
-        Admin requests skip the ``WHERE organization_id = ...`` clause in
-        ``TenantScopedMixin.build_query`` and any per-row scope clause on
-        the concrete view (see ``TaskView.build_query`` for an assignee-scope
-        example). The mixins consult this predicate cooperatively, so an
-        admin request sees all rows across all tenants by simply having
-        the flag set — no separate route tree, no second base view.
-
-        Trade-off this surfaces: the bypass is *runtime*, not class-time.
-        That keeps the route tree simple but couples every read scope to
-        an ``if not self._is_admin():`` guard. The matrix's alternative
-        ("admin views opt into a different base query") would mean a
-        parallel ``AdminProjectView`` etc. — see commentary in the
-        helper/handler design findings doc.
-        """
+        """Whether this request bypasses tenant and row scoping."""
         return bool(getattr(self.request.state, "is_admin", False))
 
     async def save_object(self, obj):
-        """Flush, refresh, then emit an audit event.
-
-        Overriding ``save_object`` is the right place for side effects that
-        should run after *every* write — both create and update — because the
-        business ``create`` and ``update`` ops both end by calling
-        ``self.save_object`` (``save_object`` flushes but does NOT commit; the
-        ``handle_<verb>`` layer owns the commit).
-        """
+        """Flush and refresh, with a placeholder for audit side effects."""
         obj = await super().save_object(obj)
         # In production: publish to an audit log or event bus.
         # await audit_bus.emit("saved", model=type(obj).__name__, id=obj.id)
@@ -117,15 +95,12 @@ class TenantBase(fr.AsyncRestView):
     ) -> None:
         """Write an outbox row in the current session.
 
-        Call this *after* ``save_object`` so ``aggregate.id`` is populated.
-        The session has flushed but not committed; the outbox row joins
-        the same transaction and either both end up in the database or
-        neither does.
+        Call after ``save_object`` so ``aggregate.id`` is populated. The outbox
+        row joins the same transaction as the aggregate.
 
-        DO NOT replace this with a direct ``await email_service.send(...)``
-        call before commit: if the transaction rolls back the email still
-        goes out, and you've leaked information about a row that doesn't
-        exist. The outbox is the durable boundary.
+        Do not replace this with a direct ``await email_service.send(...)``
+        before commit: if the transaction rolls back, the email still goes out
+        and leaks a row that does not exist. The outbox is the durable boundary.
         """
         from ..models import OutboxEvent
 

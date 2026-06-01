@@ -21,9 +21,9 @@ from ._sync import RestView
 # Public API for ``fastapi_restly.views``.
 #
 # Submodule exports are supported public API for users working in this
-# subsystem. Some names, such as ``BaseRestView``, are intentionally kept out
-# of the top-level ``fastapi_restly`` namespace because they are advanced
-# building blocks rather than the primary import path.
+# subsystem. Some names, such as ``BaseRestView``, stay out of the top-level
+# ``fastapi_restly`` namespace because they are advanced building blocks, not
+# the primary import path.
 __all__ = [
     "RestView",
     "AsyncRestView",

@@ -20,11 +20,11 @@ in `conftest.py`:
 pytest_plugins = ["fastapi_restly.pytest_fixtures"]
 ```
 
-This makes the fixtures below available. Restly does not register autouse fixtures; projects should decide explicitly which global test setup they want.
+This makes the fixtures below available. Restly does not register autouse fixtures; opt in from your project.
 
 ## Async Tests
 
-Tests that use `restly_async_session` must be run with an async pytest plugin such as `pytest-asyncio` or `anyio`. Configure the asyncio mode in your `pyproject.toml`:
+Tests using `restly_async_session` need an async pytest plugin such as `pytest-asyncio` or `anyio`. Configure asyncio mode in `pyproject.toml`:
 
 ```toml
 [tool.pytest.ini_options]
@@ -47,7 +47,7 @@ Walks up from `cwd` until it finds a `pyproject.toml`, and returns that director
 
 **Scope:** `function`
 
-Provides a SQLAlchemy `Session` for use in tests. It runs on a connection whose outer transaction is never committed. `restly_session.commit()` is patched to `flush()` + `begin_nested()`, so writes become visible inside the test while the fixture keeps app-level commits inside nested transactions.
+Provides a SQLAlchemy `Session` on a connection whose outer transaction is never committed. `commit()` is patched to `flush()` + `begin_nested()`, so writes are visible during the test without persisting afterward.
 
 ```python
 def test_user_created(restly_session):
@@ -67,7 +67,7 @@ Skips automatically if no sync database connection is configured.
 
 **Scope:** `function`
 
-Same as `restly_session` but for async code. In async-only projects it works with just `fr.configure(async_database_url=...)`. If both async and sync sessionmakers are configured, it shares the same underlying connection as `restly_session`, so writes from one are visible to the other within a test.
+Async version of `restly_session`. In async-only projects it needs only `fr.configure(async_database_url=...)`. If both async and sync sessionmakers are configured, both fixtures share a connection and see each other's writes.
 
 ```python
 async def test_user_created(restly_async_session):
@@ -81,7 +81,7 @@ async def test_user_created(restly_async_session):
 
 Skips automatically if no async database connection is configured.
 
-> **Note:** `restly_async_session` only shares a DBAPI connection with `restly_session` when both sessionmakers are configured and both engines use the `psycopg` driver (`postgresql+psycopg://`). With other combinations (e.g. `psycopg2` + `asyncpg`), the sessions do not share a connection and will not see each other's writes within the same test.
+> **Note:** `restly_async_session` shares a DBAPI connection with `restly_session` only when both sessionmakers are configured and both engines use `psycopg` (`postgresql+psycopg://`). Other driver combinations, such as `psycopg2` + `asyncpg`, do not share writes inside one test.
 
 ---
 
@@ -117,7 +117,7 @@ FastAPI routes and `AsyncRestView` endpoints.
 | `patch`  | `200`                   |
 | `delete` | `204`                   |
 
-> **Note:** `put` is available on `RestlyTestClient`. `AsyncRestView` and `RestView` do not generate a `PUT` endpoint by default, but `AsyncReactAdminView` / `ReactAdminView` do (to match `ra-data-simple-rest`). Use `put` against any of those views, or against a custom PUT route you add yourself.
+> **Note:** `put` is available on `RestlyTestClient`. `AsyncRestView` and `RestView` do not generate `PUT`; React Admin views and custom routes may.
 
 Override the expected code when testing error paths:
 
@@ -136,22 +136,22 @@ expected under savepoint isolation. Explicit transaction blocks are also support
 - `with restly_session.begin(): ...` flushes pending changes when the block exits successfully
 - `async with restly_async_session.begin(): ...` does the same for async tests
 
-These fixtures still run under savepoint-based isolation rather than production
+These fixtures still run under savepoint-based isolation, not production
 transaction management. If a test depends on precise rollback behavior at that
 boundary, prefer explicit `flush()` / `rollback()` calls or test against the
-public API/client layer instead of depending on fixture internals.
+public API/client layer instead of fixture internals.
 
 ---
 
 ## Isolation Model
 
-Both `restly_session` and `restly_async_session` use a layered transaction model so that test data is visible during the test but does not persist afterward:
+Both session fixtures use layered transactions: data is visible during the test and rolled back afterward.
 
 1. The fixture opens a connection for the test and binds the SQLAlchemy session to that connection.
-2. The `restly_session` / `restly_async_session` fixtures patch Restly's configured session factory so code under test receives the same isolated session.
-3. The fixtures patch `commit()` to `flush()` + `begin_nested()` — state is visible within the test, and code under test can call `commit()`, but no real commit reaches the database.
+2. The fixtures patch Restly's session factory so code under test receives the same isolated session.
+3. The fixtures patch `commit()` to `flush()` + `begin_nested()`, making state visible without a real database commit.
 4. After the test, the connection is closed without committing, rolling back all changes and restoring the database to its pre-test state.
 
-So both statements are true: savepoints make in-test commits safe and keep request/session code usable, while the final isolation guarantee comes from the outer connection-level transaction never being committed. If a test never calls `commit()`, it may not create an extra nested savepoint, but isolation is still maintained by the outer transaction.
+Savepoints keep in-test commits usable; the uncommitted outer transaction provides the final isolation. Tests that never call `commit()` are still isolated.
 
 This eliminates per-test teardown code and avoids the cost of recreating the schema between tests.

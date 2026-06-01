@@ -41,20 +41,9 @@ class ChangePasswordRequest(BaseModel):
 class UserView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantBase):
     """CRUD endpoints for users.
 
-    Mixin-composed: tenant scope (filter + stamp), audit stamps, soft
-    delete — all delivered by the chain. The view body retains only the
-    user-specific concerns: password hashing, field-level permissions,
-    /me routes, and change-password.
-
-    The ``create`` override below is the canonical illustration of the
-    three-tier "handle design": override the *bare* business verb ``create``
-    (auth-free, commit-free), build the ORM object via ``self.make_new_object``
-    (which transparently runs through the mixin chain to stamp tenant + audit
-    fields), mutate the password, then flush+refresh via ``save_object``.
-    Because ``create`` does NOT commit (``handle_create`` commits later), the
-    hash is set before the row is flushed and persisted — the old
-    "save_object trap" (mutating after a post-flush commit) is structurally
-    gone.
+    Mixins handle tenant scope, audit stamps, and soft delete. This view keeps
+    user-specific behavior: password hashing, field-level permissions, /me
+    routes, and change-password.
     """
 
     prefix = "/users"
@@ -74,28 +63,7 @@ class UserView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantBase
         return role in (UserRole.HR, UserRole.OWNER)
 
     async def create(self, schema_obj):
-        """Hash the plaintext password before the row is persisted.
-
-        Canonical three-tier override point: override the *bare* ``create``
-        verb (NOT a request handler). ``create`` is auth-free and commit-free —
-        ``handle_create`` runs ``authorize`` first and the commit bracket
-        afterwards. Building the row, setting ``password_hash``, then
-        ``save_object`` now persists the hash correctly: ``save_object``
-        flushes but does not commit, so there is no post-commit window where a
-        plaintext value could leak to disk.
-
-        DO NOT reach for ``super().create(...)`` and mutate afterwards::
-
-            user = await super().create(schema_obj)   # already flushed
-            user.password = hash_password(...)         # in-memory only
-            return user
-
-        DO build the row with the helpers, mutate, then save::
-
-            user = await self.make_new_object(schema_obj)
-            user.password = hash_password(schema_obj.password)
-            return await self.save_object(user)
-        """
+        """Hash the password before saving the new row."""
         user = await self.make_new_object(schema_obj)
         if schema_obj.password:
             user.password = hash_password(schema_obj.password)
@@ -105,14 +73,9 @@ class UserView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantBase
     async def change_password(self, id: int, request: ChangePasswordRequest) -> Any:
         """Change a user's password.
 
-        Action route rather than PATCH because the request contract is
-        different (proof-of-possession via ``current_password``, no public
-        body fields). Calls ``handle_get_one`` for the scoped fetch+404+read-auth
-        (so any row-level access checks layered into ``authorize`` apply here
-        too), then brackets the hash swap with ``write_action`` under the
-        ``"change_password"`` action -- so it runs the full bracket (authorize
-        -> snapshot -> mutate -> before_commit -> commit -> after_commit)
-        without owning the commit by hand.
+        This is an action route because the payload differs from PATCH. The row
+        is loaded through ``handle_get_one`` and the mutation is committed by
+        ``write_action``.
         """
         user = await self.handle_get_one(id)
         if not verify_password(request.current_password, user.password):

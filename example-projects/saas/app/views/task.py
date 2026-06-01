@@ -137,14 +137,8 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
     async def create(self, schema_obj):
         """Validate, build, save, and bump the parent's story-point rollup.
 
-        Overrides the *bare* business ``create`` verb (auth-free, commit-free).
-        The denormalized ``Project.total_story_points`` field is kept in
-        sync here rather than in a SQLAlchemy event because (a) the math
-        depends on the schema's optional ``story_points`` field and (b)
-        we want the rollup to live in the same transaction as the task
-        write. Both the task insert and the project update flush together
-        when ``save_object`` is called; ``handle_create`` then commits the
-        pair atomically.
+        The rollup depends on request data, so it lives in the business verb and
+        commits with the task.
         """
         from ..models import Project, ProjectStatus
 
@@ -172,23 +166,8 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
     async def update(self, obj, schema_obj):
         """Optimistic locking + reroll the parent's story-point rollup.
 
-        Overrides the *bare* business ``update`` verb, which receives the
-        already-loaded ``obj``: ``handle_update`` loads it through ``get_one``
-        (which enforces row-level access — assignee match — and 404s), runs
-        ``authorize``, then calls this method, and commits via the bracket.
-
-        Pattern from the matrix's "update related object based on updated
-        object" row: capture old value before mutation, apply the update,
-        then propagate the delta to the related row inside the same
-        transaction. ``save_object`` at the end flushes both rows together.
-
-        Also illustrates the NOT_SET-style sentinel pattern: this view uses
-        ``model_dump(exclude_unset=True)`` so a ``None`` *that the client
-        explicitly sent* clears the field, while a missing key leaves it
-        alone. (The Brenntag ``NOT_SET`` sentinel exists for the rarer
-        case where ``None`` itself is a meaningful explicit value, distinct
-        from "not provided" — that requires a custom marker, which we don't
-        need with the explicit-vs-omitted distinction Pydantic gives us.)
+        Capture old values, apply the update, then propagate the story-point
+        delta to the related project in the same transaction.
         """
         from ..models import Project
 
@@ -219,10 +198,7 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
         old_points = task.story_points or 0
         old_project_id = task.project_id
 
-        # Apply writable fields via the framework helper (skips ReadOnly,
-        # respects exclude_unset semantics from the wire). Then bump version
-        # explicitly — if the client sent a version it was already validated
-        # above, and we always want server-side increment.
+        # Apply writable fields, then bump version server-side.
         task = await self.update_object(task, schema_obj)
         task.version = (
             client_version if client_version is not None else task.version
@@ -248,22 +224,13 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
     async def _transition_task(
         self, id: int, source_status: TaskStatus, target_status: TaskStatus, action: str
     ) -> Task:
-        """Run a status transition as a genuinely-custom write action.
-
-        A transition is *update-shaped* but not a plain PATCH (the input is the
-        route itself, the allowed moves are gated by a state machine), so instead
-        of reusing ``handle_update`` we bracket the mutation with
-        ``write_action`` under a custom action name. The context manager runs the
-        whole bracket -- authorize(action, obj) -> snapshot -> the mutation ->
-        before_commit -> commit -> after_commit -- so the transition gets the
-        same lifecycle as every other write without hand-rolling it.
-        """
+        """Run a status transition through a named write action."""
         if target_status not in VALID_TRANSITIONS.get(source_status, []):
             raise RuntimeError(
                 f"Invalid task transition definition: {source_status.value} -> {target_status.value}"
             )
 
-        # Load with scope + 404 + read-auth via the canonical read handler.
+        # Load with scope + 404 + read-auth.
         task = await self.handle_get_one(id)
         if task.status != source_status:
             raise HTTPException(
@@ -288,20 +255,8 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
     ) -> BulkResult:
         """Parse a CSV of tasks and bulk-create them.
 
-        Demonstrates "Bulk import/update from spreadsheet" from the matrix —
-        a custom route because (a) the input is multipart not JSON, and
-        (b) the response is a per-row success/failure report rather than
-        a list of created objects.
-
-        Each row is fed through the business ``create`` verb via
-        ``TaskCreateSchema``, so every row inherits the same validation chain
-        and rollup as ``POST /tasks/``. ``create`` flushes but does NOT commit
-        -- and the request-session dependency no longer commits on response --
-        so this custom route owns the commit: a single ``self.session.commit()``
-        at the end persists all successful rows together. Pydantic surfaces field
-        errors per row; each row also runs inside its own ``begin_nested()``
-        SAVEPOINT, so a row that fails at flush (e.g. a DB constraint) rolls
-        back only itself and the rest of the batch still persists.
+        Each row uses the business ``create`` verb, with per-row savepoints and
+        one final commit for successful rows.
         """
         import csv
         import io
@@ -347,14 +302,8 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
     async def bulk_create(self, request: BulkCreateRequest) -> BulkResult:
         """Create multiple tasks at once.
 
-        Delegates each item to the business ``create`` verb so the same
-        archived-project guard, conditional-field validation, cross-resource
-        validation, and story-point rollup that apply to ``POST /tasks/`` apply
-        per row. ``create`` flushes without committing, so this custom route
-        owns the commit -- the request-session dependency no longer commits on
-        response, so a single ``self.session.commit()`` at the end persists every
-        successful row together. Each row runs in its own ``begin_nested()``
-        SAVEPOINT so one row failing at flush can't abort the whole batch.
+        Each item uses the business ``create`` verb. Per-row savepoints allow
+        partial success; one final commit persists successful rows.
         """
         success = 0
         failed = 0
@@ -379,18 +328,8 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
     async def bulk_delete(self, request: BulkDeleteRequest) -> BulkResult:
         """Delete multiple tasks by IDs.
 
-        Uses ``handle_get_one`` per id so each delete inherits the row-level
-        access check (only the assignee may see/touch the task).
-        ``handle_get_one`` raises 404 for both "missing" and "not yours", which
-        we catch and report.
-
-        This is a genuinely-custom write (a multi-row report, not a single
-        verb), so it owns its commit. ``delete_object`` flushes but does NOT
-        commit -- the request-session dependency no longer commits on response,
-        so without the trailing ``self.session.commit()`` every soft-delete here
-        would be silently rolled back. Each id runs in its own ``begin_nested()``
-        SAVEPOINT (so one failure can't poison the rest), and we commit ONCE at
-        the end so all successful rows persist together.
+        Each id loads through ``handle_get_one`` for row visibility, then runs in
+        a savepoint. One final commit persists successful deletes.
         """
         success = 0
         failed = 0

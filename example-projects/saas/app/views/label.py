@@ -34,12 +34,7 @@ class LabelView(TenantScopedMixin, TenantBase):
     schema = LabelSchema
 
     async def delete_object(self, obj):
-        """Remove all task-label associations before deleting the label.
-
-        Overriding ``delete_object`` is the right place for cascading cleanup
-        that should happen on every delete — here we detach any tasks that
-        reference this label before removing the label row itself.
-        """
+        """Remove task-label associations before deleting the label."""
         await self.session.execute(
             sa.delete(TaskLabel).where(TaskLabel.label_id == obj.id)
         )
@@ -49,8 +44,7 @@ class LabelView(TenantScopedMixin, TenantBase):
 class TaskLabelView(TenantBase):
     """CRUD for task-label associations.
 
-    Demonstrates ``make_new_object`` to stamp the ``added_by_id`` field from
-    the injected auth context rather than requiring the client to provide it.
+    ``make_new_object`` stamps ``added_by_id`` from auth context.
     """
 
     prefix = "/task-labels"
@@ -70,32 +64,8 @@ class TaskLabelView(TenantBase):
     ) -> TaskLabelSchema:
         """Sibling-creation: build a Label *and* a TaskLabel in one request.
 
-        The brenntag pattern from ``permissions.py:188-201`` — create a
-        sibling row if needed, then create another row that references it.
-
-        Two design choices visible in this implementation, both deliberate:
-
-        1) **Build the Label and flush before constructing the TaskLabel.**
-           This is required because the next step uses
-           ``async_make_new_object`` with a ``TaskLabelSchema`` that
-           carries ``label_id: IDRef[Label]`` — and the schema
-           resolver runs ``select(Label).where(id=...)`` to verify the
-           reference. A not-yet-flushed Label has no PK yet, so we
-           wouldn't have anything to put in ``label_id``. The flush is
-           the cost of going through the resolver path.
-
-        2) **Direct ORM construction after flush.** We use
-           ``async_make_new_object`` rather than the model constructor
-           directly so the framework's writable-field filtering + readonly
-           handling apply. The ``TaskLabelSchema`` has ``label_id`` typed
-           as ``IDRef[Label]`` — the resolver replaces that with the
-           Label instance, which the framework then converts back to
-           ``label_id = label.id`` via the resolver path.
-
-        Sibling-creation is a genuinely-custom write (two rows, two models).
-        The whole construction runs inside a ``write_action("create", ...)``
-        block, so the Label + TaskLabel pair commits atomically through the one
-        bracket -- and the action picks up authorize + the commit hooks for free.
+        The Label is flushed first so its id can be used in the TaskLabel
+        ``IDRef`` schema. Both rows commit through one ``write_action`` block.
         """
         # Tenant scope is enforced via TaskView.get_one-style checks here:
         # we don't go through TaskView, so we re-validate the task fits
@@ -107,29 +77,16 @@ class TaskLabelView(TenantBase):
         if org_id is None:
             raise HTTPException(400, "Cannot create labels without an org context")
 
-        # The bracket commits the Label + TaskLabel pair atomically. IDRef
-        # serializes as a bare scalar both ways; FastAPI's response_model
-        # coercion handles the ORM int directly.
+        # Commit the Label + TaskLabel pair atomically.
         async with self.write_action("create", data=request) as w:
-            # 1) Build sibling #1 (Label) and flush — needed because the
-            #    next step's IDRef resolver requires an existing PK.
+            # 1) Build Label and flush so the resolver can see its PK.
             label = Label(
                 name=request.label_name, color=request.color, organization_id=org_id
             )
             self.session.add(label)
             await self.session.flush()  # <-- the resolver path's hard requirement
 
-            # 2) Build sibling #2 (TaskLabel) referencing #1 via IDRef.
-            #    The fields on TaskLabelSchema are typed IDRef[T] so the
-            #    wire format is scalar (``"task_id": 5``) but the framework
-            #    resolver still verifies the row exists. ``model_construct``
-            #    skips Pydantic validation, so we pass IDRef instances
-            #    directly rather than scalars — that keeps the resolver path
-            #    happy. (Passing a scalar would leave a plain int that the
-            #    resolver doesn't recognize, falling through to assignment
-            #    against the ORM column, which happens to work because the
-            #    column is also an int. But that path skips the existence
-            #    check, which is the whole point of the type.)
+            # 2) Build TaskLabel with IDRef instances so references are checked.
             link_schema = TaskLabelSchema.model_construct(
                 task_id=IDRef[Task](id=request.task_id),
                 label_id=IDRef[Label](id=label.id),
@@ -137,10 +94,7 @@ class TaskLabelView(TenantBase):
             task_label = await async_make_new_object(
                 self.session, TaskLabel, link_schema
             )
-            # added_by_id stamping isn't auto-applied here because
-            # async_make_new_object is the *free function*, not the bound
-            # ``self.make_new_object`` method that this view overrides for
-            # the stamp.
+            # The free helper bypasses this view's make_new_object override.
             if task_label.added_by_id is None:
                 task_label.added_by_id = self._current_user_id()
             w.obj = await async_save_object(self.session, task_label)

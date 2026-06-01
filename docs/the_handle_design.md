@@ -1,12 +1,9 @@
 # The handle design
 
-Every CRUD verb in FastAPI-Restly is built from **three tiers**. Once you can
-name the tier you want to change, overriding behavior stops being guesswork: you
-reach for one method, leave the other two alone, and the rest of the framework
-keeps working around your change.
+Every CRUD verb in FastAPI-Restly has **three tiers**. Name the tier that owns
+your change, override one method, and leave the rest alone.
 
-This page teaches that mental model, walks the request lifecycle for a write and
-a read, and gives you a single "which method do I override for X?" lookup table.
+This page covers the model, the read/write lifecycle, and the override lookup.
 
 ## The three tiers
 
@@ -22,30 +19,21 @@ POST /                       ← the route shell
 
 1. **Route shell** — `get_many_endpoint`, `get_one_endpoint`,
    `create_endpoint`, `update_endpoint`, `delete_endpoint`. This is the **wire
-   boundary**: the `@route` decorator, the FastAPI signature and
-   `response_model`, and the call to `to_response`. You rarely override this —
-   only to renegotiate the HTTP contract (a different status code, an envelope,
-   custom headers).
+   boundary**: the `@route` decorator, FastAPI signature, `response_model`, and
+   `to_response`. Override it only to change the HTTP contract.
 
 2. **Request handler** — `handle_get_many`, `handle_get_one`, `handle_create`,
    `handle_update`, `handle_delete`. This is the **request logic**: it runs
-   `authorize` and owns the commit bracket (`before_commit` → commit →
-   `after_commit`), then returns the domain object. Override it to change
-   orchestration or timing — a custom transaction, an async delete — *without*
-   re-declaring the route. Reuse it from custom actions when you want the same
-   commit bracket.
+   `authorize`, owns the commit bracket, and returns the domain object. Override
+   it to change orchestration or timing without re-declaring the route.
 
 3. **Business verb** — `get_many`, `get_one`, `create`, `update`, `delete`.
    This is the **domain operation**: build, apply, save. It is **auth-free** and
-   **commit-free**. This is the usual override point — hash a password, derive a
-   slug, compute a field.
+   **commit-free**. This is the usual override point.
 
-The framework owns the commit *inside* the handler, not inside the business
-verb. That single fact is what makes overrides safe: because `create` never
-commits, an override that builds an object, stamps a `password_hash`, calls
-`save_object`, and returns persists correctly. The old "mutate-after-save" trap
-— where a field set after the commit silently never reached the database — is
-gone, because in this design there is no commit to come after.
+The handler owns the commit, not the business verb. Because `create` never
+commits, an override can build an object, stamp a `password_hash`, call
+`save_object`, and return; the handler commits afterward.
 
 ## Request lifecycle: a write (`create`)
 
@@ -88,11 +76,8 @@ GET /{id}
 ```
 
 Because `get_one` routes through `build_query`, **visibility lives in one
-place** and is consistent across every read — list, count, and single fetch. A
-row hidden by the scope cannot be fetched directly via `GET /{id}`; it is a 404,
-not a 403, and you never had to remember to re-check. `get_one` itself stays
-auth-free; the *policy* check (can this user read this visible row?) is added by
-the handler through `authorize`.
+place** across list, count, and single-row reads. A hidden row returns 404 from
+`GET /{id}`. `get_one` stays auth-free; `authorize` handles policy.
 
 `get_many` works the same way: `build_query` (scope) → `apply_query_params`
 (filter/sort/page) → `count`, with `authorize("get_many")` added by
@@ -114,16 +99,14 @@ the handler through `authorize`.
 | Post-commit side effects (email/webhook)| `after_commit`                    | transaction hook       |
 | The response shape                      | `to_response`                     | wire boundary          |
 
-A good rule of thumb: **start at the business verb.** Most real changes are
-domain logic and belong there. Only move up to `handle_<verb>` when you need to
-change *when* something happens relative to the commit, and only touch the route
-shell when the HTTP contract on the wire genuinely has to change.
+A good rule: **start at the business verb.** Move to `handle_<verb>` only when
+timing or transaction handling must change. Touch the route shell only for HTTP
+contract changes.
 
 ## Worked example: hash a password on create
 
-Hashing a password is pure domain logic, so it goes in the business verb. The
-business verb does not commit, so building the object, setting the hash, saving,
-and returning persists correctly:
+Hashing a password is domain logic, so it belongs in `create`. The handler
+commits after this method returns:
 
 ```python
 import fastapi_restly as fr
@@ -145,24 +128,19 @@ class UserView(fr.AsyncRestView):
         return await self.save_object(obj)
 ```
 
-`handle_create` still wraps this: it authorizes first, then runs your `create`,
-then runs the `before_commit` → commit → `after_commit` bracket. You did not
-touch the route, the authorization, or the transaction — only the domain step.
+`handle_create` still authorizes and runs the commit bracket. The override only
+changes the domain step.
 
 ## Worked example: a custom action route
 
-A non-CRUD route composes the tiers you already have. There are two shapes, and
-which you reach for is decided by one question:
+A non-CRUD route can reuse the same tiers. Pick one of two shapes:
 
-> **Is the action just a create/update/delete under a different URL** — same
-> shape, no distinct policy or event? Reuse `handle_<verb>`. **Does it have its
-> own identity** — a name in `authorize` / the hooks, its own validation, or a
-> non-CRUD mutation (a transition, multiple rows)? Use `write_action`.
+> If the action is just create/update/delete under another URL, reuse
+> `handle_<verb>`. If it has its own policy, event name, validation, or mutation
+> shape, use `write_action`.
 
-**Reuse a handler** when the action *is* a create/update/delete. A `clone` is a
-create under a different URL, so it routes straight through `handle_create` and
-inherits `authorize`, the commit bracket, and the `before_commit` /
-`after_commit` side effects:
+**Reuse a handler** when the action is create/update/delete under another URL.
+A `clone` can route through `handle_create`:
 
 ```python
     @fr.post("/{id}/clone")
@@ -172,9 +150,8 @@ inherits `authorize`, the commit bracket, and the `before_commit` /
         return self.to_response(await self.handle_create(payload))
 ```
 
-**Use `write_action`** when the action has its own identity. `publish` is a state
-transition: it authorizes `"publish"` distinctly and its hooks fire under that
-name, not `"update"`. Give it a name and bracket the mutation:
+**Use `write_action`** when the action has its own identity. `publish` is a
+state transition, so it authorizes and fires hooks as `"publish"`:
 
 ```python
     @fr.post("/{id}/publish")
@@ -185,14 +162,11 @@ name, not `"update"`. Give it a name and bracket the mutation:
         return self.to_response(article)
 ```
 
-`__aenter__` runs `authorize(action, obj, data)` + `snapshot`; your inline body
-mutates; `__aexit__` runs `before_commit` → commit → `after_commit` (a raise in
-the body skips the commit). You never commit or reassemble the steps by hand. Note the response is simply `to_response(article)`: the write *action*
-(`"publish"`) drives authorization and the commit hooks, while the response only
-needs the wire *shape* (`single`, the default) — they are separate concerns, so
-you never pass the action name to `to_response`. For a **create-shaped** action —
-where the object does not exist until the body runs — deposit it on the yielded
-handle and read it back:
+`__aenter__` runs authorization and snapshot; `__aexit__` runs the commit
+bracket. A raised exception skips commit. The response remains
+`to_response(article)`: the action name drives authorization and hooks, while
+the response only needs its wire shape. For a **create-shaped** action, deposit
+the new object on the yielded handle:
 
 ```python
     async with self.write_action("create", data=req) as w:
@@ -200,21 +174,17 @@ handle and read it back:
     return self.to_response(w.obj)
 ```
 
-Under the hood `write_action` and the CRUD handlers share one implementation:
-the self-free function `run_write_action` (in `fastapi_restly.views`).
+`write_action` and the CRUD handlers share `run_write_action` internally.
 
 ## The domain utilities
 
 `make_new_object`, `update_object`, `save_object`, and `delete_object` are
-**utilities you call**, not extension points you override. They build, apply,
-flush, and remove ORM objects without committing, which is why they compose
-cleanly inside custom actions (as above) and inside business-verb overrides.
+**utilities you call**, not extension points. They build, apply, flush, and
+remove ORM objects without committing.
 
-The same operations exist as free functions —
+The same operations exist as free functions for workers and service code:
 `fr.async_make_new_object`, `fr.async_update_object`, `fr.async_save_object`,
-`fr.async_delete_object` (and their sync counterparts without the `async_`
-prefix) — so a background worker or service layer outside a view can run the
-exact same persistence logic:
+`fr.async_delete_object`, plus sync counterparts.
 
 ```python
 from fastapi_restly import async_make_new_object, async_save_object
@@ -225,8 +195,7 @@ async def import_user(session, payload) -> User:
     return await async_save_object(session, obj)
 ```
 
-These free functions do not commit either — the caller owns the transaction,
-just as `handle_<verb>` does inside a view.
+These free functions do not commit; the caller owns the transaction.
 
 ## Where to go next
 

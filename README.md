@@ -13,31 +13,32 @@
 
 > **Status:** `0.6.0` — public beta release.
 >
-> After four years of internal development at two separate companies, Restly is finally ready for its first public release! Right now the goal is to see if the public API of Restly hits the right abstractions, and to stabilize the API for a `1.0.0` release. From `0.5.0` onwards, expect small breaking changes in naming and functionality on the deeper parts of the API surface. Feedback is always appreciated!
+> Restly is public after four years of internal use. The API is settling on the
+> way to `1.0.0`; expect small breaking changes in deeper extension points.
+> Feedback is welcome.
 
 ```bash
 pip install "fastapi-restly[standard]"
 ```
 
-**Docs:** <https://rjprins.github.io/fastapi-restly/> · **[Changelog](CHANGELOG.md)** · **[Contributing](CONTRIBUTING.md)** · **[Security](SECURITY.md)** · **[Examples](example-projects/)**
+**Docs:** <https://rjprins.github.io/fastapi-restly/> · **[Changelog](CHANGELOG.md)** ·
+**[Contributing](CONTRIBUTING.md)** · **[Security](SECURITY.md)** · **[Examples](example-projects/)**
 
 ## Why FastAPI-Restly?
 
-Restly helps building FastAPI apps faster, with consistent APIs.
+Restly turns SQLAlchemy models into FastAPI resources without hiding FastAPI.
+Its class-based views are real Python classes: use inheritance, mixins, and
+method overrides to share behavior across resources.
 
-It features **class-based views** that support inheritance, mixins, and method overrides.
-
-Class-based views are essential for re-using code. The `RestView` and `AsyncRestView` provide full CRUD on top of a SQLAlchemy model with a single class declaration. It stays fully customizable by overriding endpoints, `handle_*` request handlers, the business verbs, and other class methods.
-
-- **class-based views**: group endpoints on real Python classes with inheritance and method overrides.
+- **Class-based views**: group endpoints on Python classes with inheritance and method overrides.
 - **REST endpoints in minutes**: use `View` for custom resources, or `AsyncRestView` / `RestView` for generated CRUD.
-- **Incremental adoption**: Restly doesn't get in your way; use it per resource and step out anytime. See [Existing Projects](docs/howto_existing_project.md).
-- **Class-level dependencies**: Put dependencies that all endpoints need on the class level, and get them as attributes on `self`.
-- **Explicit override points**: Call-chain allows for overriding at multiple levels.
-- **Filtering, pagination, sorting**: Get fully-featured list routes specific to your Pydantic schema.
-- **Field control**: `ReadOnly` / `WriteOnly` markers, plus foreign-key validation in Pydantic schemas via `IDRef[...]`.
-- **React Admin ready**: `AsyncReactAdminView` speaks the `ra-data-simple-rest` wire contract, no custom data provider needed.
-- **General app utilities**: Things most FastAPI apps will need: SQLAlchemy engine and session setup, alembic test fixtures, etc.
+- **Incremental adoption**: use Restly per resource; drop to ordinary FastAPI when needed.
+- **Class-level dependencies**: declare shared dependencies once and read their values from `self`.
+- **Explicit override points**: change the route shell, request handler, or business verb.
+- **Filtering, pagination, sorting**: get schema-derived list parameters.
+- **Field control**: `ReadOnly` / `WriteOnly` markers, plus foreign-key validation through `IDRef[...]`.
+- **React Admin ready**: `AsyncReactAdminView` speaks `ra-data-simple-rest`.
+- **App utilities**: SQLAlchemy engine/session setup, exception handlers, and test fixtures.
 
 ## Quickstart
 
@@ -132,7 +133,7 @@ class UserView(fr.AsyncRestView):
     schema_update = UserUpdate
 ```
 
-Use **auto-schema** for prototypes and internal tools. Use an **explicit schema** when contract stability and validation control matter (public APIs, aliases, strict response shapes).
+Use **auto-schema** for prototypes and internal tools. Use an **explicit schema** for public contracts, aliases, and strict validation.
 
 ### List endpoint query parameters
 
@@ -148,9 +149,12 @@ GET /users/?sort=-created_at,name
 GET /users/?page=2&page_size=10
 ```
 
-Parameter keys follow the **response schema's public names** end-to-end — including dotted relation paths. If `ArticleRead.author` has `Field(alias="writer")` and `AuthorRead.name` has `Field(alias="authorName")`, the URL key is `writer.authorName`. Aliased fields are only reachable by their alias; `populate_by_name` does not extend the URL surface with the Python field name.
+Parameter keys use the **response schema's public names**, including dotted
+relation paths. Aliases apply to each path segment: `writer.authorName`, not
+`author.name`.
 
-Pagination is opt-in: omitting `page_size` returns every matching row. For public/production endpoints set `default_page_size` and `max_page_size` on the view class:
+Pagination is opt-in: omitting `page_size` returns every matching row. For
+public endpoints, set `default_page_size` and `max_page_size` on the view:
 
 ```python
 class UserView(fr.AsyncRestView):
@@ -174,8 +178,8 @@ class UserRead(fr.IDSchema):
 
 ### Relationship handling
 
-Validate relationships on create and update using `fr.IDRef[...]`.
-SQLAlchemy init is handled smartly; init is with either the foreign key (`customer_id`) or the related object (`Customer`), whichever is in the signature of the SQLAlchemy mapper `__init__`.
+Validate relationships on create and update with `fr.IDRef[...]`.
+Restly passes either the foreign key (`customer_id`) or the related object (`Customer`) to SQLAlchemy, depending on the model constructor.
 
 ```python
 class Order(fr.IDBase):
@@ -189,7 +193,7 @@ class OrderRead(fr.IDSchema):
 
 ### Custom endpoints
 
-Add custom routes using the same form of decorators you would use for regular FastAPI routes.
+Add custom routes with FastAPI-style decorators.
 
 - `@fr.get`
 - `@fr.post`
@@ -198,7 +202,7 @@ Add custom routes using the same form of decorators you would use for regular Fa
 - `@fr.delete`
 - `@fr.route`
 
-These simply forward all arguments to their standard FastAPI counterparts.
+They forward keyword arguments to FastAPI's route registration.
 
 ```python
 class UploadView(fr.AsyncRestView):
@@ -218,7 +222,8 @@ class UploadView(fr.AsyncRestView):
 
 ### React Admin integration
 
-Use `AsyncReactAdminView` to get a backend that [react-admin](https://marmelab.com/react-admin/) with [`ra-data-simple-rest`](https://github.com/marmelab/react-admin/tree/master/packages/ra-data-simple-rest) connects to out of the box:
+Use `AsyncReactAdminView` for a [react-admin](https://marmelab.com/react-admin/)
+backend compatible with [`ra-data-simple-rest`](https://github.com/marmelab/react-admin/tree/master/packages/ra-data-simple-rest):
 
 ```python
 @fr.include_view(app)
@@ -255,7 +260,8 @@ class UserView(fr.AsyncRestView):
 
 ## Testing
 
-`fastapi_restly.pytest_fixtures` provides namespaced pytest fixtures (`restly_app`, `restly_client`, `restly_async_session`, `restly_session`) for test clients and **savepoint-based isolation**. The testing extra installs a pytest plugin entry point, so pytest auto-loads these fixtures.
+`fastapi_restly.pytest_fixtures` provides client and session fixtures with
+savepoint-based isolation. The testing extra auto-loads them as a pytest plugin.
 
 Install the testing extra when consuming FastAPI-Restly as a package:
 
@@ -265,7 +271,8 @@ pip install "fastapi-restly[testing]"
 
 Configure Restly for your test database in `conftest.py`.
 
-`RestlyTestClient` automatically asserts the expected HTTP status (`200` for GET, `201` for POST, `204` for DELETE, ...) and raises a descriptive `AssertionError` with the response body on failure:
+`RestlyTestClient` asserts the expected status (`200` for GET, `201` for POST,
+`204` for DELETE, ...) and includes the response body on failure:
 
 ```python
 # test_users.py
@@ -294,7 +301,8 @@ fr.configure(async_database_url="postgresql+asyncpg://user:pass@localhost/db")
 fr.configure(database_url="sqlite:///app.db")
 ```
 
-Restly has one public process-wide configuration. For per-view databases, read replicas, or other custom session wiring, use a normal FastAPI dependency on that view; see the existing-project how-to in the documentation.
+Restly has one public process-wide configuration. For per-view databases, read
+replicas, or custom sessions, use a normal FastAPI dependency on that view.
 
 ## Documentation
 
@@ -312,7 +320,8 @@ Complete applications under [`example-projects/`](example-projects/):
 
 ## Contributing
 
-Pull requests and issue discussions welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, coding standards, and the test workflow. Security issues: see [SECURITY.md](SECURITY.md).
+Pull requests and issue discussions welcome. See [CONTRIBUTING.md](CONTRIBUTING.md)
+for setup and tests. For security issues, see [SECURITY.md](SECURITY.md).
 
 ## License
 

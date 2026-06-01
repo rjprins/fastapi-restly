@@ -10,31 +10,35 @@
 :align: center
 :::
 
-FastAPI-Restly (`fr`) is a framework that supplements FastAPI with instant CRUD endpoints, built on SQLAlchemy 2.0 and Pydantic v2.
+FastAPI-Restly (`fr`) is a REST framework for FastAPI, backed by SQLAlchemy 2.0 and Pydantic v2.
 
-FastAPI-Restly implements **true class-based views** — real Python classes that support inheritance and method overrides. Share common behavior across views by subclassing, and override individual CRUD methods without touching the rest. See [Class-Based Views](class_based_views.md) for why this is the heart of the framework.
+Views are real Python classes. Share behavior with inheritance and mixins;
+override the one operation you need. See [Class-Based Views](class_based_views.md).
 
 > **Status:** `0.6.0` — public beta release.
 >
-> After four years of internal development at two separate companies, Restly is finally ready for its first public release! Right now the goal is to see if the public API of Restly hits the right abstractions, and to stabilize the API for a `1.0.0` release. From `0.5.0` onwards, expect small breaking changes in naming and functionality on the deeper parts of the API surface. Feedback is always appreciated!
+> Restly is public after four years of internal use. The API is settling on the
+> way to `1.0.0`; expect small breaking changes in deeper extension points.
+> Feedback is welcome.
 
 ## Quick Start
 
-The maintained copy-paste Quick Start lives in [Getting Started](getting_started.md). It covers database setup, dev table creation, async vs sync views, auto-generated schemas, explicit schemas, and the generated endpoint surface.
+The maintained copy-paste Quick Start lives in [Getting Started](getting_started.md).
+It covers setup, dev tables, async vs sync views, schemas, and generated endpoints.
 
-Use auto-schema when you want speed and low boilerplate. Use explicit schemas when you need strict public API contracts, custom validation, aliases, or field-level serialization control.
+Use auto-schema for speed. Use explicit schemas for public contracts, validation, aliases, and serialization control.
 
 ## Features
 
-- **Instant CRUD endpoints** — GET, POST, PATCH, DELETE with zero boilerplate
-- **True class-based views** — Real inheritance and method overrides; share logic across views by subclassing
-- **React Admin ready** — `AsyncReactAdminView` speaks `ra-data-simple-rest` out of the box; no custom data provider needed
-- **SQLAlchemy 2.0 support** — Async-first with modern patterns
-- **Pydantic v2 integration** — Full validation and serialization
-- **Automatic schema generation** — Read, create, and update schemas generated automatically
-- **List parameters** — Filter, sort, and paginate from a stable URL dialect generated from the response schema
-- **Relationship support** — Handle foreign keys and nested objects
-- **Testing utilities** — Built-in test helpers with savepoint isolation
+- **[Generated REST endpoints](api_reference.md#generated-rest-endpoints)** — GET, POST, PATCH, DELETE with minimal boilerplate
+- **[True class-based views](class_based_views.md)** — inheritance, mixins, and method overrides
+- **[React Admin ready](howto_react_admin.md)** — `AsyncReactAdminView` speaks `ra-data-simple-rest`
+- **[SQLAlchemy 2.0 support](getting_started.md)** — async-first with modern patterns
+- **[Pydantic v2 integration](howto_custom_schema.md)** — validation and serialization for public contracts
+- **[Automatic schema generation](technical_details.md#auto-generated-schemas)** — read, create, and update schemas generated automatically
+- **[List parameters](howto_query_modifiers.md)** — filter, sort, and paginate from a stable URL dialect generated from the response schema
+- **[Relationship support](howto_relationship_idschema.md)** — handle foreign keys and nested objects
+- **[Testing utilities](howto_testing.md)** — built-in test helpers with savepoint isolation
 
 ## Documentation
 
@@ -45,21 +49,21 @@ Use auto-schema when you want speed and low boilerplate. Use explicit schemas wh
 :link: getting_started
 :link-type: doc
 
-Fast path from zero to a working CRUD API.
+Fast path from zero to a working REST API.
 :::
 
 :::{grid-item-card} Class-Based Views
 :link: class_based_views
 :link-type: doc
 
-The heart of the framework — how subclassable views unlock everything else.
+How subclassable views make the override model work.
 :::
 
 :::{grid-item-card} User Guide
 :link: user_guide
 :link-type: doc
 
-Tutorial walkthroughs and in-depth topic guides covering every framework feature.
+Tutorials and topic guides.
 :::
 
 :::{grid-item-card} API Reference
@@ -67,6 +71,13 @@ Tutorial walkthroughs and in-depth topic guides covering every framework feature
 :link-type: doc
 
 Generated endpoints, all public symbols, query parameters, and autodoc.
+:::
+
+:::{grid-item-card} Examples
+:link: examples
+:link-type: doc
+
+Complete sample applications from a tiny API to a production-shaped service.
 :::
 
 :::{grid-item-card} About
@@ -101,6 +112,7 @@ class_based_views
 the_handle_design
 user_guide
 deploying
+examples
 api_reference
 about
 ```

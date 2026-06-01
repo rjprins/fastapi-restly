@@ -1,15 +1,11 @@
 # How-To: Compose Views with Mixins
 
-Some concerns belong on every view: tenant scoping, soft delete, audit
-stamping, permission filtering. They aren't *business* logic — they're
-*structural*: they don't compute values from the schema's inputs, they
-just stamp server-controlled fields on writes and add `WHERE` clauses
-on reads. Layered through Python mixins, they compose linearly via
-cooperative `super()` calls and reduce per-view boilerplate to a single
-mixin declaration.
+Some concerns belong on many views: tenant scoping, soft delete, audit stamps,
+permission filters. They are structural, not business logic: they stamp
+server-controlled fields or add read filters. Python mixins layer these concerns
+through cooperative `super()` calls.
 
-This guide covers the pattern, the rule that decides whether to use it,
-and two ergonomic gotchas worth knowing up front.
+This guide covers the pattern, when to use it, and two gotchas.
 
 ## The structural override points
 
@@ -25,28 +21,20 @@ structural concerns:
 - the `delete` business verb — to replace a physical delete with a flag
   flip (soft delete).
 
-These are deliberately not the place for per-view *application* logic.
+Do not use these for per-view application logic.
 
-**Rule 1 — don't use these override points for per-view application
-logic.** Hashing a password, deriving a slug with a uniqueness probe,
-computing a denormalised rollup, dispatching outbox events on a status
-transition — all of these belong in a per-view `create` / `update`
-business verb so the call site is explicit about what happens on this
-resource's write. (See
-[Override Endpoints](howto_override_endpoints.md) for that pattern.)
+**Rule 1 — keep per-view logic in the business verb.** Hash passwords, derive
+slugs, update rollups, and dispatch resource-specific events in `create` /
+`update`. See [Override Endpoints](howto_override_endpoints.md).
 
-**Rule 2 — do use these override points for structural cross-cutting
-concerns**, layered through mixins. Stamping `created_by_id` /
-`updated_by_id` from auth context, stamping `organization_id` from the
-current tenant, filtering reads to non-soft-deleted rows, replacing
-physical delete with a timestamp flip — all of these are safe to layer
+**Rule 2 — use mixins for structural concerns.** Good examples: audit stamps,
+tenant ids, soft-delete read filters, and soft-delete mutation. These compose
 because:
 
 - `make_new_object` / `update_object` mutate the object *after* the
   schema's own writes are applied, so they compose cleanly and never
   fight the schema's writes.
-- They run inside the commit-free business verb, before the handler's
-  commit, so there's no flush-timing trap.
+- They run inside the commit-free business verb, before the handler commits.
 - They only stamp/scope; they don't compute business values from
   schema inputs.
 - They compose linearly via cooperative `super()` calls, so combinations
@@ -64,16 +52,11 @@ inputs?
 
 ### Reusing logic outside the view
 
-A per-view `create` / `update` override is an instance method — it has
-access to `self.session`, `self.request`, and any view state mixins
-inject. That's almost always what you want, and the view is the right
-home for the logic.
+A per-view `create` / `update` override has `self.session`, `self.request`, and
+any mixin-provided state. That is usually the right home for the logic.
 
-On the rare occasion the same logic must also run from a script or a
-background job, extract a plain function and call it from both. Put the
-function wherever makes sense — same module as the view, an adjacent
-helper, a small `Client` class — pick the obvious spot; don't manufacture
-a layer for it:
+If the same logic must also run from a script or worker, extract a plain
+function and call it from both. Put it where it is easiest to find.
 
 ```python
 from fastapi_restly.objects import async_make_new_object
@@ -93,18 +76,13 @@ class UserView(fr.AsyncRestView):
         return await self.save_object(user)
 ```
 
-`create` is commit-free — the request handler owns the commit — so
-setting `password_hash` here persists correctly. The old "mutate after
-save" trap is gone: there is no flush between `make_new_object` and
-`save_object` that could strand your write.
+`create` is commit-free, so the handler commits the password hash with the row.
 
-The `make_new_object` / `save_object` instance methods are thin wrappers
-over the `async_make_new_object` / `async_save_object` free functions in
-`fastapi_restly.objects`; import those when you need the same behaviour
-from a worker with a bare session instead of a view.
+`make_new_object` / `save_object` wrap the free functions in
+`fastapi_restly.objects`. Import the free functions for workers with a bare
+session.
 
-Don't preempt this. Most business logic only ever runs from the view;
-extract a function when the second caller actually exists, not before.
+Do not extract early. Wait until there is a second caller.
 
 ## Three reusable mixins
 
@@ -184,13 +162,9 @@ class SoftDeleteMixin:
         await super().delete(obj)  # type: ignore[misc]
 ```
 
-The soft-delete flip overrides the bare `delete` business verb, not the
-handler. That keeps it auth-free and commit-free: `handle_delete` still
-loads the row through `get_one` (so it 404s on an already-hidden row),
-runs `authorize`, and owns the commit — the mixin only changes *what
-"delete" means* for this view. Calling `save_object` (rather than
-committing) leaves the commit to the handler, so `after_commit` hooks
-still fire after durability.
+The soft-delete flip overrides the `delete` business verb, not the handler.
+`handle_delete` still loads, authorizes, and commits. The mixin only changes
+what "delete" does.
 
 ### `AuditStampedMixin` — record who created/updated each row
 
@@ -217,13 +191,8 @@ class AuditStampedMixin:
         return obj
 ```
 
-Each mixin's `make_new_object` / `update_object` starts by calling
-`super()` to get the object the lower layers built, stamps its own
-fields on it, and returns it. Because the schema's own writes are already
-applied by the time `super()` returns, stamps never collide with
-schema-driven writes and the layers compose in any order. `update_object`
-gets the already-loaded `obj` with the update schema applied, so a mixin
-can read the object's current state if it needs to.
+Each mixin calls `super()`, stamps its fields, and returns the object. By then
+schema writes are already applied, so stamps do not collide with input fields.
 
 ## Composing mixins on a view
 
@@ -239,12 +208,9 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, fr.Asyn
     schema = ProjectRead
 ```
 
-`get_many` and `get_one` consult `build_query`; `count` counts the query
-built for the list. The tenant + soft-delete `WHERE` clauses therefore
-apply to listing, the pagination total, **and** single-row fetches
-(`GET /{id}`) without further plumbing. A row hidden from the list returns
-404 from retrieve too — and update/delete inherit the check, because
-`handle_update` / `handle_delete` load the target through `get_one` first.
+`get_many`, `count`, and `get_one` all use `build_query`, so tenant and
+soft-delete filters apply to listings, totals, single-row reads, updates, and
+deletes.
 
 ## Two ergonomic gotchas
 
@@ -298,22 +264,15 @@ it.
 
 ## Admin bypass — runtime flag, not a parallel view tree
 
-Admin endpoints typically don't need a separate view hierarchy. A
-per-request `_is_admin()` predicate consulted by every scope-filtering
-layer is the runtime-flag pattern, and it works because the mixins
-already check it via `super()`. The bypass is *runtime*, not class-time
-— that keeps the route tree simple but couples every read scope to an
-`if not self._is_admin():` guard. The alternative (admin views opt into
-a different base query, parallel `AdminProjectView` etc.) gives you
-class-time guarantees at the cost of a parallel hierarchy. Pick
-whichever trade-off matches the access model you actually have.
+Admin endpoints often do not need a parallel view hierarchy. A per-request
+`_is_admin()` predicate can let each scope-filtering mixin skip its filter. This
+keeps the route tree simple, but every read-scope mixin must consult the flag.
+A parallel admin view tree gives class-time guarantees at the cost of more
+classes.
 
-Read scope is *visibility*; it is not a substitute for *policy*. A row
-hidden by `build_query` 404s for everyone, which is the right default,
-but coarse allow/deny decisions ("only managers may create") belong in
-`authorize`, consulted by the request handlers. See
-[Override Endpoints](howto_override_endpoints.md) for the `authorize`
-override point.
+Read scope is *visibility*, not *policy*. Rows hidden by `build_query` return
+404; allow/deny decisions such as "only managers may create" belong in
+`authorize`.
 
 ## Cross-references
 

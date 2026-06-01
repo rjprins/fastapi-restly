@@ -584,20 +584,18 @@ class TestSiblingCreation:
             assert isinstance(tl["label_id"], int)
             assert tl["added_by_id"] is None  # no user context set in the test
 
-            # Both rows actually exist.
+            # Both rows exist.
             label_id = tl["label_id"]
             label = client.get(f"/labels/{label_id}").json()
             assert label["name"] == "urgent"
             assert label["color"] == "#ff0000"
 
     def test_idref_resolution_for_freshly_created_sibling(self, client, auth_context):
-        """The pinned behavior: the framework's IDRef resolver requires
-        the referenced row to have a flushed PK before it can be
-        constructed. Without ``await session.flush()`` between the Label
-        insert and the TaskLabel build, the IDRef value would be invalid.
+        """The IDRef resolver requires a flushed PK before construction.
 
-        The route flushes manually for exactly this reason; this test
-        verifies the happy path works end-to-end."""
+        Without ``await session.flush()`` between the Label insert and the
+        TaskLabel build, the IDRef value would be invalid. The route flushes
+        manually; this test verifies the happy path works end-to-end."""
         _org_id, override_auth = self._ctx(client, auth_context)
         with override_auth:
             proj = client.post(

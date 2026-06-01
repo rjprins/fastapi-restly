@@ -1,10 +1,8 @@
 # Class-Based Views
 
-Class-based views are the heart of FastAPI-Restly. They are what makes the
-framework's CRUD scaffolding feel idiomatic, what makes shared behaviour easy
-to express, and what makes the call to "just override one method" actually
-work. Before diving into models or schemas, it is worth understanding why this
-piece exists and what it gives you.
+Class-based views are the core of FastAPI-Restly. They make REST scaffolding
+subclassable, keep shared behavior in one place, and let you override one method
+without rewriting the route.
 
 ## What is a class-based view?
 
@@ -24,30 +22,37 @@ A class-based view (CBV) groups related endpoints on a class instead:
 
 ```python
 import fastapi_restly as fr
+from fastapi import Depends
+from sqlalchemy import select
 
 @fr.include_view(app)
 class UserView(fr.View):
     prefix = "/users"
     dependencies = [Depends(require_logged_in)]
+    session: fr.AsyncSessionDep
 
     @fr.get("")
-    async def list_users(self):
-        ...
+    async def list_users(self) -> list[UserRead]:
+        users = await self.session.scalars(select(User))
+        return [UserRead.model_validate(user) for user in users]
 
     @fr.post("")
-    async def create_user(self, payload: UserCreate):
-        ...
+    async def create_user(self, payload: UserCreate) -> UserRead:
+        user = User(**payload.model_dump())
+        self.session.add(user)
+        await self.session.flush()
+        return UserRead.model_validate(user)
 ```
 
-The dependencies, the prefix, the tags, and any other metadata are declared
-once on the class. The methods are still ordinary Python methods — you can
-share helpers between them, store config on the class, and reach for `self`
-without ceremony.
+Declare dependencies, prefix, tags, and metadata once on the class. The
+`session` attribute is a FastAPI dependency too, injected per request and
+available as `self.session`. Methods are ordinary Python methods, so helpers,
+class config, and `self` all work normally.
 
 ## Why CBVs at all?
 
-Function endpoints are perfectly fine for a handful of routes. They start to
-hurt once you have a real codebase:
+Function endpoints are fine for a few routes. They get repetitive in larger
+codebases:
 
 - **Repetition.** The same `Depends(get_session)`, the same auth dependency,
   the same response config — all duplicated across every related endpoint.
@@ -74,21 +79,17 @@ class View:
     def before_include_view(cls): ...
 ```
 
-That is the entire base class. It carries the metadata that maps to FastAPI's
-`APIRouter` arguments and a single hook that fires right before the view's
-routes get registered. Methods on a `View` subclass are decorated with
-`@fr.get(...)`, `@fr.post(...)`, `@fr.route(...)` — these are *neutral
-markers*; they only stash route metadata on the method. Nothing is registered
-until you call:
+That is the base class: FastAPI router metadata plus one pre-registration hook.
+Methods on a `View` subclass use `@fr.get(...)`, `@fr.post(...)`, or
+`@fr.route(...)`. Those decorators only store route metadata; registration
+happens when you call:
 
 ```python
 fr.include_view(app, UserView)
 ```
 
-This direct form is the recommended architecture for larger apps: view modules
-define classes, and the app/router composition layer decides where to mount
-them. Small apps can use the decorator shortcut when import-time registration
-is acceptable:
+For larger apps, define classes in view modules and include them from the
+app/router composition layer. Small apps can use the decorator shortcut:
 
 ```python
 @fr.include_view(app)
@@ -99,10 +100,8 @@ class UserView(fr.View): ...
 metadata, instantiates a per-request copy of the view, and registers each
 route on the parent router or app.
 
-This is the single most important design choice in the framework. Routes are
-bound at *include-time*, against the class you actually pass in, not at
-*decoration-time* against whatever class happened to be decorated. That is
-what makes everything else work.
+Routes are bound at *include-time* against the class you pass in. They are not
+bound at decoration time. This is what makes subclassing work.
 
 ## True subclassing
 
@@ -136,17 +135,13 @@ class AdminUserView(UserView):
 fr.include_view(admin_app, AdminUserView)
 ```
 
-When `include_view` runs, it walks `AdminUserView.__mro__`, sees the inherited
-`list_users` route metadata from `UserView`, and registers the handler — but
-the handler resolves through `AdminUserView`'s method dictionary, so your
-override is what actually runs. The same view can be included on multiple
-routers; each include creates its own routes against the subclass you passed
-in.
+When `include_view` runs, it walks `AdminUserView.__mro__`, finds inherited
+route metadata, and registers handlers against `AdminUserView`. Your override
+runs. The same view can be included on multiple routers.
 
 That is what "true class-based views" means in this framework. You can:
 
-- Define an abstract parent that supplies handlers but is never registered
-  itself (this is exactly what `BaseRestView` is).
+- Define an abstract parent that supplies handlers but is never registered.
 - Subclass a working view to specialise it for a different prefix, a
   different role, or a different audience.
 - Mix in behaviour through multiple inheritance — see the
@@ -163,11 +158,8 @@ View                   ← class-based view primitive (no CRUD)
         └── AsyncReactAdminView ← + ra-data-simple-rest contract
 ```
 
-- `View` is the bare CBV primitive. Use it for non-CRUD endpoints — auth
-  flows, custom RPC, file uploads, anything that does not fit the
-  get-many/get-one/create/update/delete shape. It is also the right fallback when your
-  resource identity is not a single scalar primary key, such as a legacy table
-  addressed by a composite key.
+- `View` is the bare CBV primitive. Use it for non-CRUD endpoints: auth flows,
+  custom RPC, file uploads, or composite-key resources.
 - `BaseRestView` extends `View` with `model`, `schema`, the auto-generated
   create/update schemas (`schema_create` / `schema_update`), query-modifier
   configuration, and helper methods like `to_response()` and
@@ -181,12 +173,9 @@ View                   ← class-based view primitive (no CRUD)
 
 The public method surface is classified in the
 [API reference](api_reference.md#view-method-surface). Each CRUD verb is split
-into three tiers — the `<verb>_endpoint` route shell (HTTP contract), the
-`handle_<verb>` request handler (authorization + the commit bracket), and the
-bare `<verb>` business method (the domain operation, and the usual override
-point) — with cross-cutting override points (`build_query`, `authorize`,
-`before_commit` / `after_commit`, `to_response`) and object/query helpers
-alongside them.
+into three tiers: `<verb>_endpoint` (HTTP contract), `handle_<verb>`
+(authorization + commit bracket), and `<verb>` (domain operation). Cross-cutting
+override points include `build_query`, `authorize`, hooks, and `to_response`.
 
 ## A complete example: shared base view
 
@@ -227,15 +216,13 @@ class CustomerView(TenantScopedView):
 ```
 
 Two views, one shared dependency, one shared filter. Add a new tenant-scoped
-resource and you get the auth + scoping behaviour for free. For more
-elaborate compositions — soft delete, audit stamps, permission scoping
-layered together — see
+resource and it inherits the same auth + scoping behavior. For soft delete,
+audit stamps, and permission scoping, see
 [Composing views with mixins](howto_compose_views_with_mixins.md).
 
 ## Override a single tier
 
-`AsyncRestView` and `RestView` split each CRUD verb into three tiers so you can
-replace exactly one without touching the rest:
+`AsyncRestView` and `RestView` split each CRUD verb into three tiers:
 
 - **`<verb>_endpoint`** (`get_many_endpoint`, `get_one_endpoint`,
   `create_endpoint`, `update_endpoint`, `delete_endpoint`) — the route shell.
@@ -245,18 +232,16 @@ replace exactly one without touching the rest:
 - **`handle_<verb>`** (`handle_get_many`, `handle_get_one`, `handle_create`,
   `handle_update`, `handle_delete`) — the request handler. It runs `authorize`
   and the commit bracket (`before_commit` → commit → `after_commit`) and
-  returns the domain object. Override to change orchestration or timing (a
-  custom transaction, an async delete) without re-declaring the route. Reuse it
-  from a custom action to inherit the bracket.
+  returns the domain object. Override to change orchestration or timing without
+  re-declaring the route.
 - **`<verb>`** (`get_many`, `get_one`, `create`, `update`, `delete`) — the
   business method. This is the domain operation (build / apply / save) and is
   the usual override point. It is **auth-free** and **commit-free**: the
   framework owns the commit inside `handle_<verb>`, so your override cannot
   break the transaction.
 
-Because the business method does **not** commit, overriding `create` to build
-the object, set a derived field, save, and return persists correctly — the old
-"mutate after save" trap is gone:
+Because the business method does **not** commit, overriding `create` can build,
+stamp, save, and return; the handler commits later:
 
 ```python
 @fr.include_view(app)
@@ -290,10 +275,8 @@ See SQLAlchemy's [mapper events
 documentation](https://docs.sqlalchemy.org/en/20/orm/events.html#mapper-events)
 for the full event API.
 
-Everything else — listing, retrieval, update, delete, schema generation,
-pagination — keeps working unchanged. See
-[Override Endpoints](howto_override_endpoints.md) for the full set of tiers and
-the call chain.
+Listing, retrieval, update, delete, schema generation, and pagination keep their
+defaults. See [Override Endpoints](howto_override_endpoints.md).
 
 ## Dependency injection on class attributes
 
@@ -304,9 +287,8 @@ annotation either:
 - names one of FastAPI's bare-injectable special types (`Request`,
   `Response`, `BackgroundTasks`, `WebSocket`).
 
-This matches the rule FastAPI itself applies to function parameters. A
-plain annotation like `model: type[Foo]` is *not* wired — it's just a
-type hint, safe to add for documentation or static-checker purposes.
+This matches FastAPI function parameters. A plain annotation like
+`model: type[Foo]` is only a type hint.
 
 ```python
 from fastapi import Request
@@ -332,9 +314,8 @@ relies on the special-type rule. Any custom dependency declared on a view
 class must use the `Annotated[X, Depends(...)]` form unless it's one of
 the bare-injectable types.
 
-This rule is what makes mixins safe to write: a mixin can declare what it
-requires from its host class (`session`, `request`, helper methods)
-without accidentally shadowing the host's wiring. See
+This makes mixins safe: a mixin can declare what it expects from its host
+without shadowing the host's wiring. See
 [Composing views with mixins](howto_compose_views_with_mixins.md) for the
 mixin pattern.
 
@@ -361,9 +342,8 @@ class AuthView(fr.View):
         ...
 ```
 
-Three related endpoints, one shared prefix and tag, one place to add
-auth-flow-specific dependencies. No model, no schema, no CRUD — `View`
-gives you exactly what you need and nothing else.
+Three related endpoints, one shared prefix and tag, one place for auth
+dependencies. No model, no schema, no CRUD.
 
 ## When *not* to use a CBV
 

@@ -162,8 +162,8 @@ def _build_integrity_detail(exc: IntegrityError) -> str:
 def integrity_error_handler(request: Request, exc: Exception) -> JSONResponse:
     """Translate a SQLAlchemy IntegrityError into HTTP 409 Conflict.
 
-    Signature uses ``Exception`` rather than ``IntegrityError`` to satisfy
-    Starlette's exception-handler typing; we narrow at runtime.
+    Signature accepts ``Exception`` instead of ``IntegrityError`` to satisfy
+    Starlette's exception-handler typing; runtime code narrows it.
     """
     assert isinstance(exc, IntegrityError)  # noqa: S101 - registered for IntegrityError only
     detail = _build_integrity_detail(exc)

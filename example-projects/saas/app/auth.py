@@ -1,18 +1,8 @@
 """Stand-in password hashing utilities.
 
-The functions here are deliberately minimal — production code should use
-``passlib`` / ``argon2`` / ``bcrypt`` instead — but they are real one-way
-hashes so the example can demonstrate the security-relevant flow:
-the request body's plaintext ``password`` is converted into a stored
-``password_hash`` *before* persistence.
-
-The whole reason this helper exists is to demonstrate the canonical
-three-tier override: ``UserView`` overrides the *bare* business ``create``
-verb (auth-free, commit-free), builds the row with ``make_new_object``, sets
-``password_hash``, then ``save_object`` (flush, no commit). Because the commit
-happens later in ``handle_create``, the hash is on the row before it is
-persisted — the old "set the hash after a post-flush commit and watch the
-plaintext leak" trap is structurally gone.
+Production code should use a dedicated password-hashing library such as
+``argon2`` or ``bcrypt``. These helpers are real one-way hashes so the example
+can show password hashing before persistence.
 """
 
 from __future__ import annotations

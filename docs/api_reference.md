@@ -5,9 +5,9 @@ This page documents:
 - Key public symbols with brief descriptions.
 - Full Python API reference generated via Sphinx autodoc.
 
-## Generated CRUD Endpoints
+## Generated REST Endpoints
 
-When you register a view with `fr.include_view(app, ViewClass)` (or the small-app decorator shortcut `@fr.include_view(app)`), both `fr.AsyncRestView` and `fr.RestView` expose the same default CRUD surface:
+Register a view with `fr.include_view(app, ViewClass)` or `@fr.include_view(app)`. `fr.AsyncRestView` and `fr.RestView` expose the same generated resource surface:
 
 | Method | Path | Purpose | Default Status |
 |---|---|---|---|
@@ -18,21 +18,21 @@ When you register a view with `fr.include_view(app, ViewClass)` (or the small-ap
 | `DELETE` | `/{prefix}/{id}` | Delete resource | `204` |
 
 Notes:
-- Update semantics are `PATCH` (partial update), not `PUT`. (`AsyncReactAdminView` / `ReactAdminView` additionally expose `PUT /{id}` to match `ra-data-simple-rest`; see [How-To: React Admin Integration](howto_react_admin.md).)
+- Updates use `PATCH`, not `PUT`. React Admin views also expose `PUT /{id}` for `ra-data-simple-rest`; see [React Admin Integration](howto_react_admin.md).
 - `GET /{id}` and `DELETE /{id}` return `404` when the object is not found.
 - Read-only schema fields are ignored on create/update.
-- `*_id: IDRef[Model]` inputs are resolved to SQLAlchemy objects and validated against the database. The scalar id accepts the related primary-key type, such as `int` or `UUID`.
+- `*_id: IDRef[Model]` inputs are resolved to SQLAlchemy objects and validated. The scalar id is the related primary-key type, such as `int` or `UUID`.
 
 ## Query Parameters (List Endpoint)
 
-`GET /{prefix}/` exposes a stable URL parameter dialect — the **list parameters** — derived from the response schema. This contract is part of the public API: parameter keys follow the response schema's public field names (aliases when set, Python names otherwise), end-to-end, including dotted relation paths.
+`GET /{prefix}/` exposes **list parameters** derived from the response schema. Parameter keys use public field names, including aliases and dotted relation paths.
 
 - Filtering: `?name=John&created_at__gte=2024-01-01`
   - Suffixes: `__in`, `__gte`, `__lte`, `__gt`, `__lt`, `__ne`, `__isnull`, `__contains`, `__icontains` (contains operators are string fields only)
   - OR-values (IN): `?id=1,2,3` (comma-separated values are OR-combined for `eq`)
   - Explicit IN: `?status__in=active,pending`
   - NOT-IN: `?status__ne=archived,deleted` (comma-separated values are AND-combined for `__ne`)
-  - Aliased fields use only the alias as the URL key; the Python field name is not accepted (``populate_by_name`` only affects body parsing, not the URL surface).
+  - Aliased fields use only the alias as the URL key; the Python field name is not accepted.
 - Contains: `?name__contains=John` (case-sensitive where the SQL backend supports that distinction)
 - IContains: `?name__icontains=john` (case-insensitive)
   - Repeat the parameter to AND multiple terms — this is the precise form: `?name__contains=john&name__contains=doe`.
@@ -43,18 +43,18 @@ Notes:
   - **Opt-in.** Omitting `page_size` returns every matching row (no implicit cap).
   - For public/production endpoints, set `default_page_size` and `max_page_size` explicitly on the view class.
 
-**Unknown query keys are rejected.** Generated list endpoints validate the request's query string against the schema's declared parameters. Any key that isn't part of the generated schema — a typoed filter, a Python field name on an aliased field, an operator suffix that wasn't emitted for the field's type (e.g. ``__gte`` on a boolean) — produces a 422 response with a FastAPI-style validation envelope. This prevents typos from silently widening the result set. To allow extra query keys that a view consumes outside the schema (e.g. an ``?include_deleted=true`` escape hatch on a soft-delete mixin), declare them on the view class:
+**Unknown query keys are rejected.** Generated list endpoints validate the query string against schema-derived parameters. Typos, Python names for aliased fields, and unsupported operators return 422 instead of widening the result set. To allow extra view-specific keys, declare them on the view class:
 
 ```python
 class UserView(fr.AsyncRestView):
     extra_query_params = ("include_deleted",)
 ```
 
-Relation filtering uses dot notation, and aliases apply to every segment of the path. If `ArticleRead.author` has `Field(alias="writer")` and `AuthorRead.name` has `Field(alias="authorName")`, the URL key is `writer.authorName`. Canonical Python names are not exposed.
+Relation filtering uses dot notation, and aliases apply to every path segment. If `author` is aliased to `writer` and `name` to `authorName`, the URL key is `writer.authorName`.
 
 ### Low-level helpers
 
-`fr.create_list_params_schema(schema_cls, *, default_page_size=None, max_page_size=1000)` and `fr.apply_list_params(params, query, model, schema_cls)` are the primitives behind the generated endpoints. The happy path is to define a `RestView` / `AsyncRestView` and let the framework wire them up — the generated FastAPI endpoint validates incoming requests against the params schema before the SQL clauses are applied. Reach for these helpers directly only when you need to apply list parameters to a custom (non-`RestView`) endpoint, and pass a validated `create_list_params_schema(...)` instance rather than a raw `QueryParams` so pagination/filter bounds are enforced.
+`fr.create_list_params_schema(...)` and `fr.apply_list_params(...)` power generated list endpoints. Use the view classes for normal CRUD. Call these helpers directly only for custom endpoints that need the same list grammar. Pass a validated params-schema instance, not raw `QueryParams`.
 
 ## Optional Pagination Metadata
 
@@ -70,7 +70,7 @@ List endpoints return a JSON array by default. Set `include_pagination_metadata 
 }
 ```
 
-`page`, `page_size`, and `total_pages` are populated when the request was actually paginated — that is, when the client sent `?page=` / `?page_size=`, or when the view sets a non-`None` `default_page_size`. When pagination is not engaged the fields stay `null` and only `total` reflects the full result count.
+`page`, `page_size`, and `total_pages` are populated only when pagination is active: the client sent `?page=` / `?page_size=`, or the view set `default_page_size`. Without pagination, those fields are `null`.
 
 ## Endpoint Decorators
 
@@ -87,7 +87,7 @@ Use these decorators on methods in a view class:
 
 The shorthand decorators explicitly set the default status code shown. Pass `status_code=` to override it.
 
-All other keyword arguments are passed through to FastAPI's route registration, so class-based routes use the same configuration surface as regular FastAPI routes: `response_model=`, `dependencies=`, `responses=`, `tags=`, and other `APIRouter.add_api_route()` options.
+Other keyword arguments pass through to FastAPI route registration: `response_model=`, `dependencies=`, `responses=`, `tags=`, and other `APIRouter.add_api_route()` options.
 
 `@fr.put(...)` is available for custom endpoints, but default generated update endpoints use `PATCH`.
 
@@ -105,7 +105,7 @@ class UserView(fr.AsyncRestView):
 
 Valid route values for exclusion: `fr.ViewRoute.GET_MANY`, `fr.ViewRoute.GET_ONE`, `fr.ViewRoute.CREATE`, `fr.ViewRoute.UPDATE`, `fr.ViewRoute.DELETE`.
 
-`exclude_routes` accepts any iterable of `ViewRoute` values. Each `ViewRoute` value is the name of the route-shell method it suppresses (`"get_many_endpoint"`, `"get_one_endpoint"`, `"create_endpoint"`, `"update_endpoint"`, `"delete_endpoint"`); those strings are also accepted directly.
+`exclude_routes` accepts `ViewRoute` values or the equivalent route-shell method names, such as `"delete_endpoint"`.
 
 ## Response Modeling
 
@@ -128,9 +128,9 @@ For generated CRUD endpoints:
 | `fastapi_restly.models.CASCADE_ALL_ASYNC` | Cascade string for use with `relationship(cascade=...)` in async SQLAlchemy models. Equivalent to `"save-update, merge, delete, expunge"`. SQLAlchemy's default `"all"` includes `"refresh-expire"` which is incompatible with async sessions. Import from `fastapi_restly.models` (not exposed at the top level). |
 | `fastapi_restly.models.CASCADE_ALL_DELETE_ORPHAN_ASYNC` | Like `CASCADE_ALL_ASYNC` but also includes `"delete-orphan"`. |
 
-FastAPI-Restly also works with ordinary SQLAlchemy declarative models that inherit from your own `sqlalchemy.orm.DeclarativeBase`. Use `fr.IDBase` when you want Restly's dataclass-oriented convenience base; bring your own SQLAlchemy base when you prefer standard declarative constructor semantics or are adding Restly to an existing model layer.
+FastAPI-Restly also works with ordinary SQLAlchemy models that inherit from your own `DeclarativeBase`. Use `fr.IDBase` for Restly's dataclass convenience base; bring your own base for standard constructor semantics or existing model layers.
 
-`RestView` and `AsyncRestView` assume a single resource identifier: one primary key column addressable as `/{id}`. That column does not have to be named `id` when you provide explicit schemas and `id_type`, but the default CRUD routes, `IDSchema[Model]`, `IDRef[Model]`, React Admin integration, and OpenAPI identity shape are all scalar-id contracts. Composite primary keys are therefore not supported by the generated CRUD views. For composite-key tables, use `fr.View` and declare explicit routes such as `@fr.get("/{tenant_id}/{slug}")`, then write the SQLAlchemy query that matches that identity.
+`RestView` and `AsyncRestView` assume one scalar resource identifier at `/{id}`. The column can have another name when you provide explicit schemas and `id_type`, but the generated CRUD routes, `IDSchema`, `IDRef`, React Admin, and OpenAPI identity shape all remain scalar-id contracts. For composite keys, use `fr.View` and explicit routes such as `@fr.get("/{tenant_id}/{slug}")`.
 
 ### Schema Classes and Utilities
 
@@ -160,7 +160,7 @@ FastAPI-Restly also works with ordinary SQLAlchemy declarative models that inher
 ### View Method Surface
 
 Each CRUD verb on `RestView` / `AsyncRestView` is split into three tiers, so you
-can override exactly the layer you need:
+can override the layer you need:
 
 1. **Route shell** (`<verb>_endpoint`) — the wire boundary: the `@route`, the
    FastAPI signature / `response_model`, and the call to `to_response`. Override
@@ -168,20 +168,17 @@ can override exactly the layer you need:
 2. **Request handler** (`handle_<verb>`) — the request logic: it runs
    `authorize` and the commit bracket (`before_commit` → commit →
    `after_commit`) and returns the domain object. Override to change
-   orchestration/timing without re-declaring the route; reuse it from a custom
-   action to inherit the bracket.
+   orchestration or timing without re-declaring the route.
 3. **Business method** (`<verb>`) — the domain operation (build / apply / save).
-   It is **auth-free** and **commit-free**, and is the usual override point
-   (hash a password, derive a slug, compute a field). The framework owns the
-   commit in `handle_<verb>`, so overriding the business method cannot break the
-   transaction.
+   It is **auth-free** and **commit-free**, and is the usual override point.
+   The handler owns the commit.
 
 Alongside the tiers are cross-cutting **override points** (`build_query`,
 `apply_query_params`, `count`, `authorize`,
 `before_commit` / `after_commit`, `to_response`, `snapshot`) and **domain
-utilities** you call rather than override (`make_new_object`, `update_object`,
-`save_object`, `delete_object`) — `make_new_object` / `update_object` are also
-the cooperative override point for stamping extra fields (tenant id, ownership).
+utilities** you call instead of override (`make_new_object`, `update_object`,
+`save_object`, `delete_object`). `make_new_object` / `update_object` are also
+the cooperative override point for field stamps.
 
 On `AsyncRestView` every method below is `async`; the signatures are otherwise identical.
 
@@ -243,13 +240,13 @@ See [Class-Based Views](class_based_views.md#the-view-hierarchy) for the class h
 | `id_type` | `ClassVar[type]` | Scalar primary-key type used in generated `GET /{id}`, `PATCH /{id}`, and `DELETE /{id}` routes. Defaults to `int`. Composite primary keys are not supported by the generated CRUD route contract; use `fr.View` for custom multi-part identities. |
 | `include_pagination_metadata` | `ClassVar[bool]` | Set `True` to return the paginated metadata envelope. Defaults to `False`. |
 | `exclude_routes` | `ClassVar[Iterable[str \| ViewRoute]]` | Route names to suppress. |
-| `extra_query_params` | `ClassVar[Iterable[str]]` | Query keys to allow on the listing endpoint in addition to those derived from the response schema. Use for view-specific parameters consumed outside `apply_list_params` (e.g. an `?include_deleted=true` escape hatch). |
+| `extra_query_params` | `ClassVar[Iterable[str]]` | Query keys to allow on the listing endpoint in addition to those derived from the response schema. Use for view-specific parameters consumed outside `apply_list_params` (e.g. `?include_deleted=true`). |
 | `default_page_size` | `ClassVar[int \| None]` | Default `?page_size=` for list endpoints. `None` (the default) means "no implicit cap" — every matching row is returned. |
 | `max_page_size` | `ClassVar[int]` | Upper bound for `?page_size=` on list endpoints. Values above are rejected with 422. Defaults to `1000`. |
 
 ### Advanced Object Helpers
 
-These helpers are the primitive surface for building, updating, deleting, and explicitly saving ORM objects from schemas. Use them when you need the framework's schema-to-object mapping outside the view instance methods, for example in custom routes, services, background workers, or test setup. Each variant exists in both sync and async form, matching the session type you have on hand. They are exported both at the top level (`fr.make_new_object`, `fr.async_save_object`, ...) and from `fastapi_restly.objects`.
+These helpers build, update, delete, and save ORM objects from schemas. Use them outside view instance methods: custom routes, services, workers, or tests. Sync and async variants are exported at the top level and from `fastapi_restly.objects`.
 
 | Symbol | Description |
 |---|---|
@@ -264,9 +261,9 @@ These helpers are the primitive surface for building, updating, deleting, and ex
 
 ### View Instance Methods
 
-Every `AsyncRestView` / `RestView` instance exposes ergonomic wrappers around the object helpers above. The wrappers bind `self.session`, `self.model`, and `self.schema` so the dominant case (`self.make_new_object(schema_obj)`) doesn't have to thread them explicitly. The async/sync split is implicit: `AsyncRestView.make_new_object` calls `fr.async_make_new_object` under the hood, `RestView.make_new_object` calls the sync version.
+Every `AsyncRestView` / `RestView` instance wraps the object helpers above, binding `self.session`, `self.model`, and `self.schema`. `AsyncRestView` uses async helpers; `RestView` uses sync helpers.
 
-Use these inside the business methods (`create`, `update`) or custom route methods. When you need to work with a model that isn't `self.model` (e.g. creating a sibling row in a custom endpoint) reach for the top-level `fr.*` / `fastapi_restly.objects` helpers instead.
+Use these in business methods and custom routes. For a model other than `self.model`, use the top-level `fr.*` or `fastapi_restly.objects` helpers.
 
 | Method | Description |
 |---|---|
@@ -275,10 +272,10 @@ Use these inside the business methods (`create`, `update`) or custom route metho
 | `self.update_object(obj, schema_obj)` | Wraps `update_object` / `async_update_object`. The cooperative override point for stamping extra fields on update — call `super()`, then mutate the returned object. **Does not flush** — call `self.save_object(obj)` afterwards. |
 | `self.save_object(obj)` | Wraps `save_object` / `async_save_object` against `self.session`. Flush + refresh; this is where create/update writes hit the database. It does **not** commit — `handle_<verb>` owns the commit. |
 | `self.delete_object(obj)` | Wraps `delete_object` / `async_delete_object` against `self.session`. Delete + flush, no commit. |
-| `self.build_query()` | Return the base SQLAlchemy `Select` used by every read on this view's model — `get_many`, `count`, and `get_one`. Defaults to `sqlalchemy.select(self.model)`. Override to add `WHERE` clauses that should apply to all reads — tenant scoping, soft-delete filtering, row-level permission visibility. Because retrieve also routes through this query, a row hidden from listing returns 404 from `GET /{id}` too. Call `super().build_query()` and chain `.where(...)` to compose with base-class or mixin filters. See [Composing views with mixins](howto_compose_views_with_mixins.md). |
+| `self.build_query()` | Return the base SQLAlchemy `Select` used by `get_many`, `count`, and `get_one`. Override for tenant scope, soft-delete filters, and row-level visibility. Hidden rows return 404 from `GET /{id}` too. Call `super().build_query()` and chain `.where(...)` to compose. See [Composing views with mixins](howto_compose_views_with_mixins.md). |
 | `self.apply_query_params(query, query_params)` | Apply URL filter/sort/pagination to an already-built `query`. Override for a non-default URL grammar. |
 | `self.count(query)` | Return the total row count for an already-built list query. The default `get_many` applies list params once, passes that same query to `count`, and `count` removes `ORDER BY`, `LIMIT`, and `OFFSET` before counting. Override for estimated counts on huge tables. |
-| `self.to_response(obj_or_list, shape=ResponseShape.SINGLE)` | The single wire-level response method, called by the route shells with the wire `ResponseShape` (`SINGLE` / `LISTING` / `EMPTY`) rather than the write-action name. Returns the listing response for `LISTING`, a `204` `Response` for `EMPTY`, and `to_response_schema(...)` for `SINGLE`. Override for envelopes or custom status codes; a per-verb HTTP contract change (e.g. `201` on create) goes in that verb's route shell, which owns the wire. |
+| `self.to_response(obj_or_list, shape=ResponseShape.SINGLE)` | The wire-level response method. `shape` is `SINGLE`, `LISTING`, or `EMPTY`, not the write-action name. Override for envelopes or shape-wide status behavior; per-verb HTTP changes belong in that verb's route shell. |
 | `self.to_listing_response(query_params, listing_result)` | Convert a `fr.ListingResult` into either the default JSON array or the pagination metadata envelope, depending on `include_pagination_metadata`. Override this when only the list response shape needs to change. |
 | `self.to_paginated_listing_response(query_params, listing_result)` | Convert a `fr.ListingResult` into the paginated response envelope with `items`, `total`, `page`, `page_size`, and `total_pages`. Called by `to_listing_response` when `include_pagination_metadata = True`; override this when only the paginated envelope should change. |
 
@@ -300,21 +297,21 @@ Restly has one public process-wide configuration. Configure it once during appli
 fr.configure(async_database_url="sqlite+aiosqlite:///app.db")
 ```
 
-`fr.configure(...)` must receive at least one meaningful setup option, such as an app for default exception-handler registration, a database URL, an engine, a session maker, a custom session generator, or a `warn_on_uncommitted` setting. A bare `fr.configure()` call raises `TypeError`.
+`fr.configure(...)` must receive at least one setup option: an app, database URL, engine, session maker, custom session generator, or `warn_on_uncommitted` setting. A bare `fr.configure()` raises `TypeError`.
 
-Applications that need more than one database can still use FastAPI and SQLAlchemy directly: provide a custom dependency on a view, or pass a custom session generator to `fr.configure(...)`. Restly does not currently provide a public multi-context or multi-engine API. See [Use a custom session dependency on one view](howto_existing_project.md#use-a-custom-session-dependency-on-one-view) for per-view session wiring.
+For multiple databases, use FastAPI and SQLAlchemy directly: add a custom dependency on a view, or pass a custom session generator to `fr.configure(...)`. Restly does not provide a public multi-context or multi-engine API. See [Use a custom session dependency on one view](howto_existing_project.md#use-a-custom-session-dependency-on-one-view).
 
-Restly's write handlers (`handle_create` / `handle_update` / `handle_delete`) own the commit: each runs `before_commit` → commit → `after_commit` around your domain logic, so a write is committed exactly once, just before the response is built (see [The handle design](the_handle_design.md)). The session dependencies (`AsyncSessionDep` / `SessionDep`) do **not** commit on response — they only manage the session lifecycle (roll back and close on the way out), so any change a handler did not commit is discarded.
+Restly's write handlers own the commit: each runs `before_commit` → commit → `after_commit` around domain logic. Session dependencies do **not** commit on response; they roll back and close on exit.
 
-A **custom (non-CRUD) write route** should bracket its mutation with `async with self.write_action(action, ...)` (or reuse `handle_create` / `handle_update` / `handle_delete`) — that applies the same authorize + commit bracket and commits exactly once. Only reach for `await self.session.commit()` directly when you're doing something the bracket doesn't model (e.g. a batch write that commits once after many rows); otherwise an un-committed write is rolled back when the request ends.
+A **custom write route** should use `self.write_action(...)` or reuse `handle_create` / `handle_update` / `handle_delete`. Commit manually only for shapes the bracket does not model, such as a batch write with one final commit.
 
-As a safety net for that last case, Restly **warns** (`RestlyUncommittedChangesWarning`) when a request finishes with uncommitted changes still in the session — the tell of a write route that forgot to commit. It's on by default; disable with `fr.configure(warn_on_uncommitted=False)`, or suppress a deliberate validate-then-rollback dry run by setting `session.info["_fr_suppress_uncommitted"] = True` in the route. The check applies to every session source, built-in or custom.
+Restly warns (`RestlyUncommittedChangesWarning`) when a request finishes with uncommitted session changes. Disable with `fr.configure(warn_on_uncommitted=False)`, or suppress a deliberate dry run with `session.info["_fr_suppress_uncommitted"] = True`.
 
-Restly owns the commit. A custom `session_generator` / `sync_session_generator` lets you construct sessions your way but does **not** own the commit — it constructs, yields, and cleans up (close / rollback); Restly commits. Customizing session construction never takes the commit away from Restly.
+Restly owns the commit. A custom `session_generator` / `sync_session_generator` controls session construction and cleanup, not commit ownership.
 
 ### Exceptions
 
-There are two families. Configuration-time errors subclass `RestlyError`; request-time HTTP errors subclass `fastapi.HTTPException` (via `RestlyHTTPError`), so raising them produces the same default response as raising `HTTPException` directly. The typed classes give callers a target for `app.add_exception_handler(fr.NotFound, ...)` to reshape Restly's errors distinctly (e.g. into RFC 7807 problem+json).
+There are two families. Configuration errors subclass `RestlyError`; request-time HTTP errors subclass `fastapi.HTTPException` via `RestlyHTTPError`. Typed classes let you target Restly errors with `app.add_exception_handler(...)`.
 
 | Symbol | Description |
 |---|---|
@@ -353,7 +350,7 @@ Registration is automatic in either of these cases:
 - A view is registered directly on a `FastAPI` app with `fr.include_view(app)`.
   This fallback covers apps that configure database sessions separately.
 
-Restly only skips this default when the app already has a handler registered specifically for `sqlalchemy.exc.IntegrityError`. Other handlers, such as a generic `Exception` handler, do not prevent Restly from registering its `IntegrityError` handler.
+Restly skips this default only when the app already has a `sqlalchemy.exc.IntegrityError` handler. Generic handlers do not block registration.
 
 To opt out:
 

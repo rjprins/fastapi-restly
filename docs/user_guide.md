@@ -14,7 +14,7 @@ patterns progressively.
 ::::{grid} 1 2 2 2
 :gutter: 3
 
-:::{grid-item-card} Part 1: Building a CRUD API
+:::{grid-item-card} Part 1: Building a REST API
 :link: tutorial
 :link-type: doc
 

@@ -24,11 +24,9 @@ model's actual primary-key type.
 
 - `ReadOnly[...]` fields are excluded from generated create/update input schemas.
 - `WriteOnly[...]` fields are accepted on input and excluded from serialized
-  responses. The filtering is done explicitly in `to_response_schema()` (a method
-  on `AsyncRestView` / `RestView`, defined on the internal abstract base they share),
-  which skips any field where the internal write-only predicate returns `True`. FastAPI's
-  response model serialization does **not** filter them; a custom serialization
-  path that bypasses `to_response_schema()` would expose `WriteOnly` fields.
+  responses. `to_response_schema()` performs the filtering. FastAPI's response
+  model serialization does **not** filter them; bypassing `to_response_schema()`
+  can expose `WriteOnly` fields.
 
 ### Generated Input Schemas
 
@@ -132,20 +130,14 @@ The async and sync variants have identical endpoint signatures; the only
 difference is that the async variant uses `await` in its process methods.
 
 `AsyncSessionDep` and `SessionDep` use Restly's built-in session generators.
-Those generators yield a SQLAlchemy session to the endpoint and manage only its
-lifecycle: the session's context manager rolls back and closes on the way out.
-They do **not** commit on response — the commit is owned by `handle_<verb>` (see
-the verb call chain below), which runs `before_commit` → commit → `after_commit`
-around your domain logic, so a write is committed exactly once before the
-response is built. A custom write route gets the same bracket by bracketing its
-mutation with `async with self.write_action(action, ...)`; a change that no
-handler committed is discarded when the session closes — and Restly warns
-(`RestlyUncommittedChangesWarning`, default on, `warn_on_uncommitted=False` to
-disable) when a request ends with such uncommitted changes, so the forgotten
-commit surfaces in dev instead of vanishing silently. Restly owns the commit:
-custom session generators configured with `session_generator` or
-`sync_session_generator` let you construct sessions your way, but the generator
-only constructs, yields, and cleans up (close / rollback) — it must not commit.
+Those generators yield a SQLAlchemy session and manage lifecycle: rollback and
+close on exit. They do **not** commit on response. `handle_<verb>` owns the
+commit and runs `before_commit` → commit → `after_commit` around domain logic.
+Custom write routes can use the same bracket with
+`async with self.write_action(action, ...)`. If a request ends with uncommitted
+changes, Restly warns with `RestlyUncommittedChangesWarning` by default.
+Custom session generators control construction and cleanup, not commit
+ownership.
 
 Both views expose several class variables that affect endpoint registration and
 runtime behaviour:
@@ -193,8 +185,7 @@ attach an `APIRouter` to the parent app/router.
 
 ### The Three Tiers of a CRUD Verb
 
-Every CRUD verb is split into three tiers, so you can override at the altitude
-that matches your change without re-declaring anything above it:
+Every CRUD verb is split into three tiers:
 
 1. **Route shell** — `<verb>_endpoint` (`get_many_endpoint`, `get_one_endpoint`,
    `create_endpoint`, `update_endpoint`, `delete_endpoint`). The wire boundary:
@@ -204,17 +195,13 @@ that matches your change without re-declaring anything above it:
    `handle_create`, `handle_update`, `handle_delete`). The request logic: it runs
    `authorize` and the commit bracket (`before_commit` -> commit ->
    `after_commit`) and returns the domain object. Override to change
-   orchestration or timing (e.g. an async delete, a custom transaction) without
-   re-declaring the route. Reuse it from a custom action to get the bracket for
-   free.
+   orchestration or timing without re-declaring the route.
 3. **Business verb** — `get_many`, `get_one`, `create`, `update`, `delete`. The
    domain operation (build / apply / save). Auth-free and commit-free; this is
    the usual override point (hash a password, derive a slug, compute a field).
 
-The framework owns the commit inside `handle_<verb>`, so `after_commit` runs
-after durability. Because the business verb never commits, overriding `create`
-to build the object, set a `password_hash`, call `save_object`, and return it
-persists correctly — there is no "mutate-after-save" trap.
+The handler owns the commit, so `after_commit` runs after durability. Business
+verbs never commit; they build, mutate, save, and return.
 
 The route shell calls `to_response(obj, shape)`, the single response method.
 `to_response` in turn delegates to `to_response_schema(obj)` for the per-object
@@ -229,17 +216,10 @@ Nested schemas serve two different roles in Restly today:
   schema, so related objects can be serialized efficiently and with aliases.
 - **Create/update payloads**: not supported in the general case. The default
   `make_new_object()` / `update_object()` flow expects payload keys to map
-  directly to model attributes, with `*_id: IDRef[Model]` as the usual
-  special case for foreign keys. When an `IDRef` / `IDSchema` reference has
-  been resolved to an ORM object, the helpers inspect the SQLAlchemy mapper and
-  dataclass constructor fields so FK-first (`author_id` init-enabled) and
-  relationship-first (`author` init-enabled) declarations both work. For one
-  resolved reference, Restly may pass the FK scalar, the relationship object, or
-  both when both dataclass fields are required; both values are derived from the
-  same row. If the client explicitly supplies both fields, Restly validates that
-  they refer to the same row before construction/update. Explicit `null` is
-  treated as an intentional "no row" value for that consistency check; omitted
-  optional fields are ignored.
+  directly to model attributes, with `*_id: IDRef[Model]` as the FK case. After
+  resolving an `IDRef` / `IDSchema` to an ORM object, Restly chooses the FK
+  scalar, relationship object, or both based on the model constructor. If the
+  client supplies both fields, Restly checks they refer to the same row.
 
 If you declare a nested input field like `address: AddressRead` on a write
 schema, the default CRUD implementation will pass that nested Pydantic object
@@ -314,8 +294,8 @@ async CRUD helpers flush explicitly when writes should hit the database. Sync
 sessions keep SQLAlchemy's default autoflush behavior, preserving the usual
 unit-of-work ergonomics where ORM queries see pending in-session changes.
 
-Projects that provide custom sessionmakers or session generators should preserve
-these assumptions unless they deliberately want different behavior.
+Projects with custom sessionmakers or generators should preserve these defaults
+unless they need different behavior.
 
 ## See Also
 

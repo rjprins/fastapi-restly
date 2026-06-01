@@ -84,7 +84,7 @@ def snapshot(obj: _DeclarativeBase) -> dict[str, _Any]:
 
     Not ``copy(obj)`` (which shares SQLAlchemy instance state). Reads only
     attributes already present on the instance, so it never triggers a lazy
-    load -- a deferred/unloaded column is skipped rather than forcing a blocking
+    load: a deferred/unloaded column is skipped instead of forcing a blocking
     SELECT (which on an async session would raise ``MissingGreenlet``). No
     session argument: it reads state already on the instance.
     """
@@ -146,9 +146,7 @@ async def async_save_object(session: _AsyncSession, obj: _T) -> _T:
     return obj
 
 
-async def async_delete_object(
-    session: _AsyncSession, obj: _DeclarativeBase
-) -> None:
+async def async_delete_object(session: _AsyncSession, obj: _DeclarativeBase) -> None:
     """Async equivalent of :func:`delete_object`."""
     await session.delete(obj)
     await session.flush()

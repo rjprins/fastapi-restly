@@ -1,6 +1,6 @@
 # Getting Started
 
-This guide walks from zero to a working CRUD API with FastAPI-Restly.
+This guide walks from zero to a working REST API with FastAPI-Restly.
 
 **Requirements:** Python 3.10 or later.
 
@@ -72,7 +72,7 @@ A few things to note:
   that match your API shape.
 - With no manual schema, FastAPI-Restly auto-generates `UserRead`, `UserCreate`,
   and `UserUpdate` from your model.
-- The lifespan hook creates tables through the same async engine configured for the app. For production, use Alembic migrations instead of `create_all()`.
+- The lifespan hook creates tables with the configured async engine. Use Alembic migrations in production.
 
 When auto-generated schemas are a good fit:
 
@@ -82,7 +82,7 @@ When auto-generated schemas are a good fit:
 
 ### Sync or Async?
 
-Default to `AsyncRestView` for new services; it follows FastAPI's async-first grain and works with async SQLAlchemy drivers. Choose sync `RestView` when a view depends on sync-only libraries or when you are integrating with a sync-first codebase. Mixed projects are fine: pick `AsyncRestView` or `RestView` per view based on the dependencies that view calls.
+Default to `AsyncRestView` for new services. Use sync `RestView` for sync-only libraries or sync-first codebases. Mixed projects are fine; choose per view.
 
 ## 3. Run
 
@@ -90,7 +90,7 @@ Default to `AsyncRestView` for new services; it follows FastAPI's async-first gr
 uv run fastapi dev main.py
 ```
 
-> **Note:** `fastapi dev` requires FastAPI's standard extras. `fastapi-restly[standard]` includes them. The development server is not needed for production.
+> **Note:** `fastapi-restly[standard]` includes the extras needed by `fastapi dev`. The dev server is not for production.
 
 Open:
 
@@ -109,7 +109,7 @@ For `prefix = "/users"`, generated endpoints are:
 
 Update semantics are `PATCH` (partial update).
 
-You can filter results using query parameters. For example, `GET /users/?name=Jane` returns only users named Jane. See [How-To: Filter, Sort, and Paginate Lists](howto_query_modifiers.md) for the full reference.
+Filter lists with query parameters, for example `GET /users/?name=Jane`. See [How-To: Filter, Sort, and Paginate Lists](howto_query_modifiers.md).
 
 ## 5. Add an Explicit Schema (Optional)
 
@@ -130,7 +130,7 @@ class UserView(fr.AsyncRestView):
 
 `schema` is the read/response contract. Restly derives `UserCreate` and
 `UserUpdate` from it unless you override `schema_create` or `schema_update`.
-`fr.IDSchema` already includes the `id` field as `fr.ReadOnly` (excluded from create/update requests, present in responses). You can apply the same marker to your own fields: `fr.ReadOnly[str]` keeps a field out of write operations. `fr.WriteOnly[T]` does the opposite — accepted on input, omitted from responses (useful for passwords).
+`fr.IDSchema` includes `id` as `fr.ReadOnly`: present in responses, excluded from create/update. Use `fr.ReadOnly[T]` for other response-only fields and `fr.WriteOnly[T]` for input-only fields such as passwords.
 
 Choose explicit schemas when you need:
 

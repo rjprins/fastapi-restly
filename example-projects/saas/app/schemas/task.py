@@ -10,10 +10,8 @@ from ..models import TaskPriority, TaskStatus, TaskType
 class TaskSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
     """Schema for Task model.
 
-    Note: Conditional validation (bugs require severity) is implemented
-    in TaskView.create and update (the bare business verbs) rather than here,
-    because schema validators also run during query filtering which causes
-    issues.
+    Conditional validation lives in TaskView.create/update because schema
+    validators also run for query filtering.
     """
 
     title: str

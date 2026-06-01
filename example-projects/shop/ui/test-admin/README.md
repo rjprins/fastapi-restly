@@ -67,6 +67,5 @@ point the UI at a different backend.
 - A `Content-Range` response header for pagination
 - Query params `?range=[0,9]&sort=["name","ASC"]&filter={...}`
 
-`AsyncReactAdminView` (and its sync counterpart) implements exactly that
-contract. See `tests/test_react_admin.py` in the shop project for a compact
-spec of the wire contract.
+`AsyncReactAdminView` (and its sync counterpart) matches that contract. See
+`tests/test_react_admin.py` in the shop project for a compact wire spec.

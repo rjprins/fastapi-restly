@@ -1,12 +1,12 @@
 # How-To: Share Behaviour with Base Views
 
-FastAPI-Restly views are plain Python classes. There are no decorator wrappers or metaclass tricks that would prevent normal inheritance from working. This means you can build base view classes that capture shared logic — CRUD overrides, dependencies, access control, URL namespaces — and reuse it across every view in your project without repetition.
+FastAPI-Restly views are plain Python classes. Use base classes for shared CRUD overrides, dependencies, access control, and URL namespaces.
 
 Each CRUD verb is three tiers (see [Override Endpoints](howto_override_endpoints.md) for the full model):
 
 - The **route shell** (`create_endpoint`, `get_one_endpoint`, …) — the wire boundary. Rarely overridden on a base class.
-- The **request handler** (`handle_create`, `handle_get_one`, …) — runs `authorize` and the commit bracket. Override on a base class to change orchestration for every subclass.
-- The **business verb** (`create`, `get_one`, `update`, `delete`, `get_many`) — the auth-free, commit-free domain operation. This is the usual place to put shared logic.
+- The **request handler** (`handle_create`, `handle_get_one`, …) — runs `authorize` and the commit bracket.
+- The **business verb** (`create`, `get_one`, `update`, `delete`, `get_many`) — the auth-free, commit-free domain operation.
 
 The business verb is the natural home for shared behaviour, so most of the examples below override it.
 
@@ -34,13 +34,13 @@ class OrderView(AuditBase):
     schema = OrderRead
 ```
 
-`audit_log.record` is called on every `POST` to `/users/` and `/orders/` without repeating the override. The base class itself is never registered — only the concrete subclasses are passed to `include_view`.
+`audit_log.record` now runs for both `/users/` and `/orders/`. Register only concrete subclasses, not the base.
 
-Because `create` is commit-free (the handler owns the commit), the recorded object is the same one that gets persisted — there is no risk of mutating after a flush has already happened.
+Because `create` is commit-free, the handler persists the same object the base method recorded.
 
 ## Call super() to layer overrides
 
-A subclass can override a business verb and call `super()` to build on top of the base implementation rather than replace it:
+A subclass can call `super()` to extend a base implementation:
 
 ```python
 class AuditBase(fr.RestView):
@@ -64,7 +64,7 @@ The call chain is `OrderView.create` → `AuditBase.create` → `RestView.create
 
 ## Share an orchestration override
 
-When the shared behaviour is about *timing* rather than the domain object itself — running a check before authorization, emitting an event after durability, wrapping the write in a custom transaction — override the request handler instead of the business verb. The handler keeps the route untouched while letting you reshape the orchestration:
+When shared behavior is about *timing*, override the request handler instead of the business verb. This keeps the route shell unchanged:
 
 ```python
 class NotifyBase(fr.RestView):
@@ -75,11 +75,11 @@ class NotifyBase(fr.RestView):
         return obj
 ```
 
-Every subclass of `NotifyBase` now fires `notify_created` only after the create has committed. For most after-the-fact side effects, prefer the `after_commit` hook; reach for a handler override when you need to change the surrounding control flow.
+Every subclass of `NotifyBase` now fires `notify_created` after commit. For most post-commit side effects, prefer `after_commit`; use a handler override when control flow must change.
 
 ## Inherit a shared dependency
 
-Dependencies declared as instance annotations on a base class are injected into every subclass. This is a clean way to make the current user, tenant, or request context available to all views without repeating the annotation.
+Dependencies declared as instance annotations on a base class are injected into every subclass.
 
 ```python
 from typing import Annotated
@@ -100,11 +100,11 @@ class NoteView(AuthBase):
     schema = NoteRead
 ```
 
-`self.current_user` is available in every method of `NoteView` and any other subclass of `AuthBase`. Because `create` runs before the commit, stamping `owner_id` here persists correctly.
+`self.current_user` is available in every subclass method. Because `create` runs before commit, stamping `owner_id` persists.
 
 ## Apply router-level dependencies to all routes
 
-`dependencies = [Depends(fn)]` on a view applies `fn` to every route the view registers. Subclasses inherit this, so you can enforce authentication or rate-limiting once on a base class:
+`dependencies = [Depends(fn)]` applies `fn` to every route. Subclasses inherit it:
 
 ```python
 class ProtectedBase(fr.RestView):
@@ -196,7 +196,7 @@ class ProductView(ReadOnlyBase):
     schema = ProductRead
 ```
 
-`ProductView` only exposes `GET /products/` and `GET /products/{id}`. The `ViewRoute` members name the route shells: `GET_MANY`, `GET_ONE`, `CREATE`, `UPDATE`, and `DELETE`.
+`ProductView` only exposes `GET /products/` and `GET /products/{id}`.
 
 ## Implement soft-delete once
 
@@ -215,7 +215,7 @@ class ArticleView(SoftDeleteBase):
     schema = ArticleRead
 ```
 
-`DELETE /articles/{id}` now sets `deleted = True` instead of removing the row. Every subclass of `SoftDeleteBase` gets this behaviour, and because `delete` is commit-free the flip is committed by the handler along with the rest of the request. Pair this with a `build_query` override that hides flagged rows so they disappear from reads as well — see [Compose Views with Mixins](howto_compose_views_with_mixins.md) for the full soft-delete pattern.
+`DELETE /articles/{id}` now sets `deleted = True` instead of removing the row. Every subclass gets the behavior, and the handler commits the flip. Pair it with a `build_query` filter that hides flagged rows; see [Compose Views with Mixins](howto_compose_views_with_mixins.md).
 
 ## Cross-references
 

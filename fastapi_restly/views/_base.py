@@ -98,11 +98,9 @@ class ResponseShape(str, Enum):
     """The wire shape a route shell asks :meth:`BaseRestView.to_response` to
     produce.
 
-    A *closed* set of exactly three shapes -- unlike the open write-action
-    namespace -- so an ``Enum`` is the right model: it will never be extended,
-    and a shell can only ever want one of these. This is the response
-    selector; it is deliberately NOT the write-action string (``"publish"`` and
-    friends), which keeps the two concerns from being conflated.
+    This is separate from write-action names such as ``"publish"``. Route
+    shells choose one of these three response shapes; custom actions remain an
+    open string namespace.
     """
 
     SINGLE = "single"  # one serialized object
@@ -114,14 +112,8 @@ class Action:
     """Canonical CRUD action names passed to ``authorize`` / ``before_commit``
     / ``after_commit``.
 
-    A plain constants class, **not an Enum**: the action namespace is *open* --
-    custom write actions contribute their own names (``"publish"``,
-    ``"restore"``), and mixins add more -- and a Python ``Enum`` cannot be
-    extended once it has members, which would break the framework's mixin
-    composition. Reference these constants (and declare your own as siblings:
-    ``class TaskActions: PUBLISH = "publish"``) so a typo is an
-    ``AttributeError`` at import time rather than a silently-missed check at
-    runtime.
+    This is a constants class, not an ``Enum``: custom actions and mixins add
+    their own names. Use constants for typo checking at import time.
     """
 
     GET_MANY = "get_many"
@@ -290,8 +282,7 @@ def validate_resolved_reference_consistency(
 
 
 def iter_creatable_fields(
-    schema_obj: pydantic.BaseModel,
-    schema_cls: type[pydantic.BaseModel] | None = None,
+    schema_obj: pydantic.BaseModel, schema_cls: type[pydantic.BaseModel] | None = None
 ) -> Iterator[tuple[str, Any]]:
     """Iterate over (field_name, value) pairs that should be used to construct a new
     ORM object from ``schema_obj``.
@@ -773,12 +764,10 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         False  # Set True to include count/total in list responses
     )
     exclude_routes: ClassVar[Iterable[str | ViewRoute]] = ()
-    #: Extra query-parameter keys to allow on the listing endpoint in addition
-    #: to those derived from the response schema. Use this when a view
-    #: intentionally consumes a custom query parameter (e.g. an
-    #: ``?include_deleted=true`` escape hatch on a soft-delete mixin) that
-    #: isn't a filter on a schema field. Without this, the strict
-    #: unknown-key guard would reject the request with 422.
+    #: Extra query-parameter keys to allow on the listing endpoint beyond those
+    #: derived from the response schema. Use this when a view consumes a custom
+    #: parameter (e.g. ``?include_deleted=true`` on a soft-delete mixin). Without
+    #: this, the strict unknown-key guard rejects the request with 422.
     extra_query_params: ClassVar[Iterable[str]] = ()
     #: Default ``page_size`` for list endpoints. ``None`` means "no implicit
     #: cap" (the framework default). Override per-view.
@@ -844,7 +833,7 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         if isinstance(obj, self.schema):
             return cast(SchemaT, obj)
 
-        # Build a payload using canonical field names. Alias rendering happens
+        # Build a payload using schema field names. Alias rendering happens
         # when FastAPI serializes the response model.
         payload: dict[str, Any] = {}
         for field_name, field_info in self.schema.model_fields.items():
@@ -930,18 +919,11 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     def to_response(
         self, obj_or_list: Any, shape: ResponseShape = ResponseShape.SINGLE
     ) -> Any:
-        """Single response chokepoint -- the WIRE boundary, called by the route
-        shells. ``shape`` is a closed ``{single, listing, empty}`` selector, NOT
-        the open write-action name: a response only ever needs to know which
-        wire shape to emit, so the write action (``"publish"``) and the
-        response shape are kept as separate concerns. A custom write route just
-        calls ``self.to_response(obj)`` (single is the default).
+        """Route-shell response boundary.
 
-        Override for envelopes or custom status codes (return a
-        ``fastapi.Response``); branch on ``shape`` if the envelope differs by
-        shape. Genuinely per-endpoint projection belongs in the specific
-        ``*_endpoint`` shell, which already owns the wire. Error bodies are
-        shaped at the FastAPI exception-handler layer, not here.
+        ``shape`` selects the wire form: single object, listing, or empty. It is
+        not the write-action name. Override for envelopes or shape-wide status
+        behavior; per-endpoint projections belong in the route shell.
         """
         if shape is ResponseShape.EMPTY:
             return fastapi.Response(status_code=204)
@@ -1022,9 +1004,7 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
             _annotate(ep, return_annotation=response_schema, id=cls.id_type)
         if (ep := getattr(cls, "create_endpoint", None)) is not None:
             _annotate(
-                ep,
-                return_annotation=response_schema,
-                schema_obj=cls.schema_create,
+                ep, return_annotation=response_schema, schema_obj=cls.schema_create
             )
         if (ep := getattr(cls, "update_endpoint", None)) is not None:
             _annotate(
@@ -1114,9 +1094,7 @@ def _init_view_cls_and_add_to_router(
 #: handlers call) and collide with the ``<verb>_endpoint`` route shell at the
 #: same path. Override the bare verb *without* a decorator for domain logic; use
 #: ``<verb>_endpoint`` or a distinct name for a custom route.
-_BARE_VERB_NAMES = frozenset(
-    {"get_many", "get_one", "create", "update", "delete"}
-)
+_BARE_VERB_NAMES = frozenset({"get_many", "get_one", "create", "update", "delete"})
 
 
 def _reject_bare_verb_route_names(view_cls: type[View]) -> None:
@@ -1172,9 +1150,9 @@ def _copy_all_parent_class_endpoints_into_this_subclass(view_cls: type[View]):
         # The original endpoint might be shared between subclasses.
         # So make a copy and put that on the view_cls.
         endpoint_wrapper = _make_copy(endpoint, view_cls)
-        # Reset the copy's name to the canonical attribute name so downstream
-        # renaming produces "<view>_<name>" cleanly even when the source was a
-        # parent's already-renamed copy.
+        # Reset the copy's name to the endpoint attribute so downstream renaming
+        # produces "<view>_<name>" even when the source was a parent's renamed
+        # copy.
         endpoint_wrapper.__name__ = name
         # Set explicit __qualname__ for debugging purposes.
         endpoint_wrapper.__qualname__ = f"{view_cls.__name__}_{name}_wrapper"
@@ -1243,16 +1221,11 @@ def _annotate(func: Callable, return_annotation: Any = None, **param_annotations
 
 
 def _get_all_parent_endpoints(view_cls: type[View]) -> dict[str, Callable]:
-    """Map attribute-name -> endpoint for every ``@route`` endpoint defined on a
-    parent class, resolved the way Python resolves attributes: the most-derived
-    definition of each name wins, and each name appears once.
+    """Map parent route endpoints by attribute name.
 
-    Walking the MRO and collecting every ``__dict__`` entry naively double-counts
-    when an intermediate parent was *itself* registered: registration copies the
-    base endpoints into that parent's ``__dict__``, so the same logical endpoint
-    is present both as the base original and as the parent's renamed copy. Keying
-    by attribute name (most-derived first, shadowed names skipped) collapses those
-    to one entry -- and respects a parent that genuinely overrode the endpoint.
+    Registered intermediate parents copy base endpoints into their ``__dict__``.
+    Keying by most-derived attribute name prevents duplicate logical endpoints
+    while still respecting overrides.
     """
     endpoints: dict[str, Callable] = {}
     seen: set[str] = set()

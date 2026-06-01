@@ -10,11 +10,8 @@ of names.
 > enable pagination, or set `default_page_size` on the view class if you
 > want every request to be paginated by default.
 >
-> **For public or production endpoints, set `default_page_size` and
-> `max_page_size` explicitly.** The framework default of "no implicit
-> cap" is intentionally honest about what the SQL does, but is not
-> the safest production posture — a missing `page_size` will scan the
-> entire table.
+> **For public endpoints, set `default_page_size` and `max_page_size`.**
+> Without a default cap, a missing `page_size` scans the full table.
 >
 > **Unknown query keys are rejected with 422.** Filters are narrowing
 > controls — a typo or unsupported operator silently ignored could
@@ -99,8 +96,8 @@ GET /users/?name__contains=john&name__contains=doe
 GET /users/?name__icontains=john&name__icontains=doe
 ```
 
-The `__contains` form produces `WHERE name LIKE '%john%' AND name LIKE '%doe%'`.
-The `__icontains` form uses `ILIKE` instead.
+`__contains` produces `WHERE name LIKE '%john%' AND name LIKE '%doe%'`.
+`__icontains` uses `ILIKE`.
 
 As a convenience, whitespace inside one `__contains` or `__icontains`
 value is also AND-split. `?name__contains=john%20doe` is equivalent to
@@ -108,9 +105,8 @@ the repeated-parameter form above.
 Prefer repeated parameters when you control the URL — they are
 unambiguous and survive any client/server quoting changes.
 
-Literal `%`, `_`, and `\` characters are escaped before building the SQL
-`LIKE` / `ILIKE`, so contains searches behave like literal substring
-matching rather than wildcard matching.
+Literal `%`, `_`, and `\` characters are escaped before SQL `LIKE` / `ILIKE`,
+so contains searches use literal substrings, not wildcards.
 
 ### Multiple filters on the same field
 
@@ -213,8 +209,7 @@ class ArticleRead(BaseModel):
 
 ```text
 GET /articles/?writer.authorName=Alice    # supported (aliased segments)
-GET /articles/?author.name=Alice          # not exposed — canonical names
-                                          # are not part of the public contract
+GET /articles/?author.name=Alice          # rejected; use public aliases
 ```
 
 ---
@@ -236,11 +231,9 @@ GET /users/?page=2&page_size=50
 
 ## Overriding query logic per view
 
-Override `build_query` to inject a base query before the framework
-applies the URL parameters. The `get_many` and `get_one` business verbs consult
-this override point, and `count` counts the query built by `get_many`, so the
-filter applies to listing, the pagination total, **and** single-row fetches
-(`GET /{id}`) without further plumbing:
+Override `build_query` to inject a base query before URL parameters are applied.
+`get_many`, `count`, and `get_one` all use this query, so the filter applies to
+listings, totals, and single-row fetches:
 
 ```python
 import fastapi_restly as fr

@@ -114,8 +114,8 @@ Notes:
   `install_default_exception_handlers=False` to opt out.
 - `engine.dispose()` in `lifespan` cleans up the connection pool on
   shutdown so workers exit promptly.
-- Register views deliberately during startup with `fr.include_view(app, ViewClass)`;
-  avoid relying on import-time side effects in larger apps.
+- Register views during startup with `fr.include_view(app, ViewClass)`; avoid
+  import-time side effects in larger apps.
 
 ## Running the app
 

@@ -36,10 +36,10 @@ MAX_PAGE_SIZE = 1000
 #: silently break the endpoint contract. Treated as a hard error.
 _RESERVED_NAMES = frozenset({"page", "page_size", "sort"})
 
-# Types that support SQL ``<``/``<=``/``>``/``>=`` comparisons. Booleans
-# deliberately don't — ordering booleans is rarely meaningful and emitting
-# ``WHERE active >= true`` raises ``sqlalchemy.exc.ArgumentError`` at query
-# time, which would otherwise surface to the client as a 500.
+# Types that support SQL ``<``/``<=``/``>``/``>=`` comparisons. Booleans are
+# excluded: ordering booleans is rarely meaningful, and ``WHERE active >= true``
+# raises ``sqlalchemy.exc.ArgumentError`` at query time, which would otherwise
+# surface to the client as a 500.
 _ORDERABLE_TYPES: tuple[type, ...] = (
     int,
     float,
@@ -150,10 +150,10 @@ def create_list_params_schema(
                 "parameter. Add a Pydantic alias to expose it as a filter."
             )
 
-        # Type filter parameters as ``Optional[list[str]]`` (rather than the
+        # Type filter parameters as ``Optional[list[str]]`` instead of the
         # column's true type) so FastAPI/Starlette preserve repeated query
         # parameters as a list and downstream ``_parse_value`` can perform
-        # the actual type coercion. ``__isnull`` stays a scalar bool because
+        # field-type coercion. ``__isnull`` stays a scalar bool because
         # repeating it makes no sense.
         eq_desc = (
             f"Filter by ``{name}``. Comma-separated values are OR-combined "
@@ -325,7 +325,7 @@ def _get_int(query_params: QueryParams, param_name: str) -> Optional[int]:
     except ValueError:
         raise BadQueryParam(
             f"Invalid value for URL query parameter {param_name}: "
-            f"{value} is not an integer",
+            f"{value} is not an integer"
         )
 
 
@@ -397,8 +397,7 @@ def _iter_fields_including_nested(
 
 
 def _resolve_field_name(schema_cls: SchemaType, public_name: str) -> str | None:
-    """Given a schema and a public (URL-facing) name, return the canonical
-    Python field name to use with the model.
+    """Return the Python field name for a public URL field name.
 
     The public name is the field's alias when one is declared, otherwise the
     field name itself. Aliased fields are *only* reachable by their alias —
@@ -500,7 +499,8 @@ def _apply_filtering(
             try:
                 value = pydantic.TypeAdapter(bool).validate_python(raw_value)
             except pydantic.ValidationError as exc:
-                raise BadQueryParam( f"Invalid value for URL query parameter {key}"
+                raise BadQueryParam(
+                    f"Invalid value for URL query parameter {key}"
                 ) from exc
             filters[column].append(column.is_(None) if value else column.isnot(None))
             continue

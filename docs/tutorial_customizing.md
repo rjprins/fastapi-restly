@@ -1,6 +1,6 @@
 # Tutorial Part 2: Customizing Views
 
-This tutorial extends the blog API from [Part 1](tutorial.md). It introduces the customization system in order, from the simplest override down to shared base classes.
+This tutorial extends the blog API from [Part 1](tutorial.md). It introduces customization from single-method overrides to shared base classes.
 
 The examples use `AsyncRestView`. The same methods and patterns apply to `RestView` (sync) — just drop the `async`/`await`.
 
@@ -8,7 +8,7 @@ The examples use `AsyncRestView`. The same methods and patterns apply to `RestVi
 
 ## The three tiers of a CRUD verb
 
-Every CRUD verb in Restly is built from three tiers. Knowing which tier to touch is the whole game: pick the highest one that does the job and the lower tiers keep working untouched.
+Every CRUD verb has three tiers. Override the lowest tier that owns the behavior you need.
 
 ```
 <verb>_endpoint   — the route shell (wire boundary): the @route, the FastAPI
@@ -30,8 +30,8 @@ POST /     → create_endpoint(schema_obj)     # route shell
 
 Two facts make this layout safe to override:
 
-- **The framework owns the commit.** `handle_<verb>` runs `before_commit → commit → after_commit` around your business verb, so `after_commit` always runs after the write is durable.
-- **The business verb never commits.** Because `create` / `update` / `delete` only build, apply, and save (flush, not commit), you can rewrite them freely without breaking the transaction bracket. The old "mutate-after-save" trap is gone.
+- **The handler owns the commit.** `handle_<verb>` runs `before_commit → commit → after_commit` around the business verb.
+- **The business verb never commits.** `create` / `update` / `delete` build, apply, and flush. The handler commits later.
 
 Inside every method, `self.session` is the live database session and `self.request` is the FastAPI `Request` object.
 
@@ -39,11 +39,11 @@ Inside every method, `self.session` is the live database session and `self.reque
 
 ## Tier 3 — the business verb (the usual override point)
 
-This is where almost all customization lives. The business verb is the domain operation: build an object, apply a payload, save it. It is **auth-free** and **commit-free** — `handle_<verb>` already ran `authorize` before calling it and will run the commit bracket after.
+Most customization lives here. The business verb is the domain operation: build an object, apply a payload, save it. It is **auth-free** and **commit-free**; the handler adds authorization and commit handling.
 
 ### create — inject server-side fields
 
-Real APIs rarely accept every field from the client. Say each post should record which user created it, taken from the request context rather than from the payload:
+Real APIs rarely accept every field from the client. This example stamps the author from request context:
 
 ```python
 @fr.include_view(app)
@@ -58,11 +58,11 @@ class PostView(fr.AsyncRestView):
         return await self.save_object(obj)
 ```
 
-`make_new_object` builds the ORM instance from the validated payload. `save_object` flushes and refreshes it. Because `create` does not commit, setting a field after `save_object` still persists — the flush happens inside `save_object`, and the commit happens later in `handle_create`. (For a field stamped on *both* create and update, override `make_new_object` / `update_object` cooperatively; see [Stamping extra fields](#stamping-extra-fields).)
+`make_new_object` builds the ORM instance. `save_object` flushes and refreshes it, but does not commit. For fields stamped on both create and update, override `make_new_object` / `update_object`; see [Stamping extra fields](#stamping-extra-fields).
 
 ### update — validate before saving
 
-To block an update based on the current state of the object, override the `update` business verb. It receives the already-loaded object, so there is no separate fetch:
+To reject an update based on current state, override `update`. It receives the loaded object:
 
 ```python
     async def update(self, obj, schema_obj):
@@ -72,11 +72,11 @@ To block an update based on the current state of the object, override the `updat
         return await self.save_object(obj)
 ```
 
-`update(obj, schema_obj)` is called by `handle_update`, which has already loaded `obj` (through `get_one`, applying any read scope) and run `authorize`. You only describe the domain change.
+`handle_update` has already loaded `obj` through `get_one` and run `authorize`. `update` only describes the domain change.
 
 ### build_query — filter results to the current user
 
-The most common real-world override: restrict reads to rows the caller is allowed to see. `build_query` is the read-scope method that `get_many`, `count`, and `get_one` all consult. A single override keeps listed rows, pagination totals, and single-row fetches in sync — a row hidden from the list returns 404 from `GET /{id}` too, and `update` / `delete` inherit the visibility check because `handle_update` / `handle_delete` load through `get_one`.
+The common read override is row visibility. `get_many`, `count`, and `get_one` all use `build_query`, so one filter keeps listings, totals, single-row reads, updates, and deletes aligned.
 
 ```python
 @fr.include_view(app)
@@ -95,7 +95,7 @@ Calling `super().build_query()` and chaining `.where(...)` composes cleanly with
 
 Read access has two halves, and they live in two different tiers:
 
-- **Visibility** — `build_query`. A hidden row simply does not exist for this view, so `get_one` 404s on it for everyone. This stays auth-free.
+- **Visibility** — `build_query`. A hidden row is not part of this view, so `get_one` returns 404.
 - **Policy** — `authorize`, called in the request handler. Use it for "may this caller read at all", not for "which rows exist".
 
 ### delete — implement soft-delete
@@ -111,13 +111,13 @@ from datetime import datetime, timezone
         # Do NOT call super() / delete_object — that would remove the row.
 ```
 
-`DELETE /posts/{id}` now marks the row instead of removing it. The 204 response is still produced by `delete_endpoint`, and the commit still runs in `handle_delete`; only the domain step changes. Pair this with a `build_query` override that filters out rows where `deleted_at is not None` so soft-deleted rows disappear from reads.
+`DELETE /posts/{id}` now marks the row instead of removing it. `delete_endpoint` still returns 204, and `handle_delete` still commits. Pair this with a `build_query` filter that hides deleted rows.
 
 ---
 
 ## Tier 2 — the request handler (orchestration and timing)
 
-`handle_<verb>` owns `authorize` and the commit bracket. Override it when you need to change *orchestration or timing* without re-declaring the route — for example, to run a delete in a background task, or to wrap the write in a custom transaction. The default implementations look like this:
+`handle_<verb>` owns `authorize` and the commit bracket. Override it to change *orchestration or timing* without re-declaring the route. The defaults look like this:
 
 ```
 handle_create  →  authorize("create", data=schema_obj)
@@ -148,13 +148,13 @@ Both receive `old`, the pre-mutation snapshot produced by `snapshot(obj)`, so yo
             await notify_subscribers(new.id)
 ```
 
-You rarely override `handle_<verb>` itself. The hooks above cover the common cases; reach for a full `handle_<verb>` override only when you need to change the order of operations or the transaction itself.
+The hooks cover most timing needs. Override `handle_<verb>` only when the operation order or transaction must change.
 
 ---
 
 ## Stamping extra fields
 
-When the same field must be stamped on **both** create and update — an audit id, a tenant id, an ownership column — override `make_new_object` / `update_object` cooperatively instead of the business verbs. Call `super()`, then mutate the constructed object and return it. Because each override builds on the one above it, base classes and mixins compose:
+For fields stamped on **both** create and update, override `make_new_object` / `update_object` cooperatively. Call `super()`, mutate, and return. Base classes and mixins then compose cleanly:
 
 ```python
     async def make_new_object(self, schema_obj):
@@ -168,7 +168,7 @@ When the same field must be stamped on **both** create and update — an audit i
         return obj
 ```
 
-`make_new_object` (inside `create`) builds the ORM object and `update_object` (inside `update`) applies the payload. Overriding them lets you stamp the field after the object exists — so you can read its current state — without touching the business verb at all.
+`make_new_object` builds the ORM object; `update_object` applies the payload. Override them for structural stamps without touching the business verb.
 
 ---
 
@@ -186,13 +186,13 @@ update  →  update_object(obj, schema_obj)  # apply payload (override point for
 delete  →  delete_object(obj)              # delete + flush (no commit)
 ```
 
-`make_new_object` and `update_object` do not flush — they prepare the ORM object. `save_object` is the explicit flush/refresh step; it does **not** commit, because `handle_<verb>` owns the commit. The same operations are available as free functions (`fr.make_new_object`, `fr.save_object`, and `async_*` variants) for use in services and workers outside a view.
+`make_new_object` and `update_object` do not flush. `save_object` flushes and refreshes, but does **not** commit. The same operations are available as free functions for services and workers.
 
 ---
 
 ## Custom routes
 
-Use `@fr.get`, `@fr.post`, `@fr.patch`, `@fr.put`, or `@fr.delete` to add endpoints alongside the generated ones. The same three tiers help here: reuse `handle_get_one` (load with scope + 404 + read-auth) or `get_one` (just the scoped load) to fetch, and reuse `save_object` to persist.
+Use `@fr.get`, `@fr.post`, `@fr.patch`, `@fr.put`, or `@fr.delete` to add endpoints. Reuse `handle_get_one` for scoped load + read auth, `get_one` for scoped load only, and `save_object` to persist.
 
 All route decorator keyword arguments are passed through to FastAPI. Configure class-based routes the same way you configure regular FastAPI routes: use `response_model=`, `status_code=`, `dependencies=`, `responses=`, and the other FastAPI route options as usual.
 
@@ -217,11 +217,11 @@ class PostView(fr.AsyncRestView):
         }
 ```
 
-Calling `self.handle_get_one(id)` gives you the ORM object with the same read scope, 404 logic, and read authorization as the standard `GET /{id}` endpoint — and picks up any `build_query` or `authorize` override you may have applied. (Use the bare `get_one(id)` instead if you want the scoped load and 404 but not the read-auth check.)
+`handle_get_one(id)` gives the same scope, 404 behavior, and read authorization as `GET /{id}`. Use `get_one(id)` when you want scope and 404 without read authorization.
 
 ### A state-change action
 
-Add a `publish` action that transitions a post to a published state. Load with `handle_get_one`, then bracket the change with `self.write_action` under a custom action name — it applies the same authorize → snapshot → `before_commit` → commit → `after_commit` bracket the CRUD writes use, so you never own the commit by hand:
+Add a `publish` action. Load with `handle_get_one`, then use `write_action` so authorization, snapshot, commit hooks, and commit stay in the framework bracket:
 
 ```python
 import fastapi
@@ -236,9 +236,9 @@ import fastapi
         return self.to_response_schema(post)
 ```
 
-`self.to_response_schema(post)` serializes the ORM object using the view's configured response schema, exactly as the standard endpoints do.
+`self.to_response_schema(post)` serializes through the view's response schema.
 
-If your custom action is really a full create or update — same authorize, same commit bracket, same hooks — call `handle_create` / `handle_update` directly instead of reassembling the pieces:
+If a custom action is just a create or update under another URL, call `handle_create` / `handle_update`:
 
 ```python
     @fr.post("/{id}/repost")
@@ -248,13 +248,13 @@ If your custom action is really a full create or update — same authorize, same
         return self.to_response_schema(await self.handle_create(schema_obj))
 ```
 
-`handle_create` runs `authorize`, your `create` override, and the full `before_commit → commit → after_commit` bracket — so a custom action behaves exactly like the generated `POST /`.
+`handle_create` runs authorization, your `create` override, and the commit bracket.
 
 ---
 
 ## Database conflict responses
 
-By default, Restly translates SQLAlchemy `IntegrityError` exceptions raised by database constraints into `409 Conflict` responses. This is usually what you want for duplicate unique values or invalid foreign-key references, and no handler code is needed in normal CRUD views.
+By default, Restly turns SQLAlchemy `IntegrityError` exceptions into `409 Conflict` responses. This covers common unique and foreign-key violations.
 
 If your app needs a different error envelope, register a handler specifically for `sqlalchemy.exc.IntegrityError` before calling `fr.configure(app=...)` or before registering views with `fr.include_view(app)`:
 
@@ -282,11 +282,11 @@ See [Default Exception Handling](api_reference.md#default-exception-handling) fo
 
 ## Sharing behaviour with base classes
 
-All of the above can be promoted from a single view to a shared base class. Because views are plain Python classes, normal inheritance works without any special framework support.
+Any override above can move into a shared base class. Views are plain Python classes, so normal inheritance works.
 
 ### Extract authentication into a base class
 
-The blog API has two views that both need a current user. Instead of repeating the dependency and the ownership stamping, override the `create` business verb on a shared base:
+If several views need the current user, put the dependency and create-time stamp on a shared base:
 
 ```python
 from typing import Annotated
@@ -319,11 +319,11 @@ class CommentView(AuthoredBase):
     schema = CommentRead
 ```
 
-`self.current_user` is injected by FastAPI's dependency system and is available in every method of every subclass. `AuthoredBase` itself is never passed to `include_view` — only the concrete subclasses are registered.
+FastAPI injects `self.current_user` on every subclass method. Register only concrete subclasses, not the base.
 
 ### Extend a base-class verb with super()
 
-A subclass can extend a base-class business verb rather than replace it:
+A subclass can extend a base-class business verb:
 
 ```python
 @fr.include_view(app)
@@ -338,11 +338,11 @@ class PostView(AuthoredBase):
         return await super().create(schema_obj)
 ```
 
-The call chain is `PostView.create` → `AuthoredBase.create` → `AsyncRestView.create`. All three run in order, and the request handler (`handle_create`) still wraps the whole chain in `authorize` and the commit bracket.
+The call chain is `PostView.create` → `AuthoredBase.create` → `AsyncRestView.create`; `handle_create` still wraps it in authorization and the commit bracket.
 
 ### Apply router-level dependencies
 
-`dependencies = [Depends(fn)]` on a view (or base class) applies `fn` to every route the view registers — without the dependency result being injected as an attribute. Use this for authentication guards or rate-limiting:
+`dependencies = [Depends(fn)]` applies `fn` to every route without injecting its result. Use it for auth guards or rate limits:
 
 ```python
 class ProtectedBase(fr.AsyncRestView):

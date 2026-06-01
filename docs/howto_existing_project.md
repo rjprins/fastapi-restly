@@ -81,8 +81,8 @@ you call `fr.include_view(...)`. To move a resource back to plain FastAPI,
 remove that include call and register an `APIRouter` with the same prefix and
 path operations.
 
-Your models, Pydantic schemas, dependencies, and database session wiring can
-stay in ordinary application modules. Restly does not need to own the whole app.
+Your models, schemas, dependencies, and session wiring can stay in ordinary app
+modules.
 
 ## Provide Your Own Session Generator
 
@@ -170,10 +170,9 @@ class ReportView(fr.AsyncRestView):
     session: ReportingSessionDep
 ```
 
-The custom dependency owns session construction and cleanup (close / rollback);
-Restly still owns the commit. This is the recommended escape hatch for read
-replicas, reporting databases, or other per-view session wiring. Restly does not
-currently provide named engines or named Restly contexts.
+The custom dependency owns session construction and cleanup. Restly still owns
+the commit. Use this for read replicas, reporting databases, or other per-view
+session wiring.
 
 You can also use FastAPI-Restly's configured session proxy directly in your
 own code (for example in background tasks):

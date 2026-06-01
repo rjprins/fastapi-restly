@@ -1,10 +1,10 @@
 # How-To: Override CRUD Behavior and Add Custom Endpoints
 
-FastAPI-Restly generates five standard CRUD endpoints for every view, but real applications always need to bend the rules: inject extra fields, restrict which rows a user may see, run side effects, or expose non-CRUD operations. This guide walks through the override system from the highest-level route shell down to raw session access.
+FastAPI-Restly generates five CRUD endpoints per view. Real applications still need custom fields, row visibility, side effects, and non-CRUD actions. This guide shows which method to override.
 
-Every CRUD verb is structured as **three tiers**. Picking the right tier is the whole skill: most overrides belong in the lowest one. This page shows what to override where. For the full conceptual model — why the tiers are split this way and how the commit bracket works — read [The Handle Design](the_handle_design.md). The API reference also classifies the full view method surface: [View Method Surface](api_reference.md#view-method-surface).
+Every CRUD verb has **three tiers**. Most overrides belong in the lowest tier. For the conceptual model, read [The Handle Design](the_handle_design.md). For the complete method list, see [View Method Surface](api_reference.md#view-method-surface).
 
-Every concrete view class must be registered with `fr.include_view(app, ViewClass)` or the decorator shortcut before FastAPI sees its routes. Larger apps are easier to organize when view modules define classes and app/router modules include them.
+Register each concrete view with `fr.include_view(app, ViewClass)` or the decorator shortcut. In larger apps, define view classes in view modules and include them from app/router modules.
 
 ---
 
@@ -56,11 +56,11 @@ GET /
                  └─ count(query)
 ```
 
-**The default rule:** override the **business verb** (tier 3) for domain logic. Reach up to **`handle_<verb>`** (tier 2) only when you need to change orchestration or the transaction, and to the **route shell** (tier 1) only when you need to renegotiate the HTTP contract on the wire.
+**Default rule:** override the **business verb** for domain logic. Use **`handle_<verb>`** for orchestration or transaction changes. Replace the **route shell** only for HTTP contract changes.
 
 ### Why commit-free domain verbs matter
 
-The framework owns the `commit` inside `handle_<verb>`, *after* the business verb returns. So `after_commit` runs after the write is durable, and — crucially — the business verb never commits. That kills the old "mutate-after-save" trap: you can build an object, set a derived field, save it, and return it, all in `create`, and it persists correctly because the commit happens later.
+The handler commits *after* the business verb returns. That means `after_commit` runs after durability, and `create` / `update` / `delete` can build, mutate, save, and return without committing.
 
 ```python
 async def create(self, schema_obj):
@@ -73,7 +73,7 @@ async def create(self, schema_obj):
 
 ## Tier 3: override the business verb (the common case)
 
-Each business verb maps to one domain operation. Override the one you want to change; the others keep their defaults. These methods are **auth-free and commit-free** — `handle_<verb>` adds the `authorize` call and owns the commit around them, so you only write domain logic.
+Each business verb maps to one domain operation. Override only the one you need. These methods are **auth-free and commit-free**; the handler adds authorization and commit handling.
 
 ### `create` — inject server-side fields at creation
 
@@ -117,11 +117,11 @@ class UserView(fr.AsyncRestView):
         # Do NOT call super() — that would remove the row.
 ```
 
-(For a reusable soft-delete that also hides the rows on read, see the `SoftDeleteMixin` in [Composing views with mixins](howto_compose_views_with_mixins.md).)
+For reusable soft-delete that also hides rows on read, see `SoftDeleteMixin` in [Composing views with mixins](howto_compose_views_with_mixins.md).
 
 ### `get_one` — eager-load extra relationships
 
-The default `get_one` loads through `build_query` and the view's schema-derived loader options. If you need something extra just for one endpoint, override and load it manually — but keep routing through `build_query` so visibility scoping still applies:
+The default `get_one` loads through `build_query` and schema-derived loader options. If one endpoint needs extra eager loading, keep `build_query` in the query so visibility still applies:
 
 ```python
 from sqlalchemy import inspect as sa_inspect
@@ -140,7 +140,7 @@ from sqlalchemy.orm import selectinload
 
 ### `get_many` — decorate results after the query
 
-When you need work *beyond* a `WHERE` clause — post-query result decoration or response-side annotation — override `get_many` and delegate to `super()`. (For base filters/joins/eager-loading, prefer `build_query` instead; see below.)
+For post-query decoration, override `get_many` and delegate to `super()`. For filters, joins, or eager loading that apply to every read, prefer `build_query`.
 
 ```python
     async def get_many(self, query_params):
@@ -161,7 +161,7 @@ Read access is two independent concerns:
 
 ### `build_query` — scope every read at once
 
-The single override point for read scoping is `build_query`, which `get_many` (list + count) and `get_one` (retrieve) both route through. Override it once and tenant scoping, soft-delete hiding, or row-level visibility apply uniformly:
+`build_query` is the read-scope override point. `get_many` (list + count) and `get_one` both use it, so one filter covers:
 
 - the listed page,
 - the pagination total (`count` counts the same scoped query),
@@ -184,13 +184,13 @@ class DocumentView(fr.AsyncRestView):
         return super().build_query().where(Document.owner_id == user_id)
 ```
 
-Calling `super().build_query()` and chaining `.where(...)` composes cleanly with any base-class or mixin filter. `build_query` is also the place for joins, eager-loading `.options(...)`, and other `Select` reshaping that should apply to every read. That keeps listing, pagination totals, and single-row fetches aligned by construction.
+Calling `super().build_query()` and chaining `.where(...)` composes with base-class and mixin filters. Put joins, eager-loading `.options(...)`, and other read-wide `Select` changes here.
 
-Note `get_one` stays **auth-free** even though it 404s on hidden rows: visibility is structural (the row isn't in the query), so every caller — including custom action routes that call `get_one(id)` — gets the same scoping for free.
+`get_one` stays **auth-free** even though it 404s on hidden rows: visibility comes from the query. Custom routes that call `get_one(id)` get the same scope.
 
 ### `authorize` — gate the action
 
-`authorize(action, obj=None, data=None)` runs inside `handle_<verb>` at the right phase: before the write for `create`, and *after* the object is loaded for `get_one` / `update` / `delete`, so you can make row-level decisions on `obj`. The default is a **no-op** — override it to enforce policy, raising `fr.Forbidden` / `fr.NotFound` to reject:
+`authorize(action, obj=None, data=None)` runs inside `handle_<verb>`: before create, and after the object is loaded for `get_one` / `update` / `delete`. Override it to enforce policy:
 
 ```python
 @fr.include_view(app)
@@ -207,7 +207,7 @@ class InvoiceView(fr.AsyncRestView):
             raise fr.Forbidden("Posted invoices are immutable")
 ```
 
-`action` says which verb is running; `obj` is the loaded row (on `get_one` / `update` / `delete`) and `data` the validated request payload (on `create` / `update`). Authentication itself — populating `self.request.user` — is yours to wire (e.g. Starlette's `AuthenticationMiddleware`); Restly only calls `authorize` at the right moment and turns a raised `fr.Forbidden` / `fr.NotFound` into the HTTP response.
+`action` is the verb, `obj` is the loaded row, and `data` is the validated request payload. Authentication itself is yours to wire; Restly calls `authorize` and maps `fr.Forbidden` / `fr.NotFound` to HTTP responses.
 
 Visibility belongs in `build_query`, not here — raising from `authorize` produces a 403, whereas hiding a row through `build_query` produces a 404.
 
@@ -215,9 +215,9 @@ Visibility belongs in `build_query`, not here — raising from `authorize` produ
 
 ## Tier 2: override `handle_<verb>` for orchestration
 
-Reach for `handle_<verb>` when you need to change *how* a verb is orchestrated — the transaction, the timing of side effects, the order of authorize-and-load — **without** re-declaring the route. The handler is where `authorize` and the commit bracket live.
+Use `handle_<verb>` to change orchestration: transaction handling, side-effect timing, or authorize/load order. The handler owns `authorize` and the commit bracket.
 
-A common case: stamp server-controlled fields cooperatively. Prefer overriding `make_new_object` / `update_object` cooperatively (below) for that. Use a full `handle_<verb>` override when the *bracket itself* must change — for example, deleting through a background job so the HTTP response returns before the row is gone:
+For server-controlled field stamps, prefer `make_new_object` / `update_object` below. Use a handler override when the bracket itself must change:
 
 ```python
     async def handle_delete(self, id):
@@ -230,11 +230,11 @@ A common case: stamp server-controlled fields cooperatively. Prefer overriding `
         await enqueue_async_delete(obj.id)  # actual delete happens off-request
 ```
 
-Because you load through the tier-3 verb (`get_one`) and bracket the write with `write_action` yourself, you keep full control of orchestration — the bracket still runs in one place — while the route shell and response stay untouched.
+Here the route shell stays untouched, while the handler controls the write bracket.
 
 ### Transaction hooks: `before_commit` / `after_commit`
 
-For most timing needs you do **not** need to override the handler — the bracket exposes two hooks the framework calls for you:
+For most timing needs, use the hooks instead of overriding the handler:
 
 - `before_commit(action, new, old=None)` — runs inside the transaction, committed atomically with the write. Use it for outbox rows or audit rows.
 - `after_commit(action, new, old=None)` — runs after the write is durable. Use it for email, webhooks, or cache invalidation.
@@ -249,7 +249,7 @@ For most timing needs you do **not** need to override the handler — the bracke
 
 ### Cooperative field stamping: override `make_new_object` / `update_object`
 
-When the only thing you need is to stamp extra server-controlled fields (audit ids, tenant id, ownership), override `make_new_object` / `update_object` cooperatively: call `super()`, then mutate the constructed object and return it. These layer cooperatively through mixins, which is exactly what structural concerns want:
+For server-controlled field stamps, override `make_new_object` / `update_object` cooperatively: call `super()`, mutate, and return. This composes cleanly through mixins:
 
 ```python
     async def make_new_object(self, schema_obj):
@@ -258,7 +258,7 @@ When the only thing you need is to stamp extra server-controlled fields (audit i
         return obj
 ```
 
-See [Composing views with mixins](howto_compose_views_with_mixins.md) for the discriminator between this (structural stamping → mixin) and per-view business logic (compute a value from schema inputs → override the business verb).
+See [Composing views with mixins](howto_compose_views_with_mixins.md) for when to use structural stamping versus per-view business logic.
 
 ---
 
@@ -287,15 +287,15 @@ async def import_user(session, payload) -> User:
     return user
 ```
 
-Because none of these commit, the same `create`/`update` code works identically inside a view (the handler commits) and inside a worker (you commit).
+Because none of these commit, the same code works inside a view or worker; only the caller owns the transaction.
 
 ---
 
 ## Tier 1: replace a route shell to change the HTTP contract
 
-The business verbs and handlers let you change what happens *inside* a generated route while leaving its wire contract intact. When you need a different response shape, custom headers, a non-standard status code, or different query-parameter semantics, replace the route shell itself.
+Business verbs and handlers change behavior inside a generated route. Replace the route shell for response shape, headers, status code, or query-parameter semantics.
 
-To replace a route, define a method with the same name as the generated route shell (`get_many_endpoint`, `get_one_endpoint`, `create_endpoint`, `update_endpoint`, `delete_endpoint`) and add a route decorator. In most replacements you do **not** want to re-implement the commit bracket by hand — delegate to the handler, which already runs authorize, the bracket, and returns the domain object, then just reshape the response:
+To replace a route, define the same route-shell method name and add a route decorator. Usually, delegate to the handler and only reshape the response:
 
 ```python
 @fr.include_view(app)
@@ -312,9 +312,9 @@ class ProductView(fr.AsyncRestView):
         return serialized
 ```
 
-When the framework initializes a view it checks whether each standard route shell is already defined directly on the class. If it finds `delete_endpoint` with a route decorator, it uses that version and skips the one from `AsyncRestView`. All other generated routes remain unchanged.
+At view initialization, Restly uses route shells defined directly on the class and skips the matching generated shell. Other generated routes remain unchanged.
 
-The default `DELETE /{id}` returns `204 No Content`. The version above returns the deleted record as JSON instead — useful for contracts like `ra-data-simple-rest` (react-admin) that expect the body back. The four other routes are unaffected.
+The default `DELETE /{id}` returns `204 No Content`; this version returns the deleted record, as `ra-data-simple-rest` expects.
 
 ### Route shell vs handler vs business verb
 
@@ -326,11 +326,11 @@ These are easy to conflate:
 | Override `handle_<verb>` | `async def handle_create(self, schema_obj)` — no decorator | Change orchestration / transaction; keep the HTTP contract |
 | Replace a route shell | `@fr.delete("/{id}") async def delete_endpoint(self, ...)` — with decorator | Change the HTTP contract: status code, response shape, headers, query params |
 
-Use the business verb for the common case. Climb a tier only when the change genuinely belongs at that altitude.
+Use the business verb by default. Move up only when the higher tier owns the change.
 
 ### `to_response` — the one response method
 
-Generated route shells return their result through `self.to_response(obj_or_list, shape)`, where `shape` is a closed `fr.ResponseShape` — `SINGLE`, `LISTING`, or `EMPTY`. This is the single wire-side response method: it produces the `204` on delete (`EMPTY`), the list envelope on `get_many` (`LISTING`), and the validated response schema otherwise (`SINGLE`, the default). Override it for an envelope or a custom status code that applies across a shape, without replacing each route shell:
+Generated route shells return through `self.to_response(obj_or_list, shape)`, where `shape` is `SINGLE`, `LISTING`, or `EMPTY`. Override it for envelopes or shape-wide response behavior:
 
 ```python
     def to_response(self, obj_or_list, shape=fr.ResponseShape.SINGLE):
@@ -339,7 +339,7 @@ Generated route shells return their result through `self.to_response(obj_or_list
         return super().to_response(obj_or_list, shape)
 ```
 
-`to_response` is keyed on the wire *shape*, not the write action, so it cannot tell a `create` response from a `get_one` response — both are `SINGLE`. When the HTTP contract for *one specific verb* has to change (a `201` with a `Location` header on create), override that verb's **route shell**, which owns the wire:
+`to_response` is keyed on wire shape, not action. It cannot distinguish `create` from `get_one`; both are `SINGLE`. For one verb's HTTP contract, override that route shell:
 
 ```python
     @fr.post("/")
@@ -353,7 +353,7 @@ Generated route shells return their result through `self.to_response(obj_or_list
         )
 ```
 
-For the per-object serialization itself, `to_response_schema(obj)` builds a response payload from the configured schema, strips `WriteOnly` fields, normalizes relationship id fields, and validates through Pydantic — so response-side `@field_validator` / `@field_serializer` hooks behave exactly as they would on an ordinary Pydantic model. Override `to_response_schema` when one endpoint family needs a different projection, or a faster path that skips validation:
+For object serialization, `to_response_schema(obj)` builds the configured schema, strips `WriteOnly` fields, normalizes relationship ids, and validates through Pydantic. Override it for a different projection or a faster trusted path:
 
 ```python
     def to_response_schema(self, obj: User) -> UserRead:
@@ -364,11 +364,11 @@ For the per-object serialization itself, `to_response_schema(obj)` builds a resp
         )
 ```
 
-`model_construct()` is an escape hatch: it bypasses validators and required-field checks. Keep the payload aligned with your public response contract, and never include `WriteOnly` fields such as passwords or API tokens.
+`model_construct()` bypasses validators and required-field checks. Keep the payload aligned with your response contract, and never include `WriteOnly` fields.
 
 ### Replace the list route shell
 
-Replace `get_many_endpoint` to take full control of how the list is returned — for instance to add custom response headers. The replacement takes no `query_params` argument; the framework's automatic query-parameter injection only applies to the standard generated shell. Read query parameters from `self.request.query_params` if you need them:
+Replace `get_many_endpoint` when the list response contract changes, for example custom headers. Automatic query-parameter injection only applies to the generated shell, so read `self.request.query_params` yourself:
 
 ```python
 import fastapi
@@ -415,13 +415,13 @@ class ProductView(DeleteReturnsObjectMixin, fr.AsyncRestView):
     schema = ProductRead
 ```
 
-The public React Admin views use the same route-shell-replacement pattern internally: `fr.AsyncReactAdminView` and `fr.ReactAdminView` replace `get_many_endpoint` with one that speaks the `ra-data-simple-rest` wire contract, while preserving the standard CRUD verbs and handlers for the rest of the view.
+React Admin views use this same pattern: they replace `get_many_endpoint` for the `ra-data-simple-rest` wire contract and keep the standard verbs and handlers.
 
 ---
 
 ## Add a custom read route
 
-Use `@fr.get` to expose computed or summarised data alongside the generated endpoints. Call `get_one(id)` (the auth-free load) or `handle_get_one(id)` (load + read-auth) to reuse the view's scoping and 404 behavior:
+Use `@fr.get` for computed read endpoints. Call `get_one(id)` for scoped load + 404, or `handle_get_one(id)` to include read authorization:
 
 ```python
 @fr.include_view(app)
@@ -446,9 +446,9 @@ class UserView(fr.AsyncRestView):
 
 ## Add a custom action route
 
-Use `@fr.post` (or `@fr.patch`, `@fr.delete`) for explicit state-change actions such as archive, publish, or recalculate. A custom action has two good shapes:
+Use `@fr.post` (or `@fr.patch`, `@fr.delete`) for state-change actions such as archive, publish, or recalculate. Use one of two shapes:
 
-**Bracket the mutation with `write_action`.** Load with `handle_get_one(id)` (scope + 404 + read-auth), then bracket the change with `self.write_action` under a custom action name — it applies the same authorize-and-commit bracket the CRUD writes use, so durability and post-commit hooks behave like a normal write:
+**Bracket the mutation with `write_action`.** Load with `handle_get_one(id)`, then use `self.write_action` under a custom action name:
 
 ```python
 @fr.include_view(app)
@@ -467,7 +467,7 @@ class OrderView(fr.AsyncRestView):
         return {"id": order.id, "archived": order.archived}
 ```
 
-**Run a full create/update through a handler.** When an action *is* a create or update under a different URL, build the input schema and call `handle_create` / `handle_update` to get authorize + the commit bracket for free:
+**Run a full create/update through a handler.** If an action is create or update under another URL, build the input schema and call `handle_create` / `handle_update`:
 
 ```python
     @fr.post("/{id}/duplicate", status_code=201)
@@ -478,11 +478,11 @@ class OrderView(fr.AsyncRestView):
         return self.to_response_schema(new_order)
 ```
 
-Reusing `handle_<verb>` from custom actions is the intended way to inherit the commit bracket — you get `before_commit` / commit / `after_commit` without re-declaring any of it.
+Reusing `handle_<verb>` inherits authorization and the commit bracket.
 
 ### Relationship references in custom routes
 
-Generated `POST` and `PATCH` routes validate the request body before Restly calls `make_new_object()` or `update_object()`, so `IDRef[Model]` fields are already `IDRef` instances by the time the resolver runs.
+Generated `POST` and `PATCH` routes validate the body before Restly calls `make_new_object()` or `update_object()`, so `IDRef[Model]` fields are already `IDRef` instances.
 
 In a custom route, be careful when you construct a schema yourself. Pydantic's `model_construct()` skips validation, so scalar ids stay plain integers unless you wrap them explicitly:
 
@@ -502,7 +502,7 @@ task_label = await async_make_new_object(
 )
 ```
 
-This keeps the resolver path active: Restly verifies the referenced rows exist and then writes the FK columns. It is especially useful when the schema inherits from `IDSchema` and validated construction would require response-only fields such as `id` or timestamps.
+This keeps the resolver path active: Restly verifies referenced rows and writes the FK columns. It helps when validated construction would require response-only fields such as `id` or timestamps.
 
 If you instead use `IDSchema[Model]` as a nested relationship-object field in a custom response schema, serialize the ORM object through `self.to_response_schema(obj)` before returning it:
 
@@ -518,7 +518,7 @@ async def attach(self, request: AttachRequest):
     return self.to_response_schema(obj)
 ```
 
-The raw ORM object usually has scalar FK columns, while the nested schema expects relationship-shaped data. `IDRef` fields do not need this extra step because their scalar wire format already matches the ORM FK value.
+The raw ORM object usually has scalar FK columns, while a nested schema expects relationship-shaped data. `IDRef` fields do not need this step because their wire format is already scalar.
 
 The SaaS example's `example-projects/saas/app/views/label.py` shows this in a `create_and_attach` route that creates a sibling row, flushes it to get an id, and then builds a second row with `IDRef` references.
 

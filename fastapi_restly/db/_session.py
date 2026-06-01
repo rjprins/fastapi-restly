@@ -236,13 +236,13 @@ def get_async_engine() -> AsyncEngine:
 def get_engine() -> Engine:
     """Return the sync engine registered via configure()."""
     if _fr_globals.make_session is None:
-        raise RestlyConfigurationError(
-            "Call fr.configure() before using get_engine()."
-        )
+        raise RestlyConfigurationError("Call fr.configure() before using get_engine().")
     return _fr_globals.make_session.kw["bind"]
 
 
-def _get_sync_engine(make_session: async_sessionmaker[Any] | sessionmaker[Any]) -> Engine:
+def _get_sync_engine(
+    make_session: async_sessionmaker[Any] | sessionmaker[Any],
+) -> Engine:
     engine = make_session.kw["bind"]
     if isinstance(engine, AsyncEngine):
         return engine.sync_engine
@@ -278,8 +278,8 @@ def _arm_uncommitted_warning(session: SA_AsyncSession | SA_Session) -> None:
         event.listen(target, "after_commit", _clear_uncommitted)
         event.listen(target, "after_rollback", _clear_uncommitted)
     except Exception:
-        # Best-effort dev aid: an unusual session (a test stub, or a session
-        # type without ORM flush events) simply opts out. Never break a request.
+        # Best-effort dev aid: unusual sessions (test stubs, or session types
+        # without ORM flush events) opt out. Never break a request.
         pass
 
 
@@ -349,7 +349,9 @@ def _session_dependency(dependency: Callable[..., Any]) -> Any:
     return depends(dependency)
 
 
-AsyncSessionDep = Annotated[SA_AsyncSession, _session_dependency(_async_generate_session)]
+AsyncSessionDep = Annotated[
+    SA_AsyncSession, _session_dependency(_async_generate_session)
+]
 
 
 def _generate_session() -> Iterator[SA_Session]:

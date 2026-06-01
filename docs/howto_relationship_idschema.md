@@ -80,14 +80,12 @@ see [Visibility and Multi-Tenancy](#visibility-and-multi-tenancy) below.
 ## Visibility and Multi-Tenancy
 
 Reference resolution is an **unscoped existence check**. Restly fetches the
-referenced row by primary key only (`session.get(Author, id)`), with **no view
-`build_query` scoping** — tenant, soft-delete, and row-level visibility are not
-applied. A reference to a row the caller cannot otherwise see (another tenant's
-row, a soft-deleted row) still resolves and can be attached as a foreign key.
+referenced row by primary key only (`session.get(Author, id)`). View
+`build_query` scoping is not applied, so tenant, soft-delete, and row-level
+visibility checks are your responsibility.
 
-This is deliberate: the resolver only knows the referenced *model* (from
-`IDRef[Model]`), not which view or scope governs it. References are therefore a
-**policy** concern — gate them yourself, the same way you gate any other write.
+The resolver only knows the referenced *model* from `IDRef[Model]`, not which
+view governs it. References are a **policy** concern.
 
 Gate in **`authorize`**, where `data` carries the *unresolved* reference, so
 `data.<field>.id` is the requested id (before the row is fetched). A list field
@@ -107,11 +105,11 @@ class ArticleView(fr.AsyncRestView):
                 raise fr.NotFound("author not found")
 ```
 
-The resolved ORM object is not available yet at `authorize` — resolution runs in
-the business verb, after it. If you need to inspect the *resolved* row, check in
-`before_commit` instead, where the built object carries it (e.g.
-`new.author.org_id`). Prefer `authorize`: it rejects before the unscoped fetch
-and is the standard policy seam.
+The resolved ORM object is not available in `authorize`; resolution runs later
+in the business verb. If you need the resolved row, check in `before_commit`,
+where the built object carries it (for example `new.author.org_id`). Prefer
+`authorize` when the requested id is enough: it rejects before the unscoped
+fetch and is the standard policy seam.
 
 A future release may add an opt-in scoped-resolution hook; until then, references
 are gated in `authorize` / `before_commit` like any other write-path
@@ -149,8 +147,7 @@ author: Mapped["Author"] = relationship(default=None, init=False)
 ```
 
 With that model and `author_id: fr.IDRef[Author]`, Restly passes the scalar FK
-where the dataclass constructor accepts it and keeps `author` in sync after
-construction.
+and keeps `author` in sync after construction.
 
 If your model is relationship-first, Restly adapts there too:
 
@@ -161,10 +158,7 @@ author: Mapped["Author"] = relationship(default=None)
 
 In that shape, Restly passes the resolved `Author` object to the constructor and
 keeps `author_id` in sync. More generally, Restly supplies the constructor
-values your dataclass model requires. For one resolved reference, it may pass the
-FK scalar, the relationship object, or both if both dataclass fields are
-required. When both are supplied by Restly, they are derived from the same
-database row.
+values your dataclass model requires: FK scalar, relationship object, or both.
 
 If a client supplies both sides independently, Restly validates that they match:
 

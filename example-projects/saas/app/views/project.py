@@ -46,24 +46,16 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
     - ``SoftDeleteMixin`` — hides ``deleted_at`` rows; ``delete_object``
       sets the timestamp instead of removing the row.
     - ``AuditStampedMixin`` — stamps ``created_by_id`` / ``updated_by_id``
-      via ``make_new_object`` / ``update_object`` (pre-flush, no trap).
+      via ``make_new_object`` / ``update_object`` before flush.
     - ``TenantScopedMixin`` — adds ``organization_id`` filter to reads,
       stamps it on writes from auth context.
     - ``TenantBase`` — auth dep, audit ``save_object`` override point, ``_emit``
       outbox helper. The ``build_query`` override point consumed by the mixins
       above lives on ``AsyncRestView`` itself.
 
-    Each mixin's ``build_query`` calls ``super().build_query()``, so the
-    tenant + soft-delete WHERE clauses compose without either mixin
-    knowing the other exists. The same chain feeds ``get_many``,
-    ``count``, AND ``get_one`` — pagination totals stay aligned with list
-    results, and a row hidden from listing returns 404 from ``GET /{id}``
-    as well. ``handle_update`` and ``handle_delete`` inherit this
-    visibility check because they load the row through ``get_one`` first.
-
-    The view itself only contains *project-specific* logic: slug
-    derivation, the response-only ``can_edit`` decoration, the
-    immutability check on update, and the project-level outbox events.
+    The mixins compose tenant and soft-delete filters through ``build_query``.
+    This view keeps project-specific logic: slug derivation, response
+    decoration, update immutability, and project-level events.
     """
 
     prefix = "/projects"
@@ -101,8 +93,7 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
         # decoration on each row in the page.
         result = await super().get_many(query_params)
         decorated = [
-            await self._decorate_project_response(project)
-            for project in result.objects
+            await self._decorate_project_response(project) for project in result.objects
         ]
         return fr.ListingResult(
             objects=decorated,
@@ -197,9 +188,8 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
     async def update_object(self, obj, schema_obj):
         """Reject any attempt to move a project to a different organization.
 
-        Overriding update_object is the right place to guard fields that should
-        be immutable after creation — here we raise 400 if the PATCH body
-        contains an organization_id that differs from the current one.
+        The guard lives here because ``organization_id`` is immutable after
+        creation.
         """
         new_org = getattr(schema_obj, "organization_id", None)
         if new_org is not None and new_org != obj.organization_id:
@@ -212,16 +202,8 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
     async def soft_delete(self, id: int) -> Project:
         """Soft delete: sets deleted_at instead of removing the row.
 
-        The actual ``deleted_at`` flip lives in
-        ``SoftDeleteMixin.delete_object``. This route exists only because
-        the matrix's "Return deleted record instead of 204" use-case
-        requires a 200 + body contract — that's a route-level HTTP
-        decision, not a behavior change.
-
-        Brackets the soft-delete with ``write_action`` so it runs the same
-        sequence as ``handle_delete`` (authorize / snapshot / before_commit /
-        commit / after_commit). ``obj=project`` means the hooks see
-        ``new=project`` (the soft-deleted row) rather than ``None``.
+        ``SoftDeleteMixin.delete_object`` performs the mutation. This route
+        replaces the default 204 contract with ``200 + body``.
         """
         project = await self.handle_get_one(id)
 
@@ -233,11 +215,8 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
     async def restore(self, id: int) -> Project:
         """Restore a soft-deleted project.
 
-        Genuinely-custom action: it deliberately bypasses the mixin's
-        ``deleted_at IS NULL`` filter (we *want* to find a deleted row), so it
-        cannot reuse ``handle_get_one``. Tenant scope is re-checked by hand,
-        then the clear runs in a ``write_action("restore", ...)`` block for the
-        full bracket.
+        This bypasses the mixin's ``deleted_at IS NULL`` filter, then re-checks
+        tenant scope before running the restore write action.
         """
         project = await self.session.get(Project, id)
         if project is None:
@@ -257,10 +236,8 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
     async def archive_project(self, id: int) -> Project:
         """Archive a project (prevents new task creation).
 
-        Update-shaped custom action: load via ``handle_get_one`` (scope + 404 +
-        read-auth), then bracket the ``status = ARCHIVED`` flip with
-        ``write_action("archive", ...)`` so authorize / snapshot / before_commit
-        / commit / after_commit all fire.
+        Loads through ``handle_get_one`` and commits the status change through
+        ``write_action("archive")``.
         """
         project = await self.handle_get_one(id)
         if project.status == ProjectStatus.ARCHIVED:
@@ -275,12 +252,10 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
     async def clone_project(self, id: int, request: CloneRequest) -> Project:
         """Clone a project with all its tasks.
 
-        Calls ``handle_get_one`` first to enforce tenant scope + 404 +
-        read-auth, then re-queries with ``selectinload`` to eager-load the
-        tasks. Cleaner as a single ``handle_get_one`` if/when it grows a
-        ``loader_options`` argument; for now, two queries is the honest cost.
+        ``handle_get_one`` performs the access check. A second query eager-loads
+        tasks for copying.
         """
-        # Tenant + 404 + read-auth check via the canonical read handler.
+        # Tenant + 404 + read-auth check.
         await self.handle_get_one(id)
 
         query = (
@@ -289,11 +264,7 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
         result = await self.session.execute(query)
         original = result.scalar_one()
 
-        # Build the cloned project via handle_create so slug/audit/outbox-emit
-        # plus the authorize + commit bracket all happen exactly as for a normal
-        # POST. We synthesize a ProjectSchema as the input — anything unset
-        # there falls back to schema defaults. ``handle_create`` commits the
-        # project row itself.
+        # Use handle_create for the normal create path and its commit bracket.
         new_schema = ProjectSchema.model_construct(
             name=request.new_name or f"{original.name} (Copy)",
             description=original.description,
@@ -321,10 +292,7 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
                 self.session.add(new_task)
                 if new_task.story_points:
                     new_project.total_story_points += new_task.story_points
-            # The sibling-task inserts are a SECOND write on top of the
-            # handle_create commit; ``async_save_object`` only flushes, so the
-            # route owns this commit. Without it the cloned tasks (and the
-            # bumped story-point rollup) would be silently rolled back.
+            # The copied tasks are a second write, so this route owns this commit.
             await async_save_object(self.session, new_project)
             await self.session.commit()
 
@@ -333,8 +301,7 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
     @fr.get("/{id}/stats", response_model=ProjectStats)
     async def get_project_stats(self, id: int) -> ProjectStats:
         """Get task statistics for a project."""
-        # handle_get_one enforces tenant scope + 404 + read-auth — get the
-        # access check for free.
+        # Reuse the standard scoped read check.
         await self.handle_get_one(id)
 
         todo = (

@@ -91,22 +91,16 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         return obj
 
     def write_action(self, action: str, *, obj: Any = _UNSET, data: Any = None):
-        """Run a custom write *action* through the full request bracket.
+        """Run a custom write action through the standard write bracket.
 
-        Used as a context manager from a custom write route: it runs
-        ``authorize`` + ``snapshot`` on entry, your body mutates the object, then
-        ``before_commit`` -> commit -> ``after_commit`` on exit. Reach for it when
-        an action is not a plain create/update/delete; CRUD-shaped logic belongs
-        in the ``create`` / ``update`` / ``delete`` overrides instead::
+        Use this for non-CRUD actions such as publish or change-password::
 
             with self.write_action("publish", obj=article):
                 article.status = "published"
 
-        For a create-shaped action (no ``obj=``), deposit the new object on the
-        handle (``as w: w.obj = ...``); forgetting that deposit raises
-        ``RuntimeError`` on exit instead of silently committing the row. Pass
-        ``obj=None`` for a write with no single object. A raise inside the block
-        skips the commit.
+        For create-shaped actions, omit ``obj`` and set ``w.obj`` before exit.
+        Pass ``obj=None`` for writes with no single object. Exceptions skip the
+        commit.
         """
         return sync_write_action(self, action, obj=obj, data=data)
 
@@ -162,9 +156,7 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
             query = query.options(*loader_options)
         obj = self.session.scalars(query).first()
         if obj is None:
-            raise NotFound(
-                f"{self.model.__name__} with id {id!r} was not found"
-            )
+            raise NotFound(f"{self.model.__name__} with id {id!r} was not found")
         return cast(ModelT, obj)
 
     def create(self, schema_obj: CreateSchemaT) -> ModelT:

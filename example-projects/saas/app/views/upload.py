@@ -1,8 +1,6 @@
-"""Upload view — multipart import with early-flush-for-PK pattern.
+"""Upload view with a multipart early-flush-for-PK write.
 
-This view is the canonical illustration of why ``make_new_object`` and
-``save_object`` need to be public utilities (per option B' in
-``rut-notes/discussion_save_object.md``). The multipart upload flow:
+The multipart upload flow:
 
 1. Build the parent ``Upload`` row from form fields.
 2. ``await self.session.flush()`` — populates ``upload.id`` from the
@@ -11,12 +9,8 @@ This view is the canonical illustration of why ``make_new_object`` and
    denormalized ``line_count`` and ``completed_at`` from the parse result.
 4. ``await self.save_object(upload)`` — final flush + refresh.
 
-Why not just rely on relationship cascade? Because step (3) needs
-``upload.id`` *before* we know how many lines there are or whether the
-parse succeeds. We need to commit-to-an-id, then keep mutating in the
-same transaction. That is the exact gap a single ``create_object``
-helper can't fill (option D from the doc) and is why ``save_object``
-remains a public utility.
+The early flush gives related rows a parent id while the full transaction still
+commits once.
 """
 
 import csv
@@ -52,14 +46,8 @@ class UploadView(TenantBase):
     ) -> Upload:
         """Parse a CSV file and create an Upload + UploadLine rows.
 
-        The flow is the entire reason ``make_new_object`` /
-        ``session.flush()`` / ``save_object`` are separate public steps —
-        no single helper would absorb the flush-for-PK requirement.
-
-        This is a genuinely-custom multipart write (parent + sibling lines). The
-        whole construction runs inside a ``write_action("create", ...)`` block,
-        so the Upload, its UploadLine rows, and the outbox event commit
-        atomically through the one bracket.
+        The parent, lines, and outbox event are committed together through one
+        ``write_action("create")`` block.
         """
         if not file.filename:
             raise fastapi.HTTPException(422, "filename is required")
@@ -70,12 +58,9 @@ class UploadView(TenantBase):
         except UnicodeDecodeError as exc:
             raise fastapi.HTTPException(422, f"file is not utf-8: {exc}") from exc
 
-        # The bracket commits the parent, the lines, and the outbox event.
+        # Commit the parent, lines, and outbox event together.
         async with self.write_action("create") as w:
-            # 1) Build parent. ``make_new_object`` is overkill here because
-            #    we're not coming from a JSON body schema, so we construct
-            #    directly. The framework call style (``self.make_new_object``)
-            #    is also valid if you do have a schema_obj.
+            # 1) Build the parent directly from multipart form fields.
             upload = Upload(
                 filename=file.filename,
                 organization_id=organization_id,
@@ -83,8 +68,7 @@ class UploadView(TenantBase):
             )
             self.session.add(upload)
 
-            # 2) Early flush — gives upload.id its autoincrement value before
-            #    we use it as a FK below.
+            # 2) Early flush: get upload.id before creating child rows.
             await self.session.flush()
 
             # 3) Build related rows referencing the parent's PK.
@@ -102,8 +86,7 @@ class UploadView(TenantBase):
 
             upload.completed_at = datetime.now(timezone.utc)
 
-            # 4) Final flush + refresh — picks up server-side defaults on the
-            #    UploadLine rows and the updated columns on Upload.
+            # 4) Final flush + refresh for generated columns/defaults.
             saved = await self.save_object(upload)
             self._emit("upload.completed", saved, {"line_count": saved.line_count})
             w.obj = saved
