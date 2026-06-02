@@ -62,6 +62,19 @@ def test_readonly_buried_in_union_rejected_at_definition():
     assert "ReadOnly[Optional[T]]" in msg
 
 
+def test_writeonly_buried_in_container_rejected_at_definition():
+    # The marker nested in a container element (not just a union) also no-ops and
+    # leaks, so it must be rejected too.
+    with pytest.raises(RestlyConfigurationError) as exc:
+
+        class Leaky(fr.BaseSchema):
+            tags: list[fr.WriteOnly[str]]
+
+    msg = str(exc.value)
+    assert "Leaky.tags" in msg
+    assert "WriteOnly[Optional[T]]" in msg
+
+
 def test_safe_forms_are_allowed():
     # The recommended forms (and a plain optional) must not trip the guard, and
     # neither should the framework's derived create/update schemas.
@@ -70,11 +83,16 @@ def test_safe_forms_are_allowed():
         create_model_without_read_only_fields,
     )
 
+    class SafeNested(fr.BaseSchema):
+        inner_secret: fr.WriteOnly[str]
+
     class Safe(fr.BaseSchema):
         a: fr.WriteOnly[str]
         b: fr.WriteOnly[Optional[str]]
         c: fr.ReadOnly[int]
         d: Optional[str]
+        e: fr.WriteOnly[list[str]]  # marker wraps the container -> safe
+        f: Optional[SafeNested]  # nested schema's own top-level marker -> safe
 
     create_model_without_read_only_fields(Safe)  # Create schema (OmitReadOnly)
     create_model_with_optional_fields(Safe)  # Update schema (PatchMixin)
@@ -115,12 +133,24 @@ def test_registration_backstop_for_non_baseschema_schema(view_base):
 def test_find_buried_marker_fields_reports_name_and_marker():
     # A plain (non-BaseSchema) model so defining it does not raise; the finder is
     # inspected directly and must report exactly the buried fields + their marker.
+    class Nested(pydantic.BaseModel):
+        deep: fr.WriteOnly[str]
+
     class M(pydantic.BaseModel):
         ok_wo: fr.WriteOnly[str]
         ok_ro: fr.ReadOnly[int]
+        ok_wo_list: fr.WriteOnly[list[str]]  # marker wraps the container -> safe
         leak_wo: Optional[fr.WriteOnly[str]]
         leak_ro: "fr.ReadOnly[int] | None"
+        leak_wo_list: list[fr.WriteOnly[str]]  # container element burial
+        leak_wo_opt_list: Optional[list[fr.WriteOnly[str]]]  # union + container
+        nested_model: Optional[Nested]  # marker lives in a nested model -> NOT buried
         plain: Optional[str]
 
     found = dict(_find_buried_marker_fields(M))
-    assert found == {"leak_wo": writeonly_marker, "leak_ro": readonly_marker}
+    assert found == {
+        "leak_wo": writeonly_marker,
+        "leak_ro": readonly_marker,
+        "leak_wo_list": writeonly_marker,
+        "leak_wo_opt_list": writeonly_marker,
+    }

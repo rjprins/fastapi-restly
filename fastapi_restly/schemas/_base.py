@@ -71,40 +71,59 @@ WriteOnly = Annotated[
 
 
 # A ReadOnly/WriteOnly marker only takes effect as the OUTER annotation of a
-# field: its ``Annotated`` metadata has to sit at the field's top level. Buried
-# inside a union member (``Optional[ReadOnly[T]]``, ``WriteOnly[T] | None``) the
-# marker silently no-ops -- ReadOnly fails to drop the field from create/update
-# (it stays writable) and WriteOnly fails to exclude it from responses (it
-# leaks). The guards below detect that misuse and reject it loudly.
+# field: its ``Annotated`` metadata has to sit at the field's top level. Nested
+# anywhere inside the field's type -- a union member (``Optional[ReadOnly[T]]``,
+# ``WriteOnly[T] | None``) or a container element (``list[WriteOnly[T]]``) -- the
+# marker silently no-ops: ReadOnly fails to drop the field from create/update (it
+# stays writable) and WriteOnly fails to exclude it from responses (it leaks).
+# The guards below detect that misuse and reject it loudly.
+#
+# Coverage boundary: detection reads ``field_info.annotation``, so a marker
+# hidden behind an unresolved forward reference is not seen until the annotation
+# resolves (the view-registration backstop re-checks resolved schemas), and that
+# backstop only inspects a view's own read/create/update schemas -- not a custom
+# ``response_model=`` or a non-``BaseSchema`` nested model. Those narrow cases are
+# left uncovered by design.
+def _annotation_buries_marker(annotation: Any, marker: _Marker) -> bool:
+    """True if ``marker`` appears anywhere below the top level of ``annotation``
+    -- inside a union member, ``Annotated`` inner type, or container arg.
+
+    Only descends type arguments (``get_args``); it does not recurse into the
+    fields of a nested model, so a nested schema carrying its own top-level
+    marker is not flagged.
+    """
+    if marker in getattr(annotation, "__metadata__", ()):
+        return True
+    return any(_annotation_buries_marker(arg, marker) for arg in get_args(annotation))
+
+
 def _find_buried_marker_fields(
     model_cls: type[pydantic.BaseModel],
 ) -> list[tuple[str, _Marker]]:
     """Return ``(field_name, marker)`` for each field whose ReadOnly/WriteOnly
-    marker appears only inside a union member, where it does not take effect."""
+    marker is nested inside the field's type instead of wrapping it, where it
+    does not take effect."""
     buried: list[tuple[str, _Marker]] = []
     for name, field_info in model_cls.model_fields.items():
-        annotation = field_info.annotation
-        if get_origin(annotation) not in (Union, types.UnionType):
-            continue
         top_level = getattr(field_info, "metadata", None) or ()
-        union_args = get_args(annotation)
         for marker in (readonly_marker, writeonly_marker):
             if marker in top_level:
                 continue
-            if any(marker in getattr(arg, "__metadata__", ()) for arg in union_args):
+            if _annotation_buries_marker(field_info.annotation, marker):
                 buried.append((name, marker))
     return buried
 
 
 def _reject_buried_markers(model_cls: type[pydantic.BaseModel]) -> None:
-    """Raise if any field buries a ReadOnly/WriteOnly marker inside a union."""
+    """Raise if any field nests a ReadOnly/WriteOnly marker inside its type."""
     for name, marker in _find_buried_marker_fields(model_cls):
         raise RestlyConfigurationError(
-            f"{model_cls.__name__}.{name} buries the {marker.name} marker inside "
-            f"a union (e.g. Optional[{marker.name}[T]] or {marker.name}[T] | None). "
-            f"The marker only takes effect as the outer annotation, so here it is "
-            f"silently ignored and {marker.name} is not applied. "
-            f"Use {marker.name}[Optional[T]] instead."
+            f"{model_cls.__name__}.{name} nests the {marker.name} marker inside "
+            f"its type (e.g. Optional[{marker.name}[T]], {marker.name}[T] | None, "
+            f"or list[{marker.name}[T]]). The marker only takes effect as the "
+            f"outer annotation, so it is silently ignored here and {marker.name} "
+            f"is not applied. Wrap the whole field type instead, e.g. "
+            f"{marker.name}[Optional[T]]."
         )
 
 
