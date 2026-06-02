@@ -56,10 +56,10 @@ except _PackageNotFoundError:  # pragma: no cover - only possible from an unpack
 
 # Public API surface for fastapi-restly.
 #
-# This top-level namespace is the primary public API. Concept namespaces
-# (``fr.http``, ``fr.exc``) and layer submodules (``fr.db``, ``fr.models``,
-# ``fr.schemas``, ``fr.views``, ``fr.objects``, ``fr.query``) expose the
-# remaining supported symbols for users working in that subsystem.
+# This top-level namespace is the primary public API. The ``fr.exc`` namespace
+# and the layer submodules (``fr.db``, ``fr.models``, ``fr.schemas``,
+# ``fr.views``, ``fr.objects``, ``fr.query``) expose the remaining supported
+# symbols for users working in that subsystem.
 __all__ = [
     "__version__",
     # Database — session context managers

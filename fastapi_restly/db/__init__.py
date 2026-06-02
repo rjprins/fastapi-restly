@@ -3,7 +3,9 @@ from ._session import (
     AsyncSessionDep,
     SessionDep,
     activate_savepoint_only_mode,
+    async_create_all,
     configure,
+    create_all,
     deactivate_savepoint_only_mode,
     get_async_engine,
     get_engine,
@@ -25,6 +27,9 @@ __all__ = [
     "get_engine",
     # Setup
     "configure",
+    # Dev/demo table creation
+    "create_all",
+    "async_create_all",
     # Savepoint mode
     "activate_savepoint_only_mode",
     "deactivate_savepoint_only_mode",

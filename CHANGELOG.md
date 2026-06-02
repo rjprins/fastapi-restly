@@ -13,6 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   CI matrix as an experimental (allowed-to-fail) target while `orjson` lacked a
   3.14 wheel; that wheel now ships, the full test suite passes on 3.14, and the
   job gates CI like every other supported version.
+- `fr.db.create_all(Base)` / `fr.db.async_create_all(Base)` — dev/demo helpers
+  that create every table for a declarative base (or a `MetaData`) on the engine
+  configured via `fr.configure()`, replacing the `engine =
+  fr.db.get_async_engine(); async with engine.begin() as conn: await
+  conn.run_sync(Base.metadata.create_all)` boilerplate in quickstarts and test
+  setup. Use Alembic migrations in production.
 
 ### Changed
 

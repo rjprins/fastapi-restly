@@ -4,11 +4,11 @@ from inspect import signature
 from typing import Annotated, Any, cast
 
 from fastapi import Depends, FastAPI
-from sqlalchemy import Engine, create_engine, event
+from sqlalchemy import Engine, MetaData, create_engine, event
 from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker, create_async_engine
 from sqlalchemy.ext.asyncio import AsyncSession as SA_AsyncSession
+from sqlalchemy.orm import DeclarativeBase, sessionmaker
 from sqlalchemy.orm import Session as SA_Session
-from sqlalchemy.orm import sessionmaker
 
 from .._exception_handlers import register_default_exception_handlers
 from ..exc import RestlyConfigurationError, RestlyUncommittedChangesWarning
@@ -238,6 +238,44 @@ def get_engine() -> Engine:
     if _fr_globals.make_session is None:
         raise RestlyConfigurationError("Call fr.configure() before using get_engine().")
     return _fr_globals.make_session.kw["bind"]
+
+
+def _resolve_metadata(base_or_metadata: type[DeclarativeBase] | MetaData) -> MetaData:
+    if isinstance(base_or_metadata, MetaData):
+        return base_or_metadata
+    metadata = getattr(base_or_metadata, "metadata", None)
+    if isinstance(metadata, MetaData):
+        return metadata
+    raise TypeError(
+        "create_all() expects a DeclarativeBase subclass or a MetaData; got "
+        f"{base_or_metadata!r}"
+    )
+
+
+def create_all(base_or_metadata: type[DeclarativeBase] | MetaData) -> None:
+    """Create all tables for ``base_or_metadata`` on the configured sync engine.
+
+    A dev/demo convenience over ``metadata.create_all(engine)`` so a quickstart
+    can create its schema without reaching for the raw engine::
+
+        fr.create_all(Base)  # or fr.create_all(Base.metadata)
+
+    Accepts a ``DeclarativeBase`` subclass (its ``.metadata`` is used) or a
+    ``MetaData``. Requires :func:`configure` first. Use Alembic migrations in
+    production.
+    """
+    _resolve_metadata(base_or_metadata).create_all(get_engine())
+
+
+async def async_create_all(base_or_metadata: type[DeclarativeBase] | MetaData) -> None:
+    """Async equivalent of :func:`create_all`, on the configured async engine::
+
+        await fr.async_create_all(Base)
+    """
+    metadata = _resolve_metadata(base_or_metadata)
+    engine = get_async_engine()
+    async with engine.begin() as conn:
+        await conn.run_sync(metadata.create_all)
 
 
 def _get_sync_engine(

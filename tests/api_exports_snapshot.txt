@@ -42,7 +42,9 @@ fastapi_restly.db:
   - AsyncSessionDep
   - SessionDep
   - activate_savepoint_only_mode
+  - async_create_all
   - configure
+  - create_all
   - deactivate_savepoint_only_mode
   - get_async_engine
   - get_engine
@@ -122,6 +124,8 @@ fastapi_restly.views:
 submodule-only exports:
 fastapi_restly.db:
   - activate_savepoint_only_mode
+  - async_create_all
+  - create_all
   - deactivate_savepoint_only_mode
   - get_async_engine
   - get_engine

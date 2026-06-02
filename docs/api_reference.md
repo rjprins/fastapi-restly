@@ -409,8 +409,7 @@ class UserView(fr.AsyncRestView):
 
 
 async def init_models() -> None:
-    async with engine.begin() as conn:
-        await conn.run_sync(fr.DataclassBase.metadata.create_all)
+    await fr.db.async_create_all(fr.DataclassBase)
 
 
 asyncio.run(init_models())

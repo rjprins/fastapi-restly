@@ -49,10 +49,8 @@ def auth_context() -> Callable[..., Iterator[None]]:
 async def use_in_memory_database():
     """Switch to a fresh in-memory SQLite database for each test."""
     fr.configure(async_database_url="sqlite+aiosqlite:///:memory:")
-    engine = fr.db.get_async_engine()
-    async with engine.begin() as conn:
-        await conn.run_sync(fr.DataclassBase.metadata.create_all)
+    await fr.db.async_create_all(fr.DataclassBase)
     yield
     # Dispose while the event loop is still open — otherwise aiosqlite's
     # worker thread tries to call back into a closed loop on next test.
-    await engine.dispose()
+    await fr.db.get_async_engine().dispose()
