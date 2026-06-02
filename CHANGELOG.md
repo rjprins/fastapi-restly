@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Python 3.14 is now officially supported and tested. It was previously in the
+  CI matrix as an experimental (allowed-to-fail) target while `orjson` lacked a
+  3.14 wheel; that wheel now ships, the full test suite passes on 3.14, and the
+  job gates CI like every other supported version.
+
 ## [0.6.1] - 2026-06-02
 
 ### Changed
