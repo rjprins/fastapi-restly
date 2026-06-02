@@ -15,7 +15,7 @@ FastAPI-Restly (`fr`) is a REST framework for FastAPI, backed by SQLAlchemy 2.0 
 Views are real Python classes. Share behavior with inheritance and mixins;
 override the one operation you need. See [Class-Based Views](class_based_views.md).
 
-> **Status:** `0.6.0` — public beta release.
+> **Status:** `0.6.1` — public beta release.
 >
 > Restly is public after four years of internal use. The API is settling on the
 > way to `1.0.0`; expect small breaking changes in deeper extension points.

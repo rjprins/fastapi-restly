@@ -11,7 +11,7 @@
 
 **Build maintainable REST APIs on FastAPI, SQLAlchemy 2.0, and Pydantic v2 — with real class-based views.**
 
-> **Status:** `0.6.0` — public beta release.
+> **Status:** `0.6.1` — public beta release.
 >
 > Restly is public after four years of internal use. The API is settling on the
 > way to `1.0.0`; expect small breaking changes in deeper extension points.
