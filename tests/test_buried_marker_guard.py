@@ -75,6 +75,24 @@ def test_writeonly_buried_in_container_rejected_at_definition():
     assert "WriteOnly[Optional[T]]" in msg
 
 
+# Defined at module scope (not inside the test) so the ``Optional[SafeNested]``
+# forward ref resolves against the module globals when the framework forces a
+# ``model_rebuild`` on the derived schemas. A function-local nested class is only
+# reachable from the test frame, which the pinned-minimum pydantic does not
+# capture during the rebuild -- mirroring real usage, schemas live at module level.
+class SafeNested(fr.BaseSchema):
+    inner_secret: fr.WriteOnly[str]
+
+
+class Safe(fr.BaseSchema):
+    a: fr.WriteOnly[str]
+    b: fr.WriteOnly[Optional[str]]
+    c: fr.ReadOnly[int]
+    d: Optional[str]
+    e: fr.WriteOnly[list[str]]  # marker wraps the container -> safe
+    f: Optional[SafeNested]  # nested schema's own top-level marker -> safe
+
+
 def test_safe_forms_are_allowed():
     # The recommended forms (and a plain optional) must not trip the guard, and
     # neither should the framework's derived create/update schemas.
@@ -82,17 +100,6 @@ def test_safe_forms_are_allowed():
         create_model_with_optional_fields,
         create_model_without_read_only_fields,
     )
-
-    class SafeNested(fr.BaseSchema):
-        inner_secret: fr.WriteOnly[str]
-
-    class Safe(fr.BaseSchema):
-        a: fr.WriteOnly[str]
-        b: fr.WriteOnly[Optional[str]]
-        c: fr.ReadOnly[int]
-        d: Optional[str]
-        e: fr.WriteOnly[list[str]]  # marker wraps the container -> safe
-        f: Optional[SafeNested]  # nested schema's own top-level marker -> safe
 
     create_model_without_read_only_fields(Safe)  # Create schema (OmitReadOnly)
     create_model_with_optional_fields(Safe)  # Update schema (PatchMixin)
