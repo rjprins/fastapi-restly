@@ -982,8 +982,14 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
             )
 
         if "listing_param_schema" not in cls.__dict__:
+            if not hasattr(cls, "model"):
+                raise ValueError(
+                    f"'{cls.__name__}.model' must be specified: it is needed to "
+                    "generate list query parameters."
+                )
             cls.listing_param_schema = create_list_params_schema(
                 cls.schema,
+                cls.model,
                 default_page_size=cls.default_page_size,
                 max_page_size=cls.max_page_size,
             )

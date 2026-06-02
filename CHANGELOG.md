@@ -53,6 +53,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   writable — so the framework now raises when the schema is defined (and again at
   view registration for schemas that do not derive from `BaseSchema`), pointing
   to the safe `Marker[Optional[T]]` form.
+- A list view no longer advertises filter query parameters for fields that are
+  not filterable columns — a to-many relationship (`books: list[BookRef]`) or a
+  reference field that does not resolve to a column. These appeared in OpenAPI
+  but always returned 400. Filter-param generation now validates each field
+  against the model with the same column-resolution predicate the request path
+  uses, so non-column fields no longer get filter params; to-one dotted traversal
+  is unchanged. (`create_list_params_schema` now takes the queried `model` as a
+  required argument.)
 
 ## [0.6.0] - 2026-06-01
 

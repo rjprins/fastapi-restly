@@ -51,7 +51,8 @@ class NestedWidgetModel(DataclassBase):
     __tablename__ = "test_nested_model"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[int] = mapped_column(Integer)
+    user_id: Mapped[int] = mapped_column(ForeignKey("test_model.id"))
+    user: Mapped[WidgetModel] = relationship()
 
 
 class UserModel(DataclassBase):
@@ -145,7 +146,7 @@ def audit_log_select_query():
 class TestCreateListParamsSchema:
     def test_create_list_params_schema_basic(self):
         """Test creating a query param schema for basic fields."""
-        schema = create_list_params_schema(WidgetSchema)
+        schema = create_list_params_schema(WidgetSchema, WidgetModel)
 
         # Check that the schema was created
         assert schema.__name__ == "ListParamsWidgetSchema"
@@ -178,7 +179,7 @@ class TestCreateListParamsSchema:
 
     def test_create_list_params_schema_nested(self):
         """Test creating a query param schema for nested fields."""
-        schema = create_list_params_schema(NestedWidgetSchema)
+        schema = create_list_params_schema(NestedWidgetSchema, NestedWidgetModel)
 
         # Check that nested field filters exist (using dot notation)
         assert "user.name" in schema.model_fields
@@ -190,7 +191,7 @@ class TestCreateListParamsSchema:
         class OptionalNestedSchema(pydantic.BaseModel):
             user: WidgetSchema | None = None
 
-        schema = create_list_params_schema(OptionalNestedSchema)
+        schema = create_list_params_schema(OptionalNestedSchema, NestedWidgetModel)
 
         assert "user.name" in schema.model_fields
         assert "user.email__contains" in schema.model_fields
@@ -204,7 +205,7 @@ class TestCreateListParamsSchema:
             sort: str
 
         with pytest.raises(ValueError, match="reserved pagination/sort"):
-            create_list_params_schema(SortFieldSchema)
+            create_list_params_schema(SortFieldSchema, WidgetModel)
 
 
 class TestApplyPagination:

@@ -3,9 +3,9 @@
 import warnings
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import ForeignKey, select
 from sqlalchemy.exc import SADeprecationWarning
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from starlette.datastructures import QueryParams
 
 import fastapi_restly as fr
@@ -24,6 +24,25 @@ class User(fr.IDBase):
     age: Mapped[int] = mapped_column()
 
 
+class PhoneUser(fr.IDBase):
+    name: Mapped[str] = mapped_column()
+    email: Mapped[str | None] = mapped_column()
+    phone: Mapped[str | None] = mapped_column()
+    age: Mapped[int] = mapped_column()
+
+
+class DotAddress(fr.IDBase):
+    street: Mapped[str] = mapped_column()
+    city: Mapped[str] = mapped_column()
+
+
+class DotUser(fr.IDBase):
+    name: Mapped[str] = mapped_column()
+    email: Mapped[str] = mapped_column()
+    address_id: Mapped[int] = mapped_column(ForeignKey("dot_address.id"))
+    address: Mapped[DotAddress] = relationship()
+
+
 class UserSchema(fr.IDSchema):
     name: str
     email: str
@@ -34,7 +53,7 @@ class UserSchema(fr.IDSchema):
 class TestContainsSchemaGeneration:
     def test_string_field_detection(self):
         """Contains operators are added for string fields, not for non-strings."""
-        schema = create_list_params_schema(UserSchema)
+        schema = create_list_params_schema(UserSchema, User)
         fields = schema.model_fields
 
         assert "name__contains" in fields
@@ -70,7 +89,7 @@ class TestContainsSchemaGeneration:
         ):
             assert _is_string_field(Schema.model_fields[field_name]) is expected
 
-        params = create_list_params_schema(Schema)
+        params = create_list_params_schema(Schema, PhoneUser)
         assert "email__contains" in params.model_fields
         assert "email__icontains" in params.model_fields
         assert "phone__contains" in params.model_fields
@@ -87,7 +106,7 @@ class TestContainsSchemaGeneration:
             email: str = Field(alias="userEmail")
             age: int
 
-        fields = create_list_params_schema(Schema).model_fields
+        fields = create_list_params_schema(Schema, User).model_fields
         assert "userName__contains" in fields
         assert "userName__icontains" in fields
         assert "userEmail__contains" in fields
@@ -108,7 +127,7 @@ class TestContainsSchemaGeneration:
             email: str
             address: Address
 
-        fields = create_list_params_schema(Schema).model_fields
+        fields = create_list_params_schema(Schema, DotUser).model_fields
         assert "name__contains" in fields
         assert "name__icontains" in fields
         assert "email__contains" in fields

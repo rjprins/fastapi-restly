@@ -74,6 +74,7 @@ def _supports_range_operators(field: FieldInfo) -> bool:
 
 def create_list_params_schema(
     schema_cls: SchemaType,
+    model: type[DeclarativeBase],
     *,
     default_page_size: int | None = DEFAULT_PAGE_SIZE,
     max_page_size: int = MAX_PAGE_SIZE,
@@ -83,9 +84,15 @@ def create_list_params_schema(
     for list endpoints.
 
     The generated model accepts pagination (``page``, ``page_size``), sorting
-    (``sort``), and one filter parameter per response-schema field with
-    optional ``__in``/``__ne``/``__gte``/``__lte``/``__gt``/``__lt``/``__isnull``/
-    ``__contains``/``__icontains`` suffixes.
+    (``sort``), and one filter parameter per response-schema field that maps to
+    a filterable column on ``model`` -- with optional ``__in``/``__ne``/``__gte``/
+    ``__lte``/``__gt``/``__lt``/``__isnull``/``__contains``/``__icontains``
+    suffixes. Fields that do not resolve to a column (relationship/collection
+    fields, or reference traversals the request path would reject) get no filter
+    params, so the generated schema -- and the OpenAPI it produces -- no longer
+    advertises filters for fields that are not filterable at all. (This validates
+    column existence, the same check the request path makes; it does not promise
+    every operator executes for exotic column types such as ``ARRAY``/``JSON``.)
 
     ``page`` and ``page_size`` are validated by Pydantic with bounds
     (``page >= 1``, ``1 <= page_size <= max_page_size``); out-of-range values
@@ -94,6 +101,9 @@ def create_list_params_schema(
     Args:
         schema_cls: The response schema whose fields drive the available
             filter parameters.
+        model: The SQLAlchemy model the list endpoint queries. Used to verify
+            each field resolves to a filterable column; non-column fields are
+            omitted from the generated params.
         default_page_size: Default value for the ``page_size`` parameter.
             ``None`` (the default) means "no implicit page size" — omitting
             ``page_size`` returns every matching row and ``page`` is ignored.
@@ -149,6 +159,16 @@ def create_list_params_schema(
                 f"field {name!r}: it collides with a reserved pagination/sort "
                 "parameter. Add a Pydantic alias to expose it as a filter."
             )
+
+        # Only emit params for fields that resolve to a filterable column on the
+        # model -- using the very predicate the request path applies. A
+        # relationship/collection field (e.g. ``books: list[BookRef]``) or a
+        # reference traversal that does not resolve would otherwise advertise
+        # filters in OpenAPI that always 400 at request time.
+        try:
+            _resolve_column(model, name, schema_cls)
+        except BadQueryParam:
+            continue
 
         # Type filter parameters as ``Optional[list[str]]`` instead of the
         # column's true type) so FastAPI/Starlette preserve repeated query

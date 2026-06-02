@@ -240,10 +240,11 @@ During `before_include_view()`, the framework freezes a single class-level
 attribute:
 
 - `cls.listing_param_schema` — the query-parameter Pydantic schema generated
-  by `create_list_params_schema(cls.schema, default_page_size=...,
-  max_page_size=...)`. The schema covers pagination, sorting, and one
-  filter parameter per response-schema field with optional operator
-  suffixes. It is generated once per registration and never re-derived.
+  by `create_list_params_schema(cls.schema, cls.model, default_page_size=...,
+  max_page_size=...)`. The schema covers pagination, sorting, and one filter
+  parameter per response-schema field that maps to a filterable column on the
+  model, with optional operator suffixes. It is generated once per registration
+  and never re-derived.
 
 Custom dialects (e.g. react-admin's
 [`AsyncReactAdminView` / `ReactAdminView`](howto_react_admin.md)) live as

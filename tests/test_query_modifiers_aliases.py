@@ -80,7 +80,7 @@ def mock_query_params():
 class TestCreateListParamsSchemaWithAliases:
     def test_create_list_params_schema_with_aliases(self):
         """Test creating a query param schema with aliases."""
-        schema = create_list_params_schema(SchemaWithAliases)
+        schema = create_list_params_schema(SchemaWithAliases, AliasModel)
 
         # Check that the schema was created
         assert schema.__name__ == "ListParamsSchemaWithAliases"
@@ -107,7 +107,7 @@ class TestCreateListParamsSchemaWithAliases:
 
     def test_create_list_params_schema_without_aliases(self):
         """Test creating a query param schema without aliases."""
-        schema = create_list_params_schema(SchemaWithoutAliases)
+        schema = create_list_params_schema(SchemaWithoutAliases, AliasModel)
 
         # Check that field filters use field names
         assert "user_name" in schema.model_fields
@@ -383,7 +383,7 @@ class TestRelationAliases:
 
     def test_schema_uses_aliases_for_both_segments(self):
         _Article, ArticleSchema = self._build()
-        fields = create_list_params_schema(ArticleSchema).model_fields
+        fields = create_list_params_schema(ArticleSchema, _Article).model_fields
         assert "writer.authorName" in fields
         assert "writer.authorName__contains" in fields
         assert "writer.authorName__icontains" in fields
