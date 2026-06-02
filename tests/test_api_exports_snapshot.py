@@ -7,7 +7,7 @@ from pathlib import Path
 PUBLIC_MODULES = (
     "fastapi_restly",
     "fastapi_restly.db",
-    "fastapi_restly.exceptions",
+    "fastapi_restly.exc",
     "fastapi_restly.models",
     "fastapi_restly.objects",
     "fastapi_restly.pytest_fixtures",

@@ -12,7 +12,7 @@ from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm.session import Session as SA_Session
 from typing_extensions import TypeVar
 
-from ..exceptions import NotFound, RestlyConfigurationError
+from ..exc import NotFound, RestlyConfigurationError
 
 
 class BaseSchema(pydantic.BaseModel):

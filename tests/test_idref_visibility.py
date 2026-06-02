@@ -54,7 +54,7 @@ def test_idref_reference_is_unresolved_and_gatable_in_authorize(client):
                 seen["ref_type"] = type(ref).__name__
                 seen["ref_id"] = ref.id
                 if ref.id == gate["forbidden_id"]:
-                    raise fr.NotFound("author not found")
+                    raise fr.exc.NotFound("author not found")
 
     create_tables()
 

@@ -117,7 +117,7 @@ for more detail, including list relations and nested relationship objects.
 ```python
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    engine = fr.get_async_engine()
+    engine = fr.db.get_async_engine()
     async with engine.begin() as conn:
         await conn.run_sync(fr.DataclassBase.metadata.create_all)
     yield

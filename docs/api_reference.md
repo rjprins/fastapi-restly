@@ -54,7 +54,7 @@ Relation filtering uses dot notation, and aliases apply to every path segment. I
 
 ### Low-level helpers
 
-`fr.create_list_params_schema(...)` and `fr.apply_list_params(...)` power generated list endpoints. Use the view classes for normal CRUD. Call these helpers directly only for custom endpoints that need the same list grammar. Pass a validated params-schema instance, not raw `QueryParams`.
+`fr.query.create_list_params_schema(...)` and `fr.query.apply_list_params(...)` power generated list endpoints. Use the view classes for normal CRUD. Call these helpers directly only for custom endpoints that need the same list grammar. Pass a validated params-schema instance, not raw `QueryParams`.
 
 ## Optional Pagination Metadata
 
@@ -124,7 +124,7 @@ For generated CRUD endpoints:
 | `fr.DataclassBase` | SQLAlchemy declarative base with dataclass semantics and auto snake_case table names. |
 | `fr.IDBase` | Convenience alias combining `DataclassBase` with an auto-incrementing integer `id` primary key. |
 | `fr.TimestampsMixin` | Dataclass mixin adding `created_at` / `updated_at` to any `DataclassBase` subclass. |
-| `fr.IDMixin` | Dataclass mixin adding integer `id` to a custom `DataclassBase` subclass. |
+| `fr.models.IDMixin` | Dataclass mixin adding integer `id` to a custom `DataclassBase` subclass. |
 | `fastapi_restly.models.CASCADE_ALL_ASYNC` | Cascade string for use with `relationship(cascade=...)` in async SQLAlchemy models. Equivalent to `"save-update, merge, delete, expunge"`. SQLAlchemy's default `"all"` includes `"refresh-expire"` which is incompatible with async sessions. Import from `fastapi_restly.models` (not exposed at the top level). |
 | `fastapi_restly.models.CASCADE_ALL_DELETE_ORPHAN_ASYNC` | Like `CASCADE_ALL_ASYNC` but also includes `"delete-orphan"`. |
 
@@ -196,14 +196,14 @@ On `AsyncRestView` every method below is `async`; the signatures are otherwise i
 | Request handler | `handle_delete` | `(id)` | `None` | Load, authorize, snapshot, run `delete`, then the commit bracket. |
 | Custom-action bracket | `write_action` | `(action, *, obj=None, data=None)` | context manager | `async with self.write_action("publish", obj=...): ...` — runs the full bracket (authorize + snapshot on enter; before_commit → commit → after_commit on exit) around your inline mutation. For a custom write *action* that isn't a plain create/update/delete; deposit a create's new object on the yielded handle's `.obj`. Shares its implementation with the CRUD handlers via the self-free `run_write_action` (in `fastapi_restly.views`). |
 | Business method | `get_many` | `(query_params)` | `ListingResult[Model]` | Scoped, filtered, paginated page plus total count, via `build_query` + `apply_query_params` + `count`. Auth-free. |
-| Business method | `get_one` | `(id)` | `Model` | Load one row through `build_query` or raise `fr.NotFound`. Visibility comes from `build_query`, so a hidden row is a clean 404 for every caller. Auth-free. |
+| Business method | `get_one` | `(id)` | `Model` | Load one row through `build_query` or raise `fr.exc.NotFound`. Visibility comes from `build_query`, so a hidden row is a clean 404 for every caller. Auth-free. |
 | Business method | `create` | `(schema_obj)` | `Model` | Build a new object and save it. Commit-free — the usual create override point. |
 | Business method | `update` | `(obj, schema_obj)` | `Model` | Apply the update payload to `obj` and save it. Commit-free. |
 | Business method | `delete` | `(obj)` | `None` | Delete `obj`. Override (e.g. on a soft-delete mixin) to flip a timestamp instead. |
 | Override point | `build_query` | `()` | `sqlalchemy.Select` | Base read query shared by `get_many`, `count`, and `get_one` — add `WHERE` clauses here for scope/soft-delete/visibility. |
 | Override point | `apply_query_params` | `(query, query_params)` | `sqlalchemy.Select` | Apply URL filter/sort/pagination to `query`. Override for a non-default URL grammar. |
 | Override point | `count` | `(query)` | `int` | Total for the list, ignoring ordering/pagination. Override for estimated counts on huge tables. |
-| Override point | `authorize` | `(action, obj=None, data=None)` | `None` | Gate a verb. A no-op by default; override to enforce policy and raise `fr.Forbidden` / `fr.NotFound` to reject. Row *visibility* belongs in `build_query`. |
+| Override point | `authorize` | `(action, obj=None, data=None)` | `None` | Gate a verb. A no-op by default; override to enforce policy and raise `fr.exc.Forbidden` / `fr.exc.NotFound` to reject. Row *visibility* belongs in `build_query`. |
 | Override point | `before_commit` | `(action, new, old=None)` | `None` | In-transaction side effect (outbox/audit rows), atomic with the write. `old` is the pre-mutation snapshot dict. |
 | Override point | `after_commit` | `(action, new, old=None)` | `None` | Post-commit side effect (email, webhook, cache invalidation). `old` enables dirty detection. |
 | Override point | `to_response` | `(obj_or_list, shape=ResponseShape.SINGLE)` | response payload | The single wire-level response method, called by the route shells with the wire `ResponseShape` (`SINGLE` / `LISTING` / `EMPTY`) — not the write action. Override for envelopes or custom status codes; for a per-verb HTTP contract change, override that verb's route shell. |
@@ -250,14 +250,14 @@ These helpers build, update, delete, and save ORM objects from schemas. Use them
 
 | Symbol | Description |
 |---|---|
-| `fr.make_new_object(session, model_cls, schema_obj, schema_cls=None)` | Build a new `model_cls` instance from `schema_obj`, resolve any `IDRef[...]` / `IDSchema[...]` reference fields against the database, and add the object to `session`. **Does not flush.** Call `fr.save_object(session, obj)` afterwards to persist. |
-| `fr.update_object(session, obj, schema_obj, schema_cls=None)` | Apply the schema's writable fields onto an existing ORM `obj` and resolve FK fields. **Does not flush.** Call `fr.save_object(session, obj)` afterwards to persist. |
-| `fr.save_object(session, obj)` | Flush the session and refresh `obj` so server-side defaults and generated columns (PKs, timestamps) are populated. Returns `obj`. This is where create/update writes hit the database. |
-| `fr.delete_object(session, obj)` | Delete `obj` and flush the session. |
-| `fr.async_make_new_object(session, model_cls, schema_obj, schema_cls=None)` | Async equivalent of `fr.make_new_object`. Pass an `AsyncSession`. |
-| `fr.async_update_object(session, obj, schema_obj, schema_cls=None)` | Async equivalent of `fr.update_object`. |
-| `fr.async_save_object(session, obj)` | Async equivalent of `fr.save_object`. |
-| `fr.async_delete_object(session, obj)` | Async equivalent of `fr.delete_object`. |
+| `fr.objects.make_new_object(session, model_cls, schema_obj, schema_cls=None)` | Build a new `model_cls` instance from `schema_obj`, resolve any `IDRef[...]` / `IDSchema[...]` reference fields against the database, and add the object to `session`. **Does not flush.** Call `fr.objects.save_object(session, obj)` afterwards to persist. |
+| `fr.objects.update_object(session, obj, schema_obj, schema_cls=None)` | Apply the schema's writable fields onto an existing ORM `obj` and resolve FK fields. **Does not flush.** Call `fr.objects.save_object(session, obj)` afterwards to persist. |
+| `fr.objects.save_object(session, obj)` | Flush the session and refresh `obj` so server-side defaults and generated columns (PKs, timestamps) are populated. Returns `obj`. This is where create/update writes hit the database. |
+| `fr.objects.delete_object(session, obj)` | Delete `obj` and flush the session. |
+| `fr.objects.async_make_new_object(session, model_cls, schema_obj, schema_cls=None)` | Async equivalent of `fr.objects.make_new_object`. Pass an `AsyncSession`. |
+| `fr.objects.async_update_object(session, obj, schema_obj, schema_cls=None)` | Async equivalent of `fr.objects.update_object`. |
+| `fr.objects.async_save_object(session, obj)` | Async equivalent of `fr.objects.save_object`. |
+| `fr.objects.async_delete_object(session, obj)` | Async equivalent of `fr.objects.delete_object`. |
 
 ### View Instance Methods
 
@@ -288,8 +288,8 @@ Use these in business methods and custom routes. For a model other than `self.mo
 | `fr.open_async_session()` | Open an async SQLAlchemy session context manager for use outside request handling, for example in background jobs or scripts. |
 | `fr.open_session()` | Open a sync SQLAlchemy session context manager for use outside request handling, for example in background jobs or scripts. |
 | `fr.configure(async_database_url=..., ...)` | Configure the framework. Accepts async/sync URLs, engines, session makers, custom session generators, and `warn_on_uncommitted`. |
-| `fr.get_async_engine()` | Return the configured `AsyncEngine` instance. |
-| `fr.get_engine()` | Return the configured sync `Engine` instance. |
+| `fr.db.get_async_engine()` | Return the configured `AsyncEngine` instance. |
+| `fr.db.get_engine()` | Return the configured sync `Engine` instance. |
 
 Restly has one public process-wide configuration. Configure it once during application startup:
 
@@ -315,13 +315,13 @@ There are two families. Configuration errors subclass `RestlyError`; request-tim
 
 | Symbol | Description |
 |---|---|
-| `fr.RestlyError` | Base class for FastAPI-Restly framework (configuration-time) errors. |
-| `fr.RestlyConfigurationError` | Raised when a public Restly helper needs configuration that has not been set up yet, such as calling `fr.open_session()` before `fr.configure(...)`. |
-| `fr.RestlyHTTPError` | Base for Restly's request-time HTTP errors. Subclass of `fastapi.HTTPException`; each subclass sets a status code. |
-| `fr.NotFound` | HTTP `404`. Raised by `get_one` when a row does not exist or is hidden by `build_query`; also raisable from `authorize` to hide a row's existence. |
-| `fr.Forbidden` | HTTP `403`. Raise from an `authorize` override to reject a verb. |
-| `fr.Conflict` | HTTP `409`. For request conflicts with the current resource state. |
-| `fr.BadQueryParam` | HTTP `400`. For an invalid filter/sort/pagination query parameter. |
+| `fr.exc.RestlyError` | Base class for FastAPI-Restly framework (configuration-time) errors. |
+| `fr.exc.RestlyConfigurationError` | Raised when a public Restly helper needs configuration that has not been set up yet, such as calling `fr.open_session()` before `fr.configure(...)`. |
+| `fr.exc.RestlyHTTPError` | Base for Restly's request-time HTTP errors. Subclass of `fastapi.HTTPException`; each subclass sets a status code. |
+| `fr.exc.NotFound` | HTTP `404`. Raised by `get_one` when a row does not exist or is hidden by `build_query`; also raisable from `authorize` to hide a row's existence. |
+| `fr.exc.Forbidden` | HTTP `403`. Raise from an `authorize` override to reject a verb. |
+| `fr.exc.Conflict` | HTTP `409`. For request conflicts with the current resource state. |
+| `fr.exc.BadQueryParam` | HTTP `400`. For an invalid filter/sort/pagination query parameter. |
 
 ### Testing
 

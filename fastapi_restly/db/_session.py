@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session as SA_Session
 from sqlalchemy.orm import sessionmaker
 
 from .._exception_handlers import register_default_exception_handlers
-from ..exceptions import RestlyConfigurationError, RestlyUncommittedChangesWarning
+from ..exc import RestlyConfigurationError, RestlyUncommittedChangesWarning
 from ._globals import _fr_globals
 
 try:

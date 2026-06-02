@@ -27,7 +27,7 @@ def test_custom_declarative_base_works_with_generated_async_crud(client):
         schema = ProductRead
 
     async def create_tables():
-        engine = fr.get_async_engine()
+        engine = fr.db.get_async_engine()
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
 

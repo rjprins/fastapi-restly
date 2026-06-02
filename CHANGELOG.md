@@ -14,6 +14,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   3.14 wheel; that wheel now ships, the full test suite passes on 3.14, and the
   job gates CI like every other supported version.
 
+### Changed
+
+- **Breaking — top-level `fr.*` namespace curated.** Errors, HTTP exceptions, and
+  the uncommitted-changes warning moved to `fr.exc` (`fr.exc.NotFound`,
+  `fr.exc.RestlyError`, …) — the `exceptions` module is renamed `exc`, mirroring
+  `sqlalchemy.exc`. Advanced helpers moved to their layer submodules: schema↔ORM
+  helpers to `fr.objects.*` (`make_new_object` / `save_object` / `snapshot` / …
+  and the `async_*` variants), list query helpers to `fr.query.*`
+  (`create_list_params_schema`, `apply_list_params`), engine accessors to
+  `fr.db.*` (`get_engine`, `get_async_engine`), and `IDMixin` to `fr.models.*`.
+  The route decorators (`@fr.get` / `@fr.post` / … / `@fr.route`), views,
+  registration, schemas, model bases, `configure`, the session
+  helpers/dependencies, and the view support types (`Action` / `ViewRoute` /
+  `ResponseShape` / `ListingResult`) stay top-level. **Migration:** e.g.
+  `fr.NotFound` → `fr.exc.NotFound`,
+  `fr.make_new_object` → `fr.objects.make_new_object`,
+  `fr.get_async_engine` → `fr.db.get_async_engine`.
+
 ### Fixed
 
 - `fr.open_session()` / `fr.open_async_session()` now resolve the same session

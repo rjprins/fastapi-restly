@@ -17,7 +17,7 @@ from .conftest import create_tables
 # which (correctly) trips RestlyUncommittedChangesWarning. That behaviour has its
 # own coverage in test_uncommitted_warning.py; silence the noise here.
 pytestmark = pytest.mark.filterwarnings(
-    "ignore::fastapi_restly.exceptions.RestlyUncommittedChangesWarning"
+    "ignore::fastapi_restly.exc.RestlyUncommittedChangesWarning"
 )
 
 

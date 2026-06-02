@@ -64,7 +64,7 @@ def _build(client):
         async def boom(self):
             self.session.add(Thing(name="z"))
             await self.session.flush()
-            raise fr.Conflict("nope")  # fails -> rollback is correct
+            raise fr.exc.Conflict("nope")  # fails -> rollback is correct
 
     create_tables()
 
@@ -74,7 +74,7 @@ def _warn_count(call) -> int:
         warnings.simplefilter("always")
         call()
     return sum(
-        issubclass(w.category, fr.RestlyUncommittedChangesWarning) for w in caught
+        issubclass(w.category, fr.exc.RestlyUncommittedChangesWarning) for w in caught
     )
 
 

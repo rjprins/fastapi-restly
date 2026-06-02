@@ -7,7 +7,7 @@ This section is generated with Sphinx autodoc from the public Python API.
    :maxdepth: 2
 
    db
-   exceptions
+   exc
    models
    objects
    query

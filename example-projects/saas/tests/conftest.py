@@ -49,7 +49,7 @@ def auth_context() -> Callable[..., Iterator[None]]:
 async def use_in_memory_database():
     """Switch to a fresh in-memory SQLite database for each test."""
     fr.configure(async_database_url="sqlite+aiosqlite:///:memory:")
-    engine = fr.get_async_engine()
+    engine = fr.db.get_async_engine()
     async with engine.begin() as conn:
         await conn.run_sync(fr.DataclassBase.metadata.create_all)
     yield

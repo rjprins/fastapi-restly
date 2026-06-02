@@ -35,7 +35,7 @@ def _publish_view(client, **attrs):
         async with self.write_action("publish", obj=doc):
             doc.published = True
             await self.save_object(doc)
-            raise fr.Conflict("nope")  # fails inside the block
+            raise fr.exc.Conflict("nope")  # fails inside the block
         return self.to_response(doc)
 
     namespace = {
@@ -73,7 +73,7 @@ def test_in_place_action_persists_and_brackets(client):
 def test_authorize_rejects_before_the_write(client):
     async def authorize(self, action, obj=None, data=None):
         if action == "publish":
-            raise fr.Forbidden()
+            raise fr.exc.Forbidden()
 
     _publish_view(client, authorize=authorize)
 

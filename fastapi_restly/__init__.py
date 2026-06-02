@@ -1,45 +1,19 @@
 from importlib.metadata import PackageNotFoundError as _PackageNotFoundError
 from importlib.metadata import version as _version
 
+# Concept/layer namespaces, reachable as ``fr.<name>`` but kept out of the flat
+# ``__all__`` so ``from fastapi_restly import *`` stays the everyday surface:
+#   fr.exc     — errors, HTTP exceptions, and the uncommitted-changes warning
+#   fr.objects — schema<->ORM helpers for use outside a view
+#   fr.query   — low-level list query-parameter helpers
+# (fr.db / fr.models / fr.schemas / fr.views are bound by the from-imports below.)
+from . import exc, objects, query  # noqa: F401
+
 # Database layer
-from .db import (
-    AsyncSessionDep,
-    SessionDep,
-    configure,
-    get_async_engine,
-    get_engine,
-    open_async_session,
-    open_session,
-)
-from .exceptions import (
-    BadQueryParam,
-    Conflict,
-    Forbidden,
-    NotFound,
-    RestlyConfigurationError,
-    RestlyError,
-    RestlyHTTPError,
-    RestlyUncommittedChangesWarning,
-)
+from .db import AsyncSessionDep, SessionDep, configure, open_async_session, open_session
 
 # Model base classes
-from .models import DataclassBase, IDBase, IDMixin, TimestampsMixin
-
-# Domain object helpers (callable from custom actions, services, fixtures)
-from .objects import (
-    async_delete_object,
-    async_make_new_object,
-    async_save_object,
-    async_update_object,
-    delete_object,
-    make_new_object,
-    save_object,
-    snapshot,
-    update_object,
-)
-
-# List endpoint query parameters
-from .query import apply_list_params, create_list_params_schema
+from .models import DataclassBase, IDBase, TimestampsMixin
 
 # Schema utilities
 from .schemas import (
@@ -82,9 +56,10 @@ except _PackageNotFoundError:  # pragma: no cover - only possible from an unpack
 
 # Public API surface for fastapi-restly.
 #
-# This top-level namespace is the primary public API. Submodule ``__all__``
-# lists may expose additional supported advanced symbols for users working in
-# that subsystem, such as ``from fastapi_restly.views import BaseRestView``.
+# This top-level namespace is the primary public API. Concept namespaces
+# (``fr.http``, ``fr.exc``) and layer submodules (``fr.db``, ``fr.models``,
+# ``fr.schemas``, ``fr.views``, ``fr.objects``, ``fr.query``) expose the
+# remaining supported symbols for users working in that subsystem.
 __all__ = [
     "__version__",
     # Database — session context managers
@@ -93,39 +68,12 @@ __all__ = [
     # Database — FastAPI dependencies
     "AsyncSessionDep",
     "SessionDep",
-    # Database — engine access
-    "get_async_engine",
-    "get_engine",
-    # Database — setup & utilities
+    # Database — setup
     "configure",
-    # Exceptions — configuration-time
-    "RestlyError",
-    "RestlyConfigurationError",
-    "RestlyUncommittedChangesWarning",
-    # Exceptions — request-time HTTP (subclass fastapi.HTTPException)
-    "RestlyHTTPError",
-    "NotFound",
-    "Forbidden",
-    "Conflict",
-    "BadQueryParam",
-    # Domain object helpers
-    "make_new_object",
-    "update_object",
-    "save_object",
-    "delete_object",
-    "snapshot",
-    "async_make_new_object",
-    "async_update_object",
-    "async_save_object",
-    "async_delete_object",
     # Models
     "DataclassBase",
     "IDBase",
-    "IDMixin",
     "TimestampsMixin",
-    # List endpoint query parameters
-    "apply_list_params",
-    "create_list_params_schema",
     # Schemas
     "BaseSchema",
     "IDRef",
@@ -143,11 +91,12 @@ __all__ = [
     "ResponseShape",
     "View",
     "ViewRoute",
-    "delete",
-    "get",
     "include_view",
-    "patch",
+    # Views — route decorators
+    "route",
+    "get",
     "post",
     "put",
-    "route",
+    "patch",
+    "delete",
 ]

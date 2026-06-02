@@ -183,11 +183,11 @@ the new object on the yielded handle:
 remove ORM objects without committing.
 
 The same operations exist as free functions for workers and service code:
-`fr.async_make_new_object`, `fr.async_update_object`, `fr.async_save_object`,
-`fr.async_delete_object`, plus sync counterparts.
+`fr.objects.async_make_new_object`, `fr.objects.async_update_object`, `fr.objects.async_save_object`,
+`fr.objects.async_delete_object`, plus sync counterparts.
 
 ```python
-from fastapi_restly import async_make_new_object, async_save_object
+from fastapi_restly.objects import async_make_new_object, async_save_object
 
 
 async def import_user(session, payload) -> User:

@@ -1,7 +1,7 @@
 Exceptions API
 ==============
 
-.. automodule:: fastapi_restly.exceptions
+.. automodule:: fastapi_restly.exc
    :members:
    :undoc-members:
    :show-inheritance:

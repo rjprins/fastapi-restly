@@ -21,7 +21,7 @@ import pytest
 from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
-from fastapi_restly import RestlyConfigurationError
+from fastapi_restly.exc import RestlyConfigurationError
 from fastapi_restly.schemas._base import (
     _find_buried_marker_fields,
     readonly_marker,

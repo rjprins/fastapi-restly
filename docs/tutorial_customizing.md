@@ -419,7 +419,7 @@ class Comment(fr.IDBase):
 @asynccontextmanager
 async def lifespan(app: fastapi.FastAPI):
     # Create tables after model classes are declared so they're registered on the metadata.
-    engine = fr.get_async_engine()
+    engine = fr.db.get_async_engine()
     async with engine.begin() as conn:
         await conn.run_sync(fr.DataclassBase.metadata.create_all)
     yield

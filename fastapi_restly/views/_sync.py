@@ -5,7 +5,7 @@ from sqlalchemy import func, select
 from sqlalchemy import inspect as sa_inspect
 
 from ..db import SessionDep
-from ..exceptions import NotFound
+from ..exc import NotFound
 from ..objects import delete_object as object_delete_object
 from ..objects import make_new_object as object_make_new_object
 from ..objects import save_object as object_save_object
@@ -230,7 +230,7 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
     ) -> None:
         """Gate a verb. Sync counterpart of :meth:`AsyncRestView.authorize` -- a
         **no-op** by default; override to enforce policy and raise
-        ``fr.Forbidden`` / ``fr.NotFound`` to reject. Row *visibility* belongs in
+        ``fr.exc.Forbidden`` / ``fr.exc.NotFound`` to reject. Row *visibility* belongs in
         ``build_query``.
         """
 

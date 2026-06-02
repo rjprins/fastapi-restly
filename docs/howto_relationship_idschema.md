@@ -102,7 +102,7 @@ class ArticleView(fr.AsyncRestView):
         if data is not None and data.author_id is not None:
             if not await self.author_visible(data.author_id.id):
                 # 404 (not 403) so you don't leak that the id exists elsewhere.
-                raise fr.NotFound("author not found")
+                raise fr.exc.NotFound("author not found")
 ```
 
 The resolved ORM object is not available in `authorize`; resolution runs later

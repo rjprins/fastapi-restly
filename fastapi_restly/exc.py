@@ -8,7 +8,7 @@ Two families:
   :class:`Conflict` / :class:`BadQueryParam`) raised while handling a request.
   These subclass :class:`fastapi.HTTPException`, so the default responses are
   identical to raising ``HTTPException`` directly -- but a user can
-  ``app.add_exception_handler(fr.NotFound, ...)`` to reshape Restly's errors
+  ``app.add_exception_handler(fr.exc.NotFound, ...)`` to reshape Restly's errors
   distinctly (e.g. into RFC 7807 problem+json).
 """
 
@@ -71,7 +71,7 @@ class RestlyUncommittedChangesWarning(UserWarning):
     The write handlers own the commit, so a custom write route that flushes
     (e.g. via ``save_object``) but never commits would have its changes silently
     rolled back when the session closes. Filter or disable it with
-    ``warnings.filterwarnings(..., category=fr.RestlyUncommittedChangesWarning)``
+    ``warnings.filterwarnings(..., category=fr.exc.RestlyUncommittedChangesWarning)``
     or ``fr.configure(warn_on_uncommitted=False)``.
     """
 

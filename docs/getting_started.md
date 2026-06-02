@@ -47,7 +47,7 @@ class User(Base):
 async def lifespan(_app: FastAPI):
     # Dev/demo table creation only; use Alembic migrations in production.
     # Runs after model classes are declared, so metadata contains every table.
-    engine = fr.get_async_engine()
+    engine = fr.db.get_async_engine()
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield

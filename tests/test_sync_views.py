@@ -628,6 +628,6 @@ def test_sync_build_query_is_consulted_by_list_and_count(sync_db):
         assert results.total_count == 2
         assert all(g.active for g in results.objects)
 
-        query = fr.apply_list_params({}, view.build_query(), Gadget, GadgetSchema)
+        query = fr.query.apply_list_params({}, view.build_query(), Gadget, GadgetSchema)
         total = view.count(query)
         assert total == 2

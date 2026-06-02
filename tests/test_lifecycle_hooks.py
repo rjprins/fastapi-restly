@@ -65,7 +65,7 @@ def test_before_commit_failure_aborts_the_write(client):
         async def before_commit(self, action, new, old=None):
             # An in-transaction guard (e.g. a uniqueness/outbox check) that
             # rejects the write. Runs before the commit, so the write aborts.
-            raise fr.Conflict("duplicate outbox entry")
+            raise fr.exc.Conflict("duplicate outbox entry")
 
     create_tables()
 

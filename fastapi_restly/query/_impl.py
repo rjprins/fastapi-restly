@@ -15,7 +15,7 @@ from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.properties import ColumnProperty
 from starlette.datastructures import QueryParams
 
-from ..exceptions import BadQueryParam
+from ..exc import BadQueryParam
 from ._shared import _escape_like_value, _unwrap_optional_annotation
 
 SchemaType = type[pydantic.BaseModel]

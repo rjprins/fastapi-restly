@@ -5,7 +5,7 @@ from sqlalchemy import func, select
 from sqlalchemy import inspect as sa_inspect
 
 from ..db import AsyncSessionDep
-from ..exceptions import NotFound
+from ..exc import NotFound
 from ..objects import async_delete_object as object_async_delete_object
 from ..objects import async_make_new_object as object_async_make_new_object
 from ..objects import async_save_object as object_async_save_object
@@ -288,7 +288,7 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         ``delete`` / ``get_one`` (so ``obj`` is available for row-level checks).
 
         The default is a **no-op** -- override to enforce policy, raising
-        ``fr.Forbidden`` / ``fr.NotFound`` to reject (``action`` says which verb;
+        ``fr.exc.Forbidden`` / ``fr.exc.NotFound`` to reject (``action`` says which verb;
         ``obj`` / ``data`` carry the loaded row and the request payload). Row
         *visibility* -- hiding a row from every caller -- belongs in
         ``build_query``, not here.

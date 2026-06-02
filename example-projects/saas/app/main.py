@@ -36,7 +36,7 @@ fr.configure(async_database_url="sqlite+aiosqlite:///saas.db")
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     """Create database tables on startup."""
-    engine = fr.get_async_engine()
+    engine = fr.db.get_async_engine()
     async with engine.begin() as conn:
         await conn.run_sync(fr.DataclassBase.metadata.create_all)
     yield

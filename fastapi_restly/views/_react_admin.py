@@ -18,7 +18,7 @@ import pydantic
 import sqlalchemy
 from sqlalchemy.orm import DeclarativeBase, RelationshipProperty
 
-from ..exceptions import BadQueryParam
+from ..exc import BadQueryParam
 from ._async import AsyncRestView
 from ._base import ListingResult, ResponseShape, _annotate, get, put
 from ._sync import RestView

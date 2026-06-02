@@ -600,7 +600,7 @@ def test_async_build_query_is_consulted_by_list_and_count():
             assert results.total_count == 2
             assert all(g.active for g in results.objects)
 
-            query = fr.apply_list_params({}, view.build_query(), Gizmo, GizmoSchema)
+            query = fr.query.apply_list_params({}, view.build_query(), Gizmo, GizmoSchema)
             total = await view.count(query)
             assert total == 2
 

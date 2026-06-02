@@ -4,7 +4,7 @@
 right phase: before the write for `create`, and after the scoped load for
 `get_one` / `update` / `delete` (so `obj` is available for row-level checks).
 The default `authorize` is a **no-op** -- override it to enforce policy and
-raise `fr.Forbidden` / `fr.NotFound` to reject. These tests pin the no-op
+raise `fr.exc.Forbidden` / `fr.exc.NotFound` to reject. These tests pin the no-op
 default plus custom overrides (including that a rejection happens *before* the
 row is written).
 """
@@ -62,7 +62,7 @@ def test_authorize_rejects_by_data_before_write(client):
 
     async def authorize(self, action, obj=None, data=None):
         if action == "create" and data is not None and data.name == "blocked":
-            raise fr.Forbidden()
+            raise fr.exc.Forbidden()
 
     _make_item_view(client.app, authorize=authorize)
 
@@ -81,7 +81,7 @@ def test_authorize_row_level_get_one_is_404(client):
 
     async def authorize(self, action, obj=None, data=None):
         if action == "get_one" and obj is not None and obj.hidden:
-            raise fr.NotFound()
+            raise fr.exc.NotFound()
 
     _make_item_view(client.app, authorize=authorize)
 

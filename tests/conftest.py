@@ -103,7 +103,7 @@ def sync_db() -> Iterator[tuple[Engine, sessionmaker[Session]]]:
 
 def create_tables():
     async def create_tables():
-        engine = fr.get_async_engine()
+        engine = fr.db.get_async_engine()
         async with engine.begin() as conn:
             await conn.run_sync(fr.DataclassBase.metadata.create_all)
 

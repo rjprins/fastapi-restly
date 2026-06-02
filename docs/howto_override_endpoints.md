@@ -134,7 +134,7 @@ from sqlalchemy.orm import selectinload
         )
         obj = (await self.session.scalars(query)).first()
         if obj is None:
-            raise fr.NotFound(f"User {id!r} not found")
+            raise fr.exc.NotFound(f"User {id!r} not found")
         return obj
 ```
 
@@ -202,12 +202,12 @@ class InvoiceView(fr.AsyncRestView):
     async def authorize(self, action, obj=None, data=None):
         user = self.request.user  # populated by your auth middleware
         if action in ("create", "update", "delete") and not user.is_staff:
-            raise fr.Forbidden()
+            raise fr.exc.Forbidden()
         if action == "update" and obj.posted:
-            raise fr.Forbidden("Posted invoices are immutable")
+            raise fr.exc.Forbidden("Posted invoices are immutable")
 ```
 
-`action` is the verb, `obj` is the loaded row, and `data` is the validated request payload. Authentication itself is yours to wire; Restly calls `authorize` and maps `fr.Forbidden` / `fr.NotFound` to HTTP responses.
+`action` is the verb, `obj` is the loaded row, and `data` is the validated request payload. Authentication itself is yours to wire; Restly calls `authorize` and maps `fr.exc.Forbidden` / `fr.exc.NotFound` to HTTP responses.
 
 Visibility belongs in `build_query`, not here — raising from `authorize` produces a 403, whereas hiding a row through `build_query` produces a 404.
 
@@ -526,7 +526,7 @@ The SaaS example's `example-projects/saas/app/views/label.py` shows this in a `c
 
 ## Raise HTTP errors from any method
 
-Every method runs inside a request context, so you can raise `fastapi.HTTPException` (or `fr.Forbidden` / `fr.NotFound`) at any point:
+Every method runs inside a request context, so you can raise `fastapi.HTTPException` (or `fr.exc.Forbidden` / `fr.exc.NotFound`) at any point:
 
 ```python
 import fastapi
