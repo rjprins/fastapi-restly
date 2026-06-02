@@ -10,7 +10,7 @@ Install the testing extra before enabling the plugin:
 pip install "fastapi-restly[testing]"
 ```
 
-The standard extra also includes the testing dependencies.
+The `testing` extra is independent of `standard`, which is runtime-only.
 
 After installation, pytest auto-loads the Restly plugin through its `pytest11`
 entry point. If your project disables plugin autoloading, register it manually

@@ -16,6 +16,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rows). Behavior of create/update is unchanged; the internal helpers
   `build_create_plan` / `apply_update_to_object` /
   `validate_resolved_reference_consistency` gained a `resolved` argument.
+- The `standard` extra is now runtime-only and mirrors `fastapi[standard]`. It no
+  longer pulls the test toolchain (`pytest`, `pytest-asyncio`, `pytest-cov`,
+  `httpx`) or bundles the `aiosqlite` driver, so installing
+  `fastapi-restly[standard]` for production no longer drags pytest into the image.
+  Test tooling stays in the `testing` extra; the database driver is now an
+  explicit choice (Restly remains driver-agnostic). **Migration:** if you relied
+  on `[standard]` for test dependencies, switch to `[testing]`; if you ran on
+  SQLite, add `aiosqlite` to your dependencies directly.
+- The `testing` extra now includes only the third-party packages Restly's shipped
+  test helpers import — `pytest`, `pytest-asyncio`, and `httpx` (for
+  `RestlyTestClient` and the `restly_*` fixtures). `pytest-cov` is no longer
+  pulled in; add it yourself if you want coverage reports.
+- Removed the `docs` extra from the published extras. It only installed the
+  toolchain for building Restly's own documentation site (a maintainer concern);
+  those dependencies remain in the `dev` dependency group. The published extras
+  are now `standard` and `testing`.
 
 ### Fixed
 

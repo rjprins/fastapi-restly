@@ -7,12 +7,15 @@ This guide walks from zero to a working REST API with FastAPI-Restly.
 ## 1. Install
 
 ```bash
-pip install "fastapi-restly[standard]"
+pip install "fastapi-restly[standard]" aiosqlite
 ```
 
-The base package intentionally stays small. The standard extra adds FastAPI's
-standard development server dependencies, `aiosqlite` for the async SQLite
-examples, and FastAPI-Restly's testing dependencies.
+The base package intentionally stays small. The `standard` extra adds FastAPI's
+standard server dependencies (the `fastapi dev` toolchain), mirroring
+`fastapi[standard]`. Restly is database-driver-agnostic, so the async driver is a
+separate, explicit dependency — `aiosqlite` for the SQLite examples in this guide,
+or `asyncpg`/`psycopg` for PostgreSQL. Test tooling lives in its own extra; see
+[Testing](howto_testing.md) for `fastapi-restly[testing]`.
 
 ## 2. Create an App
 

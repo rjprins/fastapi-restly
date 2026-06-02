@@ -91,8 +91,14 @@ History, design goals, and why this framework exists.
 ## Installation
 
 ```bash
-pip install "fastapi-restly[standard]"
+pip install "fastapi-restly[standard]" aiosqlite
 ```
+
+The `standard` extra mirrors `fastapi[standard]` (the `fastapi dev` server
+toolchain). Restly is database-driver-agnostic, so install the async driver for
+your database alongside it — `aiosqlite` for SQLite (used in the examples),
+`asyncpg`/`psycopg` for PostgreSQL. Test tooling lives in a separate extra:
+`pip install "fastapi-restly[testing]"`.
 
 ## Development
 

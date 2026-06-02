@@ -8,7 +8,7 @@ Install the testing extra before importing these helpers:
 pip install "fastapi-restly[testing]"
 ```
 
-The standard extra also includes the testing dependencies.
+The `testing` extra is independent of `standard`, which is runtime-only.
 
 ## Client
 

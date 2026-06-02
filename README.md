@@ -82,8 +82,14 @@ Restly generates the Pydantic schemas automatically. For the full copy-paste app
 ## Installation
 
 ```bash
-pip install "fastapi-restly[standard]"
+pip install "fastapi-restly[standard]" aiosqlite
 ```
+
+The `standard` extra mirrors `fastapi[standard]` (the `fastapi dev` server
+toolchain). Restly is database-driver-agnostic, so install the async driver for
+your database alongside it — `aiosqlite` for SQLite (used in the examples),
+`asyncpg`/`psycopg` for PostgreSQL. Test tooling lives in a separate extra:
+`pip install "fastapi-restly[testing]"`.
 
 ## Main features
 
