@@ -279,11 +279,16 @@ class IDRef(IDSchema[SQLAlchemyModel], Generic[SQLAlchemyModel]):
 
 async def _async_resolve_ids_to_sqlalchemy_objects(
     session: SA_AsyncSession, schema_obj: pydantic.BaseModel
-) -> None:
+) -> dict[str, Any]:
     """
-    Go over the Pydantic fields and turn any IDSchema objects into SQLAlchemy instances.
+    Resolve any IDSchema reference fields on ``schema_obj`` to SQLAlchemy rows.
     A database request is made for each IDSchema to look up the related row in the database.
     If an id is not found in the database `sqlalchemy.orm.exc.NoResultFound` is raised.
+
+    Returns a ``{field_name: resolved_object_or_list}`` mapping for the fields
+    that referenced a model; ``schema_obj`` itself is left unmodified, so it
+    keeps its validated wire shape (``IDRef[T]`` values, not ORM rows). The
+    write path consumes the returned mapping.
 
     This is an UNSCOPED existence check: the lookup is a bare primary-key fetch
     with no view ``build_query`` scoping. Tenant / row-level visibility of
@@ -292,6 +297,7 @@ async def _async_resolve_ids_to_sqlalchemy_objects(
     """
     # Go over all Pydantic fields and check if any of them are an IDSchema object or
     # a list of IDSchema objects.
+    resolved: dict[str, Any] = {}
     for field in schema_obj.model_fields_set:
         value = getattr(schema_obj, field, None)
 
@@ -300,12 +306,11 @@ async def _async_resolve_ids_to_sqlalchemy_objects(
             if not sql_model:
                 continue
 
-            # Replace the IDSchema object with a SQLAlchemy instance from the database
             try:
                 sql_model_obj = await session.get_one(sql_model, value.id)
             except NoResultFound as e:
                 raise NotFound(f"Id not found for {field}: {value.id}") from e
-            setattr(schema_obj, field, sql_model_obj)
+            resolved[field] = sql_model_obj
 
         elif isinstance(value, list) and any(isinstance(i, IDSchema) for i in value):
             # Assume all IdSchemas are for the same model
@@ -325,16 +330,23 @@ async def _async_resolve_ids_to_sqlalchemy_objects(
             if missing:
                 raise NotFound(f"Id not found for {field}: {missing}")
 
-            setattr(schema_obj, field, [by_id[i] for i in unique_ids])
+            resolved[field] = [by_id[i] for i in unique_ids]
+
+    return resolved
 
 
 def _resolve_ids_to_sqlalchemy_objects(
     session: SA_Session, schema_obj: pydantic.BaseModel
-) -> None:
+) -> dict[str, Any]:
     """
-    Go over the Pydantic fields and turn any IDSchema objects into SQLAlchemy instances.
+    Resolve any IDSchema reference fields on ``schema_obj`` to SQLAlchemy rows.
     A database request is made for each IDSchema to look up the related row in the database.
     If an id is not found in the database `sqlalchemy.orm.exc.NoResultFound` is raised.
+
+    Returns a ``{field_name: resolved_object_or_list}`` mapping for the fields
+    that referenced a model; ``schema_obj`` itself is left unmodified, so it
+    keeps its validated wire shape (``IDRef[T]`` values, not ORM rows). The
+    write path consumes the returned mapping.
 
     This is an UNSCOPED existence check: the lookup is a bare primary-key fetch
     with no view ``build_query`` scoping. Tenant / row-level visibility of
@@ -343,6 +355,7 @@ def _resolve_ids_to_sqlalchemy_objects(
     """
     # Go over all Pydantic fields and check if any of them are an IDSchema object or
     # a list of IDSchema objects.
+    resolved: dict[str, Any] = {}
     for field in schema_obj.model_fields_set:
         value = getattr(schema_obj, field, None)
 
@@ -351,12 +364,11 @@ def _resolve_ids_to_sqlalchemy_objects(
             if not sql_model:
                 continue
 
-            # Replace the IDSchema object with a SQLAlchemy instance from the database
             try:
                 sql_model_obj = session.get_one(sql_model, value.id)
             except NoResultFound as e:
                 raise NotFound(f"Id not found for {field}: {value.id}") from e
-            setattr(schema_obj, field, sql_model_obj)
+            resolved[field] = sql_model_obj
 
         elif isinstance(value, list) and any(isinstance(i, IDSchema) for i in value):
             # Assume all IdSchemas are for the same model
@@ -376,7 +388,9 @@ def _resolve_ids_to_sqlalchemy_objects(
             if missing:
                 raise NotFound(f"Id not found for {field}: {missing}")
 
-            setattr(schema_obj, field, [by_id[i] for i in unique_ids])
+            resolved[field] = [by_id[i] for i in unique_ids]
+
+    return resolved
 
 
 def get_read_only_fields(model_cls: type[pydantic.BaseModel]) -> list[str]:

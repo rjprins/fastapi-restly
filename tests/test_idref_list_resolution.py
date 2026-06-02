@@ -48,10 +48,14 @@ async def test_async_idref_list_resolution_order_dedup_and_missing():
             await session.commit()
 
             # Duplicate-of-existing must NOT 404; the client's order is kept and
-            # deduped (cyv): [t2, t2, t1] -> [t2, t1], not the IN/PK order.
+            # deduped (cyv): [t2, t2, t1] -> [t2, t1], not the IN/PK order. The
+            # resolver returns a {field: resolved} mapping (it no longer mutates
+            # the payload, ticket 4in).
             payload = TagRefSchema(tags=[t2.id, t2.id, t1.id])
-            await _async_resolve_ids_to_sqlalchemy_objects(session, payload)
-            assert [t.id for t in payload.tags] == [t2.id, t1.id]
+            resolved = await _async_resolve_ids_to_sqlalchemy_objects(session, payload)
+            assert [t.id for t in resolved["tags"]] == [t2.id, t1.id]
+            # 4in: the request model keeps its wire shape (still IDRefs).
+            assert all(isinstance(t, fr.IDRef) for t in payload.tags)
 
             # A genuinely missing id 404s and NAMES the id (not the old "set()").
             missing_id = t2.id + 100
@@ -85,10 +89,14 @@ def test_sync_idref_list_resolution_order_dedup_and_missing():
             session.commit()
 
             # Duplicate-of-existing must NOT 404; the client's order is kept and
-            # deduped (cyv): [t2, t2, t1] -> [t2, t1], not the IN/PK order.
+            # deduped (cyv): [t2, t2, t1] -> [t2, t1], not the IN/PK order. The
+            # resolver returns a {field: resolved} mapping (it no longer mutates
+            # the payload, ticket 4in).
             payload = TagRefSchema(tags=[t2.id, t2.id, t1.id])
-            _resolve_ids_to_sqlalchemy_objects(session, payload)
-            assert [t.id for t in payload.tags] == [t2.id, t1.id]
+            resolved = _resolve_ids_to_sqlalchemy_objects(session, payload)
+            assert [t.id for t in resolved["tags"]] == [t2.id, t1.id]
+            # 4in: the request model keeps its wire shape (still IDRefs).
+            assert all(isinstance(t, fr.IDRef) for t in payload.tags)
 
             missing_id = t2.id + 100
             with pytest.raises(HTTPException) as exc:

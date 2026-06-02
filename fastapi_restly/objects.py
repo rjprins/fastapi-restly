@@ -33,9 +33,9 @@ def make_new_object(
         validate_resolved_reference_consistency,
     )
 
-    _resolve_ids_to_sqlalchemy_objects(session, schema_obj)
-    validate_resolved_reference_consistency(model_cls, schema_obj, schema_cls)
-    create_plan = build_create_plan(model_cls, schema_obj, schema_cls)
+    resolved = _resolve_ids_to_sqlalchemy_objects(session, schema_obj)
+    validate_resolved_reference_consistency(model_cls, schema_obj, schema_cls, resolved)
+    create_plan = build_create_plan(model_cls, schema_obj, schema_cls, resolved)
     obj = model_cls(**create_plan.kwargs)
     apply_create_assignments(obj, create_plan.post_assignments)
     session.add(obj)
@@ -59,9 +59,9 @@ def update_object(
         validate_resolved_reference_consistency,
     )
 
-    _resolve_ids_to_sqlalchemy_objects(session, schema_obj)
-    validate_resolved_reference_consistency(type(obj), schema_obj, schema_cls)
-    apply_update_to_object(obj, schema_obj, schema_cls)
+    resolved = _resolve_ids_to_sqlalchemy_objects(session, schema_obj)
+    validate_resolved_reference_consistency(type(obj), schema_obj, schema_cls, resolved)
+    apply_update_to_object(obj, schema_obj, schema_cls, resolved)
     return obj
 
 
@@ -112,9 +112,9 @@ async def async_make_new_object(
         validate_resolved_reference_consistency,
     )
 
-    await _async_resolve_ids_to_sqlalchemy_objects(session, schema_obj)
-    validate_resolved_reference_consistency(model_cls, schema_obj, schema_cls)
-    create_plan = build_create_plan(model_cls, schema_obj, schema_cls)
+    resolved = await _async_resolve_ids_to_sqlalchemy_objects(session, schema_obj)
+    validate_resolved_reference_consistency(model_cls, schema_obj, schema_cls, resolved)
+    create_plan = build_create_plan(model_cls, schema_obj, schema_cls, resolved)
     obj = model_cls(**create_plan.kwargs)
     apply_create_assignments(obj, create_plan.post_assignments)
     session.add(obj)
@@ -133,9 +133,9 @@ async def async_update_object(
         validate_resolved_reference_consistency,
     )
 
-    await _async_resolve_ids_to_sqlalchemy_objects(session, schema_obj)
-    validate_resolved_reference_consistency(type(obj), schema_obj, schema_cls)
-    apply_update_to_object(obj, schema_obj, schema_cls)
+    resolved = await _async_resolve_ids_to_sqlalchemy_objects(session, schema_obj)
+    validate_resolved_reference_consistency(type(obj), schema_obj, schema_cls, resolved)
+    apply_update_to_object(obj, schema_obj, schema_cls, resolved)
     return obj
 
 

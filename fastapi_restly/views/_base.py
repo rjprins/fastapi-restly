@@ -238,15 +238,19 @@ def validate_resolved_reference_consistency(
     model_cls: type[DeclarativeBase],
     schema_obj: pydantic.BaseModel,
     schema_cls: type[pydantic.BaseModel] | None = None,
+    resolved: dict[str, Any] | None = None,
 ) -> None:
     """Validate explicitly supplied FK and relationship fields agree.
 
-    IDRef/IDSchema resolution turns model-aware references into ORM objects before
-    object construction/update. If the client supplied both ``author_id`` and
-    ``author`` independently, they must refer to the same row.
+    IDRef/IDSchema resolution looks model-aware references up as ORM objects
+    (in ``resolved``) before object construction/update. If the client supplied
+    both ``author_id`` and ``author`` independently, they must refer to the same
+    row. ``resolved`` is the ``{field: object}`` mapping from the resolver; a
+    field absent from it keeps its (unresolved) value on ``schema_obj``.
     """
     if schema_cls is None:
         schema_cls = schema_obj.__class__
+    resolved = resolved or {}
 
     for fk_field in schema_obj.model_fields_set:
         if not fk_field.endswith("_id") or not _is_reference_schema_field(
@@ -262,9 +266,11 @@ def validate_resolved_reference_consistency(
         ):
             continue
 
-        fk_identity = _reference_identity(getattr(schema_obj, fk_field, None))
+        fk_identity = _reference_identity(
+            resolved.get(fk_field, getattr(schema_obj, fk_field, None))
+        )
         relation_identity = _reference_identity(
-            getattr(schema_obj, relation_field, None)
+            resolved.get(relation_field, getattr(schema_obj, relation_field, None))
         )
         if fk_identity is None or relation_identity is None:
             continue
@@ -371,17 +377,23 @@ def build_create_plan(
     model_cls: type[DeclarativeBase],
     schema_obj: pydantic.BaseModel,
     schema_cls: type[pydantic.BaseModel] | None = None,
+    resolved: dict[str, Any] | None = None,
 ) -> _CreatePlan:
     """Translate ``schema_obj`` fields into kwargs for ``model_cls(**kwargs)``.
 
-    Shared by sync and async ``make_new_object``. Assumes any nested ``IDSchema``
-    references on ``schema_obj`` have already been resolved (sync vs async).
+    Shared by sync and async ``make_new_object``. ``resolved`` is the
+    ``{field: object_or_list}`` mapping returned by the IDSchema resolver (sync
+    vs async); a resolved reference field uses that ORM value instead of the
+    wire-shaped ``IDRef`` still on ``schema_obj``.
     """
     if schema_cls is None:
         schema_cls = schema_obj.__class__
+    resolved = resolved or {}
 
     plan = _CreatePlan(kwargs={}, post_assignments={})
     for field_name, value in iter_creatable_fields(schema_obj, schema_cls):
+        if field_name in resolved:
+            value = resolved[field_name]
         if isinstance(value, IDSchema) and field_name.endswith("_id"):
             if _accepts_init_kwarg(model_cls, field_name):
                 plan.kwargs[field_name] = value.id
@@ -405,8 +417,9 @@ def build_create_kwargs(
     model_cls: type[DeclarativeBase],
     schema_obj: pydantic.BaseModel,
     schema_cls: type[pydantic.BaseModel] | None = None,
+    resolved: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    return build_create_plan(model_cls, schema_obj, schema_cls).kwargs
+    return build_create_plan(model_cls, schema_obj, schema_cls, resolved).kwargs
 
 
 def apply_create_assignments(obj: DeclarativeBase, assignments: dict[str, Any]) -> None:
@@ -438,13 +451,19 @@ def apply_update_to_object(
     obj: DeclarativeBase,
     schema_obj: pydantic.BaseModel,
     schema_cls: type[pydantic.BaseModel] | None = None,
+    resolved: dict[str, Any] | None = None,
 ) -> None:
     """Apply writable inputs from ``schema_obj`` onto ``obj`` in place.
 
-    Shared by sync and async ``update_object``. Assumes any nested ``IDSchema``
-    references on ``schema_obj`` have already been resolved (sync vs async).
+    Shared by sync and async ``update_object``. ``resolved`` is the
+    ``{field: object_or_list}`` mapping returned by the IDSchema resolver (sync
+    vs async); a resolved reference field uses that ORM value instead of the
+    wire-shaped ``IDRef`` still on ``schema_obj``.
     """
+    resolved = resolved or {}
     for field_name, value in get_writable_inputs(schema_obj, schema_cls).items():
+        if field_name in resolved:
+            value = resolved[field_name]
         if isinstance(value, IDSchema) and field_name.endswith("_id"):
             setattr(obj, field_name, value.id)
             continue

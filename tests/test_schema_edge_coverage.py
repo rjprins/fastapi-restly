@@ -186,13 +186,16 @@ def test_resolve_ids_to_sqlalchemy_objects_handles_missing_single_and_list_entri
         session.commit()
 
         single_payload = SingleRefSchema(author_id={"id": author.id})
-        _resolve_ids_to_sqlalchemy_objects(session, single_payload)
-        assert isinstance(single_payload.author_id, Author)
-        assert single_payload.author_id.id == author.id
+        resolved = _resolve_ids_to_sqlalchemy_objects(session, single_payload)
+        assert isinstance(resolved["author_id"], Author)
+        assert resolved["author_id"].id == author.id
+        # 4in: the request model keeps its wire shape (still an IDSchema).
+        assert isinstance(single_payload.author_id, fr.IDSchema)
 
         list_payload = ListRefSchema(authors=[{"id": author.id}])
-        _resolve_ids_to_sqlalchemy_objects(session, list_payload)
-        assert isinstance(list_payload.authors[0], Author)
+        resolved = _resolve_ids_to_sqlalchemy_objects(session, list_payload)
+        assert isinstance(resolved["authors"][0], Author)
+        assert isinstance(list_payload.authors[0], fr.IDSchema)
 
         with pytest.raises(HTTPException, match="Id not found for author_id"):
             _resolve_ids_to_sqlalchemy_objects(
@@ -229,9 +232,12 @@ async def test_async_resolve_ids_to_sqlalchemy_objects_handles_missing_entries()
             await session.commit()
 
             payload = TeamRefSchema(team_id={"id": team.id}, teams=[{"id": team.id}])
-            await _async_resolve_ids_to_sqlalchemy_objects(session, payload)
-            assert isinstance(payload.team_id, Team)
-            assert isinstance(payload.teams[0], Team)
+            resolved = await _async_resolve_ids_to_sqlalchemy_objects(session, payload)
+            assert isinstance(resolved["team_id"], Team)
+            assert isinstance(resolved["teams"][0], Team)
+            # 4in: the request model keeps its wire shape (still IDSchemas).
+            assert isinstance(payload.team_id, fr.IDSchema)
+            assert isinstance(payload.teams[0], fr.IDSchema)
 
             with pytest.raises(HTTPException, match="Id not found for team_id"):
                 await _async_resolve_ids_to_sqlalchemy_objects(
@@ -271,8 +277,10 @@ async def test_async_resolve_ids_to_sqlalchemy_objects_handles_idref_missing_ent
             await session.commit()
 
             payload = TeamRefSchema(team_id=team.id)
-            await _async_resolve_ids_to_sqlalchemy_objects(session, payload)
-            assert isinstance(payload.team_id, IDRefResolverTeam)
+            resolved = await _async_resolve_ids_to_sqlalchemy_objects(session, payload)
+            assert isinstance(resolved["team_id"], IDRefResolverTeam)
+            # 4in: the request model keeps its wire shape (still an IDRef).
+            assert isinstance(payload.team_id, fr.IDRef)
 
             with pytest.raises(HTTPException, match="Id not found for team_id"):
                 await _async_resolve_ids_to_sqlalchemy_objects(

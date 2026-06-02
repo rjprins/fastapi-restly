@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Reference resolution (`IDRef`/`IDSchema`) no longer mutates the validated
+  request model in place. The resolver now returns a `{field: resolved}` mapping
+  that the write path consumes, so the request model keeps its wire shape (its
+  reference fields stay `IDRef[T]` values rather than being overwritten with ORM
+  rows). Behavior of create/update is unchanged; the internal helpers
+  `build_create_plan` / `apply_update_to_object` /
+  `validate_resolved_reference_consistency` gained a `resolved` argument.
+
 ### Fixed
 
 - `RestlyUncommittedChangesWarning` no longer false-positives on every write run
