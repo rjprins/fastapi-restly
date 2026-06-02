@@ -151,10 +151,10 @@ def test_restly_context_nested_entries_restore_in_lifo_order():
 
 def test_getters_and_sync_proxy_raise_without_configuration():
     with RestlyContext():
-        with pytest.raises(fr.RestlyConfigurationError, match="Call fr.configure\\(\\)"):
+        with pytest.raises(fr.exc.RestlyConfigurationError, match="Call fr.configure\\(\\)"):
             get_engine()
 
-        with pytest.raises(fr.RestlyConfigurationError, match="Call fr.configure\\(\\)"):
+        with pytest.raises(fr.exc.RestlyConfigurationError, match="Call fr.configure\\(\\)"):
             with proxy_open_session():
                 pass
 
@@ -162,7 +162,7 @@ def test_getters_and_sync_proxy_raise_without_configuration():
 def test_generate_session_raises_clear_error_without_configuration():
     with RestlyContext():
         with pytest.raises(
-            fr.RestlyConfigurationError,
+            fr.exc.RestlyConfigurationError,
             match="Call fr.configure\\(\\) before using SessionDep\\.",
         ):
             list(_generate_session())
@@ -171,10 +171,10 @@ def test_generate_session_raises_clear_error_without_configuration():
 @pytest.mark.asyncio
 async def test_async_getter_and_proxy_raise_without_configuration():
     with RestlyContext():
-        with pytest.raises(fr.RestlyConfigurationError, match="Call fr.configure\\(\\)"):
+        with pytest.raises(fr.exc.RestlyConfigurationError, match="Call fr.configure\\(\\)"):
             get_async_engine()
 
-        with pytest.raises(fr.RestlyConfigurationError, match="Call fr.configure\\(\\)"):
+        with pytest.raises(fr.exc.RestlyConfigurationError, match="Call fr.configure\\(\\)"):
             async with proxy_open_async_session():
                 pass
 
@@ -183,7 +183,7 @@ async def test_async_getter_and_proxy_raise_without_configuration():
 async def test_async_generate_session_raises_clear_error_without_configuration():
     with RestlyContext():
         with pytest.raises(
-            fr.RestlyConfigurationError,
+            fr.exc.RestlyConfigurationError,
             match="Call fr.configure\\(\\) before using AsyncSessionDep\\.",
         ):
             async for _session in _async_generate_session():
@@ -406,3 +406,92 @@ async def test_async_generate_session_does_not_commit_and_exits_context_on_failu
             await gen.athrow(RuntimeError("boom"))
         assert session.committed == 0
         assert maker.context is not None and maker.context.exit_exc is RuntimeError
+
+
+def test_open_session_resolves_configured_sync_generator():
+    """``open_session()`` resolves the same source as ``SessionDep``: a
+    configured ``sync_session_generator``. So a generator-only configuration
+    (no ``make_session``) works off-HTTP, and the generator's cleanup runs on
+    the way out."""
+    events: list[str] = []
+    sentinel = object()
+
+    def my_generator() -> Iterator[object]:
+        events.append("enter")
+        try:
+            yield sentinel
+        finally:
+            events.append("exit")
+
+    with RestlyContext():
+        configure(sync_session_generator=my_generator)  # type: ignore[arg-type]
+        with proxy_open_session() as session:
+            assert session is sentinel
+            assert events == ["enter"]
+        assert events == ["enter", "exit"]
+
+
+@pytest.mark.asyncio
+async def test_open_async_session_resolves_configured_generator():
+    """``open_async_session()`` resolves the same source as ``AsyncSessionDep``:
+    a configured ``session_generator``. So a generator-only configuration (no
+    ``async_make_session``) works off-HTTP, and cleanup runs on the way out."""
+    events: list[str] = []
+    sentinel = object()
+
+    async def my_generator() -> AsyncIterator[object]:
+        events.append("enter")
+        try:
+            yield sentinel
+        finally:
+            events.append("exit")
+
+    with RestlyContext():
+        configure(session_generator=my_generator)  # type: ignore[arg-type]
+        async with proxy_open_async_session() as session:
+            assert session is sentinel
+            assert events == ["enter"]
+        assert events == ["enter", "exit"]
+
+
+@pytest.mark.asyncio
+async def test_open_async_session_propagates_errors_into_configured_generator():
+    """An error raised inside the ``async with`` block propagates into the
+    configured generator at its yield point, so its cleanup (a real session's
+    rollback/close) still runs."""
+    events: list[str] = []
+
+    async def my_generator() -> AsyncIterator[object]:
+        try:
+            yield object()
+        finally:
+            events.append("exit")
+
+    with RestlyContext():
+        configure(session_generator=my_generator)  # type: ignore[arg-type]
+        with pytest.raises(RuntimeError, match="boom"):
+            async with proxy_open_async_session():
+                raise RuntimeError("boom")
+        assert events == ["exit"]
+
+
+@pytest.mark.asyncio
+async def test_open_async_session_prefers_generator_over_make_session():
+    """When both a ``session_generator`` and an ``async_make_session`` are
+    configured, ``open_async_session()`` uses the generator -- the same
+    precedence as ``AsyncSessionDep``."""
+    sentinel = object()
+
+    async def my_generator() -> AsyncIterator[object]:
+        yield sentinel
+
+    def make_session_should_not_be_used():
+        raise AssertionError("make_session must not be used when a generator is set")
+
+    with RestlyContext():
+        configure(
+            session_generator=my_generator,  # type: ignore[arg-type]
+            async_make_session=make_session_should_not_be_used,  # type: ignore[arg-type]
+        )
+        async with proxy_open_async_session() as session:
+            assert session is sentinel

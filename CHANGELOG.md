@@ -14,6 +14,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   3.14 wheel; that wheel now ships, the full test suite passes on 3.14, and the
   job gates CI like every other supported version.
 
+### Fixed
+
+- `fr.open_session()` / `fr.open_async_session()` now resolve the same session
+  source as `SessionDep` / `AsyncSessionDep`: a custom session generator passed
+  to `fr.configure(session_generator=...)` / `sync_session_generator=...` takes
+  precedence over the built-in factory. Previously the context managers always
+  used the built-in factory, so a generator-only configuration worked inside
+  request handlers but raised `RestlyConfigurationError` off-HTTP (in scripts,
+  background jobs, or a custom dependency wrapping `open_*session()`). The two
+  session entry points are now consistent.
+
 ## [0.6.1] - 2026-06-02
 
 ### Changed
