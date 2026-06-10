@@ -92,6 +92,9 @@ addopts = "--ignore=example-projects"
 xfail_strict = true
 asyncio_default_fixture_loop_scope = "function"
 filterwarnings = [
+    # Fail on any unexpected warning so dependency deprecations surface as red
+    # CI instead of piling up in the summary. Add narrowly-scoped ignores below.
+    "error",
     # Pydantic warns when Restly's ReadOnly/WriteOnly Annotated markers wrap fields
     # that also set Field(alias=...). The tests intentionally cover that supported
     # schema shape, and Restly preserves aliases in generated request/response models.

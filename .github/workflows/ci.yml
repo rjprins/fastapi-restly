@@ -90,6 +90,10 @@ jobs:
       - name: Set up uv
         uses: astral-sh/setup-uv@v8.1.0
 
+      # The -W overrides relax pytest's warnings-as-errors for this leg only:
+      # floor versions of the TestClient stack (anyio/httpx) leak AF_UNIX
+      # socketpairs that surface as GC-timing-dependent ResourceWarnings.
+      # Not a Restly leak -- the latest-deps suite stays strict.
       - name: Run framework tests with minimum direct dependency versions
         run: >-
           uv run
@@ -99,6 +103,8 @@ jobs:
           --extra testing
           --with "aiosqlite>=0.21.0"
           pytest tests/ -q
+          -W "default::ResourceWarning"
+          -W "default::pytest.PytestUnraisableExceptionWarning"
 
   coverage:
     runs-on: ubuntu-latest
