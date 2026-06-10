@@ -58,6 +58,7 @@ fastapi_restly.exc:
   - RestlyConfigurationError
   - RestlyError
   - RestlyHTTPError
+  - RestlyMisuseWarning
   - RestlyUncommittedChangesWarning
   - fastapi
 fastapi_restly.models:
@@ -137,6 +138,7 @@ fastapi_restly.exc:
   - RestlyConfigurationError
   - RestlyError
   - RestlyHTTPError
+  - RestlyMisuseWarning
   - RestlyUncommittedChangesWarning
   - fastapi
 fastapi_restly.models:

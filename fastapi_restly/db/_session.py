@@ -95,6 +95,7 @@ def configure(
     make_session: sessionmaker[Any] | None = None,
     session_generator: Callable[[], AsyncIterator[SA_AsyncSession]] | None = None,
     sync_session_generator: Callable[[], Iterator[SA_Session]] | None = None,
+    warn_on_misuse: bool | None = None,
     warn_on_uncommitted: bool | None = None,
     install_default_exception_handlers: bool = True,
 ) -> None:
@@ -128,6 +129,13 @@ def configure(
     that intentionally leaves a flush uncommitted (a validate-then-rollback dry
     run).
 
+    Pass ``warn_on_misuse=True`` to enable opt-in registration-time misuse
+    warnings (:class:`RestlyMisuseWarning`): when a view class is registered
+    via ``include_view``, the framework flags route-shell overrides, direct
+    ``session.commit()`` calls in view methods, and CRUD route sets hand-rolled
+    on a bare ``View``. Off by default; intended for development, templates,
+    and CI. Enable it before registering views.
+
     Pass your :class:`FastAPI` ``app`` to install fastapi-restly's default
     exception handlers (currently: a translator that turns SQLAlchemy
     :class:`~sqlalchemy.exc.IntegrityError` into HTTP 409 Conflict). Set
@@ -145,12 +153,15 @@ def configure(
             make_session is not None,
             session_generator is not None,
             sync_session_generator is not None,
+            warn_on_misuse is not None,
             warn_on_uncommitted is not None,
             app is not None and install_default_exception_handlers,
         )
     ):
         raise TypeError("fr.configure() requires at least one setup argument.")
 
+    if warn_on_misuse is not None:
+        _fr_globals.warn_on_misuse = warn_on_misuse
     if warn_on_uncommitted is not None:
         _fr_globals.warn_on_uncommitted = warn_on_uncommitted
     if (

@@ -287,7 +287,7 @@ Use these in business methods and custom routes. For a model other than `self.mo
 | `fr.SessionDep` | FastAPI `Depends`-compatible sync session dependency. |
 | `fr.open_async_session()` | Open an async SQLAlchemy session context manager for use outside request handling, for example in background jobs or scripts. |
 | `fr.open_session()` | Open a sync SQLAlchemy session context manager for use outside request handling, for example in background jobs or scripts. |
-| `fr.configure(async_database_url=..., ...)` | Configure the framework. Accepts async/sync URLs, engines, session makers, custom session generators, and `warn_on_uncommitted`. |
+| `fr.configure(async_database_url=..., ...)` | Configure the framework. Accepts async/sync URLs, engines, session makers, custom session generators, and the `warn_on_uncommitted` / `warn_on_misuse` settings. |
 | `fr.db.get_async_engine()` | Return the configured `AsyncEngine` instance. |
 | `fr.db.get_engine()` | Return the configured sync `Engine` instance. |
 
@@ -297,7 +297,9 @@ Restly has one public process-wide configuration. Configure it once during appli
 fr.configure(async_database_url="sqlite+aiosqlite:///app.db")
 ```
 
-`fr.configure(...)` must receive at least one setup option: an app, database URL, engine, session maker, custom session generator, or `warn_on_uncommitted` setting. A bare `fr.configure()` raises `TypeError`.
+`fr.configure(...)` must receive at least one setup option: an app, database URL, engine, session maker, custom session generator, or a `warn_on_uncommitted` / `warn_on_misuse` setting. A bare `fr.configure()` raises `TypeError`.
+
+Pass `warn_on_misuse=True` to enable opt-in registration-time misuse warnings (`fr.exc.RestlyMisuseWarning`): `include_view` then flags route-shell overrides, direct `session.commit()` calls in view methods, and CRUD route sets hand-rolled on a bare `View`, each with the idiomatic fix named. Off by default; intended for development, project templates, and CI.
 
 For multiple databases, use FastAPI and SQLAlchemy directly: add a custom dependency on a view, or pass a custom session generator to `fr.configure(...)`. Restly does not provide a public multi-context or multi-engine API. See [Use a custom session dependency on one view](howto_existing_project.md#use-a-custom-session-dependency-on-one-view).
 

@@ -19,6 +19,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   fr.db.get_async_engine(); async with engine.begin() as conn: await
   conn.run_sync(Base.metadata.create_all)` boilerplate in quickstarts and test
   setup. Use Alembic migrations in production.
+- Opt-in registration-time misuse warnings: `fr.configure(warn_on_misuse=True)`
+  makes `include_view` lint each registered view class and emit
+  `fr.exc.RestlyMisuseWarning` for the three dominant misuse patterns —
+  overriding a route shell (`<verb>_endpoint`) where a business-verb override
+  was meant, calling `session.commit()` directly in a view method, and
+  hand-rolling a CRUD route set on a bare `View` instead of subclassing
+  `RestView` / `AsyncRestView`. Each message names the idiomatic fix. Off by
+  default; intended for development, project templates, and CI.
 
 ### Changed
 
