@@ -258,7 +258,7 @@ def create_all(base_or_metadata: type[DeclarativeBase] | MetaData) -> None:
     A dev/demo convenience over ``metadata.create_all(engine)`` so a quickstart
     can create its schema without reaching for the raw engine::
 
-        fr.create_all(Base)  # or fr.create_all(Base.metadata)
+        fr.db.create_all(Base)  # or fr.db.create_all(Base.metadata)
 
     Accepts a ``DeclarativeBase`` subclass (its ``.metadata`` is used) or a
     ``MetaData``. Requires :func:`configure` first. Use Alembic migrations in
@@ -270,7 +270,7 @@ def create_all(base_or_metadata: type[DeclarativeBase] | MetaData) -> None:
 async def async_create_all(base_or_metadata: type[DeclarativeBase] | MetaData) -> None:
     """Async equivalent of :func:`create_all`, on the configured async engine::
 
-        await fr.async_create_all(Base)
+        await fr.db.async_create_all(Base)
     """
     metadata = _resolve_metadata(base_or_metadata)
     engine = get_async_engine()

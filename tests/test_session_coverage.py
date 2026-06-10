@@ -454,6 +454,26 @@ async def test_open_async_session_resolves_configured_generator():
         assert events == ["enter", "exit"]
 
 
+def test_open_session_propagates_errors_into_configured_generator():
+    """An error raised inside the ``with`` block propagates into the configured
+    generator at its yield point, so its cleanup (a real session's
+    rollback/close) still runs."""
+    events: list[str] = []
+
+    def my_generator() -> Iterator[object]:
+        try:
+            yield object()
+        finally:
+            events.append("exit")
+
+    with RestlyContext():
+        configure(sync_session_generator=my_generator)  # type: ignore[arg-type]
+        with pytest.raises(RuntimeError, match="boom"):
+            with proxy_open_session():
+                raise RuntimeError("boom")
+        assert events == ["exit"]
+
+
 @pytest.mark.asyncio
 async def test_open_async_session_propagates_errors_into_configured_generator():
     """An error raised inside the ``async with`` block propagates into the
@@ -473,6 +493,27 @@ async def test_open_async_session_propagates_errors_into_configured_generator():
             async with proxy_open_async_session():
                 raise RuntimeError("boom")
         assert events == ["exit"]
+
+
+def test_open_session_prefers_generator_over_make_session():
+    """When both a ``sync_session_generator`` and a ``make_session`` are
+    configured, ``open_session()`` uses the generator -- the same precedence
+    as ``SessionDep``."""
+    sentinel = object()
+
+    def my_generator() -> Iterator[object]:
+        yield sentinel
+
+    def make_session_should_not_be_used():
+        raise AssertionError("make_session must not be used when a generator is set")
+
+    with RestlyContext():
+        configure(
+            sync_session_generator=my_generator,  # type: ignore[arg-type]
+            make_session=make_session_should_not_be_used,  # type: ignore[arg-type]
+        )
+        with proxy_open_session() as session:
+            assert session is sentinel
 
 
 @pytest.mark.asyncio
