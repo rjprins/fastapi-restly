@@ -307,7 +307,7 @@ Restly's write handlers own the commit: each runs `before_commit` → commit →
 
 A **custom write route** should use `self.write_action(...)` or reuse `handle_create` / `handle_update` / `handle_delete`. Commit manually only for shapes the bracket does not model, such as a batch write with one final commit.
 
-Restly warns (`RestlyUncommittedChangesWarning`) when a request finishes with uncommitted session changes. Disable with `fr.configure(warn_on_uncommitted=False)`, or suppress a deliberate dry run with `session.info["_fr_suppress_uncommitted"] = True`.
+Restly warns (`RestlyUncommittedChangesWarning`) when a request finishes with uncommitted session changes — the tell of a custom write route that forgot to commit. Fix the missing commit (`write_action(...)` or a `handle_<verb>`), or suppress a deliberate dry run with `session.info["_fr_suppress_uncommitted"] = True`. The global `fr.configure(warn_on_uncommitted=False)` opt-out exists but is rarely the right response to the warning.
 
 Restly owns the commit. A custom `session_generator` / `sync_session_generator` controls session construction and cleanup, not commit ownership.
 

@@ -83,6 +83,27 @@ def test_forgot_commit_warns(client):
     assert _warn_count(lambda: client.post("/things/forgot")) >= 1
 
 
+def test_warning_message_funnels_to_the_fix(client):
+    """The message leads with the fix (write_action / handle_<verb>) and offers
+    only the per-route suppression -- it must not advertise the global
+    warn_on_uncommitted=False kill-switch (agents/users take that path instead
+    of fixing the missing commit; seen in the discoverability eval)."""
+    _build(client)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        client.post("/things/forgot")
+    messages = [
+        str(w.message)
+        for w in caught
+        if issubclass(w.category, fr.exc.RestlyUncommittedChangesWarning)
+    ]
+    assert messages
+    for message in messages:
+        assert "write_action" in message
+        assert "_fr_suppress_uncommitted" in message
+        assert "warn_on_uncommitted" not in message
+
+
 def test_added_but_not_flushed_warns(client):
     _build(client)
     # new/dirty/deleted path: added to the session but never flushed.

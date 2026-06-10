@@ -124,10 +124,12 @@ def configure(
     By default Restly warns (:class:`RestlyUncommittedChangesWarning`) when a
     request finishes with uncommitted changes still in the session -- the tell
     of a custom write route that forgot to commit. This applies to every session
-    source, built-in or custom. Pass ``warn_on_uncommitted=False`` to disable
-    it, or set ``session.info["_fr_suppress_uncommitted"] = True`` in a route
-    that intentionally leaves a flush uncommitted (a validate-then-rollback dry
-    run).
+    source, built-in or custom. A route that intentionally leaves a flush
+    uncommitted (a validate-then-rollback dry run) should suppress the warning
+    for just that request with ``session.info["_fr_suppress_uncommitted"] =
+    True``. ``warn_on_uncommitted=False`` turns the check off globally; that is
+    rarely the right response to the warning -- prefer fixing the missing
+    commit or the per-route suppression.
 
     Pass ``warn_on_misuse=True`` to enable opt-in registration-time misuse
     warnings (:class:`RestlyMisuseWarning`): when a view class is registered
@@ -357,10 +359,10 @@ def _warn_if_uncommitted(session: SA_AsyncSession | SA_Session) -> None:
             "Request finished with uncommitted changes in the database session; "
             "they will be rolled back when the session closes. A custom write "
             "route must commit its changes -- bracket the mutation with "
-            "write_action(...), or commit the session yourself. "
-            "If this is intentional (e.g. a validate-then-rollback dry run), set "
-            'session.info["_fr_suppress_uncommitted"] = True in the route, or pass '
-            "warn_on_uncommitted=False to fr.configure().",
+            "write_action(...) (the framework then commits), or reuse "
+            "handle_<verb>(). Only if the rollback is intentional (e.g. a "
+            "validate-then-rollback dry run), suppress the warning for that "
+            'route with session.info["_fr_suppress_uncommitted"] = True.',
             RestlyUncommittedChangesWarning,
             stacklevel=2,
         )

@@ -30,6 +30,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The `RestlyUncommittedChangesWarning` message now leads with the fix
+  (bracket the mutation with `write_action(...)` or reuse a `handle_<verb>`)
+  and offers only the per-route suppression
+  (`session.info["_fr_suppress_uncommitted"] = True`) for intentional
+  dry runs. It no longer advertises the global
+  `warn_on_uncommitted=False` opt-out, which readers took as a fix for the
+  warning instead of committing their changes.
 - **Breaking — top-level `fr.*` namespace curated.** Errors, HTTP exceptions, and
   the uncommitted-changes warning moved to `fr.exc` (`fr.exc.NotFound`,
   `fr.exc.RestlyError`, …) — the `exceptions` module is renamed `exc`, mirroring
