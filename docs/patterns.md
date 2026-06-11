@@ -151,6 +151,13 @@ class PaymentWebhookView(fr.View):
 Depth: [Class-Based Views → When to use `View`
 directly](class_based_views.md#when-to-use-view-directly).
 
+## An app-wide base view
+
+Owned by [Class-Based Views → One base view for the whole
+app](#app-wide-base-view) — declare `session`, `current_user`, and the rest of
+your request context once on a bare `View` base; every endpoint group (CRUD
+or not) subclasses it and reads from `self`.
+
 ## Login and other auth flows
 
 Owned by [Class-Based Views → When to use `View`

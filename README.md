@@ -107,6 +107,20 @@ class AuthView(fr.View):
     async def logout(self) -> None: ...
 ```
 
+And because views truly subclass, the biggest everyday win takes four lines:
+declare your app's request context once on a base view, and read it from
+`self` everywhere — instead of re-declaring the same `Depends` parameters on
+every function in the project:
+
+```python
+class AppView(fr.View):
+    session: fr.AsyncSessionDep
+    current_user: Annotated[User, Depends(get_current_user)]
+
+class ProfileView(AppView): ...          # custom endpoint groups
+class AppRestView(AppView, fr.AsyncRestView): ...  # CRUD resources, same context
+```
+
 The rule of thumb: a plain FastAPI route for a one-off endpoint, `View` for a
 group of related custom endpoints, `AsyncRestView` / `RestView` for a CRUD
 resource, and `RestView` plus custom `@fr.post` methods for CRUD with actions.

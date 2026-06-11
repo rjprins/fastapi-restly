@@ -160,6 +160,61 @@ That is what "true class-based views" means in this framework. You can:
 - Mix in behaviour through multiple inheritance — see the
   [share-behaviour guide](howto_inheritance.md).
 
+(app-wide-base-view)=
+
+## One base view for the whole app
+
+The payoff of true subclassing, and the simplest big win: declare your app's
+request context **once**, on a bare `View`, and subclass it everywhere. No
+CRUD required:
+
+```python
+from typing import Annotated
+from fastapi import Depends
+
+
+class AppView(fr.View):
+    """Project base — every endpoint group in the app subclasses this."""
+
+    session: fr.AsyncSessionDep
+    current_user: Annotated[User, Depends(get_current_user)]
+
+
+@fr.include_view(app)
+class ProfileView(AppView):
+    prefix = "/profile"
+
+    @fr.get("/")
+    async def whoami(self) -> dict:
+        return {"user": self.current_user.name}
+
+
+@fr.include_view(app)
+class BillingView(AppView):
+    prefix = "/billing"
+
+    @fr.post("/checkout")
+    async def checkout(self, payload: CheckoutRequest):
+        order = Order(user_id=self.current_user.id, **payload.model_dump())
+        self.session.add(order)
+        await self.session.commit()
+        return {"order_id": order.id}
+```
+
+In plain FastAPI, `session` and `current_user` would be `Depends` parameters
+re-declared on every function in the project. Here they are declared once and
+read from `self` in every method of every subclass — and the same base
+composes under CRUD views, so the whole app shares one context layer:
+
+```python
+class AppRestView(AppView, fr.AsyncRestView):
+    """CRUD resources get the same session + current_user attributes."""
+```
+
+Testing inherits the win: FastAPI's `dependency_overrides` applies to the
+class-level dependencies, so overriding `get_current_user` reaches
+`self.current_user` in every view at once.
+
 ## The view hierarchy
 
 ```
