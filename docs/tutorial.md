@@ -143,6 +143,17 @@ For production projects, use Alembic migrations instead of `create_all`.
 
 ---
 
+## Run it
+
+```bash
+fastapi dev main.py
+```
+
+Open <http://127.0.0.1:8000/docs> — both resources are listed with their
+request and response schemas, ready to try from the browser.
+
+---
+
 ## Generated endpoints
 
 For each view, FastAPI-Restly generates five endpoints. With `prefix = "/posts"`:
@@ -171,23 +182,34 @@ class PostView(fr.AsyncRestView):
 
 ## Read-only and write-only fields
 
-Say you want to add an author token that is stored on creation but stripped by
-`self.to_response_schema(obj)`, and a `slug` field that is computed server-side
-and must not be writable:
+Let's give `Post` an author token that clients send on creation but never see
+back, and a view count that is server-maintained and must not be writable.
+Add the columns to the model:
+
+```python
+class Post(fr.IDBase):
+    title: Mapped[str]
+    content: Mapped[str]
+    published: Mapped[bool] = mapped_column(default=False)
+    author_token: Mapped[str] = mapped_column(default="")
+    view_count: Mapped[int] = mapped_column(default=0)
+```
+
+and mark them in the schema:
 
 ```python
 class PostRead(fr.IDSchema):
     title: str
     content: str
     published: bool
-    author_token: fr.WriteOnly[str]  # accepted on input, stripped by to_response_schema()
-    slug: fr.ReadOnly[str]           # returned in responses, ignored on create/update
+    author_token: fr.WriteOnly[str] = ""  # accepted on input, stripped from responses
+    view_count: fr.ReadOnly[int] = 0      # returned in responses, ignored on input
 ```
 
-- `ReadOnly` fields appear in responses but are ignored on create and update.
-- `WriteOnly` fields are accepted on create and update. They are removed only
-  when Restly serializes an object through `self.to_response_schema(obj)`, which
-  the generated CRUD and ReactAdmin routes use.
+- `ReadOnly` fields appear in responses but are ignored on create and update —
+  the server owns them.
+- `WriteOnly` fields are accepted on create and update but stripped from every
+  generated response.
 
 `id` on `IDSchema` is already `ReadOnly`, which is why it appears in responses without
 being part of the create/update body.
@@ -246,15 +268,77 @@ See [Testing](howto_testing.md) for the full setup and savepoint details.
 
 ## Nested Schemas
 
-Nested schemas are supported for **responses** and relation filtering. If a response schema
-includes nested related objects, Restly eagerly loads those relationships and serializes the
-nested payloads, including aliases.
+Response schemas may nest related objects (Restly eager-loads and serializes
+them); create/update payloads may not — inputs map to model attributes or use
+`*_id: IDRef[Model]`. Details:
+[Work with Foreign Keys Using IDRef](howto_relationship_idschema.md).
 
-Nested schemas are **not** supported for create/update payloads. `POST` and `PATCH` inputs must
-still map directly to model attributes or use the `*_id: IDRef[Model]` pattern for foreign
-keys. If you need a nested request shape, flatten it in the schema or override the `create` /
-`update` business verb and transform the payload yourself. See
-[Part 2: Customizing Views](tutorial_customizing.md) for how those verbs fit together.
+---
+
+## The complete file
+
+Everything this page built, as one runnable `main.py` (including the
+read-only/write-only columns added along the way):
+
+```python
+from contextlib import asynccontextmanager
+
+import fastapi_restly as fr
+from fastapi import FastAPI
+from sqlalchemy import ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column
+
+fr.configure(async_database_url="sqlite+aiosqlite:///blog.db")
+
+
+class Post(fr.IDBase):
+    title: Mapped[str]
+    content: Mapped[str]
+    published: Mapped[bool] = mapped_column(default=False)
+    author_token: Mapped[str] = mapped_column(default="")
+    view_count: Mapped[int] = mapped_column(default=0)
+
+
+class Comment(fr.IDBase):
+    content: Mapped[str]
+    post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
+
+
+class PostRead(fr.IDSchema):
+    title: str
+    content: str
+    published: bool
+    author_token: fr.WriteOnly[str] = ""
+    view_count: fr.ReadOnly[int] = 0
+
+
+class CommentRead(fr.IDSchema):
+    content: str
+    post_id: fr.IDRef[Post]
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    await fr.db.async_create_all(fr.IDBase)
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
+
+
+@fr.include_view(app)
+class PostView(fr.AsyncRestView):
+    prefix = "/posts"
+    model = Post
+    schema = PostRead
+
+
+@fr.include_view(app)
+class CommentView(fr.AsyncRestView):
+    prefix = "/comments"
+    model = Comment
+    schema = CommentRead
+```
 
 ---
 

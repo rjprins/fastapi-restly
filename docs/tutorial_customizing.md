@@ -107,6 +107,12 @@ The `delete` business verb removes the object. Override it to flip a flag instea
 ```python
 from datetime import datetime, timezone
 
+
+class PostView(fr.AsyncRestView):
+    prefix = "/posts"
+    model = Post
+    schema = PostRead
+
     async def delete(self, obj):
         obj.deleted_at = datetime.now(timezone.utc)
         await self.session.flush()
@@ -235,10 +241,11 @@ import fastapi
             raise fastapi.HTTPException(409, "Already published")
         async with self.write_action("publish", obj=post):
             post.published = True
-        return self.to_response_schema(post)
+        return self.to_response(post)
 ```
 
-`self.to_response_schema(post)` serializes through the view's response schema.
+`self.to_response(post)` serializes through the view's response schema, the
+same way the generated routes do.
 
 If a custom action is just a create or update under another URL, call `handle_create` / `handle_update`:
 
@@ -247,7 +254,7 @@ If a custom action is just a create or update under another URL, call `handle_cr
     async def repost(self, id: int, schema_obj: PostRead):
         original = await self.handle_get_one(id)
         # ... derive a new payload from `original` ...
-        return self.to_response_schema(await self.handle_create(schema_obj))
+        return self.to_response(await self.handle_create(schema_obj))
 ```
 
 `handle_create` runs authorization, your `create` override, and the commit bracket.
@@ -256,29 +263,9 @@ If a custom action is just a create or update under another URL, call `handle_cr
 
 ## Database conflict responses
 
-By default, Restly turns SQLAlchemy `IntegrityError` exceptions into `409 Conflict` responses. This covers common unique and foreign-key violations.
-
-If your app needs a different error envelope, register a handler specifically for `sqlalchemy.exc.IntegrityError` before calling `fr.configure(app=...)` or before registering views with `fr.include_view(app)`:
-
-```python
-from fastapi.responses import JSONResponse
-from sqlalchemy.exc import IntegrityError
-
-@app.exception_handler(IntegrityError)
-async def integrity_error_handler(request, exc):
-    return JSONResponse(
-        status_code=409,
-        content={"error": {"code": "constraint_conflict"}},
-    )
-```
-
-Restly respects that handler and does not replace it. You can also opt out of the default handler entirely:
-
-```python
-fr.configure(app=app, install_default_exception_handlers=False)
-```
-
-See [Default Exception Handling](api_reference.md#default-exception-handling) for the exact registration behavior.
+Restly turns SQLAlchemy `IntegrityError` exceptions into `409 Conflict`
+responses by default; custom envelopes and the opt-out are covered in
+[Default Exception Handling](api_reference.md#default-exception-handling).
 
 ---
 
@@ -465,7 +452,7 @@ class PostView(AuthoredBase):
             raise fastapi.HTTPException(409, "Already published")
         async with self.write_action("publish", obj=post):
             post.published = True
-        return self.to_response_schema(post)
+        return self.to_response(post)
 
 
 @fr.include_view(app)
