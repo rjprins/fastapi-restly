@@ -99,21 +99,11 @@ different write semantics for the two methods.
 
 ## Tip: serialize related lists as scalar id arrays with `IDRef`
 
-`ra-data-simple-rest` expects `to-many` relationship references in list/get
-responses to be plain id arrays, e.g. `"product_ids": [1, 2, 3]`, not
-`[{"id": 1}, ...]`. Use `fr.IDRef[Model]` for relationship list fields on
-your response schema:
-
-```python
-class OrderRead(fr.IDSchema[Order]):
-    customer_name: str
-    products: list[fr.IDRef[Product]]  # serializes as [1, 2, 3]
-```
-
-`IDRef` accepts both raw scalars and `{"id": ...}` shapes on input, so it
-doubles as a permissive write-side type for FK lists when paired with a custom
-`create` / `update` business verb that resolves them. For relationship objects
-that must stay nested on the wire, use `fr.IDSchema[Model]` instead.
+`ra-data-simple-rest` expects `to-many` references as plain id arrays
+(`"products": [1, 2, 3]`). Declare the field as `list[fr.IDRef[Product]]` —
+see [Lists of References](howto_relationship_idschema.md) for the full
+behavior. The [shop example](examples.md) runs this end to end, React Admin
+frontend included.
 
 ---
 

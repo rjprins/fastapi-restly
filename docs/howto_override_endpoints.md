@@ -465,45 +465,9 @@ bracket instead, deposit the new object on the yielded handle:
 
 ### Relationship references in custom routes
 
-Generated `POST` and `PATCH` routes validate the body before Restly calls `make_new_object()` or `update_object()`, so `IDRef[Model]` fields are already `IDRef` instances.
-
-In a custom route, be careful when you construct a schema yourself. Pydantic's `model_construct()` skips validation, so scalar ids stay plain integers unless you wrap them explicitly:
-
-```python
-from fastapi_restly.objects import async_make_new_object
-
-
-link_schema = TaskLabelRead.model_construct(
-    task_id=fr.IDRef[Task](id=request.task_id),
-    label_id=fr.IDRef[Label](id=label.id),
-)
-
-task_label = await async_make_new_object(
-    self.session,
-    TaskLabel,
-    link_schema,
-)
-```
-
-This keeps the resolver path active: Restly verifies referenced rows and writes the FK columns. It helps when validated construction would require response-only fields such as `id` or timestamps.
-
-If you instead use `IDSchema[Model]` as a nested relationship-object field in a custom response schema, serialize the ORM object through `self.to_response_schema(obj)` before returning it:
-
-```python
-class TaskLabelNestedRead(fr.IDSchema):
-    task: fr.IDSchema[Task]
-    label: fr.IDSchema[Label]
-
-
-@fr.post("/attach", response_model=TaskLabelNestedRead, status_code=201)
-async def attach(self, request: AttachRequest):
-    obj = await create_task_label(...)
-    return self.to_response_schema(obj)
-```
-
-The raw ORM object usually has scalar FK columns, while a nested schema expects relationship-shaped data. `IDRef` fields do not need this step because their wire format is already scalar.
-
-The SaaS example's `example-projects/saas/app/views/label.py` shows this in a `create_and_attach` route that creates a sibling row, flushes it to get an id, and then builds a second row with `IDRef` references.
+When a custom route constructs schemas itself (`model_construct()` skips
+validation), `IDRef` fields need explicit wrapping — the recipe lives in
+[Work with Foreign Keys Using IDRef](#idref-custom-routes).
 
 ---
 

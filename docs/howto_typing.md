@@ -59,15 +59,9 @@ class UserRead(fr.IDSchema[User]):
 For most top-level response schemas, either form is fine. The bare form is the
 recommended starting point.
 
-For foreign-key fields, use `IDRef[RelatedModel]`:
-
-```python
-class ArticleRead(fr.IDSchema):
-    title: str
-    author_id: fr.IDRef[User]
-```
-
-That tells Restly which model should be resolved from the scalar id payload.
+For foreign-key fields, use `IDRef[RelatedModel]` — it tells Restly (and the
+type checker) which model resolves from the scalar id payload. Runtime
+semantics: [Work with Foreign Keys Using IDRef](howto_relationship_idschema.md).
 
 ---
 
@@ -157,7 +151,7 @@ Use the simplest form that gives you the typing help you want:
 
 - **No generics at all** for normal CRUD views
 - **`IDRef[RelatedModel]`** for foreign-key fields
-- **`IDSchema[RelatedModel]`** only when you intentionally want a nested relationship object field
+- **`IDSchema[RelatedModel]` as a field annotation** only when you intentionally want a nested relationship-object field (parameterizing your top-level schema's *base class*, as in `class UserRead(IDSchema[User])`, is a separate, optional choice — either form is fine there)
 - **View generics** only when you want precise typing on the methods you override
 
 That keeps everyday usage clean while still allowing stricter typing for
@@ -222,7 +216,8 @@ with Pyright. The repository keeps a dedicated set of consumer typing fixtures u
 
 - Bare `IDSchema` is supported.
 - `IDRef[Model]` is preferred for foreign-key fields.
-- `IDSchema[Model]` is available for nested relationship-object fields.
+- `IDSchema[Model]` as a field annotation declares a nested relationship-object
+  field; as a top-level base it optionally carries the model type.
 - Bare `RestView` / `AsyncRestView` are the default.
 - Parameterized views are optional and mainly help when you override methods on
   the three tiers (business verbs, request handlers, stamping methods).

@@ -85,44 +85,6 @@ The FK field is filterable on the list endpoint by its own public name —
 substring operators are deliberately not offered. See
 [Query Modifiers → Foreign-key filtering](howto_query_modifiers.md#foreign-key-filtering).
 
-## Visibility and Multi-Tenancy
-
-Reference resolution is an **unscoped existence check**. Restly fetches the
-referenced row by primary key only (`session.get(Author, id)`). View
-`build_query` scoping is not applied, so tenant, soft-delete, and row-level
-visibility checks are your responsibility.
-
-The resolver only knows the referenced *model* from `IDRef[Model]`, not which
-view governs it. References are a **policy** concern.
-
-Gate in **`authorize`**, where `data` carries the *unresolved* reference, so
-`data.<field>.id` is the requested id (before the row is fetched). A list field
-is a list of references:
-
-```python
-@fr.include_view(app)
-class ArticleView(fr.AsyncRestView):
-    prefix = "/articles"
-    model = Article
-    schema = ArticleRead
-
-    async def authorize(self, action, obj=None, data=None):
-        if data is not None and data.author_id is not None:
-            if not await self.author_visible(data.author_id.id):
-                # 404 (not 403) so you don't leak that the id exists elsewhere.
-                raise fr.exc.NotFound("author not found")
-```
-
-The resolved ORM object is not available in `authorize`; resolution runs later
-in the business verb. If you need the resolved row, check in `before_commit`,
-where the built object carries it (for example `new.author.org_id`). Prefer
-`authorize` when the requested id is enough: it rejects before the unscoped
-fetch and is the standard policy seam.
-
-A future release may add an opt-in scoped-resolution hook; until then, references
-are gated in `authorize` / `before_commit` like any other write-path
-authorization.
-
 ## Naming Convention
 
 Automatic FK resolution needs the schema field name to end in `_id`:
@@ -139,6 +101,69 @@ If the SQLAlchemy model also has a relationship with the same name minus
 | `author_id` | `Article.author_id` | `Article.author` |
 
 If the relationship attribute is absent, Restly still sets the FK column.
+
+## Lists of References
+
+A to-many reference serializes as a plain id array with `list[fr.IDRef[Model]]`:
+
+```python
+class OrderRead(fr.IDSchema):
+    customer_name: str
+    products: list[fr.IDRef[Product]]  # serializes as [1, 2, 3]
+```
+
+On input, each element accepts both raw scalars and `{"id": ...}` shapes, so
+the same field doubles as a permissive write-side type when paired with a
+custom `create` / `update` business verb that resolves the list. For
+relationship objects that must stay nested on the wire, use
+`fr.IDSchema[Model]` (below).
+
+## Input Compatibility
+
+`IDRef` accepts both scalar ids and `{"id": ...}` dictionaries on input:
+
+```json
+{ "author_id": 1 }
+```
+
+```json
+{ "author_id": {"id": 1} }
+```
+
+The response shape stays scalar. This is useful when clients or migration code
+already send the dictionary form, but the public API contract should remain an
+identifier field.
+
+## About IDSchema
+
+Most examples inherit from `fr.IDSchema` — `BaseSchema` plus a read-only `id`
+field. The schema bases, `ReadOnly` / `WriteOnly` markers, and aliases are
+owned by [Custom Schemas and Field Types](howto_custom_schema.md); inherit
+from `fr.BaseSchema` instead if you want every field, including `id`,
+explicit.
+
+## Nested Relationship Objects
+
+Some clients model relationships as objects. For that shape, annotate the
+relationship field with `fr.IDSchema[Model]`:
+
+```python
+class ArticleRead(fr.IDSchema):
+    title: str
+    author: fr.IDSchema[Author]
+```
+
+The wire format is:
+
+```json
+{
+  "title": "Intro",
+  "author": {"id": 1}
+}
+```
+
+`IDRef` and `IDSchema[Model]` both validate the referenced row and use the same
+resolver. The difference is the API shape.
 
 ## Dataclass Relationship Setup
 
@@ -203,72 +228,90 @@ class Article(Base):
     author: Mapped["Author"] = relationship()
 ```
 
-## Input Compatibility
+There is no generated `__init__` contract to satisfy: Restly constructs the
+object and applies the resolved reference to the FK column (and the matching
+relationship attribute, when one is declared) directly.
 
-`IDRef` accepts both scalar ids and `{"id": ...}` dictionaries on input:
+(idref-custom-routes)=
 
-```json
-{ "author_id": 1 }
-```
+## IDRef in Custom Routes
 
-```json
-{ "author_id": {"id": 1} }
-```
+Generated `POST` and `PATCH` routes validate the body before Restly calls `make_new_object()` or `update_object()`, so `IDRef[Model]` fields are already `IDRef` instances.
 
-The response shape stays scalar. This is useful when clients or migration code
-already send the dictionary form, but the public API contract should remain an
-identifier field.
-
-## About IDSchema
-
-Most examples inherit from `fr.IDSchema`:
+In a custom route, be careful when you construct a schema yourself. Pydantic's `model_construct()` skips validation, so scalar ids stay plain integers unless you wrap them explicitly:
 
 ```python
-class ArticleRead(fr.IDSchema):
-    title: str
-    author_id: fr.IDRef[Author]
+from fastapi_restly.objects import async_make_new_object
+
+
+link_schema = TaskLabelRead.model_construct(
+    task_id=fr.IDRef[Task](id=request.task_id),
+    label_id=fr.IDRef[Label](id=label.id),
+)
+
+task_label = await async_make_new_object(
+    self.session,
+    TaskLabel,
+    link_schema,
+)
 ```
 
-As a base class, `IDSchema` is essentially `BaseSchema` with a read-only `id`
-field:
+This keeps the resolver path active: Restly verifies referenced rows and writes the FK columns. It helps when validated construction would require response-only fields such as `id` or timestamps.
+
+If you instead use `IDSchema[Model]` as a nested relationship-object field in a custom response schema, serialize the ORM object through `self.to_response_schema(obj)` before returning it:
 
 ```python
-class IDSchema(fr.BaseSchema):
-    id: fr.ReadOnly[Any]
+class TaskLabelNestedRead(fr.IDSchema):
+    task: fr.IDSchema[Task]
+    label: fr.IDSchema[Label]
+
+
+@fr.post("/attach", response_model=TaskLabelNestedRead, status_code=201)
+async def attach(self, request: AttachRequest):
+    obj = await create_task_label(...)
+    return self.to_response_schema(obj)
 ```
 
-You can inherit from `fr.BaseSchema` instead if you want every field, including
-`id`, to be explicit in the schema definition:
+The raw ORM object usually has scalar FK columns, while a nested schema expects relationship-shaped data. `IDRef` fields do not need this step because their wire format is already scalar.
+
+The SaaS example's `example-projects/saas/app/views/label.py` shows this in a `create_and_attach` route that creates a sibling row, flushes it to get an id, and then builds a second row with `IDRef` references.
+
+## Visibility and Multi-Tenancy
+
+Reference resolution is an **unscoped existence check**. Restly fetches the
+referenced row by primary key only (`session.get(Author, id)`). View
+`build_query` scoping is not applied, so tenant, soft-delete, and row-level
+visibility checks are your responsibility.
+
+The resolver only knows the referenced *model* from `IDRef[Model]`, not which
+view governs it. References are a **policy** concern.
+
+Gate in **`authorize`**, where `data` carries the *unresolved* reference, so
+`data.<field>.id` is the requested id (before the row is fetched). A list field
+is a list of references:
 
 ```python
-class ArticleRead(fr.BaseSchema):
-    id: fr.ReadOnly[int]
-    title: str
-    author_id: fr.IDRef[Author]
+@fr.include_view(app)
+class ArticleView(fr.AsyncRestView):
+    prefix = "/articles"
+    model = Article
+    schema = ArticleRead
+
+    async def authorize(self, action, obj=None, data=None):
+        if data is not None and data.author_id is not None:
+            if not await self.author_visible(data.author_id.id):
+                # 404 (not 403) so you don't leak that the id exists elsewhere.
+                raise fr.exc.NotFound("author not found")
 ```
 
-## Nested Relationship Objects
+The resolved ORM object is not available in `authorize`; resolution runs later
+in the business verb. If you need the resolved row, check in `before_commit`,
+where the built object carries it (for example `new.author.org_id`). Prefer
+`authorize` when the requested id is enough: it rejects before the unscoped
+fetch and is the standard policy seam.
 
-Some clients model relationships as objects. For that shape, annotate the
-relationship field with `fr.IDSchema[Model]`:
-
-```python
-class ArticleRead(fr.IDSchema):
-    title: str
-    author: fr.IDSchema[Author]
-```
-
-The wire format is:
-
-```json
-{
-  "title": "Intro",
-  "author": {"id": 1}
-}
-```
-
-`IDRef` and `IDSchema[Model]` both validate the referenced row and use the same
-resolver. The difference is the API shape.
+References are gated in `authorize` / `before_commit` like any other
+write-path authorization.
 
 ## Behavior Summary
 
