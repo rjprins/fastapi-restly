@@ -50,24 +50,15 @@ should have to guess.
 
 ## How Restly compares
 
-The closest neighbor is [FastCRUD](https://github.com/benavlabs/fastcrud),
-which generates CRUD endpoints through an endpoint factory (`crud_router`)
-backed by a `FastCRUD` service class of async CRUD methods. It is good at what
-it targets — fast joins, offset and cursor pagination, minimal setup. The
-architectural difference is what happens when an endpoint needs to deviate:
-with an endpoint factory you bypass it and hand-write the route against the
-service class; with Restly's class-based views you subclass and override one
-tier of the existing route (the business verb, the request handler, or the
-route shell) while the framework keeps owning routing, authorization hooks,
-and the commit. Restly also takes positions FastCRUD leaves to you: a
-request-scoped session and commit bracket, `authorize` / `before_commit` /
-`after_commit` hooks, schema-derived list filtering with strict 422 validation,
-and savepoint-isolated test fixtures. If your service is CRUD plus joins and
-you prefer wiring the rest yourself, FastCRUD is a fine choice; if your
-endpoints accumulate domain behavior over time, that is the case Restly is
-built for. (FastAPI's own
-[Alternatives page](https://fastapi.tiangolo.com/alternatives/) is the genre
-model for this kind of comparison.)
+The closest neighbor is [FastCRUD](https://github.com/benavlabs/fastcrud):
+an endpoint factory plus a service class of CRUD methods, good at what it
+targets, with strong join and pagination support. The structural difference
+shows up when an endpoint needs to deviate: with a factory you bypass it and
+hand-write the route; with Restly you subclass and override one tier, while
+the framework keeps owning routing, authorization hooks, and the commit. If
+your service is CRUD plus joins and you prefer wiring the rest yourself,
+FastCRUD is a fine choice; if your endpoints accumulate domain behavior over
+time, that is what Restly is built for.
 
 ## Honest about where we are
 
