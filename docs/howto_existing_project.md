@@ -84,6 +84,58 @@ path operations.
 Your models, schemas, dependencies, and session wiring can stay in ordinary app
 modules.
 
+## Replace an Existing Hand-Written Router
+
+Going the other direction — retiring a hand-written CRUD router in favor of a
+generated view — is a mapping exercise:
+
+1. **Map your routes to the generated table.** `GET /` + `POST /` +
+   `GET/PATCH/DELETE /{id}` are covered ([the exact
+   contract](api_reference.md#generated-rest-endpoints)). Anything else on the
+   router (exports, actions) stays as custom routes on the view or as plain
+   FastAPI routes beside it.
+2. **Keep custom semantics out of the swap.** A route whose contract differs
+   (e.g. `PUT` updates, a non-204 delete) can be excluded via
+   `exclude_routes` and kept hand-written until you adapt it.
+3. **Pin the wire contract with tests first.** Write
+   [`RestlyTestClient`](howto_testing.md) tests against the *old* router's
+   responses, then swap in the view and run them unchanged — payload or
+   status drift shows up immediately.
+
+```python
+class ProductView(fr.AsyncRestView):
+    prefix = "/products"
+    model = Product
+    schema = ProductRead          # match your old response shape exactly
+    exclude_routes = (fr.ViewRoute.DELETE,)  # old DELETE returns the object
+
+
+fr.include_view(api, ProductView)
+api.include_router(legacy_delete_router)  # until the contract is adapted
+```
+
+## Reuse Your Existing Engine
+
+The common integration: your app already builds an engine (or sessionmaker)
+with the pool settings and URL handling you trust. Hand exactly that object to
+`fr.configure()` — Restly does not need to own it:
+
+```python
+import fastapi_restly as fr
+
+# the engine your app already creates somewhere central
+fr.configure(async_engine=existing_async_engine)
+
+# sync apps: fr.configure(engine=existing_engine)
+# or hand over a sessionmaker instead:
+#   fr.configure(async_make_session=ExistingAsyncSession)
+```
+
+Restly builds its session factory on top and owns the commit on its views;
+nothing about the engine changes hands. Reach for a session *generator* (next
+section) only when sessions must be constructed in a custom way — scoped
+sessions, multi-tenant routing, instrumentation.
+
 ## Provide Your Own Session Generator
 
 If your project already manages its own database sessions, configure
@@ -182,7 +234,13 @@ import fastapi_restly as fr
 
 async with fr.open_async_session() as session:
     result = await session.execute(...)
+
+# sync counterpart:
+with fr.open_session() as session:
+    result = session.execute(...)
 ```
+
+Off-request code owns its commit — these helpers do not commit for you.
 
 ## Use Your Own DeclarativeBase Models
 
@@ -213,3 +271,12 @@ class WorldView(fr.AsyncRestView):
 FastAPI-Restly supports these models for generated CRUD routes and
 auto-generated schemas. When creating tables, use your own base metadata
 (for example `AppBase.metadata.create_all(...)`).
+
+## See also
+
+- [Test APIs with RestlyTestClient and Fixtures](howto_testing.md) — pin the
+  wire contract while migrating; savepoint-isolated tests against your DB.
+- [Deploying](deploying.md) — engine configuration from environment values,
+  Alembic, and a production `main.py`.
+- [Patterns](patterns.md) — the idiomatic answers for nested resources,
+  webhooks, and other shapes your existing app probably has.

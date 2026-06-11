@@ -313,6 +313,8 @@ fr.configure(async_engine=existing_engine)
 
 Restly has one public process-wide configuration. For per-view databases, read
 replicas, or custom sessions, use a normal FastAPI dependency on that view.
+One rule to know up front: **Restly owns the commit on its views** — custom
+session generators construct and clean up, but never commit.
 For wiring Restly into an existing app's engine, sessions, and models, see
 [Existing Project Integration](https://www.fastapi-restly.org/howto_existing_project.html).
 
