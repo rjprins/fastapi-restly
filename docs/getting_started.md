@@ -66,11 +66,9 @@ A few things to note:
   an explicit `__tablename__`, and an explicit primary-key column.
 - If you prefer dataclass-oriented SQLAlchemy models, FastAPI-Restly also provides
   `fr.DataclassBase` and `fr.IDBase` convenience bases.
-- `RestView` and `AsyncRestView` expect the resource identity to be a single
-  primary-key column, exposed through the generated `/{id}` routes. Composite
-  primary keys are not supported by the default CRUD view contract; for legacy
-  tables with composite keys, subclass `fr.View` directly and define routes
-  that match your API shape.
+- `RestView` and `AsyncRestView` expect a single primary-key column; for
+  composite-key tables, see
+  [the view hierarchy](class_based_views.md#the-view-hierarchy).
 - With no manual schema, FastAPI-Restly auto-generates `UserRead`, `UserCreate`,
   and `UserUpdate` from your model.
 - The lifespan hook creates tables with the configured async engine. Use Alembic migrations in production.
@@ -88,7 +86,7 @@ Default to `AsyncRestView` for new services. Use sync `RestView` for sync-only l
 ## 3. Run
 
 ```bash
-uv run fastapi dev main.py
+fastapi dev main.py
 ```
 
 > **Note:** `fastapi-restly[standard]` includes the extras needed by `fastapi dev`. The dev server is not for production.
@@ -155,7 +153,12 @@ For test isolation (rolling back test data between tests), see the [Testing](how
 
 ## Next Steps
 
-- [API Reference](api_reference.md)
+- [Tutorial](tutorial.md) — build a complete multi-model API, step by step.
+- [Class-Based Views](class_based_views.md) — what makes the views subclassable,
+  and when to use `View`, `RestView`, or a plain FastAPI route.
+- Already have a FastAPI app? See
+  [Existing Project Integration](howto_existing_project.md) — Restly adopts
+  per resource, beside your current routes.
 - [How-To: Filter, Sort, and Paginate Lists](howto_query_modifiers.md)
-- [Tutorial](tutorial.md)
 - [Deploying](deploying.md) — production engine config, Alembic, and a `main.py` template.
+- [API Reference](api_reference.md)

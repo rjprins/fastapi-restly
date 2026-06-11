@@ -38,6 +38,15 @@ Override handlers, low-level object helpers, custom routes, and shared base clas
 ::::{grid} 1 2 2 2
 :gutter: 3
 
+:::{grid-item-card} Auth, Actions, and Other Non-CRUD Endpoints
+:link: class_based_views
+:link-type: doc
+
+Login/logout flows, vote and state-transition actions, webhook receivers, and
+RPC-style endpoints: use `fr.View` directly, or add custom routes to a
+`RestView`. See "When to use `View` directly".
+:::
+
 :::{grid-item-card} Custom Schemas and Aliases
 :link: howto_custom_schema
 :link-type: doc

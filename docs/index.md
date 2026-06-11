@@ -6,32 +6,96 @@
 [![Coverage](https://rjprins.github.io/fastapi-restly/coverage/badge.svg)](https://rjprins.github.io/fastapi-restly/coverage/)
 
 :::{image} _static/restly-cat.png
-:width: 320px
+:width: 160px
 :align: center
 :::
 
-FastAPI-Restly (`fr`) is a REST framework for FastAPI, backed by SQLAlchemy 2.0 and Pydantic v2.
+FastAPI-Restly (`fr`) is a REST framework for FastAPI, backed by SQLAlchemy 2.0
+and Pydantic v2. Views are real Python classes: share behavior with inheritance
+and mixins, and override the one operation you need.
 
-Views are real Python classes. Share behavior with inheritance and mixins;
-override the one operation you need. See [Class-Based Views](class_based_views.md).
-
-> **Status:** `0.6.1` — public beta release.
->
-> Restly is public after four years of internal use. The API is settling on the
-> way to `1.0.0`; expect small breaking changes in deeper extension points.
-> Feedback is welcome.
+> **Status:** {{ release }} — public beta, after
+> [four years of internal use](about.md). Expect small breaking changes in
+> deeper extension points on the way to `1.0.0`; see the
+> [changelog](https://github.com/rjprins/fastapi-restly/blob/main/CHANGELOG.md).
 
 ## Quick Start
 
-The maintained copy-paste Quick Start lives in [Getting Started](getting_started.md).
-It covers setup, dev tables, async vs sync views, schemas, and generated endpoints.
+```bash
+pip install "fastapi-restly[standard]" aiosqlite
+```
 
-Use auto-schema for speed. Use explicit schemas for public contracts, validation, aliases, and serialization control.
+A SQLAlchemy model and a four-line view class — complete and runnable:
+
+```python
+from contextlib import asynccontextmanager
+
+import fastapi_restly as fr
+from fastapi import FastAPI
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+fr.configure(async_database_url="sqlite+aiosqlite:///app.db")
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+class User(Base):
+    __tablename__ = "user"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str]
+    email: Mapped[str]
+    active: Mapped[bool] = mapped_column(default=True)
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    await fr.db.async_create_all(Base)  # dev tables; use Alembic in production
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
+
+
+@fr.include_view(app)
+class UserView(fr.AsyncRestView):
+    prefix = "/users"
+    model = User
+```
+
+That view exposes these routes, with schemas generated from the model:
+
+```text
+GET    /users/       # list users — filter, sort, paginate via URL params
+POST   /users/       # create a user
+GET    /users/{id}   # read one user
+PATCH  /users/{id}   # partially update one user
+DELETE /users/{id}   # delete one user
+```
+
+Because the view is a class, changing one behavior means overriding one
+method — routing, validation, and the commit stay framework-owned. Add to
+`UserView`:
+
+```python
+    async def delete(self, obj):
+        obj.active = False  # deactivate instead of removing the row
+```
+
+`DELETE /users/{id}` now soft-disables (the row stays readable, with
+`active: false`); the other four routes are untouched.
+
+Run it with `fastapi dev main.py`. [Getting Started](getting_started.md) walks
+through the same flow step by step — install details, explicit schemas, and a
+first test.
 
 ## Features
 
 - **[Generated REST endpoints](api_reference.md#generated-rest-endpoints)** — GET, POST, PATCH, DELETE with minimal boilerplate
 - **[True class-based views](class_based_views.md)** — inheritance, mixins, and method overrides
+- **[Explicit override points](the_handle_design.md)** — every CRUD verb split into route shell, request handler, and business method
 - **[React Admin ready](howto_react_admin.md)** — `AsyncReactAdminView` speaks `ra-data-simple-rest`
 - **[SQLAlchemy 2.0 support](getting_started.md)** — async-first with modern patterns
 - **[Pydantic v2 integration](howto_custom_schema.md)** — validation and serialization for public contracts
@@ -59,6 +123,13 @@ Fast path from zero to a working REST API.
 How subclassable views make the override model work.
 :::
 
+:::{grid-item-card} The Handle Design
+:link: the_handle_design
+:link-type: doc
+
+The three tiers behind every CRUD verb, and which one to override.
+:::
+
 :::{grid-item-card} User Guide
 :link: user_guide
 :link-type: doc
@@ -66,11 +137,11 @@ How subclassable views make the override model work.
 Tutorials and topic guides.
 :::
 
-:::{grid-item-card} API Reference
-:link: api_reference
+:::{grid-item-card} Deploying
+:link: deploying
 :link-type: doc
 
-Generated endpoints, all public symbols, query parameters, and autodoc.
+Production engine config, Alembic migrations, and an ASGI checklist.
 :::
 
 :::{grid-item-card} Examples
@@ -80,6 +151,13 @@ Generated endpoints, all public symbols, query parameters, and autodoc.
 Complete sample applications from a tiny API to a production-shaped service.
 :::
 
+:::{grid-item-card} API Reference
+:link: api_reference
+:link-type: doc
+
+Generated endpoints, all public symbols, query parameters, and autodoc.
+:::
+
 :::{grid-item-card} About
 :link: about
 :link-type: doc
@@ -87,27 +165,6 @@ Complete sample applications from a tiny API to a production-shaped service.
 History, design goals, and why this framework exists.
 :::
 ::::
-
-## Installation
-
-```bash
-pip install "fastapi-restly[standard]" aiosqlite
-```
-
-The `standard` extra mirrors `fastapi[standard]` (the `fastapi dev` server
-toolchain). Restly is database-driver-agnostic, so install the async driver for
-your database alongside it — `aiosqlite` for SQLite (used in the examples),
-`asyncpg`/`psycopg` for PostgreSQL. Test tooling lives in a separate extra:
-`pip install "fastapi-restly[testing]"`.
-
-## Development
-
-```bash
-git clone https://github.com/rjprins/fastapi-restly.git
-cd fastapi-restly
-uv sync
-uv run pytest
-```
 
 ```{toctree}
 :maxdepth: 2

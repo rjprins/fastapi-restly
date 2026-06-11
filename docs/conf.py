@@ -5,6 +5,7 @@
 
 import os
 import sys
+from importlib.metadata import version as _package_version
 from pathlib import Path
 from xml.etree import ElementTree
 
@@ -14,8 +15,8 @@ from xml.etree import ElementTree
 project = "FastAPI-Restly"
 copyright = "2025, Rutger Prins"
 author = "Rutger Prins"
-release = ""
-version = ""
+release = _package_version("fastapi-restly")
+version = ".".join(release.split(".")[:2])
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -31,7 +32,9 @@ extensions = [
     "sphinx_design",
 ]
 myst_heading_anchors = 3
-myst_enable_extensions = ["colon_fence"]
+myst_enable_extensions = ["colon_fence", "substitution"]
+# Backticks baked in: substitutions don't fire inside literal spans.
+myst_substitutions = {"release": f"`{release}`"}
 
 sys.path.insert(0, os.path.abspath(".."))
 autosummary_generate = True

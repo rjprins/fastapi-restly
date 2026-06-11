@@ -167,9 +167,11 @@ View                   ← class-based view primitive (no CRUD)
   `AsyncRestView`; `BaseRestView` is an abstract scaffold with no endpoints of
   its own.
 - `RestView` and `AsyncRestView` provide the concrete sync and async
-  implementations of the CRUD endpoints. They assume a single scalar resource
-  id for the generated `/{id}` routes. **One of these is what you usually
-  subclass.**
+  implementations of the CRUD endpoints. **One of these is what you usually
+  subclass.** They assume a single scalar resource id for the generated
+  `/{id}` routes; composite primary keys are not supported by the default
+  CRUD view contract. For legacy tables with composite keys, subclass `View`
+  directly and define routes that match your API shape.
 
 The public method surface is classified in the
 [API reference](api_reference.md#view-method-surface). Each CRUD verb is split
