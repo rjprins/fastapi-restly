@@ -227,3 +227,12 @@ with Pyright. The repository keeps a dedicated set of consumer typing fixtures u
 - Parameterized views are optional and mainly help when you override methods on
   the three tiers (business verbs, request handlers, stamping methods).
 - Custom route methods work well with ordinary Python annotations.
+
+## See also
+
+- [View Method Surface](api_reference.md#view-method-surface) — the typed
+  methods this page parameterizes, with tier classification.
+- [Override CRUD Behavior](howto_override_endpoints.md) — the override
+  recipes these signatures apply to.
+- [Work with Foreign Keys Using IDRef](howto_relationship_idschema.md) —
+  runtime semantics of `IDRef` / `IDSchema[Model]` fields.

@@ -218,7 +218,7 @@ On `AsyncRestView` every method below is `async`; the signatures are otherwise i
 
 Internal methods prefixed with `_`, such as `_reject_unknown_query_params`, are implementation details even though they are visible on instances.
 
-See [Class-Based Views](class_based_views.md#the-view-hierarchy) for the class hierarchy and [Override Endpoints](howto_override_endpoints.md) for examples of choosing which tier to override.
+See [Class-Based Views](class_based_views.md#the-view-hierarchy) for the class hierarchy, [Override Endpoints](howto_override_endpoints.md) for examples of choosing which tier to override, and [Use Type Annotations](howto_typing.md) for the typed signatures of these methods.
 
 `fr.View` class attributes:
 

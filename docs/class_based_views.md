@@ -356,6 +356,9 @@ co-located. Don't reach for them just for the sake of structure.
 
 ## Cross-references
 
+- [How Overrides Work: The Three Tiers](the_handle_design.md) — the tier
+  model behind every CRUD verb, both request lifecycles, and the override
+  decision table.
 - [Override Endpoints](howto_override_endpoints.md) — every tier on
   `AsyncRestView` / `RestView`, with call-chain diagrams.
 - [Share Behaviour with Base Views](howto_inheritance.md) — patterns for

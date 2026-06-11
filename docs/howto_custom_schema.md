@@ -186,3 +186,11 @@ class UserView(fr.AsyncRestView):
     model = User
     schema = UserRead
 ```
+
+## See also
+
+- [Auto-generated schemas](technical_details.md#auto-generated-schemas) — how
+  the derived schemas are built when you don't declare one.
+- [Patterns: a different schema for the list
+  endpoint](patterns.md#a-different-schema-for-the-list-endpoint) — when the
+  list and detail routes need different shapes.

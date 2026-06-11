@@ -35,7 +35,7 @@ method overrides to share behavior across resources.
 
 - **Class-based views**: group endpoints on Python classes with inheritance and method overrides.
 - **REST endpoints in minutes**: use `View` for custom resources, or `AsyncRestView` / `RestView` for generated CRUD.
-- **Incremental adoption**: use Restly per resource; drop to ordinary FastAPI when needed.
+- **Incremental adoption**: use Restly per resource; drop to ordinary FastAPI when needed — see [Existing Project Integration](https://www.fastapi-restly.org/howto_existing_project.html).
 - **Class-level dependencies**: declare shared dependencies once and read their values from `self`.
 - **Explicit override points**: change the route shell, request handler, or business verb.
 - **Filtering, pagination, sorting**: get schema-derived list parameters.

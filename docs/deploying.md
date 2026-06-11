@@ -135,3 +135,10 @@ uvicorn myapp.main:app --host 0.0.0.0 --port 8000 --workers 4
 Sync `RestView` endpoints run on FastAPI's threadpool, so worker count
 still has the usual effect; async `AsyncRestView` endpoints share the
 event loop within a worker. Don't use `--reload` in production.
+
+## See also
+
+- [Use Restly in an Existing Project](howto_existing_project.md) — wiring
+  Restly into an app that already has an engine, sessions, and models.
+- [Examples](examples.md) — the production-shaped SaaS example to compare
+  against.

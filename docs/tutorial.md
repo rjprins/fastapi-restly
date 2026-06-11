@@ -265,6 +265,7 @@ keys. If you need a nested request shape, flatten it in the schema or override t
 - [Filter, Sort, and Paginate Lists](howto_query_modifiers.md) — full filter and sort reference
 - [Work with Foreign Keys Using IDRef](howto_relationship_idschema.md) — reference related rows by id
 - [Testing](howto_testing.md) — savepoint isolation and test fixtures
+- [Examples](examples.md) — complete sample apps that extend these patterns
 - [API Reference](api_reference.md)
 
 ```{toctree}

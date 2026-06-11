@@ -285,3 +285,11 @@ resolver. The difference is the API shape.
 - If both `author_id` and `author` are explicitly provided, they must refer to
   the same row or the request returns `422`.
 - `IDSchema` as a base class adds the resource's own read-only `id` field.
+
+## See also
+
+- [Tutorial](tutorial.md) — `IDRef` in the blog build, in context.
+- [Custom Schemas and Field Types](howto_custom_schema.md) — the schema bases
+  and field markers `IDRef` composes with.
+- [API Reference](api_reference.md) — `IDRef` / `IDSchema` signatures and the
+  full symbol tables.

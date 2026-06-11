@@ -277,3 +277,10 @@ SQL-level base query changes in `build_query()` so listing, pagination totals,
 and single-row fetches all see the same visibility rules. If a list endpoint
 needs a completely different query shape, override `get_many()` and construct
 that query explicitly inside the method.
+
+## See also
+
+- [List-parameters lifecycle](technical_details.md#list-parameters-lifecycle)
+  — how the filter grammar is generated and frozen at registration time.
+- [Patterns: nested resources](patterns.md#nested-resources-projects-id-tasks)
+  — foreign-key filtering as the sub-resource idiom.
