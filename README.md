@@ -88,6 +88,37 @@ DELETE /users/{id}   # delete one user
 
 Restly generates the Pydantic schemas automatically.
 
+### Not just CRUD
+
+`View` is the same class-based machinery without the generated routes — use it
+to group related non-CRUD endpoints (auth flows, webhook receivers, actions):
+
+```python
+@fr.include_view(app)
+class AuthView(fr.View):
+    prefix = "/auth"
+    tags = ["auth"]
+    session: fr.AsyncSessionDep
+
+    @fr.post("/login")
+    async def login(self, credentials: LoginRequest) -> Token: ...
+
+    @fr.post("/logout")
+    async def logout(self) -> None: ...
+```
+
+The rule of thumb: a plain FastAPI route for a one-off endpoint, `View` for a
+group of related custom endpoints, `AsyncRestView` / `RestView` for a CRUD
+resource, and `RestView` plus custom `@fr.post` methods for CRUD with actions.
+
+Why a `View` over a bare `APIRouter`?
+
+- Shared dependencies are typed attributes you read from `self` (`self.session`, `self.current_user`).
+- Prefix, tags, responses, and dependencies are declared once on the class.
+- Views compose: inheritance and mixins share behavior across endpoint groups.
+- One registration call (`fr.include_view`) per class, bindable to any app or router.
+- And when a group grows into a resource, `RestView` adds generated CRUD and lifecycle hooks on the same class shape.
+
 ## Installation
 
 The install command at the top is the whole story: the `standard` extra brings

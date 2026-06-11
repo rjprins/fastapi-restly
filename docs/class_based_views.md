@@ -4,6 +4,19 @@ Class-based views are the core of FastAPI-Restly. They make REST scaffolding
 subclassable, keep shared behavior in one place, and let you override one method
 without rewriting the route.
 
+## When to use what
+
+`View` is a general route-organization layer, not just scaffolding for CRUD:
+
+| You're building | Reach for |
+|---|---|
+| One simple standalone endpoint | A plain FastAPI route — no Restly needed |
+| A group of related non-CRUD endpoints — login/auth flows, webhook receivers, RPC-style actions, composite-key resources | [`fr.View`](#when-to-use-view-directly) |
+| A database-backed CRUD resource | `fr.AsyncRestView` / `fr.RestView` |
+| CRUD **plus** custom actions — publish, vote, bulk operations | `RestView` with extra `@fr.get` / `@fr.post` methods ([custom actions](the_handle_design.md#worked-example-a-custom-action-route)) |
+
+The rest of this page explains the machinery behind all four rows.
+
 ## What is a class-based view?
 
 In plain FastAPI, an endpoint is a function:
