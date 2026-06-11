@@ -3,7 +3,7 @@
 [![CI](https://github.com/rjprins/fastapi-restly/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/rjprins/fastapi-restly/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue)](https://github.com/rjprins/fastapi-restly/blob/main/pyproject.toml)
 [![License](https://img.shields.io/github/license/rjprins/fastapi-restly)](https://github.com/rjprins/fastapi-restly/blob/main/LICENSE)
-[![Coverage](https://rjprins.github.io/fastapi-restly/coverage/badge.svg)](https://rjprins.github.io/fastapi-restly/coverage/)
+[![Coverage](https://www.fastapi-restly.org/coverage/badge.svg)](https://www.fastapi-restly.org/coverage/)
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/rjprins/fastapi-restly/main/docs/_static/restly-cat-white-bg.png" alt="FastAPI-Restly logo" width="200">
@@ -21,7 +21,7 @@
 pip install "fastapi-restly[standard]" aiosqlite
 ```
 
-**Docs:** <https://rjprins.github.io/fastapi-restly/> ·
+**Docs:** <https://www.fastapi-restly.org/> ·
 **[Changelog](https://github.com/rjprins/fastapi-restly/blob/main/CHANGELOG.md)** ·
 **[Contributing](https://github.com/rjprins/fastapi-restly/blob/main/CONTRIBUTING.md)** ·
 **[Security](https://github.com/rjprins/fastapi-restly/blob/main/SECURITY.md)** ·
@@ -47,7 +47,7 @@ method overrides to share behavior across resources.
 
 FastAPI-Restly turns a SQLAlchemy model into a class-based CRUD resource.
 (To make it fully runnable, add dev table creation — see
-[Getting Started](https://rjprins.github.io/fastapi-restly/getting_started.html).)
+[Getting Started](https://www.fastapi-restly.org/getting_started.html).)
 
 ```python
 import fastapi_restly as fr
@@ -91,7 +91,7 @@ The install command at the top is the whole story: the `standard` extra brings
 the `fastapi dev` toolchain, and `aiosqlite` is the async SQLite driver used in
 the examples (Restly is driver-agnostic — use `asyncpg`/`psycopg` for
 PostgreSQL). Details, including the `[testing]` extra, are in
-[Getting Started](https://rjprins.github.io/fastapi-restly/getting_started.html).
+[Getting Started](https://www.fastapi-restly.org/getting_started.html).
 
 ## Main features
 
@@ -170,7 +170,7 @@ class UserView(fr.AsyncRestView):
     max_page_size = 200
 ```
 
-See [How-To: Filter, Sort, and Paginate Lists](https://rjprins.github.io/fastapi-restly/howto_query_modifiers.html) for the full operator surface, alias rules, and pagination guidance.
+See [How-To: Filter, Sort, and Paginate Lists](https://www.fastapi-restly.org/howto_query_modifiers.html) for the full operator surface, alias rules, and pagination guidance.
 
 ### Read-only and write-only fields
 
@@ -242,7 +242,7 @@ class ProductView(fr.AsyncReactAdminView):
 
 The view speaks the `ra-data-simple-rest` wire contract.
 
-See [React Admin Integration](https://rjprins.github.io/fastapi-restly/howto_react_admin.html) in the docs for CORS setup and customization.
+See [React Admin Integration](https://www.fastapi-restly.org/howto_react_admin.html) in the docs for CORS setup and customization.
 
 ### Excluding built-in routes
 
@@ -314,15 +314,15 @@ fr.configure(async_engine=existing_engine)
 Restly has one public process-wide configuration. For per-view databases, read
 replicas, or custom sessions, use a normal FastAPI dependency on that view.
 For wiring Restly into an existing app's engine, sessions, and models, see
-[Existing Project Integration](https://rjprins.github.io/fastapi-restly/howto_existing_project.html).
+[Existing Project Integration](https://www.fastapi-restly.org/howto_existing_project.html).
 
 ## Documentation
 
-- **[Getting Started](https://rjprins.github.io/fastapi-restly/getting_started.html)** — fast path from zero to a working API
-- **[Class-Based Views](https://rjprins.github.io/fastapi-restly/class_based_views.html)** — what "real class-based views" means, and when to use `View` vs `RestView`
-- **[The Handle Design](https://rjprins.github.io/fastapi-restly/the_handle_design.html)** — the three tiers behind every CRUD verb, and which one to override
-- **[User Guide](https://rjprins.github.io/fastapi-restly/user_guide.html)** — tutorial walkthroughs and topic guides
-- **[API Reference](https://rjprins.github.io/fastapi-restly/api_reference.html)** — complete API docs
+- **[Getting Started](https://www.fastapi-restly.org/getting_started.html)** — fast path from zero to a working API
+- **[Class-Based Views](https://www.fastapi-restly.org/class_based_views.html)** — what "real class-based views" means, and when to use `View` vs `RestView`
+- **[The Handle Design](https://www.fastapi-restly.org/the_handle_design.html)** — the three tiers behind every CRUD verb, and which one to override
+- **[User Guide](https://www.fastapi-restly.org/user_guide.html)** — tutorial walkthroughs and topic guides
+- **[API Reference](https://www.fastapi-restly.org/api_reference.html)** — complete API docs
 
 ## Examples
 

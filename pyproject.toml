@@ -58,7 +58,7 @@ testing = [
 Homepage = "https://github.com/rjprins/fastapi-restly"
 Repository = "https://github.com/rjprins/fastapi-restly"
 Source = "https://github.com/rjprins/fastapi-restly"
-Documentation = "https://rjprins.github.io/fastapi-restly/"
+Documentation = "https://www.fastapi-restly.org/"
 Issues = "https://github.com/rjprins/fastapi-restly/issues"
 Changelog = "https://github.com/rjprins/fastapi-restly/blob/main/CHANGELOG.md"
 

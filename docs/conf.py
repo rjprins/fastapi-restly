@@ -21,7 +21,7 @@ version = ".".join(release.split(".")[:2])
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-html_baseurl = "https://rjprins.github.io/fastapi-restly/"
+html_baseurl = "https://www.fastapi-restly.org/"
 sitemap_url_scheme = "{link}"
 extensions = [
     "myst_parser",
@@ -66,7 +66,9 @@ html_context = {
     "doc_path": "docs",
 }
 html_static_path = ["_static"]
-html_extra_path = ["robots.txt"]
+# CNAME must ship in every publish: ghp-import replaces the gh-pages branch
+# wholesale, and GitHub Pages drops the custom domain if the file disappears.
+html_extra_path = ["robots.txt", "CNAME"]
 html_logo = "_static/restly-cat.png"
 html_css_files = ["custom.css"]
 

@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://rjprins.github.io/fastapi-restly/sitemap.xml
+Sitemap: https://www.fastapi-restly.org/sitemap.xml
