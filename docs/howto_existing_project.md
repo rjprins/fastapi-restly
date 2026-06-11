@@ -1,4 +1,4 @@
-# How-To: Use FastAPI-Restly in an Existing Project
+# Use Restly in an Existing Project
 
 FastAPI-Restly registers ordinary FastAPI path operations. You can mount Restly
 views on the same `FastAPI` app or `APIRouter` as your existing routes, adopt it

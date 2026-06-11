@@ -1,4 +1,4 @@
-# How-To: Compose Views with Mixins
+# Compose Views with Mixins
 
 Some concerns belong on many views: tenant scoping, soft delete, audit stamps,
 permission filters. They are structural, not business logic: they stamp

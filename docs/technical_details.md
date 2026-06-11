@@ -300,5 +300,5 @@ unless they need different behavior.
 
 ## See Also
 
-- [How-To: Filter, Sort, and Paginate Lists](howto_query_modifiers.md) — full
+- [Filter, Sort, and Paginate Lists](howto_query_modifiers.md) — full
   filter, sort, and pagination reference.

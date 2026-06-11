@@ -154,7 +154,7 @@ FastAPI-Restly also works with ordinary SQLAlchemy models that inherit from your
 | `fr.AsyncRestView` | Async CRUD view. Use with async SQLAlchemy sessions. |
 | `fr.RestView` | Sync CRUD view. Use with sync SQLAlchemy sessions. |
 | `fr.ListingResult` | Value object returned by `get_many` (and `handle_get_many`), with `.objects`, `.total_count`, and `.query_params`, before `to_listing_response` formats the HTTP response. |
-| `fr.AsyncReactAdminView` | Async CRUD view that speaks the `ra-data-simple-rest` wire contract used by [react-admin](https://marmelab.com/react-admin/). See [How-To: React Admin Integration](howto_react_admin.md). |
+| `fr.AsyncReactAdminView` | Async CRUD view that speaks the `ra-data-simple-rest` wire contract used by [react-admin](https://marmelab.com/react-admin/). See [React Admin Integration](howto_react_admin.md). |
 | `fr.ReactAdminView` | Sync variant of `AsyncReactAdminView`. |
 
 ### View Method Surface
@@ -218,7 +218,7 @@ On `AsyncRestView` every method below is `async`; the signatures are otherwise i
 
 Internal methods prefixed with `_`, such as `_reject_unknown_query_params`, are implementation details even though they are visible on instances.
 
-See [Class-Based Views](class_based_views.md#the-view-hierarchy) for the class hierarchy and [How-To: Override Endpoints](howto_override_endpoints.md) for examples of choosing which tier to override.
+See [Class-Based Views](class_based_views.md#the-view-hierarchy) for the class hierarchy and [Override Endpoints](howto_override_endpoints.md) for examples of choosing which tier to override.
 
 `fr.View` class attributes:
 
@@ -430,4 +430,12 @@ Generated endpoints:
 :maxdepth: 2
 
 api/index
+```
+
+```{toctree}
+:maxdepth: 1
+:hidden:
+
+technical_details
+changelog
 ```

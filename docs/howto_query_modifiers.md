@@ -1,4 +1,4 @@
-# How-To: Filter, Sort, and Paginate Lists
+# Filter, Sort, and Paginate Lists
 
 List endpoints (`GET /{prefix}/`) support filtering, sorting, and
 pagination through URL query parameters out of the box. Filter parameters

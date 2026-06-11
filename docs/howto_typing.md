@@ -1,4 +1,4 @@
-# How-To: Use Type Annotations with FastAPI-Restly
+# Use Type Annotations
 
 FastAPI-Restly supports two typing styles:
 

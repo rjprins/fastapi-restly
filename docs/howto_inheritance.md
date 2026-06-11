@@ -1,4 +1,4 @@
-# How-To: Share Behaviour with Base Views
+# Share Behaviour with Base Views
 
 FastAPI-Restly views are plain Python classes. Use base classes for shared CRUD overrides, dependencies, access control, and URL namespaces.
 

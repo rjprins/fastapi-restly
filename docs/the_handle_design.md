@@ -1,4 +1,4 @@
-# The handle design
+# How Overrides Work: The Three Tiers
 
 Every CRUD verb in FastAPI-Restly has **three tiers**. Name the tier that owns
 your change, override one method, and leave the rest alone.
@@ -203,7 +203,7 @@ These free functions do not commit; the caller owns the transaction.
 
 - [Class-Based Views](class_based_views.md) — why subclassable views make all
   of this possible.
-- [How-To: Override CRUD Behavior and Add Custom Endpoints](howto_override_endpoints.md)
+- [Override CRUD Behavior and Add Custom Endpoints](howto_override_endpoints.md)
   — every override point in depth, with more examples.
 - [API Reference](api_reference.md) — the full view method surface and every
   public symbol.

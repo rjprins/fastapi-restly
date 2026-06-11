@@ -493,7 +493,7 @@ class CommentView(AuthoredBase):
 
 ## Next steps
 
-- [How-To: Override Endpoints](howto_override_endpoints.md) — complete handler reference with all signatures
-- [How-To: Share Behaviour with Base Views](howto_inheritance.md) — full inheritance guide
-- [How-To: Testing](howto_testing.md) — test the overrides you write
+- [Override Endpoints](howto_override_endpoints.md) — complete handler reference with all signatures
+- [Share Behaviour with Base Views](howto_inheritance.md) — full inheritance guide
+- [Testing](howto_testing.md) — test the overrides you write
 - [API Reference](api_reference.md)

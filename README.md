@@ -170,7 +170,7 @@ class UserView(fr.AsyncRestView):
     max_page_size = 200
 ```
 
-See [How-To: Filter, Sort, and Paginate Lists](https://www.fastapi-restly.org/howto_query_modifiers.html) for the full operator surface, alias rules, and pagination guidance.
+See [Filter, Sort, and Paginate Lists](https://www.fastapi-restly.org/howto_query_modifiers.html) for the full operator surface, alias rules, and pagination guidance.
 
 ### Read-only and write-only fields
 

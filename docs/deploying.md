@@ -73,7 +73,7 @@ alembic upgrade head
 
 If you want tests to exercise the same migration path, add a project-local
 fixture that runs `alembic upgrade head` before the suite. Restly's pytest
-plugin does not run migrations automatically. See [How-To: Testing](howto_testing.md).
+plugin does not run migrations automatically. See [Testing](howto_testing.md).
 
 ## A production `main.py` template
 

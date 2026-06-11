@@ -1,4 +1,4 @@
-# How-To: Test APIs with RestlyTestClient and Fixtures
+# Test APIs with RestlyTestClient and Fixtures
 
 FastAPI-Restly includes a test client and pytest fixtures for fast endpoint tests.
 

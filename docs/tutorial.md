@@ -1,9 +1,8 @@
 # Tutorial
 
-Run `uv sync` first; see [Getting Started](getting_started.md) for installation.
-
 This tutorial builds a small blog API with two related models and shows the most common
-FastAPI-Restly patterns. It assumes you have already read [Getting Started](getting_started.md).
+FastAPI-Restly patterns. It assumes you have already read [Getting Started](getting_started.md)
+and installed `fastapi-restly[standard]` with the `aiosqlite` driver.
 
 This tutorial uses explicit schemas for clarity. For faster scaffolding, you can omit
 `schema = ...` on a view and let FastAPI-Restly auto-generate it from the model.
@@ -107,7 +106,7 @@ that `id` exists (returning 404 if not).
 If you prefer a plain `int` field and want to skip the existence check,
 declare `post_id: int` in your schema instead.
 
-See [How-To: Work with Foreign Keys Using IDRef](howto_relationship_idschema.md)
+See [Work with Foreign Keys Using IDRef](howto_relationship_idschema.md)
 for more detail, including list relations and nested relationship objects.
 
 ---
@@ -117,7 +116,7 @@ for more detail, including list relations and nested relationship objects.
 ```python
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    await fr.db.async_create_all(fr.DataclassBase)
+    await fr.db.async_create_all(fr.IDBase)  # IDBase is the models' base above
     yield
 
 
@@ -207,7 +206,7 @@ GET /posts/?title__icontains=hello
 GET /posts/?created_at__gte=2024-01-01&created_at__lt=2025-01-01
 ```
 
-See [How-To: Filter, Sort, and Paginate Lists](howto_query_modifiers.md)
+See [Filter, Sort, and Paginate Lists](howto_query_modifiers.md)
 for the full list of operators.
 
 ---
@@ -229,10 +228,9 @@ item = client.get(f"/posts/{post.json()['id']}")
 # Automatically asserts status 200
 ```
 
-For test isolation, use the `restly_async_session` or `restly_session` pytest fixtures. These wrap each
-test in a database savepoint so changes never persist between tests:
-
-Pytest auto-loads Restly's fixtures after installing the testing extra.
+For test isolation, install the testing extra (`pip install "fastapi-restly[testing]"`);
+pytest then auto-loads Restly's fixtures. The `restly_client` fixture used below wraps
+each test in a database savepoint, so changes never persist between tests:
 
 ```python
 # test_posts.py
@@ -242,7 +240,7 @@ def test_create_post(restly_client):
     # Database changes are rolled back automatically after this test
 ```
 
-See [How-To: Testing](howto_testing.md) and [Pytest Fixtures](pytest_fixtures.md) for the
+See [Testing](howto_testing.md) and [Pytest Fixtures](pytest_fixtures.md) for the
 full setup and savepoint details.
 
 ---
@@ -265,7 +263,14 @@ keys. If you need a nested request shape, flatten it in the schema or override t
 
 - **[Part 2: Customizing Views](tutorial_customizing.md)** — override handlers, add custom routes, and share behaviour with base classes
 - [Auto-Generated Schemas](technical_details.md#auto-generated-schemas) — skip writing schemas for simple models
-- [How-To: Filter, Sort, and Paginate Lists](howto_query_modifiers.md) — full filter and sort reference
-- [How-To: Foreign Keys with IDRef](howto_relationship_idschema.md) — reference related rows by id
-- [How-To: Testing](howto_testing.md) — savepoint isolation and test fixtures
+- [Filter, Sort, and Paginate Lists](howto_query_modifiers.md) — full filter and sort reference
+- [Work with Foreign Keys Using IDRef](howto_relationship_idschema.md) — reference related rows by id
+- [Testing](howto_testing.md) — savepoint isolation and test fixtures
 - [API Reference](api_reference.md)
+
+```{toctree}
+:maxdepth: 1
+:hidden:
+
+tutorial_customizing
+```

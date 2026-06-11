@@ -108,7 +108,7 @@ For `prefix = "/users"`, generated endpoints are:
 
 Update semantics are `PATCH` (partial update).
 
-Filter lists with query parameters, for example `GET /users/?name=Jane`. See [How-To: Filter, Sort, and Paginate Lists](howto_query_modifiers.md).
+Filter lists with query parameters, for example `GET /users/?name=Jane`. See [Filter, Sort, and Paginate Lists](howto_query_modifiers.md).
 
 ## 5. Add an Explicit Schema (Optional)
 
@@ -159,6 +159,6 @@ For test isolation (rolling back test data between tests), see the [Testing](how
 - Already have a FastAPI app? See
   [Existing Project Integration](howto_existing_project.md) — Restly adopts
   per resource, beside your current routes.
-- [How-To: Filter, Sort, and Paginate Lists](howto_query_modifiers.md)
+- [Filter, Sort, and Paginate Lists](howto_query_modifiers.md)
 - [Deploying](deploying.md) — production engine config, Alembic, and a `main.py` template.
 - [API Reference](api_reference.md)

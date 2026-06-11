@@ -1,4 +1,4 @@
-# How-To: Override CRUD Behavior and Add Custom Endpoints
+# Override CRUD Behavior and Add Custom Endpoints
 
 FastAPI-Restly generates five CRUD endpoints per view. Real applications still need custom fields, row visibility, side effects, and non-CRUD actions. This guide shows which method to override.
 

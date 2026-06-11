@@ -17,7 +17,7 @@ and mixins, and override the one operation you need.
 > **Status:** {{ release }} — public beta, after
 > [four years of internal use](about.md). Expect small breaking changes in
 > deeper extension points on the way to `1.0.0`; see the
-> [changelog](https://github.com/rjprins/fastapi-restly/blob/main/CHANGELOG.md).
+> [changelog](changelog.md).
 
 ## Quick Start
 
@@ -116,6 +116,13 @@ first test.
 Fast path from zero to a working REST API.
 :::
 
+:::{grid-item-card} Tutorial
+:link: tutorial
+:link-type: doc
+
+Build a complete blog API in two parts: generated CRUD, then customization.
+:::
+
 :::{grid-item-card} Class-Based Views
 :link: class_based_views
 :link-type: doc
@@ -123,25 +130,18 @@ Fast path from zero to a working REST API.
 How subclassable views make the override model work.
 :::
 
-:::{grid-item-card} The Handle Design
+:::{grid-item-card} How Overrides Work
 :link: the_handle_design
 :link-type: doc
 
 The three tiers behind every CRUD verb, and which one to override.
 :::
 
-:::{grid-item-card} User Guide
+:::{grid-item-card} How-To Guides
 :link: user_guide
 :link-type: doc
 
-Tutorials and topic guides.
-:::
-
-:::{grid-item-card} Deploying
-:link: deploying
-:link-type: doc
-
-Production engine config, Alembic migrations, and an ASGI checklist.
+Task-focused guides, from adoption in an existing app to deployment.
 :::
 
 :::{grid-item-card} Examples
@@ -164,6 +164,13 @@ Generated endpoints, all public symbols, query parameters, and autodoc.
 
 History, design goals, and why this framework exists.
 :::
+
+:::{grid-item-card} Deploying
+:link: deploying
+:link-type: doc
+
+Production engine config, Alembic migrations, and an ASGI checklist.
+:::
 ::::
 
 ```{toctree}
@@ -171,10 +178,10 @@ History, design goals, and why this framework exists.
 :hidden:
 
 getting_started
+tutorial
 class_based_views
-the_handle_design
+Overrides <the_handle_design>
 user_guide
-deploying
 examples
 api_reference
 about

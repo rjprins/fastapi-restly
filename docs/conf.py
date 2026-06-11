@@ -58,6 +58,8 @@ html_theme_options = {
     "show_toc_level": 2,
     "navigation_depth": 3,
     "icon_links": [],
+    # All eight top-level sections in the header; no "More" dropdown.
+    "header_links_before_dropdown": 8,
 }
 html_context = {
     "github_user": "rjprins",

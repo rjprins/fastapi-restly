@@ -1,4 +1,4 @@
-# How-To: Work with Foreign Keys Using IDRef
+# Work with Foreign Keys Using IDRef
 
 Use `fr.IDRef[Model]` for foreign-key fields. The API stays in the common
 scalar-id shape while FastAPI-Restly still validates that the referenced row
