@@ -137,13 +137,13 @@ FastAPI-Restly also works with ordinary SQLAlchemy models that inherit from your
 
 | Symbol | Description |
 |---|---|
-| `fr.View` | Base class for all class-based views. Subclass this directly when you do not need CRUD — add endpoints with `@fr.get`, `@fr.post`, etc. |
-| `fastapi_restly.views.BaseRestView` | Supported advanced base class for custom CRUD foundations shared by sync and async views. Import from `fastapi_restly.views`; it is intentionally not exported at the top level. |
-| `fr.AsyncRestView` | Async CRUD view. Use with async SQLAlchemy sessions. |
-| `fr.RestView` | Sync CRUD view. Use with sync SQLAlchemy sessions. |
-| `fr.ListingResult` | Value object returned by `get_many` (and `handle_get_many`), with `.objects`, `.total_count`, and `.query_params`, before `to_listing_response` formats the HTTP response. |
-| `fr.AsyncReactAdminView` | Async CRUD view that speaks the `ra-data-simple-rest` wire contract used by [react-admin](https://marmelab.com/react-admin/). See [React Admin Integration](howto_react_admin.md). |
-| `fr.ReactAdminView` | Sync variant of `AsyncReactAdminView`. |
+| {class}`fr.View <fastapi_restly.views.View>` | Base class for all class-based views. Subclass this directly when you do not need CRUD — add endpoints with `@fr.get`, `@fr.post`, etc. |
+| {class}`fastapi_restly.views.BaseRestView` | Supported advanced base class for custom CRUD foundations shared by sync and async views. Import from `fastapi_restly.views`; it is intentionally not exported at the top level. |
+| {class}`fr.AsyncRestView <fastapi_restly.views.AsyncRestView>` | Async CRUD view. Use with async SQLAlchemy sessions. |
+| {class}`fr.RestView <fastapi_restly.views.RestView>` | Sync CRUD view. Use with sync SQLAlchemy sessions. |
+| {class}`fr.ListingResult <fastapi_restly.views.ListingResult>` | Value object returned by `get_many` (and `handle_get_many`), with `.objects`, `.total_count`, and `.query_params`, before `to_listing_response` formats the HTTP response. |
+| {class}`fr.AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>` | Async CRUD view that speaks the `ra-data-simple-rest` wire contract used by [react-admin](https://marmelab.com/react-admin/). See [React Admin Integration](howto_react_admin.md). |
+| {class}`fr.ReactAdminView <fastapi_restly.views.ReactAdminView>` | Sync variant of `AsyncReactAdminView`. |
 
 ### View Method Surface
 
@@ -283,13 +283,13 @@ There are two families. Configuration errors subclass `RestlyError`; request-tim
 
 | Symbol | Description |
 |---|---|
-| `fr.exc.RestlyError` | Base class for FastAPI-Restly framework (configuration-time) errors. |
-| `fr.exc.RestlyConfigurationError` | Raised when a public Restly helper needs configuration that has not been set up yet, such as calling `fr.open_session()` before `fr.configure(...)`. |
-| `fr.exc.RestlyHTTPError` | Base for Restly's request-time HTTP errors. Subclass of `fastapi.HTTPException`; each subclass sets a status code. |
-| `fr.exc.NotFound` | HTTP `404`. Raised by `get_one` when a row does not exist or is hidden by `build_query`; also raisable from `authorize` to hide a row's existence. |
-| `fr.exc.Forbidden` | HTTP `403`. Raise from an `authorize` override to reject a verb. |
-| `fr.exc.Conflict` | HTTP `409`. For request conflicts with the current resource state. |
-| `fr.exc.BadQueryParam` | HTTP `400`. For an invalid filter/sort/pagination query parameter. |
+| {class}`fr.exc.RestlyError <fastapi_restly.exc.RestlyError>` | Base class for FastAPI-Restly framework (configuration-time) errors. |
+| {class}`fr.exc.RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>` | Raised when a public Restly helper needs configuration that has not been set up yet, such as calling `fr.open_session()` before `fr.configure(...)`. |
+| {class}`fr.exc.RestlyHTTPError <fastapi_restly.exc.RestlyHTTPError>` | Base for Restly's request-time HTTP errors. Subclass of `fastapi.HTTPException`; each subclass sets a status code. |
+| {class}`fr.exc.NotFound <fastapi_restly.exc.NotFound>` | HTTP `404`. Raised by `get_one` when a row does not exist or is hidden by `build_query`; also raisable from `authorize` to hide a row's existence. |
+| {class}`fr.exc.Forbidden <fastapi_restly.exc.Forbidden>` | HTTP `403`. Raise from an `authorize` override to reject a verb. |
+| {class}`fr.exc.Conflict <fastapi_restly.exc.Conflict>` | HTTP `409`. For request conflicts with the current resource state. |
+| {class}`fr.exc.BadQueryParam <fastapi_restly.exc.BadQueryParam>` | HTTP `400`. For an invalid filter/sort/pagination query parameter. |
 
 ### Testing
 

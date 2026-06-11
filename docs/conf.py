@@ -31,7 +31,16 @@ extensions = [
     "sphinx_copybutton",
     "sphinx_design",
     "sphinx_reredirects",
+    "sphinx.ext.intersphinx",
 ]
+
+intersphinx_mapping = {
+    "python": ("https://docs.python.org/3", None),
+    "sqlalchemy": ("https://docs.sqlalchemy.org/en/20", None),
+    "pydantic": ("https://docs.pydantic.dev/latest", None),
+    "fastapi": ("https://fastapi.tiangolo.com", None),
+}
+intersphinx_timeout = 30
 
 # Old published URLs -> their post-restructure homes.
 redirects = {

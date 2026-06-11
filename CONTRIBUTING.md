@@ -63,6 +63,26 @@ make docs
 make docs-serve
 ```
 
+## Documentation Conventions
+
+- Update relevant docs when user-facing behaviour changes; the docs build is
+  warning-clean and CI enforces it (`make docs` runs Sphinx with `-W`).
+- One page owns each topic; other pages link to it instead of restating.
+  The three-tier override model is owned by `the_handle_design.md`; the
+  query grammar by `howto_query_modifiers.md`; schema bases by
+  `howto_custom_schema.md`.
+- Link API symbols to their autodoc entry with MyST roles:
+  ``{class}`fr.AsyncRestView <fastapi_restly.views.AsyncRestView>` `` —
+  prose mentions of Restly objects should be clickable, SQLAlchemy-style.
+  External objects resolve via intersphinx (python / sqlalchemy / pydantic /
+  fastapi).
+- Link to a section on another page through an explicit MyST target
+  (`(name)=` above the heading, `[text](#name)` to link) — heading-slug
+  fragments (`file.md#some-heading`) break silently when headings change.
+- Code examples in docs should be runnable as shown (or clearly marked
+  illustrative); the landing-page teaser, tutorial listing, and Patterns
+  entries are executed during review — keep them that way.
+
 ## Pull Request Conventions
 
 - Link the PR to a related issue when one exists. If no issue exists for a
