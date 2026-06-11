@@ -52,6 +52,14 @@ Override the business methods (`create`, `update`, ...), the request handlers,
 or the route shells, and add custom routes alongside generated CRUD.
 :::
 
+:::{grid-item-card} Shape Error Responses
+:link: howto_error_responses
+:link-type: doc
+
+The typed `fr.exc` exceptions to raise from overrides, the 422-vs-400 split,
+and app-wide error envelopes (problem+json).
+:::
+
 :::{grid-item-card} Share Behaviour with Base Views
 :link: howto_inheritance
 :link-type: doc
@@ -83,6 +91,14 @@ fighting the framework.
 Use `AsyncReactAdminView` to get a backend that `ra-data-simple-rest` connects to out of the box.
 :::
 
+:::{grid-item-card} Customize the OpenAPI Schema
+:link: howto_openapi
+:link-type: doc
+
+Per-view tags and responses, custom-route metadata, replacing a generated
+route's documented contract, and `x-resource-ref`.
+:::
+
 :::{grid-item-card} Test APIs with RestlyTestClient and Fixtures
 :link: howto_testing
 :link-type: doc
@@ -110,10 +126,12 @@ howto_custom_schema
 howto_relationship_idschema
 howto_query_modifiers
 howto_override_endpoints
+howto_error_responses
 howto_inheritance
 howto_compose_views_with_mixins
 howto_typing
 howto_react_admin
+howto_openapi
 howto_testing
 deploying
 ```
