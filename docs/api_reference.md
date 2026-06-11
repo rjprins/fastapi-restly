@@ -25,32 +25,20 @@ Notes:
 
 ## Query Parameters (List Endpoint)
 
-`GET /{prefix}/` exposes **list parameters** derived from the response schema. Parameter keys use public field names, including aliases and dotted relation paths.
+`GET /{prefix}/` exposes **list parameters** derived from the response schema;
+keys use public field names (aliases included), and dotted paths filter on
+relations. The grammar in one line each — the canonical treatment, including
+comma semantics, LIKE escaping, foreign-key filtering, and alias rules, is
+[Filter, Sort, and Paginate Lists](howto_query_modifiers.md):
 
-- Filtering: `?name=John&created_at__gte=2024-01-01`
-  - Suffixes: `__in`, `__gte`, `__lte`, `__gt`, `__lt`, `__ne`, `__isnull`, `__contains`, `__icontains` (contains operators are string fields only)
-  - OR-values (IN): `?id=1,2,3` (comma-separated values are OR-combined for `eq`)
-  - Explicit IN: `?status__in=active,pending`
-  - NOT-IN: `?status__ne=archived,deleted` (comma-separated values are AND-combined for `__ne`)
-  - Aliased fields use only the alias as the URL key; the Python field name is not accepted.
-- Contains: `?name__contains=John` (case-sensitive where the SQL backend supports that distinction)
-- IContains: `?name__icontains=john` (case-insensitive)
-  - Repeat the parameter to AND multiple terms — this is the precise form: `?name__contains=john&name__contains=doe`.
-  - As a convenience, whitespace inside one value is also AND-split: `?name__contains=john%20doe` is equivalent.
-  - `%`, `_`, and `\\` are escaped before building the SQL `LIKE` / `ILIKE`.
-- Sorting: `?sort=name,-created_at`
-- Pagination: `?page=2&page_size=10`
-  - **Opt-in.** Omitting `page_size` returns every matching row (no implicit cap).
-  - For public/production endpoints, set `default_page_size` and `max_page_size` explicitly on the view class.
-
-**Unknown query keys are rejected.** Generated list endpoints validate the query string against schema-derived parameters. Typos, Python names for aliased fields, and unsupported operators return 422 instead of widening the result set. To allow extra view-specific keys, declare them on the view class:
-
-```python
-class UserView(fr.AsyncRestView):
-    extra_query_params = ("include_deleted",)
-```
-
-Relation filtering uses dot notation, and aliases apply to every path segment. If `author` is aliased to `writer` and `name` to `authorName`, the URL key is `writer.authorName`.
+| Kind | Form |
+|---|---|
+| Equality / OR | `?name=John`, `?status=active,pending` |
+| Operators | `__in`, `__gte`, `__lte`, `__gt`, `__lt`, `__ne`, `__isnull`, `__contains`, `__icontains` |
+| Relation paths | `?writer.authorName=Alice` (aliases per segment) |
+| Sorting | `?sort=name,-created_at` |
+| Pagination | `?page=2&page_size=10` — opt-in; set `default_page_size` / `max_page_size` for public endpoints |
+| Unknown keys | rejected with `422`; allow view-specific extras via `extra_query_params` |
 
 ### Low-level helpers
 

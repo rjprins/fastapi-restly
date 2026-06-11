@@ -149,17 +149,12 @@ List endpoints expose a stable URL parameter dialect generated from the response
 
 ```bash
 GET /users/?name=John&age__gte=21
-GET /users/?status=active,pending           # comma-separated → OR (IN)
-GET /users/?status__ne=archived,deleted     # comma-separated → NOT IN
 GET /users/?email__icontains=example
-GET /users/?deleted_at__isnull=true
-GET /users/?sort=-created_at,name
-GET /users/?page=2&page_size=10
+GET /users/?sort=-created_at&page=2&page_size=10
 ```
 
 Parameter keys use the **response schema's public names**, including dotted
-relation paths. Aliases apply to each path segment: `writer.authorName`, not
-`author.name`.
+relation paths; unknown keys are rejected with `422`.
 
 Pagination is opt-in: omitting `page_size` returns every matching row. For
 public endpoints, set `default_page_size` and `max_page_size` on the view:

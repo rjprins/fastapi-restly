@@ -17,12 +17,8 @@ of names.
 > controls — a typo or unsupported operator silently ignored could
 > widen the result set. Generated list endpoints validate the request
 > against the schema's declared parameters and reject anything else.
-> If a view consumes a custom query parameter outside the schema
-> (e.g. `?include_deleted=true`), declare it on the view:
-> ```python
-> class UserView(fr.AsyncRestView):
->     extra_query_params = ("include_deleted",)
-> ```
+> To allow extra view-specific keys, see
+> [Extra query parameters](#extra-query-parameters).
 
 ---
 
@@ -156,6 +152,43 @@ class UserView(fr.AsyncRestView):
 Out-of-range pagination values produce a standard `422` response from
 FastAPI.
 
+### The pagination envelope
+
+By default a list endpoint returns a plain JSON array. Set
+`include_pagination_metadata = True` on the view to wrap items and totals:
+
+```python
+class UserView(fr.AsyncRestView):
+    include_pagination_metadata = True
+```
+
+```json
+{
+  "items": [],
+  "total": 123,
+  "page": 2,
+  "page_size": 50,
+  "total_pages": 3
+}
+```
+
+`page`, `page_size`, and `total_pages` are populated only when pagination is
+active (the client sent `?page=` / `?page_size=`, or the view sets
+`default_page_size`); otherwise they are `null`.
+
+---
+
+## Extra query parameters
+
+A view that consumes a custom query parameter outside the schema-derived
+grammar (read in an override via `self.request.query_params`) must declare it,
+or the 422 validation rejects it as an unknown key:
+
+```python
+class UserView(fr.AsyncRestView):
+    extra_query_params = ("include_deleted",)
+```
+
 ---
 
 ## Alias support
@@ -274,9 +307,15 @@ multi-layer pattern.
 
 The `get_many` business verb does not accept a separate `query` argument. Keep
 SQL-level base query changes in `build_query()` so listing, pagination totals,
-and single-row fetches all see the same visibility rules. If a list endpoint
-needs a completely different query shape, override `get_many()` and construct
-that query explicitly inside the method.
+and single-row fetches all see the same visibility rules.
+
+For a different URL **grammar** — other parameter names, another dialect's
+filter syntax — the seam is `apply_query_params(query, query_params)`, which
+owns translating URL parameters into the query;
+[React Admin Integration](howto_react_admin.md) is the shipped worked example
+of a view family overriding it. Reserve overriding `get_many()` itself for a
+genuinely different *result* shape, where you construct the query explicitly
+inside the method.
 
 ## See also
 
