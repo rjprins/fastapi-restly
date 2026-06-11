@@ -87,14 +87,8 @@ Use `AsyncReactAdminView` to get a backend that `ra-data-simple-rest` connects t
 :link: howto_testing
 :link-type: doc
 
-Use `RestlyTestClient` and savepoint-based pytest fixtures for isolated tests.
-:::
-
-:::{grid-item-card} pytest Fixtures Reference
-:link: pytest_fixtures
-:link-type: doc
-
-Full fixture reference with isolation model details and async test setup.
+A copy-paste conftest, savepoint-isolated fixtures, and the full fixture
+reference.
 :::
 
 :::{grid-item-card} Deploying
@@ -120,6 +114,5 @@ howto_compose_views_with_mixins
 howto_typing
 howto_react_admin
 howto_testing
-pytest_fixtures
 deploying
 ```

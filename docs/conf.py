@@ -30,7 +30,13 @@ extensions = [
     "sphinx.ext.autosummary",
     "sphinx_copybutton",
     "sphinx_design",
+    "sphinx_reredirects",
 ]
+
+# Old published URLs -> their post-restructure homes.
+redirects = {
+    "pytest_fixtures": "howto_testing.html",
+}
 myst_heading_anchors = 3
 myst_enable_extensions = ["colon_fence", "substitution"]
 # Backticks baked in: substitutions don't fire inside literal spans.

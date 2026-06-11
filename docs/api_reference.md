@@ -330,8 +330,19 @@ There are two families. Configuration errors subclass `RestlyError`; request-tim
 | Symbol | Description |
 |---|---|
 | `fastapi_restly.testing.RestlyTestClient` | Sync test client wrapper around FastAPI's `TestClient` with default status-code assertions. It can test async FastAPI routes and `AsyncRestView` endpoints. |
-| `fastapi_restly.testing.activate_savepoint_only_mode(make_session)` | **Intended for tests.** Wraps a session factory in savepoint-only mode so test data never commits to the database. Requires the session maker as argument. |
+| `fastapi_restly.testing.activate_savepoint_only_mode(make_session)` | **Intended for tests.** Wraps a session factory in savepoint-only mode so test data never commits to the database. Use it when building your own harness without the shipped fixtures (which implement the same isolation themselves). |
 | `fastapi_restly.testing.deactivate_savepoint_only_mode(make_session)` | Restore normal session behavior after testing. |
+
+Pytest fixtures (auto-loaded by the `testing` extra; full behavior in
+[Testing](howto_testing.md#fixture-reference)):
+
+| Fixture | Scope | One-liner |
+|---|---|---|
+| `restly_app` | function | Bare `FastAPI()`; override in `conftest.py` to return your app. |
+| `restly_client` | function | `RestlyTestClient` wrapping `restly_app`. |
+| `restly_session` | function | Savepoint-isolated SQLAlchemy `Session`; skips without a sync DB. |
+| `restly_async_session` | function | Async savepoint-isolated session; skips without an async DB. |
+| `restly_project_root` | session | `Path` of the nearest ancestor with a `pyproject.toml`. |
 
 ### Default Exception Handling
 

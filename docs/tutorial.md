@@ -240,8 +240,7 @@ def test_create_post(restly_client):
     # Database changes are rolled back automatically after this test
 ```
 
-See [Testing](howto_testing.md) and [Pytest Fixtures](pytest_fixtures.md) for the
-full setup and savepoint details.
+See [Testing](howto_testing.md) for the full setup and savepoint details.
 
 ---
 
