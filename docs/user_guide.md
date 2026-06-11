@@ -14,13 +14,13 @@ Start with [Getting Started](getting_started.md), then the
 Adopt Restly beside existing FastAPI routes, then wire it into your sessions and models.
 :::
 
-:::{grid-item-card} Auth, Actions, and Other Non-CRUD Endpoints
-:link: class_based_views
+:::{grid-item-card} Patterns
+:link: patterns
 :link-type: doc
 
-Login/logout flows, vote and state-transition actions, webhook receivers, and
-RPC-style endpoints: use `fr.View` directly, or add custom routes to a
-`RestView`. See "When to use `View` directly".
+The idiomatic answers: nested resources and sub-resources, a different list
+schema, restoring soft-deleted rows, webhook receivers, login flows, custom
+actions, tenant scoping.
 :::
 
 :::{grid-item-card} Custom Schemas and Field Types
@@ -105,6 +105,7 @@ Production engine config, Alembic migrations, and an ASGI checklist.
 :hidden:
 
 howto_existing_project
+patterns
 howto_custom_schema
 howto_relationship_idschema
 howto_query_modifiers
