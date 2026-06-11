@@ -214,6 +214,28 @@ GET /articles/?author.name=Alice          # rejected; use public aliases
 
 ---
 
+## Foreign-key filtering
+
+A scalar foreign key declared with `fr.IDRef[T]` is filterable by its own
+public name — the same name the wire format uses:
+
+```text
+GET /comments/?post_id=1
+GET /comments/?post_id=1,2          # OR (SQL IN)
+GET /comments/?post_id__in=1,2
+GET /comments/?post_id__ne=1
+GET /comments/?post_id__isnull=true
+```
+
+An `IDRef` id is treated as opaque, so it gets equality, `__in`, `__ne`, and
+`__isnull` — but **not** the range (`__gte`/`__lt`/…) or substring
+(`__contains`) families. Ordering or substring-matching an identifier is rarely
+meaningful, and this stays uniform across primary-key types (int, UUID, string).
+If you genuinely need range filtering on the column, declare the field as its
+plain scalar type (`post_id: int`) instead.
+
+---
+
 ## Quick reference
 
 ```text

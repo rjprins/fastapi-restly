@@ -77,6 +77,14 @@ On create and update, Restly looks up the `Author` with `id=1`. If it does not
 exist, the request returns `404`. That lookup is an *unscoped* existence check —
 see [Visibility and Multi-Tenancy](#visibility-and-multi-tenancy) below.
 
+## List filtering
+
+The FK field is filterable on the list endpoint by its own public name —
+`GET /articles/?author_id=1` (also `author_id__in`, `author_id__ne`,
+`author_id__isnull`). An `IDRef` id is treated as opaque, so the range and
+substring operators are deliberately not offered. See
+[Query Modifiers → Foreign-key filtering](howto_query_modifiers.md#foreign-key-filtering).
+
 ## Visibility and Multi-Tenancy
 
 Reference resolution is an **unscoped existence check**. Restly fetches the

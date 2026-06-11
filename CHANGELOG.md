@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Scalar `fr.IDRef[T]` foreign-key fields are now filterable on list endpoints
+  by their own public name. Previously `post_id: fr.IDRef[Post]` — the FK form
+  the tutorial teaches — generated no filter parameter at all, so
+  `GET /comments/?post_id=1` returned a 422 that looked like client error; the
+  only filterable form was a plain `post_id: int`. An `IDRef` id is treated as
+  opaque, so it gets equality, `__in`, `__ne`, and `__isnull` (uniform across
+  int/UUID/string primary keys) but not the range or substring operator
+  families.
 - Python 3.14 is now officially supported and tested. It was previously in the
   CI matrix as an experimental (allowed-to-fail) target while `orjson` lacked a
   3.14 wheel; that wheel now ships, the full test suite passes on 3.14, and the

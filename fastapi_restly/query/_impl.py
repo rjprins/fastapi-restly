@@ -16,6 +16,7 @@ from sqlalchemy.orm.properties import ColumnProperty
 from starlette.datastructures import QueryParams
 
 from ..exc import BadQueryParam
+from ..schemas._base import IDRef, IDSchema
 from ._shared import _escape_like_value, _unwrap_optional_annotation
 
 SchemaType = type[pydantic.BaseModel]
@@ -55,6 +56,22 @@ _ORDERABLE_TYPES: tuple[type, ...] = (
 def _is_string_field(field: FieldInfo) -> bool:
     annotation = _unwrap_optional_annotation(field.annotation)
     return annotation is str
+
+
+def _is_idref_field(field: FieldInfo) -> bool:
+    """True for a scalar ``IDRef[T]`` FK field (e.g. ``post_id: IDRef[Post]``).
+
+    ``IDRef`` is a ``BaseModel`` subclass, so without this it would be recursed
+    into as a nested schema and yield only ``post_id.id`` -- which never resolves
+    (``post_id`` is a scalar column, not a relationship), leaving the FK with no
+    filter param at all. Treated as a leaf, it filters on its own public name.
+    Targets ``IDRef`` specifically, not ``IDSchema``: a nested *resource* schema
+    that embeds its ``id`` also subclasses ``IDSchema`` and must keep its dotted
+    traversal. ``list[IDRef[T]]`` (to-many) is unaffected -- its annotation is a
+    list, so it is never a nested schema here.
+    """
+    annotation = _unwrap_optional_annotation(field.annotation)
+    return isinstance(annotation, type) and issubclass(annotation, IDRef)
 
 
 def _supports_range_operators(field: FieldInfo) -> bool:
@@ -410,7 +427,7 @@ def _iter_fields_including_nested(
             )
         full_name = f"{prefix}.{public_name}" if prefix else public_name
         nested = _get_nested_schema(field)
-        if nested:
+        if nested and not _is_idref_field(field):
             yield from _iter_fields_including_nested(nested, full_name)
         else:
             yield full_name, field
@@ -584,7 +601,12 @@ def _parse_value(schema_cls: SchemaType, column_name: str, value: str) -> Any:
         obj = schema_cls.__pydantic_validator__.validate_assignment(
             schema_cls.model_construct(), field_name, value
         )
-        return getattr(obj, field_name)
+        result = getattr(obj, field_name)
+        # An IDRef[T] FK field validates to an IDRef object; the SQL bind value
+        # is its scalar id, not the reference wrapper (which cannot bind).
+        if isinstance(result, IDSchema):
+            return result.id
+        return result
     except Exception:
         raise BadQueryParam(f"Invalid attribute in URL query: {column_name}")
 
