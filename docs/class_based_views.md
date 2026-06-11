@@ -224,61 +224,14 @@ audit stamps, and permission scoping, see
 
 ## Override a single tier
 
-`AsyncRestView` and `RestView` split each CRUD verb into three tiers:
-
-- **`<verb>_endpoint`** (`get_many_endpoint`, `get_one_endpoint`,
-  `create_endpoint`, `update_endpoint`, `delete_endpoint`) — the route shell.
-  This is the wire boundary: the `@route`, the FastAPI signature and
-  `response_model`, and the call to `to_response`. Override only to change the
-  HTTP contract (status code, response shape, extra path/query parameters).
-- **`handle_<verb>`** (`handle_get_many`, `handle_get_one`, `handle_create`,
-  `handle_update`, `handle_delete`) — the request handler. It runs `authorize`
-  and the commit bracket (`before_commit` → commit → `after_commit`) and
-  returns the domain object. Override to change orchestration or timing without
-  re-declaring the route.
-- **`<verb>`** (`get_many`, `get_one`, `create`, `update`, `delete`) — the
-  business method. This is the domain operation (build / apply / save) and is
-  the usual override point. It is **auth-free** and **commit-free**: the
-  framework owns the commit inside `handle_<verb>`, so your override cannot
-  break the transaction.
-
-Because the business method does **not** commit, overriding `create` can build,
-stamp, save, and return; the handler commits later:
-
-```python
-@fr.include_view(app)
-class UserView(fr.AsyncRestView):
-    prefix = "/users"
-    model = User
-    schema = UserRead
-
-    async def create(self, schema_obj: UserCreate) -> User:
-        # Build the object, stamp the derived field, then save. No commit
-        # happens here — handle_create owns the commit — so the password
-        # hash is durably written.
-        user = await self.make_new_object(schema_obj)
-        user.password_hash = hash_password(schema_obj.password)
-        return await self.save_object(user)
-```
-
-When the derivation should fire on every insert regardless of which view
-created the row (audit stamps, slug derivation, denormalised counters),
-prefer a SQLAlchemy `before_insert` mapper event listener instead:
-
-```python
-from sqlalchemy import event
-
-@event.listens_for(Article, "before_insert")
-def _set_slug(mapper, connection, target):
-    target.slug = slugify(target.title)
-```
-
-See SQLAlchemy's [mapper events
-documentation](https://docs.sqlalchemy.org/en/20/orm/events.html#mapper-events)
-for the full event API.
-
-Listing, retrieval, update, delete, schema generation, and pagination keep their
-defaults. See [Override Endpoints](howto_override_endpoints.md).
+`AsyncRestView` and `RestView` split every CRUD verb into three tiers — the
+route shell (wire contract), the request handler (authorization + commit
+bracket), and the business method (domain logic, auth-free and commit-free).
+One behavior change therefore means one method override, while routing,
+authorization, and the commit stay framework-owned. The model, both request
+lifecycles, and the override decision table live in
+[How Overrides Work: The Three Tiers](the_handle_design.md); task-shaped
+recipes in [Override CRUD Behavior](howto_override_endpoints.md).
 
 ## Dependency injection on class attributes
 

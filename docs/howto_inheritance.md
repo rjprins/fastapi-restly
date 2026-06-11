@@ -125,6 +125,8 @@ class OrderView(ProtectedBase):
 
 Every route on `/users/` and `/orders/` now requires authentication.
 
+(prefix-concatenation)=
+
 ## Concatenate URL prefixes
 
 When a base class defines `prefix`, subclass prefixes are appended to it. This lets you declare a shared URL namespace once:
@@ -200,22 +202,12 @@ class ProductView(ReadOnlyBase):
 
 ## Implement soft-delete once
 
-Override the `delete` business verb on a base class to change how deletion works for every subclass:
-
-```python
-class SoftDeleteBase(fr.RestView):
-    def delete(self, obj):
-        obj.deleted = True
-        self.save_object(obj)
-
-@fr.include_view(app)
-class ArticleView(SoftDeleteBase):
-    prefix = "/articles"
-    model = Article
-    schema = ArticleRead
-```
-
-`DELETE /articles/{id}` now sets `deleted = True` instead of removing the row. Every subclass gets the behavior, and the handler commits the flip. Pair it with a `build_query` filter that hides flagged rows; see [Compose Views with Mixins](howto_compose_views_with_mixins.md).
+A base class can override the `delete` business verb once for every subclass
+— exactly like the audit example above, with the soft-delete body. The
+canonical recipe (idiom: a `deleted_at` timestamp) lives in
+[Override CRUD Behavior](#soft-delete-recipe);
+the reusable mixin that also hides flagged rows on read is in
+[Compose Views with Mixins](howto_compose_views_with_mixins.md).
 
 ## Cross-references
 

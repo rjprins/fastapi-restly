@@ -8,7 +8,9 @@ The examples use `AsyncRestView`. The same methods and patterns apply to `RestVi
 
 ## The three tiers of a CRUD verb
 
-Every CRUD verb has three tiers. Override the lowest tier that owns the behavior you need.
+Every CRUD verb has three tiers. Override the lowest tier that owns the
+behavior you need. (The full model, lifecycles, and decision table:
+[How Overrides Work: The Three Tiers](the_handle_design.md).)
 
 ```
 <verb>_endpoint   — the route shell (wire boundary): the @route, the FastAPI
@@ -111,7 +113,7 @@ from datetime import datetime, timezone
         # Do NOT call super() / delete_object — that would remove the row.
 ```
 
-`DELETE /posts/{id}` now marks the row instead of removing it. `delete_endpoint` still returns 204, and `handle_delete` still commits. Pair this with a `build_query` filter that hides deleted rows.
+`DELETE /posts/{id}` now marks the row instead of removing it. `delete_endpoint` still returns 204, and `handle_delete` still commits. Pair this with a `build_query` filter that hides deleted rows — the canonical recipe lives in [Override CRUD Behavior](#soft-delete-recipe), and the reusable mixin version in [Compose Views with Mixins](howto_compose_views_with_mixins.md).
 
 ---
 
@@ -360,26 +362,10 @@ Every route on `/posts/` now runs `require_auth` before the endpoint function.
 
 ### Share a URL namespace with prefix concatenation
 
-When a base class defines `prefix`, subclass prefixes are appended:
-
-```python
-class ApiV1(fr.AsyncRestView):
-    prefix = "/api/v1"
-
-
-@fr.include_view(app)
-class PostView(ApiV1):
-    prefix = "/posts"     # → /api/v1/posts
-    model = Post
-    schema = PostRead
-
-
-@fr.include_view(app)
-class CommentView(ApiV1):
-    prefix = "/comments"  # → /api/v1/comments
-    model = Comment
-    schema = CommentRead
-```
+When a base class defines `prefix`, subclass prefixes are appended — an
+`ApiV1` base with `prefix = "/api/v1"` puts every subclass under
+`/api/v1/...`. The recipe:
+[Share Behaviour with Base Views](#prefix-concatenation).
 
 ---
 

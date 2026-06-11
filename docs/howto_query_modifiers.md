@@ -282,5 +282,5 @@ that query explicitly inside the method.
 
 - [List-parameters lifecycle](technical_details.md#list-parameters-lifecycle)
   — how the filter grammar is generated and frozen at registration time.
-- [Patterns: nested resources](patterns.md#nested-resources-projects-id-tasks)
+- [Patterns: nested resources](#patterns-nested-resources)
   — foreign-key filtering as the sub-resource idiom.

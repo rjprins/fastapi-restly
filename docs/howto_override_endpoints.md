@@ -10,7 +10,10 @@ Register each concrete view with `fr.include_view(app, ViewClass)` or the decora
 
 ## The three tiers of a CRUD verb
 
-Take any verb — `create`, say. It is implemented as three methods, each at a different altitude:
+The conceptual model — both request lifecycles, why the handler owns the
+commit, and the full "which method do I override for X?" table — lives in
+[How Overrides Work: The Three Tiers](the_handle_design.md). The short
+version:
 
 | Tier | Methods | Owns | Override to… |
 |---|---|---|---|
@@ -18,56 +21,7 @@ Take any verb — `create`, say. It is implemented as three methods, each at a d
 | **2. Request handler** | `handle_create`, `handle_get_many`, `handle_get_one`, `handle_update`, `handle_delete` | `authorize` and the commit bracket (`before_commit` → commit → `after_commit`); returns the domain object | Change **orchestration / timing** (custom transaction, async delete) without re-declaring the route |
 | **3. Business verb** (domain) | `create`, `get_many`, `get_one`, `update`, `delete` | The domain operation: build / apply / save. **Auth-free and commit-free.** | Change **domain logic** (hash a password, derive a slug, compute a field) — the usual override point |
 
-The call chain for `POST /` is:
-
-```
-POST /
-  └─ create_endpoint(schema_obj)        ← tier 1: route shell (wire)
-       └─ handle_create(schema_obj)      ← tier 2: authorize + commit bracket
-            ├─ authorize("create", data=schema_obj)
-            ├─ create(schema_obj)        ← tier 3: domain op — the usual override point
-            │    ├─ make_new_object(schema_obj)
-            │    └─ save_object(obj)
-            ├─ before_commit("create", new=obj)
-            ├─ commit            ← the framework owns the commit
-            └─ after_commit("create", new=obj)
-```
-
-The same shape holds for every verb. `GET /{id}` is the simplest:
-
-```
-GET /{id}
-  └─ get_one_endpoint(id)               ← tier 1: route shell
-       └─ handle_get_one(id)            ← tier 2: scoped load + read-auth
-            ├─ get_one(id)              ← tier 3: load via build_query (404 by visibility)
-            └─ authorize("get_one", obj=obj)
-```
-
-`GET /` (list) routes its domain op through three read methods:
-
-```
-GET /
-  └─ get_many_endpoint(query_params)    ← tier 1: route shell
-       └─ handle_get_many(query_params) ← tier 2: authorize + get_many
-            ├─ authorize("get_many")
-            └─ get_many(query_params)   ← tier 3: domain read
-                 ├─ build_query()       ← read scope (shared with get_one)
-                 ├─ apply_query_params(query, query_params)
-                 └─ count(query)
-```
-
 **Default rule:** override the **business verb** for domain logic. Use **`handle_<verb>`** for orchestration or transaction changes. Replace the **route shell** only for HTTP contract changes.
-
-### Why commit-free domain verbs matter
-
-The handler commits *after* the business verb returns. That means `after_commit` runs after durability, and `create` / `update` / `delete` can build, mutate, save, and return without committing.
-
-```python
-async def create(self, schema_obj):
-    obj = await self.make_new_object(schema_obj)
-    obj.password_hash = hash_password(schema_obj.password)
-    return await self.save_object(obj)
-```
 
 ---
 
@@ -105,6 +59,8 @@ class UserView(fr.AsyncRestView):
         obj = await self.update_object(obj, schema_obj)
         return await self.save_object(obj)
 ```
+
+(soft-delete-recipe)=
 
 ### `delete` — soft-delete instead of removing the row
 
@@ -260,7 +216,25 @@ For server-controlled field stamps, override `make_new_object` / `update_object`
 
 See [Composing views with mixins](howto_compose_views_with_mixins.md) for when to use structural stamping versus per-view business logic.
 
+When the derivation should fire on every insert regardless of which view
+created the row (audit stamps, slug derivation, denormalised counters), prefer
+a SQLAlchemy `before_insert` mapper event listener instead:
+
+```python
+from sqlalchemy import event
+
+@event.listens_for(Article, "before_insert")
+def _set_slug(mapper, connection, target):
+    target.slug = slugify(target.title)
+```
+
+See SQLAlchemy's [mapper events
+documentation](https://docs.sqlalchemy.org/en/20/orm/events.html#mapper-events)
+for the full event API.
+
 ---
+
+(domain-utilities)=
 
 ## Domain utilities — call, don't override
 
@@ -479,6 +453,15 @@ class OrderView(fr.AsyncRestView):
 ```
 
 Reusing `handle_<verb>` inherits authorization and the commit bracket.
+
+For a **create-shaped** action that should run under its own `write_action`
+bracket instead, deposit the new object on the yielded handle:
+
+```python
+    async with self.write_action("create", data=req) as w:
+        w.obj = await self.make_new_object(req)
+    return self.to_response(w.obj)
+```
 
 ### Relationship references in custom routes
 

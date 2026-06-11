@@ -5,6 +5,8 @@ purpose: the problem, the blessed shape, one example, and a link to the page
 that owns the depth. Every example on this page runs against the current
 release.
 
+(patterns-nested-resources)=
+
 ## Nested resources (`/projects/{id}/tasks`)
 
 Model the child as a **flat resource and filter by its foreign key** — the

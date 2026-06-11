@@ -165,14 +165,8 @@ state transition, so it authorizes and fires hooks as `"publish"`:
 `__aenter__` runs authorization and snapshot; `__aexit__` runs the commit
 bracket. A raised exception skips commit. The response remains
 `to_response(article)`: the action name drives authorization and hooks, while
-the response only needs its wire shape. For a **create-shaped** action, deposit
-the new object on the yielded handle:
-
-```python
-    async with self.write_action("create", data=req) as w:
-        w.obj = await self.make_new_object(req)
-    return self.to_response(w.obj)
-```
+the response only needs its wire shape. Create-shaped actions and more recipes:
+[Add a custom action route](howto_override_endpoints.md#add-a-custom-action-route).
 
 `write_action` and the CRUD handlers share `run_write_action` internally.
 
@@ -180,24 +174,10 @@ the new object on the yielded handle:
 
 `make_new_object`, `update_object`, `save_object`, and `delete_object` are
 **utilities you call**, not extension points. They build, apply, flush, and
-remove ORM objects without committing.
-
-The same operations exist as free functions for workers and service code:
-`fr.objects.async_make_new_object`, `fr.objects.async_update_object`, `fr.objects.async_save_object`,
-`fr.objects.async_delete_object`, plus sync counterparts.
-
-```python
-from fastapi_restly.objects import async_make_new_object, async_save_object
-
-
-async def import_user(session, payload) -> User:
-    obj = await async_make_new_object(session, User, payload, UserRead)
-    await async_save_object(session, obj)
-    await session.commit()  # the free functions never commit; this caller does
-    return obj
-```
-
-These free functions do not commit; the caller owns the transaction.
+remove ORM objects without committing. The same operations exist as free
+functions for workers and service code, where the caller owns the
+transaction. The full table and a worked free-function example:
+[Domain utilities — call, don't override](#domain-utilities).
 
 ## Where to go next
 

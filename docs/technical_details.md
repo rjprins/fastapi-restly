@@ -185,27 +185,15 @@ attach an `APIRouter` to the parent app/router.
 
 ### The Three Tiers of a CRUD Verb
 
-Every CRUD verb is split into three tiers:
+Every CRUD verb is split into a route shell (`<verb>_endpoint`), a request
+handler (`handle_<verb>`), and a business verb (`<verb>`); the model and the
+override decision table live in
+[How Overrides Work: The Three Tiers](the_handle_design.md).
 
-1. **Route shell** — `<verb>_endpoint` (`get_many_endpoint`, `get_one_endpoint`,
-   `create_endpoint`, `update_endpoint`, `delete_endpoint`). The wire boundary:
-   the `@route`, the FastAPI signature, `response_model`, and the `to_response`
-   call. Override only to change the HTTP contract itself.
-2. **Request handler** — `handle_<verb>` (`handle_get_many`, `handle_get_one`,
-   `handle_create`, `handle_update`, `handle_delete`). The request logic: it runs
-   `authorize` and the commit bracket (`before_commit` -> commit ->
-   `after_commit`) and returns the domain object. Override to change
-   orchestration or timing without re-declaring the route.
-3. **Business verb** — `get_many`, `get_one`, `create`, `update`, `delete`. The
-   domain operation (build / apply / save). Auth-free and commit-free; this is
-   the usual override point (hash a password, derive a slug, compute a field).
-
-The handler owns the commit, so `after_commit` runs after durability. Business
-verbs never commit; they build, mutate, save, and return.
-
-The route shell calls `to_response(obj, shape)`, the single response method.
-`to_response` in turn delegates to `to_response_schema(obj)` for the per-object
-serialization (`WriteOnly` filtering, relationship-id normalization).
+The implementation detail worth knowing here: the route shell calls
+`to_response(obj, shape)`, the single response method, which delegates to
+`to_response_schema(obj)` for the per-object serialization (`WriteOnly`
+filtering, relationship-id normalization).
 
 ### Nested Response Schemas vs Write Payloads
 

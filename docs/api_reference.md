@@ -159,19 +159,11 @@ FastAPI-Restly also works with ordinary SQLAlchemy models that inherit from your
 
 ### View Method Surface
 
-Each CRUD verb on `RestView` / `AsyncRestView` is split into three tiers, so you
-can override the layer you need:
-
-1. **Route shell** (`<verb>_endpoint`) — the wire boundary: the `@route`, the
-   FastAPI signature / `response_model`, and the call to `to_response`. Override
-   only to change the HTTP contract.
-2. **Request handler** (`handle_<verb>`) — the request logic: it runs
-   `authorize` and the commit bracket (`before_commit` → commit →
-   `after_commit`) and returns the domain object. Override to change
-   orchestration or timing without re-declaring the route.
-3. **Business method** (`<verb>`) — the domain operation (build / apply / save).
-   It is **auth-free** and **commit-free**, and is the usual override point.
-   The handler owns the commit.
+Each CRUD verb on `RestView` / `AsyncRestView` is split into three tiers —
+route shell (`<verb>_endpoint`), request handler (`handle_<verb>`), business
+method (`<verb>`) — so you override the layer that owns your change; the
+model and decision table live in
+[How Overrides Work: The Three Tiers](the_handle_design.md).
 
 Alongside the tiers are cross-cutting **override points** (`build_query`,
 `apply_query_params`, `count`, `authorize`,
