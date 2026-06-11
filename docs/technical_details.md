@@ -248,9 +248,10 @@ configure it once during startup:
 fr.configure(async_database_url="sqlite+aiosqlite:///app.db")
 ```
 
-`fr.configure(...)` rejects no-op calls. Pass at least one setup option: an app
-for default exception-handler registration, a database URL, an engine, a session
-maker, a custom session generator, or a `warn_on_uncommitted` setting.
+`fr.configure(...)` rejects no-op calls — pass at least one setup option. The
+authoritative list of accepted options is the
+[API Reference's Database section](api_reference.md); this page does not
+duplicate the contract.
 
 Internally, Restly keeps a private context object so its own tests and fixtures
 can isolate runtime state. That context is not a public multi-engine feature.
