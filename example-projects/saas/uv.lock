@@ -127,7 +127,7 @@ wheels = [
 
 [[package]]
 name = "fastapi-restly"
-version = "0.6.1"
+version = "0.7.0"
 source = { editable = "../../" }
 dependencies = [
     { name = "alembic" },
@@ -171,6 +171,7 @@ dev = [
     { name = "sphinx-autobuild", specifier = ">=2024.10.3" },
     { name = "sphinx-copybutton", specifier = ">=0.5.2" },
     { name = "sphinx-design", specifier = ">=0.6.0" },
+    { name = "sphinx-reredirects", specifier = ">=0.1.3" },
     { name = "sphinx-sitemap", specifier = ">=2.9.0" },
 ]
 
