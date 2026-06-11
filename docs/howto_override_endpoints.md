@@ -112,7 +112,7 @@ class UserView(fr.AsyncRestView):
 
 ```python
     async def delete(self, obj):
-        obj.deleted_at = datetime.utcnow()
+        obj.deleted_at = datetime.now(timezone.utc)
         await self.session.flush()
         # Do NOT call super() — that would remove the row.
 ```

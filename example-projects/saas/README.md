@@ -1,6 +1,6 @@
 # SaaS Example
 
-Multi-tenant project management API built with [FastAPI-Restly](https://github.com/rutgerprins/fastapi-restly).
+Multi-tenant project management API built with [FastAPI-Restly](https://github.com/rjprins/fastapi-restly).
 
 This is the most complete example in the repository. It is intended as a
 showcase of how a real fastapi-restly project can be structured and

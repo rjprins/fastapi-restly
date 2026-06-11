@@ -281,7 +281,9 @@ def create_all(base_or_metadata: type[DeclarativeBase] | MetaData) -> None:
 
 
 async def async_create_all(base_or_metadata: type[DeclarativeBase] | MetaData) -> None:
-    """Async equivalent of :func:`create_all`, on the configured async engine::
+    """Async equivalent of :func:`create_all`, on the configured async engine.
+
+    Usage::
 
         await fr.db.async_create_all(Base)
     """

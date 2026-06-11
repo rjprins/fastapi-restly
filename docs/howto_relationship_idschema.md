@@ -96,7 +96,7 @@ is a list of references:
 class ArticleView(fr.AsyncRestView):
     prefix = "/articles"
     model = Article
-    schema = ArticleSchema
+    schema = ArticleRead
 
     async def authorize(self, action, obj=None, data=None):
         if data is not None and data.author_id is not None:

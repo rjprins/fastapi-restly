@@ -192,7 +192,9 @@ from fastapi_restly.objects import async_make_new_object, async_save_object
 
 async def import_user(session, payload) -> User:
     obj = await async_make_new_object(session, User, payload, UserRead)
-    return await async_save_object(session, obj)
+    await async_save_object(session, obj)
+    await session.commit()  # the free functions never commit; this caller does
+    return obj
 ```
 
 These free functions do not commit; the caller owns the transaction.
