@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- The generated route shells (`get_many_endpoint`, `create_endpoint`, ...)
+  now carry one-line override-redirect docstrings, so `help(RestView)`, source
+  readers, and coding agents see which tier to override (`<verb>` for domain
+  logic, `handle_<verb>` for orchestration, `to_response` for shape). The
+  docstrings are stripped from generated routes at registration so framework
+  guidance never appears as OpenAPI operation descriptions in your API;
+  endpoints you define or override yourself keep FastAPI's normal docstring
+  behavior.
+
 - Scalar `fr.IDRef[T]` foreign-key fields are now filterable on list endpoints
   by their own public name. Previously `post_id: fr.IDRef[Post]` — the FK form
   the tutorial teaches — generated no filter parameter at all, so

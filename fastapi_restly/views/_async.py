@@ -59,27 +59,46 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
 
     @get("/")
     async def get_many_endpoint(self, query_params: Any) -> Any:
+        """``GET /`` route shell (wire tier). Override ``get_many`` for domain
+        logic, ``handle_get_many`` for orchestration, ``to_response`` for the
+        response shape; replace this shell only to change the HTTP contract."""
         self._reject_unknown_query_params()
         result = await self.handle_get_many(query_params)
         return self.to_response(result, ResponseShape.LISTING)
 
     @get("/{id}")
     async def get_one_endpoint(self, id: Any) -> Any:
+        """``GET /{id}`` route shell (wire tier). Override ``get_one`` for domain
+        logic (visibility lives in ``build_query``), ``handle_get_one`` for
+        orchestration, ``to_response`` for the response shape; replace this
+        shell only to change the HTTP contract."""
         obj = await self.handle_get_one(id)
         return self.to_response(obj)
 
     @post("/")
     async def create_endpoint(self, schema_obj: Any) -> Any:
+        """``POST /`` route shell (wire tier). Override ``create`` for domain
+        logic (it is commit-free; the handler owns the commit),
+        ``handle_create`` for orchestration, ``to_response`` for the response
+        shape; replace this shell only to change the HTTP contract."""
         obj = await self.handle_create(schema_obj)
         return self.to_response(obj)
 
     @patch("/{id}")
     async def update_endpoint(self, id: Any, schema_obj: Any) -> Any:
+        """``PATCH /{id}`` route shell (wire tier). Override ``update`` for
+        domain logic, ``handle_update`` for orchestration, ``to_response`` for
+        the response shape; replace this shell only to change the HTTP
+        contract."""
         obj = await self.handle_update(id, schema_obj)
         return self.to_response(obj)
 
     @delete("/{id}")
     async def delete_endpoint(self, id: Any) -> Any:
+        """``DELETE /{id}`` route shell (wire tier). Override ``delete`` for
+        domain logic (e.g. soft delete), ``handle_delete`` for orchestration;
+        replace this shell only to change the HTTP contract (e.g. return the
+        deleted object instead of 204)."""
         await self.handle_delete(id)
         return self.to_response(None, ResponseShape.EMPTY)
 

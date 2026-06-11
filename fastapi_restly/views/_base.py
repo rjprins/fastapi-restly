@@ -1293,6 +1293,12 @@ def _copy_all_parent_class_endpoints_into_this_subclass(view_cls: type[View]):
         # The original endpoint might be shared between subclasses.
         # So make a copy and put that on the view_cls.
         endpoint_wrapper = _make_copy(endpoint, view_cls)
+        if getattr(endpoint, "__module__", "").startswith("fastapi_restly."):
+            # The shells carry override-redirect docstrings for help()/source
+            # readers. FastAPI reads endpoint.__doc__ as the OpenAPI operation
+            # description, so strip the copy: framework guidance must not leak
+            # into the user's API docs. User-defined endpoints keep theirs.
+            endpoint_wrapper.__doc__ = None
         # Reset the copy's name to the endpoint attribute so downstream renaming
         # produces "<view>_<name>" even when the source was a parent's renamed
         # copy.

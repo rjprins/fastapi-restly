@@ -1,3 +1,24 @@
+"""Class-based views: generated CRUD plus explicit override tiers.
+
+Every CRUD verb on ``RestView`` / ``AsyncRestView`` exists at three tiers —
+name the tier that owns your change and override one method:
+
+1. ``<verb>_endpoint`` — the route shell (wire tier): the ``@route``, FastAPI
+   signature, ``response_model``, and ``to_response``. Replace only to change
+   the HTTP contract.
+2. ``handle_<verb>`` — the request handler: runs ``authorize`` and the commit
+   bracket (``before_commit`` -> commit -> ``after_commit``). Override for
+   orchestration or timing.
+3. ``<verb>`` (``get_many``, ``get_one``, ``create``, ``update``, ``delete``)
+   — the business verb: the domain operation, auth-free and commit-free. The
+   usual override point.
+
+Cross-cutting seams: ``build_query`` (read scope/visibility), ``authorize``
+(policy), ``apply_query_params`` (URL grammar), ``to_response`` (wire shape),
+``write_action`` (custom write brackets). ``View`` is the bare class-based
+primitive for non-CRUD endpoint groups (auth flows, webhooks, RPC).
+"""
+
 from ._async import AsyncRestView
 from ._base import (
     Action,
