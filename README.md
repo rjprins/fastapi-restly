@@ -43,9 +43,6 @@ method overrides to share behavior across resources.
 - **React Admin ready**: `AsyncReactAdminView` speaks `ra-data-simple-rest`.
 - **App utilities**: SQLAlchemy engine/session setup, exception handlers, and test fixtures.
 
-Coming from another CRUD generator? See
-[How Restly compares](https://www.fastapi-restly.org/about.html#how-restly-compares).
-
 ## Quickstart
 
 FastAPI-Restly turns a SQLAlchemy model into a class-based CRUD resource.

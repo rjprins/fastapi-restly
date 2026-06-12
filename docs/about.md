@@ -2,79 +2,63 @@
 
 ## What it is
 
-FastAPI-Restly is a REST framework for FastAPI and SQLAlchemy 2. It generates
-standard resource endpoints from a model and schema definition, and gets out of
-the way when your service needs custom behavior.
+FastAPI-Restly is a REST framework on top of FastAPI, SQLAlchemy 2, and
+Pydantic v2 — and a step toward something larger: a more complete web
+framework.
 
-The central idea is code reuse: keep FastAPI projects DRY without hiding the
-framework underneath. Most services repeat the same endpoint structure, session
-wiring, schema conversion, list filtering, and response handling. Repeating that
-by hand doesn't add value. FastAPI-Restly handles the common path, so the code
-you write is the code that makes your application different.
+FastAPI deliberately handles one side of a web application: routing,
+validation, serialization, dependency injection. Everything on the other
+side — session and transaction handling, the standard resource endpoints,
+list filtering, error responses, test setup — every project builds again,
+slightly differently, the same patterns rewritten over and over.
 
-Customization must always be possible. Restly is intended for real production
-web services, where things are never simply CRUD. Generated operations should
-be a strong starting point, not a boundary.
+Restly exists to make that side DRY without making it exotic. It stays
+standard — plain FastAPI and SQLAlchemy underneath, nothing hidden — and
+provides general out-of-the-box functionality on top: define a model and a
+schema, get a working API, and override one method when your service needs
+to differ.
+
+## Philosophy
+
+- **DRY, but standard.** Reuse should come from conventions on top of the
+  stack you already know, not from a parallel abstraction that hides it. You
+  can always drop one level down to plain FastAPI or SQLAlchemy.
+- **Out of the box.** The common path should not need wiring: engine and
+  session setup, commit handling, schema generation, list filtering with
+  strict validation, error translation, and savepoint-isolated test fixtures
+  all work from `fr.configure()` onward.
+- **Customization is never off the path.** Real production services are
+  never simply CRUD. Every generated operation has explicit override points
+  — the [three tiers](the_handle_design.md) — so generated behavior is a
+  starting point, not a boundary.
+- **A holistic view of web applications.** The long-term goal covers more
+  than resource endpoints: auth, permissions, background jobs, admin pages,
+  and a plugin system are on the path, each with the same escape hatches.
+- **Documentation you don't have to guess at.** Common paths have runnable
+  examples and extension points say where custom behavior belongs — for your
+  team and for coding agents alike.
+
+The core patterns — class-based views, the override hierarchy, schema
+generation — are proven by four years of internal production use. The public
+API surface is still settling on the way to `1.0.0` (see the
+[changelog](changelog.md)); a broader user base will find corners we haven't
+hit yet. If you find something broken or missing,
+[open an issue](https://github.com/rjprins/fastapi-restly/issues).
 
 ## History
 
-The pattern behind FastAPI-Restly is older than FastAPI itself.
+Restly is built and maintained by [Rutger Prins](https://github.com/rjprins),
+and the pattern behind it predates FastAPI. At **EclecticIQ**, an earlier
+private framework on Flask and Flask-Classy explored the same idea: define a
+model, define a schema, get a working API, override individual methods where
+needed. It was never released publicly.
 
-Restly is built and maintained by [Rutger Prins](https://github.com/rjprins).
-Before Restly existed, I built a similar private framework at **EclecticIQ**,
-on top of Flask and Flask-Classy; it was never released publicly. It explored
-the same core idea: define a model, define a schema, get a working API, and
-override individual methods when you need to.
-
-When FastAPI and SQLAlchemy 2 matured, the approach translated naturally.
-Restly was rebuilt for FastAPI at **Clearblue Markets**, who later allowed the
-work to be shared publicly. It was then developed and refined in production at
-**Brenntag**.
-
-That is the four years of internal use behind the public project: focused
-production deployments of Restly itself at two companies — Clearblue Markets
-and Brenntag — plus the lessons from the earlier private Flask framework at
-EclecticIQ.
-
-## Direction
-
-The long-term goal is to provide as much out of the box as possible while still
-leaving clear escape hatches. Restly should take a holistic view of building web
-applications, not only the resource endpoints themselves.
-
-That includes auth, permissions, background jobs, admin pages, a future plugin
-system, and other customization layers that serve real-world use cases. The
-documentation aims to keep pace: common paths get examples, extension points
-say where custom behavior belongs, and no reader — human or coding agent —
-should have to guess.
-
-## How Restly compares
-
-The closest neighbor is [FastCRUD](https://github.com/benavlabs/fastcrud):
-an endpoint factory plus a service class of CRUD methods, good at what it
-targets, with strong join and pagination support. The structural difference
-shows up when an endpoint needs to deviate: with a factory you bypass it and
-hand-write the route; with Restly you subclass and override one tier, while
-the framework keeps owning routing, authorization hooks, and the commit. If
-your service is CRUD plus joins and you prefer wiring the rest yourself,
-FastCRUD is a fine choice; if your endpoints accumulate domain behavior over
-time, that is what Restly is built for.
-
-## Honest about where we are
-
-Production history at two companies is meaningful, but those were focused
-deployments. A broader user base will find corners we haven't hit yet.
-
-The core patterns — class-based views, the override hierarchy, and schema
-generation — are proven. The public API surface is still settling (see the
-[changelog](changelog.md)). If you find something broken or missing,
-[open an issue](https://github.com/rjprins/fastapi-restly/issues).
-
-## Acknowledgements
-
-Thanks to Clearblue Markets and Brenntag for allowing this work to be developed
-and eventually shared. Thanks to EclecticIQ for the original environment where
-the earlier Flask pattern was explored.
+When FastAPI and SQLAlchemy 2 matured, the approach was rebuilt as Restly at
+**Clearblue Markets**, which later allowed the work to be shared publicly,
+and then developed and refined in production at **Brenntag**. Those
+deployments — four years of internal use, plus the lessons of the earlier
+Flask framework — are what became the public project. Thanks to all three
+companies for the environments that made it possible.
 
 Ready to try it? [Getting Started](getting_started.md) takes about fifteen
 minutes.
