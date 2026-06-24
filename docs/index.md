@@ -117,7 +117,7 @@ Fast path from zero to a working REST API.
 :::
 
 :::{grid-item-card} Tutorial
-:link: tutorial
+:link: tutorial_overview
 :link-type: doc
 
 Build a complete blog API in two parts: generated CRUD, then customization.
@@ -178,7 +178,7 @@ Production engine config, Alembic migrations, and an ASGI checklist.
 :hidden:
 
 getting_started
-tutorial
+Tutorial <tutorial_overview>
 Views <class_based_views>
 Overrides <the_handle_design>
 How-To <user_guide>

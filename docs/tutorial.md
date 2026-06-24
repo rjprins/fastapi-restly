@@ -1,8 +1,9 @@
-# Tutorial
+# Tutorial Part 1: Generated CRUD
 
-This tutorial builds a small blog API with two related models and shows the most common
-FastAPI-Restly patterns. It assumes you have already read [Getting Started](getting_started.md)
-and installed `fastapi-restly[standard]` with the `aiosqlite` driver.
+Part 1 builds a small blog API with two related models and shows the most common
+FastAPI-Restly patterns: models, schemas, and a view class that generates full CRUD
+endpoints. It assumes you have read [Getting Started](getting_started.md) and
+installed `fastapi-restly[standard]` with the `aiosqlite` driver.
 
 This tutorial uses explicit schemas for clarity. For faster scaffolding, you can omit
 `schema = ...` on a view and let FastAPI-Restly auto-generate it from the model.
@@ -351,10 +352,3 @@ class CommentView(fr.AsyncRestView):
 - [Testing](howto_testing.md) — savepoint isolation and test fixtures
 - [Examples](examples.md) — complete sample apps that extend these patterns
 - [API Reference](api_reference.md)
-
-```{toctree}
-:maxdepth: 1
-:hidden:
-
-tutorial_customizing
-```
