@@ -17,19 +17,34 @@ POST /                       ← the route shell
             └─ create(...)   3. DOMAIN: build the object, save it — auth-free, commit-free
 ```
 
-1. **Route shell** — `get_many_endpoint`, `get_one_endpoint`,
-   `create_endpoint`, `update_endpoint`, `delete_endpoint`. This is the **wire
-   boundary**: the `@route` decorator, FastAPI signature, `response_model`, and
-   `to_response`. Override it only to change the HTTP contract.
+1. **Route shell** — This is the **wire boundary**: the `@route` decorator,
+   FastAPI signature, `response_model`, and `to_response`. Override it only to
+   change the HTTP contract.
 
-2. **Request handler** — `handle_get_many`, `handle_get_one`, `handle_create`,
-   `handle_update`, `handle_delete`. This is the **request logic**: it runs
-   `authorize`, owns the commit bracket, and returns the domain object. Override
-   it to change orchestration or timing without re-declaring the route.
+   - `get_many_endpoint`
+   - `get_one_endpoint`
+   - `create_endpoint`
+   - `update_endpoint`
+   - `delete_endpoint`
 
-3. **Business verb** — `get_many`, `get_one`, `create`, `update`, `delete`.
-   This is the **domain operation**: build, apply, save. It is **auth-free** and
-   **commit-free**. This is the usual override point.
+2. **Request handler** — This is the **request logic**: it runs `authorize`,
+   owns the commit bracket, and returns the domain object. Override it to change
+   orchestration or timing without re-declaring the route.
+
+   - `handle_get_many`
+   - `handle_get_one`
+   - `handle_create`
+   - `handle_update`
+   - `handle_delete`
+
+3. **Business verb** — This is the **domain operation**: build, apply, save. It
+   is **auth-free** and **commit-free**. This is the usual override point.
+
+   - `get_many`
+   - `get_one`
+   - `create`
+   - `update`
+   - `delete`
 
 The handler owns the commit, not the business verb. Because `create` never
 commits, an override can build an object, stamp a `password_hash`, call
