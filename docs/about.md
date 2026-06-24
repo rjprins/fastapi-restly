@@ -17,7 +17,7 @@ Restly tries to fill that gap, with the end goal to provide a complete, batterie
 - **Out of the box.** The common path should not need wiring: engine and
   session setup, commit handling, schema generation, list filtering with
   strict validation, error translation, and savepoint-isolated test fixtures
-  all work from `fr.configure()` onward.
+  all work from {func}`fr.configure() <fastapi_restly.db.configure>` onward.
 - **Customization is never off the path.** Real production services are
   never simply CRUD. Every generated operation has explicit override points
   so generated behavior is a starting point, not a boundary (see [three tiers](the_handle_design.md)).

@@ -1,6 +1,6 @@
 # Work with Foreign Keys Using IDRef
 
-Use `fr.IDRef[Model]` for foreign-key fields. The API stays in the common
+Use {class}`fr.IDRef[Model] <fastapi_restly.schemas.IDRef>` for foreign-key fields. The API stays in the common
 scalar-id shape while FastAPI-Restly still validates that the referenced row
 exists.
 
@@ -27,7 +27,7 @@ class Article(fr.IDBase):
     author: Mapped["Author"] = relationship(default=None, init=False)
 ```
 
-`fr.IDBase` auto-generates the table name from the class name (`Author` →
+{class}`fr.IDBase <fastapi_restly.models.IDBase>` auto-generates the table name from the class name (`Author` →
 `author`, `Article` → `article`). That is why `ForeignKey("author.id")` is
 correct here.
 
@@ -43,7 +43,7 @@ class ArticleRead(fr.IDSchema):
     author_id: fr.IDRef[Author]
 ```
 
-`fr.IDRef[Author]` means "this field references an `Author` row by id." The
+{class}`fr.IDRef[Author] <fastapi_restly.schemas.IDRef>` means "this field references an `Author` row by id." The
 wire format is a plain scalar:
 
 ```json
@@ -81,7 +81,7 @@ see [Visibility and Multi-Tenancy](#visibility-and-multi-tenancy) below.
 
 The FK field is filterable on the list endpoint by its own public name —
 `GET /articles/?author_id=1` (also `author_id__in`, `author_id__ne`,
-`author_id__isnull`). An `IDRef` id is treated as opaque, so the range and
+`author_id__isnull`). An {class}`IDRef <fastapi_restly.schemas.IDRef>` id is treated as opaque, so the range and
 substring operators are deliberately not offered. See
 [Query Modifiers → Foreign-key filtering](howto_query_modifiers.md#foreign-key-filtering).
 
@@ -104,7 +104,7 @@ If the relationship attribute is absent, Restly still sets the FK column.
 
 ## Lists of References
 
-A to-many reference serializes as a plain id array with `list[fr.IDRef[Model]]`:
+A to-many reference serializes as a plain id array with {class}`list[fr.IDRef[Model]] <fastapi_restly.schemas.IDRef>`:
 
 ```python
 class OrderRead(fr.IDSchema):
@@ -114,13 +114,13 @@ class OrderRead(fr.IDSchema):
 
 On input, each element accepts both raw scalars and `{"id": ...}` shapes, so
 the same field doubles as a permissive write-side type when paired with a
-custom `create` / `update` business verb that resolves the list. For
+custom {meth}`create <fastapi_restly.views.RestView.create>` / {meth}`update <fastapi_restly.views.RestView.update>` business verb that resolves the list. For
 relationship objects that must stay nested on the wire, use
-`fr.IDSchema[Model]` (below).
+{class}`fr.IDSchema[Model] <fastapi_restly.schemas.IDSchema>` (below).
 
 ## Input Compatibility
 
-`IDRef` accepts both scalar ids and `{"id": ...}` dictionaries on input:
+{class}`IDRef <fastapi_restly.schemas.IDRef>` accepts both scalar ids and `{"id": ...}` dictionaries on input:
 
 ```json
 { "author_id": 1 }
@@ -136,7 +136,7 @@ identifier field.
 
 ## About IDSchema
 
-Most examples inherit from `fr.IDSchema` — `BaseSchema` plus a read-only `id`
+Most examples inherit from {class}`fr.IDSchema <fastapi_restly.schemas.IDSchema>` — {class}`BaseSchema <fastapi_restly.schemas.BaseSchema>` plus a read-only `id`
 field. The schema bases, `ReadOnly` / `WriteOnly` markers, and aliases are
 owned by [Custom Schemas and Field Types](howto_custom_schema.md); inherit
 from `fr.BaseSchema` instead if you want every field, including `id`,
@@ -145,7 +145,7 @@ explicit.
 ## Nested Relationship Objects
 
 Some clients model relationships as objects. For that shape, annotate the
-relationship field with `fr.IDSchema[Model]`:
+relationship field with {class}`fr.IDSchema[Model] <fastapi_restly.schemas.IDSchema>`:
 
 ```python
 class ArticleRead(fr.IDSchema):
@@ -162,14 +162,14 @@ The wire format is:
 }
 ```
 
-`IDRef` and `IDSchema[Model]` both validate the referenced row and use the same
+{class}`IDRef <fastapi_restly.schemas.IDRef>` and `IDSchema[Model]` both validate the referenced row and use the same
 resolver. The difference is the API shape.
 
 ## Dataclass Relationship Setup
 
-`fr.IDBase` uses SQLAlchemy's `MappedAsDataclass`, which generates an `__init__`
+{class}`fr.IDBase <fastapi_restly.models.IDBase>` uses SQLAlchemy's `MappedAsDataclass`, which generates an `__init__`
 from the model fields. Restly's create/update helpers are aware of that
-constructor shape when an `IDRef` / `IDSchema` field has been resolved to an ORM
+constructor shape when an {class}`IDRef <fastapi_restly.schemas.IDRef>` / {class}`IDSchema <fastapi_restly.schemas.IDSchema>` field has been resolved to an ORM
 object.
 
 The common FK-first declaration is still the clearest default:
@@ -236,7 +236,7 @@ relationship attribute, when one is declared) directly.
 
 ## IDRef in Custom Routes
 
-Generated `POST` and `PATCH` routes validate the body before Restly calls `make_new_object()` or `update_object()`, so `IDRef[Model]` fields are already `IDRef` instances.
+Generated `POST` and `PATCH` routes validate the body before Restly calls `make_new_object()` or `update_object()`, so {class}`IDRef[Model] <fastapi_restly.schemas.IDRef>` fields are already `IDRef` instances.
 
 In a custom route, be careful when you construct a schema yourself. Pydantic's `model_construct()` skips validation, so scalar ids stay plain integers unless you wrap them explicitly:
 
@@ -258,7 +258,7 @@ task_label = await async_make_new_object(
 
 This keeps the resolver path active: Restly verifies referenced rows and writes the FK columns. It helps when validated construction would require response-only fields such as `id` or timestamps.
 
-If you instead use `IDSchema[Model]` as a nested relationship-object field in a custom response schema, serialize the ORM object through `self.to_response_schema(obj)` before returning it:
+If you instead use {class}`IDSchema[Model] <fastapi_restly.schemas.IDSchema>` as a nested relationship-object field in a custom response schema, serialize the ORM object through {meth}`self.to_response_schema(obj) <fastapi_restly.views.BaseRestView.to_response_schema>` before returning it:
 
 ```python
 class TaskLabelNestedRead(fr.IDSchema):
@@ -280,13 +280,13 @@ The SaaS example's `example-projects/saas/app/views/label.py` shows this in a `c
 
 Reference resolution is an **unscoped existence check**. Restly fetches the
 referenced row by primary key only (`session.get(Author, id)`). View
-`build_query` scoping is not applied, so tenant, soft-delete, and row-level
+{meth}`build_query <fastapi_restly.views.RestView.build_query>` scoping is not applied, so tenant, soft-delete, and row-level
 visibility checks are your responsibility.
 
 The resolver only knows the referenced *model* from `IDRef[Model]`, not which
 view governs it. References are a **policy** concern.
 
-Gate in **`authorize`**, where `data` carries the *unresolved* reference, so
+Gate in **{meth}`authorize <fastapi_restly.views.RestView.authorize>`**, where `data` carries the *unresolved* reference, so
 `data.<field>.id` is the requested id (before the row is fetched). A list field
 is a list of references:
 
@@ -305,7 +305,7 @@ class ArticleView(fr.AsyncRestView):
 ```
 
 The resolved ORM object is not available in `authorize`; resolution runs later
-in the business verb. If you need the resolved row, check in `before_commit`,
+in the business verb. If you need the resolved row, check in {meth}`before_commit <fastapi_restly.views.RestView.before_commit>`,
 where the built object carries it (for example `new.author.org_id`). Prefer
 `authorize` when the requested id is enough: it rejects before the unscoped
 fetch and is the standard policy seam.
@@ -315,11 +315,11 @@ write-path authorization.
 
 ## Behavior Summary
 
-- `IDRef[Model]` uses scalar id wire format on request and response.
+- {class}`IDRef[Model] <fastapi_restly.schemas.IDRef>` uses scalar id wire format on request and response.
 - Missing related IDs return `404`.
 - Reference resolution is an **unscoped existence check** (bare PK lookup, no
-  `build_query` scoping). Gate cross-tenant / visibility references in
-  `authorize` or `before_commit` — see [Visibility and Multi-Tenancy](#visibility-and-multi-tenancy).
+  {meth}`build_query <fastapi_restly.views.RestView.build_query>` scoping). Gate cross-tenant / visibility references in
+  {meth}`authorize <fastapi_restly.views.RestView.authorize>` or {meth}`before_commit <fastapi_restly.views.RestView.before_commit>` — see [Visibility and Multi-Tenancy](#visibility-and-multi-tenancy).
 - The `_id` field name triggers FK resolution.
 - A matching SQLAlchemy relationship lets Restly keep the FK column and
   relationship attribute in sync.
@@ -327,12 +327,12 @@ write-path authorization.
   constructor values the model requires from the same resolved row.
 - If both `author_id` and `author` are explicitly provided, they must refer to
   the same row or the request returns `422`.
-- `IDSchema` as a base class adds the resource's own read-only `id` field.
+- {class}`IDSchema <fastapi_restly.schemas.IDSchema>` as a base class adds the resource's own read-only `id` field.
 
 ## See also
 
-- [Tutorial](tutorial.md) — `IDRef` in the blog build, in context.
+- [Tutorial](tutorial.md) — {class}`IDRef <fastapi_restly.schemas.IDRef>` in the blog build, in context.
 - [Custom Schemas and Field Types](howto_custom_schema.md) — the schema bases
   and field markers `IDRef` composes with.
-- [API Reference](api_reference.md) — `IDRef` / `IDSchema` signatures and the
+- [API Reference](api_reference.md) — `IDRef` / {class}`IDSchema <fastapi_restly.schemas.IDSchema>` signatures and the
   full symbol tables.

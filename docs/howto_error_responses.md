@@ -5,21 +5,21 @@ default every error renders as FastAPI's standard `{"detail": ...}` body.
 This page covers the typed exceptions your overrides should raise, and how to
 change the error envelope app-wide.
 
-One rule up front: **errors bypass `to_response`**. The response boundary on a
+One rule up front: **errors bypass {meth}`to_response <fastapi_restly.views.BaseRestView.to_response>`**. The response boundary on a
 view shapes *successful* payloads; error shaping happens at FastAPI's
 exception-handler layer, app-wide, exactly like in a plain FastAPI app.
 
 ## The typed exceptions
 
-All request-time errors live in `fr.exc` and subclass `fr.exc.RestlyHTTPError`
+All request-time errors live in `fr.exc` and subclass {class}`fr.exc.RestlyHTTPError <fastapi_restly.exc.RestlyHTTPError>`
 (itself a `fastapi.HTTPException`):
 
 | Exception | Status | Raised when / raise it for |
 |---|---|---|
-| `fr.exc.NotFound` | `404` | A row doesn't exist — or is hidden by `build_query` scoping. |
-| `fr.exc.Forbidden` | `403` | `authorize` rejects the action. |
-| `fr.exc.Conflict` | `409` | The request conflicts with current resource state. |
-| `fr.exc.BadQueryParam` | `400` | A list-endpoint parameter that is structurally valid but semantically wrong (e.g. `?sort=unknown_field`). |
+| {class}`fr.exc.NotFound <fastapi_restly.exc.NotFound>` | `404` | A row doesn't exist — or is hidden by {meth}`build_query <fastapi_restly.views.RestView.build_query>` scoping. |
+| {class}`fr.exc.Forbidden <fastapi_restly.exc.Forbidden>` | `403` | {meth}`authorize <fastapi_restly.views.RestView.authorize>` rejects the action. |
+| {class}`fr.exc.Conflict <fastapi_restly.exc.Conflict>` | `409` | The request conflicts with current resource state. |
+| {class}`fr.exc.BadQueryParam <fastapi_restly.exc.BadQueryParam>` | `400` | A list-endpoint parameter that is structurally valid but semantically wrong (e.g. `?sort=unknown_field`). |
 
 Raise them from your own overrides — `authorize`, business verbs, custom
 routes — and they render through whatever handler is installed:
@@ -33,9 +33,9 @@ class ArticleView(fr.AsyncRestView):
             raise fr.exc.Forbidden("deletes need an admin token")
 ```
 
-(`fr.exc.RestlyError` / `RestlyConfigurationError` are setup-time framework
-errors, not HTTP errors; the warnings `RestlyUncommittedChangesWarning` and
-`RestlyMisuseWarning` also live in `fr.exc`.)
+({class}`fr.exc.RestlyError <fastapi_restly.exc.RestlyError>` / {class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>` are setup-time framework
+errors, not HTTP errors; the warnings {class}`RestlyUncommittedChangesWarning <fastapi_restly.exc.RestlyUncommittedChangesWarning>` and
+{class}`RestlyMisuseWarning <fastapi_restly.exc.RestlyMisuseWarning>` also live in `fr.exc`.)
 
 ## 422 vs 400 on list endpoints
 
@@ -50,7 +50,7 @@ Two layers reject bad query strings, with different statuses:
 
 ## Change the error envelope app-wide
 
-Register a handler for `fr.exc.RestlyHTTPError` — subclass matching means one
+Register a handler for {class}`fr.exc.RestlyHTTPError <fastapi_restly.exc.RestlyHTTPError>` — subclass matching means one
 handler covers all four typed errors. An RFC 9457 problem-details envelope:
 
 ```python
@@ -81,13 +81,13 @@ and plain `HTTPException`s raised elsewhere, register handlers for
 Restly installs a default handler that translates SQLAlchemy
 `IntegrityError`s into `409 Conflict` responses. It respects a handler you
 registered yourself and can be disabled with
-`fr.configure(app=app, install_default_exception_handlers=False)` — the exact
+{func}`fr.configure(app=app, install_default_exception_handlers=False) <fastapi_restly.db.configure>` — the exact
 registration contract is in
 [Default Exception Handling](api_reference.md#default-exception-handling).
 
 ## See also
 
-- [How Overrides Work](the_handle_design.md) — where `authorize` and the
+- [How Overrides Work](the_handle_design.md) — where {meth}`authorize <fastapi_restly.views.RestView.authorize>` and the
   business verbs sit; a raised exception skips the commit bracket.
 - [Filter, Sort, and Paginate Lists](howto_query_modifiers.md) — the
   parameter grammar whose violations produce the 422/400 split.

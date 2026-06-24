@@ -36,13 +36,13 @@ class Comment(fr.IDBase):
 
 ### Table naming
 
-`IDBase` automatically derives table names from the class name using snake_case conversion:
+{class}`IDBase <fastapi_restly.models.IDBase>` automatically derives table names from the class name using snake_case conversion:
 `Post` becomes `"post"`, `Comment` becomes `"comment"`, `BlogPost` would become `"blog_post"`.
 This is why `ForeignKey("post.id")` is the correct reference for `Post.id`.
 
 ### IDBase and dataclass semantics
 
-`IDBase` uses SQLAlchemy's `MappedAsDataclass`. Always pass fields as keyword arguments:
+{class}`IDBase <fastapi_restly.models.IDBase>` uses SQLAlchemy's `MappedAsDataclass`. Always pass fields as keyword arguments:
 
 ```python
 Post(title="Hello", content="World", published=False)  # correct
@@ -68,7 +68,7 @@ class CommentRead(fr.IDSchema):
 
 ### What IDSchema provides
 
-`fr.IDSchema` is a Pydantic base class that adds a read-only `id` field to your schema.
+{class}`fr.IDSchema <fastapi_restly.schemas.IDSchema>` is a Pydantic base class that adds a read-only `id` field to your schema.
 Because `id` is `ReadOnly`, it appears in responses but is ignored when creating or updating
 records. You do not need to declare `id` yourself.
 
@@ -140,7 +140,7 @@ class CommentView(fr.AsyncRestView):
 
 Tables are created inside a FastAPI `lifespan` context manager so they are initialised
 after the event loop starts. This is safe with both `uvicorn` and testing tools.
-For production projects, use Alembic migrations instead of `create_all`.
+For production projects, use Alembic migrations instead of {func}`create_all <fastapi_restly.db.create_all>`.
 
 ---
 
@@ -167,9 +167,9 @@ For each view, FastAPI-Restly generates five endpoints. With `prefix = "/posts"`
 | `PATCH`  | `/posts/{id}` | Update a post  |
 | `DELETE` | `/posts/{id}` | Delete a post  |
 
-The `prefix` value must include the leading slash (e.g. `"/posts"`, not `"posts"`).
+The {attr}`prefix <fastapi_restly.views.View.prefix>` value must include the leading slash (e.g. `"/posts"`, not `"posts"`).
 
-To disable specific endpoints, set `exclude_routes`:
+To disable specific endpoints, set {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>`:
 
 ```python
 class PostView(fr.AsyncRestView):
@@ -212,7 +212,7 @@ class PostRead(fr.IDSchema):
 - `WriteOnly` fields are accepted on create and update but stripped from every
   generated response.
 
-`id` on `IDSchema` is already `ReadOnly`, which is why it appears in responses without
+`id` on {class}`IDSchema <fastapi_restly.schemas.IDSchema>` is already `ReadOnly`, which is why it appears in responses without
 being part of the create/update body.
 
 ---
@@ -236,7 +236,7 @@ for the full list of operators.
 
 ## Testing
 
-FastAPI-Restly provides `RestlyTestClient`, a thin wrapper around FastAPI's `TestClient`
+FastAPI-Restly provides {class}`RestlyTestClient <fastapi_restly.testing.RestlyTestClient>`, a thin wrapper around FastAPI's `TestClient`
 that asserts sensible default status codes and gives clear failure messages.
 
 ```python

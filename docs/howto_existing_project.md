@@ -7,7 +7,7 @@ that is the clearer shape.
 
 ## Add Restly Next to Existing Routes
 
-Use `fr.include_view(...)` wherever you already compose routes. Existing routers
+Use {func}`fr.include_view(...) <fastapi_restly.views.include_view>` wherever you already compose routes. Existing routers
 and Restly views can share the same parent app or router:
 
 ```python
@@ -69,15 +69,15 @@ async def delete_user(id: int):
 
 That leaves Restly responsible for list, create, read, and update while DELETE
 uses your ordinary FastAPI implementation. For smaller changes that keep the
-same HTTP contract, prefer overriding the business verb (`get_many`, `get_one`,
-`create`, `update`, `delete`) or its `handle_<verb>` request handler; for a
+same HTTP contract, prefer overriding the business verb ({meth}`get_many <fastapi_restly.views.RestView.get_many>`, {meth}`get_one <fastapi_restly.views.RestView.get_one>`,
+{meth}`create <fastapi_restly.views.RestView.create>`, {meth}`update <fastapi_restly.views.RestView.update>`, {meth}`delete <fastapi_restly.views.RestView.delete>`) or its `handle_<verb>` request handler; for a
 different status code, response shape, or query interface, see
 [Override CRUD Behavior and Add Custom Endpoints](howto_override_endpoints.md).
 
 ## Step Out for a Whole Resource
 
 There is no global Restly router to unwind. A resource is included only where
-you call `fr.include_view(...)`. To move a resource back to plain FastAPI,
+you call {func}`fr.include_view(...) <fastapi_restly.views.include_view>`. To move a resource back to plain FastAPI,
 remove that include call and register an `APIRouter` with the same prefix and
 path operations.
 
@@ -96,7 +96,7 @@ generated view — is a mapping exercise:
    FastAPI routes beside it.
 2. **Keep custom semantics out of the swap.** A route whose contract differs
    (e.g. `PUT` updates, a non-204 delete) can be excluded via
-   `exclude_routes` and kept hand-written until you adapt it.
+   {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>` and kept hand-written until you adapt it.
 3. **Pin the wire contract with tests first.** Write
    [`RestlyTestClient`](howto_testing.md) tests against the *old* router's
    responses, then swap in the view and run them unchanged — payload or
@@ -118,7 +118,7 @@ api.include_router(legacy_delete_router)  # until the contract is adapted
 
 The common integration: your app already builds an engine (or sessionmaker)
 with the pool settings and URL handling you trust. Hand exactly that object to
-`fr.configure()` — Restly does not need to own it:
+{func}`fr.configure() <fastapi_restly.db.configure>` — Restly does not need to own it:
 
 ```python
 import fastapi_restly as fr
@@ -151,8 +151,8 @@ commit: it should construct, yield, and clean up (close / roll back on the way
 out); Restly commits. Customizing how a session is built never takes the commit
 away from Restly.
 
-For async views (`AsyncRestView`), pass an async generator to
-`fr.configure()`:
+For async views ({class}`AsyncRestView <fastapi_restly.views.AsyncRestView>`), pass an async generator to
+{func}`fr.configure() <fastapi_restly.db.configure>`:
 
 ```python
 from typing import AsyncIterator
@@ -166,7 +166,7 @@ async def my_get_db() -> AsyncIterator[AsyncSession]:
 fr.configure(session_generator=my_get_db)
 ```
 
-For sync views (`RestView`), pass a sync generator:
+For sync views ({class}`RestView <fastapi_restly.views.RestView>`), pass a sync generator:
 
 ```python
 from typing import Iterator
@@ -182,7 +182,7 @@ fr.configure(sync_session_generator=my_get_db)
 
 ## Use a Custom Session Dependency on One View
 
-Use `fr.configure(...)` when one session source should be the default for the
+Use {func}`fr.configure(...) <fastapi_restly.db.configure>` when one session source should be the default for the
 application. If only one view should use a different session source, override
 the view's `session` dependency instead.
 

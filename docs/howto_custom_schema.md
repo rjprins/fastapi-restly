@@ -7,12 +7,12 @@ FastAPI-Restly uses **schema** for Pydantic request/response models and
 :::
 
 Use explicit schemas when you need a stable public contract: aliases, hidden
-fields, computed read-only fields, or relationship IDs. If you omit `schema` on
+fields, computed read-only fields, or relationship IDs. If you omit {attr}`schema <fastapi_restly.views.BaseRestView.schema>` on
 a view, Restly can auto-generate one from the SQLAlchemy model instead.
 
 ## BaseSchema
 
-`fr.BaseSchema` is Restly's Pydantic base class. It enables Pydantic's
+{class}`fr.BaseSchema <fastapi_restly.schemas.BaseSchema>` is Restly's Pydantic base class. It enables Pydantic's
 `from_attributes=True`, which lets response schemas validate SQLAlchemy ORM
 objects directly.
 
@@ -24,7 +24,7 @@ class BaseSchema(pydantic.BaseModel):
 ```
 
 Generated Restly routes still serialize ORM objects through
-`self.to_response_schema(obj)`. That is where Restly applies response-specific
+{meth}`self.to_response_schema(obj) <fastapi_restly.views.BaseRestView.to_response_schema>`. That is where Restly applies response-specific
 behavior such as `WriteOnly` filtering and relationship-id normalization.
 
 Use `BaseSchema` when you want to declare every field yourself, including `id`:
@@ -42,8 +42,8 @@ create/update payloads.
 
 ## IDSchema
 
-Most response schemas inherit from `fr.IDSchema`. It is essentially
-`BaseSchema` with a read-only `id` field added:
+Most response schemas inherit from {class}`fr.IDSchema <fastapi_restly.schemas.IDSchema>`. It is essentially
+{class}`BaseSchema <fastapi_restly.schemas.BaseSchema>` with a read-only `id` field added:
 
 ```python
 class IDSchema(fr.BaseSchema):
@@ -64,7 +64,7 @@ or different field metadata.
 
 ## Timestamps
 
-Use `fr.TimestampsSchemaMixin` when a schema should include read-only
+Use {class}`fr.TimestampsSchemaMixin <fastapi_restly.schemas.TimestampsSchemaMixin>` when a schema should include read-only
 `created_at` and `updated_at` fields:
 
 ```python
@@ -85,7 +85,7 @@ class UserRead(fr.IDSchema):
 
 `fr.WriteOnly[T]` marks a field as request-only. It is accepted in create/update
 payloads. Restly strips it only when an object is serialized through
-`self.to_response_schema(obj)`, which the generated CRUD and ReactAdmin routes
+{meth}`self.to_response_schema(obj) <fastapi_restly.views.BaseRestView.to_response_schema>`, which the generated CRUD and ReactAdmin routes
 use:
 
 ```python
@@ -94,8 +94,8 @@ class UserRead(fr.IDSchema):
     password: fr.WriteOnly[str]
 ```
 
-Restly applies `ReadOnly` when it generates `schema_create` and
-`schema_update`, and when its object helpers construct or update ORM objects.
+Restly applies `ReadOnly` when it generates {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` and
+{attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>`, and when its object helpers construct or update ORM objects.
 `WriteOnly` is removed from responses by `to_response_schema()`. If you return
 a schema object directly to FastAPI or call Pydantic serialization yourself,
 `WriteOnly` is schema metadata only and is not removed automatically.
@@ -119,7 +119,7 @@ Restly routes.
 
 ## IDRef
 
-Use `fr.IDRef[Model]` for foreign-key and identifier-reference fields:
+Use {class}`fr.IDRef[Model] <fastapi_restly.schemas.IDRef>` for foreign-key and identifier-reference fields:
 
 ```python
 class ArticleRead(fr.IDSchema):
@@ -142,7 +142,7 @@ for the full model and view setup.
 
 ## Nested relationship objects
 
-If a client expects a nested relationship object, use `fr.IDSchema[Model]` as a
+If a client expects a nested relationship object, use {class}`fr.IDSchema[Model] <fastapi_restly.schemas.IDSchema>` as a
 field type:
 
 ```python
@@ -161,7 +161,7 @@ The wire format is:
 ```
 
 This is useful for clients or integrations that model relationships as objects.
-For ordinary foreign-key fields, use `IDRef`.
+For ordinary foreign-key fields, use {class}`IDRef <fastapi_restly.schemas.IDRef>`.
 
 ## Auto-Generated vs Explicit Schemas
 

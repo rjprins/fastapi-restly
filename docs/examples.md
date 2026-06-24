@@ -17,7 +17,7 @@ empty app to a working REST resource.
 [example-projects/shop](https://github.com/rjprins/fastapi-restly/tree/main/example-projects/shop)
 ([README](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/shop/README.md))
 shows relationships, multiple primary-key styles, async sessions, and
-React-Admin-compatible endpoints through `AsyncReactAdminView`. It also includes
+React-Admin-compatible endpoints through {class}`AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>`. It also includes
 a small React Admin frontend wired against the API. Covered in:
 [React Admin Integration](howto_react_admin.md),
 [Work with Foreign Keys Using IDRef](howto_relationship_idschema.md).
@@ -34,7 +34,7 @@ built on the same views. Route highlights, all from
 
 | Route | Pattern it demonstrates |
 |---|---|
-| `POST /tasks/{id}/start` / `complete` / `reopen` | State transitions via `write_action` on a `RestView` |
+| `POST /tasks/{id}/start` / `complete` / `reopen` | State transitions via {meth}`write_action <fastapi_restly.views.RestView.write_action>` on a {class}`RestView <fastapi_restly.views.RestView>` |
 | `POST /tasks/bulk`, `/tasks/bulk-delete`, `/tasks/import-csv` | Bulk endpoints beside generated CRUD |
 | `POST /uploads/` + `GET /uploads/{id}/lines` | A file-upload flow with a custom create bracket |
 | `POST /task-labels/create-and-attach` | Two rows committed through one `write_action` block |

@@ -11,7 +11,7 @@ This guide focuses on practical usage with Pyright and VS Code with Pylance.
 
 ## Start simple
 
-For normal CRUD usage, you do **not** need to parameterize `RestView` or `AsyncRestView`.
+For normal CRUD usage, you do **not** need to parameterize {class}`RestView <fastapi_restly.views.RestView>` or {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>`.
 
 ```python
 import fastapi_restly as fr
@@ -38,7 +38,7 @@ This is the recommended starting point.
 
 ## Use `IDSchema` for response schemas
 
-You can subclass `IDSchema` directly:
+You can subclass {class}`IDSchema <fastapi_restly.schemas.IDSchema>` directly:
 
 ```python
 class UserRead(fr.IDSchema):
@@ -59,7 +59,7 @@ class UserRead(fr.IDSchema[User]):
 For most top-level response schemas, either form is fine. The bare form is the
 recommended starting point.
 
-For foreign-key fields, use `IDRef[RelatedModel]` — it tells Restly (and the
+For foreign-key fields, use {class}`IDRef[RelatedModel] <fastapi_restly.schemas.IDRef>` — it tells Restly (and the
 type checker) which model resolves from the scalar id payload. Runtime
 semantics: [Work with Foreign Keys Using IDRef](howto_relationship_idschema.md).
 
@@ -67,19 +67,19 @@ semantics: [Work with Foreign Keys Using IDRef](howto_relationship_idschema.md).
 
 ## When view generics are useful
 
-`AsyncRestView` and `RestView` can be parameterized, but this is optional.
+{class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` and {class}`RestView <fastapi_restly.views.RestView>` can be parameterized, but this is optional.
 
 The generic form is useful when you override methods on one of the three tiers.
 Most overrides land on the **business verbs**, so those benefit most:
 
-- `get_one`
-- `create`
-- `update`
-- `delete`
-- `get_many`
+- {meth}`get_one <fastapi_restly.views.RestView.get_one>`
+- {meth}`create <fastapi_restly.views.RestView.create>`
+- {meth}`update <fastapi_restly.views.RestView.update>`
+- {meth}`delete <fastapi_restly.views.RestView.delete>`
+- {meth}`get_many <fastapi_restly.views.RestView.get_many>`
 
-It also sharpens the **request handlers** (`handle_create`, `handle_update`,
-`handle_get_one`, …) and the cooperative stamping methods (`make_new_object`,
+It also sharpens the **request handlers** ({meth}`handle_create <fastapi_restly.views.RestView.handle_create>`, {meth}`handle_update <fastapi_restly.views.RestView.handle_update>`,
+{meth}`handle_get_one <fastapi_restly.views.RestView.handle_get_one>`, …) and the cooperative stamping methods (`make_new_object`,
 `update_object`) when you override them.
 
 Without view generics, these methods still work, but their types are broader.
@@ -139,8 +139,8 @@ handler tier, the id-taking signatures live there:
 This looks heavier because it is more explicit. Use it when that extra precision
 is valuable to you.
 
-`fr.BaseSchema` is a convenient default, not a hard requirement for input
-schemas. Explicit `schema_create` and `schema_update` classes may inherit
+{class}`fr.BaseSchema <fastapi_restly.schemas.BaseSchema>` is a convenient default, not a hard requirement for input
+schemas. Explicit {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` and {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>` classes may inherit
 directly from `pydantic.BaseModel` when you do not need Restly's schema helpers.
 
 ---
@@ -150,8 +150,8 @@ directly from `pydantic.BaseModel` when you do not need Restly's schema helpers.
 Use the simplest form that gives you the typing help you want:
 
 - **No generics at all** for normal CRUD views
-- **`IDRef[RelatedModel]`** for foreign-key fields
-- **`IDSchema[RelatedModel]` as a field annotation** only when you intentionally want a nested relationship-object field (parameterizing your top-level schema's *base class*, as in `class UserRead(IDSchema[User])`, is a separate, optional choice — either form is fine there)
+- **{class}`IDRef[RelatedModel] <fastapi_restly.schemas.IDRef>`** for foreign-key fields
+- **{class}`IDSchema[RelatedModel] <fastapi_restly.schemas.IDSchema>` as a field annotation** only when you intentionally want a nested relationship-object field (parameterizing your top-level schema's *base class*, as in `class UserRead(IDSchema[User])`, is a separate, optional choice — either form is fine there)
 - **View generics** only when you want precise typing on the methods you override
 
 That keeps everyday usage clean while still allowing stricter typing for
@@ -178,7 +178,7 @@ class UserView(fr.AsyncRestView):
 For extra endpoints like this, normal Python return annotations are usually enough.
 
 When a custom action reuses the standard machinery — for example loading the
-target with `get_one(id)` and running a write through `handle_update(id, schema)`
+target with {meth}`get_one(id) <fastapi_restly.views.RestView.get_one>` and running a write through {meth}`handle_update(id, schema) <fastapi_restly.views.RestView.handle_update>`
 — parameterizing the view gives those calls precise types too.
 
 ---
@@ -193,9 +193,9 @@ not understand every detail of that process.
 
 The practical takeaway is:
 
-- Type checkers are best at the **public contract**: models, schemas, `IDSchema[...]`,
-  `IDRef[...]`, class attributes, and the methods on the three tiers (`get_one`,
-  `create`, `handle_update`, and so on).
+- Type checkers are best at the **public contract**: models, schemas, {class}`IDSchema[...] <fastapi_restly.schemas.IDSchema>`,
+  {class}`IDRef[...] <fastapi_restly.schemas.IDRef>`, class attributes, and the methods on the three tiers ({meth}`get_one <fastapi_restly.views.RestView.get_one>`,
+  {meth}`create <fastapi_restly.views.RestView.create>`, {meth}`handle_update <fastapi_restly.views.RestView.handle_update>`, and so on).
 - Type checkers are less useful for the internal signature-rewriting machinery that
   produces the route shells (`*_endpoint`).
 
@@ -214,11 +214,11 @@ with Pyright. The repository keeps a dedicated set of consumer typing fixtures u
 
 ## Summary
 
-- Bare `IDSchema` is supported.
-- `IDRef[Model]` is preferred for foreign-key fields.
+- Bare {class}`IDSchema <fastapi_restly.schemas.IDSchema>` is supported.
+- {class}`IDRef[Model] <fastapi_restly.schemas.IDRef>` is preferred for foreign-key fields.
 - `IDSchema[Model]` as a field annotation declares a nested relationship-object
   field; as a top-level base it optionally carries the model type.
-- Bare `RestView` / `AsyncRestView` are the default.
+- Bare {class}`RestView <fastapi_restly.views.RestView>` / {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` are the default.
 - Parameterized views are optional and mainly help when you override methods on
   the three tiers (business verbs, request handlers, stamping methods).
 - Custom route methods work well with ordinary Python annotations.
@@ -230,4 +230,4 @@ with Pyright. The repository keeps a dedicated set of consumer typing fixtures u
 - [Override CRUD Behavior](howto_override_endpoints.md) — the override
   recipes these signatures apply to.
 - [Work with Foreign Keys Using IDRef](howto_relationship_idschema.md) —
-  runtime semantics of `IDRef` / `IDSchema[Model]` fields.
+  runtime semantics of {class}`IDRef <fastapi_restly.schemas.IDRef>` / {class}`IDSchema[Model] <fastapi_restly.schemas.IDSchema>` fields.

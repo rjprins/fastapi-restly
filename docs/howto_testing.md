@@ -28,7 +28,7 @@ one.
 
 ## A complete conftest.py
 
-The fixtures isolate tests on whatever database `fr.configure()` points at —
+The fixtures isolate tests on whatever database {func}`fr.configure() <fastapi_restly.db.configure>` points at —
 they never create the schema. A minimal, copy-paste setup for an async app:
 
 ```python
@@ -97,11 +97,11 @@ session fixture — is rolled back afterward; see
 
 ## Test databases and migrations
 
-Point `fr.configure()` at a dedicated test database; the fixtures roll back
+Point {func}`fr.configure() <fastapi_restly.db.configure>` at a dedicated test database; the fixtures roll back
 everything after each test, but schema setup is still your job, once per
 session:
 
-- **`create_all`** (above) builds the schema straight from your models — fine
+- **{func}`create_all <fastapi_restly.db.create_all>`** (above) builds the schema straight from your models — fine
   when migrations aren't part of what you're testing.
 - **Alembic** — if you want tests to run against the migrated schema, upgrade
   in the same session fixture instead:
@@ -125,8 +125,8 @@ from fastapi_restly.testing import RestlyTestClient
 client = RestlyTestClient(app)
 ```
 
-`RestlyTestClient` is intentionally sync-only. It still works for testing
-async FastAPI routes and `AsyncRestView` endpoints.
+{class}`RestlyTestClient <fastapi_restly.testing.RestlyTestClient>` is intentionally sync-only. It still works for testing
+async FastAPI routes and {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` endpoints.
 
 Each request asserts a default status code and, on mismatch, raises an
 `AssertionError` that includes the response body:
@@ -139,7 +139,7 @@ Each request asserts a default status code and, on mismatch, raises an
 | `patch`  | `200`                   |
 | `delete` | `204`                   |
 
-`AsyncRestView` and `RestView` do not generate `PUT` routes; the client's
+`AsyncRestView` and {class}`RestView <fastapi_restly.views.RestView>` do not generate `PUT` routes; the client's
 `put` exists for React Admin views and custom routes.
 
 Override the expectation when testing error paths:

@@ -48,7 +48,7 @@ Filter, sort, and paginate list endpoints using URL query parameters.
 :link: howto_override_endpoints
 :link-type: doc
 
-Override the business methods (`create`, `update`, ...), the request handlers,
+Override the business methods ({meth}`create <fastapi_restly.views.RestView.create>`, {meth}`update <fastapi_restly.views.RestView.update>`, ...), the request handlers,
 or the route shells, and add custom routes alongside generated CRUD.
 :::
 
@@ -80,7 +80,7 @@ through cooperative mixins.
 :link: howto_typing
 :link-type: doc
 
-Use `IDSchema`, optional view generics, and typed CRUD methods without
+Use {class}`IDSchema <fastapi_restly.schemas.IDSchema>`, optional view generics, and typed CRUD methods without
 fighting the framework.
 :::
 
@@ -88,7 +88,7 @@ fighting the framework.
 :link: howto_react_admin
 :link-type: doc
 
-Use `AsyncReactAdminView` to get a backend that `ra-data-simple-rest` connects to out of the box.
+Use {class}`AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>` to get a backend that `ra-data-simple-rest` connects to out of the box.
 :::
 
 :::{grid-item-card} Customize the OpenAPI Schema

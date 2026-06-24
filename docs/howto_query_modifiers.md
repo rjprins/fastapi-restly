@@ -7,10 +7,10 @@ of names.
 
 > **Pagination is opt-in.** Lists return every matching row when no
 > `page_size` is supplied. Pass `page_size` (and optionally `page`) to
-> enable pagination, or set `default_page_size` on the view class if you
+> enable pagination, or set {attr}`default_page_size <fastapi_restly.views.BaseRestView.default_page_size>` on the view class if you
 > want every request to be paginated by default.
 >
-> **For public endpoints, set `default_page_size` and `max_page_size`.**
+> **For public endpoints, set `default_page_size` and {attr}`max_page_size <fastapi_restly.views.BaseRestView.max_page_size>`.**
 > Without a default cap, a missing `page_size` scans the full table.
 >
 > **Unknown query keys are rejected with 422.** Filters are narrowing
@@ -141,7 +141,7 @@ GET /users/?page=2&page_size=50
 `page` is 1-based. `page_size` must be `>= 1` and `<= max_page_size`
 (default 1000). When `page_size` is omitted, the endpoint returns every
 matching row (no implicit cap). To enforce a default page size, set
-`default_page_size` on the view class:
+{attr}`default_page_size <fastapi_restly.views.BaseRestView.default_page_size>` on the view class:
 
 ```python
 class UserView(fr.AsyncRestView):
@@ -249,7 +249,7 @@ GET /articles/?author.name=Alice          # rejected; use public aliases
 
 ## Foreign-key filtering
 
-A scalar foreign key declared with `fr.IDRef[T]` is filterable by its own
+A scalar foreign key declared with {class}`fr.IDRef[T] <fastapi_restly.schemas.IDRef>` is filterable by its own
 public name — the same name the wire format uses:
 
 ```text
@@ -286,8 +286,8 @@ GET /users/?page=2&page_size=50
 
 ## Overriding query logic per view
 
-Override `build_query` to inject a base query before URL parameters are applied.
-`get_many`, `count`, and `get_one` all use this query, so the filter applies to
+Override {meth}`build_query <fastapi_restly.views.RestView.build_query>` to inject a base query before URL parameters are applied.
+{meth}`get_many <fastapi_restly.views.RestView.get_many>`, {meth}`count <fastapi_restly.views.RestView.count>`, and {meth}`get_one <fastapi_restly.views.RestView.get_one>` all use this query, so the filter applies to
 listings, totals, and single-row fetches:
 
 ```python
@@ -310,7 +310,7 @@ SQL-level base query changes in `build_query()` so listing, pagination totals,
 and single-row fetches all see the same visibility rules.
 
 For a different URL **grammar** — other parameter names, another dialect's
-filter syntax — the seam is `apply_query_params(query, query_params)`, which
+filter syntax — the seam is {meth}`apply_query_params(query, query_params) <fastapi_restly.views.RestView.apply_query_params>`, which
 owns translating URL parameters into the query;
 [React Admin Integration](howto_react_admin.md) is the shipped worked example
 of a view family overriding it. Reserve overriding `get_many()` itself for a

@@ -6,15 +6,15 @@ expects a specific REST wire contract that differs from the default Restly
 contract in several ways: JSON-encoded sort and range parameters, a plain
 array response body, and a `Content-Range` header for pagination.
 
-`AsyncReactAdminView` and `ReactAdminView` implement this contract, so
+{class}`AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>` and {class}`ReactAdminView <fastapi_restly.views.ReactAdminView>` implement this contract, so
 `ra-data-simple-rest` works without a custom data provider.
 
 ---
 
 ## Quick start
 
-Replace `AsyncRestView` with `AsyncReactAdminView` (or `RestView` with
-`ReactAdminView` for sync sessions):
+Replace {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` with {class}`AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>` (or {class}`RestView <fastapi_restly.views.RestView>` with
+{class}`ReactAdminView <fastapi_restly.views.ReactAdminView>` for sync sessions):
 
 ```python
 import fastapi_restly as fr
@@ -55,7 +55,7 @@ No custom data provider or adapter layer is needed.
 
 ## Wire contract
 
-`AsyncReactAdminView` translates the `ra-data-simple-rest` query format to SQL
+{class}`AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>` translates the `ra-data-simple-rest` query format to SQL
 and returns responses the provider expects.
 
 ### List — `GET /resource/`
@@ -79,19 +79,19 @@ for `getMany` calls. It translates to `WHERE id IN (1, 2, 3)`.
 
 | Method | Path | Purpose | Source |
 |---|---|---|---|
-| `GET` | `/{id}` | Get one — react-admin `getOne` | inherited from `AsyncRestView` |
+| `GET` | `/{id}` | Get one — react-admin `getOne` | inherited from {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` |
 | `POST` | `/` | Create — react-admin `create` | inherited from `AsyncRestView` |
-| `PUT` | `/{id}` | Full update — react-admin `update` | added by `AsyncReactAdminView` |
+| `PUT` | `/{id}` | Full update — react-admin `update` | added by {class}`AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>` |
 | `PATCH` | `/{id}` | Partial update | inherited from `AsyncRestView` |
 | `DELETE` | `/{id}` | Delete — react-admin `delete` | inherited from `AsyncRestView` |
 
-`AsyncReactAdminView` and `ReactAdminView` add a `PUT /{id}` endpoint because
+`AsyncReactAdminView` and {class}`ReactAdminView <fastapi_restly.views.ReactAdminView>` add a `PUT /{id}` endpoint because
 `ra-data-simple-rest`'s default `update` method issues a `PUT` request. The
 default `PATCH /{id}` is also kept available, so clients that prefer partial
 updates continue to work.
 
-The PUT route delegates to the same `handle_update` request handler as PATCH and
-accepts the view's standard `schema_update` payload. Override the `update`
+The PUT route delegates to the same {meth}`handle_update <fastapi_restly.views.RestView.handle_update>` request handler as PATCH and
+accepts the view's standard {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>` payload. Override the {meth}`update <fastapi_restly.views.RestView.update>`
 business verb (or `handle_update`, or replace the PUT route directly) if you need
 different write semantics for the two methods.
 
@@ -128,7 +128,7 @@ app.add_middleware(
 )
 ```
 
-`AsyncReactAdminView` also sets `Access-Control-Expose-Headers: Content-Range`
+{class}`AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>` also sets `Access-Control-Expose-Headers: Content-Range`
 on list responses as a fallback. Prefer middleware in production.
 
 ---
@@ -138,7 +138,7 @@ on list responses as a fallback. Prefer middleware in production.
 ### Set the default page size
 
 When the frontend does not send a `range` query parameter, Restly returns the
-first 25 rows. Set `default_page_size` on the view to choose a different
+first 25 rows. Set {attr}`default_page_size <fastapi_restly.views.BaseRestView.default_page_size>` on the view to choose a different
 default:
 
 ```python
@@ -190,15 +190,15 @@ class CustomerView(ReactAdminBase):
 
 ## Under the hood
 
-`AsyncReactAdminView` is a thin subclass of `AsyncRestView` built with the
+{class}`AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>` is a thin subclass of {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` built with the
 [route replacement](howto_override_endpoints.md#tier-1-replace-a-route-shell-to-change-the-http-contract)
-pattern. It replaces the `get_many_endpoint` route shell to parse the
-react-admin query string, then delegates to the standard `handle_get_many` /
-`get_many` flow. The react-admin dialect itself lives in `apply_query_params`
+pattern. It replaces the {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>` route shell to parse the
+react-admin query string, then delegates to the standard {meth}`handle_get_many <fastapi_restly.views.RestView.handle_get_many>` /
+{meth}`get_many <fastapi_restly.views.RestView.get_many>` flow. The react-admin dialect itself lives in {meth}`apply_query_params <fastapi_restly.views.RestView.apply_query_params>`
 (JSON `sort` / `range` / `filter`) and `to_response(..., ResponseShape.LISTING)`
 (plain array body plus `Content-Range`).
 
-It also adds a `PUT /{id}` route that delegates to the standard `handle_update`
+It also adds a `PUT /{id}` route that delegates to the standard {meth}`handle_update <fastapi_restly.views.RestView.handle_update>`
 request handler. All other generated routes (`GET /{id}`, `POST /`,
 `PATCH /{id}`, `DELETE /{id}`) and write business-verb tiers are inherited
 unchanged.

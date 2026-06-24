@@ -5,7 +5,7 @@ OpenAPI-related composes the FastAPI way. This page maps the knobs.
 
 ## Per-view metadata
 
-`tags`, `responses`, and `dependencies` are class attributes on every view;
+{attr}`tags <fastapi_restly.views.View.tags>`, {attr}`responses <fastapi_restly.views.View.responses>`, and {attr}`dependencies <fastapi_restly.views.View.dependencies>` are class attributes on every view;
 they apply to all of the view's routes, generated and custom:
 
 ```python
@@ -37,17 +37,17 @@ endpoint:
 ## Changing a generated route's documented contract
 
 A generated route's `response_model` (and therefore its documented schema)
-comes from the view's `schema` family. To document — and return — a different
+comes from the view's {attr}`schema <fastapi_restly.views.BaseRestView.schema>` family. To document — and return — a different
 shape on one verb, replace that route shell with your own decorator and
 `response_model`; see
 [Patterns: a different schema for the list endpoint](patterns.md#a-different-schema-for-the-list-endpoint)
 and [Override CRUD Behavior → Tier 1](howto_override_endpoints.md).
 
-Routes removed with `exclude_routes` disappear from the schema entirely.
+Routes removed with {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>` disappear from the schema entirely.
 
 ## Resource references (`x-resource-ref`)
 
-Schema fields declared with `fr.IDRef[Model]` are annotated in the generated
+Schema fields declared with {class}`fr.IDRef[Model] <fastapi_restly.schemas.IDRef>` are annotated in the generated
 spec with a vendor extension, `x-resource-ref: "<resource-name>"`, so clients
 and generators can see which resource a scalar id points at. (Known limit:
 views included on an `APIRouter` rather than the app currently lose these

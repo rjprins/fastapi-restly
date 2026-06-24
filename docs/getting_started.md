@@ -65,8 +65,8 @@ A few things to note:
 - The model uses standard SQLAlchemy declarative style: your own `DeclarativeBase`,
   an explicit `__tablename__`, and an explicit primary-key column.
 - If you prefer dataclass-oriented SQLAlchemy models, FastAPI-Restly also provides
-  `fr.DataclassBase` and `fr.IDBase` convenience bases.
-- `RestView` and `AsyncRestView` expect a single primary-key column; for
+  {class}`fr.DataclassBase <fastapi_restly.models.DataclassBase>` and {class}`fr.IDBase <fastapi_restly.models.IDBase>` convenience bases.
+- {class}`RestView <fastapi_restly.views.RestView>` and {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` expect a single primary-key column; for
   composite-key tables, see
   [the view hierarchy](class_based_views.md#the-view-hierarchy).
 - With no manual schema, FastAPI-Restly auto-generates `UserRead`, `UserCreate`,
@@ -81,7 +81,7 @@ When auto-generated schemas are a good fit:
 
 ### Sync or Async?
 
-Default to `AsyncRestView` for new services. Use sync `RestView` for sync-only libraries or sync-first codebases. Mixed projects are fine; choose per view.
+Default to {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` for new services. Use sync {class}`RestView <fastapi_restly.views.RestView>` for sync-only libraries or sync-first codebases. Mixed projects are fine; choose per view.
 
 ## 3. Run
 
@@ -127,9 +127,9 @@ class UserView(fr.AsyncRestView):
     schema = UserRead
 ```
 
-`schema` is the read/response contract. Restly derives `UserCreate` and
-`UserUpdate` from it unless you override `schema_create` or `schema_update`.
-`fr.IDSchema` includes `id` as `fr.ReadOnly`: present in responses, excluded from create/update. Use `fr.ReadOnly[T]` for other response-only fields and `fr.WriteOnly[T]` for input-only fields such as passwords.
+{attr}`schema <fastapi_restly.views.BaseRestView.schema>` is the read/response contract. Restly derives `UserCreate` and
+`UserUpdate` from it unless you override {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` or {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>`.
+{class}`fr.IDSchema <fastapi_restly.schemas.IDSchema>` includes `id` as `fr.ReadOnly`: present in responses, excluded from create/update. Use `fr.ReadOnly[T]` for other response-only fields and `fr.WriteOnly[T]` for input-only fields such as passwords.
 
 Choose explicit schemas when you need:
 
@@ -155,7 +155,7 @@ For test isolation (rolling back test data between tests), see the [Testing](how
 
 - [Tutorial](tutorial.md) — build a complete multi-model API, step by step.
 - [Class-Based Views](class_based_views.md) — what makes the views subclassable,
-  and when to use `View`, `RestView`, or a plain FastAPI route.
+  and when to use {class}`View <fastapi_restly.views.View>`, {class}`RestView <fastapi_restly.views.RestView>`, or a plain FastAPI route.
 - Already have a FastAPI app? See
   [Existing Project Integration](howto_existing_project.md) — Restly adopts
   per resource, beside your current routes.

@@ -2,7 +2,7 @@
 
 This tutorial extends the blog API from [Part 1](tutorial.md). It introduces customization from single-method overrides to shared base classes.
 
-The examples use `AsyncRestView`. The same methods and patterns apply to `RestView` (sync) — just drop the `async`/`await`.
+The examples use {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>`. The same methods and patterns apply to {class}`RestView <fastapi_restly.views.RestView>` (sync) — just drop the `async`/`await`.
 
 ---
 
@@ -22,7 +22,7 @@ handle_<verb>     — the request handler: runs authorize and the commit bracket
                     Auth-free and commit-free. The usual override point.
 ```
 
-The five verbs are `get_many`, `get_one`, `create`, `update`, and `delete`. So the full call chain for a create is:
+The five verbs are {meth}`get_many <fastapi_restly.views.RestView.get_many>`, {meth}`get_one <fastapi_restly.views.RestView.get_one>`, {meth}`create <fastapi_restly.views.RestView.create>`, {meth}`update <fastapi_restly.views.RestView.update>`, and {meth}`delete <fastapi_restly.views.RestView.delete>`. So the full call chain for a create is:
 
 ```
 POST /     → create_endpoint(schema_obj)     # route shell
@@ -32,7 +32,7 @@ POST /     → create_endpoint(schema_obj)     # route shell
 
 Two facts make this layout safe to override:
 
-- **The handler owns the commit.** `handle_<verb>` runs `before_commit → commit → after_commit` around the business verb.
+- **The handler owns the commit.** `handle_<verb>` runs {meth}`before_commit <fastapi_restly.views.RestView.before_commit>` → `commit` → {meth}`after_commit <fastapi_restly.views.RestView.after_commit>` around the business verb.
 - **The business verb never commits.** `create` / `update` / `delete` build, apply, and flush. The handler commits later.
 
 Inside every method, `self.session` is the live database session and `self.request` is the FastAPI `Request` object.
@@ -64,7 +64,7 @@ class PostView(fr.AsyncRestView):
 
 ### update — validate before saving
 
-To reject an update based on current state, override `update`. It receives the loaded object:
+To reject an update based on current state, override {meth}`update <fastapi_restly.views.RestView.update>`. It receives the loaded object:
 
 ```python
     async def update(self, obj, schema_obj):
@@ -74,11 +74,11 @@ To reject an update based on current state, override `update`. It receives the l
         return await self.save_object(obj)
 ```
 
-`handle_update` has already loaded `obj` through `get_one` and run `authorize`. `update` only describes the domain change.
+{meth}`handle_update <fastapi_restly.views.RestView.handle_update>` has already loaded `obj` through {meth}`get_one <fastapi_restly.views.RestView.get_one>` and run {meth}`authorize <fastapi_restly.views.RestView.authorize>`. `update` only describes the domain change.
 
 ### build_query — filter results to the current user
 
-The common read override is row visibility. `get_many`, `count`, and `get_one` all use `build_query`, so one filter keeps listings, totals, single-row reads, updates, and deletes aligned.
+The common read override is row visibility. {meth}`get_many <fastapi_restly.views.RestView.get_many>`, {meth}`count <fastapi_restly.views.RestView.count>`, and {meth}`get_one <fastapi_restly.views.RestView.get_one>` all use {meth}`build_query <fastapi_restly.views.RestView.build_query>`, so one filter keeps listings, totals, single-row reads, updates, and deletes aligned.
 
 ```python
 @fr.include_view(app)
@@ -98,11 +98,11 @@ Calling `super().build_query()` and chaining `.where(...)` composes cleanly with
 Read access has two halves, and they live in two different tiers:
 
 - **Visibility** — `build_query`. A hidden row is not part of this view, so `get_one` returns 404.
-- **Policy** — `authorize`, called in the request handler. Use it for "may this caller read at all", not for "which rows exist".
+- **Policy** — {meth}`authorize <fastapi_restly.views.RestView.authorize>`, called in the request handler. Use it for "may this caller read at all", not for "which rows exist".
 
 ### delete — implement soft-delete
 
-The `delete` business verb removes the object. Override it to flip a flag instead:
+The {meth}`delete <fastapi_restly.views.RestView.delete>` business verb removes the object. Override it to flip a flag instead:
 
 ```python
 from datetime import datetime, timezone
@@ -119,13 +119,13 @@ class PostView(fr.AsyncRestView):
         # Do NOT call super() / delete_object — that would remove the row.
 ```
 
-`DELETE /posts/{id}` now marks the row instead of removing it. `delete_endpoint` still returns 204, and `handle_delete` still commits. Pair this with a `build_query` filter that hides deleted rows — the canonical recipe lives in [Override CRUD Behavior](#soft-delete-recipe), and the reusable mixin version in [Compose Views with Mixins](howto_compose_views_with_mixins.md).
+`DELETE /posts/{id}` now marks the row instead of removing it. {meth}`delete_endpoint <fastapi_restly.views.RestView.delete_endpoint>` still returns 204, and {meth}`handle_delete <fastapi_restly.views.RestView.handle_delete>` still commits. Pair this with a {meth}`build_query <fastapi_restly.views.RestView.build_query>` filter that hides deleted rows — the canonical recipe lives in [Override CRUD Behavior](#soft-delete-recipe), and the reusable mixin version in [Compose Views with Mixins](howto_compose_views_with_mixins.md).
 
 ---
 
 ## Tier 2 — the request handler (orchestration and timing)
 
-`handle_<verb>` owns `authorize` and the commit bracket. Override it to change *orchestration or timing* without re-declaring the route. The defaults look like this:
+`handle_<verb>` owns {meth}`authorize <fastapi_restly.views.RestView.authorize>` and the commit bracket. Override it to change *orchestration or timing* without re-declaring the route. The defaults look like this:
 
 ```
 handle_create  →  authorize("create", data=schema_obj)
@@ -145,10 +145,10 @@ handle_delete  →  get_one(id)
 
 The transaction hooks are the usual reason to drop to this tier:
 
-- **`before_commit(action, new, old=None)`** — an in-transaction side effect (an outbox row, an audit row) that commits atomically with the write.
-- **`after_commit(action, new, old=None)`** — a post-commit side effect (an email, a webhook, a cache invalidation) that runs only after the write is durable.
+- **{meth}`before_commit(action, new, old=None) <fastapi_restly.views.RestView.before_commit>`** — an in-transaction side effect (an outbox row, an audit row) that commits atomically with the write.
+- **{meth}`after_commit(action, new, old=None) <fastapi_restly.views.RestView.after_commit>`** — a post-commit side effect (an email, a webhook, a cache invalidation) that runs only after the write is durable.
 
-Both receive `old`, the pre-mutation snapshot produced by `snapshot(obj)`, so you can fire only on a real change:
+Both receive `old`, the pre-mutation snapshot produced by {meth}`snapshot(obj) <fastapi_restly.views.BaseRestView.snapshot>`, so you can fire only on a real change:
 
 ```python
     async def after_commit(self, action, new, old=None):
@@ -200,7 +200,7 @@ delete  →  delete_object(obj)              # delete + flush (no commit)
 
 ## Custom routes
 
-Use `@fr.get`, `@fr.post`, `@fr.patch`, `@fr.put`, or `@fr.delete` to add endpoints. Reuse `handle_get_one` for scoped load + read auth, `get_one` for scoped load only, and `save_object` to persist.
+Use {func}`@fr.get <fastapi_restly.views.get>`, {func}`@fr.post <fastapi_restly.views.post>`, {func}`@fr.patch <fastapi_restly.views.patch>`, {func}`@fr.put <fastapi_restly.views.put>`, or {func}`@fr.delete <fastapi_restly.views.delete>` to add endpoints. Reuse {meth}`handle_get_one <fastapi_restly.views.RestView.handle_get_one>` for scoped load + read auth, {meth}`get_one <fastapi_restly.views.RestView.get_one>` for scoped load only, and `save_object` to persist.
 
 All route decorator keyword arguments are passed through to FastAPI. Configure class-based routes the same way you configure regular FastAPI routes: use `response_model=`, `status_code=`, `dependencies=`, `responses=`, and the other FastAPI route options as usual.
 
@@ -225,11 +225,11 @@ class PostView(fr.AsyncRestView):
         }
 ```
 
-`handle_get_one(id)` gives the same scope, 404 behavior, and read authorization as `GET /{id}`. Use `get_one(id)` when you want scope and 404 without read authorization.
+{meth}`handle_get_one(id) <fastapi_restly.views.RestView.handle_get_one>` gives the same scope, 404 behavior, and read authorization as `GET /{id}`. Use {meth}`get_one(id) <fastapi_restly.views.RestView.get_one>` when you want scope and 404 without read authorization.
 
 ### A state-change action
 
-Add a `publish` action. Load with `handle_get_one`, then use `write_action` so authorization, snapshot, commit hooks, and commit stay in the framework bracket:
+Add a `publish` action. Load with {meth}`handle_get_one <fastapi_restly.views.RestView.handle_get_one>`, then use {meth}`write_action <fastapi_restly.views.RestView.write_action>` so authorization, snapshot, commit hooks, and commit stay in the framework bracket:
 
 ```python
 import fastapi
@@ -244,10 +244,10 @@ import fastapi
         return self.to_response(post)
 ```
 
-`self.to_response(post)` serializes through the view's response schema, the
+{meth}`self.to_response(post) <fastapi_restly.views.BaseRestView.to_response>` serializes through the view's response schema, the
 same way the generated routes do.
 
-If a custom action is just a create or update under another URL, call `handle_create` / `handle_update`:
+If a custom action is just a create or update under another URL, call {meth}`handle_create <fastapi_restly.views.RestView.handle_create>` / {meth}`handle_update <fastapi_restly.views.RestView.handle_update>`:
 
 ```python
     @fr.post("/{id}/repost")
@@ -257,7 +257,7 @@ If a custom action is just a create or update under another URL, call `handle_cr
         return self.to_response(await self.handle_create(schema_obj))
 ```
 
-`handle_create` runs authorization, your `create` override, and the commit bracket.
+`handle_create` runs authorization, your {meth}`create <fastapi_restly.views.RestView.create>` override, and the commit bracket.
 
 ---
 
@@ -327,11 +327,11 @@ class PostView(AuthoredBase):
         return await super().create(schema_obj)
 ```
 
-The call chain is `PostView.create` → `AuthoredBase.create` → `AsyncRestView.create`; `handle_create` still wraps it in authorization and the commit bracket.
+The call chain is `PostView.create` → `AuthoredBase.create` → {meth}`AsyncRestView.create <fastapi_restly.views.AsyncRestView.create>`; {meth}`handle_create <fastapi_restly.views.RestView.handle_create>` still wraps it in authorization and the commit bracket.
 
 ### Apply router-level dependencies
 
-`dependencies = [Depends(fn)]` applies `fn` to every route without injecting its result. Use it for auth guards or rate limits:
+{attr}`dependencies = [Depends(fn)] <fastapi_restly.views.View.dependencies>` applies `fn` to every route without injecting its result. Use it for auth guards or rate limits:
 
 ```python
 class ProtectedBase(fr.AsyncRestView):
@@ -349,7 +349,7 @@ Every route on `/posts/` now runs `require_auth` before the endpoint function.
 
 ### Share a URL namespace with prefix concatenation
 
-When a base class defines `prefix`, subclass prefixes are appended — an
+When a base class defines {attr}`prefix <fastapi_restly.views.View.prefix>`, subclass prefixes are appended — an
 `ApiV1` base with `prefix = "/api/v1"` puts every subclass under
 `/api/v1/...`. The recipe:
 [Share Behaviour with Base Views](#prefix-concatenation).

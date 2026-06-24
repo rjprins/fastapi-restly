@@ -12,8 +12,8 @@ without rewriting the route.
 |---|---|
 | One simple standalone endpoint | A plain FastAPI route — no Restly needed |
 | A group of related non-CRUD endpoints — login/auth flows, webhook receivers, RPC-style actions, composite-key resources | [`fr.View`](#when-to-use-view-directly) |
-| A database-backed CRUD resource | `fr.AsyncRestView` / `fr.RestView` |
-| CRUD **plus** custom actions — publish, vote, bulk operations | `RestView` with extra `@fr.get` / `@fr.post` methods ([custom actions](the_handle_design.md#worked-example-a-custom-action-route)) |
+| A database-backed CRUD resource | {class}`fr.AsyncRestView <fastapi_restly.views.AsyncRestView>` / {class}`fr.RestView <fastapi_restly.views.RestView>` |
+| CRUD **plus** custom actions — publish, vote, bulk operations | `RestView` with extra {func}`@fr.get <fastapi_restly.views.get>` / {func}`@fr.post <fastapi_restly.views.post>` methods ([custom actions](the_handle_design.md#worked-example-a-custom-action-route)) |
 
 The rest of this page explains the machinery behind all four rows.
 
@@ -93,8 +93,8 @@ class View:
 ```
 
 That is the base class: FastAPI router metadata plus one pre-registration hook.
-Methods on a `View` subclass use `@fr.get(...)`, `@fr.post(...)`, or
-`@fr.route(...)`. Those decorators only store route metadata; registration
+Methods on a {class}`View <fastapi_restly.views.View>` subclass use {func}`@fr.get(...) <fastapi_restly.views.get>`, {func}`@fr.post(...) <fastapi_restly.views.post>`, or
+{func}`@fr.route(...) <fastapi_restly.views.route>`. Those decorators only store route metadata; registration
 happens when you call:
 
 ```python
@@ -109,7 +109,7 @@ app/router composition layer. Small apps can use the decorator shortcut:
 class UserView(fr.View): ...
 ```
 
-`include_view` walks the class's MRO, collects every method tagged with route
+{func}`include_view <fastapi_restly.views.include_view>` walks the class's MRO, collects every method tagged with route
 metadata, instantiates a per-request copy of the view, and registers each
 route on the parent router or app.
 
@@ -148,7 +148,7 @@ class AdminUserView(UserView):
 fr.include_view(admin_app, AdminUserView)
 ```
 
-When `include_view` runs, it walks `AdminUserView.__mro__`, finds inherited
+When {func}`include_view <fastapi_restly.views.include_view>` runs, it walks `AdminUserView.__mro__`, finds inherited
 route metadata, and registers handlers against `AdminUserView`. Your override
 runs. The same view can be included on multiple routers.
 
@@ -165,7 +165,7 @@ That is what "true class-based views" means in this framework. You can:
 ## One base view for the whole app
 
 The payoff of true subclassing, and the simplest big win: declare your app's
-request context **once**, on a bare `View`, and subclass it everywhere. No
+request context **once**, on a bare {class}`View <fastapi_restly.views.View>`, and subclass it everywhere. No
 CRUD required:
 
 ```python
@@ -226,13 +226,13 @@ View                   ← class-based view primitive (no CRUD)
         └── AsyncReactAdminView ← + ra-data-simple-rest contract
 ```
 
-- `View` is the bare CBV primitive. Use it for non-CRUD endpoints: auth flows,
+- {class}`View <fastapi_restly.views.View>` is the bare CBV primitive. Use it for non-CRUD endpoints: auth flows,
   custom RPC, file uploads, or composite-key resources.
-- `BaseRestView` extends `View` with `model`, `schema`, the auto-generated
-  create/update schemas (`schema_create` / `schema_update`), query-modifier
-  configuration, and helper methods like `to_response()` and
-  `to_response_schema()`. The concrete CRUD methods live on `RestView` /
-  `AsyncRestView`; `BaseRestView` is an abstract scaffold with no endpoints of
+- {class}`BaseRestView <fastapi_restly.views.BaseRestView>` extends `View` with {attr}`model <fastapi_restly.views.BaseRestView.model>`, {attr}`schema <fastapi_restly.views.BaseRestView.schema>`, the auto-generated
+  create/update schemas ({attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` / {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>`), query-modifier
+  configuration, and helper methods like {meth}`to_response() <fastapi_restly.views.BaseRestView.to_response>` and
+  {meth}`to_response_schema() <fastapi_restly.views.BaseRestView.to_response_schema>`. The concrete CRUD methods live on {class}`RestView <fastapi_restly.views.RestView>` /
+  {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>`; `BaseRestView` is an abstract scaffold with no endpoints of
   its own.
 - `RestView` and `AsyncRestView` provide the concrete sync and async
   implementations of the CRUD endpoints. **One of these is what you usually
@@ -245,7 +245,7 @@ The public method surface is classified in the
 [API reference](api_reference.md#view-method-surface). Each CRUD verb is split
 into three tiers: `<verb>_endpoint` (HTTP contract), `handle_<verb>`
 (authorization + commit bracket), and `<verb>` (domain operation). Cross-cutting
-override points include `build_query`, `authorize`, hooks, and `to_response`.
+override points include {meth}`build_query <fastapi_restly.views.RestView.build_query>`, {meth}`authorize <fastapi_restly.views.RestView.authorize>`, hooks, and `to_response`.
 
 ## A complete example: shared base view
 
@@ -292,7 +292,7 @@ audit stamps, and permission scoping, see
 
 ## Override a single tier
 
-`AsyncRestView` and `RestView` split every CRUD verb into three tiers — the
+{class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` and {class}`RestView <fastapi_restly.views.RestView>` split every CRUD verb into three tiers — the
 route shell (wire contract), the request handler (authorization + commit
 bracket), and the business method (domain logic, auth-free and commit-free).
 One behavior change therefore means one method override, while routing,
@@ -332,7 +332,7 @@ class UserView(fr.AsyncRestView):
 ```
 
 The shipped `AsyncSessionDep` / `SessionDep` aliases carry `Depends`, so
-they keep working unchanged. The `request` attribute on `BaseRestView`
+they keep working unchanged. The `request` attribute on {class}`BaseRestView <fastapi_restly.views.BaseRestView>`
 relies on the special-type rule. Any custom dependency declared on a view
 class must use the `Annotated[X, Depends(...)]` form unless it's one of
 the bare-injectable types.
@@ -344,7 +344,7 @@ mixin pattern.
 
 ## When to use `View` directly
 
-`View` is the right tool when your endpoints don't fit a CRUD shape:
+{class}`View <fastapi_restly.views.View>` is the right tool when your endpoints don't fit a CRUD shape:
 
 ```python
 @fr.include_view(app)
@@ -384,5 +384,5 @@ co-located. Don't reach for them just for the sake of structure.
   `AsyncRestView` / `RestView`, with call-chain diagrams.
 - [Share Behaviour with Base Views](howto_inheritance.md) — patterns for
   multi-tenant scoping, role-based filtering, and shared mixins.
-- [API Reference](api_reference.md) — full `View`, `BaseRestView`,
-  `RestView`, `AsyncRestView` signatures and class attributes.
+- [API Reference](api_reference.md) — full {class}`View <fastapi_restly.views.View>`, {class}`BaseRestView <fastapi_restly.views.BaseRestView>`,
+  {class}`RestView <fastapi_restly.views.RestView>`, {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` signatures and class attributes.

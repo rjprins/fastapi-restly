@@ -7,7 +7,7 @@ This page covers the model, the read/write lifecycle, and the override lookup.
 
 ## The three tiers
 
-For a verb like `create`, the same operation exists at three levels of
+For a verb like {meth}`create <fastapi_restly.views.RestView.create>`, the same operation exists at three levels of
 abstraction. From the wire inward:
 
 ```
@@ -17,34 +17,34 @@ POST /                       ← the route shell
             └─ create(...)   3. DOMAIN: build the object, save it — auth-free, commit-free
 ```
 
-1. **Route shell** — This is the **wire boundary**: the `@route` decorator,
-   FastAPI signature, `response_model`, and `to_response`. Override it only to
+1. **Route shell** — This is the **wire boundary**: the {func}`@route <fastapi_restly.views.route>` decorator,
+   FastAPI signature, `response_model`, and {meth}`to_response <fastapi_restly.views.BaseRestView.to_response>`. Override it only to
    change the HTTP contract.
 
-   - `get_many_endpoint`
-   - `get_one_endpoint`
-   - `create_endpoint`
-   - `update_endpoint`
-   - `delete_endpoint`
+   - {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>`
+   - {meth}`get_one_endpoint <fastapi_restly.views.RestView.get_one_endpoint>`
+   - {meth}`create_endpoint <fastapi_restly.views.RestView.create_endpoint>`
+   - {meth}`update_endpoint <fastapi_restly.views.RestView.update_endpoint>`
+   - {meth}`delete_endpoint <fastapi_restly.views.RestView.delete_endpoint>`
 
-2. **Request handler** — This is the **request logic**: it runs `authorize`,
+2. **Request handler** — This is the **request logic**: it runs {meth}`authorize <fastapi_restly.views.RestView.authorize>`,
    owns the commit bracket, and returns the domain object. Override it to change
    orchestration or timing without re-declaring the route.
 
-   - `handle_get_many`
-   - `handle_get_one`
-   - `handle_create`
-   - `handle_update`
-   - `handle_delete`
+   - {meth}`handle_get_many <fastapi_restly.views.RestView.handle_get_many>`
+   - {meth}`handle_get_one <fastapi_restly.views.RestView.handle_get_one>`
+   - {meth}`handle_create <fastapi_restly.views.RestView.handle_create>`
+   - {meth}`handle_update <fastapi_restly.views.RestView.handle_update>`
+   - {meth}`handle_delete <fastapi_restly.views.RestView.handle_delete>`
 
 3. **Business verb** — This is the **domain operation**: build, apply, save. It
    is **auth-free** and **commit-free**. This is the usual override point.
 
-   - `get_many`
-   - `get_one`
+   - {meth}`get_many <fastapi_restly.views.RestView.get_many>`
+   - {meth}`get_one <fastapi_restly.views.RestView.get_one>`
    - `create`
-   - `update`
-   - `delete`
+   - {meth}`update <fastapi_restly.views.RestView.update>`
+   - {meth}`delete <fastapi_restly.views.RestView.delete>`
 
 The handler owns the commit, not the business verb. Because `create` never
 commits, an override can build an object, stamp a `password_hash`, call
@@ -69,10 +69,10 @@ POST /
        └─ to_response(obj)                     # back at the wire boundary (single)
 ```
 
-`update` and `delete` follow the same shape. Their handlers first load the row
-through `get_one` (so they 404 on a hidden row), take a `snapshot(obj)` as
-`old`, run the business verb, then run the same `before_commit` → commit →
-`after_commit` bracket with both `new` and `old` available for dirty detection.
+{meth}`update <fastapi_restly.views.RestView.update>` and {meth}`delete <fastapi_restly.views.RestView.delete>` follow the same shape. Their handlers first load the row
+through {meth}`get_one <fastapi_restly.views.RestView.get_one>` (so they 404 on a hidden row), take a {meth}`snapshot(obj) <fastapi_restly.views.BaseRestView.snapshot>` as
+`old`, run the business verb, then run the same {meth}`before_commit <fastapi_restly.views.RestView.before_commit>` → commit →
+{meth}`after_commit <fastapi_restly.views.RestView.after_commit>` bracket with both `new` and `old` available for dirty detection.
 
 ## Request lifecycle: a read (`get_one`)
 
@@ -90,29 +90,29 @@ GET /{id}
        └─ to_response(obj)
 ```
 
-Because `get_one` routes through `build_query`, **visibility lives in one
+Because {meth}`get_one <fastapi_restly.views.RestView.get_one>` routes through {meth}`build_query <fastapi_restly.views.RestView.build_query>`, **visibility lives in one
 place** across list, count, and single-row reads. A hidden row returns 404 from
-`GET /{id}`. `get_one` stays auth-free; `authorize` handles policy.
+`GET /{id}`. `get_one` stays auth-free; {meth}`authorize <fastapi_restly.views.RestView.authorize>` handles policy.
 
-`get_many` works the same way: `build_query` (scope) → `apply_query_params`
-(filter/sort/page) → `count`, with `authorize("get_many")` added by
-`handle_get_many`.
+{meth}`get_many <fastapi_restly.views.RestView.get_many>` works the same way: `build_query` (scope) → {meth}`apply_query_params <fastapi_restly.views.RestView.apply_query_params>`
+(filter/sort/page) → {meth}`count <fastapi_restly.views.RestView.count>`, with `authorize("get_many")` added by
+{meth}`handle_get_many <fastapi_restly.views.RestView.handle_get_many>`.
 
 ## Which method do I override for X?
 
 | I want to change…                       | Override / configure              | Tier / kind            |
 |-----------------------------------------|-----------------------------------|------------------------|
-| Domain logic (hash, derive, compute)    | `create` / `update` / `delete`    | business verb          |
+| Domain logic (hash, derive, compute)    | {meth}`create <fastapi_restly.views.RestView.create>` / {meth}`update <fastapi_restly.views.RestView.update>` / {meth}`delete <fastapi_restly.views.RestView.delete>`    | business verb          |
 | Orchestration, timing, transaction      | `handle_<verb>`                   | request handler        |
 | The HTTP contract (status, signature)   | `<verb>_endpoint`                 | route shell (wire)     |
-| Read scope / row visibility             | `build_query`                     | read extension point   |
-| Filter / sort / pagination grammar      | `apply_query_params`              | read extension point   |
-| The list total                          | `count`                           | read extension point   |
-| Authorization / policy                  | `authorize` (override to gate)    | request-logic hook     |
+| Read scope / row visibility             | {meth}`build_query <fastapi_restly.views.RestView.build_query>`                     | read extension point   |
+| Filter / sort / pagination grammar      | {meth}`apply_query_params <fastapi_restly.views.RestView.apply_query_params>`              | read extension point   |
+| The list total                          | {meth}`count <fastapi_restly.views.RestView.count>`                           | read extension point   |
+| Authorization / policy                  | {meth}`authorize <fastapi_restly.views.RestView.authorize>` (override to gate)    | request-logic hook     |
 | Server-stamped fields (audit/tenant)    | `make_new_object` / `update_object` (override cooperatively) | cooperative stamping  |
-| In-transaction side effects             | `before_commit`                   | transaction hook       |
-| Post-commit side effects (email/webhook)| `after_commit`                    | transaction hook       |
-| The response shape                      | `to_response`                     | wire boundary          |
+| In-transaction side effects             | {meth}`before_commit <fastapi_restly.views.RestView.before_commit>`                   | transaction hook       |
+| Post-commit side effects (email/webhook)| {meth}`after_commit <fastapi_restly.views.RestView.after_commit>`                    | transaction hook       |
+| The response shape                      | {meth}`to_response <fastapi_restly.views.BaseRestView.to_response>`                     | wire boundary          |
 
 A good rule: **start at the business verb.** Move to `handle_<verb>` only when
 timing or transaction handling must change. Touch the route shell only for HTTP
@@ -120,7 +120,7 @@ contract changes.
 
 ## Worked example: hash a password on create
 
-Hashing a password is domain logic, so it belongs in `create`. The handler
+Hashing a password is domain logic, so it belongs in {meth}`create <fastapi_restly.views.RestView.create>`. The handler
 commits after this method returns:
 
 ```python
@@ -143,7 +143,7 @@ class UserView(fr.AsyncRestView):
         return await self.save_object(obj)
 ```
 
-`handle_create` still authorizes and runs the commit bracket. The override only
+{meth}`handle_create <fastapi_restly.views.RestView.handle_create>` still authorizes and runs the commit bracket. The override only
 changes the domain step.
 
 ## Worked example: a custom action route
@@ -152,10 +152,10 @@ A non-CRUD route can reuse the same tiers. Pick one of two shapes:
 
 > If the action is just create/update/delete under another URL, reuse
 > `handle_<verb>`. If it has its own policy, event name, validation, or mutation
-> shape, use `write_action`.
+> shape, use {meth}`write_action <fastapi_restly.views.RestView.write_action>`.
 
 **Reuse a handler** when the action is create/update/delete under another URL.
-A `clone` can route through `handle_create`:
+A `clone` can route through {meth}`handle_create <fastapi_restly.views.RestView.handle_create>`:
 
 ```python
     @fr.post("/{id}/clone")
@@ -179,11 +179,11 @@ state transition, so it authorizes and fires hooks as `"publish"`:
 
 `__aenter__` runs authorization and snapshot; `__aexit__` runs the commit
 bracket. A raised exception skips commit. The response remains
-`to_response(article)`: the action name drives authorization and hooks, while
+{meth}`to_response(article) <fastapi_restly.views.BaseRestView.to_response>`: the action name drives authorization and hooks, while
 the response only needs its wire shape. Create-shaped actions and more recipes:
 [Add a custom action route](howto_override_endpoints.md#add-a-custom-action-route).
 
-`write_action` and the CRUD handlers share `run_write_action` internally.
+`write_action` and the CRUD handlers share {func}`run_write_action <fastapi_restly.views.run_write_action>` internally.
 
 ## The domain utilities
 

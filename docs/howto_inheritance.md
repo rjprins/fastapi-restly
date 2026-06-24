@@ -4,9 +4,9 @@ FastAPI-Restly views are plain Python classes. Use base classes for shared CRUD 
 
 Each CRUD verb is three tiers (see [Override Endpoints](howto_override_endpoints.md) for the full model):
 
-- The **route shell** (`create_endpoint`, `get_one_endpoint`, …) — the wire boundary. Rarely overridden on a base class.
-- The **request handler** (`handle_create`, `handle_get_one`, …) — runs `authorize` and the commit bracket.
-- The **business verb** (`create`, `get_one`, `update`, `delete`, `get_many`) — the auth-free, commit-free domain operation.
+- The **route shell** ({meth}`create_endpoint <fastapi_restly.views.RestView.create_endpoint>`, {meth}`get_one_endpoint <fastapi_restly.views.RestView.get_one_endpoint>`, …) — the wire boundary. Rarely overridden on a base class.
+- The **request handler** ({meth}`handle_create <fastapi_restly.views.RestView.handle_create>`, {meth}`handle_get_one <fastapi_restly.views.RestView.handle_get_one>`, …) — runs {meth}`authorize <fastapi_restly.views.RestView.authorize>` and the commit bracket.
+- The **business verb** ({meth}`create <fastapi_restly.views.RestView.create>`, {meth}`get_one <fastapi_restly.views.RestView.get_one>`, {meth}`update <fastapi_restly.views.RestView.update>`, {meth}`delete <fastapi_restly.views.RestView.delete>`, {meth}`get_many <fastapi_restly.views.RestView.get_many>`) — the auth-free, commit-free domain operation.
 
 The business verb is the natural home for shared behaviour, so most of the examples below override it.
 
@@ -36,7 +36,7 @@ class OrderView(AuditBase):
 
 `audit_log.record` now runs for both `/users/` and `/orders/`. Register only concrete subclasses, not the base.
 
-Because `create` is commit-free, the handler persists the same object the base method recorded.
+Because {meth}`create <fastapi_restly.views.RestView.create>` is commit-free, the handler persists the same object the base method recorded.
 
 ## Call super() to layer overrides
 
@@ -60,7 +60,7 @@ class OrderView(AuditBase):
         return super().create(schema_obj)
 ```
 
-The call chain is `OrderView.create` → `AuditBase.create` → `RestView.create`. All three layers run in order.
+The call chain is `OrderView.create` → `AuditBase.create` → {meth}`RestView.create <fastapi_restly.views.RestView.create>`. All three layers run in order.
 
 ## Share an orchestration override
 
@@ -75,7 +75,7 @@ class NotifyBase(fr.RestView):
         return obj
 ```
 
-Every subclass of `NotifyBase` now fires `notify_created` after commit. For most post-commit side effects, prefer `after_commit`; use a handler override when control flow must change.
+Every subclass of `NotifyBase` now fires `notify_created` after commit. For most post-commit side effects, prefer {meth}`after_commit <fastapi_restly.views.RestView.after_commit>`; use a handler override when control flow must change.
 
 ## Inherit a shared dependency
 
@@ -100,7 +100,7 @@ class NoteView(AuthBase):
     schema = NoteRead
 ```
 
-`self.current_user` is available in every subclass method. Because `create` runs before commit, stamping `owner_id` persists.
+`self.current_user` is available in every subclass method. Because {meth}`create <fastapi_restly.views.RestView.create>` runs before commit, stamping `owner_id` persists.
 
 ## Apply router-level dependencies to all routes
 
@@ -129,7 +129,7 @@ Every route on `/users/` and `/orders/` now requires authentication.
 
 ## Concatenate URL prefixes
 
-When a base class defines `prefix`, subclass prefixes are appended to it. This lets you declare a shared URL namespace once:
+When a base class defines {attr}`prefix <fastapi_restly.views.View.prefix>`, subclass prefixes are appended to it. This lets you declare a shared URL namespace once:
 
 ```python
 class ApiV1(fr.RestView):
@@ -166,7 +166,7 @@ class ReportView(V2Base):
 
 ## Inherit custom routes
 
-Custom routes defined with `@fr.get`, `@fr.post`, etc. on a base class are inherited by all registered subclasses:
+Custom routes defined with {func}`@fr.get <fastapi_restly.views.get>`, {func}`@fr.post <fastapi_restly.views.post>`, etc. on a base class are inherited by all registered subclasses:
 
 ```python
 class HealthBase(fr.RestView):
@@ -185,7 +185,7 @@ class UserView(HealthBase):
 
 ## Restrict available endpoints on a base class
 
-Set `exclude_routes` on a base class to make every subclass read-only (or whatever restriction you need):
+Set {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>` on a base class to make every subclass read-only (or whatever restriction you need):
 
 ```python
 class ReadOnlyBase(fr.RestView):
@@ -202,7 +202,7 @@ class ProductView(ReadOnlyBase):
 
 ## Implement soft-delete once
 
-A base class can override the `delete` business verb once for every subclass
+A base class can override the {meth}`delete <fastapi_restly.views.RestView.delete>` business verb once for every subclass
 — exactly like the audit example above, with the soft-delete body. The
 canonical recipe (idiom: a `deleted_at` timestamp) lives in
 [Override CRUD Behavior](#soft-delete-recipe);

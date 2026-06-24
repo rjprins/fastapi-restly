@@ -12,20 +12,20 @@ This guide covers the pattern, when to use it, and two gotchas.
 Three [override points](howto_override_endpoints.md) carry almost all
 structural concerns:
 
-- `build_query` — the unified **read scope**. List, count, and retrieve
+- {meth}`build_query <fastapi_restly.views.RestView.build_query>` — the unified **read scope**. List, count, and retrieve
   all route through it, so one `.where(...)` clause filters every read.
 - `make_new_object` / `update_object` — **cooperative field stamping**.
   Each calls `super()` to get the constructed object, mutates the
   server-controlled fields it owns, and returns the object. Mixins layer
   by chaining `super()`, each stamping its own fields on the way out.
-- the `delete` business verb — to replace a physical delete with a flag
+- the {meth}`delete <fastapi_restly.views.RestView.delete>` business verb — to replace a physical delete with a flag
   flip (soft delete).
 
 Do not use these for per-view application logic.
 
 **Rule 1 — keep per-view logic in the business verb.** Hash passwords, derive
-slugs, update rollups, and dispatch resource-specific events in `create` /
-`update`. See [Override Endpoints](howto_override_endpoints.md).
+slugs, update rollups, and dispatch resource-specific events in {meth}`create <fastapi_restly.views.RestView.create>` /
+{meth}`update <fastapi_restly.views.RestView.update>`. See [Override Endpoints](howto_override_endpoints.md).
 
 **Rule 2 — use mixins for structural concerns.** Good examples: audit stamps,
 tenant ids, soft-delete read filters, and soft-delete mutation. These compose
@@ -52,7 +52,7 @@ inputs?
 
 ### Reusing logic outside the view
 
-A per-view `create` / `update` override has `self.session`, `self.request`, and
+A per-view {meth}`create <fastapi_restly.views.RestView.create>` / {meth}`update <fastapi_restly.views.RestView.update>` override has `self.session`, `self.request`, and
 any mixin-provided state. That is usually the right home for the logic.
 
 If the same logic must also run from a script or worker, extract a plain
@@ -162,8 +162,8 @@ class SoftDeleteMixin:
         await super().delete(obj)  # type: ignore[misc]
 ```
 
-The soft-delete flip overrides the `delete` business verb, not the handler.
-`handle_delete` still loads, authorizes, and commits. The mixin only changes
+The soft-delete flip overrides the {meth}`delete <fastapi_restly.views.RestView.delete>` business verb, not the handler.
+{meth}`handle_delete <fastapi_restly.views.RestView.handle_delete>` still loads, authorizes, and commits. The mixin only changes
 what "delete" does.
 
 ### `AuditStampedMixin` — record who created/updated each row
@@ -208,7 +208,7 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, fr.Asyn
     schema = ProjectRead
 ```
 
-`get_many`, `count`, and `get_one` all use `build_query`, so tenant and
+{meth}`get_many <fastapi_restly.views.RestView.get_many>`, {meth}`count <fastapi_restly.views.RestView.count>`, and {meth}`get_one <fastapi_restly.views.RestView.get_one>` all use {meth}`build_query <fastapi_restly.views.RestView.build_query>`, so tenant and
 soft-delete filters apply to listings, totals, single-row reads, updates, and
 deletes.
 
@@ -270,9 +270,9 @@ keeps the route tree simple, but every read-scope mixin must consult the flag.
 A parallel admin view tree gives class-time guarantees at the cost of more
 classes.
 
-Read scope is *visibility*, not *policy*. Rows hidden by `build_query` return
+Read scope is *visibility*, not *policy*. Rows hidden by {meth}`build_query <fastapi_restly.views.RestView.build_query>` return
 404; allow/deny decisions such as "only managers may create" belong in
-`authorize`.
+{meth}`authorize <fastapi_restly.views.RestView.authorize>`.
 
 ## Cross-references
 

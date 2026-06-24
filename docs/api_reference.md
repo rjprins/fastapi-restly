@@ -109,10 +109,10 @@ For generated CRUD endpoints:
 
 | Symbol | Description |
 |---|---|
-| `fr.DataclassBase` | SQLAlchemy declarative base with dataclass semantics and auto snake_case table names. |
-| `fr.IDBase` | Convenience alias combining `DataclassBase` with an auto-incrementing integer `id` primary key. |
-| `fr.TimestampsMixin` | Dataclass mixin adding `created_at` / `updated_at` to any `DataclassBase` subclass. |
-| `fr.models.IDMixin` | Dataclass mixin adding integer `id` to a custom `DataclassBase` subclass. |
+| {class}`fr.DataclassBase <fastapi_restly.models.DataclassBase>` | SQLAlchemy declarative base with dataclass semantics and auto snake_case table names. |
+| {class}`fr.IDBase <fastapi_restly.models.IDBase>` | Convenience alias combining `DataclassBase` with an auto-incrementing integer `id` primary key. |
+| {class}`fr.TimestampsMixin <fastapi_restly.models.TimestampsMixin>` | Dataclass mixin adding `created_at` / `updated_at` to any `DataclassBase` subclass. |
+| {class}`fr.models.IDMixin <fastapi_restly.models.IDMixin>` | Dataclass mixin adding integer `id` to a custom `DataclassBase` subclass. |
 | `fastapi_restly.models.CASCADE_ALL_ASYNC` | Cascade string for use with `relationship(cascade=...)` in async SQLAlchemy models. Equivalent to `"save-update, merge, delete, expunge"`. SQLAlchemy's default `"all"` includes `"refresh-expire"` which is incompatible with async sessions. Import from `fastapi_restly.models` (not exposed at the top level). |
 | `fastapi_restly.models.CASCADE_ALL_DELETE_ORPHAN_ASYNC` | Like `CASCADE_ALL_ASYNC` but also includes `"delete-orphan"`. |
 
@@ -124,14 +124,14 @@ FastAPI-Restly also works with ordinary SQLAlchemy models that inherit from your
 
 | Symbol | Description |
 |---|---|
-| `fr.BaseSchema` | Thin Pydantic base equivalent to `class BaseSchema(pydantic.BaseModel): model_config = pydantic.ConfigDict(from_attributes=True)`. Plain Pydantic models are also accepted for explicit create/update schemas. |
-| `fr.IDSchema` | Response-schema base class that adds the resource's own read-only `id` field. |
-| `fr.IDRef[Model]` | Scalar FK reference type. Wire format is the raw id (`5`) on request and response; dict input (`{"id": 5}`) is also accepted. Use this for typical REST FK fields and React Admin scalar id arrays. |
-| `fr.IDSchema[Model]` | Nested relationship-object field type. Wire format is `{"id": 5}` on request and response. Use this when a client expects relationship objects instead of scalar FK fields. |
-| `fr.TimestampsSchemaMixin` | Pydantic mixin adding read-only `created_at` / `updated_at` fields to a schema. |
+| {class}`fr.BaseSchema <fastapi_restly.schemas.BaseSchema>` | Thin Pydantic base equivalent to `class BaseSchema(pydantic.BaseModel): model_config = pydantic.ConfigDict(from_attributes=True)`. Plain Pydantic models are also accepted for explicit create/update schemas. |
+| {class}`fr.IDSchema <fastapi_restly.schemas.IDSchema>` | Response-schema base class that adds the resource's own read-only `id` field. |
+| {class}`fr.IDRef[Model] <fastapi_restly.schemas.IDRef>` | Scalar FK reference type. Wire format is the raw id (`5`) on request and response; dict input (`{"id": 5}`) is also accepted. Use this for typical REST FK fields and React Admin scalar id arrays. |
+| {class}`fr.IDSchema[Model] <fastapi_restly.schemas.IDSchema>` | Nested relationship-object field type. Wire format is `{"id": 5}` on request and response. Use this when a client expects relationship objects instead of scalar FK fields. |
+| {class}`fr.TimestampsSchemaMixin <fastapi_restly.schemas.TimestampsSchemaMixin>` | Pydantic mixin adding read-only `created_at` / `updated_at` fields to a schema. |
 | `fr.ReadOnly[T]` | Type annotation marker. Fields annotated `ReadOnly[T]` are excluded from create/update inputs. |
 | `fr.WriteOnly[T]` | Type annotation marker. Fields annotated `WriteOnly[T]` are stripped by `self.to_response_schema(obj)`, which the generated CRUD and ReactAdmin routes use. Direct FastAPI/Pydantic serialization treats it as schema metadata only. |
-| `fastapi_restly.schemas.create_schema_from_model(model)` | Auto-generate a Pydantic schema from a SQLAlchemy model. Useful for scaffolding, prototypes, and internal tools; prefer explicit schemas for stable public API contracts. Import from `fastapi_restly.schemas`; it is intentionally not exported at the top level. |
+| {func}`fastapi_restly.schemas.create_schema_from_model(model) <fastapi_restly.schemas.create_schema_from_model>` | Auto-generate a Pydantic schema from a SQLAlchemy model. Useful for scaffolding, prototypes, and internal tools; prefer explicit schemas for stable public API contracts. Import from `fastapi_restly.schemas`; it is intentionally not exported at the top level. |
 
 ### View Classes
 
@@ -164,33 +164,33 @@ On `AsyncRestView` every method below is `async`; the signatures are otherwise i
 
 | Tier / kind | Method | Signature | Return | Purpose |
 |---|---|---|---|---|
-| Route shell | `get_many_endpoint` | `(query_params)` | response schema list or pagination envelope | `GET /`; validates query parameters and serializes the listing result via `to_response`. |
-| Route shell | `get_one_endpoint` | `(id)` | response schema | `GET /{id}`; serializes one retrieved object. |
-| Route shell | `create_endpoint` | `(schema_obj)` | response schema | `POST /`; serializes the created object. |
-| Route shell | `update_endpoint` | `(id, schema_obj)` | response schema | `PATCH /{id}`; serializes the updated object. |
-| Route shell | `delete_endpoint` | `(id)` | `fastapi.Response` | `DELETE /{id}`; returns `204` by default. |
-| Request handler | `handle_get_many` | `(query_params)` | `ListingResult[Model]` | Run `authorize("get_many")`, then `get_many`. |
-| Request handler | `handle_get_one` | `(id)` | `Model` | Load through `get_one` (scoped, 404), then `authorize("get_one", obj=...)`. Reusable from a custom action as "scoped load + 404 + read-auth". |
-| Request handler | `handle_create` | `(schema_obj)` | `Model` | Authorize, run `create`, then the commit bracket. |
-| Request handler | `handle_update` | `(id, schema_obj)` | `Model` | Load, authorize, snapshot, run `update`, then the commit bracket. |
-| Request handler | `handle_delete` | `(id)` | `None` | Load, authorize, snapshot, run `delete`, then the commit bracket. |
-| Custom-action bracket | `write_action` | `(action, *, obj=None, data=None)` | context manager | `async with self.write_action("publish", obj=...): ...` — runs the full bracket (authorize + snapshot on enter; before_commit → commit → after_commit on exit) around your inline mutation. For a custom write *action* that isn't a plain create/update/delete; deposit a create's new object on the yielded handle's `.obj`. Shares its implementation with the CRUD handlers via the self-free `run_write_action` (in `fastapi_restly.views`). |
-| Business method | `get_many` | `(query_params)` | `ListingResult[Model]` | Scoped, filtered, paginated page plus total count, via `build_query` + `apply_query_params` + `count`. Auth-free. |
-| Business method | `get_one` | `(id)` | `Model` | Load one row through `build_query` or raise `fr.exc.NotFound`. Visibility comes from `build_query`, so a hidden row is a clean 404 for every caller. Auth-free. |
-| Business method | `create` | `(schema_obj)` | `Model` | Build a new object and save it. Commit-free — the usual create override point. |
-| Business method | `update` | `(obj, schema_obj)` | `Model` | Apply the update payload to `obj` and save it. Commit-free. |
-| Business method | `delete` | `(obj)` | `None` | Delete `obj`. Override (e.g. on a soft-delete mixin) to flip a timestamp instead. |
-| Override point | `build_query` | `()` | `sqlalchemy.Select` | Base read query shared by `get_many`, `count`, and `get_one` — add `WHERE` clauses here for scope/soft-delete/visibility. |
-| Override point | `apply_query_params` | `(query, query_params)` | `sqlalchemy.Select` | Apply URL filter/sort/pagination to `query`. Override for a non-default URL grammar. |
-| Override point | `count` | `(query)` | `int` | Total for the list: receives the same params-applied query and strips `ORDER BY`, `LIMIT`, and `OFFSET` before counting. Override for estimated counts on huge tables. |
-| Override point | `authorize` | `(action, obj=None, data=None)` | `None` | Gate a verb. A no-op by default; override to enforce policy and raise `fr.exc.Forbidden` / `fr.exc.NotFound` to reject. Row *visibility* belongs in `build_query`. |
-| Override point | `before_commit` | `(action, new, old=None)` | `None` | In-transaction side effect (outbox/audit rows), atomic with the write. `old` is the pre-mutation snapshot dict. |
-| Override point | `after_commit` | `(action, new, old=None)` | `None` | Post-commit side effect (email, webhook, cache invalidation). `old` enables dirty detection. |
-| Override point | `to_response` | `(obj_or_list, shape=ResponseShape.SINGLE)` | response payload | The single wire-level response method, called by the route shells with the wire `ResponseShape` (`SINGLE` / `LISTING` / `EMPTY`) — not the write action. Override for envelopes or custom status codes; for a per-verb HTTP contract change, override that verb's route shell. |
-| Override point | `snapshot` | `(obj)` | `dict[str, Any]` | Frozen capture of an object's column values at load time, passed as `old` to the commit hooks. |
-| Helper | `to_response_schema` | `(obj)` | response schema | Validate and serialize an ORM object with Restly's alias/reference/write-only handling. Override for custom projections or an intentional `model_construct()` fast path. |
-| Helper | `to_listing_response` | `(query_params, listing_result)` | response schema list or pagination envelope | Serialize a `ListingResult` into the configured list HTTP response shape. |
-| Helper | `to_paginated_listing_response` | `(query_params, listing_result)` | pagination envelope | Serialize a `ListingResult` into the paginated list response shape. |
+| Route shell | {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>` | `(query_params)` | response schema list or pagination envelope | `GET /`; validates query parameters and serializes the listing result via `to_response`. |
+| Route shell | {meth}`get_one_endpoint <fastapi_restly.views.RestView.get_one_endpoint>` | `(id)` | response schema | `GET /{id}`; serializes one retrieved object. |
+| Route shell | {meth}`create_endpoint <fastapi_restly.views.RestView.create_endpoint>` | `(schema_obj)` | response schema | `POST /`; serializes the created object. |
+| Route shell | {meth}`update_endpoint <fastapi_restly.views.RestView.update_endpoint>` | `(id, schema_obj)` | response schema | `PATCH /{id}`; serializes the updated object. |
+| Route shell | {meth}`delete_endpoint <fastapi_restly.views.RestView.delete_endpoint>` | `(id)` | `fastapi.Response` | `DELETE /{id}`; returns `204` by default. |
+| Request handler | {meth}`handle_get_many <fastapi_restly.views.RestView.handle_get_many>` | `(query_params)` | `ListingResult[Model]` | Run `authorize("get_many")`, then `get_many`. |
+| Request handler | {meth}`handle_get_one <fastapi_restly.views.RestView.handle_get_one>` | `(id)` | `Model` | Load through `get_one` (scoped, 404), then `authorize("get_one", obj=...)`. Reusable from a custom action as "scoped load + 404 + read-auth". |
+| Request handler | {meth}`handle_create <fastapi_restly.views.RestView.handle_create>` | `(schema_obj)` | `Model` | Authorize, run `create`, then the commit bracket. |
+| Request handler | {meth}`handle_update <fastapi_restly.views.RestView.handle_update>` | `(id, schema_obj)` | `Model` | Load, authorize, snapshot, run `update`, then the commit bracket. |
+| Request handler | {meth}`handle_delete <fastapi_restly.views.RestView.handle_delete>` | `(id)` | `None` | Load, authorize, snapshot, run `delete`, then the commit bracket. |
+| Custom-action bracket | {meth}`write_action <fastapi_restly.views.RestView.write_action>` | `(action, *, obj=None, data=None)` | context manager | `async with self.write_action("publish", obj=...): ...` — runs the full bracket (authorize + snapshot on enter; before_commit → commit → after_commit on exit) around your inline mutation. For a custom write *action* that isn't a plain create/update/delete; deposit a create's new object on the yielded handle's `.obj`. Shares its implementation with the CRUD handlers via the self-free `run_write_action` (in `fastapi_restly.views`). |
+| Business method | {meth}`get_many <fastapi_restly.views.RestView.get_many>` | `(query_params)` | `ListingResult[Model]` | Scoped, filtered, paginated page plus total count, via `build_query` + `apply_query_params` + `count`. Auth-free. |
+| Business method | {meth}`get_one <fastapi_restly.views.RestView.get_one>` | `(id)` | `Model` | Load one row through `build_query` or raise `fr.exc.NotFound`. Visibility comes from `build_query`, so a hidden row is a clean 404 for every caller. Auth-free. |
+| Business method | {meth}`create <fastapi_restly.views.RestView.create>` | `(schema_obj)` | `Model` | Build a new object and save it. Commit-free — the usual create override point. |
+| Business method | {meth}`update <fastapi_restly.views.RestView.update>` | `(obj, schema_obj)` | `Model` | Apply the update payload to `obj` and save it. Commit-free. |
+| Business method | {meth}`delete <fastapi_restly.views.RestView.delete>` | `(obj)` | `None` | Delete `obj`. Override (e.g. on a soft-delete mixin) to flip a timestamp instead. |
+| Override point | {meth}`build_query <fastapi_restly.views.RestView.build_query>` | `()` | `sqlalchemy.Select` | Base read query shared by `get_many`, `count`, and `get_one` — add `WHERE` clauses here for scope/soft-delete/visibility. |
+| Override point | {meth}`apply_query_params <fastapi_restly.views.RestView.apply_query_params>` | `(query, query_params)` | `sqlalchemy.Select` | Apply URL filter/sort/pagination to `query`. Override for a non-default URL grammar. |
+| Override point | {meth}`count <fastapi_restly.views.RestView.count>` | `(query)` | `int` | Total for the list: receives the same params-applied query and strips `ORDER BY`, `LIMIT`, and `OFFSET` before counting. Override for estimated counts on huge tables. |
+| Override point | {meth}`authorize <fastapi_restly.views.RestView.authorize>` | `(action, obj=None, data=None)` | `None` | Gate a verb. A no-op by default; override to enforce policy and raise `fr.exc.Forbidden` / `fr.exc.NotFound` to reject. Row *visibility* belongs in `build_query`. |
+| Override point | {meth}`before_commit <fastapi_restly.views.RestView.before_commit>` | `(action, new, old=None)` | `None` | In-transaction side effect (outbox/audit rows), atomic with the write. `old` is the pre-mutation snapshot dict. |
+| Override point | {meth}`after_commit <fastapi_restly.views.RestView.after_commit>` | `(action, new, old=None)` | `None` | Post-commit side effect (email, webhook, cache invalidation). `old` enables dirty detection. |
+| Override point | {meth}`to_response <fastapi_restly.views.BaseRestView.to_response>` | `(obj_or_list, shape=ResponseShape.SINGLE)` | response payload | The single wire-level response method, called by the route shells with the wire `ResponseShape` (`SINGLE` / `LISTING` / `EMPTY`) — not the write action. Override for envelopes or custom status codes; for a per-verb HTTP contract change, override that verb's route shell. |
+| Override point | {meth}`snapshot <fastapi_restly.views.BaseRestView.snapshot>` | `(obj)` | `dict[str, Any]` | Frozen capture of an object's column values at load time, passed as `old` to the commit hooks. |
+| Helper | {meth}`to_response_schema <fastapi_restly.views.BaseRestView.to_response_schema>` | `(obj)` | response schema | Validate and serialize an ORM object with Restly's alias/reference/write-only handling. Override for custom projections or an intentional `model_construct()` fast path. |
+| Helper | {meth}`to_listing_response <fastapi_restly.views.BaseRestView.to_listing_response>` | `(query_params, listing_result)` | response schema list or pagination envelope | Serialize a `ListingResult` into the configured list HTTP response shape. |
+| Helper | {meth}`to_paginated_listing_response <fastapi_restly.views.BaseRestView.to_paginated_listing_response>` | `(query_params, listing_result)` | pagination envelope | Serialize a `ListingResult` into the paginated list response shape. |
 | Domain utility | `make_new_object` | `(schema_obj)` | `Model` | Build and stage a new object without flushing. The cooperative override point for stamping extra fields on create — call `super()`, then mutate the returned object. |
 | Domain utility | `update_object` | `(obj, schema_obj)` | `Model` | Apply writable fields without flushing. The cooperative override point for stamping extra fields on update — call `super()`, then mutate the returned object. |
 | Domain utility | `save_object` | `(obj)` | `Model` | Flush and refresh a staged object. Does not commit — `handle_<verb>` owns the commit. |
@@ -206,25 +206,25 @@ On every `View` (CRUD or not):
 
 | Attribute | Type | Description |
 |---|---|---|
-| `prefix` | `ClassVar[str]` | URL prefix for all routes in the view (e.g. `"/users"`). Required. |
-| `tags` | `ClassVar[Iterable[str] \| None]` | OpenAPI tags. The view class name is always added automatically; set this to add extra tags. |
-| `dependencies` | `ClassVar[Iterable[Any] \| None]` | FastAPI dependencies applied to every route in the view. |
-| `responses` | `ClassVar[dict[int, Any]]` | OpenAPI response overrides. Defaults to `{404: {"description": "Not found"}}`. |
+| {attr}`prefix <fastapi_restly.views.View.prefix>` | `ClassVar[str]` | URL prefix for all routes in the view (e.g. `"/users"`). Required. |
+| {attr}`tags <fastapi_restly.views.View.tags>` | `ClassVar[Iterable[str] \| None]` | OpenAPI tags. The view class name is always added automatically; set this to add extra tags. |
+| {attr}`dependencies <fastapi_restly.views.View.dependencies>` | `ClassVar[Iterable[Any] \| None]` | FastAPI dependencies applied to every route in the view. |
+| {attr}`responses <fastapi_restly.views.View.responses>` | `ClassVar[dict[int, Any]]` | OpenAPI response overrides. Defaults to `{404: {"description": "Not found"}}`. |
 
 Additional attributes on `RestView` / `AsyncRestView`:
 
 | Attribute | Type | Description |
 |---|---|---|
-| `schema` | `ClassVar[type[pydantic.BaseModel]]` | The read/response schema. If omitted, auto-generated from `model` as `ModelRead`. |
-| `schema_create` | `ClassVar[type[pydantic.BaseModel]]` | Schema for `POST` input. Auto-derived by removing `ReadOnly` fields and named `ModelCreate`. |
-| `schema_update` | `ClassVar[type[pydantic.BaseModel]]` | Schema for `PATCH` input. Auto-derived by making all writable fields optional and named `ModelUpdate`. |
-| `model` | `ClassVar[type[DeclarativeBase]]` | The SQLAlchemy model class. |
-| `id_type` | `ClassVar[type]` | Scalar primary-key type used in the generated `/{id}` routes. Defaults to `int`. |
-| `include_pagination_metadata` | `ClassVar[bool]` | Set `True` to return the paginated metadata envelope. Defaults to `False`. |
-| `exclude_routes` | `ClassVar[Iterable[str \| ViewRoute]]` | Route names to suppress. |
-| `extra_query_params` | `ClassVar[Iterable[str]]` | Query keys to allow on the listing endpoint in addition to those derived from the response schema. Use for view-specific parameters consumed outside `apply_list_params` (e.g. `?include_deleted=true`). |
-| `default_page_size` | `ClassVar[int \| None]` | Default `?page_size=` for list endpoints. `None` (the default) means "no implicit cap" — every matching row is returned. |
-| `max_page_size` | `ClassVar[int]` | Upper bound for `?page_size=` on list endpoints. Values above are rejected with 422. Defaults to `1000`. |
+| {attr}`schema <fastapi_restly.views.BaseRestView.schema>` | `ClassVar[type[pydantic.BaseModel]]` | The read/response schema. If omitted, auto-generated from `model` as `ModelRead`. |
+| {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` | `ClassVar[type[pydantic.BaseModel]]` | Schema for `POST` input. Auto-derived by removing `ReadOnly` fields and named `ModelCreate`. |
+| {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>` | `ClassVar[type[pydantic.BaseModel]]` | Schema for `PATCH` input. Auto-derived by making all writable fields optional and named `ModelUpdate`. |
+| {attr}`model <fastapi_restly.views.BaseRestView.model>` | `ClassVar[type[DeclarativeBase]]` | The SQLAlchemy model class. |
+| {attr}`id_type <fastapi_restly.views.BaseRestView.id_type>` | `ClassVar[type]` | Scalar primary-key type used in the generated `/{id}` routes. Defaults to `int`. |
+| {attr}`include_pagination_metadata <fastapi_restly.views.BaseRestView.include_pagination_metadata>` | `ClassVar[bool]` | Set `True` to return the paginated metadata envelope. Defaults to `False`. |
+| {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>` | `ClassVar[Iterable[str \| ViewRoute]]` | Route names to suppress. |
+| {attr}`extra_query_params <fastapi_restly.views.BaseRestView.extra_query_params>` | `ClassVar[Iterable[str]]` | Query keys to allow on the listing endpoint in addition to those derived from the response schema. Use for view-specific parameters consumed outside `apply_list_params` (e.g. `?include_deleted=true`). |
+| {attr}`default_page_size <fastapi_restly.views.BaseRestView.default_page_size>` | `ClassVar[int \| None]` | Default `?page_size=` for list endpoints. `None` (the default) means "no implicit cap" — every matching row is returned. |
+| {attr}`max_page_size <fastapi_restly.views.BaseRestView.max_page_size>` | `ClassVar[int]` | Upper bound for `?page_size=` on list endpoints. Values above are rejected with 422. Defaults to `1000`. |
 
 ### Advanced Object Helpers
 
@@ -232,14 +232,14 @@ These helpers build, update, delete, and save ORM objects from schemas. Use them
 
 | Symbol | Description |
 |---|---|
-| `fr.objects.make_new_object(session, model_cls, schema_obj, schema_cls=None)` | Build a new `model_cls` instance from `schema_obj`, resolve any `IDRef[...]` / `IDSchema[...]` reference fields against the database, and add the object to `session`. **Does not flush.** Call `fr.objects.save_object(session, obj)` afterwards to persist. |
-| `fr.objects.update_object(session, obj, schema_obj, schema_cls=None)` | Apply the schema's writable fields onto an existing ORM `obj` and resolve FK fields. **Does not flush.** Call `fr.objects.save_object(session, obj)` afterwards to persist. |
-| `fr.objects.save_object(session, obj)` | Flush the session and refresh `obj` so server-side defaults and generated columns (PKs, timestamps) are populated. Returns `obj`. This is where create/update writes hit the database. |
-| `fr.objects.delete_object(session, obj)` | Delete `obj` and flush the session. |
-| `fr.objects.async_make_new_object(session, model_cls, schema_obj, schema_cls=None)` | Async equivalent of `fr.objects.make_new_object`. Pass an `AsyncSession`. |
-| `fr.objects.async_update_object(session, obj, schema_obj, schema_cls=None)` | Async equivalent of `fr.objects.update_object`. |
-| `fr.objects.async_save_object(session, obj)` | Async equivalent of `fr.objects.save_object`. |
-| `fr.objects.async_delete_object(session, obj)` | Async equivalent of `fr.objects.delete_object`. |
+| {func}`fr.objects.make_new_object(session, model_cls, schema_obj, schema_cls=None) <fastapi_restly.objects.make_new_object>` | Build a new `model_cls` instance from `schema_obj`, resolve any `IDRef[...]` / `IDSchema[...]` reference fields against the database, and add the object to `session`. **Does not flush.** Call `fr.objects.save_object(session, obj)` afterwards to persist. |
+| {func}`fr.objects.update_object(session, obj, schema_obj, schema_cls=None) <fastapi_restly.objects.update_object>` | Apply the schema's writable fields onto an existing ORM `obj` and resolve FK fields. **Does not flush.** Call `fr.objects.save_object(session, obj)` afterwards to persist. |
+| {func}`fr.objects.save_object(session, obj) <fastapi_restly.objects.save_object>` | Flush the session and refresh `obj` so server-side defaults and generated columns (PKs, timestamps) are populated. Returns `obj`. This is where create/update writes hit the database. |
+| {func}`fr.objects.delete_object(session, obj) <fastapi_restly.objects.delete_object>` | Delete `obj` and flush the session. |
+| {func}`fr.objects.async_make_new_object(session, model_cls, schema_obj, schema_cls=None) <fastapi_restly.objects.async_make_new_object>` | Async equivalent of `fr.objects.make_new_object`. Pass an `AsyncSession`. |
+| {func}`fr.objects.async_update_object(session, obj, schema_obj, schema_cls=None) <fastapi_restly.objects.async_update_object>` | Async equivalent of `fr.objects.update_object`. |
+| {func}`fr.objects.async_save_object(session, obj) <fastapi_restly.objects.async_save_object>` | Async equivalent of `fr.objects.save_object`. |
+| {func}`fr.objects.async_delete_object(session, obj) <fastapi_restly.objects.async_delete_object>` | Async equivalent of `fr.objects.delete_object`. |
 
 The view methods of the same names (in the
 [method surface](#view-method-surface)) wrap these helpers, binding
@@ -253,11 +253,11 @@ services, workers, or tests.
 |---|---|
 | `fr.AsyncSessionDep` | FastAPI `Depends`-compatible async session dependency. |
 | `fr.SessionDep` | FastAPI `Depends`-compatible sync session dependency. |
-| `fr.open_async_session()` | Open an async SQLAlchemy session context manager for use outside request handling, for example in background jobs or scripts. |
-| `fr.open_session()` | Open a sync SQLAlchemy session context manager for use outside request handling, for example in background jobs or scripts. |
-| `fr.configure(async_database_url=..., ...)` | Configure the framework. Accepts async/sync URLs, engines, session makers, custom session generators, and the `warn_on_uncommitted` / `warn_on_misuse` settings. |
-| `fr.db.get_async_engine()` | Return the configured `AsyncEngine` instance. |
-| `fr.db.get_engine()` | Return the configured sync `Engine` instance. |
+| {func}`fr.open_async_session() <fastapi_restly.db.open_async_session>` | Open an async SQLAlchemy session context manager for use outside request handling, for example in background jobs or scripts. |
+| {func}`fr.open_session() <fastapi_restly.db.open_session>` | Open a sync SQLAlchemy session context manager for use outside request handling, for example in background jobs or scripts. |
+| {func}`fr.configure(async_database_url=..., ...) <fastapi_restly.db.configure>` | Configure the framework. Accepts async/sync URLs, engines, session makers, custom session generators, and the `warn_on_uncommitted` / `warn_on_misuse` settings. |
+| {func}`fr.db.get_async_engine() <fastapi_restly.db.get_async_engine>` | Return the configured `AsyncEngine` instance. |
+| {func}`fr.db.get_engine() <fastapi_restly.db.get_engine>` | Return the configured sync `Engine` instance. |
 
 Restly has one public process-wide configuration. Configure it once during application startup:
 
@@ -295,9 +295,9 @@ There are two families. Configuration errors subclass `RestlyError`; request-tim
 
 | Symbol | Description |
 |---|---|
-| `fastapi_restly.testing.RestlyTestClient` | Sync test client wrapper around FastAPI's `TestClient` with default status-code assertions. It can test async FastAPI routes and `AsyncRestView` endpoints. |
-| `fastapi_restly.testing.activate_savepoint_only_mode(make_session)` | **Intended for tests.** Wraps a session factory in savepoint-only mode so test data never commits to the database. Use it when building your own harness without the shipped fixtures (which implement the same isolation themselves). |
-| `fastapi_restly.testing.deactivate_savepoint_only_mode(make_session)` | Restore normal session behavior after testing. |
+| {class}`fastapi_restly.testing.RestlyTestClient` | Sync test client wrapper around FastAPI's `TestClient` with default status-code assertions. It can test async FastAPI routes and `AsyncRestView` endpoints. |
+| {func}`fastapi_restly.testing.activate_savepoint_only_mode(make_session) <fastapi_restly.testing.activate_savepoint_only_mode>` | **Intended for tests.** Wraps a session factory in savepoint-only mode so test data never commits to the database. Use it when building your own harness without the shipped fixtures (which implement the same isolation themselves). |
+| {func}`fastapi_restly.testing.deactivate_savepoint_only_mode(make_session) <fastapi_restly.testing.deactivate_savepoint_only_mode>` | Restore normal session behavior after testing. |
 
 Pytest fixtures (auto-loaded by the `testing` extra; full behavior in
 [Testing](howto_testing.md#fixture-reference)):

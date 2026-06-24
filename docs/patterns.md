@@ -10,7 +10,7 @@ release.
 ## Nested resources (`/projects/{id}/tasks`)
 
 Model the child as a **flat resource and filter by its foreign key** — the
-filter parameter is generated automatically for `IDRef` fields:
+filter parameter is generated automatically for {class}`IDRef <fastapi_restly.schemas.IDRef>` fields:
 
 ```python
 class TaskRead(fr.IDSchema):
@@ -57,7 +57,7 @@ filter grammar, including `#foreign-key-filtering`) and
 ## A different schema for the list endpoint
 
 There is no `schema_list` attribute. A different list shape is an HTTP-contract
-change, so it belongs in the **route shell**: replace `get_many_endpoint` with
+change, so it belongs in the **route shell**: replace {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>` with
 your own `response_model` and serialize through the slimmer schema. Filtering,
 sorting, and pagination parameters keep working:
 
@@ -84,9 +84,9 @@ Depth: [Override CRUD Behavior → Tier 1](howto_override_endpoints.md).
 
 ## Restore a soft-deleted row
 
-Soft delete hides rows in `build_query`, so every generated read 404s on them —
+Soft delete hides rows in {meth}`build_query <fastapi_restly.views.RestView.build_query>`, so every generated read 404s on them —
 including the read your restore action needs. The restore route therefore
-makes a **deliberately unscoped** query, then mutates inside `write_action` so
+makes a **deliberately unscoped** query, then mutates inside {meth}`write_action <fastapi_restly.views.RestView.write_action>` so
 authorization and the commit bracket still run:
 
 ```python
@@ -121,11 +121,11 @@ mixin + the admin-bypass discussion).
 
 ## Receive a webhook (inbound)
 
-An inbound webhook receiver is not CRUD — use a bare `fr.View` with the raw
+An inbound webhook receiver is not CRUD — use a bare {class}`fr.View <fastapi_restly.views.View>` with the raw
 `Request`. Verify the signature before parsing, and **commit explicitly**: the
-framework's auto-commit bracket only wraps `RestView` handlers, so a bare
+framework's auto-commit bracket only wraps {class}`RestView <fastapi_restly.views.RestView>` handlers, so a bare
 `View` route owns its commit (the same contract as
-`fr.open_async_session()`).
+{func}`fr.open_async_session() <fastapi_restly.db.open_async_session>`).
 
 ```python
 from fastapi import Request
@@ -145,7 +145,7 @@ class PaymentWebhookView(fr.View):
 ```
 
 (For *outbound* webhooks — calling someone else after a write — use the
-`after_commit` hook instead; see
+{meth}`after_commit <fastapi_restly.views.RestView.after_commit>` hook instead; see
 [How Overrides Work](the_handle_design.md).)
 
 Depth: [Class-Based Views → When to use `View`
@@ -155,7 +155,7 @@ directly](class_based_views.md#when-to-use-view-directly).
 
 Owned by [Class-Based Views → One base view for the whole
 app](#app-wide-base-view) — declare `session`, `current_user`, and the rest of
-your request context once on a bare `View` base; every endpoint group (CRUD
+your request context once on a bare {class}`View <fastapi_restly.views.View>` base; every endpoint group (CRUD
 or not) subclasses it and reads from `self`.
 
 ## Login and other auth flows
@@ -169,11 +169,11 @@ with `/login`, `/refresh`, and `/logout` routes is the worked example.
 Owned by [How Overrides Work → Worked example: a custom action
 route](the_handle_design.md#worked-example-a-custom-action-route) — reuse
 `handle_<verb>` when the action is CRUD under another URL; use
-`write_action("publish", ...)` when it has its own identity.
+{meth}`write_action("publish", ...) <fastapi_restly.views.RestView.write_action>` when it has its own identity.
 
 ## Tenant scoping
 
 Owned by [Compose Views with Mixins](howto_compose_views_with_mixins.md) —
-a `TenantScopedMixin` filters every read through `build_query` and stamps
+a `TenantScopedMixin` filters every read through {meth}`build_query <fastapi_restly.views.RestView.build_query>` and stamps
 writes cooperatively. The single-base-class variant is in
 [Share Behaviour with Base Views](howto_inheritance.md).

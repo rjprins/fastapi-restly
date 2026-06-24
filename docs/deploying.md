@@ -24,7 +24,7 @@ class Settings(BaseSettings):
 settings = Settings()  # reads DATABASE_URL etc. from the environment
 ```
 
-Pass those values into `fr.configure()` via an explicit engine so you can
+Pass those values into {func}`fr.configure() <fastapi_restly.db.configure>` via an explicit engine so you can
 set pool options:
 
 ```python
@@ -55,7 +55,7 @@ alembic init alembic
 ```
 
 Point `alembic/env.py` at the metadata of whichever declarative base your
-models inherit from (typically `fr.DataclassBase`):
+models inherit from (typically {class}`fr.DataclassBase <fastapi_restly.models.DataclassBase>`):
 
 ```python
 # alembic/env.py
@@ -110,12 +110,12 @@ fr.include_view(app, UserView)
 
 Notes:
 
-- `fr.configure(app, ...)` installs the default exception handlers
+- {func}`fr.configure(app, ...) <fastapi_restly.db.configure>` installs the default exception handlers
   (currently the `IntegrityError → 409` translator). Pass
   `install_default_exception_handlers=False` to opt out.
 - `engine.dispose()` in `lifespan` cleans up the connection pool on
   shutdown so workers exit promptly.
-- Register views during startup with `fr.include_view(app, ViewClass)`; avoid
+- Register views during startup with {func}`fr.include_view(app, ViewClass) <fastapi_restly.views.include_view>`; avoid
   import-time side effects in larger apps.
 
 ## Running the app
@@ -132,8 +132,8 @@ A minimal example:
 uvicorn myapp.main:app --host 0.0.0.0 --port 8000 --workers 4
 ```
 
-Sync `RestView` endpoints run on FastAPI's threadpool, so worker count
-still has the usual effect; async `AsyncRestView` endpoints share the
+Sync {class}`RestView <fastapi_restly.views.RestView>` endpoints run on FastAPI's threadpool, so worker count
+still has the usual effect; async {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` endpoints share the
 event loop within a worker. Don't use `--reload` in production.
 
 ## See also
