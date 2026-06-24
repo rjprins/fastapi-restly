@@ -76,6 +76,9 @@ html_theme_options = {
     "icon_links": [],
     # All eight top-level sections in the header; no "More" dropdown.
     "header_links_before_dropdown": 8,
+    # Right sidebar: page TOC, then the newsletter call-to-action. The
+    # edit-this-page/show-source page-tools block is intentionally dropped.
+    "secondary_sidebar_items": ["page-toc", "newsletter-link"],
 }
 html_context = {
     "github_user": "rjprins",
@@ -89,6 +92,7 @@ html_static_path = ["_static"]
 html_extra_path = ["robots.txt", "CNAME"]
 html_logo = "_static/restly-cat.png"
 html_css_files = ["custom.css"]
+html_js_files = ["newsletter.js"]
 
 
 def _canonical_index_url(app, pagename):
