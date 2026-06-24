@@ -116,6 +116,6 @@ help:
 	@echo "  ci              - Full CI setup and test run"
 	@echo "  dev-setup       - Setup development environment"
 	@echo "  docs            - Build documentation"
-	@echo "  serve-docs      - Autobuild and serve documentation"
+	@echo "  docs-serve      - Autobuild and serve documentation"
 	@echo "  build-pages     - Build docs plus coverage assets for GitHub Pages"
 	@echo "  docs-push       - Publish docs plus coverage assets to gh-pages"
