@@ -179,10 +179,10 @@ Production engine config, Alembic migrations, and an ASGI checklist.
 
 getting_started
 tutorial
-class_based_views
+Views <class_based_views>
 Overrides <the_handle_design>
-user_guide
+How-To <user_guide>
 examples
-api_reference
-about
+API <api_reference>
+About <about>
 ```

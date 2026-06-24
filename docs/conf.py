@@ -68,6 +68,7 @@ exclude_patterns = []
 
 html_theme = "pydata_sphinx_theme"
 html_theme_options = {
+    "logo": {"text": "FastAPI-Restly"},
     "github_url": "https://github.com/rjprins/fastapi-restly",
     "use_edit_page_button": True,
     "show_toc_level": 2,
