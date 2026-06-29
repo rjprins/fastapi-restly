@@ -529,6 +529,11 @@ and this project adheres to <a class="reference external" href="https://semver.o
 only <code class="docutils literal notranslate"><span class="pre">httpx</span></code> is present; shipping both keeps <code class="docutils literal notranslate"><span class="pre">RestlyTestClient</span></code> on the
 non-deprecated path without dropping support for the older Starlette versions
 in our range, which still import <code class="docutils literal notranslate"><span class="pre">httpx</span></code> directly.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">RestlyTestClient</span></code> now prefers <code class="docutils literal notranslate"><span class="pre">httpx2</span></code> (falling back to <code class="docutils literal notranslate"><span class="pre">httpx</span></code>), matching
+Starlette’s own <code class="docutils literal notranslate"><span class="pre">TestClient</span></code>. The “install the <code class="docutils literal notranslate"><span class="pre">[testing]</span></code> extra” hint that
+Restly raises when the test client is missing now also fires under newer
+Starlette, which signals the absence as <code class="docutils literal notranslate"><span class="pre">httpx2</span></code> (and via a <code class="docutils literal notranslate"><span class="pre">RuntimeError</span></code>)
+rather than a missing <code class="docutils literal notranslate"><span class="pre">httpx</span></code>.</p></li>
 </ul>
 </section>
 </section>
