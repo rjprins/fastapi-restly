@@ -68,7 +68,6 @@ fastapi_restly = "fastapi_restly.pytest_fixtures"
 [dependency-groups]
 dev = [
     "aiosqlite>=0.21.0",
-    "ghp-import>=2.1.0",
     "httpx>=0.27.0",
     "ipython>=8.36.0",
     "myst-parser>=4.0.1",

@@ -1,4 +1,4 @@
-.PHONY: test test-framework test-typing test-examples test-all clean install-dev lint pre-commit-install pre-commit-run docs docs-serve docs-push build-pages
+.PHONY: test test-framework test-typing test-examples test-all clean install-dev lint pre-commit-install pre-commit-run docs docs-serve build-pages
 
 # Default target
 all: test-all
@@ -95,9 +95,6 @@ build-pages:
 	cp -rf htmlcov/. site/html/coverage/
 	uv run python scripts/render_coverage_badge.py coverage.json site/html/coverage/badge.svg site/html/coverage/summary.json
 
-docs-push: build-pages
-	uv run ghp-import --no-history --no-jekyll --push site/html
-
 # Help
 help:
 	@echo "Available commands:"
@@ -120,4 +117,3 @@ help:
 	@echo "  docs            - Build documentation"
 	@echo "  docs-serve      - Autobuild and serve documentation"
 	@echo "  build-pages     - Build docs plus coverage assets for GitHub Pages"
-	@echo "  docs-push       - Publish docs plus coverage assets to gh-pages"

@@ -8,9 +8,17 @@ on:
     paths:
       - "docs/**"
       - "fastapi_restly/**"
+      - "scripts/render_switcher.py"
       - "Makefile"
       - ".github/workflows/pages.yml"
+  release:
+    types: [published]
   workflow_dispatch:
+    inputs:
+      snapshot_version:
+        description: "Freeze a snapshot for this minor (e.g. 0.7) from the current ref"
+        required: false
+        default: ""
 
 permissions:
   contents: write
@@ -20,11 +28,19 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  pages:
+  # Build the live docs and publish them to the gh-pages root ("latest").
+  # keep_files preserves the frozen /<minor>/ snapshots alongside the root.
+  latest:
+    if: >-
+      github.event_name == 'push' ||
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.snapshot_version == '')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # tags drive switcher.json
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -40,6 +56,78 @@ jobs:
       - name: Build docs and coverage site
         run: make build-pages
 
-      - name: Publish to gh-pages
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: uv run ghp-import --no-history --no-jekyll --cname www.fastapi-restly.org --push site/html
+      - name: Publish latest to gh-pages root
+        if: >-
+          github.ref == 'refs/heads/main' &&
+          (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: site/html
+          keep_files: true
+          cname: www.fastapi-restly.org
+
+  # Freeze a per-minor snapshot at release time (or on demand for a backfill).
+  snapshot:
+    if: >-
+      github.event_name == 'release' ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.snapshot_version != '')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # tags drive switcher.json
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v8.1.0
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Resolve the target minor (e.g. 0.7)
+        id: ver
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            tag="${{ github.event.release.tag_name }}"
+            ver="${tag#v}"
+            minor="${ver%.*}"
+          else
+            minor="${{ github.event.inputs.snapshot_version }}"
+          fi
+          echo "minor=$minor" >> "$GITHUB_OUTPUT"
+
+      - name: Build the snapshot
+        env:
+          DOCS_VERSION: ${{ steps.ver.outputs.minor }}
+        run: |
+          uv run sphinx-build -M html docs site -W --keep-going
+          uv run python scripts/render_switcher.py site/html/switcher.json
+
+      - name: Publish snapshot to /${{ steps.ver.outputs.minor }}/
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: site/html
+          destination_dir: ${{ steps.ver.outputs.minor }}
+          keep_files: true
+
+      # Refresh the root switcher.json so every version (latest and frozen)
+      # surfaces the new release immediately -- json_url is absolute to root.
+      - name: Stage the refreshed switcher
+        run: |
+          mkdir -p switcher-root
+          cp site/html/switcher.json switcher-root/switcher.json
+
+      - name: Publish switcher.json to gh-pages root
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: switcher-root
+          destination_dir: .
+          keep_files: true
