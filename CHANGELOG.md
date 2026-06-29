@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The `[testing]` extra now installs `httpx2` alongside `httpx`. Newer Starlette
+  `TestClient` prefers `httpx2` and emits a `StarletteDeprecationWarning` when
+  only `httpx` is present; shipping both keeps `RestlyTestClient` on the
+  non-deprecated path without dropping support for the older Starlette versions
+  in our range, which still import `httpx` directly.
+
 ## [0.7.0] - 2026-06-11
 
 ### Added

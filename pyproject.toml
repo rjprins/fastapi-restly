@@ -48,8 +48,13 @@ standard = [
 # Only the third-party deps Restly's shipped test helpers import: pytest +
 # pytest-asyncio (the restly_* fixtures) and httpx (RestlyTestClient). Coverage
 # tooling is a consumer policy choice, so pytest-cov is deliberately left out.
+# Both httpx and httpx2 are pinned: Starlette's TestClient prefers httpx2 and
+# warns when only httpx is present, while RestlyTestClient and older Starlette
+# import httpx directly. Shipping both keeps consumers on the non-deprecated
+# path across the Starlette versions in our supported range.
 testing = [
     "httpx>=0.27.0",
+    "httpx2>=2.0.0",
     "pytest>=8.3.5",
     "pytest-asyncio>=0.24.0",
 ]
@@ -69,6 +74,7 @@ fastapi_restly = "fastapi_restly.pytest_fixtures"
 dev = [
     "aiosqlite>=0.21.0",
     "httpx>=0.27.0",
+    "httpx2>=2.0.0",
     "ipython>=8.36.0",
     "myst-parser>=4.0.1",
     "pdbpp>=0.11.6",

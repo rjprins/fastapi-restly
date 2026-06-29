@@ -6,7 +6,6 @@ from typing import Union, get_args, get_origin
 
 import pytest
 from fastapi import FastAPI
-from httpx import AsyncClient
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.types import JSON

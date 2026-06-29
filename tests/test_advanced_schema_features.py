@@ -12,7 +12,6 @@ from typing import Optional
 
 import pytest
 from fastapi import FastAPI
-from httpx import AsyncClient
 from pydantic import Field, field_validator, model_validator
 from sqlalchemy.orm import Mapped
 
