@@ -1,0 +1,805 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="./" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, follow">
+
+    <title>Custom Schemas and Field Types &#8212; FastAPI-Restly 0.7.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=5f490481" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="_static/documentation_options.js?v=fe7df9b0"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=f281be69"></script>
+    <script src="_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'howto_custom_schema';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://www.fastapi-restly.org/switcher.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '0.7';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            false;
+        </script>
+    <script src="_static/newsletter.js?v=e342eb53"></script>
+    <link rel="canonical" href="https://www.fastapi-restly.org/0.7/howto_custom_schema.html" />
+    <link rel="author" title="About these documents" href="about.html" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Work with Foreign Keys Using IDRef" href="howto_relationship_idschema.html" />
+    <link rel="prev" title="Patterns" href="patterns.html" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.7" />
+<meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
+
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="_static/restly-cat.png" class="logo__image only-light" alt=""/>
+    <img src="_static/restly-cat.png" class="logo__image only-dark pst-js-only" alt=""/>
+  
+  
+    <p class="title logo__title">FastAPI-Restly</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="getting_started.html">
+    Getting Started
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="tutorial_overview.html">
+    Tutorial
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="class_based_views.html">
+    Views
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="the_handle_design.html">
+    Overrides
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="user_guide.html">
+    How-To
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="api_reference.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="about.html">
+    About
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="getting_started.html">
+    Getting Started
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="tutorial_overview.html">
+    Tutorial
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="class_based_views.html">
+    Views
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="the_handle_design.html">
+    Overrides
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="user_guide.html">
+    How-To
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="api_reference.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="about.html">
+    About
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="howto_existing_project.html">Use Restly in an Existing Project</a></li>
+<li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Custom Schemas and Field Types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys Using IDRef</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_query_modifiers.html">Filter, Sort, and Paginate Lists</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_override_endpoints.html">Override CRUD Behavior and Add Custom Endpoints</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_error_responses.html">Shape Error Responses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_inheritance.html">Share Behaviour with Base Views</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_compose_views_with_mixins.html">Compose Views with Mixins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_typing.html">Use Type Annotations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_react_admin.html">React Admin Integration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_openapi.html">Customize the OpenAPI Schema</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_testing.html">Test APIs with RestlyTestClient and Fixtures</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deploying.html">Deploying</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="user_guide.html" class="nav-link">How-To Guides</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Custom Schemas and Field Types</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="custom-schemas-and-field-types">
+<h1>Custom Schemas and Field Types<a class="headerlink" href="#custom-schemas-and-field-types" title="Link to this heading">#</a></h1>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>FastAPI-Restly uses <strong>schema</strong> for Pydantic request/response models and
+<strong>model</strong> for SQLAlchemy ORM models. A <code class="docutils literal notranslate"><span class="pre">User</span></code> model is the database object; a
+<code class="docutils literal notranslate"><span class="pre">UserRead</span></code> schema is the public API shape.</p>
+</div>
+<p>Use explicit schemas when you need a stable public contract: aliases, hidden
+fields, computed read-only fields, or relationship IDs. If you omit <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema" title="fastapi_restly.views.BaseRestView.schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema</span></code></a> on
+a view, Restly can auto-generate one from the SQLAlchemy model instead.</p>
+<section id="baseschema">
+<h2>BaseSchema<a class="headerlink" href="#baseschema" title="Link to this heading">#</a></h2>
+<p><a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.BaseSchema" title="fastapi_restly.schemas.BaseSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.BaseSchema</span></code></a> is Restly’s Pydantic base class. It enables Pydantic’s
+<code class="docutils literal notranslate"><span class="pre">from_attributes=True</span></code>, which lets response schemas validate SQLAlchemy ORM
+objects directly.</p>
+<p>In code, it is intentionally this small:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">BaseSchema</span><span class="p">(</span><span class="n">pydantic</span><span class="o">.</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">model_config</span> <span class="o">=</span> <span class="n">pydantic</span><span class="o">.</span><span class="n">ConfigDict</span><span class="p">(</span><span class="n">from_attributes</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Generated Restly routes still serialize ORM objects through
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_response_schema" title="fastapi_restly.views.BaseRestView.to_response_schema"><code class="xref py py-meth docutils literal notranslate"><span class="pre">self.to_response_schema(obj)</span></code></a>. That is where Restly applies response-specific
+behavior such as <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> filtering and relationship-id normalization.</p>
+<p>Use <code class="docutils literal notranslate"><span class="pre">BaseSchema</span></code> when you want to declare every field yourself, including <code class="docutils literal notranslate"><span class="pre">id</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">BaseSchema</span><span class="p">):</span>
+    <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">email</span><span class="p">:</span> <span class="nb">str</span>
+</pre></div>
+</div>
+<p>This keeps the <code class="docutils literal notranslate"><span class="pre">id</span></code> field explicit and visible in the schema definition. You are
+then responsible for marking it read-only if you do not want it accepted in
+create/update payloads.</p>
+</section>
+<section id="idschema">
+<h2>IDSchema<a class="headerlink" href="#idschema" title="Link to this heading">#</a></h2>
+<p>Most response schemas inherit from <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDSchema</span></code></a>. It is essentially
+<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.BaseSchema" title="fastapi_restly.schemas.BaseSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseSchema</span></code></a> with a read-only <code class="docutils literal notranslate"><span class="pre">id</span></code> field added:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">IDSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">BaseSchema</span><span class="p">):</span>
+    <span class="nb">id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">ReadOnly</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>That is why examples usually look like this:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">email</span><span class="p">:</span> <span class="nb">str</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">id</span></code> appears in responses but is excluded from generated POST and PATCH
+input schemas. You do not need to redeclare it unless you want a different type
+or different field metadata.</p>
+</section>
+<section id="timestamps">
+<h2>Timestamps<a class="headerlink" href="#timestamps" title="Link to this heading">#</a></h2>
+<p>Use <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.TimestampsSchemaMixin" title="fastapi_restly.schemas.TimestampsSchemaMixin"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.TimestampsSchemaMixin</span></code></a> when a schema should include read-only
+<code class="docutils literal notranslate"><span class="pre">created_at</span></code> and <code class="docutils literal notranslate"><span class="pre">updated_at</span></code> fields:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">TimestampsSchemaMixin</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+</pre></div>
+</div>
+</section>
+<section id="readonly-and-writeonly">
+<h2>ReadOnly and WriteOnly<a class="headerlink" href="#readonly-and-writeonly" title="Link to this heading">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">fr.ReadOnly[T]</span></code> marks a field as response-only. It is removed from create and
+update inputs:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">created_by_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">ReadOnly</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">fr.WriteOnly[T]</span></code> marks a field as request-only. It is accepted in create/update
+payloads. Restly strips it only when an object is serialized through
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_response_schema" title="fastapi_restly.views.BaseRestView.to_response_schema"><code class="xref py py-meth docutils literal notranslate"><span class="pre">self.to_response_schema(obj)</span></code></a>, which the generated CRUD and ReactAdmin routes
+use:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+    <span class="n">email</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">password</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">WriteOnly</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>Restly applies <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> when it generates <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_create" title="fastapi_restly.views.BaseRestView.schema_create"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_create</span></code></a> and
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_update" title="fastapi_restly.views.BaseRestView.schema_update"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_update</span></code></a>, and when its object helpers construct or update ORM objects.
+<code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> is removed from responses by <code class="docutils literal notranslate"><span class="pre">to_response_schema()</span></code>. If you return
+a schema object directly to FastAPI or call Pydantic serialization yourself,
+<code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> is schema metadata only and is not removed automatically.</p>
+</section>
+<section id="aliases">
+<h2>Aliases<a class="headerlink" href="#aliases" title="Link to this heading">#</a></h2>
+<p>Use normal Pydantic aliases when the API field name differs from the Python or
+database attribute:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Field</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">UserRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+    <span class="n">first_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">alias</span><span class="o">=</span><span class="s2">&quot;firstName&quot;</span><span class="p">)</span>
+    <span class="n">email</span><span class="p">:</span> <span class="nb">str</span>
+</pre></div>
+</div>
+<p>Incoming payloads can use <code class="docutils literal notranslate"><span class="pre">firstName</span></code>, and Restly responses use the alias on
+Restly routes.</p>
+</section>
+<section id="idref">
+<h2>IDRef<a class="headerlink" href="#idref" title="Link to this heading">#</a></h2>
+<p>Use <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDRef[Model]</span></code></a> for foreign-key and identifier-reference fields:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ArticleRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+    <span class="n">title</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">author_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">IDRef</span><span class="p">[</span><span class="n">Author</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>The wire format is a scalar id:</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;title&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Intro&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;author_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Restly validates that the referenced <code class="docutils literal notranslate"><span class="pre">Author</span></code> exists and resolves the id before
+creating or updating the ORM object. See <a class="reference internal" href="howto_relationship_idschema.html"><span class="std std-doc">Foreign Keys with IDRef</span></a>
+for the full model and view setup.</p>
+</section>
+<section id="nested-relationship-objects">
+<h2>Nested relationship objects<a class="headerlink" href="#nested-relationship-objects" title="Link to this heading">#</a></h2>
+<p>If a client expects a nested relationship object, use <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDSchema[Model]</span></code></a> as a
+field type:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ArticleRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+    <span class="n">title</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">author</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">[</span><span class="n">Author</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>The wire format is:</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;title&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Intro&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;author&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>This is useful for clients or integrations that model relationships as objects.
+For ordinary foreign-key fields, use <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDRef</span></code></a>.</p>
+</section>
+<section id="auto-generated-vs-explicit-schemas">
+<h2>Auto-Generated vs Explicit Schemas<a class="headerlink" href="#auto-generated-vs-explicit-schemas" title="Link to this heading">#</a></h2>
+<p>Auto-generated schemas are useful when your database model is already close to
+your API contract:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
+</pre></div>
+</div>
+<p>Use explicit schemas when you need aliases, read/write field control,
+relationship references, or a public API shape that intentionally differs from
+the SQLAlchemy model:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserRead</span>
+</pre></div>
+</div>
+</section>
+<section id="see-also">
+<h2>See also<a class="headerlink" href="#see-also" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="technical_details.html#id1"><span class="std std-ref">Auto-generated schemas</span></a> — how
+the derived schemas are built when you don’t declare one.</p></li>
+<li><p><a class="reference internal" href="patterns.html#a-different-schema-for-the-list-endpoint"><span class="std std-ref">Patterns: a different schema for the list
+endpoint</span></a> — when the
+list and detail routes need different shapes.</p></li>
+</ul>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="patterns.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Patterns</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="howto_relationship_idschema.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Work with Foreign Keys Using IDRef</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#baseschema">BaseSchema</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#idschema">IDSchema</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#timestamps">Timestamps</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#readonly-and-writeonly">ReadOnly and WriteOnly</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#aliases">Aliases</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#idref">IDRef</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#nested-relationship-objects">Nested relationship objects</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#auto-generated-vs-explicit-schemas">Auto-Generated vs Explicit Schemas</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#see-also">See also</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+<p class="sidebar-newsletter">
+  <a href="newsletter.html">Subscribe to newsletter</a>
+</p></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, Rutger Prins.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

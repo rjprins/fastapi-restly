@@ -1,0 +1,959 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="./" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, follow">
+
+    <title>Changelog &#8212; FastAPI-Restly 0.7.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=5f490481" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="_static/documentation_options.js?v=fe7df9b0"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=f281be69"></script>
+    <script src="_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'changelog';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://www.fastapi-restly.org/switcher.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '0.7';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            false;
+        </script>
+    <script src="_static/newsletter.js?v=e342eb53"></script>
+    <link rel="canonical" href="https://www.fastapi-restly.org/0.7/changelog.html" />
+    <link rel="author" title="About these documents" href="about.html" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="About FastAPI-Restly" href="about.html" />
+    <link rel="prev" title="Technical Details" href="technical_details.html" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.7" />
+<meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
+
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="_static/restly-cat.png" class="logo__image only-light" alt=""/>
+    <img src="_static/restly-cat.png" class="logo__image only-dark pst-js-only" alt=""/>
+  
+  
+    <p class="title logo__title">FastAPI-Restly</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="getting_started.html">
+    Getting Started
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="tutorial_overview.html">
+    Tutorial
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="class_based_views.html">
+    Views
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="the_handle_design.html">
+    Overrides
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="user_guide.html">
+    How-To
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="api_reference.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="about.html">
+    About
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="getting_started.html">
+    Getting Started
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="tutorial_overview.html">
+    Tutorial
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="class_based_views.html">
+    Views
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="the_handle_design.html">
+    Overrides
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="user_guide.html">
+    How-To
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="api_reference.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="about.html">
+    About
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="api/index.html">API Modules</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/db.html">Database API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/exc.html">Exceptions API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/models.html">Models API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/objects.html">Objects API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/query.html">Query API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/schemas.html">Schemas API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/views.html">Views API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/testing.html">Testing API</a></li>
+</ul>
+</details></li>
+</ul>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="technical_details.html">Technical Details</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Changelog</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="api_reference.html" class="nav-link">API Reference</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Changelog</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="changelog">
+<h1>Changelog<a class="headerlink" href="#changelog" title="Link to this heading">#</a></h1>
+<p>FastAPI-Restly follows <a class="reference external" href="https://semver.org/">Semantic Versioning</a>. While the
+version is below <code class="docutils literal notranslate"><span class="pre">1.0.0</span></code>, breaking changes may land in <strong>minor</strong> releases
+(<code class="docutils literal notranslate"><span class="pre">0.x</span></code> → <code class="docutils literal notranslate"><span class="pre">0.y</span></code>) and are always listed below under the release that ships them;
+patch releases are fixes only. To opt into fixes without surprises, pin to a
+minor version — for example <code class="docutils literal notranslate"><span class="pre">fastapi-restly~={{</span> <span class="pre">release</span> <span class="pre">}}</span></code>.</p>
+<p>All notable changes to this project will be documented in this file.</p>
+<p>The format is based on <a class="reference external" href="https://keepachangelog.com/en/1.1.0/">Keep a Changelog</a>,
+and this project adheres to <a class="reference external" href="https://semver.org/spec/v2.0.0.html">Semantic Versioning</a>.</p>
+<section id="unreleased">
+<h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/compare/v0.7.0...HEAD">Unreleased</a><a class="headerlink" href="#unreleased" title="Link to this heading">#</a></h2>
+</section>
+<section id="id1">
+<h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/compare/v0.6.1...v0.7.0">0.7.0</a> - 2026-06-11<a class="headerlink" href="#id1" title="Link to this heading">#</a></h2>
+<section id="added">
+<h3>Added<a class="headerlink" href="#added" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p>The generated route shells (<code class="docutils literal notranslate"><span class="pre">get_many_endpoint</span></code>, <code class="docutils literal notranslate"><span class="pre">create_endpoint</span></code>, …)
+now carry one-line override-redirect docstrings, so <code class="docutils literal notranslate"><span class="pre">help(RestView)</span></code>, source
+readers, and coding agents see which tier to override (<code class="docutils literal notranslate"><span class="pre">&lt;verb&gt;</span></code> for domain
+logic, <code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code> for orchestration, <code class="docutils literal notranslate"><span class="pre">to_response</span></code> for shape). The
+docstrings are stripped from generated routes at registration so framework
+guidance never appears as OpenAPI operation descriptions in your API;
+endpoints you define or override yourself keep FastAPI’s normal docstring
+behavior.</p></li>
+<li><p>Scalar <code class="docutils literal notranslate"><span class="pre">fr.IDRef[T]</span></code> foreign-key fields are now filterable on list endpoints
+by their own public name. Previously <code class="docutils literal notranslate"><span class="pre">post_id:</span> <span class="pre">fr.IDRef[Post]</span></code> — the FK form
+the tutorial teaches — generated no filter parameter at all, so
+<code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/comments/?post_id=1</span></code> returned a 422 that looked like client error; the
+only filterable form was a plain <code class="docutils literal notranslate"><span class="pre">post_id:</span> <span class="pre">int</span></code>. An <code class="docutils literal notranslate"><span class="pre">IDRef</span></code> id is treated as
+opaque, so it gets equality, <code class="docutils literal notranslate"><span class="pre">__in</span></code>, <code class="docutils literal notranslate"><span class="pre">__ne</span></code>, and <code class="docutils literal notranslate"><span class="pre">__isnull</span></code> (uniform across
+int/UUID/string primary keys) but not the range or substring operator
+families.</p></li>
+<li><p>Python 3.14 is now officially supported and tested. It was previously in the
+CI matrix as an experimental (allowed-to-fail) target while <code class="docutils literal notranslate"><span class="pre">orjson</span></code> lacked a
+3.14 wheel; that wheel now ships, the full test suite passes on 3.14, and the
+job gates CI like every other supported version.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">fr.db.create_all(Base)</span></code> / <code class="docutils literal notranslate"><span class="pre">fr.db.async_create_all(Base)</span></code> — dev/demo helpers
+that create every table for a declarative base (or a <code class="docutils literal notranslate"><span class="pre">MetaData</span></code>) on the engine
+configured via <code class="docutils literal notranslate"><span class="pre">fr.configure()</span></code>, replacing the <code class="docutils literal notranslate"><span class="pre">engine</span> <span class="pre">=</span> <span class="pre">fr.db.get_async_engine();</span> <span class="pre">async</span> <span class="pre">with</span> <span class="pre">engine.begin()</span> <span class="pre">as</span> <span class="pre">conn:</span> <span class="pre">await</span> <span class="pre">conn.run_sync(Base.metadata.create_all)</span></code> boilerplate in quickstarts and test
+setup. Use Alembic migrations in production.</p></li>
+<li><p>Opt-in registration-time misuse warnings: <code class="docutils literal notranslate"><span class="pre">fr.configure(warn_on_misuse=True)</span></code>
+makes <code class="docutils literal notranslate"><span class="pre">include_view</span></code> lint each registered view class and emit
+<code class="docutils literal notranslate"><span class="pre">fr.exc.RestlyMisuseWarning</span></code> for the three dominant misuse patterns —
+overriding a route shell (<code class="docutils literal notranslate"><span class="pre">&lt;verb&gt;_endpoint</span></code>) where a business-verb override
+was meant, calling <code class="docutils literal notranslate"><span class="pre">session.commit()</span></code> directly in a view method, and
+hand-rolling a CRUD route set on a bare <code class="docutils literal notranslate"><span class="pre">View</span></code> instead of subclassing
+<code class="docutils literal notranslate"><span class="pre">RestView</span></code> / <code class="docutils literal notranslate"><span class="pre">AsyncRestView</span></code>. Each message names the idiomatic fix. Off by
+default; intended for development, project templates, and CI.</p></li>
+</ul>
+</section>
+<section id="changed">
+<h3>Changed<a class="headerlink" href="#changed" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p>The <code class="docutils literal notranslate"><span class="pre">RestlyUncommittedChangesWarning</span></code> message now leads with the fix
+(bracket the mutation with <code class="docutils literal notranslate"><span class="pre">write_action(...)</span></code> or reuse a <code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code>)
+and offers only the per-route suppression
+(<code class="docutils literal notranslate"><span class="pre">session.info[&quot;_fr_suppress_uncommitted&quot;]</span> <span class="pre">=</span> <span class="pre">True</span></code>) for intentional
+dry runs. It no longer advertises the global
+<code class="docutils literal notranslate"><span class="pre">warn_on_uncommitted=False</span></code> opt-out, which readers took as a fix for the
+warning instead of committing their changes.</p></li>
+<li><p><strong>Breaking — top-level <code class="docutils literal notranslate"><span class="pre">fr.*</span></code> namespace curated.</strong> Errors, HTTP exceptions, and
+the uncommitted-changes warning moved to <code class="docutils literal notranslate"><span class="pre">fr.exc</span></code> (<code class="docutils literal notranslate"><span class="pre">fr.exc.NotFound</span></code>,
+<code class="docutils literal notranslate"><span class="pre">fr.exc.RestlyError</span></code>, …) — the <code class="docutils literal notranslate"><span class="pre">exceptions</span></code> module is renamed <code class="docutils literal notranslate"><span class="pre">exc</span></code>, mirroring
+<code class="docutils literal notranslate"><span class="pre">sqlalchemy.exc</span></code>. Advanced helpers moved to their layer submodules: schema↔ORM
+helpers to <code class="docutils literal notranslate"><span class="pre">fr.objects.*</span></code> (<code class="docutils literal notranslate"><span class="pre">make_new_object</span></code> / <code class="docutils literal notranslate"><span class="pre">save_object</span></code> / <code class="docutils literal notranslate"><span class="pre">snapshot</span></code> / …
+and the <code class="docutils literal notranslate"><span class="pre">async_*</span></code> variants), list query helpers to <code class="docutils literal notranslate"><span class="pre">fr.query.*</span></code>
+(<code class="docutils literal notranslate"><span class="pre">create_list_params_schema</span></code>, <code class="docutils literal notranslate"><span class="pre">apply_list_params</span></code>), engine accessors to
+<code class="docutils literal notranslate"><span class="pre">fr.db.*</span></code> (<code class="docutils literal notranslate"><span class="pre">get_engine</span></code>, <code class="docutils literal notranslate"><span class="pre">get_async_engine</span></code>), and <code class="docutils literal notranslate"><span class="pre">IDMixin</span></code> to <code class="docutils literal notranslate"><span class="pre">fr.models.*</span></code>.
+The route decorators (<code class="docutils literal notranslate"><span class="pre">&#64;fr.get</span></code> / <code class="docutils literal notranslate"><span class="pre">&#64;fr.post</span></code> / … / <code class="docutils literal notranslate"><span class="pre">&#64;fr.route</span></code>), views,
+registration, schemas, model bases, <code class="docutils literal notranslate"><span class="pre">configure</span></code>, the session
+helpers/dependencies, and the view support types (<code class="docutils literal notranslate"><span class="pre">Action</span></code> / <code class="docutils literal notranslate"><span class="pre">ViewRoute</span></code> /
+<code class="docutils literal notranslate"><span class="pre">ResponseShape</span></code> / <code class="docutils literal notranslate"><span class="pre">ListingResult</span></code>) stay top-level. <strong>Migration:</strong> e.g.
+<code class="docutils literal notranslate"><span class="pre">fr.NotFound</span></code> → <code class="docutils literal notranslate"><span class="pre">fr.exc.NotFound</span></code>,
+<code class="docutils literal notranslate"><span class="pre">fr.make_new_object</span></code> → <code class="docutils literal notranslate"><span class="pre">fr.objects.make_new_object</span></code>,
+<code class="docutils literal notranslate"><span class="pre">fr.get_async_engine</span></code> → <code class="docutils literal notranslate"><span class="pre">fr.db.get_async_engine</span></code>.</p></li>
+</ul>
+</section>
+<section id="fixed">
+<h3>Fixed<a class="headerlink" href="#fixed" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">fr.open_session()</span></code> / <code class="docutils literal notranslate"><span class="pre">fr.open_async_session()</span></code> now resolve the same session
+source as <code class="docutils literal notranslate"><span class="pre">SessionDep</span></code> / <code class="docutils literal notranslate"><span class="pre">AsyncSessionDep</span></code>: a custom session generator passed
+to <code class="docutils literal notranslate"><span class="pre">fr.configure(session_generator=...)</span></code> / <code class="docutils literal notranslate"><span class="pre">sync_session_generator=...</span></code> takes
+precedence over the built-in factory. Previously the context managers always
+used the built-in factory, so a generator-only configuration worked inside
+request handlers but raised <code class="docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code> off-HTTP (in scripts,
+background jobs, or a custom dependency wrapping <code class="docutils literal notranslate"><span class="pre">open_*session()</span></code>). The two
+session entry points are now consistent.</p></li>
+</ul>
+</section>
+</section>
+<section id="id2">
+<h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/compare/v0.6.0...v0.6.1">0.6.1</a> - 2026-06-02<a class="headerlink" href="#id2" title="Link to this heading">#</a></h2>
+<section id="id3">
+<h3>Changed<a class="headerlink" href="#id3" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p>Reference resolution (<code class="docutils literal notranslate"><span class="pre">IDRef</span></code>/<code class="docutils literal notranslate"><span class="pre">IDSchema</span></code>) no longer mutates the validated
+request model in place. The resolver now returns a <code class="docutils literal notranslate"><span class="pre">{field:</span> <span class="pre">resolved}</span></code> mapping
+that the write path consumes, so the request model keeps its wire shape (its
+reference fields stay <code class="docutils literal notranslate"><span class="pre">IDRef[T]</span></code> values rather than being overwritten with ORM
+rows). Behavior of create/update is unchanged; the internal helpers
+<code class="docutils literal notranslate"><span class="pre">build_create_plan</span></code> / <code class="docutils literal notranslate"><span class="pre">apply_update_to_object</span></code> /
+<code class="docutils literal notranslate"><span class="pre">validate_resolved_reference_consistency</span></code> gained a <code class="docutils literal notranslate"><span class="pre">resolved</span></code> argument.</p></li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">standard</span></code> extra is now runtime-only and mirrors <code class="docutils literal notranslate"><span class="pre">fastapi[standard]</span></code>. It no
+longer pulls the test toolchain (<code class="docutils literal notranslate"><span class="pre">pytest</span></code>, <code class="docutils literal notranslate"><span class="pre">pytest-asyncio</span></code>, <code class="docutils literal notranslate"><span class="pre">pytest-cov</span></code>,
+<code class="docutils literal notranslate"><span class="pre">httpx</span></code>) or bundles the <code class="docutils literal notranslate"><span class="pre">aiosqlite</span></code> driver, so installing
+<code class="docutils literal notranslate"><span class="pre">fastapi-restly[standard]</span></code> for production no longer drags pytest into the image.
+Test tooling stays in the <code class="docutils literal notranslate"><span class="pre">testing</span></code> extra; the database driver is now an
+explicit choice (Restly remains driver-agnostic). <strong>Migration:</strong> if you relied
+on <code class="docutils literal notranslate"><span class="pre">[standard]</span></code> for test dependencies, switch to <code class="docutils literal notranslate"><span class="pre">[testing]</span></code>; if you ran on
+SQLite, add <code class="docutils literal notranslate"><span class="pre">aiosqlite</span></code> to your dependencies directly.</p></li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">testing</span></code> extra now includes only the third-party packages Restly’s shipped
+test helpers import — <code class="docutils literal notranslate"><span class="pre">pytest</span></code>, <code class="docutils literal notranslate"><span class="pre">pytest-asyncio</span></code>, and <code class="docutils literal notranslate"><span class="pre">httpx</span></code> (for
+<code class="docutils literal notranslate"><span class="pre">RestlyTestClient</span></code> and the <code class="docutils literal notranslate"><span class="pre">restly_*</span></code> fixtures). <code class="docutils literal notranslate"><span class="pre">pytest-cov</span></code> is no longer
+pulled in; add it yourself if you want coverage reports.</p></li>
+<li><p>Removed the <code class="docutils literal notranslate"><span class="pre">docs</span></code> extra from the published extras. It only installed the
+toolchain for building Restly’s own documentation site (a maintainer concern);
+those dependencies remain in the <code class="docutils literal notranslate"><span class="pre">dev</span></code> dependency group. The published extras
+are now <code class="docutils literal notranslate"><span class="pre">standard</span></code> and <code class="docutils literal notranslate"><span class="pre">testing</span></code>.</p></li>
+</ul>
+</section>
+<section id="id4">
+<h3>Fixed<a class="headerlink" href="#id4" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">RestlyUncommittedChangesWarning</span></code> no longer false-positives on every write run
+under the savepoint test fixtures: the patched <code class="docutils literal notranslate"><span class="pre">commit</span></code> clears the
+pending-changes flag (mimicking the real <code class="docutils literal notranslate"><span class="pre">after_commit</span></code>), while a genuinely
+forgotten commit still warns.</p></li>
+<li><p>An <code class="docutils literal notranslate"><span class="pre">IDRef</span></code> list field that references the same id more than once no longer
+raises a confusing <code class="docutils literal notranslate"><span class="pre">Id</span> <span class="pre">not</span> <span class="pre">found:</span> <span class="pre">set()</span></code> 404 when the referenced rows all
+exist; a genuinely missing id is now named in the error.</p></li>
+<li><p>An <code class="docutils literal notranslate"><span class="pre">IDRef</span></code> list field now resolves in the client-sent order instead of
+silently reordering to the database’s primary-key order (duplicate ids are
+collapsed, first occurrence wins).</p></li>
+<li><p>A <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> or <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> marker nested inside a field’s type instead of
+wrapping it (such as <code class="docutils literal notranslate"><span class="pre">Optional[WriteOnly[str]]</span></code>, <code class="docutils literal notranslate"><span class="pre">WriteOnly[str]</span> <span class="pre">|</span> <span class="pre">None</span></code>, or
+<code class="docutils literal notranslate"><span class="pre">list[WriteOnly[str]]</span></code>) is now rejected with a <code class="docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code>
+instead of silently no-op’ing. Nested there the marker has no effect — a
+<code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> field would leak into responses and a <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> field would stay
+writable — so the framework now raises when the schema is defined (and again at
+view registration for schemas that do not derive from <code class="docutils literal notranslate"><span class="pre">BaseSchema</span></code>), pointing
+to the safe <code class="docutils literal notranslate"><span class="pre">Marker[Optional[T]]</span></code> form.</p></li>
+<li><p>A list view no longer advertises filter query parameters for fields that are
+not filterable columns — a to-many relationship (<code class="docutils literal notranslate"><span class="pre">books:</span> <span class="pre">list[BookRef]</span></code>) or a
+reference field that does not resolve to a column. These appeared in OpenAPI
+but always returned 400. Filter-param generation now validates each field
+against the model with the same column-resolution predicate the request path
+uses, so non-column fields no longer get filter params; to-one dotted traversal
+is unchanged. (<code class="docutils literal notranslate"><span class="pre">create_list_params_schema</span></code> now takes the queried <code class="docutils literal notranslate"><span class="pre">model</span></code> as a
+required argument.)</p></li>
+</ul>
+</section>
+</section>
+<section id="id5">
+<h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/compare/v0.5.1...v0.6.0">0.6.0</a> - 2026-06-01<a class="headerlink" href="#id5" title="Link to this heading">#</a></h2>
+<p>Reworks the class-based view API around a three-tier “handle” design. This is a
+breaking change; views written for 0.5.x need updating.</p>
+<section id="changed-breaking">
+<h3>Changed (breaking)<a class="headerlink" href="#changed-breaking" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p>Each CRUD verb now has three tiers: route shell (<code class="docutils literal notranslate"><span class="pre">*_endpoint</span></code>), request
+handler (<code class="docutils literal notranslate"><span class="pre">handle_*</span></code>), and domain verb (<code class="docutils literal notranslate"><span class="pre">get_many</span></code>, <code class="docutils literal notranslate"><span class="pre">get_one</span></code>, <code class="docutils literal notranslate"><span class="pre">create</span></code>,
+<code class="docutils literal notranslate"><span class="pre">update</span></code>, <code class="docutils literal notranslate"><span class="pre">delete</span></code>). This replaces the <code class="docutils literal notranslate"><span class="pre">listing</span></code>/<code class="docutils literal notranslate"><span class="pre">get</span></code>/<code class="docutils literal notranslate"><span class="pre">create</span></code>/<code class="docutils literal notranslate"><span class="pre">update</span></code>/
+<code class="docutils literal notranslate"><span class="pre">delete</span></code> endpoints and the single <code class="docutils literal notranslate"><span class="pre">perform_*</span></code> tier.</p></li>
+<li><p>The framework owns commits. <code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code> and <code class="docutils literal notranslate"><span class="pre">write_action</span></code> run
+<code class="docutils literal notranslate"><span class="pre">before_commit</span></code> → commit → <code class="docutils literal notranslate"><span class="pre">after_commit</span></code>; request-session dependencies no
+longer commit on response. Custom write routes should reuse <code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code> or
+bracket mutations with <code class="docutils literal notranslate"><span class="pre">self.write_action(...)</span></code>. Manual <code class="docutils literal notranslate"><span class="pre">session.commit()</span></code> is
+only for shapes the bracket does not model, such as batch commits.
+<code class="docutils literal notranslate"><span class="pre">commit_session_on_response</span></code> is removed; custom session generators construct
+and clean up sessions but do not own commits.</p></li>
+<li><p>Renamed: <code class="docutils literal notranslate"><span class="pre">creation_schema</span></code>/<code class="docutils literal notranslate"><span class="pre">update_schema</span></code> → <code class="docutils literal notranslate"><span class="pre">schema_create</span></code>/<code class="docutils literal notranslate"><span class="pre">schema_update</span></code>;
+<code class="docutils literal notranslate"><span class="pre">build_from_schema</span></code>/<code class="docutils literal notranslate"><span class="pre">apply_schema</span></code> → <code class="docutils literal notranslate"><span class="pre">make_new_object</span></code>/<code class="docutils literal notranslate"><span class="pre">update_object</span></code>;
+<code class="docutils literal notranslate"><span class="pre">count_listing</span></code> → <code class="docutils literal notranslate"><span class="pre">count</span></code>. Response shaping goes through a single
+<code class="docutils literal notranslate"><span class="pre">to_response(obj_or_list,</span> <span class="pre">shape=ResponseShape.SINGLE)</span></code> method.
+<code class="docutils literal notranslate"><span class="pre">ViewRoute.LIST</span></code>/<code class="docutils literal notranslate"><span class="pre">GET</span></code> → <code class="docutils literal notranslate"><span class="pre">ViewRoute.GET_MANY</span></code>/<code class="docutils literal notranslate"><span class="pre">GET_ONE</span></code>.</p></li>
+</ul>
+</section>
+<section id="id6">
+<h3>Added<a class="headerlink" href="#id6" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">authorize(action,</span> <span class="pre">obj,</span> <span class="pre">data)</span></code> override — an empty override by default; raise
+<code class="docutils literal notranslate"><span class="pre">fr.Forbidden</span></code> / <code class="docutils literal notranslate"><span class="pre">fr.NotFound</span></code> to gate a verb (row visibility goes in
+<code class="docutils literal notranslate"><span class="pre">build_query</span></code>).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">before_commit</span></code> / <code class="docutils literal notranslate"><span class="pre">after_commit</span></code> transaction hooks and a <code class="docutils literal notranslate"><span class="pre">snapshot()</span></code> helper
+for old-vs-new comparison.</p></li>
+<li><p>Typed request-time exceptions <code class="docutils literal notranslate"><span class="pre">NotFound</span></code>, <code class="docutils literal notranslate"><span class="pre">Forbidden</span></code>, <code class="docutils literal notranslate"><span class="pre">Conflict</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">BadQueryParam</span></code>, subclassing <code class="docutils literal notranslate"><span class="pre">fastapi.HTTPException</span></code> (so a single
+<code class="docutils literal notranslate"><span class="pre">app.add_exception_handler(fr.NotFound,</span> <span class="pre">...)</span></code> can reshape them).</p></li>
+<li><p>Top-level <code class="docutils literal notranslate"><span class="pre">make_new_object</span></code> / <code class="docutils literal notranslate"><span class="pre">update_object</span></code> / <code class="docutils literal notranslate"><span class="pre">save_object</span></code> /
+<code class="docutils literal notranslate"><span class="pre">delete_object</span></code> / <code class="docutils literal notranslate"><span class="pre">snapshot</span></code> helpers (and their <code class="docutils literal notranslate"><span class="pre">async_*</span></code> variants where
+applicable) for use outside a view.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">write_action(action,</span> <span class="pre">*,</span> <span class="pre">obj,</span> <span class="pre">data)</span></code> — a context manager for custom write
+actions. It shares the CRUD authorize + commit bracket. Create-shaped actions
+that omit <code class="docutils literal notranslate"><span class="pre">obj=</span></code> must assign the yielded handle’s <code class="docutils literal notranslate"><span class="pre">.obj</span></code> before exit.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">RestlyUncommittedChangesWarning</span></code> (default on; <code class="docutils literal notranslate"><span class="pre">warn_on_uncommitted=False</span></code> to
+disable) when a request finishes with uncommitted changes — the tell of a
+write route that forgot to commit.</p></li>
+</ul>
+</section>
+<section id="id7">
+<h3>Fixed<a class="headerlink" href="#id7" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p>A <code class="docutils literal notranslate"><span class="pre">&#64;route</span></code> method named like a bare verb (<code class="docutils literal notranslate"><span class="pre">create</span></code>/<code class="docutils literal notranslate"><span class="pre">update</span></code>/<code class="docutils literal notranslate"><span class="pre">delete</span></code>/
+<code class="docutils literal notranslate"><span class="pre">get_one</span></code>/<code class="docutils literal notranslate"><span class="pre">get_many</span></code>) is now rejected at registration: it shadowed the verb
+and collided with its <code class="docutils literal notranslate"><span class="pre">*_endpoint</span></code> route shell.</p></li>
+<li><p>Registering a View subclass alongside its parent on the same app no longer
+duplicates the child’s routes.</p></li>
+<li><p>React Admin list/count/update paths now use the same <code class="docutils literal notranslate"><span class="pre">build_query</span></code>, <code class="docutils literal notranslate"><span class="pre">count</span></code>,
+authorization, and commit lifecycle as standard REST views; filter/sort
+resolution is limited to public schema fields.</p></li>
+<li><p>A paginated list sorted on a non-unique column now appends the primary key as
+a final <code class="docutils literal notranslate"><span class="pre">ORDER</span> <span class="pre">BY</span></code> tiebreaker, so rows are no longer skipped or repeated across
+pages. Applies to both the standard and React Admin sort paths.</p></li>
+<li><p>A <code class="docutils literal notranslate"><span class="pre">build_query</span></code> that joins a to-many relationship no longer fans out: <code class="docutils literal notranslate"><span class="pre">get_many</span></code>
+de-duplicates entities and the list total counts distinct rows, so the page and
+<code class="docutils literal notranslate"><span class="pre">total_count</span></code> agree. A no-op for queries without such a join.</p></li>
+<li><p>A <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> field no longer leaks into a response, including from a nested
+response schema. <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> fields are now excluded from serialization at the
+field level (<code class="docutils literal notranslate"><span class="pre">exclude=True</span></code> on the marker), so they are stripped recursively on
+the wire and dropped from the OpenAPI response schema, while staying required,
+documented request inputs. Prefer <code class="docutils literal notranslate"><span class="pre">WriteOnly[Optional[T]]</span></code> over
+<code class="docutils literal notranslate"><span class="pre">Optional[WriteOnly[T]]</span></code> — a <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> marker buried only inside a union is
+not excluded.</p></li>
+</ul>
+</section>
+</section>
+<section id="id8">
+<h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/compare/v0.5.0...v0.5.1">0.5.1</a> - 2026-05-11<a class="headerlink" href="#id8" title="Link to this heading">#</a></h2>
+<section id="id9">
+<h3>Fixed<a class="headerlink" href="#id9" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p>Fixed <code class="docutils literal notranslate"><span class="pre">fr.include_view(...)</span></code> registration on <code class="docutils literal notranslate"><span class="pre">fastapi.APIRouter</span></code> parents.</p></li>
+</ul>
+</section>
+</section>
+<section id="id10">
+<h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/releases/tag/v0.5.0">0.5.0</a> - 2026-05-06<a class="headerlink" href="#id10" title="Link to this heading">#</a></h2>
+<p>First public beta release.</p>
+<section id="id11">
+<h3>Added<a class="headerlink" href="#id11" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p>Class-based CRUD views for async and sync SQLAlchemy sessions with generated
+list, get, create, update, and delete routes.</p></li>
+<li><p>React Admin compatible <code class="docutils literal notranslate"><span class="pre">AsyncReactAdminView</span></code> and <code class="docutils literal notranslate"><span class="pre">ReactAdminView</span></code> variants
+for the <code class="docutils literal notranslate"><span class="pre">ra-data-simple-rest</span></code> wire contract.</p></li>
+<li><p>Generated schema support for read, create, and update payloads, including
+<code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>, <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code>, <code class="docutils literal notranslate"><span class="pre">IDSchema</span></code>, <code class="docutils literal notranslate"><span class="pre">IDRef</span></code>, and timestamp schema helpers.</p></li>
+<li><p>Standard list query support for filtering, sorting, pagination, relation
+aliases, and pagination metadata.</p></li>
+<li><p>Public <code class="docutils literal notranslate"><span class="pre">RestlyError</span></code> and <code class="docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code> exception hierarchy.</p></li>
+<li><p>Testing utilities through <code class="docutils literal notranslate"><span class="pre">RestlyTestClient</span></code>, savepoint-only mode helpers,
+and the <code class="docutils literal notranslate"><span class="pre">fastapi_restly.pytest_fixtures</span></code> pytest plugin.</p></li>
+</ul>
+</section>
+<section id="id12">
+<h3>Changed<a class="headerlink" href="#id12" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p>Consolidated framework setup on <code class="docutils literal notranslate"><span class="pre">fr.configure(...)</span></code>, including async/sync
+engine configuration and response-session commit policy.</p></li>
+<li><p>Renamed built-in route methods to resource-oriented names:
+<code class="docutils literal notranslate"><span class="pre">list</span></code>, <code class="docutils literal notranslate"><span class="pre">get</span></code>, <code class="docutils literal notranslate"><span class="pre">create</span></code>, <code class="docutils literal notranslate"><span class="pre">update</span></code>, and <code class="docutils literal notranslate"><span class="pre">delete</span></code>.</p></li>
+<li><p>Renamed business-logic hooks to <code class="docutils literal notranslate"><span class="pre">perform_list</span></code>, <code class="docutils literal notranslate"><span class="pre">perform_get</span></code>,
+<code class="docutils literal notranslate"><span class="pre">perform_create</span></code>, <code class="docutils literal notranslate"><span class="pre">perform_update</span></code>, and <code class="docutils literal notranslate"><span class="pre">perform_delete</span></code>.</p></li>
+<li><p>Standardized schema component names on <code class="docutils literal notranslate"><span class="pre">ModelRead</span></code>, <code class="docutils literal notranslate"><span class="pre">ModelCreate</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">ModelUpdate</span></code>.</p></li>
+<li><p>Made <code class="docutils literal notranslate"><span class="pre">sort</span></code> the standard list ordering parameter.</p></li>
+<li><p>Split <code class="docutils literal notranslate"><span class="pre">__contains</span></code> and <code class="docutils literal notranslate"><span class="pre">__icontains</span></code> so case-sensitive and
+case-insensitive matching have distinct public operators.</p></li>
+<li><p>Exposed savepoint-only testing helpers through <code class="docutils literal notranslate"><span class="pre">fastapi_restly.testing</span></code>
+instead of the top-level package namespace.</p></li>
+<li><p>Renamed <code class="docutils literal notranslate"><span class="pre">build_listing_query</span></code> to <code class="docutils literal notranslate"><span class="pre">build_query</span></code> and broadened its role:
+<code class="docutils literal notranslate"><span class="pre">perform_get</span></code> now also routes through this hook, so a single override filters
+listing, the pagination total, and single-row fetches. A row hidden from
+listing returns 404 from <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/{id}</span></code> too, and <code class="docutils literal notranslate"><span class="pre">perform_update</span></code> /
+<code class="docutils literal notranslate"><span class="pre">perform_delete</span></code> inherit the visibility check via <code class="docutils literal notranslate"><span class="pre">perform_get</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">perform_get</span></code> now issues <code class="docutils literal notranslate"><span class="pre">SELECT</span> <span class="pre">...</span> <span class="pre">WHERE</span> <span class="pre">pk</span> <span class="pre">=</span> <span class="pre">?</span></code> instead of
+<code class="docutils literal notranslate"><span class="pre">session.get(...)</span></code>. Single-column primary-key behavior is unchanged.
+Composite-primary-key subclasses must override <code class="docutils literal notranslate"><span class="pre">perform_get</span></code>.</p></li>
+<li><p>Advanced schema-to-object helpers now live in <code class="docutils literal notranslate"><span class="pre">fastapi_restly.objects</span></code>:
+<code class="docutils literal notranslate"><span class="pre">build_from_schema</span></code>, <code class="docutils literal notranslate"><span class="pre">apply_schema</span></code>, <code class="docutils literal notranslate"><span class="pre">save_object</span></code>, and <code class="docutils literal notranslate"><span class="pre">delete_object</span></code>,
+with async equivalents. The view methods use the same names for the mapping
+hooks and keep persistence at the <code class="docutils literal notranslate"><span class="pre">save_object</span></code> / <code class="docutils literal notranslate"><span class="pre">delete_object</span></code> boundary.</p></li>
+</ul>
+</section>
+<section id="removed">
+<h3>Removed<a class="headerlink" href="#removed" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p>Removed the pre-stable <code class="docutils literal notranslate"><span class="pre">query=</span></code> argument from <code class="docutils literal notranslate"><span class="pre">perform_listing</span></code>. Override
+<code class="docutils literal notranslate"><span class="pre">build_query()</span></code> for SQL-level base query changes so listing, pagination
+totals, and single-row fetches stay aligned.</p></li>
+<li><p>Removed pre-release route and hook names such as <code class="docutils literal notranslate"><span class="pre">index</span></code>, <code class="docutils literal notranslate"><span class="pre">get</span></code>, <code class="docutils literal notranslate"><span class="pre">post</span></code>,
+<code class="docutils literal notranslate"><span class="pre">patch</span></code>, <code class="docutils literal notranslate"><span class="pre">delete</span></code>, <code class="docutils literal notranslate"><span class="pre">handle_list</span></code>, and <code class="docutils literal notranslate"><span class="pre">handle_get</span></code> from the public view API.</p></li>
+<li><p>Removed unsupported <code class="docutils literal notranslate"><span class="pre">get_one_or_create</span></code> helpers before the first stable
+release.</p></li>
+<li><p>Removed internal model helpers such as <code class="docutils literal notranslate"><span class="pre">TableNameMixin</span></code>, <code class="docutils literal notranslate"><span class="pre">underscore</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">utc_now</span></code> from the public API surface.</p></li>
+<li><p>Removed duplicate pytest fixture exports from <code class="docutils literal notranslate"><span class="pre">fastapi_restly.testing</span></code>;
+the pytest plugin path is <code class="docutils literal notranslate"><span class="pre">fastapi_restly.pytest_fixtures</span></code>.</p></li>
+</ul>
+</section>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="technical_details.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Technical Details</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="about.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">About FastAPI-Restly</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#unreleased">Unreleased</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id1">0.7.0 - 2026-06-11</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#added">Added</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#changed">Changed</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fixed">Fixed</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id2">0.6.1 - 2026-06-02</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id3">Changed</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id4">Fixed</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id5">0.6.0 - 2026-06-01</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#changed-breaking">Changed (breaking)</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id6">Added</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id7">Fixed</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id8">0.5.1 - 2026-05-11</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id9">Fixed</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id10">0.5.0 - 2026-05-06</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id11">Added</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id12">Changed</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#removed">Removed</a></li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+<p class="sidebar-newsletter">
+  <a href="newsletter.html">Subscribe to newsletter</a>
+</p></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, Rutger Prins.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>
