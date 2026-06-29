@@ -322,6 +322,19 @@ restly_client.__wrapped__(restly_app.__wrapped__())
     assert 'pip install "fastapi-restly[testing]"' in result.stderr
 
 
+def test_pytest_plugin_reports_missing_pytest():
+    """If pytest itself is absent, the plugin surfaces the [testing] extras hint.
+
+    Unlike httpx (imported lazily), pytest is a top-level import of the private
+    fixtures module, so blocking it exercises the friendly re-raise in
+    ``pytest_fixtures.py``.
+    """
+    result = _run_with_blocked_imports("import fastapi_restly.pytest_fixtures", "pytest")
+
+    assert result.returncode != 0
+    assert 'pip install "fastapi-restly[testing]"' in result.stderr
+
+
 def test_pytest_plugin_imports_without_pytest_asyncio():
     result = _run_with_blocked_imports(
         """
