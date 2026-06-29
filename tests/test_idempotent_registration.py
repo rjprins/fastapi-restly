@@ -264,15 +264,31 @@ def test_subclass_of_registered_base_still_registers_independently(sync_db):
     assert resp.status_code == 201, resp.text
 
 
+def _effective_route_pairs(app):
+    """Yield ``(path, frozenset(methods))`` for every effective leaf route.
+
+    FastAPI >=0.138 no longer flattens ``include_router`` into the parent: an
+    included router appears in ``app.routes`` as an ``_IncludedRouter`` branch
+    that resolves its concrete routes lazily. Expand those branches so route
+    introspection sees view routes again; on older FastAPI the routes are
+    already flat and pass straight through. The path-existence assertions below
+    double as a guard that this expansion stays non-vacuous.
+    """
+    for route in app.routes:
+        expand = getattr(route, "effective_route_contexts", None)
+        leaves = expand() if expand is not None else (route,)
+        for leaf in leaves:
+            methods = getattr(leaf, "methods", None)
+            path = getattr(leaf, "path", None)
+            if methods and path is not None:
+                yield path, frozenset(methods)
+
+
 def _duplicate_routes(app):
     """Return {(path, methods): count} for any route registered more than once."""
     from collections import Counter
 
-    counts = Counter(
-        (r.path, frozenset(r.methods))
-        for r in app.routes
-        if hasattr(r, "methods")
-    )
+    counts = Counter(_effective_route_pairs(app))
     return {key: n for key, n in counts.items() if n > 1}
 
 
@@ -308,7 +324,7 @@ def test_subclass_and_parent_on_same_app_have_no_duplicate_routes(sync_db):
 
     assert _duplicate_routes(app) == {}
 
-    paths = {r.path for r in app.routes if hasattr(r, "methods")}
+    paths = {path for path, _ in _effective_route_pairs(app)}
     # The child's CRUD routes exist (once) under the composed prefix.
     assert "/dials/fancy/" in paths
     assert "/dials/fancy/{id}" in paths
@@ -347,7 +363,7 @@ def test_inherited_custom_route_registered_once_on_same_app(sync_db):
     fr.include_view(app, SubMeterView)
 
     assert _duplicate_routes(app) == {}
-    paths = {r.path for r in app.routes if hasattr(r, "methods")}
+    paths = {path for path, _ in _effective_route_pairs(app)}
     assert "/meters/health" in paths
     assert "/meters/sub/health" in paths
 

@@ -77,6 +77,15 @@ def setup_database_connection():
     _fr_globals.sync_session_generator = None
     _fr_globals.make_session = None
     fr.configure(async_database_url="sqlite+aiosqlite:///:memory:")
+    yield
+    # Dispose the per-test async engine so its pooled aiosqlite connection is
+    # closed explicitly. aiosqlite >=0.22 warns from Connection.__del__ when a
+    # connection is GC'd unclosed, which filterwarnings=error turns into
+    # spurious teardown failures attributed to whatever test GC happens to run
+    # under.
+    async_make_session = _fr_globals.async_make_session
+    if async_make_session is not None:
+        asyncio.run(async_make_session.kw["bind"].dispose())
 
 
 @pytest.fixture
