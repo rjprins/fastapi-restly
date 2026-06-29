@@ -1,5 +1,6 @@
 # FastAPI-Restly
 
+[![PyPI](https://img.shields.io/pypi/v/fastapi-restly)](https://pypi.org/project/fastapi-restly/)
 [![CI](https://github.com/rjprins/fastapi-restly/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/rjprins/fastapi-restly/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue)](https://github.com/rjprins/fastapi-restly/blob/main/pyproject.toml)
 [![License](https://img.shields.io/github/license/rjprins/fastapi-restly)](https://github.com/rjprins/fastapi-restly/blob/main/LICENSE)
@@ -34,13 +35,13 @@ Its class-based views are real Python classes: use inheritance, mixins, and
 method overrides to share behavior across resources.
 
 - **Class-based views**: group endpoints on Python classes with inheritance and method overrides.
-- **REST endpoints in minutes**: use `View` for custom resources, or `AsyncRestView` / `RestView` for generated CRUD.
+- **REST endpoints in minutes**: use `View` for custom endpoint groups, or `AsyncRestView` / `RestView` for generated CRUD.
 - **Incremental adoption**: use Restly per resource; drop to ordinary FastAPI when needed — see [Existing Project Integration](https://www.fastapi-restly.org/howto_existing_project.html).
 - **Class-level dependencies**: declare shared dependencies once and read their values from `self`.
 - **Explicit override points**: change the route shell, request handler, or business verb.
 - **Filtering, pagination, sorting**: get schema-derived list parameters.
 - **Field control**: `ReadOnly` / `WriteOnly` markers, plus foreign-key validation through `IDRef[...]`.
-- **React Admin ready**: `AsyncReactAdminView` speaks `ra-data-simple-rest`.
+- **React Admin ready**: `AsyncReactAdminView` / `ReactAdminView` speak `ra-data-simple-rest`.
 - **App utilities**: SQLAlchemy engine/session setup, exception handlers, and test fixtures.
 
 ## Quickstart
@@ -85,6 +86,10 @@ DELETE /users/{id}   # delete one user
 
 Restly generates the Pydantic schemas automatically.
 
+The Quickstart uses plain SQLAlchemy on purpose — Restly doesn't hide it. In
+real projects you'll usually inherit `fr.IDBase` for models and `fr.IDSchema`
+for schemas, which supply the `id` for you; both appear in the examples below.
+
 ### Not just CRUD
 
 `View` is the same class-based machinery without the generated routes — use it
@@ -104,7 +109,7 @@ class AuthView(fr.View):
     async def logout(self) -> None: ...
 ```
 
-And because views truly subclass, the biggest everyday win takes four lines:
+And because views truly subclass, the biggest everyday win takes only a few lines:
 declare your app's request context once on a base view, and read it from
 `self` everywhere — instead of re-declaring the same `Depends` parameters on
 every function in the project:
@@ -124,7 +129,6 @@ resource, and `RestView` plus custom `@fr.post` methods for CRUD with actions.
 
 Why a `View` over a bare `APIRouter`?
 
-- Shared dependencies are typed attributes you read from `self` (`self.session`, `self.current_user`).
 - Prefix, tags, responses, and dependencies are declared once on the class.
 - Views compose: inheritance and mixins share behavior across endpoint groups.
 - One registration call (`fr.include_view`) per class, bindable to any app or router.
@@ -193,7 +197,7 @@ Use **auto-schema** for prototypes and internal tools. Use an **explicit schema*
 List endpoints expose a stable URL parameter dialect generated from the response schema:
 
 ```bash
-GET /users/?name=John&age__gte=21
+GET /users/?name=John&created_at__gte=2024-01-01
 GET /users/?email__icontains=example
 GET /users/?sort=-created_at&page=2&page_size=10
 ```
@@ -269,8 +273,9 @@ class UploadView(fr.AsyncRestView):
 
 ### React Admin integration
 
-Use `AsyncReactAdminView` for a [react-admin](https://marmelab.com/react-admin/)
-backend compatible with [`ra-data-simple-rest`](https://github.com/marmelab/react-admin/tree/master/packages/ra-data-simple-rest):
+Use `AsyncReactAdminView` (or `ReactAdminView` for a sync stack) for a
+[react-admin](https://marmelab.com/react-admin/) backend compatible with
+[`ra-data-simple-rest`](https://github.com/marmelab/react-admin/tree/master/packages/ra-data-simple-rest):
 
 ```python
 @fr.include_view(app)
@@ -308,7 +313,8 @@ class UserView(fr.AsyncRestView):
 ## Testing
 
 `fastapi_restly.pytest_fixtures` provides client and session fixtures with
-savepoint-based isolation. The testing extra auto-loads them as a pytest plugin.
+savepoint-based isolation. Restly registers them as a pytest plugin
+automatically whenever it and pytest are installed.
 
 Install the testing extra when consuming FastAPI-Restly as a package:
 
@@ -333,7 +339,8 @@ def test_create_and_fetch_user(restly_client):
     assert data["name"] == "John"
 ```
 
-Pass `assert_status_code=None` to skip the assertion and inspect the response yourself.
+Pass `assert_status_code=None` to relax the check to any success status (2xx/3xx).
+To inspect an error response, assert its exact code instead (e.g. `assert_status_code=422`).
 
 ## Configuration
 
