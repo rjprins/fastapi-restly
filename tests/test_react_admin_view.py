@@ -15,14 +15,17 @@ import json
 from collections.abc import Iterator
 
 import pytest
-from fastapi import FastAPI
-from sqlalchemy.orm import Mapped
+from fastapi import FastAPI, HTTPException
+from sqlalchemy import ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 import fastapi_restly as fr
 from fastapi_restly.db._globals import _fr_globals
 from fastapi_restly.testing._client import RestlyTestClient
 from fastapi_restly.views._react_admin import (
     DEFAULT_REACT_ADMIN_PAGE_SIZE,
+    _ReactAdminMixin,
+    _resolve_column,
     parse_react_admin_range,
 )
 
@@ -214,6 +217,114 @@ def test_react_admin_unknown_filter_field_returns_400(client):
     client.get(
         "/items/", params={"filter": '{"nonexistent":"value"}'}, assert_status_code=400
     )
+
+
+def test_react_admin_sort_wrong_shape_returns_400(client):
+    """Valid JSON that is not a 2-element ``[field, direction]`` array is rejected."""
+    _setup_async_item_view(client)
+    client.get("/items/", params={"sort": '["only_one"]'}, assert_status_code=400)
+
+
+def test_react_admin_sort_bad_direction_returns_400(client):
+    """A direction other than ASC/DESC is rejected."""
+    _setup_async_item_view(client)
+    client.get("/items/", params={"sort": '["name", "UP"]'}, assert_status_code=400)
+
+
+def test_react_admin_range_wrong_shape_returns_400(client):
+    """Valid JSON that is not a 2-element ``[start, end]`` array is rejected."""
+    _setup_async_item_view(client)
+    client.get("/items/", params={"range": "[1]"}, assert_status_code=400)
+
+
+def test_react_admin_range_non_integer_returns_400(client):
+    """Non-integer range bounds are rejected."""
+    _setup_async_item_view(client)
+    client.get("/items/", params={"range": '["a", "b"]'}, assert_status_code=400)
+
+
+def test_react_admin_filter_not_object_returns_400(client):
+    """Valid JSON that is not an object (e.g. an array) is rejected."""
+    _setup_async_item_view(client)
+    client.get("/items/", params={"filter": "[1, 2]"}, assert_status_code=400)
+
+
+def test_react_admin_uncoercible_filter_value_returns_400(client):
+    """A filter value that cannot be coerced to the column type yields a 400."""
+    _setup_async_item_view(client)
+    client.get(
+        "/items/",
+        params={"filter": '{"price": "not-a-number"}'},
+        assert_status_code=400,
+    )
+
+
+# --- Column resolution guards (shared by both view variants) ---
+
+
+def test_resolve_column_rejects_relationship_field():
+    """A relationship field cannot be used to filter or sort (it is not a column)."""
+
+    class RaMaker(fr.IDBase):
+        name: Mapped[str] = mapped_column()
+
+    class RaMakerSchema(fr.IDSchema):
+        name: str
+
+    class RaGadget(fr.IDBase):
+        name: Mapped[str] = mapped_column()
+        maker_id: Mapped[int | None] = mapped_column(ForeignKey("ra_maker.id"))
+        maker: Mapped[RaMaker | None] = relationship()
+
+    class RaGadgetSchema(fr.IDSchema):
+        name: str
+        maker: RaMakerSchema
+
+    with pytest.raises(HTTPException) as exc_info:
+        _resolve_column(RaGadget, RaGadgetSchema, "maker")
+
+    assert exc_info.value.status_code == 400
+    assert "relationship" in str(exc_info.value.detail)
+
+
+def test_resolve_column_rejects_writeonly_field():
+    """A write-only schema field is not exposed for filtering or sorting."""
+
+    class RaThing(fr.IDBase):
+        name: Mapped[str] = mapped_column()
+        secret: Mapped[str] = mapped_column()
+
+    class RaThingSchema(fr.IDSchema):
+        name: str
+        secret: fr.WriteOnly[str]
+
+    with pytest.raises(HTTPException) as exc_info:
+        _resolve_column(RaThing, RaThingSchema, "secret")
+
+    assert exc_info.value.status_code == 400
+    assert "Unknown filter field" in str(exc_info.value.detail)
+
+
+# --- Pre-parsed (programmatic) param coercion ---
+
+
+def test_coerce_params_accepts_prebuilt_values():
+    """A handler may pass already-parsed sort/range/filter values directly."""
+    params = _ReactAdminMixin()._coerce_react_admin_params(
+        {"sort": ["name", "ASC"], "range": [5, 9], "filter": {"name": "x"}}
+    )
+
+    assert params.sort == ("name", "ASC")
+    assert (params.start, params.end) == (5, 9)
+    assert params.filters == {"name": "x"}
+
+
+def test_coerce_params_rejects_bad_prebuilt_range():
+    """A pre-parsed range that is not a 2-element sequence is rejected."""
+    with pytest.raises(HTTPException) as exc_info:
+        _ReactAdminMixin()._coerce_react_admin_params({"range": [5]})
+
+    assert exc_info.value.status_code == 400
 
 
 # --- React-admin specific endpoints (PUT /{id}) ---

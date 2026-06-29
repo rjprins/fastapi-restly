@@ -207,6 +207,26 @@ class TestCreateListParamsSchema:
         with pytest.raises(ValueError, match="reserved pagination/sort"):
             create_list_params_schema(SortFieldSchema, WidgetModel)
 
+    def test_create_list_params_schema_rejects_dunder_in_alias(self):
+        """An alias containing ``__`` would collide with operator suffixes."""
+
+        class DunderAliasSchema(pydantic.BaseModel):
+            id: int
+            name: str = pydantic.Field(alias="na__me")
+
+        with pytest.raises(ValueError, match="reserved for operator suffixes"):
+            create_list_params_schema(DunderAliasSchema, WidgetModel)
+
+    def test_create_list_params_schema_rejects_dot_in_alias(self):
+        """An alias containing ``.`` would collide with relation traversal."""
+
+        class DotAliasSchema(pydantic.BaseModel):
+            id: int
+            name: str = pydantic.Field(alias="na.me")
+
+        with pytest.raises(ValueError, match="reserved for relation traversal"):
+            create_list_params_schema(DotAliasSchema, WidgetModel)
+
 
 class TestApplyPagination:
     def test__apply_pagination_defaults(self, select_query, mock_query_params):
@@ -393,6 +413,52 @@ class TestApplyFiltering:
     def test__apply_filtering_invalid_field(self, select_query, mock_query_params):
         """Test filtering with invalid field."""
         params = mock_query_params(invalid_field="value")
+
+        with pytest.raises(HTTPException) as exc_info:
+            _apply_filtering(params, select_query, WidgetModel, WidgetSchema)
+
+        assert exc_info.value.status_code == 400
+        assert "Invalid attribute" in str(exc_info.value.detail)
+
+    def test__apply_filtering_unsupported_operator(
+        self, select_query, mock_query_params
+    ):
+        """An unknown ``__op`` suffix is rejected, not silently treated as eq."""
+        params = mock_query_params(**{"age__bogus": "1"})
+
+        with pytest.raises(HTTPException) as exc_info:
+            _apply_filtering(params, select_query, WidgetModel, WidgetSchema)
+
+        assert exc_info.value.status_code == 400
+        assert "Unsupported filter operator" in str(exc_info.value.detail)
+
+    def test__apply_filtering_unparseable_value(self, select_query, mock_query_params):
+        """A value that fails the field's type validation yields a 400."""
+        params = mock_query_params(age="not-an-int")
+
+        with pytest.raises(HTTPException) as exc_info:
+            _apply_filtering(params, select_query, WidgetModel, WidgetSchema)
+
+        assert exc_info.value.status_code == 400
+        assert "Invalid attribute" in str(exc_info.value.detail)
+
+    def test__apply_filtering_unknown_relation_in_dotted_path(
+        self, select_query, mock_query_params
+    ):
+        """A dotted path whose head is not a schema field is rejected."""
+        params = mock_query_params(**{"bogus.name": "x"})
+
+        with pytest.raises(HTTPException) as exc_info:
+            _apply_filtering(params, select_query, WidgetModel, WidgetSchema)
+
+        assert exc_info.value.status_code == 400
+        assert "Invalid attribute" in str(exc_info.value.detail)
+
+    def test__apply_filtering_plain_column_used_as_relation(
+        self, select_query, mock_query_params
+    ):
+        """A dotted path traversing a plain column (not a relationship) is rejected."""
+        params = mock_query_params(**{"name.first": "x"})
 
         with pytest.raises(HTTPException) as exc_info:
             _apply_filtering(params, select_query, WidgetModel, WidgetSchema)
