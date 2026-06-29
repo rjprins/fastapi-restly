@@ -5,7 +5,8 @@ try:
     )
 
     from ._client import RestlyTestClient
-except ModuleNotFoundError as exc:
+except ModuleNotFoundError as exc:  # pragma: no cover -- exercised via
+    # subprocess in test_testing_fixtures_coverage.py (httpx blocked)
     if exc.name == "httpx":
         raise ModuleNotFoundError(
             "fastapi_restly.testing requires optional testing dependencies. "
