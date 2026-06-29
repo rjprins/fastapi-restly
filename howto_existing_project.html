@@ -521,9 +521,12 @@ and Restly views can share the same parent app or router:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">APIRouter</span><span class="p">,</span> <span class="n">FastAPI</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">.db</span><span class="w"> </span><span class="kn">import</span> <span class="n">async_engine</span>          <span class="c1"># the async engine your app already builds</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.orders</span><span class="w"> </span><span class="kn">import</span> <span class="n">router</span> <span class="k">as</span> <span class="n">orders_router</span>
 
 <span class="n">app</span> <span class="o">=</span> <span class="n">FastAPI</span><span class="p">()</span>
+<span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">async_engine</span><span class="o">=</span><span class="n">async_engine</span><span class="p">)</span>
+
 <span class="n">api</span> <span class="o">=</span> <span class="n">APIRouter</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;/api&quot;</span><span class="p">)</span>
 
 <span class="n">api</span><span class="o">.</span><span class="n">include_router</span><span class="p">(</span><span class="n">orders_router</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;/orders&quot;</span><span class="p">)</span>  <span class="c1"># existing FastAPI routes</span>
@@ -540,6 +543,9 @@ and Restly views can share the same parent app or router:</p>
 <span class="n">app</span><span class="o">.</span><span class="n">include_router</span><span class="p">(</span><span class="n">api</span><span class="p">)</span>
 </pre></div>
 </div>
+<p><code class="docutils literal notranslate"><span class="pre">fr.include_view</span></code> works as a direct call (<code class="docutils literal notranslate"><span class="pre">fr.include_view(api,</span> <span class="pre">UserView)</span></code>,
+above) or as a class decorator (<code class="docutils literal notranslate"><span class="pre">&#64;fr.include_view(app)</span></code>, used later in this
+guide) — both register the same routes.</p>
 <p>Adoption is per resource. In the example above, orders stay hand-written while
 users use Restly. Adding a <code class="docutils literal notranslate"><span class="pre">ProductView</span></code> later does not require changing the
 orders router.</p>
@@ -718,8 +724,11 @@ the view’s <code class="docutils literal notranslate"><span class="pre">sessio
 <p>The custom dependency owns session construction and cleanup. Restly still owns
 the commit. Use this for read replicas, reporting databases, or other per-view
 session wiring.</p>
-<p>You can also use FastAPI-Restly’s configured session proxy directly in your
-own code (for example in background tasks):</p>
+</section>
+<section id="use-the-configured-session-off-request">
+<h2>Use the Configured Session Off-Request<a class="headerlink" href="#use-the-configured-session-off-request" title="Link to this heading">#</a></h2>
+<p>Outside the request cycle — in background tasks, scripts, or workers — open a
+session from FastAPI-Restly’s configured factory directly:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
 
 <span class="k">async</span> <span class="k">with</span> <span class="n">fr</span><span class="o">.</span><span class="n">open_async_session</span><span class="p">()</span> <span class="k">as</span> <span class="n">session</span><span class="p">:</span>
@@ -827,6 +836,7 @@ webhooks, and other shapes your existing app probably has.</p></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#reuse-your-existing-engine">Reuse Your Existing Engine</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#provide-your-own-session-generator">Provide Your Own Session Generator</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#use-a-custom-session-dependency-on-one-view">Use a Custom Session Dependency on One View</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#use-the-configured-session-off-request">Use the Configured Session Off-Request</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#use-your-own-declarativebase-models">Use Your Own DeclarativeBase Models</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#see-also">See also</a></li>
 </ul>

@@ -521,6 +521,16 @@ minor version — for example <code class="docutils literal notranslate"><span c
 and this project adheres to <a class="reference external" href="https://semver.org/spec/v2.0.0.html">Semantic Versioning</a>.</p>
 <section id="unreleased">
 <h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/compare/v0.7.0...HEAD">Unreleased</a><a class="headerlink" href="#unreleased" title="Link to this heading">#</a></h2>
+<section id="changed">
+<h3>Changed<a class="headerlink" href="#changed" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p>The <code class="docutils literal notranslate"><span class="pre">[testing]</span></code> extra now installs <code class="docutils literal notranslate"><span class="pre">httpx2</span></code> alongside <code class="docutils literal notranslate"><span class="pre">httpx</span></code>. Newer Starlette
+<code class="docutils literal notranslate"><span class="pre">TestClient</span></code> prefers <code class="docutils literal notranslate"><span class="pre">httpx2</span></code> and emits a <code class="docutils literal notranslate"><span class="pre">StarletteDeprecationWarning</span></code> when
+only <code class="docutils literal notranslate"><span class="pre">httpx</span></code> is present; shipping both keeps <code class="docutils literal notranslate"><span class="pre">RestlyTestClient</span></code> on the
+non-deprecated path without dropping support for the older Starlette versions
+in our range, which still import <code class="docutils literal notranslate"><span class="pre">httpx</span></code> directly.</p></li>
+</ul>
+</section>
 </section>
 <section id="id1">
 <h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/compare/v0.6.1...v0.7.0">0.7.0</a> - 2026-06-11<a class="headerlink" href="#id1" title="Link to this heading">#</a></h2>
@@ -561,8 +571,8 @@ hand-rolling a CRUD route set on a bare <code class="docutils literal notranslat
 default; intended for development, project templates, and CI.</p></li>
 </ul>
 </section>
-<section id="changed">
-<h3>Changed<a class="headerlink" href="#changed" title="Link to this heading">#</a></h3>
+<section id="id2">
+<h3>Changed<a class="headerlink" href="#id2" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>The <code class="docutils literal notranslate"><span class="pre">RestlyUncommittedChangesWarning</span></code> message now leads with the fix
 (bracket the mutation with <code class="docutils literal notranslate"><span class="pre">write_action(...)</span></code> or reuse a <code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code>)
@@ -602,10 +612,10 @@ session entry points are now consistent.</p></li>
 </ul>
 </section>
 </section>
-<section id="id2">
-<h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/compare/v0.6.0...v0.6.1">0.6.1</a> - 2026-06-02<a class="headerlink" href="#id2" title="Link to this heading">#</a></h2>
 <section id="id3">
-<h3>Changed<a class="headerlink" href="#id3" title="Link to this heading">#</a></h3>
+<h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/compare/v0.6.0...v0.6.1">0.6.1</a> - 2026-06-02<a class="headerlink" href="#id3" title="Link to this heading">#</a></h2>
+<section id="id4">
+<h3>Changed<a class="headerlink" href="#id4" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Reference resolution (<code class="docutils literal notranslate"><span class="pre">IDRef</span></code>/<code class="docutils literal notranslate"><span class="pre">IDSchema</span></code>) no longer mutates the validated
 request model in place. The resolver now returns a <code class="docutils literal notranslate"><span class="pre">{field:</span> <span class="pre">resolved}</span></code> mapping
@@ -632,8 +642,8 @@ those dependencies remain in the <code class="docutils literal notranslate"><spa
 are now <code class="docutils literal notranslate"><span class="pre">standard</span></code> and <code class="docutils literal notranslate"><span class="pre">testing</span></code>.</p></li>
 </ul>
 </section>
-<section id="id4">
-<h3>Fixed<a class="headerlink" href="#id4" title="Link to this heading">#</a></h3>
+<section id="id5">
+<h3>Fixed<a class="headerlink" href="#id5" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">RestlyUncommittedChangesWarning</span></code> no longer false-positives on every write run
 under the savepoint test fixtures: the patched <code class="docutils literal notranslate"><span class="pre">commit</span></code> clears the
@@ -664,8 +674,8 @@ required argument.)</p></li>
 </ul>
 </section>
 </section>
-<section id="id5">
-<h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/compare/v0.5.1...v0.6.0">0.6.0</a> - 2026-06-01<a class="headerlink" href="#id5" title="Link to this heading">#</a></h2>
+<section id="id6">
+<h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/compare/v0.5.1...v0.6.0">0.6.0</a> - 2026-06-01<a class="headerlink" href="#id6" title="Link to this heading">#</a></h2>
 <p>Reworks the class-based view API around a three-tier “handle” design. This is a
 breaking change; views written for 0.5.x need updating.</p>
 <section id="changed-breaking">
@@ -689,8 +699,8 @@ and clean up sessions but do not own commits.</p></li>
 <code class="docutils literal notranslate"><span class="pre">ViewRoute.LIST</span></code>/<code class="docutils literal notranslate"><span class="pre">GET</span></code> → <code class="docutils literal notranslate"><span class="pre">ViewRoute.GET_MANY</span></code>/<code class="docutils literal notranslate"><span class="pre">GET_ONE</span></code>.</p></li>
 </ul>
 </section>
-<section id="id6">
-<h3>Added<a class="headerlink" href="#id6" title="Link to this heading">#</a></h3>
+<section id="id7">
+<h3>Added<a class="headerlink" href="#id7" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">authorize(action,</span> <span class="pre">obj,</span> <span class="pre">data)</span></code> override — an empty override by default; raise
 <code class="docutils literal notranslate"><span class="pre">fr.Forbidden</span></code> / <code class="docutils literal notranslate"><span class="pre">fr.NotFound</span></code> to gate a verb (row visibility goes in
@@ -711,8 +721,8 @@ disable) when a request finishes with uncommitted changes — the tell of a
 write route that forgot to commit.</p></li>
 </ul>
 </section>
-<section id="id7">
-<h3>Fixed<a class="headerlink" href="#id7" title="Link to this heading">#</a></h3>
+<section id="id8">
+<h3>Fixed<a class="headerlink" href="#id8" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>A <code class="docutils literal notranslate"><span class="pre">&#64;route</span></code> method named like a bare verb (<code class="docutils literal notranslate"><span class="pre">create</span></code>/<code class="docutils literal notranslate"><span class="pre">update</span></code>/<code class="docutils literal notranslate"><span class="pre">delete</span></code>/
 <code class="docutils literal notranslate"><span class="pre">get_one</span></code>/<code class="docutils literal notranslate"><span class="pre">get_many</span></code>) is now rejected at registration: it shadowed the verb
@@ -738,20 +748,20 @@ not excluded.</p></li>
 </ul>
 </section>
 </section>
-<section id="id8">
-<h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/compare/v0.5.0...v0.5.1">0.5.1</a> - 2026-05-11<a class="headerlink" href="#id8" title="Link to this heading">#</a></h2>
 <section id="id9">
-<h3>Fixed<a class="headerlink" href="#id9" title="Link to this heading">#</a></h3>
+<h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/compare/v0.5.0...v0.5.1">0.5.1</a> - 2026-05-11<a class="headerlink" href="#id9" title="Link to this heading">#</a></h2>
+<section id="id10">
+<h3>Fixed<a class="headerlink" href="#id10" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Fixed <code class="docutils literal notranslate"><span class="pre">fr.include_view(...)</span></code> registration on <code class="docutils literal notranslate"><span class="pre">fastapi.APIRouter</span></code> parents.</p></li>
 </ul>
 </section>
 </section>
-<section id="id10">
-<h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/releases/tag/v0.5.0">0.5.0</a> - 2026-05-06<a class="headerlink" href="#id10" title="Link to this heading">#</a></h2>
-<p>First public beta release.</p>
 <section id="id11">
-<h3>Added<a class="headerlink" href="#id11" title="Link to this heading">#</a></h3>
+<h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/releases/tag/v0.5.0">0.5.0</a> - 2026-05-06<a class="headerlink" href="#id11" title="Link to this heading">#</a></h2>
+<p>First public beta release.</p>
+<section id="id12">
+<h3>Added<a class="headerlink" href="#id12" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Class-based CRUD views for async and sync SQLAlchemy sessions with generated
 list, get, create, update, and delete routes.</p></li>
@@ -766,8 +776,8 @@ aliases, and pagination metadata.</p></li>
 and the <code class="docutils literal notranslate"><span class="pre">fastapi_restly.pytest_fixtures</span></code> pytest plugin.</p></li>
 </ul>
 </section>
-<section id="id12">
-<h3>Changed<a class="headerlink" href="#id12" title="Link to this heading">#</a></h3>
+<section id="id13">
+<h3>Changed<a class="headerlink" href="#id13" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Consolidated framework setup on <code class="docutils literal notranslate"><span class="pre">fr.configure(...)</span></code>, including async/sync
 engine configuration and response-session commit policy.</p></li>
@@ -862,31 +872,34 @@ the pytest plugin path is <code class="docutils literal notranslate"><span class
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#unreleased">Unreleased</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#unreleased">Unreleased</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#changed">Changed</a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id1">0.7.0 - 2026-06-11</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#added">Added</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#changed">Changed</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id2">Changed</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fixed">Fixed</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id2">0.6.1 - 2026-06-02</a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id3">Changed</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id4">Fixed</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id3">0.6.1 - 2026-06-02</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id4">Changed</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id5">Fixed</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id5">0.6.0 - 2026-06-01</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id6">0.6.0 - 2026-06-01</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#changed-breaking">Changed (breaking)</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id6">Added</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id7">Fixed</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id7">Added</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id8">Fixed</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id8">0.5.1 - 2026-05-11</a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id9">Fixed</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id9">0.5.1 - 2026-05-11</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id10">Fixed</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id10">0.5.0 - 2026-05-06</a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id11">Added</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id12">Changed</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id11">0.5.0 - 2026-05-06</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id12">Added</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id13">Changed</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#removed">Removed</a></li>
 </ul>
 </li>

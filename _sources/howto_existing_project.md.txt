@@ -14,9 +14,12 @@ and Restly views can share the same parent app or router:
 from fastapi import APIRouter, FastAPI
 import fastapi_restly as fr
 
+from .db import async_engine          # the async engine your app already builds
 from .orders import router as orders_router
 
 app = FastAPI()
+fr.configure(async_engine=async_engine)
+
 api = APIRouter(prefix="/api")
 
 api.include_router(orders_router, prefix="/orders")  # existing FastAPI routes
@@ -32,6 +35,10 @@ fr.include_view(api, UserView)  # generated /api/users routes
 
 app.include_router(api)
 ```
+
+`fr.include_view` works as a direct call (`fr.include_view(api, UserView)`,
+above) or as a class decorator (`@fr.include_view(app)`, used later in this
+guide) — both register the same routes.
 
 Adoption is per resource. In the example above, orders stay hand-written while
 users use Restly. Adding a `ProductView` later does not require changing the
@@ -226,8 +233,10 @@ The custom dependency owns session construction and cleanup. Restly still owns
 the commit. Use this for read replicas, reporting databases, or other per-view
 session wiring.
 
-You can also use FastAPI-Restly's configured session proxy directly in your
-own code (for example in background tasks):
+## Use the Configured Session Off-Request
+
+Outside the request cycle — in background tasks, scripts, or workers — open a
+session from FastAPI-Restly's configured factory directly:
 
 ```python
 import fastapi_restly as fr
