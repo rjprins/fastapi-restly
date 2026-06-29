@@ -18,10 +18,16 @@ author = "Rutger Prins"
 release = _package_version("fastapi-restly")
 version = ".".join(release.split(".")[:2])
 
+# Which slot in the published site this build represents: "latest" (the live
+# root) or a frozen minor like "0.7". Drives baseurl, the switcher's current
+# entry, and whether the build is kept out of search indexes.
+DOCS_VERSION = os.environ.get("DOCS_VERSION", "latest")
+SITE_URL = "https://www.fastapi-restly.org/"
+
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-html_baseurl = "https://www.fastapi-restly.org/"
+html_baseurl = SITE_URL if DOCS_VERSION == "latest" else f"{SITE_URL}{DOCS_VERSION}/"
 sitemap_url_scheme = "{link}"
 extensions = [
     "myst_parser",
@@ -76,6 +82,13 @@ html_theme_options = {
     "icon_links": [],
     # All eight top-level sections in the header; no "More" dropdown.
     "header_links_before_dropdown": 8,
+    # Version dropdown. json_url is absolute so frozen snapshots read the same
+    # canonical list and surface versions published after they were built.
+    "switcher": {
+        "json_url": f"{SITE_URL}switcher.json",
+        "version_match": DOCS_VERSION,
+    },
+    "navbar_end": ["version-switcher", "theme-switcher", "navbar-icon-links"],
     # Right sidebar: page TOC, then the newsletter call-to-action. The
     # edit-this-page/show-source page-tools block is intentionally dropped.
     "secondary_sidebar_items": ["page-toc", "newsletter-link"],
@@ -110,6 +123,15 @@ def _canonicalize_index_page(app, pagename, templatename, context, doctree):
         context["pageurl"] = pageurl
 
 
+def _noindex_snapshots(app, pagename, templatename, context, doctree):
+    """Keep frozen version snapshots out of search indexes; root stays the
+    single indexed copy."""
+    if DOCS_VERSION != "latest":
+        context["metatags"] = (
+            context.get("metatags", "") + '<meta name="robots" content="noindex, follow">\n'
+        )
+
+
 def _canonicalize_sitemap_index(app, exception):
     if exception:
         return
@@ -135,4 +157,5 @@ def _canonicalize_sitemap_index(app, exception):
 
 def setup(app):
     app.connect("html-page-context", _canonicalize_index_page)
+    app.connect("html-page-context", _noindex_snapshots)
     app.connect("build-finished", _canonicalize_sitemap_index, priority=900)

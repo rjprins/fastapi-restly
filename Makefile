@@ -76,6 +76,7 @@ test-coverage:
 
 docs:
 	uv run sphinx-build -M html docs site -W --keep-going
+	uv run python scripts/render_switcher.py site/html/switcher.json
 	@echo "Documentation available at site/index.html"
 
 docs-serve:
@@ -89,6 +90,7 @@ build-pages:
 	uv run coverage json -o coverage.json
 	uv run coverage html
 	uv run sphinx-build -M html docs site -W --keep-going
+	uv run python scripts/render_switcher.py site/html/switcher.json
 	mkdir -p site/html/coverage
 	cp -rf htmlcov/. site/html/coverage/
 	uv run python scripts/render_coverage_badge.py coverage.json site/html/coverage/badge.svg site/html/coverage/summary.json
