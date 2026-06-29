@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   non-deprecated path without dropping support for the older Starlette versions
   in our range, which still import `httpx` directly.
 
+- `RestlyTestClient` now prefers `httpx2` (falling back to `httpx`), matching
+  Starlette's own `TestClient`. The "install the `[testing]` extra" hint that
+  Restly raises when the test client is missing now also fires under newer
+  Starlette, which signals the absence as `httpx2` (and via a `RuntimeError`)
+  rather than a missing `httpx`.
+
 ## [0.7.0] - 2026-06-11
 
 ### Added

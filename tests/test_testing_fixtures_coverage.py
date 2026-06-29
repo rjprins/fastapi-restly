@@ -291,7 +291,9 @@ builtins.__import__ = blocked_import
 
 
 def test_testing_namespace_reports_missing_optional_dependencies():
-    result = _run_with_blocked_imports("import fastapi_restly.testing", "httpx")
+    result = _run_with_blocked_imports(
+        "import fastapi_restly.testing", "httpx", "httpx2"
+    )
 
     assert result.returncode != 0
     assert 'pip install "fastapi-restly[testing]"' in result.stderr
@@ -304,6 +306,7 @@ import fastapi_restly.pytest_fixtures as fixtures
 assert "restly_client" in fixtures.__all__
 """,
         "httpx",
+        "httpx2",
     )
 
     assert result.returncode == 0
@@ -316,6 +319,7 @@ from fastapi_restly.pytest_fixtures import restly_app, restly_client
 restly_client.__wrapped__(restly_app.__wrapped__())
 """,
         "httpx",
+        "httpx2",
     )
 
     assert result.returncode != 0

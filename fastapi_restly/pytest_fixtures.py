@@ -8,8 +8,8 @@ try:
         restly_session,
     )
 except ModuleNotFoundError as exc:  # pragma: no cover -- exercised via
-    # subprocess in test_testing_fixtures_coverage.py (httpx/pytest blocked)
-    if exc.name in {"httpx", "pytest"}:
+    # subprocess in test_testing_fixtures_coverage.py (httpx/httpx2/pytest blocked)
+    if exc.name in {"httpx", "httpx2", "pytest"}:
         raise ModuleNotFoundError(
             "fastapi_restly.pytest_fixtures requires optional testing dependencies. "
             'Install them with: pip install "fastapi-restly[testing]"'

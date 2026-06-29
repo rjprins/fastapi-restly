@@ -261,8 +261,11 @@ def restly_client(restly_app) -> RestlyTestClient:
     try:
         from .testing._client import RestlyTestClient
     except ModuleNotFoundError as exc:
-        if exc.name == "httpx":
-            raise ModuleNotFoundError(_TESTING_EXTRA_MESSAGE, name="httpx") from exc
+        # Newer Starlette's testclient requires httpx2 (name="httpx2"); our own
+        # _client.py import raises name="httpx". Both mean the test client is
+        # missing.
+        if exc.name in {"httpx", "httpx2"}:
+            raise ModuleNotFoundError(_TESTING_EXTRA_MESSAGE, name=exc.name) from exc
         raise
 
     return RestlyTestClient(restly_app)

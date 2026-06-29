@@ -1,7 +1,30 @@
 import json
+from typing import TYPE_CHECKING
 
-import httpx
-from fastapi.testclient import TestClient
+try:
+    from fastapi.testclient import TestClient
+except RuntimeError as exc:  # pragma: no cover -- exercised via subprocess
+    # Starlette >=1.x raises RuntimeError (not ModuleNotFoundError) at import
+    # when neither httpx2 nor httpx is installed. Normalize it to a missing
+    # module so the importing namespaces surface the [testing] extras hint
+    # instead of Starlette's bare "pip install httpx2" message.
+    if "httpx" not in str(exc):
+        raise
+    raise ModuleNotFoundError(name="httpx2") from exc
+
+if TYPE_CHECKING:
+    # httpx2 is a drop-in rename of httpx 0.28.1 with identical stubs, so we
+    # type-check against httpx and let runtime pick whichever is installed.
+    import httpx
+else:
+    # Match Starlette's TestClient, which prefers httpx2 and only falls back to
+    # httpx (with a deprecation warning) when httpx2 is absent. Aligning our
+    # reference keeps httpx.Response/httpx.URL the same classes the parent
+    # TestClient yields.
+    try:
+        import httpx2 as httpx
+    except ModuleNotFoundError:
+        import httpx
 
 # httpx accepts either a string or a `httpx.URL` for request URLs. The base
 # class' `URLTypes` alias is private, so we replicate the public union here.
