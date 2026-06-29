@@ -6,17 +6,13 @@ These tests verify:
 - Complex inheritance scenarios with ReadOnly fields and aliases
 """
 
-import asyncio
 from datetime import datetime
-from typing import Optional
 
 import pytest
-from fastapi import FastAPI
 from pydantic import Field, field_validator, model_validator
 from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
-from fastapi_restly.db._globals import _fr_globals
 from fastapi_restly.schemas import BaseSchema, ReadOnly
 from fastapi_restly.schemas._base import create_model_without_read_only_fields
 

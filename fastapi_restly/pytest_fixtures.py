@@ -1,6 +1,6 @@
 try:
     from fastapi_restly._pytest_fixtures import (
-        _shared_connection,
+        _shared_connection,  # noqa: F401 -- re-exported so dependent fixtures resolve it
         restly_app,
         restly_async_session,
         restly_client,

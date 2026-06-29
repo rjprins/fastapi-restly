@@ -1,14 +1,13 @@
 """Tests for the list-params query layer (filtering, sorting, pagination)."""
 
 from datetime import datetime
-from typing import Any, Optional, Union
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pydantic
 import pytest
 import sqlalchemy
 from fastapi import HTTPException
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from starlette.datastructures import QueryParams
 

@@ -6,7 +6,6 @@ from types import SimpleNamespace
 import pytest
 from pydantic import BaseModel
 from sqlalchemy.orm import Mapped
-from starlette.datastructures import QueryParams
 
 import fastapi_restly as fr
 from fastapi_restly.models._base import utc_now

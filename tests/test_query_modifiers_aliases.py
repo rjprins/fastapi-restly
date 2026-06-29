@@ -1,14 +1,12 @@
 """Tests for list-params filtering with Pydantic aliases (flat and nested)."""
 
 from datetime import datetime
-from typing import Any, Optional
-from unittest.mock import Mock
 
 import pydantic
 import pytest
 import sqlalchemy
 from fastapi import HTTPException
-from sqlalchemy import Boolean, Column, DateTime, Integer, String
+from sqlalchemy import Boolean, DateTime, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 from starlette.datastructures import QueryParams
 

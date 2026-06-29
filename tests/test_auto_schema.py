@@ -1,18 +1,15 @@
 """Test auto-generated schemas."""
 
-import asyncio
 import types
 from typing import Union, get_args, get_origin
 
 import pytest
-from fastapi import FastAPI
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.types import JSON
 
 import fastapi_restly as fr
 import fastapi_restly.schemas as fr_schemas
-from fastapi_restly.db._globals import _fr_globals
 
 from .conftest import create_tables
 
