@@ -21,6 +21,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Starlette, which signals the absence as `httpx2` (and via a `RuntimeError`)
   rather than a missing `httpx`.
 
+### Fixed
+
+- `fr.IDRef[T]` / `fr.IDSchema[T]` foreign-key fields now work under any column
+  name, not only fields ending in `_id`. A field like
+  `post_fk: fr.IDRef[Post]` backed by a non-`_id` FK column was silently
+  misrouted — the resolved ORM object was assigned into the integer FK column
+  and the request failed at flush (`sqlalchemy.exc.ProgrammingError`) instead of
+  at validation. Reference routing (the create plan, the in-place update, and
+  the both-supplied FK/relationship consistency check) now decides column vs.
+  relationship and derives the partner attribute from the SQLAlchemy mapper
+  rather than from the field name, so any FK column name resolves correctly.
+
 ## [0.7.0] - 2026-06-11
 
 ### Added

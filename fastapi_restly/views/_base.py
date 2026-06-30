@@ -201,6 +201,47 @@ def _get_unambiguous_local_fk_name(
     return local_columns[0].key
 
 
+def _relationship_name_for_fk(
+    model_cls: type[DeclarativeBase], fk_attr_name: str
+) -> str | None:
+    """Reverse of :func:`_get_unambiguous_local_fk_name`.
+
+    Given a scalar FK column's attribute name, return the single many-to-one
+    relationship that uses it as its local column, or ``None`` when there is no
+    such relationship or more than one (ambiguous -- don't guess a pairing).
+    This is how a FK reference field finds its partner relationship without
+    relying on the ``<relation>_id`` naming convention.
+    """
+    try:
+        mapper = sa_inspect(model_cls)
+    except Exception:
+        return None
+    matches = [
+        relationship_property.key
+        for relationship_property in mapper.relationships
+        if getattr(relationship_property.direction, "name", None) == "MANYTOONE"
+        and any(
+            column.key == fk_attr_name
+            for column in relationship_property.local_columns
+        )
+    ]
+    return matches[0] if len(matches) == 1 else None
+
+
+def _is_mapped_column(model_cls: type[DeclarativeBase], field_name: str) -> bool:
+    """True if ``field_name`` maps to a (scalar) column on ``model_cls``.
+
+    This is the target for writing a resolved reference's raw id. Decided by the
+    mapper rather than the field name, so a FK column works under any name, not
+    only ``<relation>_id``.
+    """
+    try:
+        mapper = sa_inspect(model_cls)
+    except Exception:
+        return False
+    return field_name in mapper.columns
+
+
 def _is_reference_schema_field(
     schema_cls: type[pydantic.BaseModel], field_name: str
 ) -> bool:
@@ -256,16 +297,19 @@ def validate_resolved_reference_consistency(
     resolved = resolved or {}
 
     for fk_field in schema_obj.model_fields_set:
-        if not fk_field.endswith("_id") or not _is_reference_schema_field(
-            schema_cls, fk_field
-        ):
+        # Start from the FK-column side of a reference pair and derive its
+        # partner relationship from the mapper; relationship-named fields are
+        # reached as the partner, not iterated here.
+        if not _is_reference_schema_field(schema_cls, fk_field):
+            continue
+        if _get_relationship_property(model_cls, fk_field) is not None:
             continue
 
-        relation_field = fk_field[:-3]
+        relation_field = _relationship_name_for_fk(model_cls, fk_field)
         if (
-            relation_field not in schema_obj.model_fields_set
+            relation_field is None
+            or relation_field not in schema_obj.model_fields_set
             or not _is_reference_schema_field(schema_cls, relation_field)
-            or not _has_model_attr(model_cls, relation_field)
         ):
             continue
 
@@ -316,64 +360,76 @@ def _add_resolved_reference_to_create_plan(
     value: DeclarativeBase,
 ) -> None:
     ref = cast(_HasID, value)
-    if field_name.endswith("_id"):
-        fk_name = field_name
-        relation_name = field_name[:-3]
-        accepts_relation = _has_model_attr(
-            model_cls, relation_name
-        ) and _accepts_init_kwarg(model_cls, relation_name)
+    # Route by what the field maps to on the model (mapper introspection), not
+    # by its name: a relationship gets the ORM object, a scalar FK column gets
+    # the row's id. The partner attribute is derived from the mapper so this
+    # works for any column name, not only the ``<relation>_id`` convention.
+    relationship = _get_relationship_property(model_cls, field_name)
+    if relationship is not None:
+        relation_name = field_name
+        fk_name = _get_unambiguous_local_fk_name(model_cls, relation_name)
 
-        if (
-            _requires_init_kwarg(model_cls, fk_name)
-            and accepts_relation
-            and _requires_init_kwarg(model_cls, relation_name)
-        ):
+        if _accepts_init_kwarg(model_cls, relation_name):
+            plan.kwargs[relation_name] = value
+            _add_assignment(plan.post_assignments, fk_name, ref.id)
+            return
+
+        if fk_name and _accepts_init_kwarg(model_cls, fk_name):
             plan.kwargs[fk_name] = ref.id
-            plan.kwargs[relation_name] = value
-            return
-
-        if accepts_relation and _requires_init_kwarg(model_cls, relation_name):
-            plan.kwargs[relation_name] = value
-            if _has_model_attr(model_cls, fk_name):
-                plan.post_assignments[fk_name] = ref.id
-            return
-
-        if _accepts_init_kwarg(model_cls, fk_name):
-            plan.kwargs[fk_name] = ref.id
-            if _has_model_attr(model_cls, relation_name):
-                plan.post_assignments[relation_name] = value
-            return
-
-        if accepts_relation:
-            plan.kwargs[relation_name] = value
-            plan.post_assignments[fk_name] = ref.id
-            return
-
-        if _has_model_attr(model_cls, fk_name):
-            plan.post_assignments[fk_name] = ref.id
-        if _has_model_attr(model_cls, relation_name):
             plan.post_assignments[relation_name] = value
-        return
+            return
 
-    relation_name = field_name
-    fk_name = _get_unambiguous_local_fk_name(model_cls, relation_name)
-
-    if _has_model_attr(model_cls, relation_name) and _accepts_init_kwarg(
-        model_cls, relation_name
-    ):
-        plan.kwargs[relation_name] = value
+        plan.post_assignments[relation_name] = value
         _add_assignment(plan.post_assignments, fk_name, ref.id)
         return
 
-    if fk_name and _accepts_init_kwarg(model_cls, fk_name):
-        plan.kwargs[fk_name] = ref.id
-        if _has_model_attr(model_cls, relation_name):
-            plan.post_assignments[relation_name] = value
+    if not _is_mapped_column(model_cls, field_name):
+        # Reference field that maps to neither a relationship nor a column;
+        # there is nothing to write (matches the relationship branch's drop of
+        # unmapped names).
         return
 
-    if _has_model_attr(model_cls, relation_name):
+    fk_name = field_name
+    relation_name = _relationship_name_for_fk(model_cls, fk_name)
+
+    if relation_name is None:
+        if _accepts_init_kwarg(model_cls, fk_name):
+            plan.kwargs[fk_name] = ref.id
+        else:
+            plan.post_assignments[fk_name] = ref.id
+        return
+
+    # A partner relationship exists; keep the FK column and the relationship
+    # object consistent, honoring dataclass init requirements on either side.
+    accepts_relation = _accepts_init_kwarg(model_cls, relation_name)
+    relation_required = _requires_init_kwarg(model_cls, relation_name)
+
+    if (
+        _requires_init_kwarg(model_cls, fk_name)
+        and accepts_relation
+        and relation_required
+    ):
+        plan.kwargs[fk_name] = ref.id
+        plan.kwargs[relation_name] = value
+        return
+
+    if accepts_relation and relation_required:
+        plan.kwargs[relation_name] = value
+        plan.post_assignments[fk_name] = ref.id
+        return
+
+    if _accepts_init_kwarg(model_cls, fk_name):
+        plan.kwargs[fk_name] = ref.id
         plan.post_assignments[relation_name] = value
-    _add_assignment(plan.post_assignments, fk_name, ref.id)
+        return
+
+    if accepts_relation:
+        plan.kwargs[relation_name] = value
+        plan.post_assignments[fk_name] = ref.id
+        return
+
+    plan.post_assignments[fk_name] = ref.id
+    plan.post_assignments[relation_name] = value
 
 
 def build_create_plan(
@@ -397,10 +453,10 @@ def build_create_plan(
     for field_name, value in iter_creatable_fields(schema_obj, schema_cls):
         if field_name in resolved:
             value = resolved[field_name]
-        if isinstance(value, IDSchema) and field_name.endswith("_id"):
+        if isinstance(value, IDSchema) and _is_mapped_column(model_cls, field_name):
             if _accepts_init_kwarg(model_cls, field_name):
                 plan.kwargs[field_name] = value.id
-            elif _has_model_attr(model_cls, field_name):
+            else:
                 plan.post_assignments[field_name] = value.id
             continue
         if isinstance(value, DeclarativeBase) and _is_reference_schema_field(
@@ -435,16 +491,20 @@ def _apply_resolved_reference_update(
 ) -> None:
     ref = cast(_HasID, value)
     model_cls = type(obj)
-    if field_name.endswith("_id"):
+    relationship = _get_relationship_property(model_cls, field_name)
+    if relationship is None:
+        # Scalar FK column: write the id, and mirror onto the partner
+        # relationship (derived from the mapper) when there is one.
+        if not _is_mapped_column(model_cls, field_name):
+            return
         setattr(obj, field_name, ref.id)
-        relation_name = field_name[:-3]
-        if hasattr(obj, relation_name):
+        relation_name = _relationship_name_for_fk(model_cls, field_name)
+        if relation_name is not None:
             setattr(obj, relation_name, value)
         return
 
-    if hasattr(obj, field_name):
-        setattr(obj, field_name, value)
-
+    # Relationship field: assign the object, mirror onto the local FK if any.
+    setattr(obj, field_name, value)
     fk_name = _get_unambiguous_local_fk_name(model_cls, field_name)
     if fk_name:
         setattr(obj, fk_name, ref.id)
@@ -467,7 +527,9 @@ def apply_update_to_object(
     for field_name, value in get_writable_inputs(schema_obj, schema_cls).items():
         if field_name in resolved:
             value = resolved[field_name]
-        if isinstance(value, IDSchema) and field_name.endswith("_id"):
+        if isinstance(value, IDSchema) and _is_mapped_column(
+            type(obj), field_name
+        ):
             setattr(obj, field_name, value.id)
             continue
         if isinstance(value, DeclarativeBase) and _is_reference_schema_field(
