@@ -555,6 +555,14 @@ reference to an existing row is supplied. The resolved row’s id is now passed
 at construction instead of being assigned afterward, so the dataclass
 <code class="docutils literal notranslate"><span class="pre">__init__</span></code> no longer raises <code class="docutils literal notranslate"><span class="pre">TypeError:</span> <span class="pre">...</span> <span class="pre">missing</span> <span class="pre">1</span> <span class="pre">required</span> <span class="pre">keyword-only</span> <span class="pre">argument</span></code>. Declaring the FK column <code class="docutils literal notranslate"><span class="pre">init=False</span></code> is still supported but no
 longer required.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">fr.IDRef[T]</span></code> now serializes through the type itself under plain Pydantic
+<code class="docutils literal notranslate"><span class="pre">from_attributes</span></code>, so a reference field validated outside a Restly route — a
+nested model, a custom endpoint, or <code class="docutils literal notranslate"><span class="pre">response_model=</span></code> on a raw schema — no
+longer crashes with a cryptic <code class="docutils literal notranslate"><span class="pre">int_type</span></code> error when the value is the related
+ORM row. Previously only the view layer’s <code class="docutils literal notranslate"><span class="pre">to_response_schema</span></code> handled this,
+by pre-extracting the scalar id; that redundant special-casing is removed and
+both <code class="docutils literal notranslate"><span class="pre">IDRef[T]</span></code> and <code class="docutils literal notranslate"><span class="pre">IDSchema[T]</span></code> self-serialize from a related row or a raw
+scalar id along a single path. Response output is unchanged.</p></li>
 </ul>
 </section>
 </section>
