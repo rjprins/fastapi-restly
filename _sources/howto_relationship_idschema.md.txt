@@ -198,8 +198,11 @@ author: Mapped["Author"] = relationship(default=None)
 ```
 
 In that shape, Restly passes the resolved `Author` object to the constructor and
-keeps `author_id` in sync. More generally, Restly supplies the constructor
-values your dataclass model requires: FK scalar, relationship object, or both.
+keeps `author_id` in sync. The `init=False` on the FK is optional here: if the
+FK column is instead a required constructor argument, Restly passes the resolved
+id at construction so `__init__` is satisfied. More generally, Restly supplies
+the constructor values your dataclass model requires: FK scalar, relationship
+object, or both.
 
 If a client supplies both sides independently, Restly validates that they match:
 

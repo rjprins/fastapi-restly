@@ -548,6 +548,13 @@ at validation. Reference routing (the create plan, the in-place update, and
 the both-supplied FK/relationship consistency check) now decides column vs.
 relationship and derives the partner attribute from the SQLAlchemy mapper
 rather than from the field name, so any FK column name resolves correctly.</p></li>
+<li><p>Creating with a relationship exposed as a reference field (e.g.
+<code class="docutils literal notranslate"><span class="pre">invoice:</span> <span class="pre">fr.IDRef[Invoice]</span></code>) no longer fails when the model’s local FK column
+is a required constructor argument (no <code class="docutils literal notranslate"><span class="pre">init=False</span></code> and no default) and a
+reference to an existing row is supplied. The resolved row’s id is now passed
+at construction instead of being assigned afterward, so the dataclass
+<code class="docutils literal notranslate"><span class="pre">__init__</span></code> no longer raises <code class="docutils literal notranslate"><span class="pre">TypeError:</span> <span class="pre">...</span> <span class="pre">missing</span> <span class="pre">1</span> <span class="pre">required</span> <span class="pre">keyword-only</span> <span class="pre">argument</span></code>. Declaring the FK column <code class="docutils literal notranslate"><span class="pre">init=False</span></code> is still supported but no
+longer required.</p></li>
 </ul>
 </section>
 </section>
