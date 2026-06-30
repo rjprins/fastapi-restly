@@ -180,6 +180,22 @@ def _get_relationship_property(
     return mapper.relationships.get(relation_name)
 
 
+def _column_attr_name(mapper: Any, column: Any) -> str | None:
+    """Map a Column object back to its mapped attribute name.
+
+    ``Mapper.columns`` is keyed by the mapped attribute name, but a Column's own
+    ``key`` is the DB column name; the two differ when a column is declared
+    ``mapped_column("db_name", ...)``. Reference routing works in attribute-name
+    space (kwargs and ``setattr``), so callers need the attribute name, not the
+    column key. Compared by identity because ``Column.__eq__`` builds a SQL
+    expression rather than a boolean.
+    """
+    for attr_name, mapped_column in mapper.columns.items():
+        if mapped_column is column:
+            return attr_name
+    return None
+
+
 def _get_unambiguous_local_fk_name(
     model_cls: type[DeclarativeBase], relation_name: str
 ) -> str | None:
@@ -198,7 +214,13 @@ def _get_unambiguous_local_fk_name(
             f"{model_cls.__name__}.{relation_name}; found {column_names}. "
             "Use an explicit custom handler for this relationship."
         )
-    return local_columns[0].key
+    # Return the mapped attribute name (what kwargs/setattr need), which differs
+    # from the column's DB-name ``key`` under ``mapped_column("db_name", ...)``.
+    try:
+        mapper = sa_inspect(model_cls)
+    except Exception:
+        return local_columns[0].key
+    return _column_attr_name(mapper, local_columns[0]) or local_columns[0].key
 
 
 def _relationship_name_for_fk(
@@ -216,12 +238,18 @@ def _relationship_name_for_fk(
         mapper = sa_inspect(model_cls)
     except Exception:
         return None
+    fk_column = mapper.columns.get(fk_attr_name)
+    if fk_column is None:
+        return None
+    # Match by Column identity, not by ``.key``: the column's key is the DB name,
+    # which differs from ``fk_attr_name`` under ``mapped_column("db_name", ...)``.
+    # (``is`` also avoids ``Column.__eq__``'s SQL-expression overload.)
     matches = [
         relationship_property.key
         for relationship_property in mapper.relationships
         if getattr(relationship_property.direction, "name", None) == "MANYTOONE"
         and any(
-            column.key == fk_attr_name
+            column is fk_column
             for column in relationship_property.local_columns
         )
     ]

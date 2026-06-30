@@ -102,9 +102,9 @@ And a response looks like:
 
 Declaring the field as `fr.IDRef[Post]` is what triggers this behaviour: the view
 machinery stores the id in the matching `post_id` column, and it also validates
-that a `Post` with that `id` exists (returning 404 if not). The column can be
-named anything — Restly matches the field to the model's mapper, not to an `_id`
-suffix.
+that a `Post` with that `id` exists (returning 404 if not). Restly matches the
+field name to a mapped column or relationship via the model's mapper, not to an
+`_id` suffix, so the FK column can be named anything.
 
 If you prefer a plain `int` field and want to skip the existence check,
 declare `post_id: int` in your schema instead.

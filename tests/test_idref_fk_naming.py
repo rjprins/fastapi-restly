@@ -262,3 +262,124 @@ def test_non_id_fk_conflict_detection_is_name_independent(sync_db):
                 resolved={"post_fk": p1, "post": p2},
             )
         assert exc.value.status_code == 422
+
+
+def test_renamed_db_column_fk_field_sync(sync_db):
+    """A FK column declared with an explicit DB name (``mapped_column("db", ...)``)
+    where the Python attribute name differs from the DB column name. Routing
+    works in attribute-name space, so the FK is written and the partner
+    relationship synced — it must not leave the relationship at its default and
+    NULL the FK at flush."""
+    engine, make_session = sync_db
+
+    class Post(fr.IDBase):
+        title: Mapped[str]
+
+    class Comment(fr.IDBase):
+        content: Mapped[str]
+        # Python attribute is `post_id`; the DB column is named `post_fk`.
+        post_id: Mapped[int] = mapped_column("post_fk", ForeignKey("post.id"))
+        post: Mapped[Post] = relationship(default=None)
+
+    class CommentSchema(fr.BaseSchema):
+        content: str
+        post_id: fr.IDRef[Post]
+
+    fr.DataclassBase.metadata.create_all(engine)
+
+    with make_session() as session:
+        p1 = Post(title="p1")
+        p2 = Post(title="p2")
+        session.add_all([p1, p2])
+        session.flush()
+
+        comment = make_new_object(
+            session, Comment, CommentSchema(content="hi", post_id=p1.id)
+        )
+        session.flush()  # would raise IntegrityError if the relationship NULLed the FK
+        assert comment.post_id == p1.id
+        assert comment.post is p1
+
+        update_object(
+            session, comment, CommentSchema(content="hi", post_id=p2.id)
+        )
+        session.flush()
+        assert comment.post_id == p2.id
+        assert comment.post is p2
+
+
+def test_renamed_db_column_fk_field_async():
+    """Async parity for the renamed-DB-column FK field above."""
+
+    class Post(fr.IDBase):
+        title: Mapped[str]
+
+    class Comment(fr.IDBase):
+        content: Mapped[str]
+        post_id: Mapped[int] = mapped_column("post_fk", ForeignKey("post.id"))
+        post: Mapped[Post] = relationship(default=None)
+
+    class CommentSchema(fr.BaseSchema):
+        content: str
+        post_id: fr.IDRef[Post]
+
+    async def run():
+        engine, make_session = _make_async_engine_and_session()
+        async with engine.begin() as conn:
+            await conn.run_sync(fr.DataclassBase.metadata.create_all)
+        async with make_session() as session:
+            p1 = Post(title="p1")
+            p2 = Post(title="p2")
+            session.add_all([p1, p2])
+            await session.flush()
+
+            comment = await async_make_new_object(
+                session, Comment, CommentSchema(content="hi", post_id=p1.id)
+            )
+            await session.flush()
+            assert comment.post_id == p1.id
+            assert comment.post is p1
+
+            await async_update_object(
+                session, comment, CommentSchema(content="hi", post_id=p2.id)
+            )
+            await session.flush()
+            assert comment.post_id == p2.id
+            assert comment.post is p2
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_renamed_db_column_relationship_field_sync(sync_db):
+    """Exposing the relationship when its local FK column has an explicit DB name:
+    the mirrored FK must target the mapped attribute, not the DB column key."""
+    engine, make_session = sync_db
+
+    class Post(fr.IDBase):
+        title: Mapped[str]
+
+    class Comment(fr.IDBase):
+        content: Mapped[str]
+        post_id: Mapped[int] = mapped_column(
+            "post_fk", ForeignKey("post.id"), init=False
+        )
+        post: Mapped[Post] = relationship(default=None)
+
+    class CommentSchema(fr.BaseSchema):
+        content: str
+        post: fr.IDRef[Post]
+
+    fr.DataclassBase.metadata.create_all(engine)
+
+    with make_session() as session:
+        p1 = Post(title="p1")
+        session.add(p1)
+        session.flush()
+
+        comment = make_new_object(
+            session, Comment, CommentSchema(content="hi", post=p1.id)
+        )
+        session.flush()
+        assert comment.post is p1
+        assert comment.post_id == p1.id  # FK mirrored onto the mapped attribute
