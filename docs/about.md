@@ -50,5 +50,12 @@ deployments — four years of internal use, plus the lessons of the earlier
 Flask framework — are what became the public project. Thanks to all three
 companies for the environments that made it possible.
 
+## Privacy
+
+This site uses [GoatCounter](https://www.goatcounter.com/) for analytics — an
+open-source, **cookieless** tool. It counts page views and unique visits
+without setting cookies or storing personal data, so nothing tracks you across
+sites and there is nothing to consent to. No data is shared with third parties.
+
 Ready to try it? [Getting Started](getting_started.md) takes about fifteen
 minutes.
