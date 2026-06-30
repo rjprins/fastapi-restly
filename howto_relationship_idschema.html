@@ -588,14 +588,18 @@ see <a class="reference internal" href="#visibility-and-multi-tenancy">Visibilit
 substring operators are deliberately not offered. See
 <a class="reference internal" href="howto_query_modifiers.html#foreign-key-filtering"><span class="std std-ref">Query Modifiers → Foreign-key filtering</span></a>.</p>
 </section>
-<section id="naming-convention">
-<h2>Naming Convention<a class="headerlink" href="#naming-convention" title="Link to this heading">#</a></h2>
-<p>Automatic FK resolution needs the schema field name to end in <code class="docutils literal notranslate"><span class="pre">_id</span></code>:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">author_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">IDRef</span><span class="p">[</span><span class="n">Author</span><span class="p">]</span>
+<section id="field-naming">
+<h2>Field Naming<a class="headerlink" href="#field-naming" title="Link to this heading">#</a></h2>
+<p>Name the schema reference field after a mapped attribute on the model — either
+a foreign-key column or a relationship. Restly inspects the SQLAlchemy mapper
+(not the field name) to decide how to apply the reference, so the FK column can
+be named anything; the <code class="docutils literal notranslate"><span class="pre">_id</span></code> suffix is a common convention, not a requirement:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">author_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">IDRef</span><span class="p">[</span><span class="n">Author</span><span class="p">]</span>   <span class="c1"># maps to the Article.author_id FK column</span>
+<span class="n">post_fk</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">IDRef</span><span class="p">[</span><span class="n">Post</span><span class="p">]</span>       <span class="c1"># a non-_id column name resolves the same way</span>
 </pre></div>
 </div>
-<p>If the SQLAlchemy model also has a relationship with the same name minus
-<code class="docutils literal notranslate"><span class="pre">_id</span></code>, Restly keeps the FK column and relationship in sync:</p>
+<p>When the field names a FK column and the model also has a relationship backed
+by that column, Restly keeps the column and the relationship in sync:</p>
 <div class="pst-scrollable-table-container"><table class="table">
 <thead>
 <tr class="row-odd"><th class="head"><p>Schema field</p></th>
@@ -611,7 +615,9 @@ substring operators are deliberately not offered. See
 </tbody>
 </table>
 </div>
-<p>If the relationship attribute is absent, Restly still sets the FK column.</p>
+<p>The relationship is found through the mapper, so this pairing holds whatever the
+column is called. If the relationship attribute is absent, Restly still sets the
+FK column.</p>
 </section>
 <section id="lists-of-references">
 <h2>Lists of References<a class="headerlink" href="#lists-of-references" title="Link to this heading">#</a></h2>
@@ -871,7 +877,7 @@ full symbol tables.</p></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#schema-setup">Schema Setup</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#view-setup">View Setup</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#list-filtering">List filtering</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#naming-convention">Naming Convention</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#field-naming">Field Naming</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#lists-of-references">Lists of References</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#input-compatibility">Input Compatibility</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#about-idschema">About IDSchema</a></li>
