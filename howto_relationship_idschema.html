@@ -694,11 +694,8 @@ and keeps <code class="docutils literal notranslate"><span class="pre">author</s
 </pre></div>
 </div>
 <p>In that shape, Restly passes the resolved <code class="docutils literal notranslate"><span class="pre">Author</span></code> object to the constructor and
-keeps <code class="docutils literal notranslate"><span class="pre">author_id</span></code> in sync. The <code class="docutils literal notranslate"><span class="pre">init=False</span></code> on the FK is optional here: if the
-FK column is instead a required constructor argument, Restly passes the resolved
-id at construction so <code class="docutils literal notranslate"><span class="pre">__init__</span></code> is satisfied. More generally, Restly supplies
-the constructor values your dataclass model requires: FK scalar, relationship
-object, or both.</p>
+keeps <code class="docutils literal notranslate"><span class="pre">author_id</span></code> in sync. More generally, Restly supplies the constructor
+values your dataclass model requires: FK scalar, relationship object, or both.</p>
 <p>If a client supplies both sides independently, Restly validates that they match:</p>
 <div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;author_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
