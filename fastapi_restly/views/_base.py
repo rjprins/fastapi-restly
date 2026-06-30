@@ -30,7 +30,6 @@ from typing import (
     Iterator,
     Protocol,
     Sequence,
-    Union,
     cast,
     get_args,
     get_origin,
@@ -53,13 +52,15 @@ from ..db._globals import _fr_globals
 from ..exc import RestlyMisuseWarning
 from ..objects import snapshot as _object_snapshot
 from ..query import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, create_list_params_schema
-from ..schemas import BaseSchema, IDRef, IDSchema
+from ..schemas import BaseSchema, IDSchema
 from ..schemas._base import (
     _reject_buried_markers,
+    _unwrap_optional_annotation,
     create_model_with_optional_fields,
     create_model_without_read_only_fields,
     get_writable_inputs,
     is_readonly_field,
+    is_reference_field,
     is_writeonly_field,
 )
 from ..schemas._generator import auto_generate_schema_for_view
@@ -270,15 +271,6 @@ def _is_mapped_column(model_cls: type[DeclarativeBase], field_name: str) -> bool
     return field_name in mapper.columns
 
 
-def _is_reference_schema_field(
-    schema_cls: type[pydantic.BaseModel], field_name: str
-) -> bool:
-    field_info = schema_cls.model_fields.get(field_name)
-    if field_info is None:
-        return False
-    return _is_idschema_reference_annotation(field_info.annotation)
-
-
 def _add_assignment(target: dict[str, Any], field_name: str | None, value: Any) -> None:
     if field_name:
         target[field_name] = value
@@ -328,7 +320,7 @@ def validate_resolved_reference_consistency(
         # Start from the FK-column side of a reference pair and derive its
         # partner relationship from the mapper; relationship-named fields are
         # reached as the partner, not iterated here.
-        if not _is_reference_schema_field(schema_cls, fk_field):
+        if not is_reference_field(schema_cls, fk_field):
             continue
         if _get_relationship_property(model_cls, fk_field) is not None:
             continue
@@ -337,7 +329,7 @@ def validate_resolved_reference_consistency(
         if (
             relation_field is None
             or relation_field not in schema_obj.model_fields_set
-            or not _is_reference_schema_field(schema_cls, relation_field)
+            or not is_reference_field(schema_cls, relation_field)
         ):
             continue
 
@@ -499,7 +491,7 @@ def build_create_plan(
             else:
                 plan.post_assignments[field_name] = value.id
             continue
-        if isinstance(value, DeclarativeBase) and _is_reference_schema_field(
+        if isinstance(value, DeclarativeBase) and is_reference_field(
             schema_cls, field_name
         ):
             _add_resolved_reference_to_create_plan(plan, model_cls, field_name, value)
@@ -572,41 +564,12 @@ def apply_update_to_object(
         ):
             setattr(obj, field_name, value.id)
             continue
-        if isinstance(value, DeclarativeBase) and _is_reference_schema_field(
+        if isinstance(value, DeclarativeBase) and is_reference_field(
             schema_cls or schema_obj.__class__, field_name
         ):
             _apply_resolved_reference_update(obj, field_name, value)
             continue
         setattr(obj, field_name, value)
-
-
-def _unwrap_optional_annotation(annotation: Any) -> Any:
-    origin = get_origin(annotation)
-    if origin not in (types.UnionType, Union, None):
-        return annotation
-
-    if origin is None:
-        return annotation
-
-    non_none_args = [arg for arg in get_args(annotation) if arg is not type(None)]
-    if len(non_none_args) == 1:
-        return non_none_args[0]
-    return annotation
-
-
-def _is_idschema_reference_annotation(annotation: Any) -> bool:
-    annotation = _unwrap_optional_annotation(annotation)
-    if annotation in (IDSchema, IDRef):
-        return True
-    if not inspect.isclass(annotation):
-        return False
-    try:
-        if not issubclass(annotation, IDSchema):
-            return False
-    except TypeError:
-        return False
-    metadata = getattr(annotation, "__pydantic_generic_metadata__", {})
-    return metadata.get("origin") in (IDSchema, IDRef)
 
 
 def _get_nested_schema_annotation(annotation: Any) -> type[pydantic.BaseModel] | None:

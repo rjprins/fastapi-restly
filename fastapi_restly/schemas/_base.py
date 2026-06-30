@@ -1,4 +1,5 @@
 import functools
+import inspect
 import types
 from datetime import datetime
 from typing import Annotated, Any, Generic, Optional, Union, get_args, get_origin
@@ -288,6 +289,49 @@ class IDRef(IDSchema[SQLAlchemyModel], Generic[SQLAlchemyModel]):
     @pydantic.model_serializer
     def _serialize_flat(self) -> Any:
         return self.id if hasattr(self, "id") else self
+
+
+def _unwrap_optional_annotation(annotation: Any) -> Any:
+    """Unwrap Optional[X] or X | None to X. Returns annotation unchanged otherwise."""
+    origin = get_origin(annotation)
+    if origin not in (types.UnionType, Union):
+        return annotation
+
+    non_none_args = [arg for arg in get_args(annotation) if arg is not type(None)]
+    if len(non_none_args) == 1:
+        return non_none_args[0]
+    return annotation
+
+
+def is_reference_annotation(annotation: Any) -> bool:
+    """True if ``annotation`` is an ``IDRef``/``IDSchema`` reference type.
+
+    The canonical reference-type check, kept beside the types so callers (views,
+    query) don't re-introspect Pydantic generics themselves. Unwraps ``Optional``
+    first, then matches the bare types or a parametrization whose generic origin
+    is ``IDSchema``/``IDRef`` (``IDRef[Post]``, ``IDSchema[Post]``) -- not a user
+    subclass that merely inherits from them.
+    """
+    annotation = _unwrap_optional_annotation(annotation)
+    if annotation in (IDSchema, IDRef):
+        return True
+    if not inspect.isclass(annotation):
+        return False
+    try:
+        if not issubclass(annotation, IDSchema):
+            return False
+    except TypeError:
+        return False
+    metadata = getattr(annotation, "__pydantic_generic_metadata__", {})
+    return metadata.get("origin") in (IDSchema, IDRef)
+
+
+def is_reference_field(schema_cls: type[pydantic.BaseModel], field_name: str) -> bool:
+    """True if ``schema_cls``'s ``field_name`` is typed as an ``IDRef``/``IDSchema``."""
+    field_info = schema_cls.model_fields.get(field_name)
+    if field_info is None:
+        return False
+    return is_reference_annotation(field_info.annotation)
 
 
 async def _async_resolve_ids_to_sqlalchemy_objects(

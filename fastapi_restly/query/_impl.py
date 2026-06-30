@@ -16,8 +16,8 @@ from sqlalchemy.orm.properties import ColumnProperty
 from starlette.datastructures import QueryParams
 
 from ..exc import BadQueryParam
-from ..schemas._base import IDRef, IDSchema
-from ._shared import _escape_like_value, _unwrap_optional_annotation
+from ..schemas._base import IDRef, IDSchema, _unwrap_optional_annotation
+from ._shared import _escape_like_value
 
 SchemaType = type[pydantic.BaseModel]
 
