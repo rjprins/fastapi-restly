@@ -536,7 +536,7 @@ class OmitReadOnlyMixin(pydantic.BaseModel):
     calls ``model_rebuild(force=True)`` to regenerate the validator/serializer.
     Pydantic v2 does not officially document mutation of ``model_fields`` as
     a supported customisation hook, but this approach has been stable since
-    pydantic 2.0 and works on the pinned minimum (``pydantic>=2.11.4``). If
+    pydantic 2.0 and works on the pinned minimum (``pydantic>=2.11.0``). If
     a future pydantic release freezes the dict, switch to constructing a new
     model via ``pydantic.create_model(...)`` over the kept fields. The
     regression test ``tests/test_pydantic_model_fields_mutation.py`` exercises
@@ -602,7 +602,7 @@ class PatchMixin(pydantic.BaseModel):
     ``cls.model_fields`` (specifically ``FieldInfo.default`` and
     ``FieldInfo.annotation``) and then calls ``model_rebuild(force=True)``.
     This relies on pydantic v2 keeping ``FieldInfo`` mutable; verified on the
-    pinned ``pydantic>=2.11.4`` minimum and exercised by
+    pinned ``pydantic>=2.11.0`` minimum and exercised by
     ``tests/test_pydantic_model_fields_mutation.py``.
     """
 

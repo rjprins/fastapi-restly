@@ -17,8 +17,9 @@ or the raw scalar FK (a scalar-named reference). These tests pin:
 3. A nested IDSchema *subclass* with extra fields is NOT collapsed to its id.
 """
 
-from __future__ import annotations
-
+# No ``from __future__ import annotations`` here on purpose: these tests define
+# models in local function scope, so stringizing ``fr.IDRef[Post]`` makes a forward
+# ref the view mixins' forced ``model_rebuild`` can't resolve on the floor Pydantic.
 import asyncio
 
 from sqlalchemy import ForeignKey
