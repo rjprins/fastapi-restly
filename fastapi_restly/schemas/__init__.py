@@ -2,6 +2,7 @@ from ._base import (
     BaseSchema,
     IDRef,
     IDSchema,
+    MustExist,
     ReadOnly,
     TimestampsSchemaMixin,
     WriteOnly,
@@ -20,6 +21,7 @@ from ._generator import create_schema_from_model
 # here. They may move or change without notice.
 __all__ = [
     "BaseSchema",
+    "MustExist",
     "IDRef",
     "IDSchema",
     "ReadOnly",

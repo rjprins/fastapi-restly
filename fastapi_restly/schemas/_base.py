@@ -2,7 +2,16 @@ import functools
 import inspect
 import types
 from datetime import datetime
-from typing import Annotated, Any, Generic, Optional, Union, get_args, get_origin
+from typing import (
+    TYPE_CHECKING,
+    Annotated,
+    Any,
+    Generic,
+    Optional,
+    Union,
+    get_args,
+    get_origin,
+)
 
 import pydantic
 from pydantic.fields import Field, FieldInfo
@@ -11,7 +20,7 @@ from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio.session import AsyncSession as SA_AsyncSession
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm.session import Session as SA_Session
-from typing_extensions import TypeVar
+from typing_extensions import TypeAliasType, TypeVar
 
 from ..exc import NotFound, RestlyConfigurationError
 
@@ -159,6 +168,40 @@ def _schema_role_name(model_cls: type[pydantic.BaseModel], role: str) -> str:
     return f"{_schema_resource_name(model_cls)}{role}"
 
 
+def _model_id_type(sql_model: type[DeclarativeBase]) -> Any:
+    """Return the Python type of ``sql_model``'s ``id`` primary key, or ``None``.
+
+    Reads the ``id`` annotation off the model's MRO (works before the mapper is
+    configured), then falls back to the SA mapper -- which also covers a PEP 563
+    / ``from __future__ import annotations`` model, whose ``id`` annotation is a
+    string the mapper resolves authoritatively. Shared by ``IDSchema``/``IDRef``
+    (via ``_get_sql_model_id_type``) and ``MustExist``.
+    """
+    for model_cls in sql_model.mro():
+        annotation = getattr(model_cls, "__annotations__", {}).get("id")
+        if annotation is None:
+            continue
+        if isinstance(annotation, str):
+            # PEP 563 stringized annotation -- don't return the raw string; the
+            # mapper below resolves the real column type without eval'ing it.
+            break
+        origin = get_origin(annotation)
+        if origin is not None:
+            args = get_args(annotation)
+            if args:
+                return args[0]
+        return annotation
+
+    # Fallback: ask the SA mapper. `python_type` raises NotImplementedError for
+    # column types without a Python equivalent (e.g. some user types), and
+    # accessing `__mapper__` may fail with AttributeError if the class has not
+    # been mapped yet.
+    try:
+        return sql_model.__mapper__.primary_key[0].type.python_type
+    except (AttributeError, NotImplementedError, IndexError):
+        return None
+
+
 class IDSchema(BaseSchema, Generic[SQLAlchemyModel]):
     """Generic schema useful for serializing only the id of objects.
     Can be used as IDSchema[MyModel].
@@ -182,26 +225,7 @@ class IDSchema(BaseSchema, Generic[SQLAlchemyModel]):
         sql_model = cls._get_sql_model_annotation()
         if sql_model is None:
             return None
-
-        for model_cls in sql_model.mro():
-            annotation = getattr(model_cls, "__annotations__", {}).get("id")
-            if annotation is None:
-                continue
-            origin = get_origin(annotation)
-            if origin is not None:
-                args = get_args(annotation)
-                if args:
-                    return args[0]
-            return annotation
-
-        # Fallback: ask the SA mapper. `python_type` raises NotImplementedError
-        # for column types without a Python equivalent (e.g. some user types),
-        # and accessing `__mapper__` may fail with AttributeError if the class
-        # has not been mapped yet.
-        try:
-            return sql_model.__mapper__.primary_key[0].type.python_type
-        except (AttributeError, NotImplementedError, IndexError):
-            return None
+        return _model_id_type(sql_model)
 
     @pydantic.field_validator("id", mode="before", check_fields=False)
     @classmethod
@@ -289,6 +313,56 @@ class IDRef(IDSchema[SQLAlchemyModel], Generic[SQLAlchemyModel]):
     @pydantic.model_serializer
     def _serialize_flat(self) -> Any:
         return self.id if hasattr(self, "id") else self
+
+
+class RefExists:
+    """Marker for an existence-checked scalar foreign key.
+
+    Used as ``Annotated[<pk type>, RefExists(Model)]`` (or via the ``MustExist``
+    sugar). On write, Restly batch-checks that each marked id exists in
+    ``Model``'s table and raises ``NotFound`` (404) on a miss. The field stays a
+    plain scalar -- this only adds the check; it does not wrap the value or do
+    any relationship routing. The check is UNSCOPED (a bare primary-key lookup,
+    no view ``build_query`` scoping), exactly like ``IDRef``/``IDSchema``
+    resolution.
+    """
+
+    def __init__(self, model: type[DeclarativeBase]) -> None:
+        self.model = model
+
+    def __repr__(self) -> str:
+        return f"RefExists({getattr(self.model, '__name__', self.model)!r})"
+
+
+if TYPE_CHECKING:
+    _RefModel = TypeVar("_RefModel")
+    _RefPK = TypeVar("_RefPK", default=int)
+
+    # Static view: ``MustExist[Model]`` is the pk scalar -- ``int`` by default,
+    # ``MustExist[Model, PK]`` for another -- so a field reads and writes as that
+    # scalar (``data.post_id`` is an ``int``, not a wrapper). The bound model is
+    # runtime-only metadata; the runtime ``MustExist`` is defined below.
+    MustExist = TypeAliasType("MustExist", _RefPK, type_params=(_RefModel, _RefPK))
+else:
+
+    class MustExist:
+        """Existence-checked scalar foreign key.
+
+        ``MustExist[Post]`` desugars to ``Annotated[int, RefExists(Post)]``; for a
+        non-int primary key, pass it as the second argument --
+        ``MustExist[Account, UUID]`` -> ``Annotated[UUID, RefExists(Account)]``.
+
+        Unlike ``IDRef``/``IDSchema`` this is **not** a wrapper: the field stays
+        the pk scalar everywhere (wire, column, ``data.<field>``), plus a batched
+        existence check on write (404 on a miss). It is exactly the marker form
+        ``Annotated[<pk>, RefExists(Model)]`` -- use that directly if you prefer.
+        """
+
+        def __class_getitem__(cls, params: Any) -> Any:
+            model, pk_type = (
+                params if isinstance(params, tuple) else (params, int)
+            )
+            return Annotated[pk_type, RefExists(model)]
 
 
 def _unwrap_optional_annotation(annotation: Any) -> Any:
@@ -448,6 +522,82 @@ def _resolve_ids_to_sqlalchemy_objects(
             resolved[field] = [by_id[i] for i in unique_ids]
 
     return resolved
+
+
+def _ref_exists_marker(field_info: FieldInfo) -> RefExists | None:
+    """Return the ``RefExists`` marker on a field, or ``None``.
+
+    Found at the field's top level (``MustExist[M]`` / ``Annotated[pk,
+    RefExists(M)]``), or recovered from the union member for an optional field
+    (``MustExist[M] | None``), where Pydantic keeps the marker on the inner
+    annotation rather than ``field_info.metadata`` -- so an optional checked FK
+    is checked like the plain form (parity with ``Optional[IDRef]``).
+    """
+    for m in field_info.metadata:
+        if isinstance(m, RefExists):
+            return m
+    unwrapped = _unwrap_optional_annotation(field_info.annotation)
+    for m in getattr(unwrapped, "__metadata__", ()):
+        if isinstance(m, RefExists):
+            return m
+    return None
+
+
+def _ref_exists_fields(
+    schema_obj: pydantic.BaseModel,
+) -> dict[type[DeclarativeBase], list[tuple[str, Any]]]:
+    """Group provided, non-``None`` ``RefExists``-marked scalar fields by model.
+
+    Returns ``{model: [(field_name, id), ...]}`` for fields whose annotation
+    carries a ``RefExists`` marker (``MustExist[M]`` or an explicit
+    ``Annotated[pk, RefExists(M)]``). Only fields actually supplied
+    (``model_fields_set``) with a non-``None`` value are included.
+    """
+    by_model: dict[type[DeclarativeBase], list[tuple[str, Any]]] = {}
+    model_fields = type(schema_obj).model_fields
+    for field_name in schema_obj.model_fields_set:
+        field_info = model_fields.get(field_name)
+        if field_info is None:
+            continue
+        marker = _ref_exists_marker(field_info)
+        if marker is None:
+            continue
+        value = getattr(schema_obj, field_name, None)
+        if value is None:
+            continue
+        by_model.setdefault(marker.model, []).append((field_name, value))
+    return by_model
+
+
+def _raise_for_missing_refs(items: list[tuple[str, Any]], found: set[Any]) -> None:
+    for field_name, value in items:
+        if value not in found:
+            raise NotFound(f"Id not found for {field_name}: {value}")
+
+
+def _check_ref_exists(session: SA_Session, schema_obj: pydantic.BaseModel) -> None:
+    """Batch-validate that every ``RefExists``-marked id exists (sync).
+
+    One ``SELECT pk WHERE pk IN (...)`` per referenced model (no N+1); raises
+    ``NotFound`` (404) naming the field and id on a miss. UNSCOPED -- a bare
+    primary-key lookup, like ``IDRef``/``IDSchema`` resolution.
+    """
+    for model, items in _ref_exists_fields(schema_obj).items():
+        unique = list(dict.fromkeys(value for _, value in items))
+        pk_col = model.__mapper__.primary_key[0]
+        found = set(session.scalars(select(pk_col).where(pk_col.in_(unique))))
+        _raise_for_missing_refs(items, found)
+
+
+async def _async_check_ref_exists(
+    session: SA_AsyncSession, schema_obj: pydantic.BaseModel
+) -> None:
+    """Async twin of :func:`_check_ref_exists`."""
+    for model, items in _ref_exists_fields(schema_obj).items():
+        unique = list(dict.fromkeys(value for _, value in items))
+        pk_col = model.__mapper__.primary_key[0]
+        found = set(await session.scalars(select(pk_col).where(pk_col.in_(unique))))
+        _raise_for_missing_refs(items, found)
 
 
 def get_read_only_fields(model_cls: type[pydantic.BaseModel]) -> list[str]:

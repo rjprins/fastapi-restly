@@ -9,6 +9,7 @@ fastapi_restly:
   - IDRef
   - IDSchema
   - ListingResult
+  - MustExist
   - ReactAdminView
   - ReadOnly
   - ResponseShape
@@ -93,6 +94,7 @@ fastapi_restly.schemas:
   - BaseSchema
   - IDRef
   - IDSchema
+  - MustExist
   - ReadOnly
   - TimestampsSchemaMixin
   - WriteOnly

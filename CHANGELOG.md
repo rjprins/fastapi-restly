@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `fr.MustExist[Model]` — an existence-checked scalar foreign key.
+  `post_id: fr.MustExist[Post]` validates that the referenced row exists (a clean
+  404 on a miss, batched — no N+1) while the field stays a plain scalar
+  everywhere: on the wire, in the column, in hooks (`data.post_id` is the id
+  itself, not an `IDRef`/`IDSchema` wrapper), and to a type checker
+  (`data.post_id` is `int`). The primary-key type is `int` by default; for another
+  pk type pass it as the second argument — `fr.MustExist[Account, UUID]`. Reserve
+  `IDRef` / `IDSchema` for relationship-named fields.
+
 ### Changed
 
 - The `[testing]` extra now installs `httpx2` alongside `httpx`. Newer Starlette
