@@ -397,6 +397,18 @@ def _add_resolved_reference_to_create_plan(
         relation_name = field_name
         fk_name = _get_unambiguous_local_fk_name(model_cls, relation_name)
 
+        # A required-init FK column must be constructed, not post-assigned, or
+        # the dataclass __init__ rejects the missing kwarg. Pass its id at
+        # construction -- alongside the relationship object when that too is an
+        # init kwarg (consistent ids), or instead of it when it isn't.
+        if fk_name and _requires_init_kwarg(model_cls, fk_name):
+            plan.kwargs[fk_name] = ref.id
+            if _accepts_init_kwarg(model_cls, relation_name):
+                plan.kwargs[relation_name] = value
+            else:
+                plan.post_assignments[relation_name] = value
+            return
+
         if _accepts_init_kwarg(model_cls, relation_name):
             plan.kwargs[relation_name] = value
             _add_assignment(plan.post_assignments, fk_name, ref.id)

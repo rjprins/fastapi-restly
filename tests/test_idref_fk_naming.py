@@ -383,3 +383,161 @@ def test_renamed_db_column_relationship_field_sync(sync_db):
         session.flush()
         assert comment.post is p1
         assert comment.post_id == p1.id  # FK mirrored onto the mapped attribute
+
+
+def test_relationship_field_with_required_init_fk_sync(sync_db):
+    """Relationship exposed as a reference (``post: IDRef[Post]``) when the local
+    FK column is a *required* init kwarg -- no ``init=False`` and no default
+    (ticket qxlg). The FK id must be passed at construction, not post-assigned,
+    or the dataclass ``__init__`` rejects the missing required kwarg. SQLAlchemy
+    accepts receiving both the relationship object and its FK id (consistent)."""
+    engine, make_session = sync_db
+
+    class Post(fr.IDBase):
+        title: Mapped[str]
+
+    class Comment(fr.IDBase):
+        content: Mapped[str]
+        # Required init kwarg: no init=False, no default.
+        post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
+        post: Mapped[Post] = relationship(default=None)
+
+    class CommentSchema(fr.BaseSchema):
+        content: str
+        post: fr.IDRef[Post]
+
+    fr.DataclassBase.metadata.create_all(engine)
+
+    with make_session() as session:
+        p1 = Post(title="p1")
+        p2 = Post(title="p2")
+        session.add_all([p1, p2])
+        session.flush()
+
+        # The required FK id is constructed, not post-assigned.
+        plan = build_create_plan(
+            Comment,
+            CommentSchema(content="hi", post=p1.id),
+            CommentSchema,
+            resolved={"post": p1},
+        )
+        assert plan.kwargs["post_id"] == p1.id
+        assert "post_id" not in plan.post_assignments
+
+        comment = make_new_object(
+            session, Comment, CommentSchema(content="hi", post=p1.id)
+        )
+        session.flush()  # would TypeError at construction if the FK were post-assigned
+        assert comment.post is p1
+        assert comment.post_id == p1.id
+
+        update_object(session, comment, CommentSchema(content="hi", post=p2.id))
+        session.flush()
+        assert comment.post is p2
+        assert comment.post_id == p2.id
+
+
+def test_relationship_field_with_required_init_fk_async():
+    """Async parity for the required-init FK relationship field above (qxlg)."""
+
+    class Post(fr.IDBase):
+        title: Mapped[str]
+
+    class Comment(fr.IDBase):
+        content: Mapped[str]
+        post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
+        post: Mapped[Post] = relationship(default=None)
+
+    class CommentSchema(fr.BaseSchema):
+        content: str
+        post: fr.IDRef[Post]
+
+    async def run():
+        engine, make_session = _make_async_engine_and_session()
+        async with engine.begin() as conn:
+            await conn.run_sync(fr.DataclassBase.metadata.create_all)
+        async with make_session() as session:
+            p1 = Post(title="p1")
+            p2 = Post(title="p2")
+            session.add_all([p1, p2])
+            await session.flush()
+
+            # The required FK id is constructed, not post-assigned.
+            plan = build_create_plan(
+                Comment,
+                CommentSchema(content="hi", post=p1.id),
+                CommentSchema,
+                resolved={"post": p1},
+            )
+            assert plan.kwargs["post_id"] == p1.id
+            assert "post_id" not in plan.post_assignments
+
+            comment = await async_make_new_object(
+                session, Comment, CommentSchema(content="hi", post=p1.id)
+            )
+            await session.flush()
+            assert comment.post is p1
+            assert comment.post_id == p1.id
+
+            await async_update_object(
+                session, comment, CommentSchema(content="hi", post=p2.id)
+            )
+            await session.flush()
+            assert comment.post is p2
+            assert comment.post_id == p2.id
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_relationship_field_required_fk_with_init_false_relationship_sync(sync_db):
+    """Adjacent to the qxlg fix (shares its new branch's else arm, but is not
+    guarded by it): when the relationship is ``init=False`` and the FK is a
+    required init kwarg, the FK id is constructed and the relationship -- which
+    can't be an init kwarg -- is mirrored on afterward. This shape already routed
+    correctly via the FK-accepts-init path; the test pins that it stays put."""
+    engine, make_session = sync_db
+
+    class Post(fr.IDBase):
+        title: Mapped[str]
+
+    class Comment(fr.IDBase):
+        content: Mapped[str]
+        # Required init kwarg paired with an init=False relationship.
+        post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
+        post: Mapped[Post] = relationship(default=None, init=False)
+
+    class CommentSchema(fr.BaseSchema):
+        content: str
+        post: fr.IDRef[Post]
+
+    fr.DataclassBase.metadata.create_all(engine)
+
+    with make_session() as session:
+        p1 = Post(title="p1")
+        p2 = Post(title="p2")
+        session.add_all([p1, p2])
+        session.flush()
+
+        # FK id constructed; the init=False relationship post-assigned.
+        plan = build_create_plan(
+            Comment,
+            CommentSchema(content="hi", post=p1.id),
+            CommentSchema,
+            resolved={"post": p1},
+        )
+        assert plan.kwargs["post_id"] == p1.id
+        assert "post" not in plan.kwargs
+        assert plan.post_assignments["post"] is p1
+
+        comment = make_new_object(
+            session, Comment, CommentSchema(content="hi", post=p1.id)
+        )
+        session.flush()
+        assert comment.post is p1
+        assert comment.post_id == p1.id
+
+        update_object(session, comment, CommentSchema(content="hi", post=p2.id))
+        session.flush()
+        assert comment.post is p2
+        assert comment.post_id == p2.id

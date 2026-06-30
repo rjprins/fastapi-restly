@@ -33,6 +33,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   relationship and derives the partner attribute from the SQLAlchemy mapper
   rather than from the field name, so any FK column name resolves correctly.
 
+- Creating with a relationship exposed as a reference field (e.g.
+  `invoice: fr.IDRef[Invoice]`) no longer fails when the model's local FK column
+  is a required constructor argument (no `init=False` and no default) and a
+  reference to an existing row is supplied. The resolved row's id is now passed
+  at construction instead of being assigned afterward, so the dataclass
+  `__init__` no longer raises `TypeError: ... missing 1 required keyword-only
+  argument`. Declaring the FK column `init=False` is still supported but no
+  longer required.
+
 ## [0.7.0] - 2026-06-11
 
 ### Added
