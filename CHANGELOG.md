@@ -42,6 +42,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   argument`. Declaring the FK column `init=False` is still supported but no
   longer required.
 
+- `fr.IDRef[T]` now serializes through the type itself under plain Pydantic
+  `from_attributes`, so a reference field validated outside a Restly route — a
+  nested model, a custom endpoint, or `response_model=` on a raw schema — no
+  longer crashes with a cryptic `int_type` error when the value is the related
+  ORM row. Previously only the view layer's `to_response_schema` handled this,
+  by pre-extracting the scalar id; that redundant special-casing is removed and
+  both `IDRef[T]` and `IDSchema[T]` self-serialize from a related row or a raw
+  scalar id along a single path. Response output is unchanged.
+
 ## [0.7.0] - 2026-06-11
 
 ### Added

@@ -609,34 +609,6 @@ def _is_idschema_reference_annotation(annotation: Any) -> bool:
     return metadata.get("origin") in (IDSchema, IDRef)
 
 
-def _serialize_idschema_value(annotation: Any, value: Any) -> Any:
-    if value is None:
-        return None
-    id_value = value.id if hasattr(value, "id") else value
-    if inspect.isclass(annotation) and issubclass(annotation, IDRef):
-        return id_value
-    if inspect.isclass(annotation) and issubclass(annotation, IDSchema):
-        return annotation.model_construct(id=id_value)
-    return {"id": id_value}
-
-
-def _serialize_response_value(annotation: Any, value: Any) -> Any:
-    annotation = _unwrap_optional_annotation(annotation)
-
-    if _is_idschema_reference_annotation(annotation):
-        return _serialize_idschema_value(annotation, value)
-
-    origin = get_origin(annotation)
-    if origin is list:
-        item_annotation = get_args(annotation)[0] if get_args(annotation) else Any
-        if _is_idschema_reference_annotation(item_annotation) and isinstance(
-            value, Sequence
-        ):
-            return [_serialize_idschema_value(item_annotation, item) for item in value]
-
-    return value
-
-
 def _get_nested_schema_annotation(annotation: Any) -> type[pydantic.BaseModel] | None:
     annotation = _unwrap_optional_annotation(annotation)
 
@@ -958,17 +930,18 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         if isinstance(obj, self.schema):
             return cast(SchemaT, obj)
 
-        # Build a payload using schema field names. Alias rendering happens
-        # when FastAPI serializes the response model.
+        # Build a payload of raw attribute values keyed by schema field name;
+        # re-validating it below serializes each field through its own type. The
+        # response schema's ``from_attributes`` config resolves nested schemas and
+        # reference types (IDRef/IDSchema) straight from the ORM rows -- no
+        # view-layer special-casing. Alias rendering happens when FastAPI
+        # serializes the response model.
         payload: dict[str, Any] = {}
         for field_name, field_info in self.schema.model_fields.items():
             if is_writeonly_field(self.schema, field_name):
                 continue
             if hasattr(obj, field_name):
-                value = getattr(obj, field_name)
-                payload[field_name] = _serialize_response_value(
-                    field_info.annotation, value
-                )
+                payload[field_name] = getattr(obj, field_name)
             elif field_info.alias and hasattr(obj, field_info.alias):
                 payload[field_name] = getattr(obj, field_info.alias)
 

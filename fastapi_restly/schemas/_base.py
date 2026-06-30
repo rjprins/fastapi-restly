@@ -210,6 +210,26 @@ class IDSchema(BaseSchema, Generic[SQLAlchemyModel]):
             return value
         return _id_type_adapter(id_type).validate_python(value)
 
+    @pydantic.model_validator(mode="before")
+    @classmethod
+    def _coerce_scalar(cls, v: Any) -> Any:
+        # A pure id reference (``IDSchema[Model]`` / ``IDRef[Model]``, whose only
+        # field is ``id``) accepts a bare scalar id or a related ORM row where the
+        # ``{"id": ...}`` mapping is expected, so the reference type is
+        # self-sufficient under plain ``from_attributes``: a scalar FK column read
+        # straight off the row in ``to_response_schema``, a related row reached
+        # through a relationship, or a ``{"id": N}`` payload all validate without
+        # any view-layer pre-extraction. A subclass that adds fields (a nested
+        # response schema) is NOT a pure reference, so it validates normally and
+        # its row is never collapsed to just the id.
+        if set(cls.model_fields) != {"id"}:
+            return v
+        if isinstance(v, dict):
+            return v
+        if isinstance(v, DeclarativeBase):
+            return {"id": getattr(v, "id")}
+        return {"id": v}
+
     def get_sql_model_annotation(self) -> type[SQLAlchemyModel] | None:
         """
         Return the annotation on IDSchema when used as:
@@ -264,13 +284,6 @@ class IDRef(IDSchema[SQLAlchemyModel], Generic[SQLAlchemyModel]):
         return pydantic.TypeAdapter(id_type).json_schema(
             mode=getattr(handler, "mode", "validation")
         )
-
-    @pydantic.model_validator(mode="before")
-    @classmethod
-    def _coerce_scalar(cls, v: Any) -> Any:
-        if not isinstance(v, dict):
-            return {"id": v}
-        return v
 
     @pydantic.model_serializer
     def _serialize_flat(self) -> Any:
