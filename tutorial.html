@@ -587,9 +587,9 @@ the raw id:</p>
 </div>
 <p>Declaring the field as <code class="docutils literal notranslate"><span class="pre">fr.IDRef[Post]</span></code> is what triggers this behaviour: the view
 machinery stores the id in the matching <code class="docutils literal notranslate"><span class="pre">post_id</span></code> column, and it also validates
-that a <code class="docutils literal notranslate"><span class="pre">Post</span></code> with that <code class="docutils literal notranslate"><span class="pre">id</span></code> exists (returning 404 if not). The column can be
-named anything — Restly matches the field to the model’s mapper, not to an <code class="docutils literal notranslate"><span class="pre">_id</span></code>
-suffix.</p>
+that a <code class="docutils literal notranslate"><span class="pre">Post</span></code> with that <code class="docutils literal notranslate"><span class="pre">id</span></code> exists (returning 404 if not). Restly matches the
+field name to a mapped column or relationship via the model’s mapper, not to an
+<code class="docutils literal notranslate"><span class="pre">_id</span></code> suffix, so the FK column can be named anything.</p>
 <p>If you prefer a plain <code class="docutils literal notranslate"><span class="pre">int</span></code> field and want to skip the existence check,
 declare <code class="docutils literal notranslate"><span class="pre">post_id:</span> <span class="pre">int</span></code> in your schema instead.</p>
 <p>See <a class="reference internal" href="howto_relationship_idschema.html"><span class="std std-doc">Work with Foreign Keys Using IDRef</span></a>

@@ -105,8 +105,10 @@ by that column, Restly keeps the column and the relationship in sync:
 | `author_id` | `Article.author_id` | `Article.author` |
 
 The relationship is found through the mapper, so this pairing holds whatever the
-column is called. If the relationship attribute is absent, Restly still sets the
-FK column.
+column is called — including a column with an explicit DB name
+(`mapped_column("db_name", ...)`). If the relationship attribute is absent, or
+more than one relationship shares the FK column (ambiguous), Restly sets the FK
+column and leaves the relationship to you.
 
 ## Lists of References
 
@@ -326,7 +328,10 @@ write-path authorization.
 - Reference resolution is an **unscoped existence check** (bare PK lookup, no
   {meth}`build_query <fastapi_restly.views.RestView.build_query>` scoping). Gate cross-tenant / visibility references in
   {meth}`authorize <fastapi_restly.views.RestView.authorize>` or {meth}`before_commit <fastapi_restly.views.RestView.before_commit>` — see [Visibility and Multi-Tenancy](#visibility-and-multi-tenancy).
-- The `_id` field name triggers FK resolution.
+- Declaring a field as {class}`IDRef <fastapi_restly.schemas.IDRef>` /
+  {class}`IDSchema <fastapi_restly.schemas.IDSchema>` triggers FK resolution;
+  Restly matches the field name to a mapped column or relationship via the
+  model's mapper, not by an `_id` suffix.
 - A matching SQLAlchemy relationship lets Restly keep the FK column and
   relationship attribute in sync.
 - Dataclass models can be FK-first or relationship-first; Restly supplies the

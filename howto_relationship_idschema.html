@@ -616,8 +616,10 @@ by that column, Restly keeps the column and the relationship in sync:</p>
 </table>
 </div>
 <p>The relationship is found through the mapper, so this pairing holds whatever the
-column is called. If the relationship attribute is absent, Restly still sets the
-FK column.</p>
+column is called — including a column with an explicit DB name
+(<code class="docutils literal notranslate"><span class="pre">mapped_column(&quot;db_name&quot;,</span> <span class="pre">...)</span></code>). If the relationship attribute is absent, or
+more than one relationship shares the FK column (ambiguous), Restly sets the FK
+column and leaves the relationship to you.</p>
 </section>
 <section id="lists-of-references">
 <h2>Lists of References<a class="headerlink" href="#lists-of-references" title="Link to this heading">#</a></h2>
@@ -804,7 +806,10 @@ write-path authorization.</p>
 <li><p>Reference resolution is an <strong>unscoped existence check</strong> (bare PK lookup, no
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.build_query" title="fastapi_restly.views.RestView.build_query"><code class="xref py py-meth docutils literal notranslate"><span class="pre">build_query</span></code></a> scoping). Gate cross-tenant / visibility references in
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.authorize" title="fastapi_restly.views.RestView.authorize"><code class="xref py py-meth docutils literal notranslate"><span class="pre">authorize</span></code></a> or <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.before_commit" title="fastapi_restly.views.RestView.before_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">before_commit</span></code></a> — see <a class="reference internal" href="#visibility-and-multi-tenancy">Visibility and Multi-Tenancy</a>.</p></li>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">_id</span></code> field name triggers FK resolution.</p></li>
+<li><p>Declaring a field as <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDRef</span></code></a> /
+<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDSchema</span></code></a> triggers FK resolution;
+Restly matches the field name to a mapped column or relationship via the
+model’s mapper, not by an <code class="docutils literal notranslate"><span class="pre">_id</span></code> suffix.</p></li>
 <li><p>A matching SQLAlchemy relationship lets Restly keep the FK column and
 relationship attribute in sync.</p></li>
 <li><p>Dataclass models can be FK-first or relationship-first; Restly supplies the
