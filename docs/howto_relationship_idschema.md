@@ -85,22 +85,28 @@ The FK field is filterable on the list endpoint by its own public name —
 substring operators are deliberately not offered. See
 [Query Modifiers → Foreign-key filtering](howto_query_modifiers.md#foreign-key-filtering).
 
-## Naming Convention
+## Field Naming
 
-Automatic FK resolution needs the schema field name to end in `_id`:
+Name the schema reference field after a mapped attribute on the model — either
+a foreign-key column or a relationship. Restly inspects the SQLAlchemy mapper
+(not the field name) to decide how to apply the reference, so the FK column can
+be named anything; the `_id` suffix is a common convention, not a requirement:
 
 ```python
-author_id: fr.IDRef[Author]
+author_id: fr.IDRef[Author]   # maps to the Article.author_id FK column
+post_fk: fr.IDRef[Post]       # a non-_id column name resolves the same way
 ```
 
-If the SQLAlchemy model also has a relationship with the same name minus
-`_id`, Restly keeps the FK column and relationship in sync:
+When the field names a FK column and the model also has a relationship backed
+by that column, Restly keeps the column and the relationship in sync:
 
 | Schema field | FK column | Relationship |
 |---|---|---|
 | `author_id` | `Article.author_id` | `Article.author` |
 
-If the relationship attribute is absent, Restly still sets the FK column.
+The relationship is found through the mapper, so this pairing holds whatever the
+column is called. If the relationship attribute is absent, Restly still sets the
+FK column.
 
 ## Lists of References
 
