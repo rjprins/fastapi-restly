@@ -28,9 +28,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Build the live docs and publish them to the gh-pages root ("latest").
-  # keep_files preserves the frozen /<minor>/ snapshots alongside the root.
-  latest:
+  # The in-development build off main -> /dev/ (noindex). It is never published
+  # to the site root anymore; the root tracks the latest release (see below).
+  # keep_files preserves the root and the frozen /<minor>/ snapshots alongside it.
+  dev:
     if: >-
       github.event_name == 'push' ||
       github.event_name == 'pull_request' ||
@@ -54,9 +55,11 @@ jobs:
         run: uv sync
 
       - name: Build docs and coverage site
+        env:
+          DOCS_VERSION: dev
         run: make build-pages
 
-      - name: Publish latest to gh-pages root
+      - name: Publish dev to gh-pages /dev/
         if: >-
           github.ref == 'refs/heads/main' &&
           (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
@@ -64,11 +67,15 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: site/html
+          destination_dir: dev
           keep_files: true
-          cname: www.fastapi-restly.org
 
-  # Freeze a per-minor snapshot at release time (or on demand for a backfill).
-  snapshot:
+  # A release freezes the /<minor>/ snapshot AND republishes that same tag to the
+  # root ("latest"), so the default docs always track the newest release. Both
+  # builds run off the released tag, sequentially in one job, so the two gh-pages
+  # writes never race. A manual dispatch with snapshot_version only backfills a
+  # /<minor>/ snapshot from the current ref and never touches the root.
+  release:
     if: >-
       github.event_name == 'release' ||
       (github.event_name == 'workflow_dispatch' && github.event.inputs.snapshot_version != '')
@@ -102,7 +109,7 @@ jobs:
           fi
           echo "minor=$minor" >> "$GITHUB_OUTPUT"
 
-      - name: Build the snapshot
+      - name: Build the /<minor>/ snapshot
         env:
           DOCS_VERSION: ${{ steps.ver.outputs.minor }}
         run: |
@@ -117,14 +124,35 @@ jobs:
           destination_dir: ${{ steps.ver.outputs.minor }}
           keep_files: true
 
-      # Refresh the root switcher.json so every version (latest and frozen)
-      # surfaces the new release immediately -- json_url is absolute to root.
+      # Only a real release refreshes the root. Rebuild the same tag as "latest"
+      # (root base URL, indexed) with coverage; the refreshed switcher.json rides
+      # along in the published tree.
+      - name: Build the root ("latest") from the released tag
+        if: github.event_name == 'release'
+        env:
+          DOCS_VERSION: latest
+        run: make build-pages
+
+      - name: Publish latest to gh-pages root
+        if: github.event_name == 'release'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: site/html
+          keep_files: true
+          cname: www.fastapi-restly.org
+
+      # A dispatch backfill does not rebuild the root, so push the refreshed
+      # switcher.json to the root directly -- a newly frozen minor then surfaces
+      # in every build's dropdown without waiting for the next release.
       - name: Stage the refreshed switcher
+        if: github.event_name == 'workflow_dispatch'
         run: |
           mkdir -p switcher-root
           cp site/html/switcher.json switcher-root/switcher.json
 
       - name: Publish switcher.json to gh-pages root
+        if: github.event_name == 'workflow_dispatch'
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}

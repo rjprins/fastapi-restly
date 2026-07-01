@@ -40,10 +40,13 @@ def published_minors(tags: list[str], floor: tuple[int, int]) -> list[tuple[int,
 
 def build_entries(minors: list[tuple[int, int]], base_url: str) -> list[dict]:
     base = base_url.rstrip("/") + "/"
-    # "latest" is the live build at the site root and the preferred target, so
-    # snapshots show a "newer version available" banner.
+    # The site root serves the latest *release* and is the preferred target, so
+    # the dev build and frozen snapshots show a "go to stable" banner. Its match
+    # key stays "latest" (the root build's DOCS_VERSION) while it displays as
+    # "stable"; the in-development build off main lives at /dev/ (noindex).
     entries = [
-        {"name": "latest", "version": "latest", "url": base, "preferred": True}
+        {"name": "stable", "version": "latest", "url": base, "preferred": True},
+        {"name": "dev", "version": "dev", "url": f"{base}dev/"},
     ]
     for major, minor in minors:
         label = f"{major}.{minor}"
