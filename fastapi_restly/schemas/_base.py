@@ -204,8 +204,19 @@ def _model_id_type(sql_model: type[DeclarativeBase]) -> Any:
 
 
 class IDSchema(BaseSchema, Generic[SQLAlchemyModel]):
-    """Generic schema useful for serializing only the id of objects.
-    Can be used as IDSchema[MyModel].
+    """Response-schema base that adds a read-only ``id``; parametrized as a
+    field type, a nested-object relationship reference.
+
+    - As a BASE CLASS (``class UserRead(IDSchema): ...``) it adds the resource's
+      own read-only ``id`` -- the common use.
+    - As a FIELD TYPE on a RELATIONSHIP-named field (``author: IDSchema[User]``)
+      the wire format is ``{"id": N}`` (JSON-API / React-Admin); Restly resolves
+      the id to the related ORM object, so ``data.author`` is a wrapper (read
+      ``.id``). Use ``IDRef[User]`` for flat-id wire (``5``) instead.
+
+    For a scalar foreign-key COLUMN (``author_id``), use ``fr.MustExist[int, T]``
+    rather than ``IDSchema``/``IDRef``: it keeps the field a plain checked id
+    instead of turning a ``*_id`` field into an object wrapper.
     """
 
     # Keep this broad so relation-id payloads can target non-int primary keys.
@@ -270,25 +281,29 @@ class IDSchema(BaseSchema, Generic[SQLAlchemyModel]):
 
 
 class IDRef(IDSchema[SQLAlchemyModel], Generic[SQLAlchemyModel]):
-    """Reference to a row of T by id.
+    """Flat-id reference to a related row, for a RELATIONSHIP-named field.
 
-    Wire format is the raw id value (e.g. ``5``); accepts both scalars and
-    ``{"id": N}`` dicts on input. The framework validates the referenced row
-    exists and resolves it to the FK column on the way in.
+    Use ``IDRef[T]`` when the field is named after a relationship
+    (``author: IDRef[User]``, ``products: list[IDRef[Product]]``), not after a
+    ``*_id`` column. The wire format is the raw id (``5``); input also accepts
+    ``{"id": N}``. Restly resolves the id to the related ORM object, so
+    ``data.author`` is an ``IDRef`` wrapper (read ``.id``), not a plain scalar.
 
-    Use this for typical REST APIs where you want ``task_id: 5`` on the wire.
-    For JSON-API or React-Admin-style nested wire format ``{"id": N}``, use
-    ``IDSchema[T]`` instead.
+    For a scalar foreign-key COLUMN (``author_id``, ``task_id``) use
+    ``fr.MustExist[int, T]`` instead -- it keeps the field a plain checked id
+    (``data.author_id == 1``), rather than making a ``*_id`` field an object
+    wrapper. For nested ``{"id": N}`` wire on a relationship, use ``IDSchema[T]``.
 
-        products: list[IDRef[Product]]  # serializes as ["uuid1", "uuid2"]
+        author: IDRef[User]             # to-one relationship, flat id
+        products: list[IDRef[Product]]  # serializes as [1, 2, 3]
 
     Resolution is an UNSCOPED existence check: the row is fetched by primary key
     only, with no view ``build_query`` scoping (tenant, soft-delete, row-level
     visibility), so a reference to a row the caller cannot otherwise see still
-    resolves. If references must respect visibility, gate them in ``authorize``
-    (``data.<field>.id`` is the requested id, before resolution) or
-    ``before_commit`` (the resolved row is on the built object). See the IDRef
-    how-to, "Visibility and Multi-Tenancy".
+    resolves. Gate visibility in ``authorize`` (``data.<field>.id`` is the
+    requested id, before resolution) or ``before_commit`` (the resolved row is
+    on the built object). See the Foreign Keys and Relationships how-to,
+    "Visibility and Multi-Tenancy".
     """
 
     def __init__(self, value: Any = _IDREF_UNSET, **data: Any) -> None:
@@ -429,6 +444,32 @@ def is_reference_field(schema_cls: type[pydantic.BaseModel], field_name: str) ->
     if field_info is None:
         return False
     return is_reference_annotation(field_info.annotation)
+
+
+def reference_origin_and_target(annotation: Any) -> tuple[type, type | None] | None:
+    """For an ``IDRef``/``IDSchema`` field annotation (``Optional`` unwrapped),
+    return ``(origin, target)``: the ``IDRef``/``IDSchema`` class and the
+    referenced model (``None`` for a bare, unparametrized reference), or ``None``
+    when the annotation is not a reference type. Lets the scalar-named-reference
+    lint name both the type and its target in the ``MustExist`` hint.
+    """
+    annotation = _unwrap_optional_annotation(annotation)
+    if annotation in (IDSchema, IDRef):
+        return (annotation, None)
+    if not inspect.isclass(annotation):
+        return None
+    try:
+        if not issubclass(annotation, IDSchema):
+            return None
+    except TypeError:
+        return None
+    metadata = getattr(annotation, "__pydantic_generic_metadata__", {})
+    origin = metadata.get("origin")
+    if origin not in (IDSchema, IDRef):
+        return None
+    args = metadata.get("args") or ()
+    target = args[0] if args and isinstance(args[0], type) else None
+    return (origin, target)
 
 
 async def _async_resolve_ids_to_sqlalchemy_objects(

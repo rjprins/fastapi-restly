@@ -1,9 +1,10 @@
 """Tests for the opt-in registration-time misuse warnings.
 
 ``fr.configure(warn_on_misuse=True)`` makes ``include_view`` lint the
-registered class for the three dominant misuse patterns (route-shell override,
+registered class for the dominant misuse patterns (route-shell override,
 manual ``session.commit()`` in a view method, hand-rolled CRUD on a bare
-``View``) and emit :class:`RestlyMisuseWarning` for each. Off by default.
+``View``, and a reference type named after a scalar FK column) and emit
+:class:`RestlyMisuseWarning` for each. Off by default.
 
 The lint runs before parent endpoints are copied into the subclass, so a clean
 view must not warn even though its ``__dict__`` gains the five shells during
@@ -14,11 +15,21 @@ import warnings
 from typing import Any
 
 import fastapi
-from sqlalchemy import orm
+from sqlalchemy import ForeignKey, orm
 
 import fastapi_restly as fr
 from fastapi_restly.db._globals import RestlyContext
 from fastapi_restly.exc import RestlyMisuseWarning
+
+
+class GuardPost(fr.IDBase):
+    title: orm.Mapped[str]
+
+
+class GuardComment(fr.IDBase):
+    body: orm.Mapped[str]
+    post_id: orm.Mapped[int] = orm.mapped_column(ForeignKey(GuardPost.id))
+    post: orm.Mapped[GuardPost] = orm.relationship(default=None, init=False)
 
 
 def _register(view_cls: type, *, warn_on_misuse: bool | None = True) -> list[str]:
@@ -174,3 +185,79 @@ def test_disabled_by_default():
             return obj
 
     assert _register(QuietArticleView, warn_on_misuse=None) == []
+
+
+def test_scalar_named_idref_warns():
+    class ScalarIDRefSchema(fr.IDSchema):
+        body: str
+        post_id: fr.IDRef[GuardPost]
+
+    class ScalarIDRefView(fr.AsyncRestView):
+        prefix = "/scalar-idref"
+        model = GuardComment
+        schema = ScalarIDRefSchema
+
+    messages = _register(ScalarIDRefView)
+    assert len(messages) == 1
+    assert "ScalarIDRefSchema.post_id is typed `IDRef[GuardPost]`" in messages[0]
+    assert "scalar foreign-key column `GuardComment.post_id`" in messages[0]
+    assert "fr.MustExist[int, GuardPost]" in messages[0]
+    # A partner relationship exists, so the hint offers the rename too.
+    assert "name the field `post`" in messages[0]
+
+
+def test_scalar_named_idschema_warns():
+    class ScalarIDSchemaSchema(fr.IDSchema):
+        body: str
+        post_id: fr.IDSchema[GuardPost]
+
+    class ScalarIDSchemaView(fr.AsyncRestView):
+        prefix = "/scalar-idschema"
+        model = GuardComment
+        schema = ScalarIDSchemaSchema
+
+    messages = _register(ScalarIDSchemaView)
+    assert len(messages) == 1
+    assert "is typed `IDSchema[GuardPost]`" in messages[0]
+    assert "fr.MustExist[int, GuardPost]" in messages[0]
+
+
+def test_relationship_named_idref_does_not_warn():
+    class RelIDRefSchema(fr.IDSchema):
+        body: str
+        post: fr.IDRef[GuardPost]
+
+    class RelIDRefView(fr.AsyncRestView):
+        prefix = "/rel-idref"
+        model = GuardComment
+        schema = RelIDRefSchema
+
+    # ``post`` is a relationship, not a column -- the legitimate reference case.
+    assert _register(RelIDRefView) == []
+
+
+def test_mustexist_on_scalar_fk_does_not_warn():
+    class CheckedFKSchema(fr.IDSchema):
+        body: str
+        post_id: fr.MustExist[int, GuardPost]
+
+    class CheckedFKView(fr.AsyncRestView):
+        prefix = "/checked-fk"
+        model = GuardComment
+        schema = CheckedFKSchema
+
+    # MustExist is the recommended form -- a plain scalar, not a reference type.
+    assert _register(CheckedFKView) == []
+
+
+def test_scalar_named_reference_off_by_default():
+    class QuietRefSchema(fr.IDSchema):
+        body: str
+        post_id: fr.IDRef[GuardPost]
+
+    class QuietRefView(fr.AsyncRestView):
+        prefix = "/quiet-ref"
+        model = GuardComment
+        schema = QuietRefSchema
+
+    assert _register(QuietRefView, warn_on_misuse=None) == []

@@ -62,6 +62,7 @@ from ..schemas._base import (
     is_readonly_field,
     is_reference_field,
     is_writeonly_field,
+    reference_origin_and_target,
 )
 from ..schemas._generator import auto_generate_schema_for_view
 from ._openapi import _register_for_resource_ref
@@ -1267,6 +1268,58 @@ def _warn_on_misuse(view_cls: type[View]) -> None:
                 RestlyMisuseWarning,
                 stacklevel=5,
             )
+
+    # 4. A reference type (IDRef/IDSchema) whose name is a scalar FK column --
+    # the ``post_id: IDRef[Post]`` mistake, where ``data.post_id`` becomes a
+    # wrapper instead of the plain id.
+    _warn_scalar_named_reference_fields(view_cls)
+
+
+def _warn_scalar_named_reference_fields(view_cls: type[View]) -> None:
+    """Flag an ``IDRef``/``IDSchema`` field whose name is a scalar foreign-key
+    column: ``post_id: IDRef[Post]`` makes ``data.post_id`` a reference wrapper
+    instead of the plain id. Steer to ``fr.MustExist[pk, Model]``. Best-effort --
+    lints only an explicitly-declared ``schema`` against the view's ``model``,
+    and never a relationship-named or list reference (those names aren't columns).
+    """
+    schema = view_cls.__dict__.get("schema")
+    model = getattr(view_cls, "model", None)
+    if schema is None or model is None:
+        return
+    try:
+        mapper = sa_inspect(model)
+    except Exception:
+        return
+    for field_name, field_info in schema.model_fields.items():
+        origin_target = reference_origin_and_target(field_info.annotation)
+        if origin_target is None:
+            continue
+        column = mapper.columns.get(field_name)
+        if column is None or not column.foreign_keys:
+            continue  # relationship-named or non-FK column -- legitimate
+        origin, target = origin_target
+        ref_name = origin.__name__
+        target_name = target.__name__ if target is not None else "Model"
+        try:
+            pk_name = column.type.python_type.__name__
+        except Exception:
+            pk_name = "int"
+        rel = _relationship_name_for_fk(model, field_name)
+        rename = (
+            f", or name the field `{rel}` for the {ref_name} relationship"
+            if rel
+            else ""
+        )
+        warnings.warn(
+            f"{schema.__name__}.{field_name} is typed `{ref_name}[{target_name}]`, "
+            f"but `{field_name}` maps to the scalar foreign-key column "
+            f"`{model.__name__}.{field_name}`. An {ref_name} field resolves to an "
+            f"ORM object, so `data.{field_name}` is a reference wrapper, not the "
+            f"plain id. Use `{field_name}: fr.MustExist[{pk_name}, {target_name}]` "
+            f"for a checked scalar FK{rename}.",
+            RestlyMisuseWarning,
+            stacklevel=6,
+        )
 
 
 def _reject_buried_markers_in_view_schemas(view_cls: type[View]) -> None:
