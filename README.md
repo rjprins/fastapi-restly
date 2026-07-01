@@ -47,15 +47,16 @@ method overrides to share behavior across resources.
 ## Quickstart
 
 FastAPI-Restly turns a SQLAlchemy model into a class-based CRUD resource.
-(To make it fully runnable, add dev table creation — see
-[Getting Started](https://www.fastapi-restly.org/getting_started.html).)
+This example is complete and runnable; it creates SQLite tables at startup for
+local development. Use Alembic migrations in production.
 
 ```python
+from contextlib import asynccontextmanager
+
 import fastapi_restly as fr
 from fastapi import FastAPI
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
-app = FastAPI()
 fr.configure(async_database_url="sqlite+aiosqlite:///app.db")
 
 class Base(DeclarativeBase):
@@ -67,6 +68,13 @@ class User(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str]
     email: Mapped[str]
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    await fr.db.async_create_all(Base)  # dev tables; use Alembic in production
+    yield
+
+app = FastAPI(lifespan=lifespan)
 
 @fr.include_view(app)
 class UserView(fr.AsyncRestView):

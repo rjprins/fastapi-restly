@@ -1123,15 +1123,15 @@ def _init_view_cls_and_add_to_router(
     view_cls: type[View], parent_router: fastapi.APIRouter | fastapi.FastAPI
 ):
     """
-    To make View classes work in FastAPI some hacks are needed. Those hacks are
-    applied here.
+    FastAPI builds routes from callable signatures and annotations. View classes
+    need a small adapter layer before registration; that preparation happens here.
 
     FastAPI does a lot with annotations. For example, accepted or returned JSON is
     often described with Pydantic classes like this:
 
         def my_endpoint(foo: FooRead) -> FooRead:
 
-    Most of the hacks here are to set the correct annotations on (inherited) class
+    Most of this preparation sets the correct annotations on inherited class
     methods.
 
     The class-level preparation (copying parent endpoints, renaming, annotating,

@@ -2,12 +2,14 @@
 
 ## What it is
 
-FastAPI-Restly is a REST framework for building larger web applications with FastAPI and SQLAlchemy 2.
-The goal is to establish common patterns, enabling DRY code, and provide out-of-the-box tooling any web app needs.
+FastAPI-Restly is a REST framework for resource-shaped APIs built with FastAPI
+and SQLAlchemy 2. The goal is to keep repeated API patterns in one place while
+staying close to the FastAPI and SQLAlchemy code you already write.
 
 FastAPI deliberately handles one side of a web application: routing,
-validation, serialization, dependency injection. Everything else, like database handling, users, ORM-to-schema mapping, etc are things every FastAPI project needs builds again.
-Restly tries to fill that gap, with the end goal to provide a complete, batteries-included framework for FastAPI web apps.
+validation, serialization, and dependency injection. Restly focuses on the
+resource layer around that: SQLAlchemy sessions, ORM-to-schema mapping,
+generated CRUD routes, query parameters, error translation, and test fixtures.
 
 ## Philosophy
 
@@ -18,15 +20,12 @@ Restly tries to fill that gap, with the end goal to provide a complete, batterie
   session setup, commit handling, schema generation, list filtering with
   strict validation, error translation, and savepoint-isolated test fixtures
   all work from {func}`fr.configure() <fastapi_restly.db.configure>` onward.
-- **Customization is never off the path.** Real production services are
-  never simply CRUD. Every generated operation has explicit override points
+- **Customization is never off the path.** Applications are rarely just CRUD.
+  Every generated operation has explicit override points
   so generated behavior is a starting point, not a boundary (see [three tiers](the_handle_design.md)).
-- **A holistic view of web applications.** The long-term goal covers more
-  than resource endpoints: auth, permissions, background jobs, admin pages,
-  and a plugin system are on the path, each with the same escape hatches.
 - **Documentation you don't have to guess at.** Common paths have runnable
   examples and extension points say where custom behavior belongs, for your
-  team and for coding agents alike.
+  team.
 
 The core patterns: class-based views, the override hierarchy, and schema
 generation, are proven by four years of internal production use. The public
