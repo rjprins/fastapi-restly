@@ -30,6 +30,14 @@ actions, tenant scoping.
 Define schemas with field aliases, write-only fields, and read-only computed fields.
 :::
 
+:::{grid-item-card} Change Response Schemas
+:link: howto_response_schema
+:link-type: doc
+
+Use a different read schema, wrap successful responses in envelopes, or return
+custom list metadata while keeping Restly's handlers and serialization.
+:::
+
 :::{grid-item-card} Work with Foreign Keys and Relationships
 :link: howto_relationship_idschema
 :link-type: doc
@@ -123,6 +131,7 @@ Production engine config, Alembic migrations, and an ASGI checklist.
 howto_existing_project
 patterns
 howto_custom_schema
+howto_response_schema
 howto_relationship_idschema
 howto_query_modifiers
 howto_override_endpoints
