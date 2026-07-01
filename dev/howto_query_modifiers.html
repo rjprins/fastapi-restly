@@ -767,15 +767,16 @@ public name — the same name the wire format uses:</p>
 GET /comments/?post_id=1,2          # OR (SQL IN)
 GET /comments/?post_id__in=1,2
 GET /comments/?post_id__ne=1
+GET /comments/?post_id__gte=10      # int id → range operators apply
 GET /comments/?post_id__isnull=true
 </pre></div>
 </div>
-<p>A <code class="docutils literal notranslate"><span class="pre">MustExist</span></code> id is treated as opaque, so it gets equality, <code class="docutils literal notranslate"><span class="pre">__in</span></code>, <code class="docutils literal notranslate"><span class="pre">__ne</span></code>, and
-<code class="docutils literal notranslate"><span class="pre">__isnull</span></code> — but <strong>not</strong> the range (<code class="docutils literal notranslate"><span class="pre">__gte</span></code>/<code class="docutils literal notranslate"><span class="pre">__lt</span></code>/…) or substring
-(<code class="docutils literal notranslate"><span class="pre">__contains</span></code>) families. Ordering or substring-matching an identifier is rarely
-meaningful, and this stays uniform across primary-key types (int, UUID, string).
-If you genuinely need range filtering on the column, declare the field as its
-plain scalar type (<code class="docutils literal notranslate"><span class="pre">post_id:</span> <span class="pre">int</span></code>) instead.</p>
+<p>A <code class="docutils literal notranslate"><span class="pre">MustExist[pk,</span> <span class="pre">...]</span></code> id filters exactly like its plain scalar <code class="docutils literal notranslate"><span class="pre">pk</span></code> type: an
+<code class="docutils literal notranslate"><span class="pre">int</span></code> id gets equality, <code class="docutils literal notranslate"><span class="pre">__in</span></code>, <code class="docutils literal notranslate"><span class="pre">__ne</span></code>, <code class="docutils literal notranslate"><span class="pre">__isnull</span></code>, and the range family
+(<code class="docutils literal notranslate"><span class="pre">__gte</span></code>/<code class="docutils literal notranslate"><span class="pre">__lte</span></code>/<code class="docutils literal notranslate"><span class="pre">__gt</span></code>/<code class="docutils literal notranslate"><span class="pre">__lt</span></code>); a <code class="docutils literal notranslate"><span class="pre">UUID</span></code> id omits the range family (UUIDs aren’t
+orderable — see the range-operator note above). It never gets the substring
+(<code class="docutils literal notranslate"><span class="pre">__contains</span></code>) family. A relationship reference (<code class="docutils literal notranslate"><span class="pre">IDRef</span></code> / <code class="docutils literal notranslate"><span class="pre">IDSchema</span></code>) by
+contrast keeps its id opaque — equality, <code class="docutils literal notranslate"><span class="pre">__in</span></code>, <code class="docutils literal notranslate"><span class="pre">__ne</span></code>, <code class="docutils literal notranslate"><span class="pre">__isnull</span></code> only.</p>
 </section>
 <hr class="docutils" />
 <section id="quick-reference">

@@ -257,15 +257,16 @@ GET /comments/?post_id=1
 GET /comments/?post_id=1,2          # OR (SQL IN)
 GET /comments/?post_id__in=1,2
 GET /comments/?post_id__ne=1
+GET /comments/?post_id__gte=10      # int id → range operators apply
 GET /comments/?post_id__isnull=true
 ```
 
-A `MustExist` id is treated as opaque, so it gets equality, `__in`, `__ne`, and
-`__isnull` — but **not** the range (`__gte`/`__lt`/…) or substring
-(`__contains`) families. Ordering or substring-matching an identifier is rarely
-meaningful, and this stays uniform across primary-key types (int, UUID, string).
-If you genuinely need range filtering on the column, declare the field as its
-plain scalar type (`post_id: int`) instead.
+A `MustExist[pk, ...]` id filters exactly like its plain scalar `pk` type: an
+`int` id gets equality, `__in`, `__ne`, `__isnull`, and the range family
+(`__gte`/`__lte`/`__gt`/`__lt`); a `UUID` id omits the range family (UUIDs aren't
+orderable — see the range-operator note above). It never gets the substring
+(`__contains`) family. A relationship reference (`IDRef` / `IDSchema`) by
+contrast keeps its id opaque — equality, `__in`, `__ne`, `__isnull` only.
 
 ---
 

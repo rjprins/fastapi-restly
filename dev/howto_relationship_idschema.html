@@ -536,34 +536,28 @@ response instead of a separate fetch.</p>
 <tr class="row-odd"><th class="head"><p>Declaration</p></th>
 <th class="head"><p>JSON value</p></th>
 <th class="head"><p>SQLAlchemy type</p></th>
-<th class="head"><p>Use it for</p></th>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">author_id:</span> <span class="pre">fr.MustExist[int,</span> <span class="pre">User]</span></code></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">author_id:</span> <span class="pre">fr.MustExist[int,</span> <span class="pre">User]</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">1</span></code></p></td>
 <td><p>scalar foreign key</p></td>
-<td><p><strong>the default</strong>: a checked FK column</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">author:</span> <span class="pre">fr.IDRef[User]</span></code></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">author:</span> <span class="pre">fr.IDRef[User]</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">1</span></code></p></td>
 <td><p>resolves to <code class="docutils literal notranslate"><span class="pre">User</span></code></p></td>
-<td><p>a relationship, flat-id in JSON</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">author:</span> <span class="pre">fr.IDSchema[User]</span></code></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">author:</span> <span class="pre">fr.IDSchema[User]</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">{&quot;id&quot;:</span> <span class="pre">1}</span></code></p></td>
 <td><p>resolves to <code class="docutils literal notranslate"><span class="pre">User</span></code></p></td>
-<td><p>a relationship, nested-id in JSON (JSON-API / React Admin)</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">author:</span> <span class="pre">UserRead</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">author:</span> <span class="pre">fr.ReadOnly[UserRead]</span></code></p></td>
 <td><p>the full object</p></td>
-<td><p>resolves to <code class="docutils literal notranslate"><span class="pre">User</span></code></p></td>
-<td><p>embedding the related object</p></td>
+<td><p>read-only relationship embed</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">author_id:</span> <span class="pre">int</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">1</span></code></p></td>
 <td><p>scalar foreign key</p></td>
-<td><p>an unchecked FK, e.g. a server-stamped <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> column</p></td>
 </tr>
 </tbody>
 </table>
@@ -573,7 +567,8 @@ response instead of a separate fetch.</p>
 a <code class="docutils literal notranslate"><span class="pre">*_id</span></code> column you want validated. Name the primary-key type first, then the
 target model — <code class="docutils literal notranslate"><span class="pre">fr.MustExist[int,</span> <span class="pre">User]</span></code> (<code class="docutils literal notranslate"><span class="pre">fr.MustExist[UUID,</span> <span class="pre">Account]</span></code> for a
 UUID key). When the column has a single <code class="docutils literal notranslate"><span class="pre">ForeignKey</span></code>, you can drop the model and
-let Restly infer it — <code class="docutils literal notranslate"><span class="pre">fr.MustExist[int]</span></code>.</p></li>
+let Restly infer it — <code class="docutils literal notranslate"><span class="pre">fr.MustExist[int]</span></code>. A plain <code class="docutils literal notranslate"><span class="pre">int</span></code> (or <code class="docutils literal notranslate"><span class="pre">ReadOnly[int]</span></code>
+for a server-stamped column) is the unchecked alternative — no existence check.</p></li>
 <li><p>Use <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDRef</span></code></a> /
 <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDSchema</span></code></a> when the field names a
 relationship. Restly resolves the id to the related object; the difference is
@@ -652,7 +647,8 @@ hooks, <code class="docutils literal notranslate"><span class="pre">data.author_
 <h2>List filtering<a class="headerlink" href="#list-filtering" title="Link to this heading">#</a></h2>
 <p>The FK field is filterable on the list endpoint by its own public name —
 <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/articles/?author_id=1</span></code> (also <code class="docutils literal notranslate"><span class="pre">author_id__in</span></code>, <code class="docutils literal notranslate"><span class="pre">author_id__ne</span></code>,
-<code class="docutils literal notranslate"><span class="pre">author_id__isnull</span></code>). See
+<code class="docutils literal notranslate"><span class="pre">author_id__isnull</span></code>, and — since a <code class="docutils literal notranslate"><span class="pre">MustExist[int,</span> <span class="pre">...]</span></code> id is a plain integer —
+the range family <code class="docutils literal notranslate"><span class="pre">author_id__gte</span></code> / <code class="docutils literal notranslate"><span class="pre">__lte</span></code> / <code class="docutils literal notranslate"><span class="pre">__gt</span></code> / <code class="docutils literal notranslate"><span class="pre">__lt</span></code>). See
 <a class="reference internal" href="howto_query_modifiers.html#foreign-key-filtering"><span class="std std-ref">Query Modifiers → Foreign-key filtering</span></a>.</p>
 </section>
 <section id="field-naming">
@@ -666,6 +662,15 @@ named anything; the <code class="docutils literal notranslate"><span class="pre"
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">author_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">MustExist</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">User</span><span class="p">]</span>  <span class="c1"># the Article.author_id FK column</span>
 <span class="n">post_fk</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">MustExist</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Post</span><span class="p">]</span>    <span class="c1"># a non-_id column name works the same way</span>
 <span class="n">author</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">IDRef</span><span class="p">[</span><span class="n">User</span><span class="p">]</span>              <span class="c1"># the Article.author relationship</span>
+</pre></div>
+</div>
+<p>The Python field name is what Restly matches against the mapped attribute — it
+builds the model with that name as a keyword argument, so the two must match. To
+expose a different name only <em>on the wire</em> (a camelCase API, say), keep the field
+named after the attribute and add a Pydantic alias:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Field</span>
+
+<span class="n">author_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">MustExist</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">User</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">alias</span><span class="o">=</span><span class="s2">&quot;authorId&quot;</span><span class="p">)</span>  <span class="c1"># wire: &quot;authorId&quot;</span>
 </pre></div>
 </div>
 <p>When the field names a relationship, Restly resolves the id to an ORM object and

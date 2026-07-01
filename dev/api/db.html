@@ -572,9 +572,11 @@ commit or the per-route suppression.</p>
 <p>Pass <code class="docutils literal notranslate"><span class="pre">warn_on_misuse=True</span></code> to enable opt-in registration-time misuse
 warnings (<code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyMisuseWarning</span></code>): when a view class is registered
 via <code class="docutils literal notranslate"><span class="pre">include_view</span></code>, the framework flags route-shell overrides, direct
-<code class="docutils literal notranslate"><span class="pre">session.commit()</span></code> calls in view methods, and CRUD route sets hand-rolled
-on a bare <code class="docutils literal notranslate"><span class="pre">View</span></code>. Off by default; intended for development, templates,
-and CI. Enable it before registering views.</p>
+<code class="docutils literal notranslate"><span class="pre">session.commit()</span></code> calls in view methods, CRUD route sets hand-rolled
+on a bare <code class="docutils literal notranslate"><span class="pre">View</span></code>, and scalar foreign-key columns typed as an
+<code class="docutils literal notranslate"><span class="pre">IDRef</span></code> / <code class="docutils literal notranslate"><span class="pre">IDSchema</span></code> reference instead of <code class="docutils literal notranslate"><span class="pre">fr.MustExist</span></code>. Off by
+default; intended for development, templates, and CI. Enable it before
+registering views.</p>
 <p>Pass your <code class="xref py py-class docutils literal notranslate"><span class="pre">FastAPI</span></code> <code class="docutils literal notranslate"><span class="pre">app</span></code> to install fastapi-restly’s default
 exception handlers (currently: a translator that turns SQLAlchemy
 <a class="reference external" href="https://docs.sqlalchemy.org/en/20/core/exceptions.html#sqlalchemy.exc.IntegrityError" title="(in SQLAlchemy v2.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">IntegrityError</span></code></a> into HTTP 409 Conflict). Set

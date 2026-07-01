@@ -636,10 +636,12 @@ distinctly (e.g. into RFC 7807 problem+json).</p></li>
 <p>Emitted at view registration for common framework-misuse patterns.</p>
 <p>Opt-in: enable with <code class="docutils literal notranslate"><span class="pre">fr.configure(warn_on_misuse=True)</span></code>. When a view
 class is registered via <code class="docutils literal notranslate"><span class="pre">include_view</span></code>, the framework then flags the
-three dominant misuses – overriding a route shell (<code class="docutils literal notranslate"><span class="pre">&lt;verb&gt;_endpoint</span></code>)
-where a business-verb override was meant, calling <code class="docutils literal notranslate"><span class="pre">session.commit()</span></code>
-directly in a view method, and hand-rolling a CRUD route set on a bare
-<code class="docutils literal notranslate"><span class="pre">View</span></code> instead of subclassing <code class="docutils literal notranslate"><span class="pre">RestView</span></code> / <code class="docutils literal notranslate"><span class="pre">AsyncRestView</span></code>.</p>
+dominant misuses – overriding a route shell (<code class="docutils literal notranslate"><span class="pre">&lt;verb&gt;_endpoint</span></code>) where a
+business-verb override was meant, calling <code class="docutils literal notranslate"><span class="pre">session.commit()</span></code> directly in a
+view method, hand-rolling a CRUD route set on a bare <code class="docutils literal notranslate"><span class="pre">View</span></code> instead of
+subclassing <code class="docutils literal notranslate"><span class="pre">RestView</span></code> / <code class="docutils literal notranslate"><span class="pre">AsyncRestView</span></code>, and typing a scalar
+foreign-key column (<code class="docutils literal notranslate"><span class="pre">post_id</span></code>) as an <code class="docutils literal notranslate"><span class="pre">IDRef</span></code> / <code class="docutils literal notranslate"><span class="pre">IDSchema</span></code> reference
+instead of <code class="docutils literal notranslate"><span class="pre">fr.MustExist[int,</span> <span class="pre">Model]</span></code>.</p>
 </dd></dl>
 
 <dl class="py exception">

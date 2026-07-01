@@ -537,6 +537,12 @@ itself, not an <code class="docutils literal notranslate"><span class="pre">IDRe
 (<code class="docutils literal notranslate"><span class="pre">fr.MustExist[UUID,</span> <span class="pre">Account]</span></code> for a UUID key); when the column has a single
 <code class="docutils literal notranslate"><span class="pre">ForeignKey</span></code>, you can drop the model and let Restly infer it — <code class="docutils literal notranslate"><span class="pre">fr.MustExist[int]</span></code>.
 Reserve <code class="docutils literal notranslate"><span class="pre">IDRef</span></code> / <code class="docutils literal notranslate"><span class="pre">IDSchema</span></code> for relationship-named fields.</p></li>
+<li><p>The opt-in <code class="docutils literal notranslate"><span class="pre">fr.configure(warn_on_misuse=True)</span></code> lint now flags the
+<code class="docutils literal notranslate"><span class="pre">post_id:</span> <span class="pre">fr.IDRef[Post]</span></code> mistake — an <code class="docutils literal notranslate"><span class="pre">IDRef</span></code> / <code class="docutils literal notranslate"><span class="pre">IDSchema</span></code> reference typed on a
+scalar foreign-key <strong>column</strong>, where <code class="docutils literal notranslate"><span class="pre">data.post_id</span></code> becomes a wrapper instead of
+the plain id — steering to <code class="docutils literal notranslate"><span class="pre">fr.MustExist[int,</span> <span class="pre">Post]</span></code>. <code class="docutils literal notranslate"><span class="pre">IDRef</span></code> / <code class="docutils literal notranslate"><span class="pre">IDSchema</span></code> are
+now documented as relationship-named types, with <code class="docutils literal notranslate"><span class="pre">*_id</span></code> columns pointed at
+<code class="docutils literal notranslate"><span class="pre">MustExist</span></code>.</p></li>
 </ul>
 </section>
 <section id="changed">
