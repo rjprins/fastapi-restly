@@ -591,9 +591,9 @@ def _resolve_ids_to_sqlalchemy_objects(
 def _ref_exists_marker(field_info: FieldInfo) -> RefExists | None:
     """Return the ``RefExists`` marker on a field, or ``None``.
 
-    Found at the field's top level (``MustExist[M]`` / ``Annotated[pk,
+    Found at the field's top level (``MustExist[pk, M]`` / ``Annotated[pk,
     RefExists(M)]``), or recovered from the union member for an optional field
-    (``MustExist[M] | None``), where Pydantic keeps the marker on the inner
+    (``MustExist[pk, M] | None``), where Pydantic keeps the marker on the inner
     annotation rather than ``field_info.metadata`` -- so an optional checked FK
     is checked like the plain form (parity with ``Optional[IDRef]``).
     """
@@ -625,6 +625,12 @@ def _infer_ref_model(
         for mapper in model_cls.registry.mappers:
             if mapper.local_table is target_table:
                 return mapper.class_
+        raise RestlyConfigurationError(
+            f"{model_cls.__name__}.{field_name}: MustExist[...] with one argument "
+            f"infers the target model from the column's ForeignKey, but its FK "
+            f"target table '{target_table.name}' has no mapped model. "
+            f"Name it explicitly: MustExist[<pk>, <Model>]."
+        )
     raise RestlyConfigurationError(
         f"{model_cls.__name__}.{field_name}: MustExist[...] with one argument "
         f"infers the target model from the column's ForeignKey, but "

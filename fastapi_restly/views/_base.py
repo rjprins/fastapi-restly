@@ -1192,7 +1192,7 @@ _SHELL_NAMES = frozenset(
 def _warn_on_misuse(view_cls: type[View]) -> None:
     """Opt-in registration-time lint (``fr.configure(warn_on_misuse=True)``).
 
-    Flags the three dominant misuse patterns with the idiomatic fix named in
+    Flags the dominant misuse patterns with the idiomatic fix named in
     each message. Heuristic, best-effort, and advisory: every pattern it flags
     has a legitimate use, so it warns (:class:`RestlyMisuseWarning`) rather
     than rejects. Must run *before* parent endpoints are copied into the

@@ -84,10 +84,12 @@ class RestlyMisuseWarning(UserWarning):
 
     Opt-in: enable with ``fr.configure(warn_on_misuse=True)``. When a view
     class is registered via ``include_view``, the framework then flags the
-    three dominant misuses -- overriding a route shell (``<verb>_endpoint``)
-    where a business-verb override was meant, calling ``session.commit()``
-    directly in a view method, and hand-rolling a CRUD route set on a bare
-    ``View`` instead of subclassing ``RestView`` / ``AsyncRestView``.
+    dominant misuses -- overriding a route shell (``<verb>_endpoint``) where a
+    business-verb override was meant, calling ``session.commit()`` directly in a
+    view method, hand-rolling a CRUD route set on a bare ``View`` instead of
+    subclassing ``RestView`` / ``AsyncRestView``, and typing a scalar
+    foreign-key column (``post_id``) as an ``IDRef`` / ``IDSchema`` reference
+    instead of ``fr.MustExist[int, Model]``.
     """
 
 

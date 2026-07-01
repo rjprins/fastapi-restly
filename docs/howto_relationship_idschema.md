@@ -115,7 +115,8 @@ hooks, `data.author_id` is the plain integer.
 
 The FK field is filterable on the list endpoint by its own public name —
 `GET /articles/?author_id=1` (also `author_id__in`, `author_id__ne`,
-`author_id__isnull`). See
+`author_id__isnull`, and — since a `MustExist[int, ...]` id is a plain integer —
+the range family `author_id__gte` / `__lte` / `__gt` / `__lt`). See
 [Query Modifiers → Foreign-key filtering](howto_query_modifiers.md#foreign-key-filtering).
 
 ## Field Naming

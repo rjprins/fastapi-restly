@@ -134,9 +134,11 @@ def configure(
     Pass ``warn_on_misuse=True`` to enable opt-in registration-time misuse
     warnings (:class:`RestlyMisuseWarning`): when a view class is registered
     via ``include_view``, the framework flags route-shell overrides, direct
-    ``session.commit()`` calls in view methods, and CRUD route sets hand-rolled
-    on a bare ``View``. Off by default; intended for development, templates,
-    and CI. Enable it before registering views.
+    ``session.commit()`` calls in view methods, CRUD route sets hand-rolled
+    on a bare ``View``, and scalar foreign-key columns typed as an
+    ``IDRef`` / ``IDSchema`` reference instead of ``fr.MustExist``. Off by
+    default; intended for development, templates, and CI. Enable it before
+    registering views.
 
     Pass your :class:`FastAPI` ``app`` to install fastapi-restly's default
     exception handlers (currently: a translator that turns SQLAlchemy

@@ -233,7 +233,7 @@ These helpers build, update, delete, and save ORM objects from schemas. Use them
 
 | Symbol | Description |
 |---|---|
-| {func}`fr.objects.make_new_object(session, model_cls, schema_obj, schema_cls=None) <fastapi_restly.objects.make_new_object>` | Build a new `model_cls` instance from `schema_obj`, resolve any `IDRef[...]` / `IDSchema[...]` reference fields against the database, and add the object to `session`. **Does not flush.** Call `fr.objects.save_object(session, obj)` afterwards to persist. |
+| {func}`fr.objects.make_new_object(session, model_cls, schema_obj, schema_cls=None) <fastapi_restly.objects.make_new_object>` | Build a new `model_cls` instance from `schema_obj`, existence-check any `MustExist[...]` FK ids and resolve any `IDRef[...]` / `IDSchema[...]` reference fields against the database, and add the object to `session`. **Does not flush.** Call `fr.objects.save_object(session, obj)` afterwards to persist. |
 | {func}`fr.objects.update_object(session, obj, schema_obj, schema_cls=None) <fastapi_restly.objects.update_object>` | Apply the schema's writable fields onto an existing ORM `obj` and resolve FK fields. **Does not flush.** Call `fr.objects.save_object(session, obj)` afterwards to persist. |
 | {func}`fr.objects.save_object(session, obj) <fastapi_restly.objects.save_object>` | Flush the session and refresh `obj` so server-side defaults and generated columns (PKs, timestamps) are populated. Returns `obj`. This is where create/update writes hit the database. |
 | {func}`fr.objects.delete_object(session, obj) <fastapi_restly.objects.delete_object>` | Delete `obj` and flush the session. |

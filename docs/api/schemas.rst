@@ -10,5 +10,5 @@ Schemas API
 .. seealso::
 
    :doc:`/howto_custom_schema` — schema bases, field markers, and aliases in
-   prose; :doc:`/howto_relationship_idschema` — the IDRef / IDSchema wire
-   contract.
+   prose; :doc:`/howto_relationship_idschema` — MustExist checked FKs and the
+   IDRef / IDSchema relationship wire contract.

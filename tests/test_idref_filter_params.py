@@ -1,8 +1,10 @@
 """Regression for ticket oiul: an ``fr.IDRef[T]``-typed FK field on the response
 schema must derive list filter params.
 
-The tutorial's blessed FK pattern is ``post_id: fr.IDRef[Post]``. Because
-``IDRef`` is a ``BaseModel`` subclass, the list-params generator used to recurse
+A scalar ``post_id: fr.IDRef[Post]`` FK field -- now discouraged in favor of
+``fr.MustExist[int, Post]`` but still supported -- must still derive filter
+params. Because ``IDRef`` is a ``BaseModel`` subclass, the list-params generator
+used to recurse
 into it (yielding only the dead path ``post_id.id``), so the FK got NO filter
 param at all and ``GET /comments/?post_id=1`` returned 422 -- the single most
 common filter in any parent-child API. Even forced through, the apply path bound

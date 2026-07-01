@@ -61,6 +61,10 @@ def _is_string_field(field: FieldInfo) -> bool:
 def _is_idref_field(field: FieldInfo) -> bool:
     """True for a scalar ``IDRef[T]`` FK field (e.g. ``post_id: IDRef[Post]``).
 
+    That ``*_id``-named spelling is discouraged -- the misuse lint steers it to
+    ``fr.MustExist[int, Post]`` -- but the query layer still handles it here so
+    the field keeps its filter param.
+
     ``IDRef`` is a ``BaseModel`` subclass, so without this it would be recursed
     into as a nested schema and yield only ``post_id.id`` -- which never resolves
     (``post_id`` is a scalar column, not a relationship), leaving the FK with no
