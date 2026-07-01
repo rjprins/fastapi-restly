@@ -9,6 +9,7 @@ from typing import (
     Generic,
     Optional,
     Union,
+    final,
     get_args,
     get_origin,
 )
@@ -315,42 +316,64 @@ class IDRef(IDSchema[SQLAlchemyModel], Generic[SQLAlchemyModel]):
         return self.id if hasattr(self, "id") else self
 
 
+@final
+class _Infer:
+    """Static-only sentinel: the default ``MustExist`` model argument.
+
+    ``MustExist[int]`` supplies no target model, so the second type parameter
+    defaults to ``_Infer`` (a PEP 696 default that keeps Pyright happy about
+    "supply all params"). It carries no runtime meaning of its own: one type
+    argument is already unambiguous, and the runtime reads it as "resolve the
+    target model from the column's ``ForeignKey``".
+    """
+
+
 class RefExists:
     """Marker for an existence-checked scalar foreign key.
 
-    Used as ``Annotated[<pk type>, RefExists(Model)]`` (or via the ``MustExist``
-    sugar). On write, Restly batch-checks that each marked id exists in
-    ``Model``'s table and raises ``NotFound`` (404) on a miss. The field stays a
-    plain scalar -- this only adds the check; it does not wrap the value or do
-    any relationship routing. The check is UNSCOPED (a bare primary-key lookup,
-    no view ``build_query`` scoping), exactly like ``IDRef``/``IDSchema``
-    resolution.
+    Built by ``MustExist[pk]`` / ``MustExist[pk, Model]`` (or written directly as
+    ``Annotated[pk, RefExists(Model)]``). On write, Restly batch-checks that each
+    marked id exists in the target table and raises ``NotFound`` (404) on a miss.
+    The field stays a plain scalar -- this only adds the check; it does not wrap
+    the value or do any relationship routing. The check is UNSCOPED (a bare
+    primary-key lookup, no view ``build_query`` scoping), exactly like
+    ``IDRef``/``IDSchema`` resolution.
+
+    ``model`` is the target ORM model, or ``_Infer`` when it should be resolved
+    from the marked column's ``ForeignKey`` (the ``MustExist[pk]`` form).
     """
 
-    def __init__(self, model: type[DeclarativeBase]) -> None:
+    def __init__(self, model: type[DeclarativeBase] | type[_Infer]) -> None:
         self.model = model
 
     def __repr__(self) -> str:
-        return f"RefExists({getattr(self.model, '__name__', self.model)!r})"
+        name = (
+            "infer" if self.model is _Infer else getattr(self.model, "__name__", self.model)
+        )
+        return f"RefExists({name})"
 
 
 if TYPE_CHECKING:
-    _RefModel = TypeVar("_RefModel")
-    _RefPK = TypeVar("_RefPK", default=int)
+    _MustExistPK = TypeVar("_MustExistPK")
+    _MustExistModel = TypeVar("_MustExistModel", default=_Infer)
 
-    # Static view: ``MustExist[Model]`` is the pk scalar -- ``int`` by default,
-    # ``MustExist[Model, PK]`` for another -- so a field reads and writes as that
-    # scalar (``data.post_id`` is an ``int``, not a wrapper). The bound model is
-    # runtime-only metadata; the runtime ``MustExist`` is defined below.
-    MustExist = TypeAliasType("MustExist", _RefPK, type_params=(_RefModel, _RefPK))
+    # Static view: ``MustExist[pk]`` and ``MustExist[pk, Model]`` both read as the
+    # pk scalar (the alias value is the first param), so a field stays a plain
+    # scalar -- ``data.post_id`` is an ``int``, not a wrapper. The target model is
+    # a runtime-only concern (second param, defaulting to ``_Infer``); the runtime
+    # ``MustExist`` is defined below.
+    MustExist = TypeAliasType(
+        "MustExist", _MustExistPK, type_params=(_MustExistPK, _MustExistModel)
+    )
 else:
 
     class MustExist:
         """Existence-checked scalar foreign key.
 
-        ``MustExist[Post]`` desugars to ``Annotated[int, RefExists(Post)]``; for a
-        non-int primary key, pass it as the second argument --
-        ``MustExist[Account, UUID]`` -> ``Annotated[UUID, RefExists(Account)]``.
+        ``MustExist[int]`` is a checked ``int`` foreign key; the target model is
+        inferred from the column's ``ForeignKey``. Spell the model out with a
+        second argument when you want it explicit (``MustExist[int, Post]``), and
+        use the first for a non-int primary key (``MustExist[UUID, Account]``).
 
         Unlike ``IDRef``/``IDSchema`` this is **not** a wrapper: the field stays
         the pk scalar everywhere (wire, column, ``data.<field>``), plus a batched
@@ -359,8 +382,8 @@ else:
         """
 
         def __class_getitem__(cls, params: Any) -> Any:
-            model, pk_type = (
-                params if isinstance(params, tuple) else (params, int)
+            pk_type, model = (
+                params if isinstance(params, tuple) else (params, _Infer)
             )
             return Annotated[pk_type, RefExists(model)]
 
@@ -543,15 +566,44 @@ def _ref_exists_marker(field_info: FieldInfo) -> RefExists | None:
     return None
 
 
+def _infer_ref_model(
+    model_cls: type[DeclarativeBase], field_name: str
+) -> type[DeclarativeBase]:
+    """Resolve the target model for a ``MustExist[pk]`` field from its FK column.
+
+    ``MustExist[pk]`` (one argument) leaves the model to be inferred: the column
+    named by the field must carry exactly one ``ForeignKey``, whose table maps to
+    the target model. Raises ``RestlyConfigurationError`` when the field does not
+    map to a single-FK column -- name the model explicitly (``MustExist[pk,
+    Model]``) there.
+    """
+    column = model_cls.__mapper__.columns.get(field_name)
+    foreign_keys = list(column.foreign_keys) if column is not None else []
+    if len(foreign_keys) == 1:
+        target_table = foreign_keys[0].column.table
+        for mapper in model_cls.registry.mappers:
+            if mapper.local_table is target_table:
+                return mapper.class_
+    raise RestlyConfigurationError(
+        f"{model_cls.__name__}.{field_name}: MustExist[...] with one argument "
+        f"infers the target model from the column's ForeignKey, but "
+        f"'{field_name}' does not map to a column with exactly one foreign key. "
+        f"Name it explicitly: MustExist[<pk>, <Model>]."
+    )
+
+
 def _ref_exists_fields(
+    model_cls: type[DeclarativeBase],
     schema_obj: pydantic.BaseModel,
 ) -> dict[type[DeclarativeBase], list[tuple[str, Any]]]:
-    """Group provided, non-``None`` ``RefExists``-marked scalar fields by model.
+    """Group provided, non-``None`` ``RefExists``-marked scalar fields by target model.
 
     Returns ``{model: [(field_name, id), ...]}`` for fields whose annotation
-    carries a ``RefExists`` marker (``MustExist[M]`` or an explicit
-    ``Annotated[pk, RefExists(M)]``). Only fields actually supplied
-    (``model_fields_set``) with a non-``None`` value are included.
+    carries a ``RefExists`` marker (``MustExist[pk]`` / ``MustExist[pk, Model]``,
+    or an explicit ``Annotated[pk, RefExists(Model)]``). A marker left to infer
+    (``MustExist[pk]``) is resolved to the model behind the column's ``ForeignKey``
+    on ``model_cls``. Only fields actually supplied (``model_fields_set``) with a
+    non-``None`` value are included.
     """
     by_model: dict[type[DeclarativeBase], list[tuple[str, Any]]] = {}
     model_fields = type(schema_obj).model_fields
@@ -565,7 +617,10 @@ def _ref_exists_fields(
         value = getattr(schema_obj, field_name, None)
         if value is None:
             continue
-        by_model.setdefault(marker.model, []).append((field_name, value))
+        model = marker.model
+        if model is _Infer:
+            model = _infer_ref_model(model_cls, field_name)
+        by_model.setdefault(model, []).append((field_name, value))
     return by_model
 
 
@@ -575,14 +630,19 @@ def _raise_for_missing_refs(items: list[tuple[str, Any]], found: set[Any]) -> No
             raise NotFound(f"Id not found for {field_name}: {value}")
 
 
-def _check_ref_exists(session: SA_Session, schema_obj: pydantic.BaseModel) -> None:
+def _check_ref_exists(
+    session: SA_Session,
+    model_cls: type[DeclarativeBase],
+    schema_obj: pydantic.BaseModel,
+) -> None:
     """Batch-validate that every ``RefExists``-marked id exists (sync).
 
     One ``SELECT pk WHERE pk IN (...)`` per referenced model (no N+1); raises
     ``NotFound`` (404) naming the field and id on a miss. UNSCOPED -- a bare
-    primary-key lookup, like ``IDRef``/``IDSchema`` resolution.
+    primary-key lookup, like ``IDRef``/``IDSchema`` resolution. ``model_cls`` is
+    the model being written, used to infer the target of a ``MustExist[pk]`` field.
     """
-    for model, items in _ref_exists_fields(schema_obj).items():
+    for model, items in _ref_exists_fields(model_cls, schema_obj).items():
         unique = list(dict.fromkeys(value for _, value in items))
         pk_col = model.__mapper__.primary_key[0]
         found = set(session.scalars(select(pk_col).where(pk_col.in_(unique))))
@@ -590,10 +650,12 @@ def _check_ref_exists(session: SA_Session, schema_obj: pydantic.BaseModel) -> No
 
 
 async def _async_check_ref_exists(
-    session: SA_AsyncSession, schema_obj: pydantic.BaseModel
+    session: SA_AsyncSession,
+    model_cls: type[DeclarativeBase],
+    schema_obj: pydantic.BaseModel,
 ) -> None:
     """Async twin of :func:`_check_ref_exists`."""
-    for model, items in _ref_exists_fields(schema_obj).items():
+    for model, items in _ref_exists_fields(model_cls, schema_obj).items():
         unique = list(dict.fromkeys(value for _, value in items))
         pk_col = model.__mapper__.primary_key[0]
         found = set(await session.scalars(select(pk_col).where(pk_col.in_(unique))))
