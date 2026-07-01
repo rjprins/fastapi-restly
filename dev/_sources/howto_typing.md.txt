@@ -59,9 +59,11 @@ class UserRead(fr.IDSchema[User]):
 For most top-level response schemas, either form is fine. The bare form is the
 recommended starting point.
 
-For foreign-key fields, use {class}`IDRef[RelatedModel] <fastapi_restly.schemas.IDRef>` — it tells Restly (and the
-type checker) which model resolves from the scalar id payload. Runtime
-semantics: [Work with Foreign Keys Using IDRef](howto_relationship_idschema.md).
+For a `*_id` foreign-key column, use {class}`fr.MustExist[int, Model] <fastapi_restly.schemas.MustExist>` — primary-key type first,
+then the model — which keeps the plain scalar id and adds an existence check.
+For a field named after a relationship, use {class}`IDRef[RelatedModel] <fastapi_restly.schemas.IDRef>` — it tells Restly
+(and the type checker) which model resolves from the scalar id payload. Runtime
+semantics: [Work with Foreign Keys and Relationships](howto_relationship_idschema.md).
 
 ---
 
@@ -150,7 +152,8 @@ directly from `pydantic.BaseModel` when you do not need Restly's schema helpers.
 Use the simplest form that gives you the typing help you want:
 
 - **No generics at all** for normal CRUD views
-- **{class}`IDRef[RelatedModel] <fastapi_restly.schemas.IDRef>`** for foreign-key fields
+- **{class}`fr.MustExist[int, Model] <fastapi_restly.schemas.MustExist>`** for `*_id` foreign-key columns
+- **{class}`IDRef[RelatedModel] <fastapi_restly.schemas.IDRef>`** for relationship-named reference fields
 - **{class}`IDSchema[RelatedModel] <fastapi_restly.schemas.IDSchema>` as a field annotation** only when you intentionally want a nested relationship-object field (parameterizing your top-level schema's *base class*, as in `class UserRead(IDSchema[User])`, is a separate, optional choice — either form is fine there)
 - **View generics** only when you want precise typing on the methods you override
 
@@ -215,7 +218,7 @@ with Pyright. The repository keeps a dedicated set of consumer typing fixtures u
 ## Summary
 
 - Bare {class}`IDSchema <fastapi_restly.schemas.IDSchema>` is supported.
-- {class}`IDRef[Model] <fastapi_restly.schemas.IDRef>` is preferred for foreign-key fields.
+- {class}`fr.MustExist[int, Model] <fastapi_restly.schemas.MustExist>` is the type for `*_id` foreign-key columns; {class}`IDRef[Model] <fastapi_restly.schemas.IDRef>` is for relationship-named reference fields.
 - `IDSchema[Model]` as a field annotation declares a nested relationship-object
   field; as a top-level base it optionally carries the model type.
 - Bare {class}`RestView <fastapi_restly.views.RestView>` / {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` are the default.
@@ -229,5 +232,5 @@ with Pyright. The repository keeps a dedicated set of consumer typing fixtures u
   methods this page parameterizes, with tier classification.
 - [Override CRUD Behavior](howto_override_endpoints.md) — the override
   recipes these signatures apply to.
-- [Work with Foreign Keys Using IDRef](howto_relationship_idschema.md) —
-  runtime semantics of {class}`IDRef <fastapi_restly.schemas.IDRef>` / {class}`IDSchema[Model] <fastapi_restly.schemas.IDSchema>` fields.
+- [Work with Foreign Keys and Relationships](howto_relationship_idschema.md) —
+  runtime semantics of {class}`fr.MustExist[int, Model] <fastapi_restly.schemas.MustExist>`, {class}`IDRef <fastapi_restly.schemas.IDRef>` / {class}`IDSchema[Model] <fastapi_restly.schemas.IDSchema>` fields.

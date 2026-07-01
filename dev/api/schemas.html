@@ -601,9 +601,10 @@ Can be used as IDSchema[MyModel].</p>
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.schemas.</span></span><span class="sig-name descname"><span class="pre">MustExist</span></span><a class="headerlink" href="#fastapi_restly.schemas.MustExist" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>Existence-checked scalar foreign key.</p>
-<p><code class="docutils literal notranslate"><span class="pre">MustExist[Post]</span></code> desugars to <code class="docutils literal notranslate"><span class="pre">Annotated[int,</span> <span class="pre">RefExists(Post)]</span></code>; for a
-non-int primary key, pass it as the second argument –
-<code class="docutils literal notranslate"><span class="pre">MustExist[Account,</span> <span class="pre">UUID]</span></code> -&gt; <code class="docutils literal notranslate"><span class="pre">Annotated[UUID,</span> <span class="pre">RefExists(Account)]</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">MustExist[int]</span></code> is a checked <code class="docutils literal notranslate"><span class="pre">int</span></code> foreign key; the target model is
+inferred from the column’s <code class="docutils literal notranslate"><span class="pre">ForeignKey</span></code>. Spell the model out with a
+second argument when you want it explicit (<code class="docutils literal notranslate"><span class="pre">MustExist[int,</span> <span class="pre">Post]</span></code>), and
+use the first for a non-int primary key (<code class="docutils literal notranslate"><span class="pre">MustExist[UUID,</span> <span class="pre">Account]</span></code>).</p>
 <p>Unlike <code class="docutils literal notranslate"><span class="pre">IDRef</span></code>/<code class="docutils literal notranslate"><span class="pre">IDSchema</span></code> this is <strong>not</strong> a wrapper: the field stays
 the pk scalar everywhere (wire, column, <code class="docutils literal notranslate"><span class="pre">data.&lt;field&gt;</span></code>), plus a batched
 existence check on write (404 on a miss). It is exactly the marker form
@@ -650,7 +651,7 @@ include_readonly_fields: Whether to include read-only fields like id, created_at
 <div class="admonition seealso">
 <p class="admonition-title">See also</p>
 <p><a class="reference internal" href="../howto_custom_schema.html"><span class="doc">Custom Schemas and Field Types</span></a> — schema bases, field markers, and aliases in
-prose; <a class="reference internal" href="../howto_relationship_idschema.html"><span class="doc">Work with Foreign Keys Using IDRef</span></a> — the IDRef / IDSchema wire
+prose; <a class="reference internal" href="../howto_relationship_idschema.html"><span class="doc">Work with Foreign Keys and Relationships</span></a> — the IDRef / IDSchema wire
 contract.</p>
 </div>
 </section>

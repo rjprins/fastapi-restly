@@ -409,7 +409,7 @@ class PostRead(fr.IDSchema):
 
 class CommentRead(fr.IDSchema):
     content: str
-    post_id: fr.IDRef[Post]
+    post_id: fr.MustExist[int, Post]
 
 
 # --- Shared base ---

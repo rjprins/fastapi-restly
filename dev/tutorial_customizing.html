@@ -864,7 +864,7 @@ responses by default; custom envelopes and the opt-out are covered in
 
 <span class="k">class</span><span class="w"> </span><span class="nc">CommentRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
     <span class="n">content</span><span class="p">:</span> <span class="nb">str</span>
-    <span class="n">post_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">IDRef</span><span class="p">[</span><span class="n">Post</span><span class="p">]</span>
+    <span class="n">post_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">MustExist</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Post</span><span class="p">]</span>
 
 
 <span class="c1"># --- Shared base ---</span>

@@ -62,7 +62,7 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Override CRUD Behavior and Add Custom Endpoints" href="howto_override_endpoints.html" />
-    <link rel="prev" title="Work with Foreign Keys Using IDRef" href="howto_relationship_idschema.html" />
+    <link rel="prev" title="Work with Foreign Keys and Relationships" href="howto_relationship_idschema.html" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
@@ -441,7 +441,7 @@
 <li class="toctree-l1"><a class="reference internal" href="howto_existing_project.html">Use Restly in an Existing Project</a></li>
 <li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_custom_schema.html">Custom Schemas and Field Types</a></li>
-<li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys Using IDRef</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys and Relationships</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Filter, Sort, and Paginate Lists</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_override_endpoints.html">Override CRUD Behavior and Add Custom Endpoints</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_error_responses.html">Shape Error Responses</a></li>
@@ -761,7 +761,7 @@ GET /articles/?author.name=Alice          # rejected; use public aliases
 <hr class="docutils" />
 <section id="foreign-key-filtering">
 <h2>Foreign-key filtering<a class="headerlink" href="#foreign-key-filtering" title="Link to this heading">#</a></h2>
-<p>A scalar foreign key declared with <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDRef[T]</span></code></a> is filterable by its own
+<p>A scalar foreign key declared with <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.MustExist[int,</span> <span class="pre">Post]</span></code></a> is filterable by its own
 public name — the same name the wire format uses:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /comments/?post_id=1
 GET /comments/?post_id=1,2          # OR (SQL IN)
@@ -770,7 +770,7 @@ GET /comments/?post_id__ne=1
 GET /comments/?post_id__isnull=true
 </pre></div>
 </div>
-<p>An <code class="docutils literal notranslate"><span class="pre">IDRef</span></code> id is treated as opaque, so it gets equality, <code class="docutils literal notranslate"><span class="pre">__in</span></code>, <code class="docutils literal notranslate"><span class="pre">__ne</span></code>, and
+<p>A <code class="docutils literal notranslate"><span class="pre">MustExist</span></code> id is treated as opaque, so it gets equality, <code class="docutils literal notranslate"><span class="pre">__in</span></code>, <code class="docutils literal notranslate"><span class="pre">__ne</span></code>, and
 <code class="docutils literal notranslate"><span class="pre">__isnull</span></code> — but <strong>not</strong> the range (<code class="docutils literal notranslate"><span class="pre">__gte</span></code>/<code class="docutils literal notranslate"><span class="pre">__lt</span></code>/…) or substring
 (<code class="docutils literal notranslate"><span class="pre">__contains</span></code>) families. Ordering or substring-matching an identifier is rarely
 meaningful, and this stays uniform across primary-key types (int, UUID, string).
@@ -848,7 +848,7 @@ inside the method.</p>
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Work with Foreign Keys Using IDRef</p>
+        <p class="prev-next-title">Work with Foreign Keys and Relationships</p>
       </div>
     </a>
     <a class="right-next"

@@ -61,7 +61,7 @@
     <link rel="author" title="About these documents" href="about.html" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Work with Foreign Keys Using IDRef" href="howto_relationship_idschema.html" />
+    <link rel="next" title="Work with Foreign Keys and Relationships" href="howto_relationship_idschema.html" />
     <link rel="prev" title="Patterns" href="patterns.html" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -441,7 +441,7 @@
 <li class="toctree-l1"><a class="reference internal" href="howto_existing_project.html">Use Restly in an Existing Project</a></li>
 <li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Custom Schemas and Field Types</a></li>
-<li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys Using IDRef</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys and Relationships</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_query_modifiers.html">Filter, Sort, and Paginate Lists</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_override_endpoints.html">Override CRUD Behavior and Add Custom Endpoints</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_error_responses.html">Shape Error Responses</a></li>
@@ -613,12 +613,12 @@ database attribute:</p>
 <p>Incoming payloads can use <code class="docutils literal notranslate"><span class="pre">firstName</span></code>, and Restly responses use the alias on
 Restly routes.</p>
 </section>
-<section id="idref">
-<h2>IDRef<a class="headerlink" href="#idref" title="Link to this heading">#</a></h2>
-<p>Use <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDRef[Model]</span></code></a> for foreign-key and identifier-reference fields:</p>
+<section id="mustexist">
+<h2>MustExist<a class="headerlink" href="#mustexist" title="Link to this heading">#</a></h2>
+<p>Use <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.MustExist[int,</span> <span class="pre">Model]</span></code></a> for foreign-key columns (primary-key type first, then the target model):</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ArticleRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
     <span class="n">title</span><span class="p">:</span> <span class="nb">str</span>
-    <span class="n">author_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">IDRef</span><span class="p">[</span><span class="n">Author</span><span class="p">]</span>
+    <span class="n">author_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">MustExist</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Author</span><span class="p">]</span>
 </pre></div>
 </div>
 <p>The wire format is a scalar id:</p>
@@ -628,9 +628,9 @@ Restly routes.</p>
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>Restly validates that the referenced <code class="docutils literal notranslate"><span class="pre">Author</span></code> exists and resolves the id before
-creating or updating the ORM object. See <a class="reference internal" href="howto_relationship_idschema.html"><span class="std std-doc">Foreign Keys with IDRef</span></a>
-for the full model and view setup.</p>
+<p>Restly validates that the referenced <code class="docutils literal notranslate"><span class="pre">Author</span></code> exists and keeps the plain id — in
+hooks, <code class="docutils literal notranslate"><span class="pre">data.author_id</span></code> is the plain integer. See <a class="reference internal" href="howto_relationship_idschema.html"><span class="std std-doc">Work with Foreign Keys and
+Relationships</span></a> for the full model and view setup.</p>
 </section>
 <section id="nested-relationship-objects">
 <h2>Nested relationship objects<a class="headerlink" href="#nested-relationship-objects" title="Link to this heading">#</a></h2>
@@ -649,7 +649,8 @@ field type:</p>
 </pre></div>
 </div>
 <p>This is useful for clients or integrations that model relationships as objects.
-For ordinary foreign-key fields, use <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDRef</span></code></a>.</p>
+For the same relationship as a flat id, use <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDRef[Model]</span></code></a>;
+for a plain foreign-key column, use <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.MustExist[int,</span> <span class="pre">Model]</span></code></a>.</p>
 </section>
 <section id="auto-generated-vs-explicit-schemas">
 <h2>Auto-Generated vs Explicit Schemas<a class="headerlink" href="#auto-generated-vs-explicit-schemas" title="Link to this heading">#</a></h2>
@@ -708,7 +709,7 @@ list and detail routes need different shapes.</p></li>
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Work with Foreign Keys Using IDRef</p>
+        <p class="prev-next-title">Work with Foreign Keys and Relationships</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -736,7 +737,7 @@ list and detail routes need different shapes.</p></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#timestamps">Timestamps</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#readonly-and-writeonly">ReadOnly and WriteOnly</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#aliases">Aliases</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#idref">IDRef</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mustexist">MustExist</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#nested-relationship-objects">Nested relationship objects</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#auto-generated-vs-explicit-schemas">Auto-Generated vs Explicit Schemas</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#see-also">See also</a></li>

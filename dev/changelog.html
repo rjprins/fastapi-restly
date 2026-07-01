@@ -528,14 +528,15 @@ and this project adheres to <a class="reference external" href="https://semver.o
 <section id="added">
 <h3>Added<a class="headerlink" href="#added" title="Link to this heading">#</a></h3>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">fr.MustExist[Model]</span></code> — an existence-checked scalar foreign key.
-<code class="docutils literal notranslate"><span class="pre">post_id:</span> <span class="pre">fr.MustExist[Post]</span></code> validates that the referenced row exists (a clean
-404 on a miss, batched — no N+1) while the field stays a plain scalar
+<li><p><code class="docutils literal notranslate"><span class="pre">fr.MustExist[int,</span> <span class="pre">Post]</span></code> — an existence-checked scalar foreign key.
+<code class="docutils literal notranslate"><span class="pre">post_id:</span> <span class="pre">fr.MustExist[int,</span> <span class="pre">Post]</span></code> validates that the referenced row exists (a
+clean 404 on a miss, batched — no N+1) while the field stays a plain scalar
 everywhere: on the wire, in the column, in hooks (<code class="docutils literal notranslate"><span class="pre">data.post_id</span></code> is the id
 itself, not an <code class="docutils literal notranslate"><span class="pre">IDRef</span></code>/<code class="docutils literal notranslate"><span class="pre">IDSchema</span></code> wrapper), and to a type checker
-(<code class="docutils literal notranslate"><span class="pre">data.post_id</span></code> is <code class="docutils literal notranslate"><span class="pre">int</span></code>). The primary-key type is <code class="docutils literal notranslate"><span class="pre">int</span></code> by default; for another
-pk type pass it as the second argument — <code class="docutils literal notranslate"><span class="pre">fr.MustExist[Account,</span> <span class="pre">UUID]</span></code>. Reserve
-<code class="docutils literal notranslate"><span class="pre">IDRef</span></code> / <code class="docutils literal notranslate"><span class="pre">IDSchema</span></code> for relationship-named fields.</p></li>
+(<code class="docutils literal notranslate"><span class="pre">data.post_id</span></code> is <code class="docutils literal notranslate"><span class="pre">int</span></code>). The primary-key type comes first
+(<code class="docutils literal notranslate"><span class="pre">fr.MustExist[UUID,</span> <span class="pre">Account]</span></code> for a UUID key); when the column has a single
+<code class="docutils literal notranslate"><span class="pre">ForeignKey</span></code>, you can drop the model and let Restly infer it — <code class="docutils literal notranslate"><span class="pre">fr.MustExist[int]</span></code>.
+Reserve <code class="docutils literal notranslate"><span class="pre">IDRef</span></code> / <code class="docutils literal notranslate"><span class="pre">IDSchema</span></code> for relationship-named fields.</p></li>
 </ul>
 </section>
 <section id="changed">

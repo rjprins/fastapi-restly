@@ -558,7 +558,7 @@ This is why <code class="docutils literal notranslate"><span class="pre">Foreign
 
 <span class="k">class</span><span class="w"> </span><span class="nc">CommentRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
     <span class="n">content</span><span class="p">:</span> <span class="nb">str</span>
-    <span class="n">post_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">IDRef</span><span class="p">[</span><span class="n">Post</span><span class="p">]</span>
+    <span class="n">post_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">MustExist</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Post</span><span class="p">]</span>
 </pre></div>
 </div>
 <section id="what-idschema-provides">
@@ -567,10 +567,10 @@ This is why <code class="docutils literal notranslate"><span class="pre">Foreign
 Because <code class="docutils literal notranslate"><span class="pre">id</span></code> is <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>, it appears in responses but is ignored when creating or updating
 records. You do not need to declare <code class="docutils literal notranslate"><span class="pre">id</span></code> yourself.</p>
 </section>
-<section id="foreign-keys-with-idref">
-<h3>Foreign keys with IDRef<a class="headerlink" href="#foreign-keys-with-idref" title="Link to this heading">#</a></h3>
-<p><code class="docutils literal notranslate"><span class="pre">post_id:</span> <span class="pre">fr.IDRef[Post]</span></code> declares a foreign-key reference. The wire format is
-the raw id:</p>
+<section id="foreign-keys-with-mustexist">
+<h3>Foreign keys with MustExist<a class="headerlink" href="#foreign-keys-with-mustexist" title="Link to this heading">#</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">post_id:</span> <span class="pre">fr.MustExist[int,</span> <span class="pre">Post]</span></code> declares a checked foreign-key column. The
+wire format is the raw id:</p>
 <div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="mi">1</span>
 </pre></div>
 </div>
@@ -589,14 +589,14 @@ the raw id:</p>
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>Declaring the field as <code class="docutils literal notranslate"><span class="pre">fr.IDRef[Post]</span></code> is what triggers this behaviour: the view
-machinery stores the id in the matching <code class="docutils literal notranslate"><span class="pre">post_id</span></code> column, and it also validates
-that a <code class="docutils literal notranslate"><span class="pre">Post</span></code> with that <code class="docutils literal notranslate"><span class="pre">id</span></code> exists (returning 404 if not). Restly matches the
-field name to a mapped column or relationship via the model’s mapper, not to an
-<code class="docutils literal notranslate"><span class="pre">_id</span></code> suffix, so the FK column can be named anything.</p>
+<p>Declaring the field as <code class="docutils literal notranslate"><span class="pre">fr.MustExist[int,</span> <span class="pre">Post]</span></code> is what triggers this
+behaviour: the view machinery keeps the plain id in the <code class="docutils literal notranslate"><span class="pre">post_id</span></code> column and
+validates that a <code class="docutils literal notranslate"><span class="pre">Post</span></code> with that <code class="docutils literal notranslate"><span class="pre">id</span></code> exists (returning 404 if not). Restly
+matches the field name to a mapped column or relationship via the model’s
+mapper, not to an <code class="docutils literal notranslate"><span class="pre">_id</span></code> suffix, so the FK column can be named anything.</p>
 <p>If you prefer a plain <code class="docutils literal notranslate"><span class="pre">int</span></code> field and want to skip the existence check,
 declare <code class="docutils literal notranslate"><span class="pre">post_id:</span> <span class="pre">int</span></code> in your schema instead.</p>
-<p>See <a class="reference internal" href="howto_relationship_idschema.html"><span class="std std-doc">Work with Foreign Keys Using IDRef</span></a>
+<p>See <a class="reference internal" href="howto_relationship_idschema.html"><span class="std std-doc">Work with Foreign Keys and Relationships</span></a>
 for more detail, including list relations and nested relationship objects.</p>
 </section>
 </section>
@@ -763,8 +763,8 @@ each test in a database savepoint, so changes never persist between tests:</p>
 <h2>Nested Schemas<a class="headerlink" href="#nested-schemas" title="Link to this heading">#</a></h2>
 <p>Response schemas may nest related objects (Restly eager-loads and serializes
 them); create/update payloads may not — inputs map to model attributes or use
-<code class="docutils literal notranslate"><span class="pre">*_id:</span> <span class="pre">IDRef[Model]</span></code>. Details:
-<a class="reference internal" href="howto_relationship_idschema.html"><span class="std std-doc">Work with Foreign Keys Using IDRef</span></a>.</p>
+<code class="docutils literal notranslate"><span class="pre">*_id:</span> <span class="pre">MustExist[int,</span> <span class="pre">Model]</span></code>. Details:
+<a class="reference internal" href="howto_relationship_idschema.html"><span class="std std-doc">Work with Foreign Keys and Relationships</span></a>.</p>
 </section>
 <hr class="docutils" />
 <section id="the-complete-file">
@@ -804,7 +804,7 @@ read-only/write-only columns added along the way):</p>
 
 <span class="k">class</span><span class="w"> </span><span class="nc">CommentRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
     <span class="n">content</span><span class="p">:</span> <span class="nb">str</span>
-    <span class="n">post_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">IDRef</span><span class="p">[</span><span class="n">Post</span><span class="p">]</span>
+    <span class="n">post_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">MustExist</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Post</span><span class="p">]</span>
 
 
 <span class="nd">@asynccontextmanager</span>
@@ -838,7 +838,7 @@ read-only/write-only columns added along the way):</p>
 <li><p><strong><a class="reference internal" href="tutorial_customizing.html"><span class="std std-doc">Part 2: Customizing Views</span></a></strong> — override handlers, add custom routes, and share behaviour with base classes</p></li>
 <li><p><a class="reference internal" href="technical_details.html#id1"><span class="std std-ref">Auto-Generated Schemas</span></a> — skip writing schemas for simple models</p></li>
 <li><p><a class="reference internal" href="howto_query_modifiers.html"><span class="std std-doc">Filter, Sort, and Paginate Lists</span></a> — full filter and sort reference</p></li>
-<li><p><a class="reference internal" href="howto_relationship_idschema.html"><span class="std std-doc">Work with Foreign Keys Using IDRef</span></a> — reference related rows by id</p></li>
+<li><p><a class="reference internal" href="howto_relationship_idschema.html"><span class="std std-doc">Work with Foreign Keys and Relationships</span></a> — reference related rows by id</p></li>
 <li><p><a class="reference internal" href="howto_testing.html"><span class="std std-doc">Testing</span></a> — savepoint isolation and test fixtures</p></li>
 <li><p><a class="reference internal" href="examples.html"><span class="std std-doc">Examples</span></a> — complete sample apps that extend these patterns</p></li>
 <li><p><a class="reference internal" href="api_reference.html"><span class="std std-doc">API Reference</span></a></p></li>
@@ -900,7 +900,7 @@ read-only/write-only columns added along the way):</p>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#schemas">Schemas</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#what-idschema-provides">What IDSchema provides</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#foreign-keys-with-idref">Foreign keys with IDRef</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#foreign-keys-with-mustexist">Foreign keys with MustExist</a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#app-setup">App setup</a></li>

@@ -754,8 +754,8 @@ filtering, relationship-id normalization).</p>
 schema, so related objects can be serialized efficiently and with aliases.</p></li>
 <li><p><strong>Create/update payloads</strong>: not supported in the general case. The default
 <code class="docutils literal notranslate"><span class="pre">make_new_object()</span></code> / <code class="docutils literal notranslate"><span class="pre">update_object()</span></code> flow expects payload keys to map
-directly to model attributes, with <code class="docutils literal notranslate"><span class="pre">*_id:</span> <span class="pre">IDRef[Model]</span></code> as the FK case. After
-resolving an <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDRef</span></code></a> / <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDSchema</span></code></a> to an ORM object, Restly chooses the FK
+directly to model attributes, with <code class="docutils literal notranslate"><span class="pre">*_id:</span> <span class="pre">fr.MustExist[int,</span> <span class="pre">Model]</span></code> as the FK
+case. For a relationship-named field, after resolving an <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDRef</span></code></a> / <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDSchema</span></code></a> to an ORM object, Restly chooses the FK
 scalar, relationship object, or both based on the model constructor. If the
 client supplies both fields, Restly checks they refer to the same row.</p></li>
 </ul>

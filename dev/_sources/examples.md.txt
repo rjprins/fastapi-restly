@@ -20,7 +20,7 @@ shows relationships, multiple primary-key styles, async sessions, and
 React-Admin-compatible endpoints through {class}`AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>`. It also includes
 a small React Admin frontend wired against the API. Covered in:
 [React Admin Integration](howto_react_admin.md),
-[Work with Foreign Keys Using IDRef](howto_relationship_idschema.md).
+[Work with Foreign Keys and Relationships](howto_relationship_idschema.md).
 
 ## SaaS
 

@@ -441,7 +441,7 @@
 <li class="toctree-l1"><a class="reference internal" href="howto_existing_project.html">Use Restly in an Existing Project</a></li>
 <li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_custom_schema.html">Custom Schemas and Field Types</a></li>
-<li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys Using IDRef</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys and Relationships</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_query_modifiers.html">Filter, Sort, and Paginate Lists</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_override_endpoints.html">Override CRUD Behavior and Add Custom Endpoints</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_error_responses.html">Shape Error Responses</a></li>
@@ -557,9 +557,12 @@ and <a class="reference internal" href="howto_override_endpoints.html"><span cla
 </section>
 <section id="resource-references-x-resource-ref">
 <h2>Resource references (<code class="docutils literal notranslate"><span class="pre">x-resource-ref</span></code>)<a class="headerlink" href="#resource-references-x-resource-ref" title="Link to this heading">#</a></h2>
-<p>Schema fields declared with <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDRef[Model]</span></code></a> are annotated in the generated
-spec with a vendor extension, <code class="docutils literal notranslate"><span class="pre">x-resource-ref:</span> <span class="pre">&quot;&lt;resource-name&gt;&quot;</span></code>, so clients
-and generators can see which resource a scalar id points at. (Known limit:
+<p>Schema fields declared with <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.MustExist[int,</span> <span class="pre">Model]</span></code></a>
+(a foreign-key column) or <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDRef[Model]</span></code></a> /
+<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDSchema[Model]</span></code></a> (a relationship) are
+annotated in the generated spec with a vendor extension,
+<code class="docutils literal notranslate"><span class="pre">x-resource-ref:</span> <span class="pre">&quot;&lt;resource-name&gt;&quot;</span></code>, so clients and generators can see which
+resource a scalar id points at. (Known limit:
 views included on an <code class="docutils literal notranslate"><span class="pre">APIRouter</span></code> rather than the app currently lose these
 annotations.)</p>
 </section>
