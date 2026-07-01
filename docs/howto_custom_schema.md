@@ -117,14 +117,14 @@ class UserRead(fr.IDSchema):
 Incoming payloads can use `firstName`, and Restly responses use the alias on
 Restly routes.
 
-## IDRef
+## MustExist
 
-Use {class}`fr.IDRef[Model] <fastapi_restly.schemas.IDRef>` for foreign-key and identifier-reference fields:
+Use {class}`fr.MustExist[int, Model] <fastapi_restly.schemas.MustExist>` for foreign-key columns (primary-key type first, then the target model):
 
 ```python
 class ArticleRead(fr.IDSchema):
     title: str
-    author_id: fr.IDRef[Author]
+    author_id: fr.MustExist[int, Author]
 ```
 
 The wire format is a scalar id:
@@ -136,9 +136,9 @@ The wire format is a scalar id:
 }
 ```
 
-Restly validates that the referenced `Author` exists and resolves the id before
-creating or updating the ORM object. See [Foreign Keys with IDRef](howto_relationship_idschema.md)
-for the full model and view setup.
+Restly validates that the referenced `Author` exists and keeps the plain id — in
+hooks, `data.author_id` is the plain integer. See [Work with Foreign Keys and
+Relationships](howto_relationship_idschema.md) for the full model and view setup.
 
 ## Nested relationship objects
 
@@ -161,7 +161,8 @@ The wire format is:
 ```
 
 This is useful for clients or integrations that model relationships as objects.
-For ordinary foreign-key fields, use {class}`IDRef <fastapi_restly.schemas.IDRef>`.
+For the same relationship as a flat id, use {class}`fr.IDRef[Model] <fastapi_restly.schemas.IDRef>`;
+for a plain foreign-key column, use {class}`fr.MustExist[int, Model] <fastapi_restly.schemas.MustExist>`.
 
 ## Auto-Generated vs Explicit Schemas
 

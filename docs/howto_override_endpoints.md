@@ -467,7 +467,7 @@ bracket instead, deposit the new object on the yielded handle:
 
 When a custom route constructs schemas itself (`model_construct()` skips
 validation), {class}`IDRef <fastapi_restly.schemas.IDRef>` fields need explicit wrapping — the recipe lives in
-[Work with Foreign Keys Using IDRef](#idref-custom-routes).
+[Work with Foreign Keys and Relationships](#idref-custom-routes).
 
 ---
 

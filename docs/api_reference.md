@@ -21,7 +21,7 @@ Notes:
 - Updates use `PATCH`, not `PUT`. React Admin views also expose `PUT /{id}` for `ra-data-simple-rest`; see [React Admin Integration](howto_react_admin.md).
 - `GET /{id}` and `DELETE /{id}` return `404` when the object is not found.
 - Read-only schema fields are ignored on create/update.
-- `*_id: IDRef[Model]` inputs are resolved to SQLAlchemy objects and validated. The scalar id is the related primary-key type, such as `int` or `UUID`.
+- `*_id: fr.MustExist[int, Model]` inputs are validated against the database: the referenced row must exist. The scalar id is the related primary-key type, such as `int` or `UUID`.
 
 ## Query Parameters (List Endpoint)
 
@@ -126,8 +126,9 @@ FastAPI-Restly also works with ordinary SQLAlchemy models that inherit from your
 |---|---|
 | {class}`fr.BaseSchema <fastapi_restly.schemas.BaseSchema>` | Thin Pydantic base equivalent to `class BaseSchema(pydantic.BaseModel): model_config = pydantic.ConfigDict(from_attributes=True)`. Plain Pydantic models are also accepted for explicit create/update schemas. |
 | {class}`fr.IDSchema <fastapi_restly.schemas.IDSchema>` | Response-schema base class that adds the resource's own read-only `id` field. |
-| {class}`fr.IDRef[Model] <fastapi_restly.schemas.IDRef>` | Scalar FK reference type. Wire format is the raw id (`5`) on request and response; dict input (`{"id": 5}`) is also accepted. Use this for typical REST FK fields and React Admin scalar id arrays. |
-| {class}`fr.IDSchema[Model] <fastapi_restly.schemas.IDSchema>` | Nested relationship-object field type. Wire format is `{"id": 5}` on request and response. Use this when a client expects relationship objects instead of scalar FK fields. |
+| {class}`fr.MustExist[int, Model] <fastapi_restly.schemas.MustExist>` | Existence-checked scalar FK type for a `*_id` column. Primary-key type first, target model second (`fr.MustExist[UUID, Account]` for a UUID key; drop the model to infer it from a single `ForeignKey`). The value stays a plain id on request and response, and Restly validates the referenced row exists. |
+| {class}`fr.IDRef[Model] <fastapi_restly.schemas.IDRef>` | Relationship reference with a flat-id wire; resolves the id to the related object. Wire format is the raw id (`5`) on request and response; dict input (`{"id": 5}`) is also accepted. Use this for a relationship field and React Admin scalar id arrays. |
+| {class}`fr.IDSchema[Model] <fastapi_restly.schemas.IDSchema>` | Nested relationship-object field type. Wire format is `{"id": 5}` on request and response. Use this when a client expects relationship objects instead of flat scalar ids. |
 | {class}`fr.TimestampsSchemaMixin <fastapi_restly.schemas.TimestampsSchemaMixin>` | Pydantic mixin adding read-only `created_at` / `updated_at` fields to a schema. |
 | `fr.ReadOnly[T]` | Type annotation marker. Fields annotated `ReadOnly[T]` are excluded from create/update inputs. |
 | `fr.WriteOnly[T]` | Type annotation marker. Fields annotated `WriteOnly[T]` are stripped by `self.to_response_schema(obj)`, which the generated CRUD and ReactAdmin routes use. Direct FastAPI/Pydantic serialization treats it as schema metadata only. |
@@ -360,9 +361,9 @@ fr.configure(app=app, async_database_url="sqlite+aiosqlite:///app.db")
 ## Important Limitations and Capabilities
 
 - Nested schemas are supported for **responses** and relation filtering, including nested aliases
-- Full nested schemas are **not** supported for create/update payloads by the default CRUD flow; write payloads must map directly to model fields, or use model-aware reference fields such as `*_id: IDRef[Model]` and relationship fields typed as `IDSchema[Model]`
+- Full nested schemas are **not** supported for create/update payloads by the default CRUD flow; write payloads must map directly to model fields, or use model-aware reference fields such as `*_id: fr.MustExist[int, Model]` for FK columns and relationship fields typed as `IDRef[Model]` or `IDSchema[Model]`
 - Ordinary SQLAlchemy `DeclarativeBase` models work with generated CRUD views
-- UUID and other non-`int` scalar primary keys are supported through `id_type`, `IDRef[Model]`, and `IDSchema[Model]`
+- UUID and other non-`int` scalar primary keys are supported through `id_type`, `fr.MustExist[UUID, Model]`, `IDRef[Model]`, and `IDSchema[Model]`
 - Composite primary keys are not supported by generated `RestView` / `AsyncRestView` CRUD routes; use `fr.View` for custom route shapes
 
 ## Full Python API (Autodoc)

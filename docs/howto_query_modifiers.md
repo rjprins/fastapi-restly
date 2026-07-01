@@ -249,7 +249,7 @@ GET /articles/?author.name=Alice          # rejected; use public aliases
 
 ## Foreign-key filtering
 
-A scalar foreign key declared with {class}`fr.IDRef[T] <fastapi_restly.schemas.IDRef>` is filterable by its own
+A scalar foreign key declared with {class}`fr.MustExist[int, Post] <fastapi_restly.schemas.MustExist>` is filterable by its own
 public name — the same name the wire format uses:
 
 ```text
@@ -260,7 +260,7 @@ GET /comments/?post_id__ne=1
 GET /comments/?post_id__isnull=true
 ```
 
-An `IDRef` id is treated as opaque, so it gets equality, `__in`, `__ne`, and
+A `MustExist` id is treated as opaque, so it gets equality, `__in`, `__ne`, and
 `__isnull` — but **not** the range (`__gte`/`__lt`/…) or substring
 (`__contains`) families. Ordering or substring-matching an identifier is rarely
 meaningful, and this stays uniform across primary-key types (int, UUID, string).

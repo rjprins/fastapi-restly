@@ -47,9 +47,12 @@ Routes removed with {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exc
 
 ## Resource references (`x-resource-ref`)
 
-Schema fields declared with {class}`fr.IDRef[Model] <fastapi_restly.schemas.IDRef>` are annotated in the generated
-spec with a vendor extension, `x-resource-ref: "<resource-name>"`, so clients
-and generators can see which resource a scalar id points at. (Known limit:
+Schema fields declared with {class}`fr.MustExist[int, Model] <fastapi_restly.schemas.MustExist>`
+(a foreign-key column) or {class}`fr.IDRef[Model] <fastapi_restly.schemas.IDRef>` /
+{class}`fr.IDSchema[Model] <fastapi_restly.schemas.IDSchema>` (a relationship) are
+annotated in the generated spec with a vendor extension,
+`x-resource-ref: "<resource-name>"`, so clients and generators can see which
+resource a scalar id points at. (Known limit:
 views included on an `APIRouter` rather than the app currently lose these
 annotations.)
 

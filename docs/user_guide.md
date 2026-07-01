@@ -30,11 +30,11 @@ actions, tenant scoping.
 Define schemas with field aliases, write-only fields, and read-only computed fields.
 :::
 
-:::{grid-item-card} Work with Foreign Keys Using IDRef
+:::{grid-item-card} Work with Foreign Keys and Relationships
 :link: howto_relationship_idschema
 :link-type: doc
 
-Reference related objects by ID with automatic resolution and 404 on missing.
+Check foreign-key columns with MustExist and resolve relationships with IDRef or IDSchema, with a 404 on missing rows.
 :::
 
 :::{grid-item-card} Filter, Sort, and Paginate Lists

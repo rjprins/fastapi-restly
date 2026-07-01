@@ -40,7 +40,7 @@ method overrides to share behavior across resources.
 - **Class-level dependencies**: declare shared dependencies once and read their values from `self`.
 - **Explicit override points**: change the route shell, request handler, or business verb.
 - **Filtering, pagination, sorting**: get schema-derived list parameters.
-- **Field control**: `ReadOnly` / `WriteOnly` markers, plus foreign-key validation through `IDRef[...]`.
+- **Field control**: `ReadOnly` / `WriteOnly` markers, plus foreign-key validation through `MustExist[...]`.
 - **React Admin ready**: `AsyncReactAdminView` / `ReactAdminView` speak `ra-data-simple-rest`.
 - **App utilities**: SQLAlchemy engine/session setup, exception handlers, and test fixtures.
 
@@ -230,8 +230,8 @@ class UserRead(fr.IDSchema):
 
 ### Relationship handling
 
-Validate relationships on create and update with `fr.IDRef[...]`.
-Restly passes either the foreign key (`customer_id`) or the related object (`Customer`) to SQLAlchemy, depending on the model constructor.
+Validate a foreign-key column on create and update with `fr.MustExist[int, Model]`.
+It keeps the plain id (`customer_id`) and checks the referenced row exists; declare the relationship (`customer`) separately when you also want the nested object.
 
 ```python
 class Order(fr.IDBase):
@@ -239,7 +239,7 @@ class Order(fr.IDBase):
     customer: Mapped[Customer] = relationship()
 
 class OrderRead(fr.IDSchema):
-    customer_id: fr.IDRef[Customer]
+    customer_id: fr.MustExist[int, Customer]
     customer: fr.ReadOnly[CustomerRead]
 ```
 

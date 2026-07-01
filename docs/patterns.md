@@ -10,12 +10,12 @@ release.
 ## Nested resources (`/projects/{id}/tasks`)
 
 Model the child as a **flat resource and filter by its foreign key** — the
-filter parameter is generated automatically for {class}`IDRef <fastapi_restly.schemas.IDRef>` fields:
+filter parameter is generated automatically for {class}`MustExist <fastapi_restly.schemas.MustExist>` fields:
 
 ```python
 class TaskRead(fr.IDSchema):
     title: str
-    project_id: fr.IDRef[Project]
+    project_id: fr.MustExist[int, Project]
 
 
 @fr.include_view(app)

@@ -21,15 +21,15 @@ response instead of a separate fetch.
 
 | Declaration | JSON value | SQLAlchemy type | Use it for |
 |---|---|---|---|
-| `author_id: fr.MustExist[int, Author]` | `1` | scalar foreign key | **the default**: a checked FK column |
-| `author: fr.IDRef[Author]` | `1` | resolves to `Author` | a relationship, flat-id in JSON |
-| `author: fr.IDSchema[Author]` | `{"id": 1}` | resolves to `Author` | a relationship, nested-id in JSON (JSON-API / React Admin) |
-| `author: AuthorRead` | the full object | resolves to `Author` | embedding the related object |
+| `author_id: fr.MustExist[int, User]` | `1` | scalar foreign key | **the default**: a checked FK column |
+| `author: fr.IDRef[User]` | `1` | resolves to `User` | a relationship, flat-id in JSON |
+| `author: fr.IDSchema[User]` | `{"id": 1}` | resolves to `User` | a relationship, nested-id in JSON (JSON-API / React Admin) |
+| `author: UserRead` | the full object | resolves to `User` | embedding the related object |
 | `author_id: int` | `1` | scalar foreign key | an unchecked FK, e.g. a server-stamped `ReadOnly` column |
 
 - Use {class}`MustExist <fastapi_restly.schemas.MustExist>` for the common case:
   a `*_id` column you want validated. Name the primary-key type first, then the
-  target model — `fr.MustExist[int, Author]` (`fr.MustExist[UUID, Account]` for a
+  target model — `fr.MustExist[int, User]` (`fr.MustExist[UUID, Account]` for a
   UUID key). When the column has a single `ForeignKey`, you can drop the model and
   let Restly infer it — `fr.MustExist[int]`.
 - Use {class}`IDRef <fastapi_restly.schemas.IDRef>` /
@@ -50,33 +50,33 @@ from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 
 
-class Author(fr.IDBase):
+class User(fr.IDBase):
     name: Mapped[str]
 
 
 class Article(fr.IDBase):
     title: Mapped[str]
-    author_id: Mapped[int] = mapped_column(ForeignKey("author.id"))
+    author_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
 ```
 
-{class}`fr.IDBase <fastapi_restly.models.IDBase>` auto-generates the table name from the class name (`Author` →
-`author`, `Article` → `article`). That is why `ForeignKey("author.id")` is
+{class}`fr.IDBase <fastapi_restly.models.IDBase>` auto-generates the table name from the class name (`User` →
+`user`, `Article` → `article`). That is why `ForeignKey("user.id")` is
 correct here.
 
 ## Schema Setup
 
 ```python
-class AuthorRead(fr.IDSchema):
+class UserRead(fr.IDSchema):
     name: str
 
 
 class ArticleRead(fr.IDSchema):
     title: str
-    author_id: fr.MustExist[int, Author]
+    author_id: fr.MustExist[int, User]
 ```
 
-{class}`fr.MustExist[int, Author] <fastapi_restly.schemas.MustExist>` marks an
-integer foreign key to `Author` that must exist. The wire format is a plain
+{class}`fr.MustExist[int, User] <fastapi_restly.schemas.MustExist>` marks an
+integer foreign key to `User` that must exist. The wire format is a plain
 scalar:
 
 ```json
@@ -106,7 +106,7 @@ class ArticleView(fr.AsyncRestView):
     schema = ArticleRead
 ```
 
-On create and update, Restly looks up the `Author` with `id=1`. If it does not
+On create and update, Restly looks up the `User` with `id=1`. If it does not
 exist, the request returns `404`. That lookup is an *unscoped* existence check;
 see [Visibility and Multi-Tenancy](#visibility-and-multi-tenancy) below. In
 hooks, `data.author_id` is the plain integer.
@@ -128,9 +128,9 @@ SQLAlchemy mapper to decide how to apply the value, so the FK column can be
 named anything; the `_id` suffix is a common convention, not a requirement:
 
 ```python
-author_id: fr.MustExist[int, Author]   # the Article.author_id FK column
-post_fk: fr.MustExist[int, Post]       # a non-_id column name works the same way
-author: fr.IDRef[Author]               # the Article.author relationship
+author_id: fr.MustExist[int, User]  # the Article.author_id FK column
+post_fk: fr.MustExist[int, Post]    # a non-_id column name works the same way
+author: fr.IDRef[User]              # the Article.author relationship
 ```
 
 When the field names a relationship, Restly resolves the id to an ORM object and
@@ -189,7 +189,7 @@ Most examples inherit from {class}`fr.IDSchema <fastapi_restly.schemas.IDSchema>
 field. The schema bases, `ReadOnly` / `WriteOnly` markers, and aliases are
 owned by [Custom Schemas and Field Types](howto_custom_schema.md); inherit
 from `fr.BaseSchema` instead if you want every field, including `id`,
-explicit. When used as a field type (`author: fr.IDSchema[Author]`), it is a
+explicit. When used as a field type (`author: fr.IDSchema[User]`), it is a
 nested relationship reference (below), separate from its use as a base class.
 
 ## Nested Relationship Objects
@@ -200,7 +200,7 @@ relationship field with {class}`fr.IDSchema[Model] <fastapi_restly.schemas.IDSch
 ```python
 class ArticleRead(fr.IDSchema):
     title: str
-    author: fr.IDSchema[Author]
+    author: fr.IDSchema[User]
 ```
 
 The wire format is:
@@ -228,21 +228,21 @@ resolved to an ORM object.
 The common FK-first declaration is still the clearest default:
 
 ```python
-author_id: Mapped[int] = mapped_column(ForeignKey("author.id"))
-author: Mapped["Author"] = relationship(default=None, init=False)
+author_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
+author: Mapped["User"] = relationship(default=None, init=False)
 ```
 
-With that model and `author: fr.IDRef[Author]`, Restly passes the scalar FK when
+With that model and `author: fr.IDRef[User]`, Restly passes the scalar FK when
 the constructor needs it and keeps `author` in sync after construction.
 
 If your model is relationship-first, Restly adapts there too:
 
 ```python
-author_id: Mapped[int] = mapped_column(ForeignKey("author.id"), init=False)
-author: Mapped["Author"] = relationship(default=None)
+author_id: Mapped[int] = mapped_column(ForeignKey("user.id"), init=False)
+author: Mapped["User"] = relationship(default=None)
 ```
 
-In that shape, Restly passes the resolved `Author` object to the constructor and
+In that shape, Restly passes the resolved `User` object to the constructor and
 keeps `author_id` in sync. More generally, Restly supplies the constructor
 values your dataclass model requires: FK scalar, relationship object, or both.
 
@@ -281,8 +281,8 @@ class Article(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     title: Mapped[str]
-    author_id: Mapped[int] = mapped_column(ForeignKey("author.id"))
-    author: Mapped["Author"] = relationship()
+    author_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
+    author: Mapped["User"] = relationship()
 ```
 
 There is no generated `__init__` contract to satisfy: Restly constructs the
@@ -358,7 +358,7 @@ their wire format is already scalar.
 ## Visibility and Multi-Tenancy
 
 Reference resolution is an **unscoped existence check**. Restly fetches the
-referenced row by primary key only (`session.get(Author, id)`). View
+referenced row by primary key only (`session.get(User, id)`). View
 {meth}`build_query <fastapi_restly.views.RestView.build_query>` scoping is not applied, so tenant, soft-delete, and row-level
 visibility checks are your responsibility.
 

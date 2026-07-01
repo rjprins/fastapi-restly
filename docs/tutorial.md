@@ -63,7 +63,7 @@ class PostRead(fr.IDSchema):
 
 class CommentRead(fr.IDSchema):
     content: str
-    post_id: fr.IDRef[Post]
+    post_id: fr.MustExist[int, Post]
 ```
 
 ### What IDSchema provides
@@ -72,10 +72,10 @@ class CommentRead(fr.IDSchema):
 Because `id` is `ReadOnly`, it appears in responses but is ignored when creating or updating
 records. You do not need to declare `id` yourself.
 
-### Foreign keys with IDRef
+### Foreign keys with MustExist
 
-`post_id: fr.IDRef[Post]` declares a foreign-key reference. The wire format is
-the raw id:
+`post_id: fr.MustExist[int, Post]` declares a checked foreign-key column. The
+wire format is the raw id:
 
 ```json
 1
@@ -100,16 +100,16 @@ And a response looks like:
 }
 ```
 
-Declaring the field as `fr.IDRef[Post]` is what triggers this behaviour: the view
-machinery stores the id in the matching `post_id` column, and it also validates
-that a `Post` with that `id` exists (returning 404 if not). Restly matches the
-field name to a mapped column or relationship via the model's mapper, not to an
-`_id` suffix, so the FK column can be named anything.
+Declaring the field as `fr.MustExist[int, Post]` is what triggers this
+behaviour: the view machinery keeps the plain id in the `post_id` column and
+validates that a `Post` with that `id` exists (returning 404 if not). Restly
+matches the field name to a mapped column or relationship via the model's
+mapper, not to an `_id` suffix, so the FK column can be named anything.
 
 If you prefer a plain `int` field and want to skip the existence check,
 declare `post_id: int` in your schema instead.
 
-See [Work with Foreign Keys Using IDRef](howto_relationship_idschema.md)
+See [Work with Foreign Keys and Relationships](howto_relationship_idschema.md)
 for more detail, including list relations and nested relationship objects.
 
 ---
@@ -273,8 +273,8 @@ See [Testing](howto_testing.md) for the full setup and savepoint details.
 
 Response schemas may nest related objects (Restly eager-loads and serializes
 them); create/update payloads may not — inputs map to model attributes or use
-`*_id: IDRef[Model]`. Details:
-[Work with Foreign Keys Using IDRef](howto_relationship_idschema.md).
+`*_id: MustExist[int, Model]`. Details:
+[Work with Foreign Keys and Relationships](howto_relationship_idschema.md).
 
 ---
 
@@ -317,7 +317,7 @@ class PostRead(fr.IDSchema):
 
 class CommentRead(fr.IDSchema):
     content: str
-    post_id: fr.IDRef[Post]
+    post_id: fr.MustExist[int, Post]
 
 
 @asynccontextmanager
@@ -350,7 +350,7 @@ class CommentView(fr.AsyncRestView):
 - **[Part 2: Customizing Views](tutorial_customizing.md)** — override handlers, add custom routes, and share behaviour with base classes
 - [Auto-Generated Schemas](technical_details.md#auto-generated-schemas) — skip writing schemas for simple models
 - [Filter, Sort, and Paginate Lists](howto_query_modifiers.md) — full filter and sort reference
-- [Work with Foreign Keys Using IDRef](howto_relationship_idschema.md) — reference related rows by id
+- [Work with Foreign Keys and Relationships](howto_relationship_idschema.md) — reference related rows by id
 - [Testing](howto_testing.md) — savepoint isolation and test fixtures
 - [Examples](examples.md) — complete sample apps that extend these patterns
 - [API Reference](api_reference.md)
