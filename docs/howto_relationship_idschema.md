@@ -19,19 +19,20 @@ they stay cacheable, and clients like React Admin can dereference them for
 display. Embed the target object only when you deliberately want one larger
 response instead of a separate fetch.
 
-| Declaration | JSON value | SQLAlchemy type | Use it for |
-|---|---|---|---|
-| `author_id: fr.MustExist[int, User]` | `1` | scalar foreign key | **the default**: a checked FK column |
-| `author: fr.IDRef[User]` | `1` | resolves to `User` | a relationship, flat-id in JSON |
-| `author: fr.IDSchema[User]` | `{"id": 1}` | resolves to `User` | a relationship, nested-id in JSON (JSON-API / React Admin) |
-| `author: UserRead` | the full object | resolves to `User` | embedding the related object |
-| `author_id: int` | `1` | scalar foreign key | an unchecked FK, e.g. a server-stamped `ReadOnly` column |
+| Declaration | JSON value | SQLAlchemy type |
+|---|---|---|
+| {class}`author_id: fr.MustExist[int, User] <fastapi_restly.schemas.MustExist>` | `1` | scalar foreign key |
+| {class}`author: fr.IDRef[User] <fastapi_restly.schemas.IDRef>` | `1` | resolves to `User` |
+| {class}`author: fr.IDSchema[User] <fastapi_restly.schemas.IDSchema>` | `{"id": 1}` | resolves to `User` |
+| `author: fr.ReadOnly[UserRead]` | the full object | read-only relationship embed |
+| `author_id: int` | `1` | scalar foreign key |
 
 - Use {class}`MustExist <fastapi_restly.schemas.MustExist>` for the common case:
   a `*_id` column you want validated. Name the primary-key type first, then the
   target model — `fr.MustExist[int, User]` (`fr.MustExist[UUID, Account]` for a
   UUID key). When the column has a single `ForeignKey`, you can drop the model and
-  let Restly infer it — `fr.MustExist[int]`.
+  let Restly infer it — `fr.MustExist[int]`. A plain `int` (or `ReadOnly[int]`
+  for a server-stamped column) is the unchecked alternative — no existence check.
 - Use {class}`IDRef <fastapi_restly.schemas.IDRef>` /
   {class}`IDSchema <fastapi_restly.schemas.IDSchema>` when the field names a
   relationship. Restly resolves the id to the related object; the difference is
@@ -132,6 +133,17 @@ named anything; the `_id` suffix is a common convention, not a requirement:
 author_id: fr.MustExist[int, User]  # the Article.author_id FK column
 post_fk: fr.MustExist[int, Post]    # a non-_id column name works the same way
 author: fr.IDRef[User]              # the Article.author relationship
+```
+
+The Python field name is what Restly matches against the mapped attribute — it
+builds the model with that name as a keyword argument, so the two must match. To
+expose a different name only *on the wire* (a camelCase API, say), keep the field
+named after the attribute and add a Pydantic alias:
+
+```python
+from pydantic import Field
+
+author_id: fr.MustExist[int, User] = Field(alias="authorId")  # wire: "authorId"
 ```
 
 When the field names a relationship, Restly resolves the id to an ORM object and

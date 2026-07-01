@@ -19,12 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `ForeignKey`, you can drop the model and let Restly infer it — `fr.MustExist[int]`.
   Reserve `IDRef` / `IDSchema` for relationship-named fields.
 
-- The opt-in `fr.configure(warn_on_misuse=True)` lint now also flags a reference
-  type (`IDRef` / `IDSchema`) declared on a scalar foreign-key **column** name —
-  the `post_id: fr.IDRef[Post]` mistake, where `data.post_id` becomes a reference
-  wrapper instead of the plain id — and steers to `fr.MustExist[int, Post]` (or
-  renaming the field to the relationship). The `IDRef` / `IDSchema` docstrings are
-  reframed to relationship-named use, pointing `*_id` columns at `MustExist`.
+- The opt-in `fr.configure(warn_on_misuse=True)` lint now flags the
+  `post_id: fr.IDRef[Post]` mistake — an `IDRef` / `IDSchema` reference typed on a
+  scalar foreign-key **column**, where `data.post_id` becomes a wrapper instead of
+  the plain id — steering to `fr.MustExist[int, Post]`. `IDRef` / `IDSchema` are
+  now documented as relationship-named types, with `*_id` columns pointed at
+  `MustExist`.
 
 ### Changed
 
