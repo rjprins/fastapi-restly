@@ -6,7 +6,6 @@ from pydantic import BaseModel
 
 import fastapi_restly as fr
 from fastapi_restly.objects import async_make_new_object, async_save_object
-from fastapi_restly.schemas import IDRef
 
 from ..models import Label, Task, TaskLabel
 from ..schemas import LabelSchema, TaskLabelSchema
@@ -65,7 +64,7 @@ class TaskLabelView(TenantBase):
         """Sibling-creation: build a Label *and* a TaskLabel in one request.
 
         The Label is flushed first so its id can be used in the TaskLabel
-        ``IDRef`` schema. Both rows commit through one ``write_action`` block.
+        ``MustExist`` schema. Both rows commit through one ``write_action`` block.
         """
         # Tenant scope is enforced via TaskView.get_one-style checks here:
         # we don't go through TaskView, so we re-validate the task fits
@@ -79,17 +78,17 @@ class TaskLabelView(TenantBase):
 
         # Commit the Label + TaskLabel pair atomically.
         async with self.write_action("create", data=request) as w:
-            # 1) Build Label and flush so the resolver can see its PK.
+            # 1) Build Label and flush so its PK exists for the existence check.
             label = Label(
                 name=request.label_name, color=request.color, organization_id=org_id
             )
             self.session.add(label)
-            await self.session.flush()  # <-- the resolver path's hard requirement
+            await self.session.flush()  # <-- existence check needs the PK to exist
 
-            # 2) Build TaskLabel with IDRef instances so references are checked.
+            # 2) Build TaskLabel with plain ids so references are checked.
             link_schema = TaskLabelSchema.model_construct(
-                task_id=IDRef[Task](id=request.task_id),
-                label_id=IDRef[Label](id=label.id),
+                task_id=request.task_id,
+                label_id=label.id,
             )
             task_label = await async_make_new_object(
                 self.session, TaskLabel, link_schema

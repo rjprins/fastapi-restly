@@ -16,13 +16,13 @@ class LabelSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
 class TaskLabelSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
     """Schema for TaskLabel association with metadata.
 
-    ``task_id`` and ``label_id`` use ``fr.IDRef[T]``: the wire format is
-    a plain integer (``"task_id": 5``) on both request and response, and
-    the framework still validates the referenced row exists.
+    ``task_id`` and ``label_id`` are ``fr.MustExist[int, Model]`` foreign keys:
+    the wire format is a plain integer (``"task_id": 5``) on both request and
+    response, and the framework validates the referenced row exists.
     """
 
-    task_id: fr.IDRef[Task]
-    label_id: fr.IDRef[Label]
+    task_id: fr.MustExist[int, Task]
+    label_id: fr.MustExist[int, Label]
     added_by_id: int | None = (
         None  # stamped server-side by TaskLabelView.make_new_object
     )

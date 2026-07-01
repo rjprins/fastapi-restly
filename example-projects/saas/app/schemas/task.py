@@ -4,7 +4,7 @@ from datetime import datetime
 
 import fastapi_restly as fr
 
-from ..models import TaskPriority, TaskStatus, TaskType
+from ..models import Project, Task, TaskPriority, TaskStatus, TaskType, User
 
 
 class TaskSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
@@ -19,9 +19,9 @@ class TaskSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
     status: TaskStatus = TaskStatus.TODO
     priority: TaskPriority = TaskPriority.MEDIUM
     task_type: TaskType = TaskType.TASK
-    project_id: int
-    assignee_id: int | None = None
-    parent_id: int | None = None
+    project_id: fr.MustExist[int, Project]
+    assignee_id: fr.MustExist[int, User] | None = None
+    parent_id: fr.MustExist[int, Task] | None = None
 
     # Type-specific fields (polymorphic)
     # Bug-specific
