@@ -1,9 +1,12 @@
 # How Overrides Work: The Three Tiers
 
-Every CRUD verb in FastAPI-Restly exists at three tiers of abstraction. To
-customize a verb, name the tier that owns your change, override one method,
-and leave the rest alone. This page describes the tier model, the read and
-write lifecycles, and how to choose an override point.
+Every CRUD verb in FastAPI-Restly exists at three tiers of abstraction. The
+soft-delete override in the [Quick Start](index.md#quick-start) already used
+this structure: `delete` changed, while routing, validation, and the commit
+stayed framework-owned. To customize a verb, name the tier that owns your
+change, override one method, and leave the rest alone. This page describes
+the tier model, the read and write lifecycles, and how to choose an override
+point.
 
 ## The three tiers
 
@@ -19,37 +22,52 @@ POST /                       ← the route shell
 
 1. The **route shell** is the wire boundary: the {func}`@route <fastapi_restly.views.route>` decorator,
    the FastAPI signature, `response_model`, and {meth}`to_response <fastapi_restly.views.BaseRestView.to_response>`. Override it only to
-   change the HTTP contract.
-
-   - {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>`
-   - {meth}`get_one_endpoint <fastapi_restly.views.RestView.get_one_endpoint>`
-   - {meth}`create_endpoint <fastapi_restly.views.RestView.create_endpoint>`
-   - {meth}`update_endpoint <fastapi_restly.views.RestView.update_endpoint>`
-   - {meth}`delete_endpoint <fastapi_restly.views.RestView.delete_endpoint>`
+   change the HTTP contract. One method per verb: {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>`,
+   {meth}`get_one_endpoint <fastapi_restly.views.RestView.get_one_endpoint>`, {meth}`create_endpoint <fastapi_restly.views.RestView.create_endpoint>`, {meth}`update_endpoint <fastapi_restly.views.RestView.update_endpoint>`, and
+   {meth}`delete_endpoint <fastapi_restly.views.RestView.delete_endpoint>`.
 
 2. The **request handler** holds the request logic: it runs {meth}`authorize <fastapi_restly.views.RestView.authorize>`,
-   owns the commit bracket, and returns the domain object. Override it to change
-   orchestration or timing without re-declaring the route.
-
-   - {meth}`handle_get_many <fastapi_restly.views.RestView.handle_get_many>`
-   - {meth}`handle_get_one <fastapi_restly.views.RestView.handle_get_one>`
-   - {meth}`handle_create <fastapi_restly.views.RestView.handle_create>`
-   - {meth}`handle_update <fastapi_restly.views.RestView.handle_update>`
-   - {meth}`handle_delete <fastapi_restly.views.RestView.handle_delete>`
+   owns the commit bracket ({meth}`before_commit <fastapi_restly.views.RestView.before_commit>`, then the commit itself, then
+   {meth}`after_commit <fastapi_restly.views.RestView.after_commit>`), and returns the domain object. Override it to change
+   orchestration or timing without re-declaring the route: {meth}`handle_get_many <fastapi_restly.views.RestView.handle_get_many>`,
+   {meth}`handle_get_one <fastapi_restly.views.RestView.handle_get_one>`, {meth}`handle_create <fastapi_restly.views.RestView.handle_create>`, {meth}`handle_update <fastapi_restly.views.RestView.handle_update>`, and
+   {meth}`handle_delete <fastapi_restly.views.RestView.handle_delete>`.
 
 3. The **business verb** is the domain operation: it builds, applies, and
    saves, and it is both auth-free and commit-free. This is the usual override
-   point.
+   point: {meth}`get_many <fastapi_restly.views.RestView.get_many>`, {meth}`get_one <fastapi_restly.views.RestView.get_one>`, {meth}`create <fastapi_restly.views.RestView.create>`, {meth}`update <fastapi_restly.views.RestView.update>`, and
+   {meth}`delete <fastapi_restly.views.RestView.delete>`.
 
-   - {meth}`get_many <fastapi_restly.views.RestView.get_many>`
-   - {meth}`get_one <fastapi_restly.views.RestView.get_one>`
-   - `create`
-   - {meth}`update <fastapi_restly.views.RestView.update>`
-   - {meth}`delete <fastapi_restly.views.RestView.delete>`
+The handler owns the commit, not the business verb; the worked example below
+relies on exactly that split.
 
-The handler owns the commit, not the business verb. Because `create` never
-commits, an override can build an object, stamp a `password_hash`, call
-`save_object`, and return; the handler commits afterward.
+## Worked example: hash a password on create
+
+Hashing a password is domain logic, so it belongs in {meth}`create <fastapi_restly.views.RestView.create>`. The handler
+commits after this method returns:
+
+```python
+import fastapi_restly as fr
+
+from .auth import hash_password
+from .models import User
+from .schemas import UserRead
+
+
+@fr.include_view(app)
+class UserView(fr.AsyncRestView):
+    prefix = "/users"
+    model = User
+    schema = UserRead
+
+    async def create(self, schema_obj):
+        obj = await self.make_new_object(schema_obj)
+        obj.password_hash = hash_password(schema_obj.password)
+        return await self.save_object(obj)
+```
+
+{meth}`handle_create <fastapi_restly.views.RestView.handle_create>` still authorizes and runs the commit bracket. The override only
+changes the domain step.
 
 ## Request lifecycle: a write (`create`)
 
@@ -126,34 +144,6 @@ The table below maps the change you want to make to the method that owns it:
 Start at the business verb. Move to `handle_<verb>` only when timing or
 transaction handling must change, and touch the route shell only when the HTTP
 contract itself changes.
-
-## Worked example: hash a password on create
-
-Hashing a password is domain logic, so it belongs in {meth}`create <fastapi_restly.views.RestView.create>`. The handler
-commits after this method returns:
-
-```python
-import fastapi_restly as fr
-
-from .auth import hash_password
-from .models import User
-from .schemas import UserRead
-
-
-@fr.include_view(app)
-class UserView(fr.AsyncRestView):
-    prefix = "/users"
-    model = User
-    schema = UserRead
-
-    async def create(self, schema_obj):
-        obj = await self.make_new_object(schema_obj)
-        obj.password_hash = hash_password(schema_obj.password)
-        return await self.save_object(obj)
-```
-
-{meth}`handle_create <fastapi_restly.views.RestView.handle_create>` still authorizes and runs the commit bracket. The override only
-changes the domain step.
 
 ## Worked example: a custom action route
 
