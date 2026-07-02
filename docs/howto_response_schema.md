@@ -1,89 +1,69 @@
-# Change Response Schemas
+# Response Envelopes and List Metadata
 
-Restly uses the view's {attr}`schema <fastapi_restly.views.BaseRestView.schema>`
-for generated success responses. That is the right default for normal CRUD, but
-public APIs often need one of these changes:
+Restly returns bare objects and bare arrays; this page changes the *container*
+around the data, not the fields inside it.
 
-- fewer or different object fields on the wire
-- a different schema for one generated route, such as list vs detail
-- a top-level envelope such as `{"data": ...}` or `{"data": ..., "meta": ...}`
-- the built-in pagination metadata envelope
+- To change which fields an object exposes, see [Custom Schemas and Field Types](howto_custom_schema.md).
+- For a different schema per route (list vs detail), see [Override CRUD Behavior and Add Custom Endpoints](howto_override_endpoints.md).
+- To change the error shape, see [Shape Error Responses](howto_error_responses.md).
 
-The rule of thumb: **if the HTTP response contract changes, replace the route
-shell and set `response_model`**. Use {meth}`to_response_schema() <fastapi_restly.views.BaseRestView.to_response_schema>`
-inside that shell so Restly still applies response-schema validation,
-relationship-id handling, aliases, and `WriteOnly` stripping.
+## What Restly returns by default
 
-## Pick the right override
-
-| Goal | Use |
+| Route | Response body |
 |---|---|
-| Change fields returned by every generated object route | Set {attr}`schema <fastapi_restly.views.BaseRestView.schema>` to an explicit read schema |
-| Use a different list schema | Replace {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>` with `response_model=list[YourListSchema]` |
-| Add a `data` envelope around one object route | Replace that route shell with `response_model=YourEnvelope` |
-| Add list metadata | Prefer {attr}`include_pagination_metadata <fastapi_restly.views.BaseRestView.include_pagination_metadata>` |
-| Add a custom list envelope | Replace {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>` with a custom envelope response model |
-| Change error responses | Use FastAPI exception handlers; errors bypass `to_response()` |
+| `GET /{id}`, `POST`, `PATCH` | The bare object, serialized through {attr}`schema <fastapi_restly.views.BaseRestView.schema>` via {meth}`to_response_schema <fastapi_restly.views.BaseRestView.to_response_schema>` |
+| `GET /` | A bare JSON array — no envelope, no total |
+| `DELETE /{id}` | `204 No Content`, empty body |
 
-## Change object fields for the whole view
+## List metadata and total count
 
-Set the view's `schema` to the public read contract you want. Generated create
-and update schemas are derived from it unless you set `schema_create` /
-`schema_update` yourself:
+For the common list-metadata shape — items plus a total — set one class
+attribute:
 
 ```python
-class UserRead(fr.IDSchema):
-    email: str
-    display_name: str
-
-
 @fr.include_view(app)
 class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
     schema = UserRead
+    include_pagination_metadata = True
 ```
 
-For aliases, `ReadOnly`, `WriteOnly`, computed fields, and relationship IDs, see
-[Custom Schemas and Field Types](howto_custom_schema.md).
+The list route then returns:
 
-## Return a different schema for the list route
-
-There is no `schema_list` attribute. A different list shape is a route-level
-HTTP contract, so replace the list route shell:
-
-```python
-class UserSummary(fr.IDSchema):
-    display_name: str
-
-
-@fr.include_view(app)
-class UserView(fr.AsyncRestView):
-    prefix = "/users"
-    model = User
-    schema = UserRead  # detail, create, and update responses keep UserRead
-
-    @fr.get("/", response_model=list[UserSummary])
-    async def get_many_endpoint(self, query_params):
-        result = await self.handle_get_many(query_params)
-        return [
-            UserSummary.model_validate(user, from_attributes=True)
-            for user in result.objects
-        ]
+```json
+{
+  "items": [ /* page of UserRead */ ],
+  "total": 123,
+  "page": 2,
+  "page_size": 50,
+  "total_pages": 3
+}
 ```
 
-Keep the `query_params` parameter when you want Restly's generated filter, sort,
-and pagination query parameters. Restly annotates that parameter when the view is
-included.
+`total` is always present. `page`, `page_size`, and `total_pages` populate only
+when a page size is in effect — the client sent `?page_size=`, or the view set
+{attr}`default_page_size <fastapi_restly.views.BaseRestView.default_page_size>`
+(in which case `page` defaults to 1); otherwise they are `null`.
 
-## Add an envelope around single-object routes
+This is the **only** envelope where Restly keeps `response_model` and OpenAPI in
+sync automatically: when {attr}`include_pagination_metadata <fastapi_restly.views.BaseRestView.include_pagination_metadata>`
+is set, the view swaps a generated pagination schema in as the list route's
+response annotation — zero route-shell code.
 
-Generated route shells call `to_response()`, but FastAPI still validates the
-return value against the generated route's response model. Returning
-`{"data": ...}` from `to_response()` alone changes the runtime shape without
-changing the documented/validated schema.
+For how clients *request* pages (the `page` / `page_size` inputs), see
+[Filter, Sort, and Paginate Lists](howto_query_modifiers.md).
 
-Replace the route shell instead:
+## Custom envelopes
+
+An envelope is an HTTP-contract change, so **replace the route shell and set
+`response_model`**. Call {meth}`to_response_schema(obj) <fastapi_restly.views.BaseRestView.to_response_schema>`
+inside the shell so `WriteOnly` stripping, relationship-id resolution, and
+response-schema validation still run.
+
+For a single-object `{"data": ...}` wrapper, replace
+{meth}`get_one_endpoint <fastapi_restly.views.RestView.get_one_endpoint>` and
+{meth}`create_endpoint <fastapi_restly.views.RestView.create_endpoint>`:
 
 ```python
 import pydantic
@@ -110,41 +90,12 @@ class UserView(fr.AsyncRestView):
         return {"data": self.to_response_schema(obj)}
 ```
 
-Use the handler (`handle_get_one`, `handle_create`, `handle_update`, ...) rather
-than the bare business method when replacing a generated shell. The handler keeps
-authorization, scoped reads, and the commit bracket in place.
-
-## Use the built-in pagination envelope
-
-For the common list metadata shape, set one class attribute:
-
-```python
-@fr.include_view(app)
-class UserView(fr.AsyncRestView):
-    prefix = "/users"
-    model = User
-    schema = UserRead
-    include_pagination_metadata = True
-```
-
-The list route then returns:
-
-```json
-{
-  "items": [],
-  "total": 123,
-  "page": 2,
-  "page_size": 50,
-  "total_pages": 3
-}
-```
-
-`page`, `page_size`, and `total_pages` are populated when pagination is active:
-the client sent `?page=` / `?page_size=`, or the view set `default_page_size`.
-
-## Add a custom list envelope
-
-For a different envelope, replace the list route shell and keep `query_params`:
+For a list `{"data": ..., "meta": ...}` wrapper, replace
+{meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>`,
+keep the `query_params` parameter (Restly annotates it with the generated
+filter, sort, and pagination query parameters), and reshape
+{meth}`to_paginated_listing_response() <fastapi_restly.views.BaseRestView.to_paginated_listing_response>`
+so the page math is not redone by hand:
 
 ```python
 import pydantic
@@ -184,21 +135,31 @@ class UserView(fr.AsyncRestView):
         }
 ```
 
-## When to override `to_response()`
+### Envelope several routes at once: `to_response`
 
-{meth}`to_response() <fastapi_restly.views.BaseRestView.to_response>` is the
-shared runtime response boundary used by generated CRUD shells and by custom
-actions that call it directly. It is useful when the endpoint's response model
-already matches what you return.
+When the same wrapper applies to more than one route, centralize it in
+{meth}`to_response() <fastapi_restly.views.BaseRestView.to_response>` — the shared
+runtime boundary keyed on wire {attr}`SINGLE <fastapi_restly.views.ResponseShape.SINGLE>` /
+{attr}`LISTING <fastapi_restly.views.ResponseShape.LISTING>` /
+{attr}`EMPTY <fastapi_restly.views.ResponseShape.EMPTY>` shape — and have each
+replaced shell delegate to it:
 
-Do not use `to_response()` by itself to introduce a new top-level envelope on
-generated routes. The generated route annotations still describe the old shape,
-so FastAPI response validation and OpenAPI will disagree with the returned
-payload. For a new HTTP contract, replace the route shell and set
-`response_model`.
+```python
+    def to_response(self, obj_or_list, shape=fr.ResponseShape.SINGLE):
+        if shape is fr.ResponseShape.SINGLE:
+            return {"data": self.to_response_schema(obj_or_list)}
+        return super().to_response(obj_or_list, shape)
+```
 
-## Error envelopes are separate
+The trap: overriding `to_response` **without** also replacing the shells leaves
+the generated shells' `response_model` describing the bare object, so FastAPI
+response validation *and* OpenAPI disagree with the enveloped payload you return
+— so a new contract needs **both**: the `to_response` override for the runtime
+shape and a replaced shell with a matching `response_model`.
 
-Errors do not pass through `to_response()` or `to_response_schema()`. Use
-FastAPI exception handlers for error response envelopes; see
-[Shape Error Responses](howto_error_responses.md).
+## See also
+
+- [Custom Schemas and Field Types](howto_custom_schema.md) — which fields an object exposes.
+- [Override CRUD Behavior and Add Custom Endpoints](howto_override_endpoints.md) — route-shell mechanics and [a different schema for the list endpoint](patterns.md#a-different-schema-for-the-list-endpoint).
+- [Shape Error Responses](howto_error_responses.md) — errors bypass `to_response`.
+- [Filter, Sort, and Paginate Lists](howto_query_modifiers.md) — the pagination inputs clients send.

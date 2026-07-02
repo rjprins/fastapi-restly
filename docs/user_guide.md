@@ -30,12 +30,12 @@ actions, tenant scoping.
 Define schemas with field aliases, write-only fields, and read-only computed fields.
 :::
 
-:::{grid-item-card} Change Response Schemas
+:::{grid-item-card} Response Envelopes and List Metadata
 :link: howto_response_schema
 :link-type: doc
 
-Use a different read schema, wrap successful responses in envelopes, or return
-custom list metadata while keeping Restly's handlers and serialization.
+Wrap successful responses in `{data}` envelopes and add list metadata such as
+total counts, while keeping Restly's handlers and serialization.
 :::
 
 :::{grid-item-card} Work with Foreign Keys and Relationships

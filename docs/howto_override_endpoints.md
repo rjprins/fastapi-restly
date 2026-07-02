@@ -316,7 +316,7 @@ Generated route shells return through {meth}`self.to_response(obj_or_list, shape
 If this changes a generated route's HTTP contract, also replace that route shell
 and set a matching `response_model`; otherwise FastAPI response validation and
 OpenAPI still use the generated schema. See
-[Change Response Schemas](howto_response_schema.md) for the full pattern.
+[Response Envelopes and List Metadata](howto_response_schema.md) for the full pattern.
 
 `to_response` is keyed on wire shape, not action. It cannot distinguish {meth}`create <fastapi_restly.views.RestView.create>` from {meth}`get_one <fastapi_restly.views.RestView.get_one>`; both are `SINGLE`. For one verb's HTTP contract, override that route shell:
 
