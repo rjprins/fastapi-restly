@@ -190,7 +190,7 @@ class OrderRead(fr.IDSchema):
 
 On input, each element accepts both raw scalars and `{"id": ...}` shapes, so
 the same field doubles as a permissive write-side type when paired with a
-custom {meth}`create <fastapi_restly.views.RestView.create>` / {meth}`update <fastapi_restly.views.RestView.update>` business verb that resolves the list. For
+custom {meth}`create <fastapi_restly.views.RestView.create>` / {meth}`update <fastapi_restly.views.RestView.update>` business method that resolves the list. For
 relationship objects that must stay nested on the wire, use
 {class}`fr.IDSchema[Model] <fastapi_restly.schemas.IDSchema>` (see
 [Nested relationship objects](#nested-relationship-objects)).
@@ -432,7 +432,7 @@ class ArticleView(fr.AsyncRestView):
 ```
 
 The resolved ORM object is not available in `authorize`; resolution runs later
-in the business verb. If you need the resolved row, check in `before_commit`,
+in the business method. If you need the resolved row, check in `before_commit`,
 where the built object carries it (for example `new.author.org_id`). Prefer
 `authorize` when the requested id is enough: it rejects before the unscoped
 fetch and is the standard policy seam.

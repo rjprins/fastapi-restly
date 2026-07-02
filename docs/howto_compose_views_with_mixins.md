@@ -20,11 +20,11 @@ structural concerns:
   Each calls `super()` to get the constructed object, mutates the
   server-controlled fields it owns, and returns the object. Mixins layer
   by chaining `super()`, each stamping its own fields on the way out.
-- The {meth}`delete <fastapi_restly.views.RestView.delete>` business verb is
+- The {meth}`delete <fastapi_restly.views.RestView.delete>` business method is
   overridden to replace a physical delete with a flag flip (soft delete).
 
 Do not use these for per-view application logic. Keep per-view logic in the
-business verb: hash passwords, derive slugs, update rollups, and dispatch
+business method: hash passwords, derive slugs, update rollups, and dispatch
 resource-specific events in {meth}`create <fastapi_restly.views.RestView.create>` /
 {meth}`update <fastapi_restly.views.RestView.update>`, as described in
 [Override the business methods](customize.md#override-the-business-methods).
@@ -36,7 +36,7 @@ These compose because:
 - `make_new_object` and `update_object` mutate the object *after* the
   schema's own writes are applied, so they compose cleanly and never
   fight the schema's writes.
-- They run inside the commit-free business verb, before the handler commits.
+- They run inside the commit-free business method, before the handler commits.
 - They only stamp and scope; they do not compute business values from
   schema inputs.
 - They compose linearly via cooperative `super()` calls, so combinations
@@ -170,7 +170,7 @@ class SoftDeleteMixin:
 ```
 
 The soft-delete flip overrides the {meth}`delete <fastapi_restly.views.RestView.delete>`
-business verb, not the handler.
+business method, not the handler.
 {meth}`handle_delete <fastapi_restly.views.RestView.handle_delete>` still
 loads, authorizes, and commits; the mixin only changes what "delete" does. To
 bring a flipped row back, see

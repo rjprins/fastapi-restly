@@ -76,8 +76,8 @@ async def delete_user(id: int):
 
 That leaves Restly responsible for list, create, read, and update while DELETE
 uses your ordinary FastAPI implementation. For smaller changes that keep the
-same HTTP contract, prefer overriding the business verb ({meth}`get_many <fastapi_restly.views.RestView.get_many>`, {meth}`get_one <fastapi_restly.views.RestView.get_one>`,
-{meth}`create <fastapi_restly.views.RestView.create>`, {meth}`update <fastapi_restly.views.RestView.update>`, {meth}`delete <fastapi_restly.views.RestView.delete>`) or its `handle_<verb>` request handler; for a
+same HTTP contract, prefer overriding the business method ({meth}`get_many <fastapi_restly.views.RestView.get_many>`, {meth}`get_one <fastapi_restly.views.RestView.get_one>`,
+{meth}`create <fastapi_restly.views.RestView.create>`, {meth}`update <fastapi_restly.views.RestView.update>`, {meth}`delete <fastapi_restly.views.RestView.delete>`) or its `handle_<verb>` handler; for a
 different status code, response shape, or query interface, see
 [Customize RestView](customize.md).
 

@@ -203,12 +203,12 @@ attach an `APIRouter` to the parent app/router.
 
 ### The Three Tiers of a CRUD Verb
 
-Every CRUD verb is split into a route shell (`<verb>_endpoint`), a request
-handler (`handle_<verb>`), and a business verb (`<verb>`); the model and the
+Every CRUD verb is split into an endpoint method (`<verb>_endpoint`), a
+handler (`handle_<verb>`), and a business method (`<verb>`); the model and the
 override decision table live in
 [Customize RestView](customize.md).
 
-The implementation detail worth knowing here is that the route shell calls
+The implementation detail worth knowing here is that the endpoint method calls
 {meth}`to_response(obj, shape) <fastapi_restly.views.BaseRestView.to_response>`, the single response method, which delegates to
 {meth}`to_response_schema(obj) <fastapi_restly.views.BaseRestView.to_response_schema>` for the per-object serialization
 (relationship-id normalization and response-schema validation).
@@ -232,7 +232,7 @@ If you declare a nested input field like `address: AddressRead` on a write
 schema, the default CRUD implementation will pass that nested Pydantic object
 through to the SQLAlchemy model constructor or attribute setter, which usually
 does not match the ORM model shape. Use a flattened schema or override the
-{meth}`create() <fastapi_restly.views.RestView.create>` / {meth}`update() <fastapi_restly.views.RestView.update>` business verbs to transform the payload first.
+{meth}`create() <fastapi_restly.views.RestView.create>` / {meth}`update() <fastapi_restly.views.RestView.update>` business methods to transform the payload first.
 [Work with Foreign Keys and Relationships](howto_relationship_idschema.md)
 describes the supported reference-field patterns.
 

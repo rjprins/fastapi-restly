@@ -306,7 +306,7 @@ behavior. For soft delete, audit stamps, and permission scoping, see
 ## Override a single tier
 
 {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` and {class}`RestView <fastapi_restly.views.RestView>` split every CRUD verb into three tiers: the
-route shell (wire contract), the request handler (authorization + commit
+endpoint method (HTTP contract), the handler (authorization + commit
 bracket), and the business method (domain logic, auth-free and commit-free).
 One behavior change therefore means one method override, while routing,
 authorization, and the commit stay framework-owned. The tier model, both

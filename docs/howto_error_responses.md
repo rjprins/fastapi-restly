@@ -24,7 +24,7 @@ All request-time errors live in `fr.exc` and subclass {class}`fr.exc.RestlyHTTPE
 | {class}`fr.exc.Conflict <fastapi_restly.exc.Conflict>` | `409` | The request conflicts with current resource state. |
 | {class}`fr.exc.BadQueryParam <fastapi_restly.exc.BadQueryParam>` | `400` | A list-endpoint parameter that is structurally valid but semantically wrong (e.g. `?sort=unknown_field`). |
 
-Raise them from your own overrides (`authorize`, business verbs, custom
+Raise them from your own overrides (`authorize`, business methods, custom
 routes), and they render through whatever handler is installed:
 
 ```python
@@ -102,6 +102,6 @@ the exact registration contract is in
 ## See also
 
 - [Customize RestView](customize.md): where {meth}`authorize <fastapi_restly.views.RestView.authorize>` and the
-  business verbs sit; a raised exception skips the commit bracket.
+  business methods sit; a raised exception skips the commit bracket.
 - [Filter, Sort, and Paginate Lists](howto_query_modifiers.md): the
   parameter grammar whose violations produce the 422/400 split.

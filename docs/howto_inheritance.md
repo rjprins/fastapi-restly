@@ -4,15 +4,15 @@ FastAPI-Restly views are plain Python classes. Use base classes for shared CRUD 
 
 Each CRUD verb is implemented in three tiers (see [Customize RestView](customize.md) for the full model):
 
-- The **route shell** ({meth}`create_endpoint <fastapi_restly.views.RestView.create_endpoint>`, {meth}`get_one_endpoint <fastapi_restly.views.RestView.get_one_endpoint>`, and so on) is the wire boundary. It is rarely overridden on a base class.
-- The **request handler** ({meth}`handle_create <fastapi_restly.views.RestView.handle_create>`, {meth}`handle_get_one <fastapi_restly.views.RestView.handle_get_one>`, and so on) runs {meth}`authorize <fastapi_restly.views.RestView.authorize>` and the commit bracket.
-- The **business verb** ({meth}`create <fastapi_restly.views.RestView.create>`, {meth}`get_one <fastapi_restly.views.RestView.get_one>`, {meth}`update <fastapi_restly.views.RestView.update>`, {meth}`delete <fastapi_restly.views.RestView.delete>`, {meth}`get_many <fastapi_restly.views.RestView.get_many>`) is the auth-free, commit-free domain operation.
+- The **endpoint method** ({meth}`create_endpoint <fastapi_restly.views.RestView.create_endpoint>`, {meth}`get_one_endpoint <fastapi_restly.views.RestView.get_one_endpoint>`, and so on) owns the HTTP contract. It is rarely overridden on a base class.
+- The **handler** ({meth}`handle_create <fastapi_restly.views.RestView.handle_create>`, {meth}`handle_get_one <fastapi_restly.views.RestView.handle_get_one>`, and so on) runs {meth}`authorize <fastapi_restly.views.RestView.authorize>` and the commit bracket.
+- The **business method** ({meth}`create <fastapi_restly.views.RestView.create>`, {meth}`get_one <fastapi_restly.views.RestView.get_one>`, {meth}`update <fastapi_restly.views.RestView.update>`, {meth}`delete <fastapi_restly.views.RestView.delete>`, {meth}`get_many <fastapi_restly.views.RestView.get_many>`) is the auth-free, commit-free domain operation.
 
-The business verb is the natural home for shared behaviour, so most of the examples below override it.
+The business method is the natural home for shared behaviour, so most of the examples below override it.
 
 ## Share a CRUD override across multiple views
 
-To run the same logic on several resources, override a business verb on a base class; every subclass picks it up automatically:
+To run the same logic on several resources, override a business method on a base class; every subclass picks it up automatically:
 
 ```python
 class AuditBase(fr.RestView):
@@ -62,7 +62,7 @@ class OrderView(AuditBase):
 
 ## Share an orchestration override
 
-When shared behaviour is about *timing*, override the request handler instead of the business verb. This keeps the route shell unchanged:
+When shared behaviour is about *timing*, override the handler instead of the business method. This keeps the endpoint method unchanged:
 
 ```python
 class NotifyBase(fr.RestView):
@@ -200,7 +200,7 @@ class ProductView(ReadOnlyBase):
 
 ## Implement soft-delete once
 
-A base class can override the {meth}`delete <fastapi_restly.views.RestView.delete>` business verb once for every subclass, exactly like the audit example above but with the soft-delete body. The canonical recipe, built on a `deleted_at` timestamp, lives in [Customize RestView](#soft-delete-recipe); the reusable mixin that also hides flagged rows on read is in [Compose Views with Mixins](howto_compose_views_with_mixins.md).
+A base class can override the {meth}`delete <fastapi_restly.views.RestView.delete>` business method once for every subclass, exactly like the audit example above but with the soft-delete body. The canonical recipe, built on a `deleted_at` timestamp, lives in [Customize RestView](#soft-delete-recipe); the reusable mixin that also hides flagged rows on read is in [Compose Views with Mixins](howto_compose_views_with_mixins.md).
 
 ## Cross-references
 

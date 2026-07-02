@@ -40,7 +40,7 @@ custom actions document themselves like any FastAPI endpoint:
 
 A generated route's `response_model` (and therefore its documented schema)
 comes from the view's {attr}`schema <fastapi_restly.views.BaseRestView.schema>` family. To document (and return) a different
-shape on one verb, replace that route shell with your own decorator and
+shape on one verb, replace that endpoint method with your own decorator and
 `response_model`; see
 [Response Envelopes and List Metadata](howto_response_schema.md),
 [a different schema for the list endpoint](patterns.md#a-different-schema-for-the-list-endpoint),

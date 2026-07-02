@@ -126,9 +126,9 @@ that react-admin sends the complete record on update, `id` and read-only
 fields included; the update schema drops the fields it does not accept
 instead of rejecting the request.
 
-The PUT route delegates to the same {meth}`handle_update <fastapi_restly.views.RestView.handle_update>` request handler as PATCH and
+The PUT route delegates to the same {meth}`handle_update <fastapi_restly.views.RestView.handle_update>` handler as PATCH and
 accepts the view's standard {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>` payload. If you need different
-write semantics for the two methods, override the {meth}`update <fastapi_restly.views.RestView.update>` business verb (or
+write semantics for the two methods, override the {meth}`update <fastapi_restly.views.RestView.update>` business method (or
 `handle_update`, or replace the PUT route directly);
 [Customize RestView](customize.md) explains how
 these override points relate.
@@ -257,15 +257,15 @@ class CustomerView(ReactAdminBase):
 
 {class}`AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>` is a thin subclass of {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` built with the
 [route replacement](customize.md#replace-an-endpoint-method-to-change-the-http-contract)
-pattern. It replaces the {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>` route shell to parse the
+pattern. It replaces {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>` to parse the
 react-admin query string, then delegates to the standard {meth}`handle_get_many <fastapi_restly.views.RestView.handle_get_many>` /
 {meth}`get_many <fastapi_restly.views.RestView.get_many>` flow. The react-admin dialect itself lives in {meth}`apply_query_params <fastapi_restly.views.RestView.apply_query_params>`
 (JSON `sort` / `range` / `filter`) and `to_response(..., ResponseShape.LISTING)`
 (plain array body plus `Content-Range`).
 
 It also adds a `PUT /{id}` route that delegates to the standard {meth}`handle_update <fastapi_restly.views.RestView.handle_update>`
-request handler. All other generated routes (`GET /{id}`, `POST /`,
-`PATCH /{id}`, `DELETE /{id}`) and write business-verb tiers are inherited
+handler. All other generated routes (`GET /{id}`, `POST /`,
+`PATCH /{id}`, `DELETE /{id}`) and write business-method tiers are inherited
 unchanged.
 
 The shared parsing and response helpers are internal.

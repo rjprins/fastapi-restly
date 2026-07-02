@@ -304,7 +304,7 @@ cleanly with any base-class or mixin filter. See
 [Composing views with mixins](howto_compose_views_with_mixins.md) for the
 multi-layer pattern.
 
-The `get_many` business verb does not accept a separate `query` argument.
+The `get_many` business method does not accept a separate `query` argument.
 Keep SQL-level base query changes in `build_query()` so listing,
 pagination totals, and single-row fetches all see the same visibility
 rules.

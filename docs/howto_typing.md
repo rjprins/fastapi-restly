@@ -74,7 +74,7 @@ but this is optional.
 
 The generic form is useful when you override methods on one of the
 [three tiers](customize.md#the-three-tiers). Most overrides land on
-the business verbs, so those benefit most:
+the business methods, so those benefit most:
 
 - {meth}`get_one <fastapi_restly.views.RestView.get_one>`
 - {meth}`create <fastapi_restly.views.RestView.create>`
@@ -82,7 +82,7 @@ the business verbs, so those benefit most:
 - {meth}`delete <fastapi_restly.views.RestView.delete>`
 - {meth}`get_many <fastapi_restly.views.RestView.get_many>`
 
-It also sharpens the request handlers ({meth}`handle_create <fastapi_restly.views.RestView.handle_create>`,
+It also sharpens the handlers ({meth}`handle_create <fastapi_restly.views.RestView.handle_create>`,
 {meth}`handle_update <fastapi_restly.views.RestView.handle_update>`,
 {meth}`handle_get_one <fastapi_restly.views.RestView.handle_get_one>`, and so
 on) and the cooperative stamping methods (`make_new_object`, `update_object`)
@@ -229,7 +229,7 @@ gives you the typing help you want:
   `class UserRead(IDSchema[User])`, is a separate, optional choice: the bare
   base is supported, and the parameterized base carries the model type.
 - Use view generics only when you want precise typing on the methods you
-  override; they mainly help on the three tiers (business verbs, request
+  override; they mainly help on the three tiers (business methods, request
   handlers, and stamping methods).
 - Custom route methods work well with ordinary Python annotations.
 

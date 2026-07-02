@@ -62,7 +62,7 @@ custom routes are covered in
 ## A different schema for the list endpoint
 
 There is no `schema_list` attribute. A different list shape is an
-HTTP-contract change, so it belongs in the route shell: replace
+HTTP-contract change, so it belongs in the endpoint method: replace
 {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>`
 with your own `response_model` and serialize through the slimmer schema.
 Filtering, sorting, and pagination parameters keep working:

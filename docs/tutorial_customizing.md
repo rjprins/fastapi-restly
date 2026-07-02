@@ -17,33 +17,33 @@ decision table, is covered in
 inward, the tiers are:
 
 ```
-<verb>_endpoint   the route shell (wire boundary): the @route, the FastAPI
+<verb>_endpoint   the endpoint method: the @route, the FastAPI
                   signature/response_model, and to_response. Rarely overridden.
-handle_<verb>     the request handler: runs authorize and the commit bracket
+handle_<verb>     the handler: runs authorize and the commit bracket
                   (before_commit → commit → after_commit), returns the domain
                   object. Override to change orchestration/timing.
-<verb>            the business verb: the domain operation (build/apply/save).
+<verb>            the business method: the domain operation (build/apply/save).
                   Auth-free and commit-free. The usual override point.
 ```
 
 The five verbs are {meth}`get_many <fastapi_restly.views.RestView.get_many>`, {meth}`get_one <fastapi_restly.views.RestView.get_one>`, {meth}`create <fastapi_restly.views.RestView.create>`, {meth}`update <fastapi_restly.views.RestView.update>`, and {meth}`delete <fastapi_restly.views.RestView.delete>`. So the full call chain for a create is:
 
 ```
-POST /     → create_endpoint(schema_obj)     # route shell
+POST /     → create_endpoint(schema_obj)     # endpoint method
            → handle_create(schema_obj)       # authorize + commit bracket
            → create(schema_obj)              # build + save, no commit
 ```
 
 Two facts make this layout safe to override:
 
-- **The handler owns the commit.** `handle_<verb>` runs {meth}`before_commit <fastapi_restly.views.RestView.before_commit>`, then `commit`, then {meth}`after_commit <fastapi_restly.views.RestView.after_commit>` around the business verb.
-- **The business verb never commits.** `create` / `update` / `delete` build, apply, and flush. The handler commits later.
+- **The handler owns the commit.** `handle_<verb>` runs {meth}`before_commit <fastapi_restly.views.RestView.before_commit>`, then `commit`, then {meth}`after_commit <fastapi_restly.views.RestView.after_commit>` around the business method.
+- **The business method never commits.** `create` / `update` / `delete` build, apply, and flush. The handler commits later.
 
 Inside every method, `self.session` is the live database session and `self.request` is the FastAPI `Request` object.
 
-## Tier 3: the business verb (the usual override point)
+## Tier 3: the business method (the usual override point)
 
-Most customization lives here. The business verb is the domain operation: build an object, apply a payload, save it. It is auth-free and commit-free; the handler adds authorization and commit handling.
+Most customization lives here. The business method is the domain operation: build an object, apply a payload, save it. It is auth-free and commit-free; the handler adds authorization and commit handling.
 
 ### create: inject server-side fields
 
@@ -100,11 +100,11 @@ Calling `super().build_query()` and chaining `.where(...)` composes cleanly with
 Read access has two halves, and they live in two different tiers:
 
 - **Visibility** belongs to `build_query`: a hidden row is not part of this view, so `get_one` returns 404.
-- **Policy** belongs to {meth}`authorize <fastapi_restly.views.RestView.authorize>`, which is called in the request handler. Use it for "may this caller read at all", not for "which rows exist".
+- **Policy** belongs to {meth}`authorize <fastapi_restly.views.RestView.authorize>`, which is called in the handler. Use it for "may this caller read at all", not for "which rows exist".
 
 ### delete: implement soft-delete
 
-The {meth}`delete <fastapi_restly.views.RestView.delete>` business verb removes the object. Override it to flip a flag instead:
+The {meth}`delete <fastapi_restly.views.RestView.delete>` business method removes the object. Override it to flip a flag instead:
 
 ```python
 from datetime import datetime, timezone
@@ -123,9 +123,9 @@ class PostView(fr.AsyncRestView):
 
 `DELETE /posts/{id}` now marks the row instead of removing it. {meth}`delete_endpoint <fastapi_restly.views.RestView.delete_endpoint>` still returns 204, and {meth}`handle_delete <fastapi_restly.views.RestView.handle_delete>` still commits. Pair this with a {meth}`build_query <fastapi_restly.views.RestView.build_query>` filter that hides deleted rows; the canonical recipe lives in [Customize RestView](customize.md#delete-soft-delete-instead-of-removing-the-row), and the reusable mixin version in [Compose Views with Mixins](howto_compose_views_with_mixins.md).
 
-## Tier 2: the request handler (orchestration and timing)
+## Tier 2: the handler (orchestration and timing)
 
-One tier up from the business verb sits the request handler. `handle_<verb>` owns {meth}`authorize <fastapi_restly.views.RestView.authorize>` and the commit bracket; override it to change *orchestration or timing* without re-declaring the route. The defaults look like this:
+One tier up from the business method sits the handler. `handle_<verb>` owns {meth}`authorize <fastapi_restly.views.RestView.authorize>` and the commit bracket; override it to change *orchestration or timing* without re-declaring the route. The defaults look like this:
 
 ```
 handle_create  →  authorize("create", data=schema_obj)
@@ -174,11 +174,11 @@ The `create` override earlier stamped a field at creation time only. For fields 
         return obj
 ```
 
-`make_new_object` builds the ORM object; `update_object` applies the payload. Override them for structural stamps without touching the business verb.
+`make_new_object` builds the ORM object; `update_object` applies the payload. Override them for structural stamps without touching the business method.
 
 ## Object utilities
 
-The business verbs are built from a small set of object utilities. `save_object` and `delete_object` you only ever call; `make_new_object` and `update_object` you call as well, but they double as the cooperative override points from the previous section:
+The business methods are built from a small set of object utilities. `save_object` and `delete_object` you only ever call; `make_new_object` and `update_object` you call as well, but they double as the cooperative override points from the previous section:
 
 ```
 create  →  make_new_object(schema_obj)   # build ORM object (override point for stamping)
@@ -303,7 +303,7 @@ FastAPI injects `self.current_user` on every subclass method. Register only conc
 
 ### Extend a base-class verb with super()
 
-A subclass can extend a base-class business verb:
+A subclass can extend a base-class business method:
 
 ```python
 @fr.include_view(app)
