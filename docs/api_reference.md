@@ -24,13 +24,13 @@ The generated routes share these conventions:
 - Read-only schema fields are ignored on create/update.
 - `*_id: fr.MustExist[int, Model]` inputs are validated against the database: the referenced row must exist. The scalar id is the related primary-key type, such as `int` or `UUID`.
 
-## Query Parameters (List Endpoint)
+## List Endpoint Behavior
 
-`GET /{prefix}/` exposes **list parameters** derived from the response schema;
-keys use public field names (aliases included), and dotted paths filter on
-relations. The table below gives the grammar in one line each; the canonical
-treatment, including comma semantics, LIKE escaping, foreign-key filtering,
-and alias rules, is
+`GET /{prefix}/` accepts filter, sort, and pagination parameters derived from
+the response schema; keys use public field names (aliases included), and
+dotted paths filter on relations. The table below gives the grammar in one
+line each; the canonical treatment, including comma semantics, LIKE escaping,
+foreign-key filtering, and alias rules, is
 [Filter, Sort, and Paginate Lists](howto_query_modifiers.md):
 
 | Kind | Form |
@@ -39,28 +39,25 @@ and alias rules, is
 | Operators | `__in`, `__gte`, `__lte`, `__gt`, `__lt`, `__ne`, `__isnull`, `__contains`, `__icontains` |
 | Relation paths | `?writer.authorName=Alice` (aliases per segment) |
 | Sorting | `?sort=name,-created_at` |
-| Pagination | `?page=2&page_size=10` (opt-in; set `default_page_size` / `max_page_size` for public endpoints) |
-| Unknown keys | rejected with `422`; allow view-specific extras via `extra_query_params` |
+| Pagination | `?page=2&page_size=10` |
+| Unknown keys | rejected with `422` |
 
-### Low-level helpers
+Pagination is opt-in, and the response is a bare JSON array unless the view
+opts into the metadata envelope. Four class attributes on `RestView` /
+`AsyncRestView` tune this behavior:
 
-`fr.query.create_list_params_schema(...)` and `fr.query.apply_list_params(...)` power generated list endpoints. Use the view classes for normal CRUD. Call these helpers directly only for custom endpoints that need the same list grammar. Pass a validated params-schema instance, not raw `QueryParams`.
+| Attribute | Type | Default | Purpose |
+|---|---|---|---|
+| {attr}`default_page_size <fastapi_restly.views.BaseRestView.default_page_size>` | `ClassVar[int \| None]` | `None` | Default `?page_size=`. `None` means no implicit cap: every matching row is returned. Set it and `max_page_size` on public endpoints. |
+| {attr}`max_page_size <fastapi_restly.views.BaseRestView.max_page_size>` | `ClassVar[int]` | `1000` | Upper bound for `?page_size=`; higher values are rejected with `422`. |
+| {attr}`include_pagination_metadata <fastapi_restly.views.BaseRestView.include_pagination_metadata>` | `ClassVar[bool]` | `False` | Set `True` to wrap the list items in the metadata envelope (`items`, `total`, `page`, `page_size`, `total_pages`). |
+| {attr}`extra_query_params <fastapi_restly.views.BaseRestView.extra_query_params>` | `ClassVar[Iterable[str]]` | `()` | Query keys to allow beyond those derived from the response schema, for view-specific parameters consumed outside the list grammar (e.g. `?include_deleted=true`). |
 
-## Optional Pagination Metadata
+The envelope's shape, when its page fields are populated versus `null`, and
+custom alternatives are covered in
+[Response Envelopes and List Metadata](howto_response_schema.md).
 
-List endpoints return a JSON array by default. Set `include_pagination_metadata = True` on a view to return metadata together with the list items:
-
-```json
-{
-  "items": [],
-  "total": 123,
-  "page": 2,
-  "page_size": 50,
-  "total_pages": 3
-}
-```
-
-`page`, `page_size`, and `total_pages` are populated only when pagination is active: the client sent `?page=` / `?page_size=`, or the view set `default_page_size`. Without pagination, those fields are `null`. The metadata envelope and custom alternatives are covered in [Response Envelopes and List Metadata](howto_response_schema.md).
+At a lower level, `fr.query.create_list_params_schema(...)` and `fr.query.apply_list_params(...)` power the generated list endpoints. Use the view classes for normal CRUD; call these helpers directly only for custom endpoints that need the same list grammar, and pass a validated params-schema instance rather than raw `QueryParams`.
 
 ## Endpoint Decorators
 
@@ -234,11 +231,9 @@ Every `View` subclass, CRUD or not, honors these class attributes:
 | {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>` | `ClassVar[type[pydantic.BaseModel]]` | Schema for `PATCH` input. Auto-derived by making all writable fields optional and named `ModelUpdate`. |
 | {attr}`model <fastapi_restly.views.BaseRestView.model>` | `ClassVar[type[DeclarativeBase]]` | The SQLAlchemy model class. |
 | {attr}`id_type <fastapi_restly.views.BaseRestView.id_type>` | `ClassVar[type]` | Scalar primary-key type used in the generated `/{id}` routes. Defaults to `int`. |
-| {attr}`include_pagination_metadata <fastapi_restly.views.BaseRestView.include_pagination_metadata>` | `ClassVar[bool]` | Set `True` to return the paginated metadata envelope. Defaults to `False`. |
 | {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>` | `ClassVar[Iterable[str \| ViewRoute]]` | Route names to suppress. |
-| {attr}`extra_query_params <fastapi_restly.views.BaseRestView.extra_query_params>` | `ClassVar[Iterable[str]]` | Query keys to allow on the listing endpoint in addition to those derived from the response schema. Use for view-specific parameters consumed outside `apply_list_params` (e.g. `?include_deleted=true`). |
-| {attr}`default_page_size <fastapi_restly.views.BaseRestView.default_page_size>` | `ClassVar[int \| None]` | Default `?page_size=` for list endpoints. `None` (the default) means "no implicit cap": every matching row is returned. |
-| {attr}`max_page_size <fastapi_restly.views.BaseRestView.max_page_size>` | `ClassVar[int]` | Upper bound for `?page_size=` on list endpoints. Values above are rejected with 422. Defaults to `1000`. |
+
+The list-tuning attributes (`default_page_size`, `max_page_size`, `include_pagination_metadata`, `extra_query_params`) are tabulated under [List Endpoint Behavior](#list-endpoint-behavior).
 
 ### Advanced Object Helpers
 
