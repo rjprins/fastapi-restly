@@ -1,6 +1,10 @@
 Schemas API
 ===========
 
+``fastapi_restly.schemas`` implements the Pydantic schema layer: schema base
+classes, the ``ReadOnly`` and ``WriteOnly`` field markers, relationship
+reference types, and schema generation from SQLAlchemy models.
+
 .. seealso::
 
    :doc:`/howto_relationship_idschema` covers ``MustExist`` checked foreign

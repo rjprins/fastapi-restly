@@ -1,6 +1,10 @@
 Objects API
 ===========
 
+``fastapi_restly.objects`` provides the session-level object primitives:
+building and updating SQLAlchemy objects from schema input, flushing and
+deleting them, and snapshotting loaded column values.
+
 .. automodule:: fastapi_restly.objects
    :members:
    :undoc-members:

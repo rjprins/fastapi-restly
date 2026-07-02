@@ -1,6 +1,11 @@
 Database API
 ============
 
+``fastapi_restly.db`` implements the connection layer: ``configure()`` for
+process-wide setup, session context managers and FastAPI session dependencies,
+engine accessors, table creation helpers for development, and the
+savepoint-only mode used in testing.
+
 .. automodule:: fastapi_restly.db
    :members:
    :undoc-members:
