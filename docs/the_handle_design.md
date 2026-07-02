@@ -195,11 +195,12 @@ Internally, `write_action` and the CRUD handlers share {func}`run_write_action <
 
 ## The domain utilities
 
-`make_new_object`, `update_object`, `save_object`, and `delete_object` are
-utilities you call, not extension points: they build, apply, flush, and
-remove ORM objects without committing. The same operations exist as free
-functions for workers and service code, where the caller owns the
-transaction. The full table and a worked free-function example are in
+`save_object` and `delete_object` are utilities you call, not extension
+points; `make_new_object` and `update_object` are both callable utilities and
+cooperative override points for server-stamped fields (see the table above).
+Together they build, apply, flush, and remove ORM objects without committing.
+The same operations exist as free functions for workers and service code,
+where the caller owns the transaction. The full table and a worked free-function example are in
 [Domain utilities: call, don't override](howto_override_endpoints.md#domain-utilities-call-dont-override).
 
 ## Where to go next

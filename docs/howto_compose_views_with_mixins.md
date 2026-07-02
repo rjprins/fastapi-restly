@@ -61,9 +61,6 @@ If the same logic must also run from a script or worker, extract a plain
 function, put it where it is easiest to find, and call it from both:
 
 ```python
-from fastapi_restly.objects import async_make_new_object
-
-
 def hash_and_set_password(user: User, raw_password: str) -> None:
     user.password_hash = bcrypt.hashpw(raw_password.encode(), bcrypt.gensalt())
 
@@ -89,7 +86,7 @@ Do not extract early. Wait until there is a second caller.
 
 The [SaaS example](examples.md#saas) ships three structural mixins of this
 kind in
-[`_mixins.py`](https://github.com/rjprins/fastapi-restly/tree/main/example-projects/saas/app/views/_mixins.py).
+[`_mixins.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/views/_mixins.py).
 Copy them into your project as a starting point.
 
 ### `TenantScopedMixin`: multi-tenant row scoping

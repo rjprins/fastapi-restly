@@ -91,9 +91,9 @@ pre-registration hook.
 ```python
 class View:
     prefix: ClassVar[str]
-    tags: ClassVar[Iterable[str] | None] = None
-    dependencies: ClassVar[Iterable[Any] | None] = None
-    responses: ClassVar[dict[int, Any]] = {}
+    tags: ClassVar[Any] = None
+    dependencies: ClassVar[Any] = None
+    responses: ClassVar[dict[int | str, dict[str, Any]]] = {}
 
     @classmethod
     def before_include_view(cls): ...
@@ -116,8 +116,9 @@ class UserView(fr.View): ...
 ```
 
 {func}`include_view <fastapi_restly.views.include_view>` walks the class's MRO, collects every method tagged with route
-metadata, instantiates a per-request copy of the view, and registers each
-route on the parent router or app.
+metadata, wires each method's `self` up as a dependency on the view class (so
+FastAPI instantiates a fresh view per request), and registers each route on
+the parent router or app.
 
 Routes are bound at *include-time* against the class you pass in; they are
 not bound at decoration time. This is what makes subclassing work.

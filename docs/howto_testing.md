@@ -103,7 +103,7 @@ Point {func}`fr.configure() <fastapi_restly.db.configure>` at a dedicated test d
 everything after each test, but schema setup is still your job, once per
 session:
 
-- **{func}`create_all <fastapi_restly.db.create_all>`** (above) builds the schema straight from your models;
+- **{func}`async_create_all <fastapi_restly.db.async_create_all>`** (above) builds the schema straight from your models;
   this is fine when migrations are not part of what you are testing.
 - **Alembic**: if you want tests to run against the migrated schema, upgrade
   in the same session fixture instead:

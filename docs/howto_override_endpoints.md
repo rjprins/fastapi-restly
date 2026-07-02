@@ -128,7 +128,6 @@ class DocumentView(fr.AsyncRestView):
     prefix = "/documents"
     model = Document
     schema = DocumentRead
-    include_pagination_metadata = True
 
     def build_query(self):
         user_id = self.request.state.user_id
@@ -225,7 +224,7 @@ See SQLAlchemy's [mapper events documentation](https://docs.sqlalchemy.org/en/20
 
 ## Domain utilities: call, don't override
 
-The business verbs are built from a handful of low-level utilities. Call these from your {meth}`create <fastapi_restly.views.RestView.create>` / {meth}`update <fastapi_restly.views.RestView.update>` / {meth}`delete <fastapi_restly.views.RestView.delete>` overrides; they are not themselves the override point.
+The business verbs are built from a handful of low-level utilities. Call these from your {meth}`create <fastapi_restly.views.RestView.create>` / {meth}`update <fastapi_restly.views.RestView.update>` / {meth}`delete <fastapi_restly.views.RestView.delete>` overrides. `save_object` and `delete_object` are never the override point; `make_new_object` and `update_object` are overridden only for [cooperative field stamping](#cooperative-field-stamping-override-make_new_object--update_object), and called everywhere else.
 
 | Method | What it does |
 |---|---|

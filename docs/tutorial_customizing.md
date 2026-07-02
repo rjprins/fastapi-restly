@@ -1,7 +1,9 @@
 # Tutorial Part 2: Customizing Views
 
 In Part 2 we extend the blog API from [Part 1](tutorial.md), working through
-customization from single-method overrides to shared base classes.
+customization from single-method overrides to shared base classes. Part 1's
+`author_token` and `view_count` demo fields are set aside in this part; a
+shared base class stamps authorship server-side instead.
 
 The examples use {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>`. The same methods and patterns apply to {class}`RestView <fastapi_restly.views.RestView>`, the sync variant; simply drop the `async`/`await`.
 
@@ -176,7 +178,7 @@ The `create` override earlier stamped a field at creation time only. For fields 
 
 ## Object utilities
 
-The business verbs are built from a small set of object utilities. These are utilities you call, not override points:
+The business verbs are built from a small set of object utilities. `save_object` and `delete_object` you only ever call; `make_new_object` and `update_object` you call as well, but they double as the cooperative override points from the previous section:
 
 ```
 create  →  make_new_object(schema_obj)   # build ORM object (override point for stamping)
@@ -345,7 +347,9 @@ When a base class defines {attr}`prefix <fastapi_restly.views.View.prefix>`, sub
 
 ## Putting it together
 
-Here is the blog API from Part 1, extended with everything from this tutorial:
+Here is the blog API from Part 1, extended with the customizations from this
+part. A three-line middleware stands in for real authentication so the file
+runs as is:
 
 ```python
 import fastapi
@@ -379,11 +383,17 @@ class Comment(fr.IDBase):
 @asynccontextmanager
 async def lifespan(app: fastapi.FastAPI):
     # Create tables after model classes are declared so they're registered on the metadata.
-    await fr.db.async_create_all(fr.DataclassBase)
+    await fr.db.async_create_all(fr.IDBase)
     yield
 
 
 app = fastapi.FastAPI(lifespan=lifespan)
+
+
+@app.middleware("http")
+async def fake_auth(request, call_next):
+    request.state.user_id = 1   # demo stand-in for your real auth
+    return await call_next(request)
 
 
 # --- Schemas ---
@@ -449,9 +459,35 @@ class CommentView(AuthoredBase):
     schema = CommentRead
 ```
 
+## Try it
+
+Run the file with `fastapi dev main.py`, then exercise the customized
+behaviour:
+
+```bash
+curl -X POST http://127.0.0.1:8000/posts/ \
+  -H 'Content-Type: application/json' \
+  -d '{"title": "Hello", "content": "World", "published": false}'
+# 201; the server stamps author_id on the new row
+
+curl -X POST http://127.0.0.1:8000/posts/1/publish
+# 200 with "published": true; a second call returns 409 "Already published"
+
+curl -X PATCH http://127.0.0.1:8000/posts/1 \
+  -H 'Content-Type: application/json' -d '{"title": "Edited"}'
+# 409 "Cannot edit a published post"; the update override rejects it
+
+curl -X DELETE http://127.0.0.1:8000/posts/1
+# 204; the delete override sets deleted_at instead of removing the row
+```
+
+A follow-up `GET /posts/1` still returns the post, because nothing filters
+soft-deleted rows yet; hiding them is the `build_query` pairing described in
+the soft-delete section above.
+
 ## Next steps
 
-The how-to guides below go deeper into the patterns from this part:
+The pages below go deeper into the patterns from this part:
 
 - [Override Endpoints](howto_override_endpoints.md): the complete handler reference with all signatures
 - [Share Behaviour with Base Views](howto_inheritance.md): the full inheritance guide

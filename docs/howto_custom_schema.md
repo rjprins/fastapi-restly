@@ -18,12 +18,16 @@ SQLAlchemy model instead.
 `from_attributes=True`, which lets response schemas validate SQLAlchemy ORM
 objects directly.
 
-In code, it is intentionally this small:
+Behaviorally, it is equivalent to:
 
 ```python
 class BaseSchema(pydantic.BaseModel):
     model_config = pydantic.ConfigDict(from_attributes=True)
 ```
+
+(The real class also installs the import-time check that rejects nested
+`ReadOnly`/`WriteOnly` markers, described in
+[ReadOnly and WriteOnly](#readonly-and-writeonly).)
 
 Generated Restly routes still serialize ORM objects through
 {meth}`self.to_response_schema(obj) <fastapi_restly.views.BaseRestView.to_response_schema>`. That is where Restly applies response-specific

@@ -149,7 +149,7 @@ class CommentView(fr.AsyncRestView):
 
 Tables are created inside a FastAPI `lifespan` context manager so they are initialised
 after the event loop starts. This is safe with both `uvicorn` and testing tools.
-For production projects, use Alembic migrations instead of {func}`create_all <fastapi_restly.db.create_all>`.
+For production projects, use Alembic migrations instead of {func}`async_create_all <fastapi_restly.db.async_create_all>`.
 
 ## Run it
 
