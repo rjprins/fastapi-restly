@@ -1,8 +1,9 @@
 # How-To Guides
 
-Task-focused guides for working with FastAPI-Restly. New to the framework?
-Start with [Getting Started](getting_started.md), then the
-[Tutorial](tutorial.md); come back here when you have a concrete task.
+These guides are task-focused: each one shows how to accomplish a specific
+goal with FastAPI-Restly. If you are new to the framework, start with
+[Getting Started](getting_started.md), then the [Tutorial](tutorial.md), and
+come back here when you have a concrete task.
 
 ::::{grid} 1 2 2 2
 :gutter: 3
@@ -18,9 +19,9 @@ Adopt Restly beside existing FastAPI routes, then wire it into your sessions and
 :link: patterns
 :link-type: doc
 
-The idiomatic answers: nested resources and sub-resources, a different list
-schema, restoring soft-deleted rows, webhook receivers, login flows, custom
-actions, tenant scoping.
+Find the idiomatic answers for nested resources and sub-resources, a
+different list schema, restoring soft-deleted rows, webhook receivers, login
+flows, custom actions, and tenant scoping.
 :::
 
 :::{grid-item-card} Custom Schemas and Field Types
@@ -64,8 +65,8 @@ or the route shells, and add custom routes alongside generated CRUD.
 :link: howto_error_responses
 :link-type: doc
 
-The typed `fr.exc` exceptions to raise from overrides, the 422-vs-400 split,
-and app-wide error envelopes (problem+json).
+Learn the typed `fr.exc` exceptions to raise from overrides, the 422-vs-400
+split, and app-wide error envelopes (problem+json).
 :::
 
 :::{grid-item-card} Share Behaviour with Base Views
@@ -80,7 +81,7 @@ access control across multiple views.
 :link: howto_compose_views_with_mixins
 :link-type: doc
 
-Layer cross-cutting concerns — tenant scoping, soft delete, audit stamping —
+Layer cross-cutting concerns (tenant scoping, soft delete, audit stamping)
 through cooperative mixins.
 :::
 
@@ -103,23 +104,24 @@ Use {class}`AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>` to g
 :link: howto_openapi
 :link-type: doc
 
-Per-view tags and responses, custom-route metadata, replacing a generated
-route's documented contract, and `x-resource-ref`.
+Set per-view tags and responses, add metadata to custom routes, replace a
+generated route's documented contract, and use `x-resource-ref`.
 :::
 
 :::{grid-item-card} Test APIs with RestlyTestClient and Fixtures
 :link: howto_testing
 :link-type: doc
 
-A copy-paste conftest, savepoint-isolated fixtures, and the full fixture
-reference.
+Start from a copy-paste conftest, work with savepoint-isolated fixtures, and
+consult the full fixture reference.
 :::
 
 :::{grid-item-card} Deploying
 :link: deploying
 :link-type: doc
 
-Production engine config, Alembic migrations, and an ASGI checklist.
+Configure a production engine, set up Alembic migrations, and follow an ASGI
+checklist.
 :::
 
 ::::

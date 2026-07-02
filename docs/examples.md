@@ -18,8 +18,8 @@ empty app to a working REST resource.
 ([README](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/shop/README.md))
 shows relationships, multiple primary-key styles, async sessions, and
 React-Admin-compatible endpoints through {class}`AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>`. It also includes
-a small React Admin frontend wired against the API. Covered in:
-[React Admin Integration](howto_react_admin.md),
+a small React Admin frontend wired against the API. These patterns are
+covered in [React Admin Integration](howto_react_admin.md) and
 [Work with Foreign Keys and Relationships](howto_relationship_idschema.md).
 
 ## SaaS
@@ -28,9 +28,10 @@ a small React Admin frontend wired against the API. Covered in:
 ([README](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/README.md))
 is the most complete example: a multi-tenant project management API with
 permission patterns, shared base views, mixins, custom create/update schemas,
-query modifiers, Alembic migrations — and a substantial **non-CRUD surface**
-built on the same views. Route highlights, all from
-`example-projects/saas/app/views/`:
+[query modifiers](howto_query_modifiers.md), and
+[Alembic migrations](deploying.md#migrations-with-alembic). It also builds a
+substantial non-CRUD surface on the same views. The routes below, all defined
+in `example-projects/saas/app/views/`, highlight the patterns involved:
 
 | Route | Pattern it demonstrates |
 |---|---|
@@ -40,10 +41,10 @@ built on the same views. Route highlights, all from
 | `POST /task-labels/create-and-attach` | Two rows committed through one `write_action` block |
 | `POST /users/{id}/change-password`, `GET /users/me` | Account actions and a non-resource read |
 
-Covered in:
+These patterns are covered in
 [Compose Views with Mixins](howto_compose_views_with_mixins.md),
 [Share Behaviour with Base Views](howto_inheritance.md),
-[Override CRUD Behavior](howto_override_endpoints.md),
+[Override CRUD Behavior](howto_override_endpoints.md), and
 [Patterns](patterns.md).
 
 ## Running them
@@ -51,5 +52,5 @@ Covered in:
 Each project is self-contained: run `uv sync` in its directory, then use the
 commands in its README (linked above).
 
-Want to build one of these yourself? Start with
+To build one of these yourself, start with
 [Getting Started](getting_started.md) and the [Tutorial](tutorial.md).

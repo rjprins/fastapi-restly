@@ -17,8 +17,10 @@ generated CRUD routes, query parameters, error translation, and test fixtures.
   stack you already know, not from a parallel abstraction that hides it. You
   can always drop one level down to plain FastAPI or SQLAlchemy.
 - **Out of the box.** The common path should not need wiring: engine and
-  session setup, commit handling, schema generation, list filtering with
-  strict validation, error translation, and savepoint-isolated test fixtures
+  session setup, commit handling, schema generation,
+  [list filtering](howto_query_modifiers.md) with strict validation,
+  [error translation](howto_error_responses.md), and
+  [savepoint-isolated test fixtures](howto_testing.md)
   all work from {func}`fr.configure() <fastapi_restly.db.configure>` onward.
 - **Customization is never off the path.** Applications are rarely just CRUD.
   Every generated operation has explicit override points
@@ -27,8 +29,9 @@ generated CRUD routes, query parameters, error translation, and test fixtures.
   examples and extension points say where custom behavior belongs, for your
   team.
 
-The core patterns: class-based views, the override hierarchy, and schema
-generation, are proven by four years of internal production use. The public
+The core patterns ([class-based views](class_based_views.md), the override
+hierarchy, and schema generation) are proven by four years of internal
+production use. The public
 API surface is still settling on the way to `1.0.0` (see the
 [changelog](changelog.md)); a broader user base will find corners we haven't
 hit yet. If you find something broken or missing,
@@ -45,13 +48,13 @@ needed. It was never released publicly.
 When FastAPI and SQLAlchemy 2 matured, the approach was rebuilt as Restly at
 **Clearblue Markets**, which later allowed the work to be shared publicly,
 and then developed and refined in production at **Brenntag**. Those
-deployments — four years of internal use, plus the lessons of the earlier
-Flask framework — are what became the public project. Thanks to all three
+deployments (four years of internal use, plus the lessons of the earlier
+Flask framework) are what became the public project. We thank all three
 companies for the environments that made it possible.
 
 ## Privacy
 
-This site uses [GoatCounter](https://www.goatcounter.com/) for analytics — an
+This site uses [GoatCounter](https://www.goatcounter.com/) for analytics, an
 open-source, **cookieless** tool. It counts page views and unique visits
 without setting cookies or storing personal data, so nothing tracks you across
 sites and there is nothing to consent to. No data is shared with third parties.
