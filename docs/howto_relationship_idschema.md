@@ -29,6 +29,11 @@ for what embedding supports.
 | `author: fr.ReadOnly[UserRead]` | the full object | read-only relationship embed |
 | `author_id: int` | `1` | scalar foreign key |
 
+The three checked forms (`MustExist`, `IDRef`, `IDSchema`) return `404` when
+the referenced id does not exist. A schema that exposes the same link through
+two relationship references must receive matching ids; conflicting ids return
+`422` (see [Dataclass relationship setup](#dataclass-relationship-setup)).
+
 - Use {class}`MustExist <fastapi_restly.schemas.MustExist>` for the common case:
   a `*_id` column you want validated. Name the primary-key type first, then the
   target model, as in `fr.MustExist[int, User]` (`fr.MustExist[UUID, Account]`
@@ -431,30 +436,6 @@ in the business verb. If you need the resolved row, check in `before_commit`,
 where the built object carries it (for example `new.author.org_id`). Prefer
 `authorize` when the requested id is enough: it rejects before the unscoped
 fetch and is the standard policy seam.
-
-## Behavior summary
-
-- {class}`MustExist[int, Model] <fastapi_restly.schemas.MustExist>` uses scalar id
-  wire format on request and response. In Python it stays the plain id and adds
-  an existence check.
-- {class}`IDRef <fastapi_restly.schemas.IDRef>` and
-  {class}`IDSchema <fastapi_restly.schemas.IDSchema>` are relationship-field
-  variants: flat id for `IDRef`, nested object for `IDSchema`.
-- Missing related ids return `404`.
-- Reference resolution is an **unscoped existence check** (bare PK lookup, no
-  {meth}`build_query <fastapi_restly.views.RestView.build_query>` scoping). Gate cross-tenant / visibility references in
-  {meth}`authorize <fastapi_restly.views.RestView.authorize>` or {meth}`before_commit <fastapi_restly.views.RestView.before_commit>`; see [Visibility and multi-tenancy](#visibility-and-multi-tenancy).
-- Restly matches the field name to a mapped column or relationship via the
-  model's mapper, not by an `_id` suffix.
-- For {class}`IDRef <fastapi_restly.schemas.IDRef>` /
-  {class}`IDSchema <fastapi_restly.schemas.IDSchema>` fields, a matching
-  SQLAlchemy relationship lets Restly keep the FK column and relationship
-  attribute in sync.
-- Dataclass models can be FK-first or relationship-first; Restly supplies the
-  constructor values the model requires from the same resolved row.
-- If both `author_id` and `author` are explicitly provided as relationship
-  references, they must refer to the same row or the request returns `422`.
-- {class}`IDSchema <fastapi_restly.schemas.IDSchema>` as a base class adds the resource's own read-only `id` field.
 
 ## See also
 
