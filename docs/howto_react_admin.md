@@ -2,18 +2,16 @@
 
 [React-admin](https://marmelab.com/react-admin/) with
 [`ra-data-simple-rest`](https://github.com/marmelab/react-admin/tree/master/packages/ra-data-simple-rest)
-expects a specific REST wire contract that differs from the default Restly
-contract in several ways: JSON-encoded sort and range parameters, a plain
+expects a specific REST wire contract that differs from the
+[default Restly contract](howto_response_schema.md#what-restly-returns-by-default)
+in several ways: JSON-encoded sort and range parameters, a plain
 array response body, and a `Content-Range` header for pagination.
-
 {class}`AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>` and {class}`ReactAdminView <fastapi_restly.views.ReactAdminView>` implement this contract, so
 `ra-data-simple-rest` works without a custom data provider.
 
----
-
 ## Quick start
 
-Replace {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` with {class}`AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>` (or {class}`RestView <fastapi_restly.views.RestView>` with
+To adopt the contract, replace {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` with {class}`AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>` (or {class}`RestView <fastapi_restly.views.RestView>` with
 {class}`ReactAdminView <fastapi_restly.views.ReactAdminView>` for sync sessions):
 
 ```python
@@ -51,14 +49,14 @@ export default () => (
 
 No custom data provider or adapter layer is needed.
 
----
-
 ## Wire contract
 
 {class}`AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>` translates the `ra-data-simple-rest` query format to SQL
 and returns responses the provider expects.
 
-### List — `GET /resource/`
+### List: `GET /resource/`
+
+The list endpoint reads react-admin's three JSON-encoded query parameters:
 
 | Query parameter | Format | Example |
 |---|---|---|
@@ -66,7 +64,8 @@ and returns responses the provider expects.
 | `range` | JSON `[start, end]` (inclusive) | `range=[0,24]` |
 | `filter` | JSON object | `filter={"name":"foo"}` or `filter={"id":[1,2,3]}` |
 
-Response: a plain JSON array. The `Content-Range` header carries the total:
+The response body is a plain JSON array, and the `Content-Range` header
+carries the total:
 
 ```
 Content-Range: items 0-24/315
@@ -77,13 +76,16 @@ for `getMany` calls. It translates to `WHERE id IN (1, 2, 3)`.
 
 ### Other operations
 
+Four of the remaining routes serve react-admin's other data provider calls;
+the standard PATCH route stays available alongside them:
+
 | Method | Path | Purpose | Source |
 |---|---|---|---|
-| `GET` | `/{id}` | Get one — react-admin `getOne` | inherited from {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` |
-| `POST` | `/` | Create — react-admin `create` | inherited from `AsyncRestView` |
-| `PUT` | `/{id}` | Full update — react-admin `update` | added by {class}`AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>` |
+| `GET` | `/{id}` | Get one (react-admin `getOne`) | inherited from {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` |
+| `POST` | `/` | Create (react-admin `create`) | inherited from `AsyncRestView` |
+| `PUT` | `/{id}` | Full update (react-admin `update`) | added by {class}`AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>` |
 | `PATCH` | `/{id}` | Partial update | inherited from `AsyncRestView` |
-| `DELETE` | `/{id}` | Delete — react-admin `delete` | inherited from `AsyncRestView` |
+| `DELETE` | `/{id}` | Delete (react-admin `delete`) | inherited from `AsyncRestView` |
 
 `AsyncReactAdminView` and {class}`ReactAdminView <fastapi_restly.views.ReactAdminView>` add a `PUT /{id}` endpoint because
 `ra-data-simple-rest`'s default `update` method issues a `PUT` request. The
@@ -91,21 +93,19 @@ default `PATCH /{id}` is also kept available, so clients that prefer partial
 updates continue to work.
 
 The PUT route delegates to the same {meth}`handle_update <fastapi_restly.views.RestView.handle_update>` request handler as PATCH and
-accepts the view's standard {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>` payload. Override the {meth}`update <fastapi_restly.views.RestView.update>`
-business verb (or `handle_update`, or replace the PUT route directly) if you need
-different write semantics for the two methods.
+accepts the view's standard {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>` payload. If you need different
+write semantics for the two methods, override the {meth}`update <fastapi_restly.views.RestView.update>` business verb (or
+`handle_update`, or replace the PUT route directly);
+[How Overrides Work: The Three Tiers](the_handle_design.md) explains how
+these override points relate.
 
----
-
-## Tip: serialize related lists as scalar id arrays with `IDRef`
+## Serialize related lists as scalar id arrays with `IDRef`
 
 `ra-data-simple-rest` expects `to-many` references as plain id arrays
-(`"products": [1, 2, 3]`). Declare the field as `list[fr.IDRef[Product]]` —
-see [Lists of References](howto_relationship_idschema.md) for the full
-behavior. The [shop example](examples.md) runs this end to end, React Admin
-frontend included.
-
----
+(`"products": [1, 2, 3]`). Declare the field as `list[fr.IDRef[Product]]`;
+[Lists of References](howto_relationship_idschema.md#lists-of-references)
+describes the full behavior. The [shop example](examples.md#shop) runs this
+end to end, React Admin frontend included.
 
 ## CORS setup
 
@@ -131,9 +131,10 @@ app.add_middleware(
 {class}`AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>` also sets `Access-Control-Expose-Headers: Content-Range`
 on list responses as a fallback. Prefer middleware in production.
 
----
-
 ## Customization
+
+A few view-level settings adjust the defaults described above, and a base
+class can share them across views.
 
 ### Set the default page size
 
@@ -166,7 +167,8 @@ class ProductView(fr.AsyncReactAdminView):
 ### Share the react-admin contract across multiple views
 
 Put shared customizations in a project base class and inherit your views from
-that class:
+it, following the pattern in
+[Share Behaviour with Base Views](howto_inheritance.md):
 
 ```python
 class ReactAdminBase(fr.AsyncReactAdminView):
@@ -185,8 +187,6 @@ class CustomerView(ReactAdminBase):
     prefix = "/customers"
     model = Customer
 ```
-
----
 
 ## Under the hood
 

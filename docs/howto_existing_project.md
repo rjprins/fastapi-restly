@@ -38,7 +38,7 @@ app.include_router(api)
 
 `fr.include_view` works as a direct call (`fr.include_view(api, UserView)`,
 above) or as a class decorator (`@fr.include_view(app)`, used later in this
-guide) — both register the same routes.
+guide); both register the same routes.
 
 Adoption is per resource. In the example above, orders stay hand-written while
 users use Restly. Adding a `ProductView` later does not require changing the
@@ -93,21 +93,24 @@ modules.
 
 ## Replace an Existing Hand-Written Router
 
-Going the other direction — retiring a hand-written CRUD router in favor of a
-generated view — is a mapping exercise:
+The previous sections stepped out of Restly; going the other direction,
+retiring a hand-written CRUD router in favor of a generated view, is a mapping
+exercise:
 
-1. **Map your routes to the generated table.** `GET /` + `POST /` +
-   `GET/PATCH/DELETE /{id}` are covered ([the exact
+1. Map your routes to the generated table. `GET /`, `POST /`, and
+   `GET`/`PATCH`/`DELETE` on `/{id}` are covered ([the exact
    contract](api_reference.md#generated-rest-endpoints)). Anything else on the
    router (exports, actions) stays as custom routes on the view or as plain
    FastAPI routes beside it.
-2. **Keep custom semantics out of the swap.** A route whose contract differs
+2. Keep custom semantics out of the swap. A route whose contract differs
    (e.g. `PUT` updates, a non-204 delete) can be excluded via
    {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>` and kept hand-written until you adapt it.
-3. **Pin the wire contract with tests first.** Write
+3. Pin the wire contract with tests first. Write
    [`RestlyTestClient`](howto_testing.md) tests against the *old* router's
-   responses, then swap in the view and run them unchanged — payload or
+   responses, then swap in the view and run them unchanged; payload or
    status drift shows up immediately.
+
+A resource in mid-migration looks like this:
 
 ```python
 class ProductView(fr.AsyncRestView):
@@ -123,9 +126,9 @@ api.include_router(legacy_delete_router)  # until the contract is adapted
 
 ## Reuse Your Existing Engine
 
-The common integration: your app already builds an engine (or sessionmaker)
-with the pool settings and URL handling you trust. Hand exactly that object to
-{func}`fr.configure() <fastapi_restly.db.configure>` — Restly does not need to own it:
+The most common integration is reusing the engine (or sessionmaker) your app
+already builds, with the pool settings and URL handling you trust. Hand exactly
+that object to {func}`fr.configure() <fastapi_restly.db.configure>`; Restly does not need to own it:
 
 ```python
 import fastapi_restly as fr
@@ -140,8 +143,8 @@ fr.configure(async_engine=existing_async_engine)
 
 Restly builds its session factory on top and owns the commit on its views;
 nothing about the engine changes hands. Reach for a session *generator* (next
-section) only when sessions must be constructed in a custom way — scoped
-sessions, multi-tenant routing, instrumentation.
+section) only when sessions must be constructed in a custom way, such as scoped
+sessions, multi-tenant routing, or instrumentation.
 
 ## Provide Your Own Session Generator
 
@@ -153,8 +156,8 @@ session options match the behavior your views rely on. Restly's built-in
 factories intentionally use different autoflush defaults for sync and async
 sessions and keep `expire_on_commit=False` for both; see
 [Session Factory Defaults](technical_details.md#session-factory-defaults).
-A custom generator constructs sessions your way but does **not** own the
-commit: it should construct, yield, and clean up (close / roll back on the way
+A custom generator constructs sessions your way but does *not* own the
+commit: it should construct, yield, and clean up (close or roll back on the way
 out); Restly commits. Customizing how a session is built never takes the commit
 away from Restly.
 
@@ -191,7 +194,7 @@ fr.configure(sync_session_generator=my_get_db)
 
 Use {func}`fr.configure(...) <fastapi_restly.db.configure>` when one session source should be the default for the
 application. If only one view should use a different session source, override
-the view's `session` dependency instead.
+the view's `session` dependency instead:
 
 ```python
 from collections.abc import AsyncIterator
@@ -212,8 +215,8 @@ ReportingSession = async_sessionmaker(
 
 
 async def get_reporting_db() -> AsyncIterator[AsyncSession]:
-    # Construct, yield, and clean up -- do NOT commit. Restly owns the commit;
-    # the ``async with`` rolls back and closes the session on the way out.
+    # Construct, yield, and clean up; do NOT commit. Restly owns the commit,
+    # and the ``async with`` rolls back and closes the session on the way out.
     async with ReportingSession() as session:
         yield session
 
@@ -235,8 +238,10 @@ session wiring.
 
 ## Use the Configured Session Off-Request
 
-Outside the request cycle — in background tasks, scripts, or workers — open a
-session from FastAPI-Restly's configured factory directly:
+Outside the request cycle (in background tasks, scripts, or workers), open a
+session from FastAPI-Restly's configured factory directly with
+{func}`fr.open_async_session() <fastapi_restly.db.open_async_session>` or
+{func}`fr.open_session() <fastapi_restly.db.open_session>`:
 
 ```python
 import fastapi_restly as fr
@@ -249,7 +254,7 @@ with fr.open_session() as session:
     result = session.execute(...)
 ```
 
-Off-request code owns its commit — these helpers do not commit for you.
+Off-request code owns its commit; these helpers do not commit for you.
 
 ## Use Your Own DeclarativeBase Models
 
@@ -278,14 +283,15 @@ class WorldView(fr.AsyncRestView):
 ```
 
 FastAPI-Restly supports these models for generated CRUD routes and
-auto-generated schemas. When creating tables, use your own base metadata
-(for example `AppBase.metadata.create_all(...)`).
+[auto-generated schemas](technical_details.md#auto-generated-schemas). When
+creating tables, use your own base metadata (for example
+`AppBase.metadata.create_all(...)`).
 
 ## See also
 
-- [Test APIs with RestlyTestClient and Fixtures](howto_testing.md) — pin the
+- [Test APIs with RestlyTestClient and Fixtures](howto_testing.md): pin the
   wire contract while migrating; savepoint-isolated tests against your DB.
-- [Deploying](deploying.md) — engine configuration from environment values,
+- [Deploying](deploying.md): engine configuration from environment values,
   Alembic, and a production `main.py`.
-- [Patterns](patterns.md) — the idiomatic answers for nested resources,
+- [Patterns](patterns.md): the idiomatic answers for nested resources,
   webhooks, and other shapes your existing app probably has.

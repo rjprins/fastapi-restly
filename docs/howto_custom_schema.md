@@ -8,7 +8,9 @@ FastAPI-Restly uses **schema** for Pydantic request/response models and
 
 Use explicit schemas when you need a stable public contract: aliases, hidden
 fields, computed read-only fields, or relationship IDs. If you omit {attr}`schema <fastapi_restly.views.BaseRestView.schema>` on
-a view, Restly can auto-generate one from the SQLAlchemy model instead.
+a view, Restly can
+[auto-generate one](technical_details.md#auto-generated-schemas) from the
+SQLAlchemy model instead.
 
 ## BaseSchema
 
@@ -146,7 +148,7 @@ The wire format is a scalar id:
 }
 ```
 
-Restly validates that the referenced `Author` exists and keeps the plain id — in
+Restly validates that the referenced `Author` exists and keeps the plain id; in
 hooks, `data.author_id` is the plain integer. See [Work with Foreign Keys and
 Relationships](howto_relationship_idschema.md) for the full model and view setup.
 
@@ -173,6 +175,9 @@ The wire format is:
 This is useful for clients or integrations that model relationships as objects.
 For the same relationship as a flat id, use {class}`fr.IDRef[Model] <fastapi_restly.schemas.IDRef>`;
 for a plain foreign-key column, use {class}`fr.MustExist[int, Model] <fastapi_restly.schemas.MustExist>`.
+See [Nested Relationship
+Objects](howto_relationship_idschema.md#nested-relationship-objects) for how
+this shape compares with the flat-id form.
 
 ## Auto-Generated vs Explicit Schemas
 
@@ -200,8 +205,8 @@ class UserView(fr.AsyncRestView):
 
 ## See also
 
-- [Auto-generated schemas](technical_details.md#auto-generated-schemas) — how
-  the derived schemas are built when you don't declare one.
+- [Auto-generated schemas](technical_details.md#auto-generated-schemas): how
+  the derived schemas are built when you do not declare one.
 - [Patterns: a different schema for the list
-  endpoint](patterns.md#a-different-schema-for-the-list-endpoint) — when the
+  endpoint](patterns.md#a-different-schema-for-the-list-endpoint): when the
   list and detail routes need different shapes.
