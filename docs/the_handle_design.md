@@ -12,6 +12,16 @@ The page covers the generated CRUD machinery only. A plain {class}`View <fastapi
 has no generated behavior to override; the class mechanics that all views
 share are covered in [Class-Based Views](class_based_views.md).
 
+:::{note}
+Overriding changes routes the view already generates. To *add* routes
+alongside them, no override is needed: declare a method with
+{func}`@fr.get <fastapi_restly.views.get>` or {func}`@fr.post <fastapi_restly.views.post>`, as on any view
+([What is a class-based view?](class_based_views.md#what-is-a-class-based-view)).
+If the added route writes to
+the database, the [custom action example](#worked-example-a-custom-action-route)
+below shows how it plugs into the same machinery.
+:::
+
 ## The three tiers
 
 Take `POST /`, the create route, and follow the request inward. FastAPI calls
