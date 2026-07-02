@@ -155,26 +155,16 @@ FastAPI.
 ### The pagination envelope
 
 By default a list endpoint returns a plain JSON array. Set
-`include_pagination_metadata = True` on the view to wrap items and totals:
+`include_pagination_metadata = True` on the view to wrap items with a `total`
+and page metadata:
 
 ```python
 class UserView(fr.AsyncRestView):
     include_pagination_metadata = True
 ```
 
-```json
-{
-  "items": [],
-  "total": 123,
-  "page": 2,
-  "page_size": 50,
-  "total_pages": 3
-}
-```
-
-`page`, `page_size`, and `total_pages` are populated only when pagination is
-active (the client sent `?page=` / `?page_size=`, or the view sets
-`default_page_size`); otherwise they are `null`.
+[Response Envelopes and List Metadata](howto_response_schema.md) is canonical
+for the envelope's shape and when each field is populated.
 
 ---
 

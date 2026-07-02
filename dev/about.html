@@ -496,11 +496,13 @@
 <h1>About FastAPI-Restly<a class="headerlink" href="#about-fastapi-restly" title="Link to this heading">#</a></h1>
 <section id="what-it-is">
 <h2>What it is<a class="headerlink" href="#what-it-is" title="Link to this heading">#</a></h2>
-<p>FastAPI-Restly is a REST framework for building larger web applications with FastAPI and SQLAlchemy 2.
-The goal is to establish common patterns, enabling DRY code, and provide out-of-the-box tooling any web app needs.</p>
+<p>FastAPI-Restly is a REST framework for resource-shaped APIs built with FastAPI
+and SQLAlchemy 2. The goal is to keep repeated API patterns in one place while
+staying close to the FastAPI and SQLAlchemy code you already write.</p>
 <p>FastAPI deliberately handles one side of a web application: routing,
-validation, serialization, dependency injection. Everything else, like database handling, users, ORM-to-schema mapping, etc are things every FastAPI project needs builds again.
-Restly tries to fill that gap, with the end goal to provide a complete, batteries-included framework for FastAPI web apps.</p>
+validation, serialization, and dependency injection. Restly focuses on the
+resource layer around that: SQLAlchemy sessions, ORM-to-schema mapping,
+generated CRUD routes, query parameters, error translation, and test fixtures.</p>
 </section>
 <section id="philosophy">
 <h2>Philosophy<a class="headerlink" href="#philosophy" title="Link to this heading">#</a></h2>
@@ -512,15 +514,12 @@ can always drop one level down to plain FastAPI or SQLAlchemy.</p></li>
 session setup, commit handling, schema generation, list filtering with
 strict validation, error translation, and savepoint-isolated test fixtures
 all work from <a class="reference internal" href="api/db.html#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.configure()</span></code></a> onward.</p></li>
-<li><p><strong>Customization is never off the path.</strong> Real production services are
-never simply CRUD. Every generated operation has explicit override points
+<li><p><strong>Customization is never off the path.</strong> Applications are rarely just CRUD.
+Every generated operation has explicit override points
 so generated behavior is a starting point, not a boundary (see <a class="reference internal" href="the_handle_design.html"><span class="std std-doc">three tiers</span></a>).</p></li>
-<li><p><strong>A holistic view of web applications.</strong> The long-term goal covers more
-than resource endpoints: auth, permissions, background jobs, admin pages,
-and a plugin system are on the path, each with the same escape hatches.</p></li>
 <li><p><strong>Documentation you don’t have to guess at.</strong> Common paths have runnable
 examples and extension points say where custom behavior belongs, for your
-team and for coding agents alike.</p></li>
+team.</p></li>
 </ul>
 <p>The core patterns: class-based views, the override hierarchy, and schema
 generation, are proven by four years of internal production use. The public

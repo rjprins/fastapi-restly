@@ -441,6 +441,7 @@
 <li class="toctree-l1"><a class="reference internal" href="howto_existing_project.html">Use Restly in an Existing Project</a></li>
 <li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_custom_schema.html">Custom Schemas and Field Types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_response_schema.html">Response Envelopes and List Metadata</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys and Relationships</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_query_modifiers.html">Filter, Sort, and Paginate Lists</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_override_endpoints.html">Override CRUD Behavior and Add Custom Endpoints</a></li>
@@ -551,6 +552,7 @@ endpoint:</p>
 comes from the view’s <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema" title="fastapi_restly.views.BaseRestView.schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema</span></code></a> family. To document — and return — a different
 shape on one verb, replace that route shell with your own decorator and
 <code class="docutils literal notranslate"><span class="pre">response_model</span></code>; see
+<a class="reference internal" href="howto_response_schema.html"><span class="std std-doc">Response Envelopes and List Metadata</span></a>,
 <a class="reference internal" href="patterns.html#a-different-schema-for-the-list-endpoint"><span class="std std-ref">Patterns: a different schema for the list endpoint</span></a>
 and <a class="reference internal" href="howto_override_endpoints.html"><span class="std std-doc">Override CRUD Behavior → Tier 1</span></a>.</p>
 <p>Routes removed with <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.exclude_routes" title="fastapi_restly.views.BaseRestView.exclude_routes"><code class="xref py py-attr docutils literal notranslate"><span class="pre">exclude_routes</span></code></a> disappear from the schema entirely.</p>

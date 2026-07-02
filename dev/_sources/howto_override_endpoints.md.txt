@@ -313,6 +313,11 @@ Generated route shells return through {meth}`self.to_response(obj_or_list, shape
         return super().to_response(obj_or_list, shape)
 ```
 
+If this changes a generated route's HTTP contract, also replace that route shell
+and set a matching `response_model`; otherwise FastAPI response validation and
+OpenAPI still use the generated schema. See
+[Response Envelopes and List Metadata](howto_response_schema.md) for the full pattern.
+
 `to_response` is keyed on wire shape, not action. It cannot distinguish {meth}`create <fastapi_restly.views.RestView.create>` from {meth}`get_one <fastapi_restly.views.RestView.get_one>`; both are `SINGLE`. For one verb's HTTP contract, override that route shell:
 
 ```python
@@ -342,7 +347,7 @@ For object serialization, {meth}`to_response_schema(obj) <fastapi_restly.views.B
 
 ### Replace the list route shell
 
-Replace {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>` when the list response contract changes, for example custom headers. Automatic query-parameter injection only applies to the generated shell, so read `self.request.query_params` yourself:
+Replace {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>` when the list response contract changes, for example custom headers. Keep the `query_params` parameter if you want Restly's generated filter, sort, and pagination query parameters:
 
 ```python
 import fastapi
@@ -355,8 +360,8 @@ class ProductView(fr.AsyncRestView):
     schema = ProductRead
 
     @fr.get("/")
-    async def get_many_endpoint(self):
-        result = await self.handle_get_many({})
+    async def get_many_endpoint(self, query_params):
+        result = await self.handle_get_many(query_params)
         serialized = [
             self.to_response_schema(obj).model_dump(mode="json")
             for obj in result.objects

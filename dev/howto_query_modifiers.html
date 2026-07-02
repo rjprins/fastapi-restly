@@ -441,6 +441,7 @@
 <li class="toctree-l1"><a class="reference internal" href="howto_existing_project.html">Use Restly in an Existing Project</a></li>
 <li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_custom_schema.html">Custom Schemas and Field Types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_response_schema.html">Response Envelopes and List Metadata</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys and Relationships</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Filter, Sort, and Paginate Lists</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_override_endpoints.html">Override CRUD Behavior and Add Custom Endpoints</a></li>
@@ -682,23 +683,14 @@ FastAPI.</p>
 <section id="the-pagination-envelope">
 <h3>The pagination envelope<a class="headerlink" href="#the-pagination-envelope" title="Link to this heading">#</a></h3>
 <p>By default a list endpoint returns a plain JSON array. Set
-<code class="docutils literal notranslate"><span class="pre">include_pagination_metadata</span> <span class="pre">=</span> <span class="pre">True</span></code> on the view to wrap items and totals:</p>
+<code class="docutils literal notranslate"><span class="pre">include_pagination_metadata</span> <span class="pre">=</span> <span class="pre">True</span></code> on the view to wrap items with a <code class="docutils literal notranslate"><span class="pre">total</span></code>
+and page metadata:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">include_pagination_metadata</span> <span class="o">=</span> <span class="kc">True</span>
 </pre></div>
 </div>
-<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;items&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
-<span class="w">  </span><span class="nt">&quot;total&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">123</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;page&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;page_size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">50</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;total_pages&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span>
-<span class="p">}</span>
-</pre></div>
-</div>
-<p><code class="docutils literal notranslate"><span class="pre">page</span></code>, <code class="docutils literal notranslate"><span class="pre">page_size</span></code>, and <code class="docutils literal notranslate"><span class="pre">total_pages</span></code> are populated only when pagination is
-active (the client sent <code class="docutils literal notranslate"><span class="pre">?page=</span></code> / <code class="docutils literal notranslate"><span class="pre">?page_size=</span></code>, or the view sets
-<code class="docutils literal notranslate"><span class="pre">default_page_size</span></code>); otherwise they are <code class="docutils literal notranslate"><span class="pre">null</span></code>.</p>
+<p><a class="reference internal" href="howto_response_schema.html"><span class="std std-doc">Response Envelopes and List Metadata</span></a> is canonical
+for the envelope’s shape and when each field is populated.</p>
 </section>
 </section>
 <hr class="docutils" />
