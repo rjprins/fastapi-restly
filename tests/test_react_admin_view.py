@@ -573,8 +573,8 @@ def test_react_admin_list_respects_build_query_scope(client):
 
 
 def test_react_admin_list_uses_handle_get_many_get_many_and_response_seams(client):
-    """React Admin list is still a route-shell replacement: it should delegate
-    through the standard request handler, domain method, and response chokepoint."""
+    """React Admin list is still an endpoint-method replacement: it should delegate
+    through the standard handler, domain method, and response chokepoint."""
 
     events: list[tuple[str, object | None]] = []
 

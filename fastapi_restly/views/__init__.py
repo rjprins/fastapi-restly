@@ -3,14 +3,14 @@
 Every CRUD verb on ``RestView`` / ``AsyncRestView`` exists at three tiers —
 name the tier that owns your change and override one method:
 
-1. ``<verb>_endpoint`` — the route shell (wire tier): the ``@route``, FastAPI
+1. ``<verb>_endpoint`` — the endpoint method: the ``@route``, FastAPI
    signature, ``response_model``, and ``to_response``. Replace only to change
    the HTTP contract.
-2. ``handle_<verb>`` — the request handler: runs ``authorize`` and the commit
+2. ``handle_<verb>`` — the handler: runs ``authorize`` and the commit
    bracket (``before_commit`` -> commit -> ``after_commit``). Override for
    orchestration or timing.
 3. ``<verb>`` (``get_many``, ``get_one``, ``create``, ``update``, ``delete``)
-   — the business verb: the domain operation, auth-free and commit-free. The
+   — the business method: the domain operation, auth-free and commit-free. The
    usual override point.
 
 Cross-cutting seams: ``build_query`` (read scope/visibility), ``authorize``

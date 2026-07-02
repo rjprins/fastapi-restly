@@ -120,7 +120,7 @@ def test_handler_override_shared_across_subclasses(sync_db):
 
 
 def test_super_chain_in_handler_override(sync_db):
-    """Subclass can override a business verb and call super() to chain with the base."""
+    """Subclass can override a business method and call super() to chain with the base."""
     engine, _ = sync_db
 
     call_log: list[str] = []

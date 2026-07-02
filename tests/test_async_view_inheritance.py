@@ -72,7 +72,7 @@ def test_async_super_chain_three_level_mro(
 
     Verifies cooperative ``await super().<hook>(...)`` traverses the full MRO
     under the framework's endpoint-rewriting registration path, for every
-    handle-design hook (business verbs and request handlers alike).
+    handle-design hook (business methods and handlers alike).
     """
     Item, ItemSchema = _model_and_schema()
 

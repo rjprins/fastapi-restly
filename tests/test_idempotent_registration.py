@@ -469,7 +469,7 @@ def test_exclude_routes_unknown_name_still_raises():
         prefix = "/sprockets"
         model = Sprocket
         schema = SprocketSchema
-        exclude_routes = ("get_one",)  # business verb, not the route name
+        exclude_routes = ("get_one",)  # business method, not the route name
 
     app = FastAPI()
     with pytest.raises(AttributeError, match="not a route"):

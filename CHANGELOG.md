@@ -28,6 +28,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The tier vocabulary in docstrings and error messages now matches the docs:
+  *endpoint method* (was "route shell"), *handler* (was "request handler"), and
+  *business method* (was "business verb"). The misuse warning
+  (`RestlyMisuseWarning`) and the bare-verb route-name `TypeError` use the new
+  terms; match on `"endpoint method"` / `"business method"` if you asserted on
+  those messages.
+
 - `View.tags` is now typed `ClassVar[Iterable[str | Enum] | None]` instead of
   `ClassVar[Any]`, matching what FastAPI accepts for router tags. Runtime
   behaviour is unchanged; type checkers now flag a wrongly-typed `tags`.

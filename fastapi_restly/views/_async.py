@@ -39,11 +39,11 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
             schema = FooRead
             model = Foo
 
-    Each verb is three tiers (see "the handle design" in the docs):
+    Each verb is three tiers (see "Customize RestView" in the docs):
 
-    * ``<verb>_endpoint`` — the route shell (wire). Owns the HTTP signature,
+    * ``<verb>_endpoint`` — the endpoint method. Owns the HTTP signature,
       ``response_model``, and ``to_response``. Rarely overridden.
-    * ``handle_<verb>`` — the request handler. Owns ``authorize`` and the
+    * ``handle_<verb>`` — the handler. Owns ``authorize`` and the
       commit bracket (``before_commit`` -> commit -> ``after_commit``); returns
       the domain object. Reuse from custom actions to get the bracket.
     * ``<verb>`` (``get_many`` / ``get_one`` / ``create`` / ``update`` /
@@ -54,50 +54,50 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     session: AsyncSessionDep
 
     # ====================================================================
-    # Route shells (wire boundary)
+    # Endpoint methods (HTTP contract)
     # ====================================================================
 
     @get("/")
     async def get_many_endpoint(self, query_params: Any) -> Any:
-        """``GET /`` route shell (wire tier). Override ``get_many`` for domain
+        """``GET /`` endpoint method. Override ``get_many`` for domain
         logic, ``handle_get_many`` for orchestration, ``to_response`` for the
-        response shape; replace this shell only to change the HTTP contract."""
+        response shape; replace this method only to change the HTTP contract."""
         self._reject_unknown_query_params()
         result = await self.handle_get_many(query_params)
         return self.to_response(result, ResponseShape.LISTING)
 
     @get("/{id}")
     async def get_one_endpoint(self, id: Any) -> Any:
-        """``GET /{id}`` route shell (wire tier). Override ``get_one`` for domain
+        """``GET /{id}`` endpoint method. Override ``get_one`` for domain
         logic (visibility lives in ``build_query``), ``handle_get_one`` for
         orchestration, ``to_response`` for the response shape; replace this
-        shell only to change the HTTP contract."""
+        method only to change the HTTP contract."""
         obj = await self.handle_get_one(id)
         return self.to_response(obj)
 
     @post("/")
     async def create_endpoint(self, schema_obj: Any) -> Any:
-        """``POST /`` route shell (wire tier). Override ``create`` for domain
+        """``POST /`` endpoint method. Override ``create`` for domain
         logic (it is commit-free; the handler owns the commit),
         ``handle_create`` for orchestration, ``to_response`` for the response
-        shape; replace this shell only to change the HTTP contract."""
+        shape; replace this method only to change the HTTP contract."""
         obj = await self.handle_create(schema_obj)
         return self.to_response(obj)
 
     @patch("/{id}")
     async def update_endpoint(self, id: Any, schema_obj: Any) -> Any:
-        """``PATCH /{id}`` route shell (wire tier). Override ``update`` for
+        """``PATCH /{id}`` endpoint method. Override ``update`` for
         domain logic, ``handle_update`` for orchestration, ``to_response`` for
-        the response shape; replace this shell only to change the HTTP
+        the response shape; replace this method only to change the HTTP
         contract."""
         obj = await self.handle_update(id, schema_obj)
         return self.to_response(obj)
 
     @delete("/{id}")
     async def delete_endpoint(self, id: Any) -> Any:
-        """``DELETE /{id}`` route shell (wire tier). Override ``delete`` for
+        """``DELETE /{id}`` endpoint method. Override ``delete`` for
         domain logic (e.g. soft delete), ``handle_delete`` for orchestration;
-        replace this shell only to change the HTTP contract (e.g. return the
+        replace this method only to change the HTTP contract (e.g. return the
         deleted object instead of 204)."""
         await self.handle_delete(id)
         return self.to_response(None, ResponseShape.EMPTY)
@@ -107,7 +107,7 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     # ====================================================================
 
     async def handle_get_many(self, query_params: Any) -> ListingResult[ModelT]:
-        """List request handler: ``authorize`` then the ``get_many`` domain op."""
+        """List handler: ``authorize`` then the ``get_many`` domain op."""
         await self.authorize(Action.GET_MANY)
         return await self.get_many(query_params)
 
@@ -330,5 +330,5 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         ``new`` or the database here is NOT persisted. A mutation to ``new`` also
         leaks into this request's response (which serializes ``new`` after this
         hook) while being silently discarded from storage -- do the mutation in
-        the business verb or ``before_commit`` instead.
+        the business method or ``before_commit`` instead.
         """

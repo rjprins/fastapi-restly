@@ -35,7 +35,7 @@ def test_timestamp_convenience_bases_are_not_public_api():
 
 def test_rest_view_route_and_hook_names_are_current():
     current_names = (
-        # Route shells (wire boundary)
+        # Endpoint methods (HTTP contract)
         "get_many_endpoint",
         "get_one_endpoint",
         "create_endpoint",

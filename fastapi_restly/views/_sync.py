@@ -39,8 +39,8 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
             schema = FooRead
             model = Foo
 
-    Each verb is three tiers (see "the handle design" in the docs): the
-    ``<verb>_endpoint`` route shell, the ``handle_<verb>`` request handler
+    Each verb is three tiers (see "Customize RestView" in the docs): the
+    endpoint method ``<verb>_endpoint``, the handler ``handle_<verb>``
     (authorize + commit bracket), and the bare verb ``<verb>`` (the domain
     operation -- the common override point).
     """
@@ -48,50 +48,50 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
     session: SessionDep
 
     # ====================================================================
-    # Route shells (wire boundary)
+    # Endpoint methods (HTTP contract)
     # ====================================================================
 
     @get("/")
     def get_many_endpoint(self, query_params: Any) -> Any:
-        """``GET /`` route shell (wire tier). Override ``get_many`` for domain
+        """``GET /`` endpoint method. Override ``get_many`` for domain
         logic, ``handle_get_many`` for orchestration, ``to_response`` for the
-        response shape; replace this shell only to change the HTTP contract."""
+        response shape; replace this method only to change the HTTP contract."""
         self._reject_unknown_query_params()
         result = self.handle_get_many(query_params)
         return self.to_response(result, ResponseShape.LISTING)
 
     @get("/{id}")
     def get_one_endpoint(self, id: Any) -> Any:
-        """``GET /{id}`` route shell (wire tier). Override ``get_one`` for domain
+        """``GET /{id}`` endpoint method. Override ``get_one`` for domain
         logic (visibility lives in ``build_query``), ``handle_get_one`` for
         orchestration, ``to_response`` for the response shape; replace this
-        shell only to change the HTTP contract."""
+        method only to change the HTTP contract."""
         obj = self.handle_get_one(id)
         return self.to_response(obj)
 
     @post("/")
     def create_endpoint(self, schema_obj: Any) -> Any:
-        """``POST /`` route shell (wire tier). Override ``create`` for domain
+        """``POST /`` endpoint method. Override ``create`` for domain
         logic (it is commit-free; the handler owns the commit),
         ``handle_create`` for orchestration, ``to_response`` for the response
-        shape; replace this shell only to change the HTTP contract."""
+        shape; replace this method only to change the HTTP contract."""
         obj = self.handle_create(schema_obj)
         return self.to_response(obj)
 
     @patch("/{id}")
     def update_endpoint(self, id: Any, schema_obj: Any) -> Any:
-        """``PATCH /{id}`` route shell (wire tier). Override ``update`` for
+        """``PATCH /{id}`` endpoint method. Override ``update`` for
         domain logic, ``handle_update`` for orchestration, ``to_response`` for
-        the response shape; replace this shell only to change the HTTP
+        the response shape; replace this method only to change the HTTP
         contract."""
         obj = self.handle_update(id, schema_obj)
         return self.to_response(obj)
 
     @delete("/{id}")
     def delete_endpoint(self, id: Any) -> Any:
-        """``DELETE /{id}`` route shell (wire tier). Override ``delete`` for
+        """``DELETE /{id}`` endpoint method. Override ``delete`` for
         domain logic (e.g. soft delete), ``handle_delete`` for orchestration;
-        replace this shell only to change the HTTP contract (e.g. return the
+        replace this method only to change the HTTP contract (e.g. return the
         deleted object instead of 204)."""
         self.handle_delete(id)
         return self.to_response(None, ResponseShape.EMPTY)
@@ -266,5 +266,5 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         For *external* effects only: the write is already durable, so mutating
         ``new`` or the database here is NOT persisted (and a mutation to ``new``
         leaks into this request's response while being discarded from storage).
-        Do the mutation in the business verb or ``before_commit`` instead.
+        Do the mutation in the business method or ``before_commit`` instead.
         """

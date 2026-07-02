@@ -46,8 +46,8 @@ class CustomProjectView(
     model = Project
     schema = ProjectRead
 
-    # Custom route shells override the generated ``*_endpoint`` methods. They
-    # must NOT be named after the business verbs (get_many/create/...), which
+    # Custom endpoint methods override the generated ``*_endpoint`` methods. They
+    # must NOT be named after the business methods (get_many/create/...), which
     # would shadow them and make handle_<verb> -> self.<verb> recurse.
     @fr.get("/")
     async def get_many_endpoint(self, query_params: Any) -> list[ProjectRead]:

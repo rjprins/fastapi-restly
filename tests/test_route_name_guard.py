@@ -32,7 +32,7 @@ def test_route_named_like_write_verb_is_rejected():
             return schema_obj
 
     app = FastAPI()
-    with pytest.raises(TypeError, match="business verb 'create'"):
+    with pytest.raises(TypeError, match="business method 'create'"):
         fr.include_view(app, ItemView)
 
 
@@ -53,7 +53,7 @@ def test_route_named_like_read_verb_is_rejected():
             return []
 
     app = FastAPI()
-    with pytest.raises(TypeError, match="business verb 'get_many'"):
+    with pytest.raises(TypeError, match="business method 'get_many'"):
         fr.include_view(app, ItemView)
 
 

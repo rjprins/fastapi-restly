@@ -50,7 +50,7 @@ def test_idref_reference_is_unresolved_and_gatable_in_authorize(client):
             if ref is not None:
                 # The reference is UNRESOLVED here: it is the IDRef carrying .id,
                 # not the resolved Author ORM row (which only exists after the
-                # business verb runs).
+                # business method runs).
                 seen["ref_type"] = type(ref).__name__
                 seen["ref_id"] = ref.id
                 if ref.id == gate["forbidden_id"]:

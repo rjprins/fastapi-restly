@@ -61,7 +61,7 @@ def test_shell_override_warns():
 
     messages = _register(ShellArticleView)
     assert len(messages) == 1
-    assert "route shell 'get_many_endpoint'" in messages[0]
+    assert "endpoint method 'get_many_endpoint'" in messages[0]
     assert "'get_many'" in messages[0]
     assert "'handle_get_many'" in messages[0]
 
@@ -144,7 +144,7 @@ def test_bare_view_few_routes_does_not_warn():
 
 def test_clean_restview_does_not_warn():
     """A view using the intended seams stays silent -- and because the framework
-    copies the parent route shells into the subclass during registration, this
+    copies the parent endpoint methods into the subclass during registration, this
     also pins that the lint runs *before* that copy (otherwise every clean view
     would appear to override all five shells)."""
 
