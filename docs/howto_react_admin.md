@@ -130,7 +130,7 @@ The PUT route delegates to the same {meth}`handle_update <fastapi_restly.views.R
 accepts the view's standard {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>` payload. If you need different
 write semantics for the two methods, override the {meth}`update <fastapi_restly.views.RestView.update>` business verb (or
 `handle_update`, or replace the PUT route directly);
-[How Overrides Work: The Three Tiers](the_handle_design.md) explains how
+[Overriding RestView behavior](the_handle_design.md) explains how
 these override points relate.
 
 ## Serialize related lists as scalar id arrays with `IDRef`

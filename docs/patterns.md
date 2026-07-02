@@ -156,7 +156,7 @@ class PaymentWebhookView(fr.View):
 
 For *outbound* webhooks (calling someone else after a write), use the
 {meth}`after_commit <fastapi_restly.views.RestView.after_commit>` hook
-instead; see [How Overrides Work](the_handle_design.md).
+instead; see [Overriding RestView behavior](the_handle_design.md).
 
 The decision between `View` and `RestView` is covered in
 [When to use `View` directly](class_based_views.md#when-to-use-view-directly).
@@ -182,7 +182,7 @@ Reuse `handle_<verb>` when the action is CRUD under another URL; use
 {meth}`write_action("publish", ...) <fastapi_restly.views.RestView.write_action>`
 when the action has its own identity. The full walkthrough is
 [Worked example: a custom action route](the_handle_design.md#worked-example-a-custom-action-route)
-in How Overrides Work, which owns this pattern.
+in Overriding RestView behavior, which owns this pattern.
 
 ## Tenant scoping
 

@@ -101,7 +101,7 @@ the exact registration contract is in
 
 ## See also
 
-- [How Overrides Work](the_handle_design.md): where {meth}`authorize <fastapi_restly.views.RestView.authorize>` and the
+- [Overriding RestView behavior](the_handle_design.md): where {meth}`authorize <fastapi_restly.views.RestView.authorize>` and the
   business verbs sit; a raised exception skips the commit bracket.
 - [Filter, Sort, and Paginate Lists](howto_query_modifiers.md): the
   parameter grammar whose violations produce the 422/400 split.

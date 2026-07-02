@@ -2,13 +2,13 @@
 
 FastAPI-Restly generates five CRUD endpoints per view, but real applications still need custom fields, row visibility, side effects, and non-CRUD actions. This guide shows which method to override for each of those tasks.
 
-Every CRUD verb is built from three tiers, and most overrides belong in the lowest tier. For the conceptual model, read [How Overrides Work: The Three Tiers](the_handle_design.md); for the complete method list, see [View Method Surface](api_reference.md#view-method-surface).
+Every CRUD verb is built from three tiers, and most overrides belong in the lowest tier. For the conceptual model, read [Overriding RestView behavior](the_handle_design.md); for the complete method list, see [View Method Surface](api_reference.md#view-method-surface).
 
 Register each concrete view with {func}`fr.include_view(app, ViewClass) <fastapi_restly.views.include_view>` or the decorator shortcut. In larger applications, define view classes in view modules and include them from your app or router modules.
 
 ## The three tiers of a CRUD verb
 
-The conceptual model, including both request lifecycles, why the handler owns the commit, and the full "which method do I override for X?" table, lives in [How Overrides Work: The Three Tiers](the_handle_design.md). The table below is the short version:
+The conceptual model, including both request lifecycles, why the handler owns the commit, and the full "which method do I override for X?" table, lives in [Overriding RestView behavior](the_handle_design.md). The table below is the short version:
 
 | Tier | Methods | Owns | Override to change |
 |---|---|---|---|
@@ -514,6 +514,6 @@ Any class-level `Annotated` dependency you declare on the view (for example a cu
 
 ## See also
 
-- [How Overrides Work: The Three Tiers](the_handle_design.md): the full three-tier model and the commit bracket.
+- [Overriding RestView behavior](the_handle_design.md): the full three-tier model and the commit bracket.
 - [Compose Views with Mixins](howto_compose_views_with_mixins.md): structural stamping and scoping through cooperative mixins.
 - [View Method Surface](api_reference.md#view-method-surface): the complete classified method list.

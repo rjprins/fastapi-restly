@@ -1,45 +1,54 @@
-# How Overrides Work: The Three Tiers
+# Overriding RestView behavior
 
-Every CRUD verb in FastAPI-Restly exists at three tiers of abstraction. The
-soft-delete override in the [Quick Start](index.md#quick-start) already used
-this structure: `delete` changed, while routing, validation, and the commit
-stayed framework-owned. To customize a verb, name the tier that owns your
-change, override one method, and leave the rest alone. This page describes
-the tier model, the read and write lifecycles, and how to choose an override
-point.
+A {class}`RestView <fastapi_restly.views.RestView>` or {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` generates complete CRUD
+endpoints, and sooner or later one of them needs to behave differently: stamp
+a field server-side, archive instead of delete, scope every read to the
+current tenant. Because the endpoint is generated, making such a change means
+overriding a method, and which method depends on the kind of change. So
+before mapping changes to methods, this page first explains what a RestView
+does with a request; every override point follows from that structure.
+
+The page covers the generated CRUD machinery only. A plain {class}`View <fastapi_restly.views.View>`
+has no generated behavior to override; the class mechanics that all views
+share are covered in [Class-Based Views](class_based_views.md).
 
 ## The three tiers
 
-For a verb like {meth}`create <fastapi_restly.views.RestView.create>`, the same operation exists at three levels of
-abstraction. From the wire inward:
+Take `POST /`, the create route, and follow the request inward. FastAPI calls
+{meth}`create_endpoint <fastapi_restly.views.RestView.create_endpoint>`, which calls {meth}`handle_create <fastapi_restly.views.RestView.handle_create>`, which calls
+{meth}`create <fastapi_restly.views.RestView.create>`. Every CRUD verb is built this way: three nested methods, each
+owning one kind of concern.
 
 ```
-POST /                       ← the route shell
-  └─ create_endpoint(...)    1. WIRE: @route, FastAPI signature, response_model, to_response
-       └─ handle_create(...) 2. REQUEST LOGIC: authorize + commit bracket
-            └─ create(...)   3. DOMAIN: build the object, save it (auth-free, commit-free)
+POST /
+  └─ create_endpoint(...)    1. the endpoint method: the HTTP contract
+       └─ handle_create(...) 2. the handler: authorization and the commit
+            └─ create(...)   3. the business method: the domain change
 ```
 
-1. The **route shell** is the wire boundary: the {func}`@route <fastapi_restly.views.route>` decorator,
-   the FastAPI signature, `response_model`, and {meth}`to_response <fastapi_restly.views.BaseRestView.to_response>`. Override it only to
-   change the HTTP contract. One method per verb: {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>`,
-   {meth}`get_one_endpoint <fastapi_restly.views.RestView.get_one_endpoint>`, {meth}`create_endpoint <fastapi_restly.views.RestView.create_endpoint>`, {meth}`update_endpoint <fastapi_restly.views.RestView.update_endpoint>`, and
-   {meth}`delete_endpoint <fastapi_restly.views.RestView.delete_endpoint>`.
+The rest of this page, and the how-to guides, lean on these three terms.
 
-2. The **request handler** holds the request logic: it runs {meth}`authorize <fastapi_restly.views.RestView.authorize>`,
-   owns the commit bracket ({meth}`before_commit <fastapi_restly.views.RestView.before_commit>`, then the commit itself, then
-   {meth}`after_commit <fastapi_restly.views.RestView.after_commit>`), and returns the domain object. Override it to change
-   orchestration or timing without re-declaring the route: {meth}`handle_get_many <fastapi_restly.views.RestView.handle_get_many>`,
-   {meth}`handle_get_one <fastapi_restly.views.RestView.handle_get_one>`, {meth}`handle_create <fastapi_restly.views.RestView.handle_create>`, {meth}`handle_update <fastapi_restly.views.RestView.handle_update>`, and
-   {meth}`handle_delete <fastapi_restly.views.RestView.handle_delete>`.
+The **endpoint method**, `<verb>_endpoint`, is the method FastAPI routes to.
+It owns the HTTP contract: the {func}`@route <fastapi_restly.views.route>` decorator, the FastAPI
+signature, `response_model`, and the final {meth}`to_response <fastapi_restly.views.BaseRestView.to_response>` call. Override
+it only when the contract itself must change.
 
-3. The **business verb** is the domain operation: it builds, applies, and
-   saves, and it is both auth-free and commit-free. This is the usual override
-   point: {meth}`get_many <fastapi_restly.views.RestView.get_many>`, {meth}`get_one <fastapi_restly.views.RestView.get_one>`, {meth}`create <fastapi_restly.views.RestView.create>`, {meth}`update <fastapi_restly.views.RestView.update>`, and
-   {meth}`delete <fastapi_restly.views.RestView.delete>`.
+The **handler**, `handle_<verb>`, owns the request logic in between. It runs
+{meth}`authorize <fastapi_restly.views.RestView.authorize>`, calls the business method, and, on writes, closes with the
+**commit bracket**: {meth}`before_commit <fastapi_restly.views.RestView.before_commit>`, then the commit itself, then
+{meth}`after_commit <fastapi_restly.views.RestView.after_commit>`. It returns the domain object, so custom routes can
+reuse it. Override it to change orchestration or timing without re-declaring
+the route.
 
-The handler owns the commit, not the business verb; the worked example below
-relies on exactly that split.
+The **business method** is the bare verb: {meth}`create <fastapi_restly.views.RestView.create>`, {meth}`update <fastapi_restly.views.RestView.update>`,
+{meth}`delete <fastapi_restly.views.RestView.delete>`, {meth}`get_one <fastapi_restly.views.RestView.get_one>`, or {meth}`get_many <fastapi_restly.views.RestView.get_many>`. It makes the domain change:
+build, apply, save. It is deliberately auth-free and commit-free, which is
+what makes it the usual override point: your code runs with authorization
+already checked and with the commit still owned by the handler.
+
+The method names are regular across all five verbs, so `update_endpoint`
+calls `handle_update`, which calls `update`, and so on. The worked example
+below leans on the commit split in particular.
 
 ## Worked example: hash a password on create
 
@@ -76,21 +85,21 @@ bottom of the handler, after your domain logic has run:
 
 ```
 POST /
-  └─ create_endpoint(schema_obj)              # route shell (wire)
-       └─ handle_create(schema_obj)           # request handler
+  └─ create_endpoint(schema_obj)              # endpoint method
+       └─ handle_create(schema_obj)           # handler
             ├─ authorize("create", data=schema_obj)
-            ├─ create(schema_obj)              # business verb (your override point)
+            ├─ create(schema_obj)              # business method (your override point)
             │    ├─ make_new_object(schema_obj)   # override to stamp extra fields
             │    └─ save_object(obj)              # flush + refresh (no commit)
             ├─ before_commit("create", new=obj)
             ├─ commit                             # the framework owns this
             └─ after_commit("create", new=obj)    # runs after durability
-       └─ to_response(obj)                     # back at the wire boundary (single)
+       └─ to_response(obj)                     # back in the endpoint method
 ```
 
 {meth}`update <fastapi_restly.views.RestView.update>` and {meth}`delete <fastapi_restly.views.RestView.delete>` follow the same shape. Their handlers first load the row
 through {meth}`get_one <fastapi_restly.views.RestView.get_one>` (so they 404 on a hidden row), take a {meth}`snapshot(obj) <fastapi_restly.views.BaseRestView.snapshot>` as
-`old`, run the business verb, and then run the same bracket of {meth}`before_commit <fastapi_restly.views.RestView.before_commit>`,
+`old`, run the business method, and then run the same bracket of {meth}`before_commit <fastapi_restly.views.RestView.before_commit>`,
 commit, and {meth}`after_commit <fastapi_restly.views.RestView.after_commit>`, with both `new` and `old` available for dirty
 detection. Recipes for these hooks are collected in
 [Transaction hooks](howto_override_endpoints.md#transaction-hooks-before_commit--after_commit).
@@ -103,9 +112,9 @@ tier:
 
 ```
 GET /{id}
-  └─ get_one_endpoint(id)            # route shell (wire)
-       └─ handle_get_one(id)         # request handler
-            ├─ get_one(id)           # business verb
+  └─ get_one_endpoint(id)            # endpoint method
+       └─ handle_get_one(id)         # handler
+            ├─ get_one(id)           # business method
             │    └─ build_query()    # VISIBILITY: scope (tenant, soft-delete, row-level)
             │                        #   a hidden row is a clean 404 for every caller
             └─ authorize("get_one", obj=obj)   # POLICY: read-auth on the loaded row
@@ -129,21 +138,21 @@ The table below maps the change you want to make to the method that owns it:
 
 | I want to change…                       | Override / configure              | Tier / kind            |
 |-----------------------------------------|-----------------------------------|------------------------|
-| Domain logic (hash, derive, compute)    | {meth}`create <fastapi_restly.views.RestView.create>` / {meth}`update <fastapi_restly.views.RestView.update>` / {meth}`delete <fastapi_restly.views.RestView.delete>`    | business verb          |
-| Orchestration, timing, transaction      | `handle_<verb>`                   | request handler        |
-| The HTTP contract (status, signature)   | `<verb>_endpoint`                 | route shell (wire)     |
+| Domain logic (hash, derive, compute)    | {meth}`create <fastapi_restly.views.RestView.create>` / {meth}`update <fastapi_restly.views.RestView.update>` / {meth}`delete <fastapi_restly.views.RestView.delete>`    | business method        |
+| Orchestration, timing, transaction      | `handle_<verb>`                   | handler                |
+| The HTTP contract (status, signature)   | `<verb>_endpoint`                 | endpoint method        |
 | Read scope / row visibility             | {meth}`build_query <fastapi_restly.views.RestView.build_query>`                     | read extension point   |
 | Filter / sort / pagination grammar      | {meth}`apply_query_params <fastapi_restly.views.RestView.apply_query_params>`              | read extension point   |
 | The list total                          | {meth}`count <fastapi_restly.views.RestView.count>`                           | read extension point   |
-| Authorization / policy                  | {meth}`authorize <fastapi_restly.views.RestView.authorize>` (override to gate)    | request-logic hook     |
+| Authorization / policy                  | {meth}`authorize <fastapi_restly.views.RestView.authorize>` (override to gate)    | handler hook           |
 | Server-stamped fields (audit/tenant)    | `make_new_object` / `update_object` (override cooperatively) | cooperative stamping  |
 | In-transaction side effects             | {meth}`before_commit <fastapi_restly.views.RestView.before_commit>`                   | transaction hook       |
 | Post-commit side effects (email/webhook)| {meth}`after_commit <fastapi_restly.views.RestView.after_commit>`                    | transaction hook       |
-| The response shape                      | {meth}`to_response <fastapi_restly.views.BaseRestView.to_response>`                     | wire boundary          |
+| The response shape                      | {meth}`to_response <fastapi_restly.views.BaseRestView.to_response>`                     | endpoint tier          |
 
-Start at the business verb. Move to `handle_<verb>` only when timing or
-transaction handling must change, and touch the route shell only when the HTTP
-contract itself changes.
+Start at the business method. Move to `handle_<verb>` only when timing or
+transaction handling must change, and touch the endpoint method only when the
+HTTP contract itself changes.
 
 ## Worked example: a custom action route
 
@@ -178,7 +187,7 @@ transition, so it authorizes and fires hooks under the name `"publish"`:
 `__aenter__` runs authorization and the snapshot; `__aexit__` runs the commit
 bracket, and a raised exception skips the commit. The response remains
 {meth}`to_response(article) <fastapi_restly.views.BaseRestView.to_response>`: the action name drives authorization and hooks, while
-the response only needs its wire shape. Create-shaped actions and more recipes
+the response is serialized like any other. Create-shaped actions and more recipes
 are collected in
 [Add a custom action route](howto_override_endpoints.md#add-a-custom-action-route).
 Internally, `write_action` and the CRUD handlers share {func}`run_write_action <fastapi_restly.views.run_write_action>`.

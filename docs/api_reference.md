@@ -162,7 +162,7 @@ Each CRUD verb on `RestView` / `AsyncRestView` is split into three tiers: the
 route shell (`<verb>_endpoint`), the request handler (`handle_<verb>`), and
 the business method (`<verb>`). You override the layer that owns your change;
 the model and the decision table live in
-[How Overrides Work: The Three Tiers](the_handle_design.md).
+[Overriding RestView behavior](the_handle_design.md).
 
 Alongside the tiers are cross-cutting **override points** (`build_query`,
 `apply_query_params`, `count`, `authorize`,
@@ -286,7 +286,7 @@ For multiple databases, use FastAPI and SQLAlchemy directly: add a custom depend
 
 Restly's write handlers own the commit: each runs `before_commit`, then the commit, then `after_commit` around domain logic. Session dependencies do **not** commit on response; they roll back and close on exit.
 
-A **custom write route** should use `self.write_action(...)` or reuse a `handle_<verb>`; see [How Overrides Work](the_handle_design.md). Commit manually only for shapes the bracket does not model, such as a batch write with one final commit.
+A **custom write route** should use `self.write_action(...)` or reuse a `handle_<verb>`; see [Overriding RestView behavior](the_handle_design.md). Commit manually only for shapes the bracket does not model, such as a batch write with one final commit.
 
 Restly warns (`RestlyUncommittedChangesWarning`) when a request finishes with uncommitted session changes; this is the tell of a custom write route that forgot to commit. Fix the missing commit (`write_action(...)` or a `handle_<verb>`), or suppress a deliberate dry run with `session.info["_fr_suppress_uncommitted"] = True`. The global `fr.configure(warn_on_uncommitted=False)` opt-out exists but is rarely the right response to the warning.
 

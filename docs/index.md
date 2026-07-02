@@ -98,7 +98,7 @@ first test.
 
 - **[Generated REST endpoints](api_reference.md#generated-rest-endpoints)**: GET, POST, PATCH, DELETE with minimal boilerplate
 - **[True class-based views](class_based_views.md)**: inheritance, mixins, and method overrides
-- **[Explicit override points](the_handle_design.md)**: every CRUD verb split into route shell, request handler, and business method
+- **[Explicit override points](the_handle_design.md)**: every CRUD verb split into endpoint method, handler, and business method
 - **[React Admin ready](howto_react_admin.md)**: `AsyncReactAdminView` speaks `ra-data-simple-rest`
 - **[SQLAlchemy 2.0 support](getting_started.md)**: async-first with modern patterns
 - **[Pydantic v2 integration](howto_custom_schema.md)**: validation and serialization for public contracts
@@ -133,7 +133,7 @@ Build a complete blog API in two parts: generated CRUD, then customization.
 How subclassable views make the override model work.
 :::
 
-:::{grid-item-card} How Overrides Work
+:::{grid-item-card} Overriding RestView Behavior
 :link: the_handle_design
 :link-type: doc
 

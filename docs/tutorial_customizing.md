@@ -13,7 +13,7 @@ Before overriding anything, it helps to know where each behavior lives. Every
 CRUD verb has three tiers, and the rule is to override the lowest tier that
 owns the behavior you need. The full model, including lifecycles and a
 decision table, is covered in
-[How Overrides Work: The Three Tiers](the_handle_design.md). From the wire
+[Overriding RestView behavior](the_handle_design.md). From the wire
 inward, the tiers are:
 
 ```

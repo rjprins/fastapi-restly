@@ -311,7 +311,7 @@ bracket), and the business method (domain logic, auth-free and commit-free).
 One behavior change therefore means one method override, while routing,
 authorization, and the commit stay framework-owned. The tier model, both
 request lifecycles, and the override decision table live in
-[How Overrides Work: The Three Tiers](the_handle_design.md); task-shaped
+[Overriding RestView behavior](the_handle_design.md); task-shaped
 recipes are collected in [Override CRUD Behavior](howto_override_endpoints.md).
 
 ## Dependency injection on class attributes
@@ -391,7 +391,7 @@ co-located. Do not reach for them just for the sake of structure.
 
 ## Cross-references
 
-- [How Overrides Work: The Three Tiers](the_handle_design.md): the tier
+- [Overriding RestView behavior](the_handle_design.md): the tier
   model behind every CRUD verb, both request lifecycles, and the override
   decision table.
 - [Override Endpoints](howto_override_endpoints.md): every tier on
