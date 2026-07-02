@@ -114,6 +114,26 @@ Registering `UserView` with `prefix = "/users"` generated five endpoints:
 - `PATCH /users/{id}`
 - `DELETE /users/{id}`
 
+These endpoints work as soon as the server starts. A `POST` creates a row:
+
+```text
+POST /users/
+{"name": "Jane", "email": "jane@example.com"}
+```
+
+The response is `201 Created` with the stored record:
+
+```json
+{
+  "id": 1,
+  "name": "Jane",
+  "email": "jane@example.com"
+}
+```
+
+The database assigned the `id`, and `GET /users/` now returns
+`[{"id": 1, "name": "Jane", "email": "jane@example.com"}]`.
+
 Update semantics are `PATCH` (partial update); see
 [Generated REST Endpoints](api_reference.md#generated-rest-endpoints) for the
 full contract. Filter lists with query parameters, for example
