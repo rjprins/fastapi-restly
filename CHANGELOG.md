@@ -28,6 +28,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `View.tags` is now typed `ClassVar[Iterable[str | Enum] | None]` instead of
+  `ClassVar[Any]`, matching what FastAPI accepts for router tags. Runtime
+  behaviour is unchanged; type checkers now flag a wrongly-typed `tags`.
+
 - The `[testing]` extra now installs `httpx2` alongside `httpx`. Newer Starlette
   `TestClient` prefers `httpx2` and emits a `StarletteDeprecationWarning` when
   only `httpx` is present; shipping both keeps `RestlyTestClient` on the

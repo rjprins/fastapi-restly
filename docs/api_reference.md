@@ -221,7 +221,7 @@ Every `View` subclass, CRUD or not, honors these class attributes:
 | Attribute | Type | Description |
 |---|---|---|
 | {attr}`prefix <fastapi_restly.views.View.prefix>` | `ClassVar[str]` | URL prefix for all routes in the view (e.g. `"/users"`). Required. |
-| {attr}`tags <fastapi_restly.views.View.tags>` | `ClassVar[Iterable[str] \| None]` | OpenAPI tags. When unset, a tag derived from the view class name is used; setting this replaces the derived tag. |
+| {attr}`tags <fastapi_restly.views.View.tags>` | `ClassVar[Iterable[str \| Enum] \| None]` | OpenAPI tags. When unset, a tag derived from the view class name is used; setting this replaces the derived tag. |
 | {attr}`dependencies <fastapi_restly.views.View.dependencies>` | `ClassVar[Sequence[Depends] \| None]` | FastAPI dependencies applied to every route in the view. |
 | {attr}`responses <fastapi_restly.views.View.responses>` | `ClassVar[dict[int \| str, dict[str, Any]]]` | OpenAPI response overrides. `View` defaults to `{}`; `BaseRestView` defaults to `{404: {"description": "Not found"}}`. |
 

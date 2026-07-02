@@ -91,7 +91,7 @@ pre-registration hook.
 ```python
 class View:
     prefix: ClassVar[str]
-    tags: ClassVar[Any] = None
+    tags: ClassVar[Iterable[str | Enum] | None] = None
     dependencies: ClassVar[Any] = None
     responses: ClassVar[dict[int | str, dict[str, Any]]] = {}
 
