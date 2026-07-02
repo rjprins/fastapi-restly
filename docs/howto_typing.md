@@ -154,27 +154,6 @@ default, not a hard requirement for input schemas. Explicit
 classes may inherit directly from `pydantic.BaseModel` when you do not need
 Restly's schema helpers.
 
-## Which form should I use?
-
-With both styles in hand, the rule of thumb is to use the simplest form that
-gives you the typing help you want:
-
-- Use no generics at all for normal CRUD views.
-- Use {class}`fr.MustExist[int, Model] <fastapi_restly.schemas.MustExist>` for
-  `*_id` foreign-key columns.
-- Use {class}`IDRef[RelatedModel] <fastapi_restly.schemas.IDRef>` for
-  relationship-named reference fields.
-- Use {class}`IDSchema[RelatedModel] <fastapi_restly.schemas.IDSchema>` as a
-  field annotation only when you intentionally want a nested
-  relationship-object field. Parameterizing your top-level schema's *base
-  class*, as in `class UserRead(IDSchema[User])`, is a separate, optional
-  choice; either form is fine there.
-- Use view generics only when you want precise typing on the methods you
-  override.
-
-That keeps everyday usage clean while still allowing stricter typing for
-projects that want it.
-
 ## Do custom routes need generics?
 
 Custom route methods do not need view generics unless they depend on strongly
@@ -232,21 +211,30 @@ If typing quality matters in your project, we recommend checking your Restly
 usage with Pyright. The repository keeps a dedicated set of consumer typing
 fixtures under `tests/typing/`, and those examples are checked in strict mode.
 
-## Summary
+## Which form should I use?
 
-- Bare {class}`IDSchema <fastapi_restly.schemas.IDSchema>` is supported.
-- {class}`fr.MustExist[int, Model] <fastapi_restly.schemas.MustExist>` is the
-  type for `*_id` foreign-key columns;
-  {class}`IDRef[Model] <fastapi_restly.schemas.IDRef>` is for
-  relationship-named reference fields.
-- `IDSchema[Model]` as a field annotation declares a nested
-  relationship-object field; as a top-level base it optionally carries the
-  model type.
-- Bare {class}`RestView <fastapi_restly.views.RestView>` /
+With both styles in hand, the rule of thumb is to use the simplest form that
+gives you the typing help you want:
+
+- For normal CRUD views, use no generics at all: bare
+  {class}`RestView <fastapi_restly.views.RestView>` and
   {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` are the default.
-- Parameterized views are optional and mainly help when you override methods
-  on the three tiers (business verbs, request handlers, stamping methods).
+- Use {class}`fr.MustExist[int, Model] <fastapi_restly.schemas.MustExist>` for
+  `*_id` foreign-key columns and
+  {class}`IDRef[RelatedModel] <fastapi_restly.schemas.IDRef>` for
+  relationship-named reference fields.
+- Use {class}`IDSchema[Model] <fastapi_restly.schemas.IDSchema>` as a field
+  annotation only when you intentionally want a nested relationship-object
+  field. Parameterizing your top-level schema's *base class*, as in
+  `class UserRead(IDSchema[User])`, is a separate, optional choice: the bare
+  base is supported, and the parameterized base carries the model type.
+- Use view generics only when you want precise typing on the methods you
+  override; they mainly help on the three tiers (business verbs, request
+  handlers, and stamping methods).
 - Custom route methods work well with ordinary Python annotations.
+
+That keeps everyday usage clean while still allowing stricter typing for
+projects that want it.
 
 ## See also
 
