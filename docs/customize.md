@@ -45,8 +45,8 @@ The **handler**, `handle_<verb>`, owns the request logic in between. It runs
 {meth}`authorize <fastapi_restly.views.RestView.authorize>`, calls the business method, and, on writes, closes with the
 **commit bracket**: {meth}`before_commit <fastapi_restly.views.RestView.before_commit>`, then the commit itself, then
 {meth}`after_commit <fastapi_restly.views.RestView.after_commit>`. It returns the domain object, so custom routes can
-reuse it. Override it to change orchestration or timing without re-declaring
-the route.
+reuse it; only the delete handler returns nothing. Override it to change
+orchestration or timing without re-declaring the route.
 
 The **business method** is the bare verb: {meth}`create <fastapi_restly.views.RestView.create>`, {meth}`update <fastapi_restly.views.RestView.update>`,
 {meth}`delete <fastapi_restly.views.RestView.delete>`, {meth}`get_one <fastapi_restly.views.RestView.get_one>`, or {meth}`get_many <fastapi_restly.views.RestView.get_many>`. It makes the domain change:
@@ -106,10 +106,11 @@ POST /
 ```
 
 {meth}`update <fastapi_restly.views.RestView.update>` and {meth}`delete <fastapi_restly.views.RestView.delete>` follow the same shape. Their handlers first load the row
-through {meth}`get_one <fastapi_restly.views.RestView.get_one>` (so they 404 on a hidden row), take a {meth}`snapshot(obj) <fastapi_restly.views.BaseRestView.snapshot>` as
-`old`, run the business method, and then run the same bracket of {meth}`before_commit <fastapi_restly.views.RestView.before_commit>`,
-commit, and {meth}`after_commit <fastapi_restly.views.RestView.after_commit>`, with both `new` and `old` available for dirty
-detection. Recipes for these hooks are collected in
+through {meth}`get_one <fastapi_restly.views.RestView.get_one>` (so they 404 on a hidden row), authorize against the loaded
+row, and take a {meth}`snapshot(obj) <fastapi_restly.views.BaseRestView.snapshot>` as `old`; then the business method runs,
+followed by the same bracket of {meth}`before_commit <fastapi_restly.views.RestView.before_commit>`, commit, and
+{meth}`after_commit <fastapi_restly.views.RestView.after_commit>`, with both `new` and `old` available for dirty detection.
+Recipes for these hooks are collected in
 [Transaction hooks](#transaction-hooks-before_commit--after_commit).
 
 ## Request lifecycle: a read (`get_one`)
@@ -156,14 +157,13 @@ The table below maps the change you want to make to the method that owns it:
 | Server-stamped fields (audit/tenant)    | `make_new_object` / `update_object` (override cooperatively) | cooperative stamping  |
 | In-transaction side effects             | {meth}`before_commit <fastapi_restly.views.RestView.before_commit>`                   | transaction hook       |
 | Post-commit side effects (email/webhook)| {meth}`after_commit <fastapi_restly.views.RestView.after_commit>`                    | transaction hook       |
-| The response shape                      | {meth}`to_response <fastapi_restly.views.BaseRestView.to_response>`                     | endpoint tier          |
+| The response shape                      | {meth}`to_response <fastapi_restly.views.BaseRestView.to_response>`                     | response boundary      |
 
 Start at the business method. Move to `handle_<verb>` only when timing or
 transaction handling must change, and touch the endpoint method only when the
 HTTP contract itself changes.
 
-The rest of this page works through these override points one by one, from
-the business methods outward.
+The sections below give recipes for each of these override points.
 
 ## Override the business methods
 
@@ -173,8 +173,9 @@ authorization and commit handling around them.
 
 ### `create`: inject server-side fields at creation
 
-The worked example above stamped a `password_hash`; any server-owned field
-follows the same shape, reading request context through `self`:
+The [worked example](#worked-example-hash-a-password-on-create) above stamped
+a `password_hash`; any server-owned field follows the same shape, reading
+request context through `self`:
 
 ```python
     async def create(self, schema_obj):
@@ -283,7 +284,7 @@ Calling `super().build_query()` and chaining `.where(...)` composes with base-cl
 
 ### `authorize`: gate the action
 
-{meth}`authorize(action, obj=None, data=None) <fastapi_restly.views.RestView.authorize>` runs inside `handle_<verb>`: before create, and after the object is loaded for {meth}`get_one <fastapi_restly.views.RestView.get_one>` / {meth}`update <fastapi_restly.views.RestView.update>` / {meth}`delete <fastapi_restly.views.RestView.delete>`. Override it to enforce policy:
+{meth}`authorize(action, obj=None, data=None) <fastapi_restly.views.RestView.authorize>` runs inside `handle_<verb>`: before {meth}`create <fastapi_restly.views.RestView.create>` and {meth}`get_many <fastapi_restly.views.RestView.get_many>`, and after the object is loaded for {meth}`get_one <fastapi_restly.views.RestView.get_one>` / {meth}`update <fastapi_restly.views.RestView.update>` / {meth}`delete <fastapi_restly.views.RestView.delete>`. Override it to enforce policy:
 
 ```python
 @fr.include_view(app)
@@ -569,7 +570,7 @@ The second shape runs a full create or update through a handler. If an action is
     @fr.post("/{id}/duplicate", status_code=201)
     async def duplicate(self, id: int):
         original = await self.get_one(id)
-        payload = self.schema_create(name=f"{original.name} (copy)", ...)
+        payload = self.schema_create(name=f"{original.name} (copy)")
         new_order = await self.handle_create(payload)
         return self.to_response_schema(new_order)
 ```
@@ -580,8 +581,8 @@ For a create-shaped action that should run under its own `write_action`
 bracket instead, deposit the new object on the yielded handle:
 
 ```python
-    async with self.write_action("create", data=req) as w:
-        w.obj = await self.make_new_object(req)
+    async with self.write_action("create", data=schema_obj) as w:
+        w.obj = await self.make_new_object(schema_obj)
     return self.to_response(w.obj)
 ```
 
