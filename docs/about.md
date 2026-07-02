@@ -24,7 +24,7 @@ generated CRUD routes, query parameters, error translation, and test fixtures.
   all work from {func}`fr.configure() <fastapi_restly.db.configure>` onward.
 - **Customization is never off the path.** Applications are rarely just CRUD.
   Every generated operation has explicit override points
-  so generated behavior is a starting point, not a boundary (see [three tiers](the_handle_design.md)).
+  so generated behavior is a starting point, not a boundary (see [three tiers](customize.md)).
 - **Documentation you don't have to guess at.** Common paths have runnable
   examples and extension points say where custom behavior belongs, for your
   team.

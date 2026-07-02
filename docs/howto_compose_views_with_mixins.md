@@ -8,15 +8,15 @@ it, and two gotchas.
 
 ## The structural override points
 
-Three [override points](howto_override_endpoints.md) carry almost all
+Three [override points](customize.md) carry almost all
 structural concerns:
 
 - {meth}`build_query <fastapi_restly.views.RestView.build_query>` is the
-  unified [read scope](howto_override_endpoints.md#build_query-scope-every-read-at-once).
+  unified [read scope](customize.md#build_query-scope-every-read-at-once).
   List, count, and retrieve all route through it, so one `.where(...)` clause
   filters every read.
 - `make_new_object` and `update_object` perform
-  [cooperative field stamping](howto_override_endpoints.md#cooperative-field-stamping-override-make_new_object--update_object).
+  [cooperative field stamping](customize.md#cooperative-field-stamping-override-make_new_object--update_object).
   Each calls `super()` to get the constructed object, mutates the
   server-controlled fields it owns, and returns the object. Mixins layer
   by chaining `super()`, each stamping its own fields on the way out.
@@ -27,7 +27,7 @@ Do not use these for per-view application logic. Keep per-view logic in the
 business verb: hash passwords, derive slugs, update rollups, and dispatch
 resource-specific events in {meth}`create <fastapi_restly.views.RestView.create>` /
 {meth}`update <fastapi_restly.views.RestView.update>`, as described in
-[Tier 3: override the business verb](howto_override_endpoints.md#tier-3-override-the-business-verb-the-common-case).
+[Override the business methods](customize.md#override-the-business-methods).
 
 Use mixins for the structural concerns instead: audit stamps, tenant ids,
 soft-delete read filters, and soft-delete mutation are all good examples.
@@ -295,11 +295,11 @@ Read scope is *visibility*, not *policy*. Rows hidden by
 {meth}`build_query <fastapi_restly.views.RestView.build_query>` return 404;
 allow/deny decisions such as "only managers may create" belong in
 {meth}`authorize <fastapi_restly.views.RestView.authorize>`, described in
-[`authorize`: gate the action](howto_override_endpoints.md#authorize-gate-the-action).
+[`authorize`: gate the action](customize.md#authorize-gate-the-action).
 
 ## Cross-references
 
-- [Override Endpoints](howto_override_endpoints.md): the three tiers,
+- [Customize RestView](customize.md): the three tiers,
   single-base overrides, and the call chain.
 - [Class-Based Views](class_based_views.md#dependency-injection-on-class-attributes):
   the marker-based DI rule that makes mixin type stubs safe.

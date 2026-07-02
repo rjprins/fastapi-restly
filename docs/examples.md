@@ -44,7 +44,7 @@ in `example-projects/saas/app/views/`, highlight the patterns involved:
 These patterns are covered in
 [Compose Views with Mixins](howto_compose_views_with_mixins.md),
 [Share Behaviour with Base Views](howto_inheritance.md),
-[Override CRUD Behavior](howto_override_endpoints.md), and
+[Customize RestView](customize.md), and
 [Patterns](patterns.md).
 
 ## Running them

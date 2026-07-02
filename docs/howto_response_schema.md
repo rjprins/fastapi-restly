@@ -4,7 +4,7 @@ Restly returns bare objects and bare arrays; this page covers changing the
 *container* around the data, not the fields inside it.
 
 - To change which fields an object exposes, see [Custom Schemas and Field Types](howto_custom_schema.md).
-- For a different schema per route (list vs detail), see [Override CRUD Behavior and Add Custom Endpoints](howto_override_endpoints.md).
+- For a different schema per route (list vs detail), see [Customize RestView](customize.md).
 - To change the error shape, see [Shape Error Responses](howto_error_responses.md).
 
 ## What Restly returns by default
@@ -62,7 +62,7 @@ guide.
 ## Custom envelopes
 
 Any other envelope is a change to the HTTP contract, so
-[replace the route shell](howto_override_endpoints.md#tier-1-replace-a-route-shell-to-change-the-http-contract)
+[replace the endpoint method](customize.md#replace-an-endpoint-method-to-change-the-http-contract)
 and set `response_model` on the replacement. Inside the shell, call
 {meth}`to_response_schema(obj) <fastapi_restly.views.BaseRestView.to_response_schema>`
 so that `WriteOnly` stripping, relationship-id resolution, and
@@ -152,7 +152,7 @@ boundary keyed on the wire shape:
 {attr}`LISTING <fastapi_restly.views.ResponseShape.LISTING>`, or
 {attr}`EMPTY <fastapi_restly.views.ResponseShape.EMPTY>`. Its place among the
 override points is covered in
-[Override CRUD Behavior and Add Custom Endpoints](howto_override_endpoints.md#to_response-the-one-response-method).
+[Customize RestView](customize.md#to_response-the-one-response-method).
 
 ```python
     def to_response(self, obj_or_list, shape=fr.ResponseShape.SINGLE):
@@ -171,6 +171,6 @@ override for the runtime shape, and a replaced shell with a matching
 ## See also
 
 - [Custom Schemas and Field Types](howto_custom_schema.md): which fields an object exposes.
-- [Override CRUD Behavior and Add Custom Endpoints](howto_override_endpoints.md): route-shell mechanics, and [a different schema for the list endpoint](patterns.md#a-different-schema-for-the-list-endpoint).
+- [Customize RestView](customize.md): endpoint-method replacement mechanics, and [a different schema for the list endpoint](patterns.md#a-different-schema-for-the-list-endpoint).
 - [Shape Error Responses](howto_error_responses.md): errors bypass `to_response`.
 - [Filter, Sort, and Paginate Lists](howto_query_modifiers.md): the pagination inputs clients send.

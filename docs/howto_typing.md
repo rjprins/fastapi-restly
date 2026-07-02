@@ -73,7 +73,7 @@ Schemas are one half of the picture;
 but this is optional.
 
 The generic form is useful when you override methods on one of the
-[three tiers](the_handle_design.md#the-three-tiers). Most overrides land on
+[three tiers](customize.md#the-three-tiers). Most overrides land on
 the business verbs, so those benefit most:
 
 - {meth}`get_one <fastapi_restly.views.RestView.get_one>`
@@ -199,7 +199,7 @@ The practical takeaway is:
   on).
 - Type checkers are less useful for the internal signature-rewriting machinery
   that produces the
-  [route shells](howto_override_endpoints.md#tier-1-replace-a-route-shell-to-change-the-http-contract)
+  [endpoint methods](customize.md#replace-an-endpoint-method-to-change-the-http-contract)
   (`*_endpoint`).
 
 You usually do not need to care about that distinction unless you are
@@ -240,7 +240,7 @@ projects that want it.
 
 - [View Method Surface](api_reference.md#view-method-surface): the typed
   methods this page parameterizes, with tier classification.
-- [Override CRUD Behavior](howto_override_endpoints.md): the override recipes
+- [Customize RestView](customize.md): the override recipes
   these signatures apply to.
 - [Work with Foreign Keys and Relationships](howto_relationship_idschema.md):
   runtime semantics of

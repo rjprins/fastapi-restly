@@ -13,7 +13,7 @@ Before overriding anything, it helps to know where each behavior lives. Every
 CRUD verb has three tiers, and the rule is to override the lowest tier that
 owns the behavior you need. The full model, including lifecycles and a
 decision table, is covered in
-[Overriding RestView behavior](the_handle_design.md). From the wire
+[Customize RestView](customize.md). From the wire
 inward, the tiers are:
 
 ```
@@ -121,7 +121,7 @@ class PostView(fr.AsyncRestView):
         # Do NOT call super() / delete_object; that would remove the row.
 ```
 
-`DELETE /posts/{id}` now marks the row instead of removing it. {meth}`delete_endpoint <fastapi_restly.views.RestView.delete_endpoint>` still returns 204, and {meth}`handle_delete <fastapi_restly.views.RestView.handle_delete>` still commits. Pair this with a {meth}`build_query <fastapi_restly.views.RestView.build_query>` filter that hides deleted rows; the canonical recipe lives in [Override CRUD Behavior](howto_override_endpoints.md#delete-soft-delete-instead-of-removing-the-row), and the reusable mixin version in [Compose Views with Mixins](howto_compose_views_with_mixins.md).
+`DELETE /posts/{id}` now marks the row instead of removing it. {meth}`delete_endpoint <fastapi_restly.views.RestView.delete_endpoint>` still returns 204, and {meth}`handle_delete <fastapi_restly.views.RestView.handle_delete>` still commits. Pair this with a {meth}`build_query <fastapi_restly.views.RestView.build_query>` filter that hides deleted rows; the canonical recipe lives in [Customize RestView](customize.md#delete-soft-delete-instead-of-removing-the-row), and the reusable mixin version in [Compose Views with Mixins](howto_compose_views_with_mixins.md).
 
 ## Tier 2: the request handler (orchestration and timing)
 
@@ -489,7 +489,7 @@ the soft-delete section above.
 
 The pages below go deeper into the patterns from this part:
 
-- [Override Endpoints](howto_override_endpoints.md): the complete handler reference with all signatures
+- [Customize RestView](customize.md): the complete override reference with all recipes
 - [Share Behaviour with Base Views](howto_inheritance.md): the full inheritance guide
 - [Testing](howto_testing.md): test the overrides you write
 - [API Reference](api_reference.md)

@@ -340,7 +340,7 @@ plain id; {class}`IDRef[Model] <fastapi_restly.schemas.IDRef>` and
 {class}`IDSchema[Model] <fastapi_restly.schemas.IDSchema>` fields are reference
 instances.
 
-In a [custom route](howto_override_endpoints.md#add-a-custom-action-route), be
+In a [custom route](customize.md#add-a-custom-action-route), be
 careful when you construct a schema yourself. Pydantic's `model_construct()`
 skips validation. For a
 {class}`MustExist <fastapi_restly.schemas.MustExist>` field, pass the plain id:
@@ -408,7 +408,7 @@ view governs it. References are a *policy* concern, and they are gated in
 {meth}`authorize <fastapi_restly.views.RestView.authorize>` /
 {meth}`before_commit <fastapi_restly.views.RestView.before_commit>` like any
 other write-path authorization; both hooks are described in
-[Override CRUD Behavior and Add Custom Endpoints](howto_override_endpoints.md#authorize-gate-the-action).
+[Customize RestView](customize.md#authorize-gate-the-action).
 
 Gate in `authorize`, where `data` carries the write-side value before
 resolution. For a {class}`MustExist <fastapi_restly.schemas.MustExist>` field,

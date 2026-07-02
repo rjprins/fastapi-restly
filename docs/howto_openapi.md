@@ -44,7 +44,7 @@ shape on one verb, replace that route shell with your own decorator and
 `response_model`; see
 [Response Envelopes and List Metadata](howto_response_schema.md),
 [a different schema for the list endpoint](patterns.md#a-different-schema-for-the-list-endpoint),
-and [replacing a route shell](howto_override_endpoints.md#tier-1-replace-a-route-shell-to-change-the-http-contract).
+and [replacing an endpoint method](customize.md#replace-an-endpoint-method-to-change-the-http-contract).
 
 Routes removed with {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>` disappear from the schema entirely.
 

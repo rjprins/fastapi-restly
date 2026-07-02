@@ -2,7 +2,7 @@
 
 FastAPI-Restly views are plain Python classes. Use base classes for shared CRUD overrides, dependencies, access control, and URL namespaces.
 
-Each CRUD verb is implemented in three tiers (see [Override Endpoints](howto_override_endpoints.md) for the full model):
+Each CRUD verb is implemented in three tiers (see [Customize RestView](customize.md) for the full model):
 
 - The **route shell** ({meth}`create_endpoint <fastapi_restly.views.RestView.create_endpoint>`, {meth}`get_one_endpoint <fastapi_restly.views.RestView.get_one_endpoint>`, and so on) is the wire boundary. It is rarely overridden on a base class.
 - The **request handler** ({meth}`handle_create <fastapi_restly.views.RestView.handle_create>`, {meth}`handle_get_one <fastapi_restly.views.RestView.handle_get_one>`, and so on) runs {meth}`authorize <fastapi_restly.views.RestView.authorize>` and the commit bracket.
@@ -73,7 +73,7 @@ class NotifyBase(fr.RestView):
         return obj
 ```
 
-Every subclass of `NotifyBase` now fires `notify_created` after commit. For most post-commit side effects, prefer {meth}`after_commit <fastapi_restly.views.RestView.after_commit>` (see [transaction hooks](howto_override_endpoints.md#transaction-hooks-before_commit--after_commit)); use a handler override when control flow must change.
+Every subclass of `NotifyBase` now fires `notify_created` after commit. For most post-commit side effects, prefer {meth}`after_commit <fastapi_restly.views.RestView.after_commit>` (see [transaction hooks](customize.md#transaction-hooks-before_commit--after_commit)); use a handler override when control flow must change.
 
 ## Inherit a shared dependency
 
@@ -200,11 +200,11 @@ class ProductView(ReadOnlyBase):
 
 ## Implement soft-delete once
 
-A base class can override the {meth}`delete <fastapi_restly.views.RestView.delete>` business verb once for every subclass, exactly like the audit example above but with the soft-delete body. The canonical recipe, built on a `deleted_at` timestamp, lives in [Override CRUD Behavior](#soft-delete-recipe); the reusable mixin that also hides flagged rows on read is in [Compose Views with Mixins](howto_compose_views_with_mixins.md).
+A base class can override the {meth}`delete <fastapi_restly.views.RestView.delete>` business verb once for every subclass, exactly like the audit example above but with the soft-delete body. The canonical recipe, built on a `deleted_at` timestamp, lives in [Customize RestView](#soft-delete-recipe); the reusable mixin that also hides flagged rows on read is in [Compose Views with Mixins](howto_compose_views_with_mixins.md).
 
 ## Cross-references
 
 The patterns above build on two neighbouring pages:
 
-- [Override Endpoints](howto_override_endpoints.md) covers the three-tier model and the call chain.
+- [Customize RestView](customize.md) covers the three-tier model and the call chain.
 - [Compose Views with Mixins](howto_compose_views_with_mixins.md) covers layering structural concerns cooperatively; it is the richer cousin to single-base inheritance.

@@ -15,7 +15,7 @@ serves it:
 | One simple standalone endpoint | A plain FastAPI route; no Restly needed |
 | A group of related non-CRUD endpoints: login/auth flows, webhook receivers, RPC-style actions, composite-key resources | [`fr.View`](#when-to-use-view-directly) |
 | A database-backed CRUD resource | {class}`fr.AsyncRestView <fastapi_restly.views.AsyncRestView>` / {class}`fr.RestView <fastapi_restly.views.RestView>` |
-| CRUD plus custom actions such as publish, vote, or bulk operations | `RestView` with extra {func}`@fr.get <fastapi_restly.views.get>` / {func}`@fr.post <fastapi_restly.views.post>` methods ([custom actions](the_handle_design.md#worked-example-a-custom-action-route)) |
+| CRUD plus custom actions such as publish, vote, or bulk operations | `RestView` with extra {func}`@fr.get <fastapi_restly.views.get>` / {func}`@fr.post <fastapi_restly.views.post>` methods ([custom actions](customize.md#add-a-custom-action-route)) |
 
 The rest of this page explains the machinery behind all four rows.
 
@@ -310,9 +310,8 @@ route shell (wire contract), the request handler (authorization + commit
 bracket), and the business method (domain logic, auth-free and commit-free).
 One behavior change therefore means one method override, while routing,
 authorization, and the commit stay framework-owned. The tier model, both
-request lifecycles, and the override decision table live in
-[Overriding RestView behavior](the_handle_design.md); task-shaped
-recipes are collected in [Override CRUD Behavior](howto_override_endpoints.md).
+request lifecycles, the override decision table, and task-shaped recipes
+live in [Customize RestView](customize.md).
 
 ## Dependency injection on class attributes
 
@@ -391,11 +390,9 @@ co-located. Do not reach for them just for the sake of structure.
 
 ## Cross-references
 
-- [Overriding RestView behavior](the_handle_design.md): the tier
-  model behind every CRUD verb, both request lifecycles, and the override
-  decision table.
-- [Override Endpoints](howto_override_endpoints.md): every tier on
-  `AsyncRestView` / `RestView`, with call-chain diagrams.
+- [Customize RestView](customize.md): the tier model behind every CRUD verb,
+  both request lifecycles, the override decision table, and every override
+  recipe.
 - [Share Behaviour with Base Views](howto_inheritance.md): patterns for
   multi-tenant scoping, role-based filtering, and shared mixins.
 - [API Reference](api_reference.md): full {class}`View <fastapi_restly.views.View>`, {class}`BaseRestView <fastapi_restly.views.BaseRestView>`,

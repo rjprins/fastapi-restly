@@ -86,12 +86,12 @@ different list schema, restoring soft-deleted rows, webhook receivers, login
 flows, custom actions, and tenant scoping.
 :::
 
-:::{grid-item-card} Override CRUD Behavior and Add Custom Endpoints
-:link: howto_override_endpoints
+:::{grid-item-card} Customize RestView
+:link: customize
 :link-type: doc
 
-Override the business methods ({meth}`create <fastapi_restly.views.RestView.create>`, {meth}`update <fastapi_restly.views.RestView.update>`, ...), the request handlers,
-or the route shells, and add custom routes alongside generated CRUD.
+Override the business methods ({meth}`create <fastapi_restly.views.RestView.create>`, {meth}`update <fastapi_restly.views.RestView.update>`, ...), the handlers,
+or the endpoint methods, and add custom routes alongside generated CRUD.
 :::
 
 :::{grid-item-card} Share Behaviour with Base Views
@@ -172,7 +172,6 @@ howto_response_schema
 howto_query_modifiers
 howto_error_responses
 patterns
-howto_override_endpoints
 howto_inheritance
 howto_compose_views_with_mixins
 howto_typing

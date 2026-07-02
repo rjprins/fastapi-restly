@@ -79,7 +79,7 @@ uses your ordinary FastAPI implementation. For smaller changes that keep the
 same HTTP contract, prefer overriding the business verb ({meth}`get_many <fastapi_restly.views.RestView.get_many>`, {meth}`get_one <fastapi_restly.views.RestView.get_one>`,
 {meth}`create <fastapi_restly.views.RestView.create>`, {meth}`update <fastapi_restly.views.RestView.update>`, {meth}`delete <fastapi_restly.views.RestView.delete>`) or its `handle_<verb>` request handler; for a
 different status code, response shape, or query interface, see
-[Override CRUD Behavior and Add Custom Endpoints](howto_override_endpoints.md).
+[Customize RestView](customize.md).
 
 ## Step Out for a Whole Resource
 

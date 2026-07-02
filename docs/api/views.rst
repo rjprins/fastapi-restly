@@ -15,6 +15,5 @@ registers either on a FastAPI app.
 .. seealso::
 
    :doc:`/class_based_views` introduces the class-based view concept and
-   hierarchy, :doc:`/the_handle_design` explains the three-tier override
-   model, and :doc:`/howto_override_endpoints` collects task-shaped
-   override recipes.
+   hierarchy, and :doc:`/customize` explains the three-tier override model
+   and collects the task-shaped override recipes.

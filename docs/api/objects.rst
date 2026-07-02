@@ -12,5 +12,5 @@ deleting them, and snapshotting loaded column values.
 
 .. seealso::
 
-   :doc:`/howto_override_endpoints` covers the view-bound counterparts of
+   :doc:`/customize` covers the view-bound counterparts of
    these helpers and includes the domain-utilities table.

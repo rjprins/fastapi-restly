@@ -130,7 +130,7 @@ The PUT route delegates to the same {meth}`handle_update <fastapi_restly.views.R
 accepts the view's standard {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>` payload. If you need different
 write semantics for the two methods, override the {meth}`update <fastapi_restly.views.RestView.update>` business verb (or
 `handle_update`, or replace the PUT route directly);
-[Overriding RestView behavior](the_handle_design.md) explains how
+[Customize RestView](customize.md) explains how
 these override points relate.
 
 ## Serialize related lists as scalar id arrays with `IDRef`
@@ -256,7 +256,7 @@ class CustomerView(ReactAdminBase):
 ## Under the hood
 
 {class}`AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>` is a thin subclass of {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` built with the
-[route replacement](howto_override_endpoints.md#tier-1-replace-a-route-shell-to-change-the-http-contract)
+[route replacement](customize.md#replace-an-endpoint-method-to-change-the-http-contract)
 pattern. It replaces the {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>` route shell to parse the
 react-admin query string, then delegates to the standard {meth}`handle_get_many <fastapi_restly.views.RestView.handle_get_many>` /
 {meth}`get_many <fastapi_restly.views.RestView.get_many>` flow. The react-admin dialect itself lives in {meth}`apply_query_params <fastapi_restly.views.RestView.apply_query_params>`

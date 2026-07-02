@@ -57,7 +57,7 @@ The filter grammar, including
 [foreign-key filtering](howto_query_modifiers.md#foreign-key-filtering), is
 documented in [Filter, Sort, and Paginate Lists](howto_query_modifiers.md);
 custom routes are covered in
-[Override CRUD Behavior](howto_override_endpoints.md).
+[Customize RestView](customize.md).
 
 ## A different schema for the list endpoint
 
@@ -86,8 +86,8 @@ class UserView(fr.AsyncRestView):
         ]
 ```
 
-Replacing a route shell is Tier 1 of the override system; see
-[Tier 1: replace a route shell to change the HTTP contract](howto_override_endpoints.md#tier-1-replace-a-route-shell-to-change-the-http-contract).
+Replacing an endpoint method is the outermost override; see
+[Replace an endpoint method to change the HTTP contract](customize.md#replace-an-endpoint-method-to-change-the-http-contract).
 
 ## Restore a soft-deleted row
 
@@ -123,7 +123,7 @@ class ItemView(fr.AsyncRestView):
 ```
 
 Soft delete itself is covered as a one-off override in
-[Override CRUD Behavior](howto_override_endpoints.md#delete-soft-delete-instead-of-removing-the-row)
+[Customize RestView](customize.md#delete-soft-delete-instead-of-removing-the-row)
 and as a reusable mixin in
 [Compose Views with Mixins](howto_compose_views_with_mixins.md#softdeletemixin-hide-deleted-rows),
 which also discusses the admin bypass.
@@ -156,7 +156,7 @@ class PaymentWebhookView(fr.View):
 
 For *outbound* webhooks (calling someone else after a write), use the
 {meth}`after_commit <fastapi_restly.views.RestView.after_commit>` hook
-instead; see [Overriding RestView behavior](the_handle_design.md).
+instead; see [Customize RestView](customize.md).
 
 The decision between `View` and `RestView` is covered in
 [When to use `View` directly](class_based_views.md#when-to-use-view-directly).
@@ -181,8 +181,8 @@ which owns this pattern.
 Reuse `handle_<verb>` when the action is CRUD under another URL; use
 {meth}`write_action("publish", ...) <fastapi_restly.views.RestView.write_action>`
 when the action has its own identity. The full walkthrough is
-[Worked example: a custom action route](the_handle_design.md#worked-example-a-custom-action-route)
-in Overriding RestView behavior, which owns this pattern.
+[Add a custom action route](customize.md#add-a-custom-action-route)
+in Customize RestView, which owns this pattern.
 
 ## Tenant scoping
 

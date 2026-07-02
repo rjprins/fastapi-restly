@@ -206,7 +206,7 @@ attach an `APIRouter` to the parent app/router.
 Every CRUD verb is split into a route shell (`<verb>_endpoint`), a request
 handler (`handle_<verb>`), and a business verb (`<verb>`); the model and the
 override decision table live in
-[Overriding RestView behavior](the_handle_design.md).
+[Customize RestView](customize.md).
 
 The implementation detail worth knowing here is that the route shell calls
 {meth}`to_response(obj, shape) <fastapi_restly.views.BaseRestView.to_response>`, the single response method, which delegates to
