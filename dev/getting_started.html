@@ -497,6 +497,10 @@
 <h1>Getting Started<a class="headerlink" href="#getting-started" title="Link to this heading">#</a></h1>
 <p>This guide walks from zero to a working REST API with FastAPI-Restly.</p>
 <p><strong>Requirements:</strong> Python 3.10 or later.</p>
+<p>To try FastAPI-Restly without installing anything, open the project in GitHub
+Codespaces, which builds the dev environment and its example projects for you:</p>
+<p><a class="reference external" href="https://codespaces.new/rjprins/fastapi-restly?quickstart=1"><img alt="Open in GitHub Codespaces" src="https://github.com/codespaces/badge.svg" /></a></p>
+<p>Once the Codespace finishes setup, run <code class="docutils literal notranslate"><span class="pre">cd</span> <span class="pre">example-projects/blog</span> <span class="pre">&amp;&amp;</span> <span class="pre">uv</span> <span class="pre">run</span> <span class="pre">uvicorn</span> <span class="pre">blog.main:app</span> <span class="pre">--port</span> <span class="pre">8000</span></code> in the terminal, then open the forwarded port 8000 and visit <code class="docutils literal notranslate"><span class="pre">/docs</span></code> for the interactive API.</p>
 <section id="install">
 <h2>1. Install<a class="headerlink" href="#install" title="Link to this heading">#</a></h2>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;fastapi-restly[standard]&quot;</span><span class="w"> </span>aiosqlite
