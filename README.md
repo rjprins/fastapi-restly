@@ -6,6 +6,10 @@
 [![License](https://img.shields.io/github/license/rjprins/fastapi-restly)](https://github.com/rjprins/fastapi-restly/blob/main/LICENSE)
 [![Coverage](https://www.fastapi-restly.org/coverage/badge.svg)](https://www.fastapi-restly.org/coverage/)
 
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/rjprins/fastapi-restly?quickstart=1)
+
+Try FastAPI-Restly in your browser: the badge above opens a GitHub Codespace with the dev environment installed, ready to run a live example API.
+
 <p align="center">
   <img src="https://raw.githubusercontent.com/rjprins/fastapi-restly/main/docs/_static/restly-cat-white-bg.png" alt="FastAPI-Restly logo" width="200">
 </p>

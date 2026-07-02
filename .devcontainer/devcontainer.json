@@ -1,0 +1,18 @@
+{
+  "name": "FastAPI-Restly",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12",
+  "postCreateCommand": "pipx install uv && make install-dev",
+  "postAttachCommand": "printf '\\nRestly demo API:\\n  cd example-projects/blog && uv run uvicorn blog.main:app --port 8000\\n  Then open the forwarded port 8000 and add /docs for the Swagger UI.\\n\\n'",
+  "forwardPorts": [8000],
+  "portsAttributes": {
+    "8000": {
+      "label": "Restly example API",
+      "onAutoForward": "notify"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": ["ms-python.python"]
+    }
+  }
+}
