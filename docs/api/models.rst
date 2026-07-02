@@ -9,5 +9,5 @@ Models API
 
 .. seealso::
 
-   :doc:`/getting_started` — choosing between your own DeclarativeBase and
-   the convenience bases.
+   :doc:`/getting_started` discusses choosing between your own
+   DeclarativeBase and the convenience bases.

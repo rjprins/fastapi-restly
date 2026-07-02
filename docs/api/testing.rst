@@ -22,5 +22,5 @@ without needing to import them individually.
 
 .. seealso::
 
-   :doc:`/howto_testing` — conftest recipe, fixture reference, and the
-   savepoint isolation model.
+   :doc:`/howto_testing` provides the conftest recipe, the fixture
+   reference, and the savepoint isolation model.

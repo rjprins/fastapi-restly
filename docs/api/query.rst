@@ -8,5 +8,5 @@ Query API
 
 .. seealso::
 
-   :doc:`/howto_query_modifiers` — the URL filter/sort/pagination grammar
-   these helpers implement.
+   :doc:`/howto_query_modifiers` documents the URL filter, sort, and
+   pagination grammar that these helpers implement.

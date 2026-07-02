@@ -8,5 +8,6 @@ Database API
 
 .. seealso::
 
-   :doc:`/howto_existing_project` — wiring Restly into existing engines and
-   sessions; :doc:`/deploying` — production engine configuration.
+   :doc:`/howto_existing_project` shows how to wire Restly into existing
+   engines and sessions, and :doc:`/deploying` covers production engine
+   configuration.

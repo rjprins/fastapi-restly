@@ -8,5 +8,5 @@ Exceptions API
 
 .. seealso::
 
-   :doc:`/howto_error_responses` — which exception to raise where, and
-   app-wide error envelopes.
+   :doc:`/howto_error_responses` explains which exception to raise where
+   and how to change the error envelope app-wide.

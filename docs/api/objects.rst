@@ -8,5 +8,5 @@ Objects API
 
 .. seealso::
 
-   :doc:`/howto_override_endpoints` — the view-bound counterparts and the
-   domain-utilities table.
+   :doc:`/howto_override_endpoints` covers the view-bound counterparts of
+   these helpers and includes the domain-utilities table.

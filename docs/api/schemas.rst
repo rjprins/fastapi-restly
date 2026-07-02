@@ -3,9 +3,9 @@ Schemas API
 
 .. seealso::
 
-   :doc:`/howto_relationship_idschema` — **Work with Foreign Keys and
-   Relationships**: MustExist checked FKs and the IDRef / IDSchema relationship
-   wire contract. :doc:`/howto_custom_schema` — schema bases, field markers, and
+   :doc:`/howto_relationship_idschema` covers ``MustExist`` checked foreign
+   keys and the ``IDRef`` / ``IDSchema`` relationship wire contract.
+   :doc:`/howto_custom_schema` describes schema bases, field markers, and
    aliases in prose.
 
 .. automodule:: fastapi_restly.schemas
