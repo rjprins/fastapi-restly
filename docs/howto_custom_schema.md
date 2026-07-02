@@ -12,6 +12,18 @@ a view, Restly can
 [auto-generate one](technical_details.md#auto-generated-schemas) from the
 SQLAlchemy model instead.
 
+To choose a schema tool, match your goal in the table below; each entry links
+to the section that covers it.
+
+| Goal | Tool |
+|---|---|
+| Stable public contract | [Explicit schema](#auto-generated-vs-explicit-schemas) |
+| Input field hidden from responses | [`WriteOnly`](#readonly-and-writeonly) |
+| Server-owned field, ignored on input | [`ReadOnly`](#readonly-and-writeonly) |
+| Checked foreign-key column | [`MustExist`](#mustexist) |
+| Relationship as a flat id | [`IDRef`](howto_relationship_idschema.md#choosing-a-reference-style) |
+| Relationship as a nested object | [`IDSchema[Model]`](#nested-relationship-objects) |
+
 ## BaseSchema
 
 {class}`fr.BaseSchema <fastapi_restly.schemas.BaseSchema>` is Restly's Pydantic base class. It enables Pydantic's
