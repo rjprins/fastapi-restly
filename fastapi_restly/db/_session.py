@@ -14,21 +14,6 @@ from .._exception_handlers import register_default_exception_handlers
 from ..exc import RestlyConfigurationError, RestlyUncommittedChangesWarning
 from ._globals import _fr_globals
 
-try:
-    import orjson
-except ImportError:
-    json_deserializer = None
-    json_serializer = None
-else:
-
-    def orjson_serializer(obj):
-        return orjson.dumps(
-            obj, option=orjson.OPT_NAIVE_UTC | orjson.OPT_NON_STR_KEYS
-        ).decode()
-
-    json_deserializer = orjson.loads
-    json_serializer = orjson_serializer
-
 
 def _setup_async_database_connection(
     async_database_url: str | None = None,
@@ -39,9 +24,7 @@ def _setup_async_database_connection(
     if not async_make_session:
         if not async_engine:
             async_engine = create_async_engine(
-                async_database_url,  # type: ignore[arg-type]
-                json_serializer=json_serializer,
-                json_deserializer=json_deserializer,
+                async_database_url  # type: ignore[arg-type]
             )
         async_make_session = async_sessionmaker(
             bind=async_engine, autoflush=False, expire_on_commit=False
@@ -72,11 +55,7 @@ def _setup_database_connection(
 ) -> sessionmaker[Any]:
     if make_session is None:
         if engine is None:
-            engine = create_engine(
-                database_url,  # type: ignore[arg-type]
-                json_serializer=json_serializer,
-                json_deserializer=json_deserializer,
-            )
+            engine = create_engine(database_url)  # type: ignore[arg-type]
         make_session = sessionmaker(bind=engine, expire_on_commit=False)
 
     _fr_globals.database_url = database_url

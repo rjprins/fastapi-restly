@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator, Iterator
 from inspect import signature
-from typing import get_args
+from typing import Any, cast, get_args
 
 import pytest
 from fastapi import Depends, FastAPI
@@ -114,6 +114,17 @@ def test_configure_rejects_noop_calls_and_accepts_a_single_flag():
         assert context.warn_on_uncommitted is True
 
 
+def test_url_created_engines_use_sqlalchemy_default_json_serializer():
+    """Restly wires no custom JSON serializer into URL-created engines; JSON
+    columns use SQLAlchemy's default (the standard library ``json``)."""
+    with RestlyContext():
+        configure(database_url="sqlite://", async_database_url="sqlite+aiosqlite://")
+        for engine in (get_engine(), get_async_engine()):
+            dialect = cast(Any, engine.dialect)
+            assert dialect._json_serializer is None
+            assert dialect._json_deserializer is None
+
+
 def test_configure_rejects_app_only_call_when_handler_install_is_disabled():
     with RestlyContext():
         app = FastAPI()
@@ -151,10 +162,14 @@ def test_restly_context_nested_entries_restore_in_lifo_order():
 
 def test_getters_and_sync_proxy_raise_without_configuration():
     with RestlyContext():
-        with pytest.raises(fr.exc.RestlyConfigurationError, match="Call fr.configure\\(\\)"):
+        with pytest.raises(
+            fr.exc.RestlyConfigurationError, match="Call fr.configure\\(\\)"
+        ):
             get_engine()
 
-        with pytest.raises(fr.exc.RestlyConfigurationError, match="Call fr.configure\\(\\)"):
+        with pytest.raises(
+            fr.exc.RestlyConfigurationError, match="Call fr.configure\\(\\)"
+        ):
             with proxy_open_session():
                 pass
 
@@ -171,10 +186,14 @@ def test_generate_session_raises_clear_error_without_configuration():
 @pytest.mark.asyncio
 async def test_async_getter_and_proxy_raise_without_configuration():
     with RestlyContext():
-        with pytest.raises(fr.exc.RestlyConfigurationError, match="Call fr.configure\\(\\)"):
+        with pytest.raises(
+            fr.exc.RestlyConfigurationError, match="Call fr.configure\\(\\)"
+        ):
             get_async_engine()
 
-        with pytest.raises(fr.exc.RestlyConfigurationError, match="Call fr.configure\\(\\)"):
+        with pytest.raises(
+            fr.exc.RestlyConfigurationError, match="Call fr.configure\\(\\)"
+        ):
             async with proxy_open_async_session():
                 pass
 

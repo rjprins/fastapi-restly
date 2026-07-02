@@ -40,6 +40,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Starlette, which signals the absence as `httpx2` (and via a `RuntimeError`)
   rather than a missing `httpx`.
 
+### Removed
+
+- The `orjson` dependency and the orjson serializer on URL-created engines.
+  `JSON` columns now use SQLAlchemy's default encoder (the standard library
+  `json`) on every engine: naive datetimes are no longer silently stamped as
+  UTC, and datetime/UUID values or keys now raise `TypeError` at write time
+  instead of being coerced to strings. To keep the old behavior, build your
+  own engine with `json_serializer=`/`json_deserializer=` and pass it to
+  `fr.configure()`.
+
 ### Fixed
 
 - `fr.IDRef[T]` / `fr.IDSchema[T]` foreign-key fields now work under any column
