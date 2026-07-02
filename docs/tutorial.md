@@ -189,7 +189,7 @@ class PostView(fr.AsyncRestView):
 ## Read-only and write-only fields
 
 So far every schema field travels in both directions. In practice some fields
-belong to only one: we will give `Post` an author token that clients send on
+belong to only one. For example we will give `Post` an author token that clients send on
 creation but never see back, and a view count that is server-maintained and
 must not be writable. First we add the columns to the model:
 
@@ -220,6 +220,9 @@ class PostRead(fr.IDSchema):
 
 `id` on {class}`IDSchema <fastapi_restly.schemas.IDSchema>` is already `ReadOnly`, which is why it appears in responses without
 being part of the create/update body.
+
+Where each marker takes effect, including on schemas used outside a view, is
+covered in [ReadOnly and WriteOnly](howto_custom_schema.md#readonly-and-writeonly).
 
 ## Querying lists
 

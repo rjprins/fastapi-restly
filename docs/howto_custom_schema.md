@@ -83,10 +83,8 @@ class UserRead(fr.IDSchema):
     created_by_id: fr.ReadOnly[int]
 ```
 
-`fr.WriteOnly[T]` marks a field as request-only. It is accepted in create/update
-payloads. Restly strips it only when an object is serialized through
-{meth}`self.to_response_schema(obj) <fastapi_restly.views.BaseRestView.to_response_schema>`, which the generated CRUD and ReactAdmin routes
-use:
+`fr.WriteOnly[T]` marks a field as request-only. It is accepted in create and
+update payloads but excluded from every serialized response:
 
 ```python
 class UserRead(fr.IDSchema):
@@ -94,11 +92,23 @@ class UserRead(fr.IDSchema):
     password: fr.WriteOnly[str]
 ```
 
-Restly applies `ReadOnly` when it generates {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` and
-{attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>`, and when its object helpers construct or update ORM objects.
-`WriteOnly` is removed from responses by `to_response_schema()`. If you return
-a schema object directly to FastAPI or call Pydantic serialization yourself,
-`WriteOnly` is schema metadata only and is not removed automatically.
+The two markers take effect in different places, which matters when a schema
+is used outside a view. `WriteOnly` sets Pydantic's field-level `exclude`, so
+every serialization of the schema drops the field: generated routes, FastAPI's
+`response_model`, and your own `model_dump()` calls all strip it, recursively
+through nested schemas, and the documented response schema in OpenAPI omits it.
+`ReadOnly` is applied by Restly itself when it generates
+{attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` and
+{attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>`, and
+when its object helpers construct or update ORM objects. On a schema used
+directly, a `ReadOnly` field validates and serializes like any other field;
+only its OpenAPI schema is marked `readOnly`.
+
+Either marker must be the field's outer annotation. Nested inside a union or a
+container (`Optional[WriteOnly[str]]`, `WriteOnly[str] | None`,
+`list[WriteOnly[str]]`) the marker would silently do nothing, so Restly
+rejects such a field with a `RestlyConfigurationError`. For an optional
+write-only field, write `WriteOnly[Optional[str]]`.
 
 ## Aliases
 

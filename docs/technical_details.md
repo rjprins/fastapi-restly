@@ -24,9 +24,11 @@ model's actual primary-key type.
 
 - `ReadOnly[...]` fields are excluded from generated create/update input schemas.
 - `WriteOnly[...]` fields are accepted on input and excluded from serialized
-  responses. {meth}`to_response_schema() <fastapi_restly.views.BaseRestView.to_response_schema>` performs the filtering. FastAPI's response
-  model serialization does **not** filter them; bypassing `to_response_schema()`
-  can expose `WriteOnly` fields.
+  responses. The marker carries Pydantic's field-level `exclude`, so the
+  filtering happens in every serialization of the schema, including FastAPI's
+  response model and nested schemas. A response that never passes through the
+  schema (a raw dict or ORM object returned without a `response_model`) is the
+  only way a `WriteOnly` value can leak.
 
 ### Generated Input Schemas
 
@@ -192,8 +194,8 @@ override decision table live in
 
 The implementation detail worth knowing here: the route shell calls
 {meth}`to_response(obj, shape) <fastapi_restly.views.BaseRestView.to_response>`, the single response method, which delegates to
-{meth}`to_response_schema(obj) <fastapi_restly.views.BaseRestView.to_response_schema>` for the per-object serialization (`WriteOnly`
-filtering, relationship-id normalization).
+{meth}`to_response_schema(obj) <fastapi_restly.views.BaseRestView.to_response_schema>` for the per-object serialization
+(relationship-id normalization and response-schema validation).
 
 ### Nested Response Schemas vs Write Payloads
 
