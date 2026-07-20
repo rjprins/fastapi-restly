@@ -82,8 +82,12 @@ html_theme_options = {
     "show_toc_level": 2,
     "navigation_depth": 3,
     "icon_links": [],
-    # All eight top-level sections in the header; no "More" dropdown.
-    "header_links_before_dropdown": 8,
+    # All eight top-level sections plus the Blog link in the header; no
+    # "More" dropdown.
+    "header_links_before_dropdown": 9,
+    "external_links": [
+        {"name": "Blog", "url": f"{SITE_URL}blog/"},
+    ],
     # Version dropdown. json_url is absolute so frozen snapshots read the same
     # canonical list and surface versions published after they were built.
     "switcher": {

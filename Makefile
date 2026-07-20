@@ -1,4 +1,4 @@
-.PHONY: test test-framework test-typing test-examples test-all clean install-dev lint pre-commit-install pre-commit-run docs docs-serve build-pages
+.PHONY: test test-framework test-typing test-examples test-all clean install-dev lint pre-commit-install pre-commit-run docs docs-serve blog blog-serve build-pages
 
 # Default target
 all: test-all
@@ -82,6 +82,13 @@ docs:
 docs-serve:
 	uv run sphinx-autobuild docs site
 
+blog:
+	uv run sphinx-build -M html blog site-blog -W --keep-going
+	@echo "Blog available at site-blog/html/index.html"
+
+blog-serve:
+	uv run sphinx-autobuild --open-browser blog site-blog
+
 build-pages:
 	rm -rf site/html htmlcov
 	uv run coverage run -m pytest tests/
@@ -116,4 +123,6 @@ help:
 	@echo "  dev-setup       - Setup development environment"
 	@echo "  docs            - Build documentation"
 	@echo "  docs-serve      - Autobuild and serve documentation"
+	@echo "  blog            - Build the blog (published at /blog/)"
+	@echo "  blog-serve      - Autobuild and serve the blog"
 	@echo "  build-pages     - Build docs plus coverage assets for GitHub Pages"
