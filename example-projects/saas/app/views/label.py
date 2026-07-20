@@ -7,7 +7,7 @@ from pydantic import BaseModel
 import fastapi_restly as fr
 from fastapi_restly.objects import async_make_new_object, async_save_object
 
-from ..models import Label, Task, TaskLabel
+from ..models import Label, Project, Task, TaskLabel
 from ..schemas import LabelSchema, TaskLabelSchema
 from ._base import TenantBase
 from ._mixins import TenantScopedMixin
@@ -66,15 +66,23 @@ class TaskLabelView(TenantBase):
         The Label is flushed first so its id can be used in the TaskLabel
         ``MustExist`` schema. Both rows commit through one ``write_action`` block.
         """
-        # Tenant scope is enforced via TaskView.get_one-style checks here:
-        # we don't go through TaskView, so we re-validate the task fits
-        # the current org to avoid a cross-tenant attach.
-        task = await self.session.get(Task, request.task_id)
-        if task is None:
-            raise HTTPException(404, "Task not found")
         org_id = self._current_org_id()
         if org_id is None:
             raise HTTPException(400, "Cannot create labels without an org context")
+
+        # Scope the task lookup to the caller's org. A Task reaches an org only
+        # through its Project, so join Project and filter organization_id. A bare
+        # session.get(Task, id) would let any org attach a label to any task, so
+        # a task outside this org must read as 404, not silently attach.
+        task = (
+            await self.session.execute(
+                sa.select(Task)
+                .join(Project, Task.project_id == Project.id)
+                .where(Task.id == request.task_id, Project.organization_id == org_id)
+            )
+        ).scalar_one_or_none()
+        if task is None:
+            raise HTTPException(404, "Task not found")
 
         # Commit the Label + TaskLabel pair atomically.
         async with self.write_action("create", data=request) as w:

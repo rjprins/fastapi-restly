@@ -652,3 +652,70 @@ class TestSiblingCreation:
             # request.state.user_id; the route handles None gracefully.
             assert tl["added_by_id"] is None
             del label_module  # silence unused
+
+    def test_create_and_attach_rejects_cross_tenant_task(self, client, auth_context):
+        """A task in another org must not be attachable from the caller's org.
+
+        create-and-attach scopes the task lookup through
+        ``Project.organization_id``, so a foreign org's task id reads as 404 —
+        the guard returns before the Label insert, so neither row is created.
+        """
+        # Two orgs, each with its own project/task. Built with no org context so
+        # the explicit ``organization_id`` on each project sticks (the tenant
+        # stamp only fires when a current-org context is set).
+        org_a = client.post(
+            "/organizations/", json={"name": "Tenant A", "slug": "tenant-a"}
+        ).json()
+        org_b = client.post(
+            "/organizations/", json={"name": "Tenant B", "slug": "tenant-b"}
+        ).json()
+        proj_b = client.post(
+            "/projects/", json={"name": "B proj", "organization_id": org_b["id"]}
+        ).json()
+        task_b = client.post(
+            "/tasks/", json={"title": "B task", "project_id": proj_b["id"]}
+        ).json()
+
+        # Acting as org A, try to attach a label to org B's task.
+        with auth_context(org_id=org_a["id"]):
+            client.post(
+                "/task-labels/create-and-attach",
+                json={"task_id": task_b["id"], "label_name": "sneaky"},
+                assert_status_code=404,
+            )
+            # No Label leaked into org A from the rejected attach.
+            assert client.get("/labels/").json() == []
+
+    def test_create_and_attach_missing_task_returns_404(self, client, auth_context):
+        """A task id that matches no row reads as 404 under the scoped lookup."""
+        _org_id, override_auth = self._ctx(client, auth_context)
+        with override_auth:
+            client.post(
+                "/task-labels/create-and-attach",
+                json={"task_id": 999_999, "label_name": "ghost"},
+                assert_status_code=404,
+            )
+            assert client.get("/labels/").json() == []
+
+    def test_create_and_attach_requires_org_context(self, client):
+        """Without a current org, create-and-attach refuses with 400.
+
+        The org id both stamps the new Label and scopes the task lookup, so
+        the org check runs first: even with a real, existing task there is no
+        tenant to attach to.
+        """
+        org = client.post(
+            "/organizations/", json={"name": "Ctxless", "slug": "ctxless"}
+        ).json()
+        proj = client.post(
+            "/projects/", json={"name": "P", "organization_id": org["id"]}
+        ).json()
+        task = client.post(
+            "/tasks/", json={"title": "T", "project_id": proj["id"]}
+        ).json()
+        # No auth_context → _current_org_id() is None.
+        client.post(
+            "/task-labels/create-and-attach",
+            json={"task_id": task["id"], "label_name": "no-org"},
+            assert_status_code=400,
+        )
