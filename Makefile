@@ -83,11 +83,11 @@ docs-serve:
 	uv run sphinx-autobuild docs site
 
 blog:
-	uv run sphinx-build -M html blog site-blog -W --keep-going
+	uv run sphinx-build -M html blog-site site-blog -W --keep-going
 	@echo "Blog available at site-blog/html/index.html"
 
 blog-serve:
-	uv run sphinx-autobuild --open-browser blog site-blog
+	uv run sphinx-autobuild --open-browser blog-site site-blog
 
 build-pages:
 	rm -rf site/html htmlcov

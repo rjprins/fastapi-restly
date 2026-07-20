@@ -6,7 +6,7 @@ on:
       - main
   pull_request:
     paths:
-      - "blog/**"
+      - "blog-site/**"
       - "docs/**"
       - "fastapi_restly/**"
       - "scripts/render_switcher.py"
