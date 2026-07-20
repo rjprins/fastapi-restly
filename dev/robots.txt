@@ -2,3 +2,4 @@ User-agent: *
 Allow: /
 
 Sitemap: https://www.fastapi-restly.org/sitemap.xml
+Sitemap: https://www.fastapi-restly.org/blog/sitemap.xml
