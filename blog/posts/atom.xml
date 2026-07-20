@@ -1,0 +1,37 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<feed xmlns="http://www.w3.org/2005/Atom" xml:lang="en">
+  <id>https://www.fastapi-restly.org/blog/</id>
+  <title>FastAPI-Restly Blog</title>
+  <updated>2026-07-20T13:00:43.354230+00:00</updated>
+  <link href="https://www.fastapi-restly.org/blog/"/>
+  <link href="https://www.fastapi-restly.org/blog/posts/atom.xml" rel="self"/>
+  <generator uri="https://ablog.readthedocs.io/" version="0.11.13">ABlog</generator>
+  <entry>
+    <id>https://www.fastapi-restly.org/blog/posts/hello.html</id>
+    <title>Restly has a blog</title>
+    <updated>2026-07-20T00:00:00+00:00</updated>
+    <author>
+      <name>Rutger Prins</name>
+    </author>
+    <content type="html">&lt;section id="restly-has-a-blog"&gt;
+
+&lt;p&gt;This is the engineering blog for
+&lt;a class="reference external" href="https://www.fastapi-restly.org/"&gt;FastAPI-Restly&lt;/a&gt;. Posts here cover announcements as well as the
+thinking behind the framework. For example why customization handles look the way they do,
+how we test, and what we learn from running coding agents against the API.
+Follow along via the
+&lt;a class="reference external" href="https://www.fastapi-restly.org/newsletter.html"&gt;newsletter&lt;/a&gt; or the
+&lt;a class="reference external" href="https://www.fastapi-restly.org/blog/posts/atom.xml"&gt;Atom feed&lt;/a&gt;.&lt;/p&gt;
+&lt;/section&gt;
+</content>
+    <link href="https://www.fastapi-restly.org/blog/posts/hello.html"/>
+    <summary>This is the engineering blog for
+FastAPI-Restly. Posts here cover announcements as well as the
+thinking behind the framework. For example why customization handles look the way they do,
+how we test, and what we learn from running coding agents against the API.
+Follow along via the
+newsletter or the
+Atom feed.</summary>
+    <published>2026-07-20T00:00:00+00:00</published>
+  </entry>
+</feed>
