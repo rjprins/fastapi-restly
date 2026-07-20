@@ -177,8 +177,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../the_handle_design.html">
-    Overrides
+  <a class="nav-link nav-internal" href="../customize.html">
+    Customize
   </a>
 </li>
 
@@ -341,8 +341,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../the_handle_design.html">
-    Overrides
+  <a class="nav-link nav-internal" href="../customize.html">
+    Customize
   </a>
 </li>
 
@@ -516,9 +516,12 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="module-fastapi_restly.exc">
-<span id="exceptions-api"></span><h1>Exceptions API<a class="headerlink" href="#module-fastapi_restly.exc" title="Link to this heading">#</a></h1>
-<p>Public exception hierarchy for FastAPI-Restly.</p>
+  <section id="exceptions-api">
+<h1>Exceptions API<a class="headerlink" href="#exceptions-api" title="Link to this heading">#</a></h1>
+<p><code class="docutils literal notranslate"><span class="pre">fastapi_restly.exc</span></code> defines the public exception hierarchy: configuration
+errors raised when the framework is misused at setup, and request-time HTTP
+errors that subclass <code class="docutils literal notranslate"><span class="pre">fastapi.HTTPException</span></code>.</p>
+<p id="module-fastapi_restly.exc">Public exception hierarchy for FastAPI-Restly.</p>
 <p>Two families:</p>
 <ul class="simple">
 <li><p>Configuration-time errors (<a class="reference internal" href="#fastapi_restly.exc.RestlyError" title="fastapi_restly.exc.RestlyError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyError</span></code></a> / <a class="reference internal" href="#fastapi_restly.exc.RestlyConfigurationError" title="fastapi_restly.exc.RestlyConfigurationError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code></a>)
@@ -636,8 +639,8 @@ distinctly (e.g. into RFC 7807 problem+json).</p></li>
 <p>Emitted at view registration for common framework-misuse patterns.</p>
 <p>Opt-in: enable with <code class="docutils literal notranslate"><span class="pre">fr.configure(warn_on_misuse=True)</span></code>. When a view
 class is registered via <code class="docutils literal notranslate"><span class="pre">include_view</span></code>, the framework then flags the
-dominant misuses – overriding a route shell (<code class="docutils literal notranslate"><span class="pre">&lt;verb&gt;_endpoint</span></code>) where a
-business-verb override was meant, calling <code class="docutils literal notranslate"><span class="pre">session.commit()</span></code> directly in a
+dominant misuses – overriding an endpoint method (<code class="docutils literal notranslate"><span class="pre">&lt;verb&gt;_endpoint</span></code>) where
+a business-method override was meant, calling <code class="docutils literal notranslate"><span class="pre">session.commit()</span></code> directly in a
 view method, hand-rolling a CRUD route set on a bare <code class="docutils literal notranslate"><span class="pre">View</span></code> instead of
 subclassing <code class="docutils literal notranslate"><span class="pre">RestView</span></code> / <code class="docutils literal notranslate"><span class="pre">AsyncRestView</span></code>, and typing a scalar
 foreign-key column (<code class="docutils literal notranslate"><span class="pre">post_id</span></code>) as an <code class="docutils literal notranslate"><span class="pre">IDRef</span></code> / <code class="docutils literal notranslate"><span class="pre">IDSchema</span></code> reference
@@ -661,8 +664,8 @@ the warning for just that request with
 
 <div class="admonition seealso">
 <p class="admonition-title">See also</p>
-<p><a class="reference internal" href="../howto_error_responses.html"><span class="doc">Shape Error Responses</span></a> — which exception to raise where, and
-app-wide error envelopes.</p>
+<p><a class="reference internal" href="../howto_error_responses.html"><span class="doc">Shape Error Responses</span></a> explains which exception to raise where
+and how to change the error envelope app-wide.</p>
 </div>
 </section>
 

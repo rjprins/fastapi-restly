@@ -177,8 +177,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../the_handle_design.html">
-    Overrides
+  <a class="nav-link nav-internal" href="../customize.html">
+    Customize
   </a>
 </li>
 
@@ -341,8 +341,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../the_handle_design.html">
-    Overrides
+  <a class="nav-link nav-internal" href="../customize.html">
+    Customize
   </a>
 </li>
 
@@ -516,9 +516,13 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="module-fastapi_restly.db">
-<span id="database-api"></span><h1>Database API<a class="headerlink" href="#module-fastapi_restly.db" title="Link to this heading">#</a></h1>
-<dl class="py function">
+  <section id="database-api">
+<h1>Database API<a class="headerlink" href="#database-api" title="Link to this heading">#</a></h1>
+<p><code class="docutils literal notranslate"><span class="pre">fastapi_restly.db</span></code> implements the connection layer: <code class="docutils literal notranslate"><span class="pre">configure()</span></code> for
+process-wide setup, session context managers and FastAPI session dependencies,
+engine accessors, table creation helpers for development, and the
+savepoint-only mode used in testing.</p>
+<dl class="py function" id="module-fastapi_restly.db">
 <dt class="sig sig-object py" id="fastapi_restly.db.activate_savepoint_only_mode">
 <span class="sig-prename descclassname"><span class="pre">fastapi_restly.db.</span></span><span class="sig-name descname"><span class="pre">activate_savepoint_only_mode</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">make_session</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html#sqlalchemy.ext.asyncio.async_sessionmaker" title="(in SQLAlchemy v2.0)"><span class="pre">async_sessionmaker</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/session_api.html#sqlalchemy.orm.sessionmaker" title="(in SQLAlchemy v2.0)"><span class="pre">sessionmaker</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#fastapi_restly.db.activate_savepoint_only_mode" title="Link to this definition">#</a></dt>
 <dd><p>Intended for use in tests. Puts the session factory into savepoint-only mode so
@@ -652,8 +656,9 @@ exactly as a custom write route does.)</p>
 
 <div class="admonition seealso">
 <p class="admonition-title">See also</p>
-<p><a class="reference internal" href="../howto_existing_project.html"><span class="doc">Use Restly in an Existing Project</span></a> — wiring Restly into existing engines and
-sessions; <a class="reference internal" href="../deploying.html"><span class="doc">Deploying</span></a> — production engine configuration.</p>
+<p><a class="reference internal" href="../howto_existing_project.html"><span class="doc">Use Restly in an Existing Project</span></a> shows how to wire Restly into existing
+engines and sessions, and <a class="reference internal" href="../deploying.html"><span class="doc">Deploying</span></a> covers production engine
+configuration.</p>
 </div>
 </section>
 

@@ -1,17 +1,20 @@
 # Tutorial Part 1: Generated CRUD
 
-Part 1 builds a small blog API with two related models and shows the most common
-FastAPI-Restly patterns: models, schemas, and a view class that generates full CRUD
-endpoints. It assumes you have read [Getting Started](getting_started.md) and
-installed `fastapi-restly[standard]` with the `aiosqlite` driver.
+In Part 1 we build a small blog API with two related models, using the most
+common FastAPI-Restly patterns: models, schemas, and a view class that generates
+full CRUD endpoints. It assumes you have read [Getting Started](getting_started.md)
+and installed `fastapi-restly[standard]` with the `aiosqlite` driver.
 
 This tutorial uses explicit schemas for clarity. For faster scaffolding, you can omit
 `schema = ...` on a view and let FastAPI-Restly auto-generate it from the model.
 See [Auto-Generated Schemas](technical_details.md#auto-generated-schemas).
 
----
-
 ## Models
+
+We begin with the data layer: the database connection and two SQLAlchemy
+models declared against
+{class}`IDBase <fastapi_restly.models.IDBase>`, which provides an integer `id`
+primary key:
 
 ```python
 import fastapi_restly as fr
@@ -48,11 +51,13 @@ This is why `ForeignKey("post.id")` is the correct reference for `Post.id`.
 Post(title="Hello", content="World", published=False)  # correct
 ```
 
-The `id` column is excluded from `__init__` automatically — you do not pass it.
-
----
+The `id` column is excluded from `__init__` automatically, so you do not pass it.
 
 ## Schemas
+
+With the models in place, we can define the Pydantic schemas that shape the
+API's requests and responses, one per model, each extending
+{class}`fr.IDSchema <fastapi_restly.schemas.IDSchema>`:
 
 ```python
 class PostRead(fr.IDSchema):
@@ -112,9 +117,11 @@ declare `post_id: int` in your schema instead.
 See [Work with Foreign Keys and Relationships](howto_relationship_idschema.md)
 for more detail, including list relations and nested relationship objects.
 
----
-
 ## App setup
+
+Models and schemas meet in the view layer. We create the FastAPI app, then
+register one view class per resource; each view names its URL prefix, model,
+and schema:
 
 ```python
 @asynccontextmanager
@@ -142,20 +149,18 @@ class CommentView(fr.AsyncRestView):
 
 Tables are created inside a FastAPI `lifespan` context manager so they are initialised
 after the event loop starts. This is safe with both `uvicorn` and testing tools.
-For production projects, use Alembic migrations instead of {func}`create_all <fastapi_restly.db.create_all>`.
-
----
+For production projects, use Alembic migrations instead of {func}`async_create_all <fastapi_restly.db.async_create_all>`.
 
 ## Run it
+
+The application is complete, so we can start it:
 
 ```bash
 fastapi dev main.py
 ```
 
-Open <http://127.0.0.1:8000/docs> — both resources are listed with their
+Open <http://127.0.0.1:8000/docs>. Both resources are listed with their
 request and response schemas, ready to try from the browser.
-
----
 
 ## Generated endpoints
 
@@ -181,13 +186,12 @@ class PostView(fr.AsyncRestView):
     exclude_routes = (fr.ViewRoute.DELETE,)  # disables DELETE /posts/{id}
 ```
 
----
-
 ## Read-only and write-only fields
 
-Let's give `Post` an author token that clients send on creation but never see
-back, and a view count that is server-maintained and must not be writable.
-Add the columns to the model:
+So far every schema field travels in both directions. In practice some fields
+belong to only one. For example we will give `Post` an author token that clients send on
+creation but never see back, and a view count that is server-maintained and
+must not be writable. First we add the columns to the model:
 
 ```python
 class Post(fr.IDBase):
@@ -209,7 +213,7 @@ class PostRead(fr.IDSchema):
     view_count: fr.ReadOnly[int] = 0      # returned in responses, ignored on input
 ```
 
-- `ReadOnly` fields appear in responses but are ignored on create and update —
+- `ReadOnly` fields appear in responses but are ignored on create and update;
   the server owns them.
 - `WriteOnly` fields are accepted on create and update but stripped from every
   generated response.
@@ -217,13 +221,14 @@ class PostRead(fr.IDSchema):
 `id` on {class}`IDSchema <fastapi_restly.schemas.IDSchema>` is already `ReadOnly`, which is why it appears in responses without
 being part of the create/update body.
 
----
+Where each marker takes effect, including on schemas used outside a view, is
+covered in [ReadOnly and WriteOnly](howto_custom_schema.md#readonly-and-writeonly).
 
 ## Querying lists
 
-List endpoints accept filtering, sorting, and pagination through URL
-query parameters. Filters use direct field names with optional operator
-suffixes:
+The generated list endpoints accept filtering, sorting, and pagination
+through URL query parameters. Filters use direct field names with optional
+operator suffixes:
 
 ```text
 GET /posts/?published=true&sort=-id&page=1&page_size=10
@@ -233,8 +238,6 @@ GET /posts/?created_at__gte=2024-01-01&created_at__lt=2025-01-01
 
 See [Filter, Sort, and Paginate Lists](howto_query_modifiers.md)
 for the full list of operators.
-
----
 
 ## Testing
 
@@ -267,21 +270,18 @@ def test_create_post(restly_client):
 
 See [Testing](howto_testing.md) for the full setup and savepoint details.
 
----
+## Nested schemas
 
-## Nested Schemas
-
-Response schemas may nest related objects (Restly eager-loads and serializes
-them); create/update payloads may not — inputs map to model attributes or use
-`*_id: MustExist[int, Model]`. Details:
-[Work with Foreign Keys and Relationships](howto_relationship_idschema.md).
-
----
+Response schemas may nest related objects, and Restly eager-loads and
+serializes them for you. Create and update payloads may not nest: inputs map
+to model attributes or use `*_id: MustExist[int, Model]`. See
+[Work with Foreign Keys and Relationships](howto_relationship_idschema.md)
+for the details.
 
 ## The complete file
 
-Everything this page built, as one runnable `main.py` (including the
-read-only/write-only columns added along the way):
+Here is everything this page built as one runnable `main.py`, including the
+read-only and write-only columns added along the way:
 
 ```python
 from contextlib import asynccontextmanager
@@ -343,14 +343,16 @@ class CommentView(fr.AsyncRestView):
     schema = CommentRead
 ```
 
----
-
 ## Next steps
 
-- **[Part 2: Customizing Views](tutorial_customizing.md)** — override handlers, add custom routes, and share behaviour with base classes
-- [Auto-Generated Schemas](technical_details.md#auto-generated-schemas) — skip writing schemas for simple models
-- [Filter, Sort, and Paginate Lists](howto_query_modifiers.md) — full filter and sort reference
-- [Work with Foreign Keys and Relationships](howto_relationship_idschema.md) — reference related rows by id
-- [Testing](howto_testing.md) — savepoint isolation and test fixtures
-- [Examples](examples.md) — complete sample apps that extend these patterns
+The tutorial continues with
+**[Part 2: Customizing Views](tutorial_customizing.md)**, which overrides
+handlers, adds custom routes, and shares behaviour with base classes. The
+pages below go deeper into the topics this part touched on:
+
+- [Auto-Generated Schemas](technical_details.md#auto-generated-schemas): skip writing schemas for simple models
+- [Filter, Sort, and Paginate Lists](howto_query_modifiers.md): the full filter and sort reference
+- [Work with Foreign Keys and Relationships](howto_relationship_idschema.md): reference related rows by id
+- [Testing](howto_testing.md): savepoint isolation and test fixtures
+- [Examples](examples.md): complete sample apps that extend these patterns
 - [API Reference](api_reference.md)

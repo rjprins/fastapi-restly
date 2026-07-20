@@ -177,8 +177,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="the_handle_design.html">
-    Overrides
+  <a class="nav-link nav-internal" href="customize.html">
+    Customize
   </a>
 </li>
 
@@ -341,8 +341,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="the_handle_design.html">
-    Overrides
+  <a class="nav-link nav-internal" href="customize.html">
+    Customize
   </a>
 </li>
 
@@ -439,13 +439,12 @@
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="howto_existing_project.html">Use Restly in an Existing Project</a></li>
-<li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_custom_schema.html">Custom Schemas and Field Types</a></li>
-<li class="toctree-l1"><a class="reference internal" href="howto_response_schema.html">Response Envelopes and List Metadata</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys and Relationships</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_response_schema.html">Response Envelopes and List Metadata</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_query_modifiers.html">Filter, Sort, and Paginate Lists</a></li>
-<li class="toctree-l1"><a class="reference internal" href="howto_override_endpoints.html">Override CRUD Behavior and Add Custom Endpoints</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_error_responses.html">Shape Error Responses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_inheritance.html">Share Behaviour with Base Views</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_compose_views_with_mixins.html">Compose Views with Mixins</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_typing.html">Use Type Annotations</a></li>
@@ -537,8 +536,9 @@ one.</p>
 </section>
 <section id="a-complete-conftest-py">
 <h2>A complete conftest.py<a class="headerlink" href="#a-complete-conftest-py" title="Link to this heading">#</a></h2>
-<p>The fixtures isolate tests on whatever database <a class="reference internal" href="api/db.html#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.configure()</span></code></a> points at —
-they never create the schema. A minimal, copy-paste setup for an async app:</p>
+<p>The fixtures isolate tests on whatever database <a class="reference internal" href="api/db.html#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.configure()</span></code></a> points at;
+they never create the schema. Here is a minimal, copy-paste setup for an
+async app:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># conftest.py</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
 
@@ -569,7 +569,7 @@ they never create the schema. A minimal, copy-paste setup for an async app:</p>
 </div>
 <p>The last fixture matters: the savepoint isolation lives in the <em>session</em>
 fixtures, which patch Restly’s session factory for the duration of a test.
-<code class="docutils literal notranslate"><span class="pre">restly_client</span></code> alone does not isolate — a client-only test commits real rows
+<code class="docutils literal notranslate"><span class="pre">restly_client</span></code> alone does not isolate: a client-only test commits real rows
 to the configured database. The autouse wrapper opts every test in.</p>
 <p>The session fixtures need an async pytest plugin such as <code class="docutils literal notranslate"><span class="pre">pytest-asyncio</span></code>;
 configure it in <code class="docutils literal notranslate"><span class="pre">pyproject.toml</span></code>:</p>
@@ -583,6 +583,7 @@ to collect or produce confusing errors.</p>
 </section>
 <section id="a-first-test">
 <h2>A first test<a class="headerlink" href="#a-first-test" title="Link to this heading">#</a></h2>
+<p>With the conftest in place, a test only needs to request <code class="docutils literal notranslate"><span class="pre">restly_client</span></code>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># test_users.py</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">test_create_and_fetch_user</span><span class="p">(</span><span class="n">restly_client</span><span class="p">):</span>
     <span class="n">response</span> <span class="o">=</span> <span class="n">restly_client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>  <span class="c1"># asserts 201 automatically</span>
@@ -594,9 +595,8 @@ to collect or produce confusing errors.</p>
     <span class="k">assert</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;Jane&quot;</span>
 </pre></div>
 </div>
-<p>With the conftest above, everything the test writes — through the client or a
-session fixture — is rolled back afterward; see
-<a class="reference internal" href="#isolation-model">the isolation model</a>.</p>
+<p>Everything the test writes (through the client or a session fixture) is
+rolled back afterward; see <a class="reference internal" href="#isolation-model">the isolation model</a>.</p>
 </section>
 <section id="test-databases-and-migrations">
 <h2>Test databases and migrations<a class="headerlink" href="#test-databases-and-migrations" title="Link to this heading">#</a></h2>
@@ -604,9 +604,9 @@ session fixture — is rolled back afterward; see
 everything after each test, but schema setup is still your job, once per
 session:</p>
 <ul>
-<li><p><strong><a class="reference internal" href="api/db.html#fastapi_restly.db.create_all" title="fastapi_restly.db.create_all"><code class="xref py py-func docutils literal notranslate"><span class="pre">create_all</span></code></a></strong> (above) builds the schema straight from your models — fine
-when migrations aren’t part of what you’re testing.</p></li>
-<li><p><strong>Alembic</strong> — if you want tests to run against the migrated schema, upgrade
+<li><p><strong><a class="reference internal" href="api/db.html#fastapi_restly.db.async_create_all" title="fastapi_restly.db.async_create_all"><code class="xref py py-func docutils literal notranslate"><span class="pre">async_create_all</span></code></a></strong> (above) builds the schema straight from your models;
+this is fine when migrations are not part of what you are testing.</p></li>
+<li><p><strong>Alembic</strong>: if you want tests to run against the migrated schema, upgrade
 in the same session fixture instead:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">alembic</span><span class="w"> </span><span class="kn">import</span> <span class="n">command</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">alembic.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">Config</span>
@@ -618,10 +618,13 @@ in the same session fixture instead:</p>
 </div>
 </li>
 </ul>
-<p>See <a class="reference internal" href="deploying.html"><span class="std std-doc">Deploying</span></a> for production migration setup.</p>
+<p>See <a class="reference internal" href="deploying.html#migrations-with-alembic"><span class="std std-ref">Migrations with Alembic</span></a> for
+production migration setup.</p>
 </section>
 <section id="restlytestclient">
 <h2>RestlyTestClient<a class="headerlink" href="#restlytestclient" title="Link to this heading">#</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">restly_client</span></code> fixture wraps this client for you; construct it directly
+when you are testing without the fixtures:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi_restly.testing</span><span class="w"> </span><span class="kn">import</span> <span class="n">RestlyTestClient</span>
 
 <span class="n">client</span> <span class="o">=</span> <span class="n">RestlyTestClient</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
@@ -657,18 +660,20 @@ async FastAPI routes and <a class="reference internal" href="api/views.html#fast
 </table>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">AsyncRestView</span></code> and <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a> do not generate <code class="docutils literal notranslate"><span class="pre">PUT</span></code> routes; the client’s
-<code class="docutils literal notranslate"><span class="pre">put</span></code> exists for React Admin views and custom routes.</p>
+<code class="docutils literal notranslate"><span class="pre">put</span></code> exists for <a class="reference internal" href="howto_react_admin.html"><span class="std std-doc">React Admin views</span></a> and custom routes.</p>
 <p>Override the expectation when testing error paths:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">test_not_found</span><span class="p">(</span><span class="n">restly_client</span><span class="p">):</span>
     <span class="n">restly_client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/users/999&quot;</span><span class="p">,</span> <span class="n">assert_status_code</span><span class="o">=</span><span class="mi">404</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Passing <code class="docutils literal notranslate"><span class="pre">assert_status_code=None</span></code> relaxes the check to “any status below
-400” — it does <strong>not</strong> skip the assertion. To inspect an error response
+400”; it does <strong>not</strong> skip the assertion. To inspect an error response
 yourself, pass the error code you expect.</p>
 </section>
 <section id="fixture-reference">
 <h2>Fixture reference<a class="headerlink" href="#fixture-reference" title="Link to this heading">#</a></h2>
+<p>These are the fixtures the plugin registers, with their scope and exact
+behavior.</p>
 <section id="restly-app">
 <h3><code class="docutils literal notranslate"><span class="pre">restly_app</span></code><a class="headerlink" href="#restly-app" title="Link to this heading">#</a></h3>
 <p><strong>Scope:</strong> <code class="docutils literal notranslate"><span class="pre">function</span></code></p>
@@ -679,7 +684,7 @@ the recipe above) so <code class="docutils literal notranslate"><span class="pre
 <h3><code class="docutils literal notranslate"><span class="pre">restly_client</span></code><a class="headerlink" href="#restly-client" title="Link to this heading">#</a></h3>
 <p><strong>Scope:</strong> <code class="docutils literal notranslate"><span class="pre">function</span></code></p>
 <p>A <a class="reference internal" href="#restlytestclient"><code class="docutils literal notranslate"><span class="pre">RestlyTestClient</span></code></a> wrapping the <code class="docutils literal notranslate"><span class="pre">restly_app</span></code> fixture.
-On its own it provides <strong>no database isolation</strong> — pair it with a session
+On its own it provides <strong>no database isolation</strong>; pair it with a session
 fixture (the conftest recipe’s autouse wrapper does this for every test).</p>
 </section>
 <section id="restly-session">
@@ -687,8 +692,9 @@ fixture (the conftest recipe’s autouse wrapper does this for every test).</p>
 <p><strong>Scope:</strong> <code class="docutils literal notranslate"><span class="pre">function</span></code></p>
 <p>A SQLAlchemy <code class="docutils literal notranslate"><span class="pre">Session</span></code> on a connection whose outer transaction is never
 committed. <code class="docutils literal notranslate"><span class="pre">commit()</span></code> is patched to <code class="docutils literal notranslate"><span class="pre">flush()</span></code> + <code class="docutils literal notranslate"><span class="pre">begin_nested()</span></code>, so writes
-are visible during the test without persisting afterward. Skips automatically
-if no sync database connection is configured.</p>
+are visible during the test without persisting afterward. The fixture skips
+automatically if no sync database connection is configured.</p>
+<p>A committed write can be read back within the same test:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">test_user_created</span><span class="p">(</span><span class="n">restly_session</span><span class="p">):</span>
     <span class="n">user</span> <span class="o">=</span> <span class="n">User</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;Alice&quot;</span><span class="p">)</span>
     <span class="n">restly_session</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">user</span><span class="p">)</span>
@@ -702,10 +708,11 @@ if no sync database connection is configured.</p>
 <section id="restly-async-session">
 <h3><code class="docutils literal notranslate"><span class="pre">restly_async_session</span></code><a class="headerlink" href="#restly-async-session" title="Link to this heading">#</a></h3>
 <p><strong>Scope:</strong> <code class="docutils literal notranslate"><span class="pre">function</span></code></p>
-<p>Async version of <code class="docutils literal notranslate"><span class="pre">restly_session</span></code>; requires the <a class="reference internal" href="#a-complete-conftest-py">async pytest
+<p>The async version of <code class="docutils literal notranslate"><span class="pre">restly_session</span></code>; it requires the <a class="reference internal" href="#a-complete-conftest-py">async pytest
 setup</a>. In async-only projects it needs only
-<code class="docutils literal notranslate"><span class="pre">fr.configure(async_database_url=...)</span></code>. Skips automatically if no async
+<code class="docutils literal notranslate"><span class="pre">fr.configure(async_database_url=...)</span></code>. It skips automatically if no async
 database connection is configured.</p>
+<p>Usage mirrors <code class="docutils literal notranslate"><span class="pre">restly_session</span></code>, with <code class="docutils literal notranslate"><span class="pre">await</span></code>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">test_user_created</span><span class="p">(</span><span class="n">restly_async_session</span><span class="p">):</span>
     <span class="n">user</span> <span class="o">=</span> <span class="n">User</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;Bob&quot;</span><span class="p">)</span>
     <span class="n">restly_async_session</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">user</span><span class="p">)</span>
@@ -726,9 +733,9 @@ such as <code class="docutils literal notranslate"><span class="pre">psycopg2</s
 <h3><code class="docutils literal notranslate"><span class="pre">restly_project_root</span></code><a class="headerlink" href="#restly-project-root" title="Link to this heading">#</a></h3>
 <p><strong>Scope:</strong> <code class="docutils literal notranslate"><span class="pre">session</span></code></p>
 <p>Walks up from the current working directory until it finds a
-<code class="docutils literal notranslate"><span class="pre">pyproject.toml</span></code> and returns that directory as a <code class="docutils literal notranslate"><span class="pre">Path</span></code> — a convenience for
-locating project files (migration configs, test data) from tests regardless
-of where pytest was invoked.</p>
+<code class="docutils literal notranslate"><span class="pre">pyproject.toml</span></code> and returns that directory as a <code class="docutils literal notranslate"><span class="pre">Path</span></code>. This is a
+convenience for locating project files (migration configs, test data) from
+tests regardless of where pytest was invoked.</p>
 </section>
 </section>
 <section id="isolation-model">
@@ -740,7 +747,7 @@ test and rolled back afterward.</p>
 session to that connection.</p></li>
 <li><p>The fixtures patch Restly’s session factory so code under test receives
 the same isolated session. This patch is what makes app/client requests
-isolated too — which is why the conftest recipe requests the session
+isolated too, and it is why the conftest recipe requests the session
 fixture for every test.</p></li>
 <li><p>The fixtures patch <code class="docutils literal notranslate"><span class="pre">commit()</span></code> to <code class="docutils literal notranslate"><span class="pre">flush()</span></code> + <code class="docutils literal notranslate"><span class="pre">begin_nested()</span></code>, making
 state visible without a real database commit.</p></li>
@@ -750,7 +757,7 @@ all changes and restoring the database to its pre-test state.</p></li>
 <p>Savepoints keep in-test commits usable; the uncommitted outer transaction
 provides the final isolation. Tests that never call <code class="docutils literal notranslate"><span class="pre">commit()</span></code> are still
 isolated, and there is no per-test teardown code or schema rebuild.</p>
-<p>Explicit transaction blocks are supported — <code class="docutils literal notranslate"><span class="pre">with</span> <span class="pre">restly_session.begin():</span> <span class="pre">...</span></code>
+<p>Explicit transaction blocks are supported: <code class="docutils literal notranslate"><span class="pre">with</span> <span class="pre">restly_session.begin():</span> <span class="pre">...</span></code>
 and <code class="docutils literal notranslate"><span class="pre">async</span> <span class="pre">with</span> <span class="pre">restly_async_session.begin():</span> <span class="pre">...</span></code> flush pending changes when
 the block exits successfully. The fixtures still run under savepoint-based
 isolation, not production transaction management: if a test depends on precise

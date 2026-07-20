@@ -7,10 +7,10 @@ with the `aiosqlite` driver.
 
 It comes in two parts:
 
-- **[Part 1: Generated CRUD](tutorial.md)** — define the models and schemas, then
-  get full CRUD endpoints from a single view class.
-- **[Part 2: Customizing Views](tutorial_customizing.md)** — override handlers, add
-  custom routes, and share behaviour with base classes.
+- In **[Part 1: Generated CRUD](tutorial.md)** we define the models and schemas,
+  then get full CRUD endpoints from a single view class.
+- In **[Part 2: Customizing Views](tutorial_customizing.md)** we override handlers,
+  add custom routes, and share behaviour with base classes.
 
 ```{toctree}
 :maxdepth: 1

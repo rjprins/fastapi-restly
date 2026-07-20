@@ -8,7 +8,21 @@ FastAPI-Restly uses **schema** for Pydantic request/response models and
 
 Use explicit schemas when you need a stable public contract: aliases, hidden
 fields, computed read-only fields, or relationship IDs. If you omit {attr}`schema <fastapi_restly.views.BaseRestView.schema>` on
-a view, Restly can auto-generate one from the SQLAlchemy model instead.
+a view, Restly can
+[auto-generate one](technical_details.md#auto-generated-schemas) from the
+SQLAlchemy model instead.
+
+To choose a schema tool, match your goal in the table below; each entry links
+to the section that covers it.
+
+| Goal | Tool |
+|---|---|
+| Stable public contract | [Explicit schema](#auto-generated-vs-explicit-schemas) |
+| Input field hidden from responses | [`WriteOnly`](#readonly-and-writeonly) |
+| Server-owned field, ignored on input | [`ReadOnly`](#readonly-and-writeonly) |
+| Checked foreign-key column | [`MustExist`](#mustexist) |
+| Relationship as a flat id | [`IDRef`](howto_relationship_idschema.md#choosing-a-reference-style) |
+| Relationship as a nested object | [`IDSchema[Model]`](#nested-relationship-objects) |
 
 ## BaseSchema
 
@@ -16,12 +30,16 @@ a view, Restly can auto-generate one from the SQLAlchemy model instead.
 `from_attributes=True`, which lets response schemas validate SQLAlchemy ORM
 objects directly.
 
-In code, it is intentionally this small:
+Behaviorally, it is equivalent to:
 
 ```python
 class BaseSchema(pydantic.BaseModel):
     model_config = pydantic.ConfigDict(from_attributes=True)
 ```
+
+(The real class also installs the import-time check that rejects nested
+`ReadOnly`/`WriteOnly` markers, described in
+[ReadOnly and WriteOnly](#readonly-and-writeonly).)
 
 Generated Restly routes still serialize ORM objects through
 {meth}`self.to_response_schema(obj) <fastapi_restly.views.BaseRestView.to_response_schema>`. That is where Restly applies response-specific
@@ -83,10 +101,8 @@ class UserRead(fr.IDSchema):
     created_by_id: fr.ReadOnly[int]
 ```
 
-`fr.WriteOnly[T]` marks a field as request-only. It is accepted in create/update
-payloads. Restly strips it only when an object is serialized through
-{meth}`self.to_response_schema(obj) <fastapi_restly.views.BaseRestView.to_response_schema>`, which the generated CRUD and ReactAdmin routes
-use:
+`fr.WriteOnly[T]` marks a field as request-only. It is accepted in create and
+update payloads but excluded from every serialized response:
 
 ```python
 class UserRead(fr.IDSchema):
@@ -94,11 +110,23 @@ class UserRead(fr.IDSchema):
     password: fr.WriteOnly[str]
 ```
 
-Restly applies `ReadOnly` when it generates {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` and
-{attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>`, and when its object helpers construct or update ORM objects.
-`WriteOnly` is removed from responses by `to_response_schema()`. If you return
-a schema object directly to FastAPI or call Pydantic serialization yourself,
-`WriteOnly` is schema metadata only and is not removed automatically.
+The two markers take effect in different places, which matters when a schema
+is used outside a view. `WriteOnly` sets Pydantic's field-level `exclude`, so
+every serialization of the schema drops the field: generated routes, FastAPI's
+`response_model`, and your own `model_dump()` calls all strip it, recursively
+through nested schemas, and the documented response schema in OpenAPI omits it.
+`ReadOnly` is applied by Restly itself when it generates
+{attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` and
+{attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>`, and
+when its object helpers construct or update ORM objects. On a schema used
+directly, a `ReadOnly` field validates and serializes like any other field;
+only its OpenAPI schema is marked `readOnly`.
+
+Either marker must be the field's outer annotation. Nested inside a union or a
+container (`Optional[WriteOnly[str]]`, `WriteOnly[str] | None`,
+`list[WriteOnly[str]]`) the marker would silently do nothing, so Restly
+rejects such a field with a `RestlyConfigurationError`. For an optional
+write-only field, write `WriteOnly[Optional[str]]`.
 
 ## Aliases
 
@@ -136,7 +164,7 @@ The wire format is a scalar id:
 }
 ```
 
-Restly validates that the referenced `Author` exists and keeps the plain id — in
+Restly validates that the referenced `Author` exists and keeps the plain id; in
 hooks, `data.author_id` is the plain integer. See [Work with Foreign Keys and
 Relationships](howto_relationship_idschema.md) for the full model and view setup.
 
@@ -163,6 +191,9 @@ The wire format is:
 This is useful for clients or integrations that model relationships as objects.
 For the same relationship as a flat id, use {class}`fr.IDRef[Model] <fastapi_restly.schemas.IDRef>`;
 for a plain foreign-key column, use {class}`fr.MustExist[int, Model] <fastapi_restly.schemas.MustExist>`.
+See [Nested Relationship
+Objects](howto_relationship_idschema.md#nested-relationship-objects) for how
+this shape compares with the flat-id form.
 
 ## Auto-Generated vs Explicit Schemas
 
@@ -190,8 +221,8 @@ class UserView(fr.AsyncRestView):
 
 ## See also
 
-- [Auto-generated schemas](technical_details.md#auto-generated-schemas) — how
-  the derived schemas are built when you don't declare one.
+- [Auto-generated schemas](technical_details.md#auto-generated-schemas): how
+  the derived schemas are built when you do not declare one.
 - [Patterns: a different schema for the list
-  endpoint](patterns.md#a-different-schema-for-the-list-endpoint) — when the
+  endpoint](patterns.md#a-different-schema-for-the-list-endpoint): when the
   list and detail routes need different shapes.

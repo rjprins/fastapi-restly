@@ -177,8 +177,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="the_handle_design.html">
-    Overrides
+  <a class="nav-link nav-internal" href="customize.html">
+    Customize
   </a>
 </li>
 
@@ -341,8 +341,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="the_handle_design.html">
-    Overrides
+  <a class="nav-link nav-internal" href="customize.html">
+    Customize
   </a>
 </li>
 
@@ -439,13 +439,12 @@
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="howto_existing_project.html">Use Restly in an Existing Project</a></li>
-<li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_custom_schema.html">Custom Schemas and Field Types</a></li>
-<li class="toctree-l1"><a class="reference internal" href="howto_response_schema.html">Response Envelopes and List Metadata</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys and Relationships</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_response_schema.html">Response Envelopes and List Metadata</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_query_modifiers.html">Filter, Sort, and Paginate Lists</a></li>
-<li class="toctree-l1"><a class="reference internal" href="howto_override_endpoints.html">Override CRUD Behavior and Add Custom Endpoints</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_error_responses.html">Shape Error Responses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_inheritance.html">Share Behaviour with Base Views</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_compose_views_with_mixins.html">Compose Views with Mixins</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Use Type Annotations</a></li>
@@ -515,16 +514,17 @@
                   
   <section id="use-type-annotations">
 <h1>Use Type Annotations<a class="headerlink" href="#use-type-annotations" title="Link to this heading">#</a></h1>
-<p>FastAPI-Restly supports two typing styles:</p>
-<ul class="simple">
-<li><p><strong>Low-friction mode</strong>: keep your view classes simple and let the framework do the work.</p></li>
-<li><p><strong>Stronger typing mode</strong>: add explicit type parameters when you want better editor help for the methods you override.</p></li>
-</ul>
-<p>This guide focuses on practical usage with Pyright and VS Code with Pylance.</p>
-<hr class="docutils" />
+<p>FastAPI-Restly supports two typing styles. In the low-friction style, you keep
+your view classes simple and let the framework do the work; in the stronger
+typing style, you add explicit type parameters when you want better editor
+help for the methods you override. This guide focuses on practical usage with
+Pyright and VS Code with Pylance.</p>
 <section id="start-simple">
 <h2>Start simple<a class="headerlink" href="#start-simple" title="Link to this heading">#</a></h2>
-<p>For normal CRUD usage, you do <strong>not</strong> need to parameterize <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a> or <a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a>.</p>
+<p>For normal CRUD usage, you do not need to parameterize
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a> or
+<a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a>. A bare view class
+is the recommended starting point:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">FastAPI</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.orm</span><span class="w"> </span><span class="kn">import</span> <span class="n">Mapped</span>
@@ -543,39 +543,44 @@
     <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
 </pre></div>
 </div>
-<p>This is the recommended starting point.</p>
 </section>
-<hr class="docutils" />
 <section id="use-idschema-for-response-schemas">
 <h2>Use <code class="docutils literal notranslate"><span class="pre">IDSchema</span></code> for response schemas<a class="headerlink" href="#use-idschema-for-response-schemas" title="Link to this heading">#</a></h2>
-<p>You can subclass <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDSchema</span></code></a> directly:</p>
+<p><a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDSchema</span></code></a> is the usual base for
+response schemas because it adds the resource’s own read-only <code class="docutils literal notranslate"><span class="pre">id</span></code> field. You
+can subclass it directly:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">email</span><span class="p">:</span> <span class="nb">str</span>
 </pre></div>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">IDSchema</span></code> is the usual base for response schemas because it adds the resource’s
-own read-only <code class="docutils literal notranslate"><span class="pre">id</span></code> field. You can parameterize it when you want the schema class
-itself to carry the SQLAlchemy model type:</p>
+<p>You can also parameterize it when you want the schema class itself to carry
+the SQLAlchemy model type:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">[</span><span class="n">User</span><span class="p">]):</span>
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">email</span><span class="p">:</span> <span class="nb">str</span>
 </pre></div>
 </div>
-<p>For most top-level response schemas, either form is fine. The bare form is the
+<p>For most top-level response schemas, either form is fine; the bare form is the
 recommended starting point.</p>
-<p>For a <code class="docutils literal notranslate"><span class="pre">*_id</span></code> foreign-key column, use <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.MustExist[int,</span> <span class="pre">Model]</span></code></a> — primary-key type first,
-then the model — which keeps the plain scalar id and adds an existence check.
-For a field named after a relationship, use <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDRef[RelatedModel]</span></code></a> — it tells Restly
-(and the type checker) which model resolves from the scalar id payload. Runtime
-semantics: <a class="reference internal" href="howto_relationship_idschema.html"><span class="std std-doc">Work with Foreign Keys and Relationships</span></a>.</p>
+<p>For a <code class="docutils literal notranslate"><span class="pre">*_id</span></code> foreign-key column, use
+<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.MustExist[int,</span> <span class="pre">Model]</span></code></a>, which
+takes the primary-key type first and then the model; it keeps the plain scalar
+id and adds an existence check. For a field named after a relationship, use
+<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDRef[RelatedModel]</span></code></a>, which tells
+Restly (and the type checker) which model resolves from the scalar id payload.
+The runtime semantics are covered in
+<a class="reference internal" href="howto_relationship_idschema.html"><span class="std std-doc">Work with Foreign Keys and Relationships</span></a>.</p>
 </section>
-<hr class="docutils" />
 <section id="when-view-generics-are-useful">
 <h2>When view generics are useful<a class="headerlink" href="#when-view-generics-are-useful" title="Link to this heading">#</a></h2>
-<p><a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a> and <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a> can be parameterized, but this is optional.</p>
-<p>The generic form is useful when you override methods on one of the three tiers.
-Most overrides land on the <strong>business verbs</strong>, so those benefit most:</p>
+<p>Schemas are one half of the picture;
+<a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a> and
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a> can be parameterized too,
+but this is optional.</p>
+<p>The generic form is useful when you override methods on one of the
+<a class="reference internal" href="customize.html#the-three-tiers"><span class="std std-ref">three tiers</span></a>. Most overrides land on
+the business methods, so those benefit most:</p>
 <ul class="simple">
 <li><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one</span></code></a></p></li>
 <li><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create" title="fastapi_restly.views.RestView.create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create</span></code></a></p></li>
@@ -583,11 +588,15 @@ Most overrides land on the <strong>business verbs</strong>, so those benefit mos
 <li><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.delete" title="fastapi_restly.views.RestView.delete"><code class="xref py py-meth docutils literal notranslate"><span class="pre">delete</span></code></a></p></li>
 <li><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many" title="fastapi_restly.views.RestView.get_many"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many</span></code></a></p></li>
 </ul>
-<p>It also sharpens the <strong>request handlers</strong> (<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_create" title="fastapi_restly.views.RestView.handle_create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_create</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_update" title="fastapi_restly.views.RestView.handle_update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_update</span></code></a>,
-<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_get_one" title="fastapi_restly.views.RestView.handle_get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_get_one</span></code></a>, …) and the cooperative stamping methods (<code class="docutils literal notranslate"><span class="pre">make_new_object</span></code>,
-<code class="docutils literal notranslate"><span class="pre">update_object</span></code>) when you override them.</p>
+<p>It also sharpens the handlers (<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_create" title="fastapi_restly.views.RestView.handle_create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_create</span></code></a>,
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_update" title="fastapi_restly.views.RestView.handle_update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_update</span></code></a>,
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_get_one" title="fastapi_restly.views.RestView.handle_get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_get_one</span></code></a>, and so
+on) and the cooperative stamping methods (<code class="docutils literal notranslate"><span class="pre">make_new_object</span></code>, <code class="docutils literal notranslate"><span class="pre">update_object</span></code>)
+when you override them.</p>
 <p>Without view generics, these methods still work, but their types are broader.
-With view generics, your editor can infer the concrete model, schema, and id types.</p>
+With view generics, your editor can infer the concrete model, schema, and id
+types. Here is a fully parameterized view with typed overrides on the business
+verbs:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">[</span><span class="n">User</span><span class="p">]):</span>
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">email</span><span class="p">:</span> <span class="nb">str</span>
@@ -623,43 +632,31 @@ With view generics, your editor can infer the concrete model, schema, and id typ
         <span class="k">return</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">schema_obj</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>The type parameters are, in order: the <strong>model</strong>, the <strong>response schema</strong>, the
-<strong>create schema</strong>, the <strong>update schema</strong>, and the <strong>id</strong> type. With them in place,
-<code class="docutils literal notranslate"><span class="pre">schema_obj</span></code> in <code class="docutils literal notranslate"><span class="pre">create</span></code> is a <code class="docutils literal notranslate"><span class="pre">UserCreate</span></code>, <code class="docutils literal notranslate"><span class="pre">obj</span></code> in <code class="docutils literal notranslate"><span class="pre">update</span></code> is a <code class="docutils literal notranslate"><span class="pre">User</span></code>, and the
-return types are checked too.</p>
+<p>The type parameters are, in order: the model, the response schema, the create
+schema, the update schema, and the id type. With them in place, <code class="docutils literal notranslate"><span class="pre">schema_obj</span></code>
+in <code class="docutils literal notranslate"><span class="pre">create</span></code> is a <code class="docutils literal notranslate"><span class="pre">UserCreate</span></code>, <code class="docutils literal notranslate"><span class="pre">obj</span></code> in <code class="docutils literal notranslate"><span class="pre">update</span></code> is a <code class="docutils literal notranslate"><span class="pre">User</span></code>, and the return
+types are checked too.</p>
 <p>Note the signatures: <code class="docutils literal notranslate"><span class="pre">create</span></code> takes the create schema and returns the model;
-<code class="docutils literal notranslate"><span class="pre">update</span></code> takes the already-loaded <code class="docutils literal notranslate"><span class="pre">obj</span></code> plus the update schema (id resolution and
-the 404 happen one tier up, in <code class="docutils literal notranslate"><span class="pre">handle_update</span></code>). If you instead override at the
-handler tier, the id-taking signatures live there:</p>
+<code class="docutils literal notranslate"><span class="pre">update</span></code> takes the already-loaded <code class="docutils literal notranslate"><span class="pre">obj</span></code> plus the update schema (id resolution
+and the 404 happen one tier up, in <code class="docutils literal notranslate"><span class="pre">handle_update</span></code>). If you instead override
+at the handler tier, the id-taking signatures live there:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">handle_update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">schema_obj</span><span class="p">:</span> <span class="n">UserUpdate</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">User</span><span class="p">:</span>
         <span class="k">return</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">handle_update</span><span class="p">(</span><span class="nb">id</span><span class="p">,</span> <span class="n">schema_obj</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>This looks heavier because it is more explicit. Use it when that extra precision
-is valuable to you.</p>
-<p><a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.BaseSchema" title="fastapi_restly.schemas.BaseSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.BaseSchema</span></code></a> is a convenient default, not a hard requirement for input
-schemas. Explicit <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_create" title="fastapi_restly.views.BaseRestView.schema_create"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_create</span></code></a> and <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_update" title="fastapi_restly.views.BaseRestView.schema_update"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_update</span></code></a> classes may inherit
-directly from <code class="docutils literal notranslate"><span class="pre">pydantic.BaseModel</span></code> when you do not need Restly’s schema helpers.</p>
+<p>This looks heavier because it is more explicit. Use it when that extra
+precision is valuable to you.</p>
+<p><a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.BaseSchema" title="fastapi_restly.schemas.BaseSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.BaseSchema</span></code></a> is a convenient
+default, not a hard requirement for input schemas. Explicit
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_create" title="fastapi_restly.views.BaseRestView.schema_create"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_create</span></code></a> and
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_update" title="fastapi_restly.views.BaseRestView.schema_update"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_update</span></code></a>
+classes may inherit directly from <code class="docutils literal notranslate"><span class="pre">pydantic.BaseModel</span></code> when you do not need
+Restly’s schema helpers.</p>
 </section>
-<hr class="docutils" />
-<section id="a-good-rule-of-thumb">
-<h2>A good rule of thumb<a class="headerlink" href="#a-good-rule-of-thumb" title="Link to this heading">#</a></h2>
-<p>Use the simplest form that gives you the typing help you want:</p>
-<ul class="simple">
-<li><p><strong>No generics at all</strong> for normal CRUD views</p></li>
-<li><p><strong><a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.MustExist[int,</span> <span class="pre">Model]</span></code></a></strong> for <code class="docutils literal notranslate"><span class="pre">*_id</span></code> foreign-key columns</p></li>
-<li><p><strong><a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDRef[RelatedModel]</span></code></a></strong> for relationship-named reference fields</p></li>
-<li><p><strong><a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDSchema[RelatedModel]</span></code></a> as a field annotation</strong> only when you intentionally want a nested relationship-object field (parameterizing your top-level schema’s <em>base class</em>, as in <code class="docutils literal notranslate"><span class="pre">class</span> <span class="pre">UserRead(IDSchema[User])</span></code>, is a separate, optional choice — either form is fine there)</p></li>
-<li><p><strong>View generics</strong> only when you want precise typing on the methods you override</p></li>
-</ul>
-<p>That keeps everyday usage clean while still allowing stricter typing for
-projects that want it.</p>
-</section>
-<hr class="docutils" />
-<section id="custom-routes-are-straightforward">
-<h2>Custom routes are straightforward<a class="headerlink" href="#custom-routes-are-straightforward" title="Link to this heading">#</a></h2>
+<section id="do-custom-routes-need-generics">
+<h2>Do custom routes need generics?<a class="headerlink" href="#do-custom-routes-need-generics" title="Link to this heading">#</a></h2>
 <p>Custom route methods do not need view generics unless they depend on strongly
-typed handler interactions.</p>
+typed handler interactions. Consider a small extra endpoint:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>
@@ -670,59 +667,82 @@ typed handler interactions.</p>
         <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;ok&quot;</span><span class="p">}</span>
 </pre></div>
 </div>
-<p>For extra endpoints like this, normal Python return annotations are usually enough.</p>
-<p>When a custom action reuses the standard machinery — for example loading the
-target with <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one(id)</span></code></a> and running a write through <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_update" title="fastapi_restly.views.RestView.handle_update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_update(id,</span> <span class="pre">schema)</span></code></a>
-— parameterizing the view gives those calls precise types too.</p>
+<p>For extra endpoints like this, normal Python return annotations are usually
+enough.</p>
+<p>When a custom action reuses the standard machinery, for example loading the
+target with <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one(id)</span></code></a> and
+running a write through <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_update" title="fastapi_restly.views.RestView.handle_update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_update(id,</span> <span class="pre">schema)</span></code></a>,
+parameterizing the view gives those calls precise types too.</p>
 </section>
-<hr class="docutils" />
 <section id="what-the-type-checker-cannot-fully-model">
 <h2>What the type checker cannot fully model<a class="headerlink" href="#what-the-type-checker-cannot-fully-model" title="Link to this heading">#</a></h2>
-<p>FastAPI-Restly does some runtime work to register and annotate view methods for FastAPI.
-This includes copying inherited endpoints and adjusting signatures during view registration.</p>
-<p>That runtime behavior is part of how the framework works, but static type checkers do
-not understand every detail of that process.</p>
+<p>FastAPI-Restly does some runtime work to register and annotate view methods
+for FastAPI. This includes copying inherited endpoints and adjusting
+signatures during
+<a class="reference internal" href="technical_details.html#view-classes-and-registration"><span class="std std-ref">view registration</span></a>.
+That runtime behavior is part of how the framework works, but static type
+checkers do not understand every detail of that process.</p>
 <p>The practical takeaway is:</p>
 <ul class="simple">
-<li><p>Type checkers are best at the <strong>public contract</strong>: models, schemas, <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDSchema[...]</span></code></a>,
-<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDRef[...]</span></code></a>, class attributes, and the methods on the three tiers (<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one</span></code></a>,
-<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create" title="fastapi_restly.views.RestView.create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_update" title="fastapi_restly.views.RestView.handle_update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_update</span></code></a>, and so on).</p></li>
-<li><p>Type checkers are less useful for the internal signature-rewriting machinery that
-produces the route shells (<code class="docutils literal notranslate"><span class="pre">*_endpoint</span></code>).</p></li>
+<li><p>Type checkers are best at the public contract: models, schemas,
+<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDSchema[...]</span></code></a>,
+<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDRef[...]</span></code></a>, class attributes, and
+the methods on the three tiers
+(<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one</span></code></a>,
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create" title="fastapi_restly.views.RestView.create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create</span></code></a>,
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_update" title="fastapi_restly.views.RestView.handle_update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_update</span></code></a>, and so
+on).</p></li>
+<li><p>Type checkers are less useful for the internal signature-rewriting machinery
+that produces the
+<a class="reference internal" href="customize.html#replace-an-endpoint-method-to-change-the-http-contract"><span class="std std-ref">endpoint methods</span></a>
+(<code class="docutils literal notranslate"><span class="pre">*_endpoint</span></code>).</p></li>
 </ul>
-<p>You usually do not need to care about that distinction unless you are modifying
-the framework itself.</p>
+<p>You usually do not need to care about that distinction unless you are
+modifying the framework itself.</p>
 </section>
-<hr class="docutils" />
-<section id="recommended-target">
-<h2>Recommended target<a class="headerlink" href="#recommended-target" title="Link to this heading">#</a></h2>
-<p>If typing quality matters in your project, we recommend checking your Restly usage
-with Pyright. The repository keeps a dedicated set of consumer typing fixtures under
-<code class="docutils literal notranslate"><span class="pre">tests/typing/</span></code>, and those examples are checked in strict mode.</p>
+<section id="check-your-project-with-pyright">
+<h2>Check your project with Pyright<a class="headerlink" href="#check-your-project-with-pyright" title="Link to this heading">#</a></h2>
+<p>If typing quality matters in your project, we recommend checking your Restly
+usage with Pyright. The repository keeps a dedicated set of consumer typing
+fixtures under <code class="docutils literal notranslate"><span class="pre">tests/typing/</span></code>, and those examples are checked in strict mode.</p>
 </section>
-<hr class="docutils" />
-<section id="summary">
-<h2>Summary<a class="headerlink" href="#summary" title="Link to this heading">#</a></h2>
+<section id="which-form-should-i-use">
+<h2>Which form should I use?<a class="headerlink" href="#which-form-should-i-use" title="Link to this heading">#</a></h2>
+<p>With both styles in hand, the rule of thumb is to use the simplest form that
+gives you the typing help you want:</p>
 <ul class="simple">
-<li><p>Bare <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDSchema</span></code></a> is supported.</p></li>
-<li><p><a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.MustExist[int,</span> <span class="pre">Model]</span></code></a> is the type for <code class="docutils literal notranslate"><span class="pre">*_id</span></code> foreign-key columns; <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDRef[Model]</span></code></a> is for relationship-named reference fields.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">IDSchema[Model]</span></code> as a field annotation declares a nested relationship-object
-field; as a top-level base it optionally carries the model type.</p></li>
-<li><p>Bare <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a> / <a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a> are the default.</p></li>
-<li><p>Parameterized views are optional and mainly help when you override methods on
-the three tiers (business verbs, request handlers, stamping methods).</p></li>
+<li><p>For normal CRUD views, use no generics at all: bare
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a> and
+<a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a> are the default.</p></li>
+<li><p>Use <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.MustExist[int,</span> <span class="pre">Model]</span></code></a> for
+<code class="docutils literal notranslate"><span class="pre">*_id</span></code> foreign-key columns and
+<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDRef[RelatedModel]</span></code></a> for
+relationship-named reference fields.</p></li>
+<li><p>Use <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDSchema[Model]</span></code></a> as a field
+annotation only when you intentionally want a nested relationship-object
+field. Parameterizing your top-level schema’s <em>base class</em>, as in
+<code class="docutils literal notranslate"><span class="pre">class</span> <span class="pre">UserRead(IDSchema[User])</span></code>, is a separate, optional choice: the bare
+base is supported, and the parameterized base carries the model type.</p></li>
+<li><p>Use view generics only when you want precise typing on the methods you
+override; they mainly help on the three tiers (business methods, request
+handlers, and stamping methods).</p></li>
 <li><p>Custom route methods work well with ordinary Python annotations.</p></li>
 </ul>
+<p>That keeps everyday usage clean while still allowing stricter typing for
+projects that want it.</p>
 </section>
 <section id="see-also">
 <h2>See also<a class="headerlink" href="#see-also" title="Link to this heading">#</a></h2>
 <ul class="simple">
-<li><p><a class="reference internal" href="api_reference.html#view-method-surface"><span class="std std-ref">View Method Surface</span></a> — the typed
+<li><p><a class="reference internal" href="api_reference.html#view-method-surface"><span class="std std-ref">View Method Surface</span></a>: the typed
 methods this page parameterizes, with tier classification.</p></li>
-<li><p><a class="reference internal" href="howto_override_endpoints.html"><span class="std std-doc">Override CRUD Behavior</span></a> — the override
-recipes these signatures apply to.</p></li>
-<li><p><a class="reference internal" href="howto_relationship_idschema.html"><span class="std std-doc">Work with Foreign Keys and Relationships</span></a> —
-runtime semantics of <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.MustExist[int,</span> <span class="pre">Model]</span></code></a>, <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDRef</span></code></a> / <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDSchema[Model]</span></code></a> fields.</p></li>
+<li><p><a class="reference internal" href="customize.html"><span class="std std-doc">Customize RestView</span></a>: the override recipes
+these signatures apply to.</p></li>
+<li><p><a class="reference internal" href="howto_relationship_idschema.html"><span class="std std-doc">Work with Foreign Keys and Relationships</span></a>:
+runtime semantics of
+<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.MustExist[int,</span> <span class="pre">Model]</span></code></a> and
+<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDRef</span></code></a> /
+<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDSchema[Model]</span></code></a> fields.</p></li>
 </ul>
 </section>
 </section>
@@ -777,11 +797,10 @@ runtime semantics of <a class="reference internal" href="api/schemas.html#fastap
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#start-simple">Start simple</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#use-idschema-for-response-schemas">Use <code class="docutils literal notranslate"><span class="pre">IDSchema</span></code> for response schemas</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#when-view-generics-are-useful">When view generics are useful</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#a-good-rule-of-thumb">A good rule of thumb</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#custom-routes-are-straightforward">Custom routes are straightforward</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#do-custom-routes-need-generics">Do custom routes need generics?</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#what-the-type-checker-cannot-fully-model">What the type checker cannot fully model</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#recommended-target">Recommended target</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#summary">Summary</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#check-your-project-with-pyright">Check your project with Pyright</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#which-form-should-i-use">Which form should I use?</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#see-also">See also</a></li>
 </ul>
   </nav></div>

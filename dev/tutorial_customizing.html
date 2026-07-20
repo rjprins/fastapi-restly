@@ -177,8 +177,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="the_handle_design.html">
-    Overrides
+  <a class="nav-link nav-internal" href="customize.html">
+    Customize
   </a>
 </li>
 
@@ -341,8 +341,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="the_handle_design.html">
-    Overrides
+  <a class="nav-link nav-internal" href="customize.html">
+    Customize
   </a>
 </li>
 
@@ -502,42 +502,46 @@
                   
   <section id="tutorial-part-2-customizing-views">
 <h1>Tutorial Part 2: Customizing Views<a class="headerlink" href="#tutorial-part-2-customizing-views" title="Link to this heading">#</a></h1>
-<p>This tutorial extends the blog API from <a class="reference internal" href="tutorial.html"><span class="std std-doc">Part 1</span></a>. It introduces customization from single-method overrides to shared base classes.</p>
-<p>The examples use <a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a>. The same methods and patterns apply to <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a> (sync) — just drop the <code class="docutils literal notranslate"><span class="pre">async</span></code>/<code class="docutils literal notranslate"><span class="pre">await</span></code>.</p>
-<hr class="docutils" />
+<p>In Part 2 we extend the blog API from <a class="reference internal" href="tutorial.html"><span class="std std-doc">Part 1</span></a>, working through
+customization from single-method overrides to shared base classes. Part 1’s
+<code class="docutils literal notranslate"><span class="pre">author_token</span></code> and <code class="docutils literal notranslate"><span class="pre">view_count</span></code> demo fields are set aside in this part; a
+shared base class stamps authorship server-side instead.</p>
+<p>The examples use <a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a>. The same methods and patterns apply to <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a>, the sync variant; simply drop the <code class="docutils literal notranslate"><span class="pre">async</span></code>/<code class="docutils literal notranslate"><span class="pre">await</span></code>.</p>
 <section id="the-three-tiers-of-a-crud-verb">
 <h2>The three tiers of a CRUD verb<a class="headerlink" href="#the-three-tiers-of-a-crud-verb" title="Link to this heading">#</a></h2>
-<p>Every CRUD verb has three tiers. Override the lowest tier that owns the
-behavior you need. (The full model, lifecycles, and decision table:
-<a class="reference internal" href="the_handle_design.html"><span class="std std-doc">How Overrides Work: The Three Tiers</span></a>.)</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>&lt;verb&gt;_endpoint   — the route shell (wire boundary): the @route, the FastAPI
-                    signature/response_model, and to_response. Rarely overridden.
-handle_&lt;verb&gt;     — the request handler: runs authorize and the commit bracket
-                    (before_commit → commit → after_commit), returns the domain
-                    object. Override to change orchestration/timing.
-&lt;verb&gt;            — the business verb: the domain operation (build/apply/save).
-                    Auth-free and commit-free. The usual override point.
+<p>Before overriding anything, it helps to know where each behavior lives. Every
+CRUD verb has three tiers, and the rule is to override the lowest tier that
+owns the behavior you need. The full model, including lifecycles and a
+decision table, is covered in
+<a class="reference internal" href="customize.html"><span class="std std-doc">Customize RestView</span></a>. From the wire
+inward, the tiers are:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>&lt;verb&gt;_endpoint   the endpoint method: the @route, the FastAPI
+                  signature/response_model, and to_response. Rarely overridden.
+handle_&lt;verb&gt;     the handler: runs authorize and the commit bracket
+                  (before_commit → commit → after_commit), returns the domain
+                  object. Override to change orchestration/timing.
+&lt;verb&gt;            the business method: the domain operation (build/apply/save).
+                  Auth-free and commit-free. The usual override point.
 </pre></div>
 </div>
 <p>The five verbs are <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many" title="fastapi_restly.views.RestView.get_many"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create" title="fastapi_restly.views.RestView.create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.update" title="fastapi_restly.views.RestView.update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">update</span></code></a>, and <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.delete" title="fastapi_restly.views.RestView.delete"><code class="xref py py-meth docutils literal notranslate"><span class="pre">delete</span></code></a>. So the full call chain for a create is:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>POST /     → create_endpoint(schema_obj)     # route shell
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>POST /     → create_endpoint(schema_obj)     # endpoint method
            → handle_create(schema_obj)       # authorize + commit bracket
            → create(schema_obj)              # build + save, no commit
 </pre></div>
 </div>
 <p>Two facts make this layout safe to override:</p>
 <ul class="simple">
-<li><p><strong>The handler owns the commit.</strong> <code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code> runs <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.before_commit" title="fastapi_restly.views.RestView.before_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">before_commit</span></code></a> → <code class="docutils literal notranslate"><span class="pre">commit</span></code> → <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.after_commit" title="fastapi_restly.views.RestView.after_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">after_commit</span></code></a> around the business verb.</p></li>
-<li><p><strong>The business verb never commits.</strong> <code class="docutils literal notranslate"><span class="pre">create</span></code> / <code class="docutils literal notranslate"><span class="pre">update</span></code> / <code class="docutils literal notranslate"><span class="pre">delete</span></code> build, apply, and flush. The handler commits later.</p></li>
+<li><p><strong>The handler owns the commit.</strong> <code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code> runs <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.before_commit" title="fastapi_restly.views.RestView.before_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">before_commit</span></code></a>, then <code class="docutils literal notranslate"><span class="pre">commit</span></code>, then <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.after_commit" title="fastapi_restly.views.RestView.after_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">after_commit</span></code></a> around the business method.</p></li>
+<li><p><strong>The business method never commits.</strong> <code class="docutils literal notranslate"><span class="pre">create</span></code> / <code class="docutils literal notranslate"><span class="pre">update</span></code> / <code class="docutils literal notranslate"><span class="pre">delete</span></code> build, apply, and flush. The handler commits later.</p></li>
 </ul>
 <p>Inside every method, <code class="docutils literal notranslate"><span class="pre">self.session</span></code> is the live database session and <code class="docutils literal notranslate"><span class="pre">self.request</span></code> is the FastAPI <code class="docutils literal notranslate"><span class="pre">Request</span></code> object.</p>
 </section>
-<hr class="docutils" />
-<section id="tier-3-the-business-verb-the-usual-override-point">
-<h2>Tier 3 — the business verb (the usual override point)<a class="headerlink" href="#tier-3-the-business-verb-the-usual-override-point" title="Link to this heading">#</a></h2>
-<p>Most customization lives here. The business verb is the domain operation: build an object, apply a payload, save it. It is <strong>auth-free</strong> and <strong>commit-free</strong>; the handler adds authorization and commit handling.</p>
+<section id="tier-3-the-business-method-the-usual-override-point">
+<h2>Tier 3: the business method (the usual override point)<a class="headerlink" href="#tier-3-the-business-method-the-usual-override-point" title="Link to this heading">#</a></h2>
+<p>Most customization lives here. The business method is the domain operation: build an object, apply a payload, save it. It is auth-free and commit-free; the handler adds authorization and commit handling.</p>
 <section id="create-inject-server-side-fields">
-<h3>create — inject server-side fields<a class="headerlink" href="#create-inject-server-side-fields" title="Link to this heading">#</a></h3>
+<h3>create: inject server-side fields<a class="headerlink" href="#create-inject-server-side-fields" title="Link to this heading">#</a></h3>
 <p>Real APIs rarely accept every field from the client. This example stamps the author from request context:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">PostView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
@@ -551,10 +555,10 @@ handle_&lt;verb&gt;     — the request handler: runs authorize and the commit b
         <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">save_object</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
 </pre></div>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">make_new_object</span></code> builds the ORM instance. <code class="docutils literal notranslate"><span class="pre">save_object</span></code> flushes and refreshes it, but does not commit. For fields stamped on both create and update, override <code class="docutils literal notranslate"><span class="pre">make_new_object</span></code> / <code class="docutils literal notranslate"><span class="pre">update_object</span></code>; see <a class="reference internal" href="#stamping-extra-fields">Stamping extra fields</a>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">make_new_object</span></code> builds the ORM instance. <code class="docutils literal notranslate"><span class="pre">save_object</span></code> flushes and refreshes it, but does not commit. For fields stamped on both create and update, override <code class="docutils literal notranslate"><span class="pre">make_new_object</span></code> / <code class="docutils literal notranslate"><span class="pre">update_object</span></code> instead; see <a class="reference internal" href="#stamping-extra-fields">Stamping extra fields</a>.</p>
 </section>
 <section id="update-validate-before-saving">
-<h3>update — validate before saving<a class="headerlink" href="#update-validate-before-saving" title="Link to this heading">#</a></h3>
+<h3>update: validate before saving<a class="headerlink" href="#update-validate-before-saving" title="Link to this heading">#</a></h3>
 <p>To reject an update based on current state, override <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.update" title="fastapi_restly.views.RestView.update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">update</span></code></a>. It receives the loaded object:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">schema_obj</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">obj</span><span class="o">.</span><span class="n">published</span><span class="p">:</span>
@@ -563,11 +567,11 @@ handle_&lt;verb&gt;     — the request handler: runs authorize and the commit b
         <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">save_object</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
 </pre></div>
 </div>
-<p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_update" title="fastapi_restly.views.RestView.handle_update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_update</span></code></a> has already loaded <code class="docutils literal notranslate"><span class="pre">obj</span></code> through <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one</span></code></a> and run <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.authorize" title="fastapi_restly.views.RestView.authorize"><code class="xref py py-meth docutils literal notranslate"><span class="pre">authorize</span></code></a>. <code class="docutils literal notranslate"><span class="pre">update</span></code> only describes the domain change.</p>
+<p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_update" title="fastapi_restly.views.RestView.handle_update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_update</span></code></a> has already loaded <code class="docutils literal notranslate"><span class="pre">obj</span></code> through <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one</span></code></a> and run <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.authorize" title="fastapi_restly.views.RestView.authorize"><code class="xref py py-meth docutils literal notranslate"><span class="pre">authorize</span></code></a>, so <code class="docutils literal notranslate"><span class="pre">update</span></code> only describes the domain change.</p>
 </section>
 <section id="build-query-filter-results-to-the-current-user">
-<h3>build_query — filter results to the current user<a class="headerlink" href="#build-query-filter-results-to-the-current-user" title="Link to this heading">#</a></h3>
-<p>The common read override is row visibility. <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many" title="fastapi_restly.views.RestView.get_many"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.count" title="fastapi_restly.views.RestView.count"><code class="xref py py-meth docutils literal notranslate"><span class="pre">count</span></code></a>, and <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one</span></code></a> all use <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.build_query" title="fastapi_restly.views.RestView.build_query"><code class="xref py py-meth docutils literal notranslate"><span class="pre">build_query</span></code></a>, so one filter keeps listings, totals, single-row reads, updates, and deletes aligned.</p>
+<h3>build_query: filter results to the current user<a class="headerlink" href="#build-query-filter-results-to-the-current-user" title="Link to this heading">#</a></h3>
+<p>The common read override is row visibility. <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many" title="fastapi_restly.views.RestView.get_many"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.count" title="fastapi_restly.views.RestView.count"><code class="xref py py-meth docutils literal notranslate"><span class="pre">count</span></code></a>, and <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one</span></code></a> all use <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.build_query" title="fastapi_restly.views.RestView.build_query"><code class="xref py py-meth docutils literal notranslate"><span class="pre">build_query</span></code></a>, so one filter keeps listings, totals, single-row reads, updates, and deletes aligned. Here we restrict every read to the requesting user’s own posts:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">PostView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/posts&quot;</span>
@@ -583,13 +587,13 @@ handle_&lt;verb&gt;     — the request handler: runs authorize and the commit b
 <p>Calling <code class="docutils literal notranslate"><span class="pre">super().build_query()</span></code> and chaining <code class="docutils literal notranslate"><span class="pre">.where(...)</span></code> composes cleanly with any base-class or mixin filter.</p>
 <p>Read access has two halves, and they live in two different tiers:</p>
 <ul class="simple">
-<li><p><strong>Visibility</strong> — <code class="docutils literal notranslate"><span class="pre">build_query</span></code>. A hidden row is not part of this view, so <code class="docutils literal notranslate"><span class="pre">get_one</span></code> returns 404.</p></li>
-<li><p><strong>Policy</strong> — <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.authorize" title="fastapi_restly.views.RestView.authorize"><code class="xref py py-meth docutils literal notranslate"><span class="pre">authorize</span></code></a>, called in the request handler. Use it for “may this caller read at all”, not for “which rows exist”.</p></li>
+<li><p><strong>Visibility</strong> belongs to <code class="docutils literal notranslate"><span class="pre">build_query</span></code>: a hidden row is not part of this view, so <code class="docutils literal notranslate"><span class="pre">get_one</span></code> returns 404.</p></li>
+<li><p><strong>Policy</strong> belongs to <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.authorize" title="fastapi_restly.views.RestView.authorize"><code class="xref py py-meth docutils literal notranslate"><span class="pre">authorize</span></code></a>, which is called in the handler. Use it for “may this caller read at all”, not for “which rows exist”.</p></li>
 </ul>
 </section>
 <section id="delete-implement-soft-delete">
-<h3>delete — implement soft-delete<a class="headerlink" href="#delete-implement-soft-delete" title="Link to this heading">#</a></h3>
-<p>The <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.delete" title="fastapi_restly.views.RestView.delete"><code class="xref py py-meth docutils literal notranslate"><span class="pre">delete</span></code></a> business verb removes the object. Override it to flip a flag instead:</p>
+<h3>delete: implement soft-delete<a class="headerlink" href="#delete-implement-soft-delete" title="Link to this heading">#</a></h3>
+<p>The <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.delete" title="fastapi_restly.views.RestView.delete"><code class="xref py py-meth docutils literal notranslate"><span class="pre">delete</span></code></a> business method removes the object. Override it to flip a flag instead:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timezone</span>
 
 
@@ -601,16 +605,15 @@ handle_&lt;verb&gt;     — the request handler: runs authorize and the commit b
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">delete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
         <span class="n">obj</span><span class="o">.</span><span class="n">deleted_at</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span>
         <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
-        <span class="c1"># Do NOT call super() / delete_object — that would remove the row.</span>
+        <span class="c1"># Do NOT call super() / delete_object; that would remove the row.</span>
 </pre></div>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">DELETE</span> <span class="pre">/posts/{id}</span></code> now marks the row instead of removing it. <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.delete_endpoint" title="fastapi_restly.views.RestView.delete_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">delete_endpoint</span></code></a> still returns 204, and <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_delete" title="fastapi_restly.views.RestView.handle_delete"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_delete</span></code></a> still commits. Pair this with a <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.build_query" title="fastapi_restly.views.RestView.build_query"><code class="xref py py-meth docutils literal notranslate"><span class="pre">build_query</span></code></a> filter that hides deleted rows — the canonical recipe lives in <a class="reference internal" href="howto_override_endpoints.html#soft-delete-recipe"><span class="std std-ref">Override CRUD Behavior</span></a>, and the reusable mixin version in <a class="reference internal" href="howto_compose_views_with_mixins.html"><span class="std std-doc">Compose Views with Mixins</span></a>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">DELETE</span> <span class="pre">/posts/{id}</span></code> now marks the row instead of removing it. <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.delete_endpoint" title="fastapi_restly.views.RestView.delete_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">delete_endpoint</span></code></a> still returns 204, and <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_delete" title="fastapi_restly.views.RestView.handle_delete"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_delete</span></code></a> still commits. Pair this with a <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.build_query" title="fastapi_restly.views.RestView.build_query"><code class="xref py py-meth docutils literal notranslate"><span class="pre">build_query</span></code></a> filter that hides deleted rows; the canonical recipe lives in <a class="reference internal" href="customize.html#delete-soft-delete-instead-of-removing-the-row"><span class="std std-ref">Customize RestView</span></a>, and the reusable mixin version in <a class="reference internal" href="howto_compose_views_with_mixins.html"><span class="std std-doc">Compose Views with Mixins</span></a>.</p>
 </section>
 </section>
-<hr class="docutils" />
-<section id="tier-2-the-request-handler-orchestration-and-timing">
-<h2>Tier 2 — the request handler (orchestration and timing)<a class="headerlink" href="#tier-2-the-request-handler-orchestration-and-timing" title="Link to this heading">#</a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code> owns <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.authorize" title="fastapi_restly.views.RestView.authorize"><code class="xref py py-meth docutils literal notranslate"><span class="pre">authorize</span></code></a> and the commit bracket. Override it to change <em>orchestration or timing</em> without re-declaring the route. The defaults look like this:</p>
+<section id="tier-2-the-handler-orchestration-and-timing">
+<h2>Tier 2: the handler (orchestration and timing)<a class="headerlink" href="#tier-2-the-handler-orchestration-and-timing" title="Link to this heading">#</a></h2>
+<p>One tier up from the business method sits the handler. <code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code> owns <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.authorize" title="fastapi_restly.views.RestView.authorize"><code class="xref py py-meth docutils literal notranslate"><span class="pre">authorize</span></code></a> and the commit bracket; override it to change <em>orchestration or timing</em> without re-declaring the route. The defaults look like this:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>handle_create  →  authorize(&quot;create&quot;, data=schema_obj)
                →  create(schema_obj)
                →  before_commit → commit → after_commit
@@ -628,8 +631,8 @@ handle_delete  →  get_one(id)
 </div>
 <p>The transaction hooks are the usual reason to drop to this tier:</p>
 <ul class="simple">
-<li><p><strong><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.before_commit" title="fastapi_restly.views.RestView.before_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">before_commit(action,</span> <span class="pre">new,</span> <span class="pre">old=None)</span></code></a></strong> — an in-transaction side effect (an outbox row, an audit row) that commits atomically with the write.</p></li>
-<li><p><strong><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.after_commit" title="fastapi_restly.views.RestView.after_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">after_commit(action,</span> <span class="pre">new,</span> <span class="pre">old=None)</span></code></a></strong> — a post-commit side effect (an email, a webhook, a cache invalidation) that runs only after the write is durable.</p></li>
+<li><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.before_commit" title="fastapi_restly.views.RestView.before_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">before_commit(action,</span> <span class="pre">new,</span> <span class="pre">old=None)</span></code></a> runs an in-transaction side effect (an outbox row, an audit row) that commits atomically with the write.</p></li>
+<li><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.after_commit" title="fastapi_restly.views.RestView.after_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">after_commit(action,</span> <span class="pre">new,</span> <span class="pre">old=None)</span></code></a> runs a post-commit side effect (an email, a webhook, a cache invalidation) only after the write is durable.</p></li>
 </ul>
 <p>Both receive <code class="docutils literal notranslate"><span class="pre">old</span></code>, the pre-mutation snapshot produced by <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.snapshot" title="fastapi_restly.views.BaseRestView.snapshot"><code class="xref py py-meth docutils literal notranslate"><span class="pre">snapshot(obj)</span></code></a>, so you can fire only on a real change:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">after_commit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">,</span> <span class="n">new</span><span class="p">,</span> <span class="n">old</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
@@ -639,10 +642,9 @@ handle_delete  →  get_one(id)
 </div>
 <p>The hooks cover most timing needs. Override <code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code> only when the operation order or transaction must change.</p>
 </section>
-<hr class="docutils" />
 <section id="stamping-extra-fields">
 <h2>Stamping extra fields<a class="headerlink" href="#stamping-extra-fields" title="Link to this heading">#</a></h2>
-<p>For fields stamped on <strong>both</strong> create and update, override <code class="docutils literal notranslate"><span class="pre">make_new_object</span></code> / <code class="docutils literal notranslate"><span class="pre">update_object</span></code> cooperatively. Call <code class="docutils literal notranslate"><span class="pre">super()</span></code>, mutate, and return. Base classes and mixins then compose cleanly:</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">create</span></code> override earlier stamped a field at creation time only. For fields stamped on both create and update, override <code class="docutils literal notranslate"><span class="pre">make_new_object</span></code> / <code class="docutils literal notranslate"><span class="pre">update_object</span></code> cooperatively: call <code class="docutils literal notranslate"><span class="pre">super()</span></code>, mutate, and return. Base classes and mixins then compose cleanly:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">make_new_object</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">schema_obj</span><span class="p">):</span>
         <span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">make_new_object</span><span class="p">(</span><span class="n">schema_obj</span><span class="p">)</span>
         <span class="n">obj</span><span class="o">.</span><span class="n">created_by</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">user_id</span>   <span class="c1"># stamp the constructed object</span>
@@ -654,12 +656,11 @@ handle_delete  →  get_one(id)
         <span class="k">return</span> <span class="n">obj</span>
 </pre></div>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">make_new_object</span></code> builds the ORM object; <code class="docutils literal notranslate"><span class="pre">update_object</span></code> applies the payload. Override them for structural stamps without touching the business verb.</p>
+<p><code class="docutils literal notranslate"><span class="pre">make_new_object</span></code> builds the ORM object; <code class="docutils literal notranslate"><span class="pre">update_object</span></code> applies the payload. Override them for structural stamps without touching the business method.</p>
 </section>
-<hr class="docutils" />
 <section id="object-utilities">
 <h2>Object utilities<a class="headerlink" href="#object-utilities" title="Link to this heading">#</a></h2>
-<p>The business verbs are built from a small set of object utilities. These are <strong>utilities you call</strong>, not override points:</p>
+<p>The business methods are built from a small set of object utilities. <code class="docutils literal notranslate"><span class="pre">save_object</span></code> and <code class="docutils literal notranslate"><span class="pre">delete_object</span></code> you only ever call; <code class="docutils literal notranslate"><span class="pre">make_new_object</span></code> and <code class="docutils literal notranslate"><span class="pre">update_object</span></code> you call as well, but they double as the cooperative override points from the previous section:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>create  →  make_new_object(schema_obj)   # build ORM object (override point for stamping)
         →  save_object(obj)              # flush + refresh (no commit)
 
@@ -669,16 +670,15 @@ update  →  update_object(obj, schema_obj)  # apply payload (override point for
 delete  →  delete_object(obj)              # delete + flush (no commit)
 </pre></div>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">make_new_object</span></code> and <code class="docutils literal notranslate"><span class="pre">update_object</span></code> do not flush. <code class="docutils literal notranslate"><span class="pre">save_object</span></code> flushes and refreshes, but does <strong>not</strong> commit. The same operations are available as free functions for services and workers.</p>
+<p><code class="docutils literal notranslate"><span class="pre">make_new_object</span></code> and <code class="docutils literal notranslate"><span class="pre">update_object</span></code> do not flush. <code class="docutils literal notranslate"><span class="pre">save_object</span></code> flushes and refreshes, but does <em>not</em> commit. The same operations are available as free functions for services and workers.</p>
 </section>
-<hr class="docutils" />
 <section id="custom-routes">
 <h2>Custom routes<a class="headerlink" href="#custom-routes" title="Link to this heading">#</a></h2>
-<p>Use <a class="reference internal" href="api/views.html#fastapi_restly.views.get" title="fastapi_restly.views.get"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;fr.get</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.post" title="fastapi_restly.views.post"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;fr.post</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.patch" title="fastapi_restly.views.patch"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;fr.patch</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.put" title="fastapi_restly.views.put"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;fr.put</span></code></a>, or <a class="reference internal" href="api/views.html#fastapi_restly.views.delete" title="fastapi_restly.views.delete"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;fr.delete</span></code></a> to add endpoints. Reuse <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_get_one" title="fastapi_restly.views.RestView.handle_get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_get_one</span></code></a> for scoped load + read auth, <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one</span></code></a> for scoped load only, and <code class="docutils literal notranslate"><span class="pre">save_object</span></code> to persist.</p>
-<p>All route decorator keyword arguments are passed through to FastAPI. Configure class-based routes the same way you configure regular FastAPI routes: use <code class="docutils literal notranslate"><span class="pre">response_model=</span></code>, <code class="docutils literal notranslate"><span class="pre">status_code=</span></code>, <code class="docutils literal notranslate"><span class="pre">dependencies=</span></code>, <code class="docutils literal notranslate"><span class="pre">responses=</span></code>, and the other FastAPI route options as usual.</p>
+<p>Views are not limited to the generated verbs. Use <a class="reference internal" href="api/views.html#fastapi_restly.views.get" title="fastapi_restly.views.get"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;fr.get</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.post" title="fastapi_restly.views.post"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;fr.post</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.patch" title="fastapi_restly.views.patch"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;fr.patch</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.put" title="fastapi_restly.views.put"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;fr.put</span></code></a>, or <a class="reference internal" href="api/views.html#fastapi_restly.views.delete" title="fastapi_restly.views.delete"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;fr.delete</span></code></a> to add endpoints. Reuse <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_get_one" title="fastapi_restly.views.RestView.handle_get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_get_one</span></code></a> for a scoped load with read authorization, <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one</span></code></a> for a scoped load only, and <code class="docutils literal notranslate"><span class="pre">save_object</span></code> to persist.</p>
+<p>All route decorator keyword arguments are passed through to FastAPI, so you configure class-based routes the same way you configure regular FastAPI routes: use <code class="docutils literal notranslate"><span class="pre">response_model=</span></code>, <code class="docutils literal notranslate"><span class="pre">status_code=</span></code>, <code class="docutils literal notranslate"><span class="pre">dependencies=</span></code>, <code class="docutils literal notranslate"><span class="pre">responses=</span></code>, and the other FastAPI route options as usual.</p>
 <section id="a-computed-read-endpoint">
 <h3>A computed read endpoint<a class="headerlink" href="#a-computed-read-endpoint" title="Link to this heading">#</a></h3>
-<p>Expose a summary of a post without returning the full record:</p>
+<p>First we expose a summary of a post without returning the full record:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">PostView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/posts&quot;</span>
@@ -699,7 +699,7 @@ delete  →  delete_object(obj)              # delete + flush (no commit)
 </section>
 <section id="a-state-change-action">
 <h3>A state-change action<a class="headerlink" href="#a-state-change-action" title="Link to this heading">#</a></h3>
-<p>Add a <code class="docutils literal notranslate"><span class="pre">publish</span></code> action. Load with <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_get_one" title="fastapi_restly.views.RestView.handle_get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_get_one</span></code></a>, then use <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.write_action" title="fastapi_restly.views.RestView.write_action"><code class="xref py py-meth docutils literal notranslate"><span class="pre">write_action</span></code></a> so authorization, snapshot, commit hooks, and commit stay in the framework bracket:</p>
+<p>Next we add a <code class="docutils literal notranslate"><span class="pre">publish</span></code> action. Load with <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_get_one" title="fastapi_restly.views.RestView.handle_get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_get_one</span></code></a>, then use <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.write_action" title="fastapi_restly.views.RestView.write_action"><code class="xref py py-meth docutils literal notranslate"><span class="pre">write_action</span></code></a> so authorization, snapshot, commit hooks, and commit stay in the framework bracket:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">fastapi</span>
 
     <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">/publish&quot;</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
@@ -725,14 +725,13 @@ same way the generated routes do.</p>
 <p><code class="docutils literal notranslate"><span class="pre">handle_create</span></code> runs authorization, your <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create" title="fastapi_restly.views.RestView.create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create</span></code></a> override, and the commit bracket.</p>
 </section>
 </section>
-<hr class="docutils" />
 <section id="database-conflict-responses">
 <h2>Database conflict responses<a class="headerlink" href="#database-conflict-responses" title="Link to this heading">#</a></h2>
-<p>Restly turns SQLAlchemy <code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code> exceptions into <code class="docutils literal notranslate"><span class="pre">409</span> <span class="pre">Conflict</span></code>
-responses by default; custom envelopes and the opt-out are covered in
+<p>Writes can also violate database constraints. Restly turns SQLAlchemy
+<code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code> exceptions into <code class="docutils literal notranslate"><span class="pre">409</span> <span class="pre">Conflict</span></code> responses by default; custom
+envelopes and the opt-out are covered in
 <a class="reference internal" href="api_reference.html#default-exception-handling"><span class="std std-ref">Default Exception Handling</span></a>.</p>
 </section>
-<hr class="docutils" />
 <section id="sharing-behaviour-with-base-classes">
 <h2>Sharing behaviour with base classes<a class="headerlink" href="#sharing-behaviour-with-base-classes" title="Link to this heading">#</a></h2>
 <p>Any override above can move into a shared base class. Views are plain Python classes, so normal inheritance works.</p>
@@ -773,7 +772,7 @@ responses by default; custom envelopes and the opt-out are covered in
 </section>
 <section id="extend-a-base-class-verb-with-super">
 <h3>Extend a base-class verb with super()<a class="headerlink" href="#extend-a-base-class-verb-with-super" title="Link to this heading">#</a></h3>
-<p>A subclass can extend a base-class business verb:</p>
+<p>A subclass can extend a base-class business method:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">PostView</span><span class="p">(</span><span class="n">AuthoredBase</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/posts&quot;</span>
@@ -786,7 +785,7 @@ responses by default; custom envelopes and the opt-out are covered in
         <span class="k">return</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">schema_obj</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>The call chain is <code class="docutils literal notranslate"><span class="pre">PostView.create</span></code> → <code class="docutils literal notranslate"><span class="pre">AuthoredBase.create</span></code> → <a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView.create" title="fastapi_restly.views.AsyncRestView.create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">AsyncRestView.create</span></code></a>; <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_create" title="fastapi_restly.views.RestView.handle_create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_create</span></code></a> still wraps it in authorization and the commit bracket.</p>
+<p>The call passes from <code class="docutils literal notranslate"><span class="pre">PostView.create</span></code> through <code class="docutils literal notranslate"><span class="pre">AuthoredBase.create</span></code> to <a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView.create" title="fastapi_restly.views.AsyncRestView.create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">AsyncRestView.create</span></code></a>, and <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_create" title="fastapi_restly.views.RestView.handle_create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_create</span></code></a> still wraps the whole chain in authorization and the commit bracket.</p>
 </section>
 <section id="apply-router-level-dependencies">
 <h3>Apply router-level dependencies<a class="headerlink" href="#apply-router-level-dependencies" title="Link to this heading">#</a></h3>
@@ -806,16 +805,17 @@ responses by default; custom envelopes and the opt-out are covered in
 </section>
 <section id="share-a-url-namespace-with-prefix-concatenation">
 <h3>Share a URL namespace with prefix concatenation<a class="headerlink" href="#share-a-url-namespace-with-prefix-concatenation" title="Link to this heading">#</a></h3>
-<p>When a base class defines <a class="reference internal" href="api/views.html#fastapi_restly.views.View.prefix" title="fastapi_restly.views.View.prefix"><code class="xref py py-attr docutils literal notranslate"><span class="pre">prefix</span></code></a>, subclass prefixes are appended — an
+<p>When a base class defines <a class="reference internal" href="api/views.html#fastapi_restly.views.View.prefix" title="fastapi_restly.views.View.prefix"><code class="xref py py-attr docutils literal notranslate"><span class="pre">prefix</span></code></a>, subclass prefixes are appended: an
 <code class="docutils literal notranslate"><span class="pre">ApiV1</span></code> base with <code class="docutils literal notranslate"><span class="pre">prefix</span> <span class="pre">=</span> <span class="pre">&quot;/api/v1&quot;</span></code> puts every subclass under
-<code class="docutils literal notranslate"><span class="pre">/api/v1/...</span></code>. The recipe:
-<a class="reference internal" href="howto_inheritance.html#prefix-concatenation"><span class="std std-ref">Share Behaviour with Base Views</span></a>.</p>
+<code class="docutils literal notranslate"><span class="pre">/api/v1/...</span></code>. The full recipe is in
+<a class="reference internal" href="howto_inheritance.html#concatenate-url-prefixes"><span class="std std-ref">Share Behaviour with Base Views</span></a>.</p>
 </section>
 </section>
-<hr class="docutils" />
 <section id="putting-it-together">
 <h2>Putting it together<a class="headerlink" href="#putting-it-together" title="Link to this heading">#</a></h2>
-<p>Here is the blog API from Part 1, extended with everything from this tutorial:</p>
+<p>Here is the blog API from Part 1, extended with the customizations from this
+part. A three-line middleware stands in for real authentication so the file
+runs as is:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">fastapi</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">contextlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">asynccontextmanager</span>
@@ -847,11 +847,17 @@ responses by default; custom envelopes and the opt-out are covered in
 <span class="nd">@asynccontextmanager</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">lifespan</span><span class="p">(</span><span class="n">app</span><span class="p">:</span> <span class="n">fastapi</span><span class="o">.</span><span class="n">FastAPI</span><span class="p">):</span>
     <span class="c1"># Create tables after model classes are declared so they&#39;re registered on the metadata.</span>
-    <span class="k">await</span> <span class="n">fr</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">async_create_all</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">DataclassBase</span><span class="p">)</span>
+    <span class="k">await</span> <span class="n">fr</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">async_create_all</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDBase</span><span class="p">)</span>
     <span class="k">yield</span>
 
 
 <span class="n">app</span> <span class="o">=</span> <span class="n">fastapi</span><span class="o">.</span><span class="n">FastAPI</span><span class="p">(</span><span class="n">lifespan</span><span class="o">=</span><span class="n">lifespan</span><span class="p">)</span>
+
+
+<span class="nd">@app</span><span class="o">.</span><span class="n">middleware</span><span class="p">(</span><span class="s2">&quot;http&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">fake_auth</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">call_next</span><span class="p">):</span>
+    <span class="n">request</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">user_id</span> <span class="o">=</span> <span class="mi">1</span>   <span class="c1"># demo stand-in for your real auth</span>
+    <span class="k">return</span> <span class="k">await</span> <span class="n">call_next</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
 
 
 <span class="c1"># --- Schemas ---</span>
@@ -918,13 +924,37 @@ responses by default; custom envelopes and the opt-out are covered in
 </pre></div>
 </div>
 </section>
-<hr class="docutils" />
+<section id="try-it">
+<h2>Try it<a class="headerlink" href="#try-it" title="Link to this heading">#</a></h2>
+<p>Run the file with <code class="docutils literal notranslate"><span class="pre">fastapi</span> <span class="pre">dev</span> <span class="pre">main.py</span></code>, then exercise the customized
+behaviour:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://127.0.0.1:8000/posts/<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s1">&#39;Content-Type: application/json&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;title&quot;: &quot;Hello&quot;, &quot;content&quot;: &quot;World&quot;, &quot;published&quot;: false}&#39;</span>
+<span class="c1"># 201; the server stamps author_id on the new row</span>
+
+curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://127.0.0.1:8000/posts/1/publish
+<span class="c1"># 200 with &quot;published&quot;: true; a second call returns 409 &quot;Already published&quot;</span>
+
+curl<span class="w"> </span>-X<span class="w"> </span>PATCH<span class="w"> </span>http://127.0.0.1:8000/posts/1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s1">&#39;Content-Type: application/json&#39;</span><span class="w"> </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;title&quot;: &quot;Edited&quot;}&#39;</span>
+<span class="c1"># 409 &quot;Cannot edit a published post&quot;; the update override rejects it</span>
+
+curl<span class="w"> </span>-X<span class="w"> </span>DELETE<span class="w"> </span>http://127.0.0.1:8000/posts/1
+<span class="c1"># 204; the delete override sets deleted_at instead of removing the row</span>
+</pre></div>
+</div>
+<p>A follow-up <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/posts/1</span></code> still returns the post, because nothing filters
+soft-deleted rows yet; hiding them is the <code class="docutils literal notranslate"><span class="pre">build_query</span></code> pairing described in
+the soft-delete section above.</p>
+</section>
 <section id="next-steps">
 <h2>Next steps<a class="headerlink" href="#next-steps" title="Link to this heading">#</a></h2>
+<p>The pages below go deeper into the patterns from this part:</p>
 <ul class="simple">
-<li><p><a class="reference internal" href="howto_override_endpoints.html"><span class="std std-doc">Override Endpoints</span></a> — complete handler reference with all signatures</p></li>
-<li><p><a class="reference internal" href="howto_inheritance.html"><span class="std std-doc">Share Behaviour with Base Views</span></a> — full inheritance guide</p></li>
-<li><p><a class="reference internal" href="howto_testing.html"><span class="std std-doc">Testing</span></a> — test the overrides you write</p></li>
+<li><p><a class="reference internal" href="customize.html"><span class="std std-doc">Customize RestView</span></a>: the complete override reference with all recipes</p></li>
+<li><p><a class="reference internal" href="howto_inheritance.html"><span class="std std-doc">Share Behaviour with Base Views</span></a>: the full inheritance guide</p></li>
+<li><p><a class="reference internal" href="howto_testing.html"><span class="std std-doc">Testing</span></a>: test the overrides you write</p></li>
 <li><p><a class="reference internal" href="api_reference.html"><span class="std std-doc">API Reference</span></a></p></li>
 </ul>
 </section>
@@ -978,14 +1008,14 @@ responses by default; custom envelopes and the opt-out are covered in
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#the-three-tiers-of-a-crud-verb">The three tiers of a CRUD verb</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#tier-3-the-business-verb-the-usual-override-point">Tier 3 — the business verb (the usual override point)</a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#create-inject-server-side-fields">create — inject server-side fields</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#update-validate-before-saving">update — validate before saving</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#build-query-filter-results-to-the-current-user">build_query — filter results to the current user</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#delete-implement-soft-delete">delete — implement soft-delete</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#tier-3-the-business-method-the-usual-override-point">Tier 3: the business method (the usual override point)</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#create-inject-server-side-fields">create: inject server-side fields</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#update-validate-before-saving">update: validate before saving</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#build-query-filter-results-to-the-current-user">build_query: filter results to the current user</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#delete-implement-soft-delete">delete: implement soft-delete</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#tier-2-the-request-handler-orchestration-and-timing">Tier 2 — the request handler (orchestration and timing)</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#tier-2-the-handler-orchestration-and-timing">Tier 2: the handler (orchestration and timing)</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#stamping-extra-fields">Stamping extra fields</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#object-utilities">Object utilities</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#custom-routes">Custom routes</a><ul class="visible nav section-nav flex-column">
@@ -1002,6 +1032,7 @@ responses by default; custom envelopes and the opt-out are covered in
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#putting-it-together">Putting it together</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#try-it">Try it</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#next-steps">Next steps</a></li>
 </ul>
   </nav></div>

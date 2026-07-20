@@ -177,8 +177,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../the_handle_design.html">
-    Overrides
+  <a class="nav-link nav-internal" href="../customize.html">
+    Customize
   </a>
 </li>
 
@@ -341,8 +341,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../the_handle_design.html">
-    Overrides
+  <a class="nav-link nav-internal" href="../customize.html">
+    Customize
   </a>
 </li>
 
@@ -516,9 +516,12 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="module-fastapi_restly.objects">
-<span id="objects-api"></span><h1>Objects API<a class="headerlink" href="#module-fastapi_restly.objects" title="Link to this heading">#</a></h1>
-<dl class="py function">
+  <section id="objects-api">
+<h1>Objects API<a class="headerlink" href="#objects-api" title="Link to this heading">#</a></h1>
+<p><code class="docutils literal notranslate"><span class="pre">fastapi_restly.objects</span></code> provides the session-level object primitives:
+building and updating SQLAlchemy objects from schema input, flushing and
+deleting them, and snapshotting loaded column values.</p>
+<dl class="py function" id="module-fastapi_restly.objects">
 <dt class="sig sig-object py" id="fastapi_restly.objects.async_delete_object">
 <em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.objects.</span></span><span class="sig-name descname"><span class="pre">async_delete_object</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">session</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html#sqlalchemy.ext.asyncio.AsyncSession" title="(in SQLAlchemy v2.0)"><span class="pre">AsyncSession</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">obj</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/mapping_api.html#sqlalchemy.orm.DeclarativeBase" title="(in SQLAlchemy v2.0)"><span class="pre">DeclarativeBase</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#fastapi_restly.objects.async_delete_object" title="Link to this definition">#</a></dt>
 <dd><p>Async equivalent of <a class="reference internal" href="#fastapi_restly.objects.delete_object" title="fastapi_restly.objects.delete_object"><code class="xref py py-func docutils literal notranslate"><span class="pre">delete_object()</span></code></a>.</p>
@@ -587,8 +590,8 @@ a view’s <code class="docutils literal notranslate"><span class="pre">update</
 
 <div class="admonition seealso">
 <p class="admonition-title">See also</p>
-<p><a class="reference internal" href="../howto_override_endpoints.html"><span class="doc">Override CRUD Behavior and Add Custom Endpoints</span></a> — the view-bound counterparts and the
-domain-utilities table.</p>
+<p><a class="reference internal" href="../customize.html"><span class="doc">Customize RestView</span></a> covers the view-bound counterparts of
+these helpers and includes the domain-utilities table.</p>
 </div>
 </section>
 

@@ -177,8 +177,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="the_handle_design.html">
-    Overrides
+  <a class="nav-link nav-internal" href="customize.html">
+    Customize
   </a>
 </li>
 
@@ -341,8 +341,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="the_handle_design.html">
-    Overrides
+  <a class="nav-link nav-internal" href="customize.html">
+    Customize
   </a>
 </li>
 
@@ -502,16 +502,19 @@
                   
   <section id="tutorial-part-1-generated-crud">
 <h1>Tutorial Part 1: Generated CRUD<a class="headerlink" href="#tutorial-part-1-generated-crud" title="Link to this heading">#</a></h1>
-<p>Part 1 builds a small blog API with two related models and shows the most common
-FastAPI-Restly patterns: models, schemas, and a view class that generates full CRUD
-endpoints. It assumes you have read <a class="reference internal" href="getting_started.html"><span class="std std-doc">Getting Started</span></a> and
-installed <code class="docutils literal notranslate"><span class="pre">fastapi-restly[standard]</span></code> with the <code class="docutils literal notranslate"><span class="pre">aiosqlite</span></code> driver.</p>
+<p>In Part 1 we build a small blog API with two related models, using the most
+common FastAPI-Restly patterns: models, schemas, and a view class that generates
+full CRUD endpoints. It assumes you have read <a class="reference internal" href="getting_started.html"><span class="std std-doc">Getting Started</span></a>
+and installed <code class="docutils literal notranslate"><span class="pre">fastapi-restly[standard]</span></code> with the <code class="docutils literal notranslate"><span class="pre">aiosqlite</span></code> driver.</p>
 <p>This tutorial uses explicit schemas for clarity. For faster scaffolding, you can omit
 <code class="docutils literal notranslate"><span class="pre">schema</span> <span class="pre">=</span> <span class="pre">...</span></code> on a view and let FastAPI-Restly auto-generate it from the model.
 See <a class="reference internal" href="technical_details.html#id1"><span class="std std-ref">Auto-Generated Schemas</span></a>.</p>
-<hr class="docutils" />
 <section id="models">
 <h2>Models<a class="headerlink" href="#models" title="Link to this heading">#</a></h2>
+<p>We begin with the data layer: the database connection and two SQLAlchemy
+models declared against
+<a class="reference internal" href="api/models.html#fastapi_restly.models.IDBase" title="fastapi_restly.models.IDBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDBase</span></code></a>, which provides an integer <code class="docutils literal notranslate"><span class="pre">id</span></code>
+primary key:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">contextlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">asynccontextmanager</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">FastAPI</span>
@@ -544,12 +547,14 @@ This is why <code class="docutils literal notranslate"><span class="pre">Foreign
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">Post</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s2">&quot;Hello&quot;</span><span class="p">,</span> <span class="n">content</span><span class="o">=</span><span class="s2">&quot;World&quot;</span><span class="p">,</span> <span class="n">published</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>  <span class="c1"># correct</span>
 </pre></div>
 </div>
-<p>The <code class="docutils literal notranslate"><span class="pre">id</span></code> column is excluded from <code class="docutils literal notranslate"><span class="pre">__init__</span></code> automatically — you do not pass it.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">id</span></code> column is excluded from <code class="docutils literal notranslate"><span class="pre">__init__</span></code> automatically, so you do not pass it.</p>
 </section>
 </section>
-<hr class="docutils" />
 <section id="schemas">
 <h2>Schemas<a class="headerlink" href="#schemas" title="Link to this heading">#</a></h2>
+<p>With the models in place, we can define the Pydantic schemas that shape the
+API’s requests and responses, one per model, each extending
+<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDSchema</span></code></a>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">PostRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
     <span class="n">title</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">content</span><span class="p">:</span> <span class="nb">str</span>
@@ -600,9 +605,11 @@ declare <code class="docutils literal notranslate"><span class="pre">post_id:</s
 for more detail, including list relations and nested relationship objects.</p>
 </section>
 </section>
-<hr class="docutils" />
 <section id="app-setup">
 <h2>App setup<a class="headerlink" href="#app-setup" title="Link to this heading">#</a></h2>
+<p>Models and schemas meet in the view layer. We create the FastAPI app, then
+register one view class per resource; each view names its URL prefix, model,
+and schema:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@asynccontextmanager</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">lifespan</span><span class="p">(</span><span class="n">_app</span><span class="p">:</span> <span class="n">FastAPI</span><span class="p">):</span>
     <span class="k">await</span> <span class="n">fr</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">async_create_all</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDBase</span><span class="p">)</span>  <span class="c1"># IDBase is the models&#39; base above</span>
@@ -628,18 +635,17 @@ for more detail, including list relations and nested relationship objects.</p>
 </div>
 <p>Tables are created inside a FastAPI <code class="docutils literal notranslate"><span class="pre">lifespan</span></code> context manager so they are initialised
 after the event loop starts. This is safe with both <code class="docutils literal notranslate"><span class="pre">uvicorn</span></code> and testing tools.
-For production projects, use Alembic migrations instead of <a class="reference internal" href="api/db.html#fastapi_restly.db.create_all" title="fastapi_restly.db.create_all"><code class="xref py py-func docutils literal notranslate"><span class="pre">create_all</span></code></a>.</p>
+For production projects, use Alembic migrations instead of <a class="reference internal" href="api/db.html#fastapi_restly.db.async_create_all" title="fastapi_restly.db.async_create_all"><code class="xref py py-func docutils literal notranslate"><span class="pre">async_create_all</span></code></a>.</p>
 </section>
-<hr class="docutils" />
 <section id="run-it">
 <h2>Run it<a class="headerlink" href="#run-it" title="Link to this heading">#</a></h2>
+<p>The application is complete, so we can start it:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>fastapi<span class="w"> </span>dev<span class="w"> </span>main.py
 </pre></div>
 </div>
-<p>Open <a class="reference external" href="http://127.0.0.1:8000/docs">http://127.0.0.1:8000/docs</a> — both resources are listed with their
+<p>Open <a class="reference external" href="http://127.0.0.1:8000/docs">http://127.0.0.1:8000/docs</a>. Both resources are listed with their
 request and response schemas, ready to try from the browser.</p>
 </section>
-<hr class="docutils" />
 <section id="generated-endpoints">
 <h2>Generated endpoints<a class="headerlink" href="#generated-endpoints" title="Link to this heading">#</a></h2>
 <p>For each view, FastAPI-Restly generates five endpoints. With <code class="docutils literal notranslate"><span class="pre">prefix</span> <span class="pre">=</span> <span class="pre">&quot;/posts&quot;</span></code>:</p>
@@ -684,12 +690,12 @@ request and response schemas, ready to try from the browser.</p>
 </pre></div>
 </div>
 </section>
-<hr class="docutils" />
 <section id="read-only-and-write-only-fields">
 <h2>Read-only and write-only fields<a class="headerlink" href="#read-only-and-write-only-fields" title="Link to this heading">#</a></h2>
-<p>Let’s give <code class="docutils literal notranslate"><span class="pre">Post</span></code> an author token that clients send on creation but never see
-back, and a view count that is server-maintained and must not be writable.
-Add the columns to the model:</p>
+<p>So far every schema field travels in both directions. In practice some fields
+belong to only one. For example we will give <code class="docutils literal notranslate"><span class="pre">Post</span></code> an author token that clients send on
+creation but never see back, and a view count that is server-maintained and
+must not be writable. First we add the columns to the model:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Post</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDBase</span><span class="p">):</span>
     <span class="n">title</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
     <span class="n">content</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
@@ -708,20 +714,21 @@ Add the columns to the model:</p>
 </pre></div>
 </div>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> fields appear in responses but are ignored on create and update —
+<li><p><code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> fields appear in responses but are ignored on create and update;
 the server owns them.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> fields are accepted on create and update but stripped from every
 generated response.</p></li>
 </ul>
 <p><code class="docutils literal notranslate"><span class="pre">id</span></code> on <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDSchema</span></code></a> is already <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>, which is why it appears in responses without
 being part of the create/update body.</p>
+<p>Where each marker takes effect, including on schemas used outside a view, is
+covered in <a class="reference internal" href="howto_custom_schema.html#readonly-and-writeonly"><span class="std std-ref">ReadOnly and WriteOnly</span></a>.</p>
 </section>
-<hr class="docutils" />
 <section id="querying-lists">
 <h2>Querying lists<a class="headerlink" href="#querying-lists" title="Link to this heading">#</a></h2>
-<p>List endpoints accept filtering, sorting, and pagination through URL
-query parameters. Filters use direct field names with optional operator
-suffixes:</p>
+<p>The generated list endpoints accept filtering, sorting, and pagination
+through URL query parameters. Filters use direct field names with optional
+operator suffixes:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /posts/?published=true&amp;sort=-id&amp;page=1&amp;page_size=10
 GET /posts/?title__icontains=hello
 GET /posts/?created_at__gte=2024-01-01&amp;created_at__lt=2025-01-01
@@ -730,7 +737,6 @@ GET /posts/?created_at__gte=2024-01-01&amp;created_at__lt=2025-01-01
 <p>See <a class="reference internal" href="howto_query_modifiers.html"><span class="std std-doc">Filter, Sort, and Paginate Lists</span></a>
 for the full list of operators.</p>
 </section>
-<hr class="docutils" />
 <section id="testing">
 <h2>Testing<a class="headerlink" href="#testing" title="Link to this heading">#</a></h2>
 <p>FastAPI-Restly provides <a class="reference internal" href="api/testing.html#fastapi_restly.testing.RestlyTestClient" title="fastapi_restly.testing.RestlyTestClient"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyTestClient</span></code></a>, a thin wrapper around FastAPI’s <code class="docutils literal notranslate"><span class="pre">TestClient</span></code>
@@ -758,19 +764,18 @@ each test in a database savepoint, so changes never persist between tests:</p>
 </div>
 <p>See <a class="reference internal" href="howto_testing.html"><span class="std std-doc">Testing</span></a> for the full setup and savepoint details.</p>
 </section>
-<hr class="docutils" />
 <section id="nested-schemas">
-<h2>Nested Schemas<a class="headerlink" href="#nested-schemas" title="Link to this heading">#</a></h2>
-<p>Response schemas may nest related objects (Restly eager-loads and serializes
-them); create/update payloads may not — inputs map to model attributes or use
-<code class="docutils literal notranslate"><span class="pre">*_id:</span> <span class="pre">MustExist[int,</span> <span class="pre">Model]</span></code>. Details:
-<a class="reference internal" href="howto_relationship_idschema.html"><span class="std std-doc">Work with Foreign Keys and Relationships</span></a>.</p>
+<h2>Nested schemas<a class="headerlink" href="#nested-schemas" title="Link to this heading">#</a></h2>
+<p>Response schemas may nest related objects, and Restly eager-loads and
+serializes them for you. Create and update payloads may not nest: inputs map
+to model attributes or use <code class="docutils literal notranslate"><span class="pre">*_id:</span> <span class="pre">MustExist[int,</span> <span class="pre">Model]</span></code>. See
+<a class="reference internal" href="howto_relationship_idschema.html"><span class="std std-doc">Work with Foreign Keys and Relationships</span></a>
+for the details.</p>
 </section>
-<hr class="docutils" />
 <section id="the-complete-file">
 <h2>The complete file<a class="headerlink" href="#the-complete-file" title="Link to this heading">#</a></h2>
-<p>Everything this page built, as one runnable <code class="docutils literal notranslate"><span class="pre">main.py</span></code> (including the
-read-only/write-only columns added along the way):</p>
+<p>Here is everything this page built as one runnable <code class="docutils literal notranslate"><span class="pre">main.py</span></code>, including the
+read-only and write-only columns added along the way:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">contextlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">asynccontextmanager</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
@@ -831,16 +836,18 @@ read-only/write-only columns added along the way):</p>
 </pre></div>
 </div>
 </section>
-<hr class="docutils" />
 <section id="next-steps">
 <h2>Next steps<a class="headerlink" href="#next-steps" title="Link to this heading">#</a></h2>
+<p>The tutorial continues with
+<strong><a class="reference internal" href="tutorial_customizing.html"><span class="std std-doc">Part 2: Customizing Views</span></a></strong>, which overrides
+handlers, adds custom routes, and shares behaviour with base classes. The
+pages below go deeper into the topics this part touched on:</p>
 <ul class="simple">
-<li><p><strong><a class="reference internal" href="tutorial_customizing.html"><span class="std std-doc">Part 2: Customizing Views</span></a></strong> — override handlers, add custom routes, and share behaviour with base classes</p></li>
-<li><p><a class="reference internal" href="technical_details.html#id1"><span class="std std-ref">Auto-Generated Schemas</span></a> — skip writing schemas for simple models</p></li>
-<li><p><a class="reference internal" href="howto_query_modifiers.html"><span class="std std-doc">Filter, Sort, and Paginate Lists</span></a> — full filter and sort reference</p></li>
-<li><p><a class="reference internal" href="howto_relationship_idschema.html"><span class="std std-doc">Work with Foreign Keys and Relationships</span></a> — reference related rows by id</p></li>
-<li><p><a class="reference internal" href="howto_testing.html"><span class="std std-doc">Testing</span></a> — savepoint isolation and test fixtures</p></li>
-<li><p><a class="reference internal" href="examples.html"><span class="std std-doc">Examples</span></a> — complete sample apps that extend these patterns</p></li>
+<li><p><a class="reference internal" href="technical_details.html#id1"><span class="std std-ref">Auto-Generated Schemas</span></a>: skip writing schemas for simple models</p></li>
+<li><p><a class="reference internal" href="howto_query_modifiers.html"><span class="std std-doc">Filter, Sort, and Paginate Lists</span></a>: the full filter and sort reference</p></li>
+<li><p><a class="reference internal" href="howto_relationship_idschema.html"><span class="std std-doc">Work with Foreign Keys and Relationships</span></a>: reference related rows by id</p></li>
+<li><p><a class="reference internal" href="howto_testing.html"><span class="std std-doc">Testing</span></a>: savepoint isolation and test fixtures</p></li>
+<li><p><a class="reference internal" href="examples.html"><span class="std std-doc">Examples</span></a>: complete sample apps that extend these patterns</p></li>
 <li><p><a class="reference internal" href="api_reference.html"><span class="std std-doc">API Reference</span></a></p></li>
 </ul>
 </section>
@@ -909,7 +916,7 @@ read-only/write-only columns added along the way):</p>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#read-only-and-write-only-fields">Read-only and write-only fields</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#querying-lists">Querying lists</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#testing">Testing</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#nested-schemas">Nested Schemas</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#nested-schemas">Nested schemas</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#the-complete-file">The complete file</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#next-steps">Next steps</a></li>
 </ul>

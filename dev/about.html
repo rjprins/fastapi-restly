@@ -176,8 +176,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="the_handle_design.html">
-    Overrides
+  <a class="nav-link nav-internal" href="customize.html">
+    Customize
   </a>
 </li>
 
@@ -340,8 +340,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="the_handle_design.html">
-    Overrides
+  <a class="nav-link nav-internal" href="customize.html">
+    Customize
   </a>
 </li>
 
@@ -511,18 +511,21 @@ generated CRUD routes, query parameters, error translation, and test fixtures.</
 stack you already know, not from a parallel abstraction that hides it. You
 can always drop one level down to plain FastAPI or SQLAlchemy.</p></li>
 <li><p><strong>Out of the box.</strong> The common path should not need wiring: engine and
-session setup, commit handling, schema generation, list filtering with
-strict validation, error translation, and savepoint-isolated test fixtures
+session setup, commit handling, schema generation,
+<a class="reference internal" href="howto_query_modifiers.html"><span class="std std-doc">list filtering</span></a> with strict validation,
+<a class="reference internal" href="howto_error_responses.html"><span class="std std-doc">error translation</span></a>, and
+<a class="reference internal" href="howto_testing.html"><span class="std std-doc">savepoint-isolated test fixtures</span></a>
 all work from <a class="reference internal" href="api/db.html#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.configure()</span></code></a> onward.</p></li>
 <li><p><strong>Customization is never off the path.</strong> Applications are rarely just CRUD.
 Every generated operation has explicit override points
-so generated behavior is a starting point, not a boundary (see <a class="reference internal" href="the_handle_design.html"><span class="std std-doc">three tiers</span></a>).</p></li>
+so generated behavior is a starting point, not a boundary (see <a class="reference internal" href="customize.html"><span class="std std-doc">three tiers</span></a>).</p></li>
 <li><p><strong>Documentation you don’t have to guess at.</strong> Common paths have runnable
 examples and extension points say where custom behavior belongs, for your
 team.</p></li>
 </ul>
-<p>The core patterns: class-based views, the override hierarchy, and schema
-generation, are proven by four years of internal production use. The public
+<p>The core patterns (<a class="reference internal" href="class_based_views.html"><span class="std std-doc">class-based views</span></a>, the override
+hierarchy, and schema generation) are proven by four years of internal
+production use. The public
 API surface is still settling on the way to <code class="docutils literal notranslate"><span class="pre">1.0.0</span></code> (see the
 <a class="reference internal" href="changelog.html"><span class="std std-doc">changelog</span></a>); a broader user base will find corners we haven’t
 hit yet. If you find something broken or missing,
@@ -538,13 +541,13 @@ needed. It was never released publicly.</p>
 <p>When FastAPI and SQLAlchemy 2 matured, the approach was rebuilt as Restly at
 <strong>Clearblue Markets</strong>, which later allowed the work to be shared publicly,
 and then developed and refined in production at <strong>Brenntag</strong>. Those
-deployments — four years of internal use, plus the lessons of the earlier
-Flask framework — are what became the public project. Thanks to all three
+deployments (four years of internal use, plus the lessons of the earlier
+Flask framework) are what became the public project. We thank all three
 companies for the environments that made it possible.</p>
 </section>
 <section id="privacy">
 <h2>Privacy<a class="headerlink" href="#privacy" title="Link to this heading">#</a></h2>
-<p>This site uses <a class="reference external" href="https://www.goatcounter.com/">GoatCounter</a> for analytics — an
+<p>This site uses <a class="reference external" href="https://www.goatcounter.com/">GoatCounter</a> for analytics, an
 open-source, <strong>cookieless</strong> tool. It counts page views and unique visits
 without setting cookies or storing personal data, so nothing tracks you across
 sites and there is nothing to consent to. No data is shared with third parties.</p>

@@ -177,8 +177,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../the_handle_design.html">
-    Overrides
+  <a class="nav-link nav-internal" href="../customize.html">
+    Customize
   </a>
 </li>
 
@@ -341,8 +341,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../the_handle_design.html">
-    Overrides
+  <a class="nav-link nav-internal" href="../customize.html">
+    Customize
   </a>
 </li>
 
@@ -516,9 +516,12 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="module-fastapi_restly.models">
-<span id="models-api"></span><h1>Models API<a class="headerlink" href="#module-fastapi_restly.models" title="Link to this heading">#</a></h1>
-<dl class="py class">
+  <section id="models-api">
+<h1>Models API<a class="headerlink" href="#models-api" title="Link to this heading">#</a></h1>
+<p><code class="docutils literal notranslate"><span class="pre">fastapi_restly.models</span></code> provides the SQLAlchemy declarative base classes and
+mixins (<code class="docutils literal notranslate"><span class="pre">DataclassBase</span></code>, <code class="docutils literal notranslate"><span class="pre">IDBase</span></code>, <code class="docutils literal notranslate"><span class="pre">IDMixin</span></code>, <code class="docutils literal notranslate"><span class="pre">TimestampsMixin</span></code>) that
+Restly models are declared against.</p>
+<dl class="py class" id="module-fastapi_restly.models">
 <dt class="sig sig-object py" id="fastapi_restly.models.DataclassBase">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.models.</span></span><span class="sig-name descname"><span class="pre">DataclassBase</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fastapi_restly.models.DataclassBase" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">TableNameMixin</span></code>, <a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/mapping_api.html#sqlalchemy.orm.MappedAsDataclass" title="(in SQLAlchemy v2.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">MappedAsDataclass</span></code></a>, <a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/mapping_api.html#sqlalchemy.orm.DeclarativeBase" title="(in SQLAlchemy v2.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">DeclarativeBase</span></code></a></p>
@@ -575,8 +578,8 @@
 
 <div class="admonition seealso">
 <p class="admonition-title">See also</p>
-<p><a class="reference internal" href="../getting_started.html"><span class="doc">Getting Started</span></a> — choosing between your own DeclarativeBase and
-the convenience bases.</p>
+<p><a class="reference internal" href="../getting_started.html"><span class="doc">Getting Started</span></a> discusses choosing between your own
+DeclarativeBase and the convenience bases.</p>
 </div>
 </section>
 

@@ -177,8 +177,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="the_handle_design.html">
-    Overrides
+  <a class="nav-link nav-internal" href="customize.html">
+    Customize
   </a>
 </li>
 
@@ -341,8 +341,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="the_handle_design.html">
-    Overrides
+  <a class="nav-link nav-internal" href="customize.html">
+    Customize
   </a>
 </li>
 
@@ -439,13 +439,12 @@
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="howto_existing_project.html">Use Restly in an Existing Project</a></li>
-<li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_custom_schema.html">Custom Schemas and Field Types</a></li>
-<li class="toctree-l1"><a class="reference internal" href="howto_response_schema.html">Response Envelopes and List Metadata</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys and Relationships</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_response_schema.html">Response Envelopes and List Metadata</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_query_modifiers.html">Filter, Sort, and Paginate Lists</a></li>
-<li class="toctree-l1"><a class="reference internal" href="howto_override_endpoints.html">Override CRUD Behavior and Add Custom Endpoints</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_error_responses.html">Shape Error Responses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_inheritance.html">Share Behaviour with Base Views</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_compose_views_with_mixins.html">Compose Views with Mixins</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_typing.html">Use Type Annotations</a></li>
@@ -517,26 +516,46 @@
 <h1>React Admin Integration<a class="headerlink" href="#react-admin-integration" title="Link to this heading">#</a></h1>
 <p><a class="reference external" href="https://marmelab.com/react-admin/">React-admin</a> with
 <a class="reference external" href="https://github.com/marmelab/react-admin/tree/master/packages/ra-data-simple-rest"><code class="docutils literal notranslate"><span class="pre">ra-data-simple-rest</span></code></a>
-expects a specific REST wire contract that differs from the default Restly
-contract in several ways: JSON-encoded sort and range parameters, a plain
-array response body, and a <code class="docutils literal notranslate"><span class="pre">Content-Range</span></code> header for pagination.</p>
-<p><a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncReactAdminView" title="fastapi_restly.views.AsyncReactAdminView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncReactAdminView</span></code></a> and <a class="reference internal" href="api/views.html#fastapi_restly.views.ReactAdminView" title="fastapi_restly.views.ReactAdminView"><code class="xref py py-class docutils literal notranslate"><span class="pre">ReactAdminView</span></code></a> implement this contract, so
+expects a REST dialect that differs from the
+<a class="reference internal" href="howto_response_schema.html#what-restly-returns-by-default"><span class="std std-ref">default Restly contract</span></a>
+in three ways: JSON-encoded <code class="docutils literal notranslate"><span class="pre">sort</span></code>, <code class="docutils literal notranslate"><span class="pre">range</span></code>, and <code class="docutils literal notranslate"><span class="pre">filter</span></code> query parameters, a
+<code class="docutils literal notranslate"><span class="pre">Content-Range</span></code> response header carrying the total row count, and <code class="docutils literal notranslate"><span class="pre">PUT</span></code>-based
+updates. The response body already matches, since both dialects return a plain
+JSON array from list endpoints.
+<a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncReactAdminView" title="fastapi_restly.views.AsyncReactAdminView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncReactAdminView</span></code></a> and <a class="reference internal" href="api/views.html#fastapi_restly.views.ReactAdminView" title="fastapi_restly.views.ReactAdminView"><code class="xref py py-class docutils literal notranslate"><span class="pre">ReactAdminView</span></code></a> implement this dialect, so
 <code class="docutils literal notranslate"><span class="pre">ra-data-simple-rest</span></code> works without a custom data provider.</p>
-<hr class="docutils" />
 <section id="quick-start">
 <h2>Quick start<a class="headerlink" href="#quick-start" title="Link to this heading">#</a></h2>
-<p>Replace <a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a> with <a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncReactAdminView" title="fastapi_restly.views.AsyncReactAdminView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncReactAdminView</span></code></a> (or <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a> with
-<a class="reference internal" href="api/views.html#fastapi_restly.views.ReactAdminView" title="fastapi_restly.views.ReactAdminView"><code class="xref py py-class docutils literal notranslate"><span class="pre">ReactAdminView</span></code></a> for sync sessions):</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
+<p>To adopt the contract, replace <a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a> with <a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncReactAdminView" title="fastapi_restly.views.AsyncReactAdminView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncReactAdminView</span></code></a> (or <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a> with
+<a class="reference internal" href="api/views.html#fastapi_restly.views.ReactAdminView" title="fastapi_restly.views.ReactAdminView"><code class="xref py py-class docutils literal notranslate"><span class="pre">ReactAdminView</span></code></a> for sync sessions). The react-admin frontend runs on its own
+origin during development, so the app also needs the CORS middleware from the
+start:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">contextlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">asynccontextmanager</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">FastAPI</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi.middleware.cors</span><span class="w"> </span><span class="kn">import</span> <span class="n">CORSMiddleware</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.orm</span><span class="w"> </span><span class="kn">import</span> <span class="n">Mapped</span>
 
-<span class="n">app</span> <span class="o">=</span> <span class="n">FastAPI</span><span class="p">()</span>
 <span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">async_database_url</span><span class="o">=</span><span class="s2">&quot;sqlite+aiosqlite:///app.db&quot;</span><span class="p">)</span>
 
 <span class="k">class</span><span class="w"> </span><span class="nc">Product</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDBase</span><span class="p">):</span>
     <span class="n">name</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
     <span class="n">price</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span>
+
+<span class="nd">@asynccontextmanager</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">lifespan</span><span class="p">(</span><span class="n">_app</span><span class="p">:</span> <span class="n">FastAPI</span><span class="p">):</span>
+    <span class="k">await</span> <span class="n">fr</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">async_create_all</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDBase</span><span class="p">)</span>  <span class="c1"># dev tables; use Alembic in production</span>
+    <span class="k">yield</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">FastAPI</span><span class="p">(</span><span class="n">lifespan</span><span class="o">=</span><span class="n">lifespan</span><span class="p">)</span>
+<span class="n">app</span><span class="o">.</span><span class="n">add_middleware</span><span class="p">(</span>
+    <span class="n">CORSMiddleware</span><span class="p">,</span>
+    <span class="n">allow_origins</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;http://localhost:5173&quot;</span><span class="p">],</span>  <span class="c1"># the react-admin dev server</span>
+    <span class="n">allow_methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;*&quot;</span><span class="p">],</span>
+    <span class="n">allow_headers</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;*&quot;</span><span class="p">],</span>
+    <span class="n">expose_headers</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;Content-Range&quot;</span><span class="p">],</span>
+<span class="p">)</span>
 
 <span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">ProductView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncReactAdminView</span><span class="p">):</span>
@@ -545,27 +564,30 @@ array response body, and a <code class="docutils literal notranslate"><span clas
 </pre></div>
 </div>
 <p>On the frontend, point <code class="docutils literal notranslate"><span class="pre">ra-data-simple-rest</span></code> at your API:</p>
-<div class="highlight-jsx notranslate"><div class="highlight"><pre><span></span><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">Admin</span><span class="p">,</span><span class="w"> </span><span class="nx">Resource</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s2">&quot;react-admin&quot;</span><span class="p">;</span>
+<div class="highlight-jsx notranslate"><div class="highlight"><pre><span></span><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">Admin</span><span class="p">,</span><span class="w"> </span><span class="nx">Resource</span><span class="p">,</span><span class="w"> </span><span class="nx">ListGuesser</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s2">&quot;react-admin&quot;</span><span class="p">;</span>
 <span class="k">import</span><span class="w"> </span><span class="nx">simpleRestProvider</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s2">&quot;ra-data-simple-rest&quot;</span><span class="p">;</span>
 
 <span class="kd">const</span><span class="w"> </span><span class="nx">dataProvider</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">simpleRestProvider</span><span class="p">(</span><span class="s2">&quot;http://localhost:8000&quot;</span><span class="p">);</span>
 
 <span class="k">export</span><span class="w"> </span><span class="k">default</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">(</span>
 <span class="w">  </span><span class="p">&lt;</span><span class="nt">Admin</span><span class="w"> </span><span class="na">dataProvider</span><span class="o">=</span><span class="p">{</span><span class="nx">dataProvider</span><span class="p">}&gt;</span>
-<span class="w">    </span><span class="p">&lt;</span><span class="nt">Resource</span><span class="w"> </span><span class="na">name</span><span class="o">=</span><span class="s">&quot;products&quot;</span><span class="w"> </span><span class="p">/&gt;</span>
+<span class="w">    </span><span class="p">&lt;</span><span class="nt">Resource</span><span class="w"> </span><span class="na">name</span><span class="o">=</span><span class="s">&quot;products&quot;</span><span class="w"> </span><span class="na">list</span><span class="o">=</span><span class="p">{</span><span class="nx">ListGuesser</span><span class="p">}</span><span class="w"> </span><span class="p">/&gt;</span>
 <span class="w">  </span><span class="p">&lt;/</span><span class="nt">Admin</span><span class="p">&gt;</span>
 <span class="p">);</span>
 </pre></div>
 </div>
-<p>No custom data provider or adapter layer is needed.</p>
+<p><code class="docutils literal notranslate"><span class="pre">ListGuesser</span></code> infers the list columns from the response; replace it with your
+own list component as the UI takes shape. The <a class="reference internal" href="examples.html#shop"><span class="std std-ref">shop example</span></a>
+is a complete runnable version of this setup, with three resources,
+relationships, and a react-admin frontend under <code class="docutils literal notranslate"><span class="pre">ui/test-admin/</span></code>.</p>
 </section>
-<hr class="docutils" />
 <section id="wire-contract">
 <h2>Wire contract<a class="headerlink" href="#wire-contract" title="Link to this heading">#</a></h2>
 <p><a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncReactAdminView" title="fastapi_restly.views.AsyncReactAdminView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncReactAdminView</span></code></a> translates the <code class="docutils literal notranslate"><span class="pre">ra-data-simple-rest</span></code> query format to SQL
 and returns responses the provider expects.</p>
 <section id="list-get-resource">
-<h3>List — <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/resource/</span></code><a class="headerlink" href="#list-get-resource" title="Link to this heading">#</a></h3>
+<h3>List: <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/resource</span></code><a class="headerlink" href="#list-get-resource" title="Link to this heading">#</a></h3>
+<p>The list endpoint reads react-admin’s three JSON-encoded query parameters:</p>
 <div class="pst-scrollable-table-container"><table class="table">
 <thead>
 <tr class="row-odd"><th class="head"><p>Query parameter</p></th>
@@ -589,15 +611,27 @@ and returns responses the provider expects.</p>
 </tbody>
 </table>
 </div>
-<p>Response: a plain JSON array. The <code class="docutils literal notranslate"><span class="pre">Content-Range</span></code> header carries the total:</p>
+<p>The response body is a plain JSON array, and the <code class="docutils literal notranslate"><span class="pre">Content-Range</span></code> header
+carries the total:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Content</span><span class="o">-</span><span class="n">Range</span><span class="p">:</span> <span class="n">items</span> <span class="mi">0</span><span class="o">-</span><span class="mi">24</span><span class="o">/</span><span class="mi">315</span>
 </pre></div>
 </div>
+<p><code class="docutils literal notranslate"><span class="pre">ra-data-simple-rest</span></code> requests the path without a trailing slash
+(<code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/products?sort=...</span></code>). Restly registers the collection routes (list and
+create) both with and without the trailing slash, so these requests are
+served directly, with no redirect involved.</p>
 <p>The <code class="docutils literal notranslate"><span class="pre">id</span></code> array form of <code class="docutils literal notranslate"><span class="pre">filter</span></code> (<code class="docutils literal notranslate"><span class="pre">{&quot;id&quot;:</span> <span class="pre">[1,</span> <span class="pre">2,</span> <span class="pre">3]}</span></code>) is used by react-admin
-for <code class="docutils literal notranslate"><span class="pre">getMany</span></code> calls. It translates to <code class="docutils literal notranslate"><span class="pre">WHERE</span> <span class="pre">id</span> <span class="pre">IN</span> <span class="pre">(1,</span> <span class="pre">2,</span> <span class="pre">3)</span></code>.</p>
+for <code class="docutils literal notranslate"><span class="pre">getMany</span></code> calls. It translates to <code class="docutils literal notranslate"><span class="pre">WHERE</span> <span class="pre">id</span> <span class="pre">IN</span> <span class="pre">(1,</span> <span class="pre">2,</span> <span class="pre">3)</span></code>. Other filter
+values match by exact equality, and only fields exposed on the response
+schema are accepted: unknown fields, including react-admin’s full-text <code class="docutils literal notranslate"><span class="pre">q</span></code>
+search parameter, are rejected with a 400. Substring or full-text search
+requires overriding the view’s <code class="docutils literal notranslate"><span class="pre">apply_query_params</span></code>.</p>
 </section>
 <section id="other-operations">
 <h3>Other operations<a class="headerlink" href="#other-operations" title="Link to this heading">#</a></h3>
+<p>Four of the remaining routes serve react-admin’s other data provider calls;
+the standard PATCH route stays available alongside them for clients that
+prefer partial updates:</p>
 <div class="pst-scrollable-table-container"><table class="table">
 <thead>
 <tr class="row-odd"><th class="head"><p>Method</p></th>
@@ -609,17 +643,17 @@ for <code class="docutils literal notranslate"><span class="pre">getMany</span><
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">GET</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">/{id}</span></code></p></td>
-<td><p>Get one — react-admin <code class="docutils literal notranslate"><span class="pre">getOne</span></code></p></td>
+<td><p>Get one (react-admin <code class="docutils literal notranslate"><span class="pre">getOne</span></code>)</p></td>
 <td><p>inherited from <a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">POST</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">/</span></code></p></td>
-<td><p>Create — react-admin <code class="docutils literal notranslate"><span class="pre">create</span></code></p></td>
+<td><p>Create (react-admin <code class="docutils literal notranslate"><span class="pre">create</span></code>)</p></td>
 <td><p>inherited from <code class="docutils literal notranslate"><span class="pre">AsyncRestView</span></code></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">PUT</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">/{id}</span></code></p></td>
-<td><p>Full update — react-admin <code class="docutils literal notranslate"><span class="pre">update</span></code></p></td>
+<td><p>Full update (react-admin <code class="docutils literal notranslate"><span class="pre">update</span></code>)</p></td>
 <td><p>added by <a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncReactAdminView" title="fastapi_restly.views.AsyncReactAdminView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncReactAdminView</span></code></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">PATCH</span></code></p></td>
@@ -629,39 +663,41 @@ for <code class="docutils literal notranslate"><span class="pre">getMany</span><
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">DELETE</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">/{id}</span></code></p></td>
-<td><p>Delete — react-admin <code class="docutils literal notranslate"><span class="pre">delete</span></code></p></td>
+<td><p>Delete (react-admin <code class="docutils literal notranslate"><span class="pre">delete</span></code>)</p></td>
 <td><p>inherited from <code class="docutils literal notranslate"><span class="pre">AsyncRestView</span></code></p></td>
 </tr>
 </tbody>
 </table>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">AsyncReactAdminView</span></code> and <a class="reference internal" href="api/views.html#fastapi_restly.views.ReactAdminView" title="fastapi_restly.views.ReactAdminView"><code class="xref py py-class docutils literal notranslate"><span class="pre">ReactAdminView</span></code></a> add a <code class="docutils literal notranslate"><span class="pre">PUT</span> <span class="pre">/{id}</span></code> endpoint because
-<code class="docutils literal notranslate"><span class="pre">ra-data-simple-rest</span></code>’s default <code class="docutils literal notranslate"><span class="pre">update</span></code> method issues a <code class="docutils literal notranslate"><span class="pre">PUT</span></code> request. The
-default <code class="docutils literal notranslate"><span class="pre">PATCH</span> <span class="pre">/{id}</span></code> is also kept available, so clients that prefer partial
-updates continue to work.</p>
-<p>The PUT route delegates to the same <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_update" title="fastapi_restly.views.RestView.handle_update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_update</span></code></a> request handler as PATCH and
-accepts the view’s standard <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_update" title="fastapi_restly.views.BaseRestView.schema_update"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_update</span></code></a> payload. Override the <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.update" title="fastapi_restly.views.RestView.update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">update</span></code></a>
-business verb (or <code class="docutils literal notranslate"><span class="pre">handle_update</span></code>, or replace the PUT route directly) if you need
-different write semantics for the two methods.</p>
+<code class="docutils literal notranslate"><span class="pre">ra-data-simple-rest</span></code>’s default <code class="docutils literal notranslate"><span class="pre">update</span></code> method issues a <code class="docutils literal notranslate"><span class="pre">PUT</span></code> request. Note
+that react-admin sends the complete record on update, <code class="docutils literal notranslate"><span class="pre">id</span></code> and read-only
+fields included; the update schema drops the fields it does not accept
+instead of rejecting the request.</p>
+<p>The PUT route delegates to the same <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_update" title="fastapi_restly.views.RestView.handle_update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_update</span></code></a> handler as PATCH and
+accepts the view’s standard <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_update" title="fastapi_restly.views.BaseRestView.schema_update"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_update</span></code></a> payload. If you need different
+write semantics for the two methods, override the <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.update" title="fastapi_restly.views.RestView.update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">update</span></code></a> business method (or
+<code class="docutils literal notranslate"><span class="pre">handle_update</span></code>, or replace the PUT route directly);
+<a class="reference internal" href="customize.html"><span class="std std-doc">Customize RestView</span></a> explains how
+these override points relate.</p>
 </section>
 </section>
-<hr class="docutils" />
-<section id="tip-serialize-related-lists-as-scalar-id-arrays-with-idref">
-<h2>Tip: serialize related lists as scalar id arrays with <code class="docutils literal notranslate"><span class="pre">IDRef</span></code><a class="headerlink" href="#tip-serialize-related-lists-as-scalar-id-arrays-with-idref" title="Link to this heading">#</a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">ra-data-simple-rest</span></code> expects <code class="docutils literal notranslate"><span class="pre">to-many</span></code> references as plain id arrays
-(<code class="docutils literal notranslate"><span class="pre">&quot;products&quot;:</span> <span class="pre">[1,</span> <span class="pre">2,</span> <span class="pre">3]</span></code>). Declare the field as <code class="docutils literal notranslate"><span class="pre">list[fr.IDRef[Product]]</span></code> —
-see <a class="reference internal" href="howto_relationship_idschema.html"><span class="std std-doc">Lists of References</span></a> for the full
-behavior. The <a class="reference internal" href="examples.html"><span class="std std-doc">shop example</span></a> runs this end to end, React Admin
-frontend included.</p>
+<section id="serialize-related-lists-as-scalar-id-arrays-with-idref">
+<h2>Serialize related lists as scalar id arrays with <code class="docutils literal notranslate"><span class="pre">IDRef</span></code><a class="headerlink" href="#serialize-related-lists-as-scalar-id-arrays-with-idref" title="Link to this heading">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">ra-data-simple-rest</span></code> expects to-many references as plain id arrays
+(<code class="docutils literal notranslate"><span class="pre">&quot;products&quot;:</span> <span class="pre">[1,</span> <span class="pre">2,</span> <span class="pre">3]</span></code>). Declare the field as <code class="docutils literal notranslate"><span class="pre">list[fr.IDRef[Product]]</span></code>;
+<a class="reference internal" href="howto_relationship_idschema.html#lists-of-references"><span class="std std-ref">Lists of References</span></a>
+describes the full behavior. The <a class="reference internal" href="examples.html#shop"><span class="std std-ref">shop example</span></a> runs this
+end to end.</p>
 </section>
-<hr class="docutils" />
 <section id="cors-setup">
 <h2>CORS setup<a class="headerlink" href="#cors-setup" title="Link to this heading">#</a></h2>
-<p>Browsers block non-standard response headers by default. The <code class="docutils literal notranslate"><span class="pre">Content-Range</span></code>
-header must be explicitly exposed in your CORS configuration, otherwise the
-frontend cannot read the total and pagination breaks.</p>
-<p>Add <code class="docutils literal notranslate"><span class="pre">CORSMiddleware</span></code> to your FastAPI app with <code class="docutils literal notranslate"><span class="pre">Content-Range</span></code> in
-<code class="docutils literal notranslate"><span class="pre">expose_headers</span></code>:</p>
+<p>During development the react-admin app and the API run on different origins,
+so the browser applies CORS to every request. Two things must be true: the
+API must allow the frontend origin, and the <code class="docutils literal notranslate"><span class="pre">Content-Range</span></code> header must be
+exposed to JavaScript, because browsers hide non-safelisted response headers
+from scripts. Both are handled by adding <code class="docutils literal notranslate"><span class="pre">CORSMiddleware</span></code> with <code class="docutils literal notranslate"><span class="pre">Content-Range</span></code>
+in <code class="docutils literal notranslate"><span class="pre">expose_headers</span></code>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi.middleware.cors</span><span class="w"> </span><span class="kn">import</span> <span class="n">CORSMiddleware</span>
 
 <span class="n">app</span><span class="o">.</span><span class="n">add_middleware</span><span class="p">(</span>
@@ -674,16 +710,45 @@ frontend cannot read the total and pagination breaks.</p>
 </pre></div>
 </div>
 <p><a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncReactAdminView" title="fastapi_restly.views.AsyncReactAdminView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncReactAdminView</span></code></a> also sets <code class="docutils literal notranslate"><span class="pre">Access-Control-Expose-Headers:</span> <span class="pre">Content-Range</span></code>
-on list responses as a fallback. Prefer middleware in production.</p>
+on its list responses, so a missing <code class="docutils literal notranslate"><span class="pre">expose_headers</span></code> entry alone does not
+break pagination. Do not rely on that fallback: middleware or a proxy that
+sets its own <code class="docutils literal notranslate"><span class="pre">Access-Control-Expose-Headers</span></code> replaces the view’s header, and
+one that strips it hides the total from the frontend entirely. Declare the
+exposure in configuration you control.</p>
 </section>
-<hr class="docutils" />
+<section id="troubleshooting-a-blank-list">
+<h2>Troubleshooting a blank list<a class="headerlink" href="#troubleshooting-a-blank-list" title="Link to this heading">#</a></h2>
+<p>A react-admin list that renders “No Products found” against an API that
+demonstrably has rows is usually one of three misconfigurations, and the
+browser console says which one. Open the devtools console and match the
+error:</p>
+<p><strong>“The Content-Range header is missing in the HTTP Response”</strong>, raised by
+<code class="docutils literal notranslate"><span class="pre">ra-data-simple-rest</span></code>, means the response reached the browser but JavaScript
+cannot read the <code class="docutils literal notranslate"><span class="pre">Content-Range</span></code> header. Add <code class="docutils literal notranslate"><span class="pre">Content-Range</span></code> to
+<code class="docutils literal notranslate"><span class="pre">expose_headers</span></code> as shown <a class="reference internal" href="#cors-setup">above</a>, and check for middleware or
+proxies that overwrite or strip <code class="docutils literal notranslate"><span class="pre">Access-Control-Expose-Headers</span></code>. Seeing the
+header in <code class="docutils literal notranslate"><span class="pre">curl</span> <span class="pre">-i</span></code> output proves nothing here; what matters is what the
+browser exposes to scripts.</p>
+<p><strong>“TypeError: Failed to fetch”</strong> with a CORS policy error above it means the
+request itself was blocked because the API sends no
+<code class="docutils literal notranslate"><span class="pre">Access-Control-Allow-Origin</span></code> for the frontend origin. Add <code class="docutils literal notranslate"><span class="pre">CORSMiddleware</span></code>
+with the frontend origin in <code class="docutils literal notranslate"><span class="pre">allow_origins</span></code>.</p>
+<p><strong>“422 (Unprocessable Content)”</strong> on the list request means the endpoint
+rejected react-admin’s query grammar, so the view is a plain
+<a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a>: the standard dialect does not accept the JSON-encoded
+<code class="docutils literal notranslate"><span class="pre">sort</span></code>, <code class="docutils literal notranslate"><span class="pre">range</span></code>, and <code class="docutils literal notranslate"><span class="pre">filter</span></code> parameters. Switch the view to
+<a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncReactAdminView" title="fastapi_restly.views.AsyncReactAdminView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncReactAdminView</span></code></a>.</p>
+</section>
 <section id="customization">
 <h2>Customization<a class="headerlink" href="#customization" title="Link to this heading">#</a></h2>
+<p>A few view-level settings adjust the defaults described above, and a base
+class can share them across views.</p>
 <section id="set-the-default-page-size">
 <h3>Set the default page size<a class="headerlink" href="#set-the-default-page-size" title="Link to this heading">#</a></h3>
-<p>When the frontend does not send a <code class="docutils literal notranslate"><span class="pre">range</span></code> query parameter, Restly returns the
-first 25 rows. Set <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.default_page_size" title="fastapi_restly.views.BaseRestView.default_page_size"><code class="xref py py-attr docutils literal notranslate"><span class="pre">default_page_size</span></code></a> on the view to choose a different
-default:</p>
+<p>When the frontend does not send a <code class="docutils literal notranslate"><span class="pre">range</span></code> query parameter, the react-admin
+views return the first 25 rows, overriding the framework-wide
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.default_page_size" title="fastapi_restly.views.BaseRestView.default_page_size"><code class="xref py py-attr docutils literal notranslate"><span class="pre">default_page_size</span></code></a> default of <code class="docutils literal notranslate"><span class="pre">None</span></code> (no implicit cap). Set the
+attribute on the view to choose a different value:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">ProductView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncReactAdminView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/products&quot;</span>
@@ -708,7 +773,8 @@ numbers), but if another consumer cares, override <code class="docutils literal 
 <section id="share-the-react-admin-contract-across-multiple-views">
 <h3>Share the react-admin contract across multiple views<a class="headerlink" href="#share-the-react-admin-contract-across-multiple-views" title="Link to this heading">#</a></h3>
 <p>Put shared customizations in a project base class and inherit your views from
-that class:</p>
+it, following the pattern in
+<a class="reference internal" href="howto_inheritance.html"><span class="std std-doc">Share Behaviour with Base Views</span></a>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ReactAdminBase</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncReactAdminView</span><span class="p">):</span>
     <span class="n">default_page_size</span> <span class="o">=</span> <span class="mi">100</span>
 
@@ -728,19 +794,18 @@ that class:</p>
 </div>
 </section>
 </section>
-<hr class="docutils" />
 <section id="under-the-hood">
 <h2>Under the hood<a class="headerlink" href="#under-the-hood" title="Link to this heading">#</a></h2>
 <p><a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncReactAdminView" title="fastapi_restly.views.AsyncReactAdminView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncReactAdminView</span></code></a> is a thin subclass of <a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a> built with the
-<a class="reference internal" href="howto_override_endpoints.html#tier-1-replace-a-route-shell-to-change-the-http-contract"><span class="std std-ref">route replacement</span></a>
-pattern. It replaces the <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many_endpoint" title="fastapi_restly.views.RestView.get_many_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many_endpoint</span></code></a> route shell to parse the
+<a class="reference internal" href="customize.html#replace-an-endpoint-method-to-change-the-http-contract"><span class="std std-ref">route replacement</span></a>
+pattern. It replaces <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many_endpoint" title="fastapi_restly.views.RestView.get_many_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many_endpoint</span></code></a> to parse the
 react-admin query string, then delegates to the standard <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_get_many" title="fastapi_restly.views.RestView.handle_get_many"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_get_many</span></code></a> /
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many" title="fastapi_restly.views.RestView.get_many"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many</span></code></a> flow. The react-admin dialect itself lives in <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.apply_query_params" title="fastapi_restly.views.RestView.apply_query_params"><code class="xref py py-meth docutils literal notranslate"><span class="pre">apply_query_params</span></code></a>
 (JSON <code class="docutils literal notranslate"><span class="pre">sort</span></code> / <code class="docutils literal notranslate"><span class="pre">range</span></code> / <code class="docutils literal notranslate"><span class="pre">filter</span></code>) and <code class="docutils literal notranslate"><span class="pre">to_response(...,</span> <span class="pre">ResponseShape.LISTING)</span></code>
 (plain array body plus <code class="docutils literal notranslate"><span class="pre">Content-Range</span></code>).</p>
 <p>It also adds a <code class="docutils literal notranslate"><span class="pre">PUT</span> <span class="pre">/{id}</span></code> route that delegates to the standard <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_update" title="fastapi_restly.views.RestView.handle_update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_update</span></code></a>
-request handler. All other generated routes (<code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/{id}</span></code>, <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/</span></code>,
-<code class="docutils literal notranslate"><span class="pre">PATCH</span> <span class="pre">/{id}</span></code>, <code class="docutils literal notranslate"><span class="pre">DELETE</span> <span class="pre">/{id}</span></code>) and write business-verb tiers are inherited
+handler. All other generated routes (<code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/{id}</span></code>, <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/</span></code>,
+<code class="docutils literal notranslate"><span class="pre">PATCH</span> <span class="pre">/{id}</span></code>, <code class="docutils literal notranslate"><span class="pre">DELETE</span> <span class="pre">/{id}</span></code>) and write business-method tiers are inherited
 unchanged.</p>
 <p>The shared parsing and response helpers are internal.</p>
 </section>
@@ -795,12 +860,13 @@ unchanged.</p>
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#quick-start">Quick start</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#wire-contract">Wire contract</a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#list-get-resource">List — <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/resource/</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#list-get-resource">List: <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/resource</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#other-operations">Other operations</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#tip-serialize-related-lists-as-scalar-id-arrays-with-idref">Tip: serialize related lists as scalar id arrays with <code class="docutils literal notranslate"><span class="pre">IDRef</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#serialize-related-lists-as-scalar-id-arrays-with-idref">Serialize related lists as scalar id arrays with <code class="docutils literal notranslate"><span class="pre">IDRef</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#cors-setup">CORS setup</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#troubleshooting-a-blank-list">Troubleshooting a blank list</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#customization">Customization</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#set-the-default-page-size">Set the default page size</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#change-the-content-range-unit">Change the Content-Range unit</a></li>

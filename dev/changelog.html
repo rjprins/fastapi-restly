@@ -177,8 +177,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="the_handle_design.html">
-    Overrides
+  <a class="nav-link nav-internal" href="customize.html">
+    Customize
   </a>
 </li>
 
@@ -341,8 +341,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="the_handle_design.html">
-    Overrides
+  <a class="nav-link nav-internal" href="customize.html">
+    Customize
   </a>
 </li>
 
@@ -519,7 +519,7 @@
 version is below <code class="docutils literal notranslate"><span class="pre">1.0.0</span></code>, breaking changes may land in <strong>minor</strong> releases
 (<code class="docutils literal notranslate"><span class="pre">0.x</span></code> → <code class="docutils literal notranslate"><span class="pre">0.y</span></code>) and are always listed below under the release that ships them;
 patch releases are fixes only. To opt into fixes without surprises, pin to a
-minor version — for example <code class="docutils literal notranslate"><span class="pre">fastapi-restly~={{</span> <span class="pre">release</span> <span class="pre">}}</span></code>.</p>
+minor version, for example <code class="docutils literal notranslate"><span class="pre">fastapi-restly~={{</span> <span class="pre">release</span> <span class="pre">}}</span></code>.</p>
 <p>All notable changes to this project will be documented in this file.</p>
 <p>The format is based on <a class="reference external" href="https://keepachangelog.com/en/1.1.0/">Keep a Changelog</a>,
 and this project adheres to <a class="reference external" href="https://semver.org/spec/v2.0.0.html">Semantic Versioning</a>.</p>
@@ -548,6 +548,15 @@ now documented as relationship-named types, with <code class="docutils literal n
 <section id="changed">
 <h3>Changed<a class="headerlink" href="#changed" title="Link to this heading">#</a></h3>
 <ul class="simple">
+<li><p>The tier vocabulary in docstrings and error messages now matches the docs:
+<em>endpoint method</em> (was “route shell”), <em>handler</em> (was “request handler”), and
+<em>business method</em> (was “business verb”). The misuse warning
+(<code class="docutils literal notranslate"><span class="pre">RestlyMisuseWarning</span></code>) and the bare-verb route-name <code class="docutils literal notranslate"><span class="pre">TypeError</span></code> use the new
+terms; match on <code class="docutils literal notranslate"><span class="pre">&quot;endpoint</span> <span class="pre">method&quot;</span></code> / <code class="docutils literal notranslate"><span class="pre">&quot;business</span> <span class="pre">method&quot;</span></code> if you asserted on
+those messages.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">View.tags</span></code> is now typed <code class="docutils literal notranslate"><span class="pre">ClassVar[Iterable[str</span> <span class="pre">|</span> <span class="pre">Enum]</span> <span class="pre">|</span> <span class="pre">None]</span></code> instead of
+<code class="docutils literal notranslate"><span class="pre">ClassVar[Any]</span></code>, matching what FastAPI accepts for router tags. Runtime
+behaviour is unchanged; type checkers now flag a wrongly-typed <code class="docutils literal notranslate"><span class="pre">tags</span></code>.</p></li>
 <li><p>The <code class="docutils literal notranslate"><span class="pre">[testing]</span></code> extra now installs <code class="docutils literal notranslate"><span class="pre">httpx2</span></code> alongside <code class="docutils literal notranslate"><span class="pre">httpx</span></code>. Newer Starlette
 <code class="docutils literal notranslate"><span class="pre">TestClient</span></code> prefers <code class="docutils literal notranslate"><span class="pre">httpx2</span></code> and emits a <code class="docutils literal notranslate"><span class="pre">StarletteDeprecationWarning</span></code> when
 only <code class="docutils literal notranslate"><span class="pre">httpx</span></code> is present; shipping both keeps <code class="docutils literal notranslate"><span class="pre">RestlyTestClient</span></code> on the

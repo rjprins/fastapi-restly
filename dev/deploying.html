@@ -177,8 +177,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="the_handle_design.html">
-    Overrides
+  <a class="nav-link nav-internal" href="customize.html">
+    Customize
   </a>
 </li>
 
@@ -341,8 +341,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="the_handle_design.html">
-    Overrides
+  <a class="nav-link nav-internal" href="customize.html">
+    Customize
   </a>
 </li>
 
@@ -439,13 +439,12 @@
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="howto_existing_project.html">Use Restly in an Existing Project</a></li>
-<li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_custom_schema.html">Custom Schemas and Field Types</a></li>
-<li class="toctree-l1"><a class="reference internal" href="howto_response_schema.html">Response Envelopes and List Metadata</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys and Relationships</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_response_schema.html">Response Envelopes and List Metadata</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_query_modifiers.html">Filter, Sort, and Paginate Lists</a></li>
-<li class="toctree-l1"><a class="reference internal" href="howto_override_endpoints.html">Override CRUD Behavior and Add Custom Endpoints</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_error_responses.html">Shape Error Responses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_inheritance.html">Share Behaviour with Base Views</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_compose_views_with_mixins.html">Compose Views with Mixins</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_typing.html">Use Type Annotations</a></li>
@@ -516,14 +515,14 @@
   <section id="deploying">
 <h1>Deploying<a class="headerlink" href="#deploying" title="Link to this heading">#</a></h1>
 <p>This page covers the parts of a production deployment that are specific to
-FastAPI-Restly. Everything else — uvicorn workers, gunicorn, TLS, reverse
-proxies, Docker, behind-a-proxy headers — is already covered well in
+FastAPI-Restly. Everything else (uvicorn workers, gunicorn, TLS, reverse
+proxies, Docker, behind-a-proxy headers) is already covered well in
 <a class="reference external" href="https://fastapi.tiangolo.com/deployment/">FastAPI’s deployment docs</a> and is
 not duplicated here.</p>
 <section id="database-configuration">
 <h2>Database configuration<a class="headerlink" href="#database-configuration" title="Link to this heading">#</a></h2>
-<p>Drive the engine from environment variables. A small <code class="docutils literal notranslate"><span class="pre">pydantic-settings</span></code>
-shim keeps the wiring obvious and 12-factor friendly:</p>
+<p>In production, drive the engine from environment variables. A small
+<code class="docutils literal notranslate"><span class="pre">pydantic-settings</span></code> shim keeps the wiring obvious and 12-factor friendly:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic_settings</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseSettings</span>
 
 
@@ -553,12 +552,14 @@ set pool options:</p>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">pool_pre_ping=True</span></code> is recommended in production: it issues a lightweight
 liveness check before handing out a pooled connection, which prevents
-stale-connection errors after database restarts or network blips.</p>
+stale-connection errors after database restarts or network blips. If your
+app already has an engine, pass that one instead; see
+<a class="reference internal" href="howto_existing_project.html#reuse-your-existing-engine"><span class="std std-ref">Reuse Your Existing Engine</span></a>.</p>
 </section>
 <section id="migrations-with-alembic">
 <h2>Migrations with Alembic<a class="headerlink" href="#migrations-with-alembic" title="Link to this heading">#</a></h2>
-<p>In production, never call <code class="docutils literal notranslate"><span class="pre">metadata.create_all()</span></code> — use Alembic. Initialise
-once in your project root:</p>
+<p>In production, never call <code class="docutils literal notranslate"><span class="pre">metadata.create_all()</span></code>; use Alembic instead.
+Initialise it once in your project root:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>alembic<span class="w"> </span>init<span class="w"> </span>alembic
 </pre></div>
 </div>
@@ -566,12 +567,12 @@ once in your project root:</p>
 models inherit from (typically <a class="reference internal" href="api/models.html#fastapi_restly.models.DataclassBase" title="fastapi_restly.models.DataclassBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.DataclassBase</span></code></a>):</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># alembic/env.py</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">myapp.models</span>  <span class="c1"># noqa: F401 — import side-effect: registers model classes</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">myapp.models</span>  <span class="c1"># noqa: F401 (import side-effect: registers model classes)</span>
 
 <span class="n">target_metadata</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">DataclassBase</span><span class="o">.</span><span class="n">metadata</span>
 </pre></div>
 </div>
-<p>Run migrations as part of your release / startup pipeline:</p>
+<p>Run migrations as part of your release or startup pipeline:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>alembic<span class="w"> </span>upgrade<span class="w"> </span>head
 </pre></div>
 </div>
@@ -582,6 +583,8 @@ plugin does not run migrations automatically. See
 </section>
 <section id="a-production-main-py-template">
 <h2>A production <code class="docutils literal notranslate"><span class="pre">main.py</span></code> template<a class="headerlink" href="#a-production-main-py-template" title="Link to this heading">#</a></h2>
+<p>With settings and migrations in place, the pieces combine into one small
+application module:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">contextlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">asynccontextmanager</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
@@ -611,11 +614,12 @@ plugin does not run migrations automatically. See
 <span class="n">fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">UserView</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Notes:</p>
+<p>Note three details in this template:</p>
 <ul class="simple">
 <li><p><a class="reference internal" href="api/db.html#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.configure(app,</span> <span class="pre">...)</span></code></a> installs the default exception handlers
-(currently the <code class="docutils literal notranslate"><span class="pre">IntegrityError</span> <span class="pre">→</span> <span class="pre">409</span></code> translator). Pass
-<code class="docutils literal notranslate"><span class="pre">install_default_exception_handlers=False</span></code> to opt out.</p></li>
+(currently the translator that turns <code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code> into a 409 response;
+see <a class="reference internal" href="howto_error_responses.html#database-conflicts-integrityerror-to-409"><span class="std std-ref">Database conflicts</span></a>).
+Pass <code class="docutils literal notranslate"><span class="pre">install_default_exception_handlers=False</span></code> to opt out.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">engine.dispose()</span></code> in <code class="docutils literal notranslate"><span class="pre">lifespan</span></code> cleans up the connection pool on
 shutdown so workers exit promptly.</p></li>
 <li><p>Register views during startup with <a class="reference internal" href="api/views.html#fastapi_restly.views.include_view" title="fastapi_restly.views.include_view"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.include_view(app,</span> <span class="pre">ViewClass)</span></code></a>; avoid
@@ -629,20 +633,20 @@ import-time side effects in larger apps.</p></li>
 <a class="reference external" href="https://www.uvicorn.org/deployment/#gunicorn">gunicorn with uvicorn workers</a>.
 See <a class="reference external" href="https://fastapi.tiangolo.com/deployment/">FastAPI’s deployment docs</a>
 for the full picture, including TLS, reverse proxies, and Docker.</p>
-<p>A minimal example:</p>
+<p>A minimal invocation looks like this:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uvicorn<span class="w"> </span>myapp.main:app<span class="w"> </span>--host<span class="w"> </span><span class="m">0</span>.0.0.0<span class="w"> </span>--port<span class="w"> </span><span class="m">8000</span><span class="w"> </span>--workers<span class="w"> </span><span class="m">4</span>
 </pre></div>
 </div>
 <p>Sync <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a> endpoints run on FastAPI’s threadpool, so worker count
 still has the usual effect; async <a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a> endpoints share the
-event loop within a worker. Don’t use <code class="docutils literal notranslate"><span class="pre">--reload</span></code> in production.</p>
+event loop within a worker. Do not use <code class="docutils literal notranslate"><span class="pre">--reload</span></code> in production.</p>
 </section>
 <section id="see-also">
 <h2>See also<a class="headerlink" href="#see-also" title="Link to this heading">#</a></h2>
 <ul class="simple">
-<li><p><a class="reference internal" href="howto_existing_project.html"><span class="std std-doc">Use Restly in an Existing Project</span></a> — wiring
+<li><p><a class="reference internal" href="howto_existing_project.html"><span class="std std-doc">Use Restly in an Existing Project</span></a>: wiring
 Restly into an app that already has an engine, sessions, and models.</p></li>
-<li><p><a class="reference internal" href="examples.html"><span class="std std-doc">Examples</span></a> — the production-shaped SaaS example to compare
+<li><p><a class="reference internal" href="examples.html"><span class="std std-doc">Examples</span></a>: the production-shaped SaaS example to compare
 against.</p></li>
 </ul>
 </section>

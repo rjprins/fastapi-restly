@@ -177,8 +177,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="the_handle_design.html">
-    Overrides
+  <a class="nav-link nav-internal" href="customize.html">
+    Customize
   </a>
 </li>
 
@@ -341,8 +341,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="the_handle_design.html">
-    Overrides
+  <a class="nav-link nav-internal" href="customize.html">
+    Customize
   </a>
 </li>
 
@@ -512,8 +512,8 @@ empty app to a working REST resource.</p>
 (<a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/shop/README.md">README</a>)
 shows relationships, multiple primary-key styles, async sessions, and
 React-Admin-compatible endpoints through <a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncReactAdminView" title="fastapi_restly.views.AsyncReactAdminView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncReactAdminView</span></code></a>. It also includes
-a small React Admin frontend wired against the API. Covered in:
-<a class="reference internal" href="howto_react_admin.html"><span class="std std-doc">React Admin Integration</span></a>,
+a small React Admin frontend wired against the API. These patterns are
+covered in <a class="reference internal" href="howto_react_admin.html"><span class="std std-doc">React Admin Integration</span></a> and
 <a class="reference internal" href="howto_relationship_idschema.html"><span class="std std-doc">Work with Foreign Keys and Relationships</span></a>.</p>
 </section>
 <section id="saas">
@@ -522,9 +522,10 @@ a small React Admin frontend wired against the API. Covered in:
 (<a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/README.md">README</a>)
 is the most complete example: a multi-tenant project management API with
 permission patterns, shared base views, mixins, custom create/update schemas,
-query modifiers, Alembic migrations — and a substantial <strong>non-CRUD surface</strong>
-built on the same views. Route highlights, all from
-<code class="docutils literal notranslate"><span class="pre">example-projects/saas/app/views/</span></code>:</p>
+<a class="reference internal" href="howto_query_modifiers.html"><span class="std std-doc">query modifiers</span></a>, and
+<a class="reference internal" href="deploying.html#migrations-with-alembic"><span class="std std-ref">Alembic migrations</span></a>. It also builds a
+substantial non-CRUD surface on the same views. The routes below, all defined
+in <code class="docutils literal notranslate"><span class="pre">example-projects/saas/app/views/</span></code>, highlight the patterns involved:</p>
 <div class="pst-scrollable-table-container"><table class="table">
 <thead>
 <tr class="row-odd"><th class="head"><p>Route</p></th>
@@ -550,17 +551,17 @@ built on the same views. Route highlights, all from
 </tbody>
 </table>
 </div>
-<p>Covered in:
+<p>These patterns are covered in
 <a class="reference internal" href="howto_compose_views_with_mixins.html"><span class="std std-doc">Compose Views with Mixins</span></a>,
 <a class="reference internal" href="howto_inheritance.html"><span class="std std-doc">Share Behaviour with Base Views</span></a>,
-<a class="reference internal" href="howto_override_endpoints.html"><span class="std std-doc">Override CRUD Behavior</span></a>,
+<a class="reference internal" href="customize.html"><span class="std std-doc">Customize RestView</span></a>, and
 <a class="reference internal" href="patterns.html"><span class="std std-doc">Patterns</span></a>.</p>
 </section>
 <section id="running-them">
 <h2>Running them<a class="headerlink" href="#running-them" title="Link to this heading">#</a></h2>
 <p>Each project is self-contained: run <code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">sync</span></code> in its directory, then use the
 commands in its README (linked above).</p>
-<p>Want to build one of these yourself? Start with
+<p>To build one of these yourself, start with
 <a class="reference internal" href="getting_started.html"><span class="std std-doc">Getting Started</span></a> and the <a class="reference internal" href="tutorial.html"><span class="std std-doc">Tutorial</span></a>.</p>
 </section>
 </section>

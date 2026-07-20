@@ -61,8 +61,8 @@
     <link rel="author" title="About these documents" href="about.html" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Filter, Sort, and Paginate Lists" href="howto_query_modifiers.html" />
-    <link rel="prev" title="Response Envelopes and List Metadata" href="howto_response_schema.html" />
+    <link rel="next" title="Response Envelopes and List Metadata" href="howto_response_schema.html" />
+    <link rel="prev" title="Custom Schemas and Field Types" href="howto_custom_schema.html" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
@@ -177,8 +177,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="the_handle_design.html">
-    Overrides
+  <a class="nav-link nav-internal" href="customize.html">
+    Customize
   </a>
 </li>
 
@@ -341,8 +341,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="the_handle_design.html">
-    Overrides
+  <a class="nav-link nav-internal" href="customize.html">
+    Customize
   </a>
 </li>
 
@@ -439,13 +439,12 @@
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="howto_existing_project.html">Use Restly in an Existing Project</a></li>
-<li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_custom_schema.html">Custom Schemas and Field Types</a></li>
-<li class="toctree-l1"><a class="reference internal" href="howto_response_schema.html">Response Envelopes and List Metadata</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Work with Foreign Keys and Relationships</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_response_schema.html">Response Envelopes and List Metadata</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_query_modifiers.html">Filter, Sort, and Paginate Lists</a></li>
-<li class="toctree-l1"><a class="reference internal" href="howto_override_endpoints.html">Override CRUD Behavior and Add Custom Endpoints</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_error_responses.html">Shape Error Responses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_inheritance.html">Share Behaviour with Base Views</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_compose_views_with_mixins.html">Compose Views with Mixins</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_typing.html">Use Type Annotations</a></li>
@@ -527,11 +526,13 @@ relationship instead of a foreign key column.</p>
 <strong>“model”</strong> for SQLAlchemy ORM models.</p>
 </div>
 <section id="choosing-a-reference-style">
-<h2>Choosing a Reference Style<a class="headerlink" href="#choosing-a-reference-style" title="Link to this heading">#</a></h2>
+<h2>Choosing a reference style<a class="headerlink" href="#choosing-a-reference-style" title="Link to this heading">#</a></h2>
 <p>Most APIs communicate through ids. They are what forms and dropdowns submit,
-they stay cacheable, and clients like React Admin can dereference them for
-display. Embed the target object only when you deliberately want one larger
-response instead of a separate fetch.</p>
+they stay cacheable, and clients like <a class="reference internal" href="howto_react_admin.html"><span class="std std-doc">React Admin</span></a> can
+dereference them for display. Embed the target object only when you
+deliberately want one larger response instead of a separate fetch; see
+<a class="reference internal" href="technical_details.html#nested-response-schemas-vs-write-payloads"><span class="std std-ref">Nested Response Schemas vs Write Payloads</span></a>
+for what embedding supports.</p>
 <div class="pst-scrollable-table-container"><table class="table">
 <thead>
 <tr class="row-odd"><th class="head"><p>Declaration</p></th>
@@ -563,13 +564,18 @@ response instead of a separate fetch.</p>
 </tbody>
 </table>
 </div>
+<p>The three checked forms (<code class="docutils literal notranslate"><span class="pre">MustExist</span></code>, <code class="docutils literal notranslate"><span class="pre">IDRef</span></code>, <code class="docutils literal notranslate"><span class="pre">IDSchema</span></code>) return <code class="docutils literal notranslate"><span class="pre">404</span></code> when
+the referenced id does not exist. A schema that exposes the same link through
+two relationship references must receive matching ids; conflicting ids return
+<code class="docutils literal notranslate"><span class="pre">422</span></code> (see <a class="reference internal" href="#dataclass-relationship-setup">Dataclass relationship setup</a>).</p>
 <ul class="simple">
 <li><p>Use <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">MustExist</span></code></a> for the common case:
 a <code class="docutils literal notranslate"><span class="pre">*_id</span></code> column you want validated. Name the primary-key type first, then the
-target model — <code class="docutils literal notranslate"><span class="pre">fr.MustExist[int,</span> <span class="pre">User]</span></code> (<code class="docutils literal notranslate"><span class="pre">fr.MustExist[UUID,</span> <span class="pre">Account]</span></code> for a
-UUID key). When the column has a single <code class="docutils literal notranslate"><span class="pre">ForeignKey</span></code>, you can drop the model and
-let Restly infer it — <code class="docutils literal notranslate"><span class="pre">fr.MustExist[int]</span></code>. A plain <code class="docutils literal notranslate"><span class="pre">int</span></code> (or <code class="docutils literal notranslate"><span class="pre">ReadOnly[int]</span></code>
-for a server-stamped column) is the unchecked alternative — no existence check.</p></li>
+target model, as in <code class="docutils literal notranslate"><span class="pre">fr.MustExist[int,</span> <span class="pre">User]</span></code> (<code class="docutils literal notranslate"><span class="pre">fr.MustExist[UUID,</span> <span class="pre">Account]</span></code>
+for a UUID key). When the column has a single <code class="docutils literal notranslate"><span class="pre">ForeignKey</span></code>, you can drop the
+model and let Restly infer it, writing just <code class="docutils literal notranslate"><span class="pre">fr.MustExist[int]</span></code>. A plain <code class="docutils literal notranslate"><span class="pre">int</span></code>
+(or <code class="docutils literal notranslate"><span class="pre">ReadOnly[int]</span></code> for a server-stamped column) is the unchecked alternative
+with no existence check.</p></li>
 <li><p>Use <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDRef</span></code></a> /
 <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDSchema</span></code></a> when the field names a
 relationship. Restly resolves the id to the related object; the difference is
@@ -582,7 +588,9 @@ reference (read <code class="docutils literal notranslate"><span class="pre">.id
 </ul>
 </section>
 <section id="model-setup">
-<h2>Model Setup<a class="headerlink" href="#model-setup" title="Link to this heading">#</a></h2>
+<h2>Model setup<a class="headerlink" href="#model-setup" title="Link to this heading">#</a></h2>
+<p>The examples on this page use two models joined by one foreign key: each
+<code class="docutils literal notranslate"><span class="pre">Article</span></code> references its author, a <code class="docutils literal notranslate"><span class="pre">User</span></code>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="kn">import</span> <span class="n">ForeignKey</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.orm</span><span class="w"> </span><span class="kn">import</span> <span class="n">Mapped</span><span class="p">,</span> <span class="n">mapped_column</span>
@@ -597,12 +605,14 @@ reference (read <code class="docutils literal notranslate"><span class="pre">.id
     <span class="n">author_id</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span><span class="n">ForeignKey</span><span class="p">(</span><span class="s2">&quot;user.id&quot;</span><span class="p">))</span>
 </pre></div>
 </div>
-<p><a class="reference internal" href="api/models.html#fastapi_restly.models.IDBase" title="fastapi_restly.models.IDBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDBase</span></code></a> auto-generates the table name from the class name (<code class="docutils literal notranslate"><span class="pre">User</span></code> →
-<code class="docutils literal notranslate"><span class="pre">user</span></code>, <code class="docutils literal notranslate"><span class="pre">Article</span></code> → <code class="docutils literal notranslate"><span class="pre">article</span></code>). That is why <code class="docutils literal notranslate"><span class="pre">ForeignKey(&quot;user.id&quot;)</span></code> is
-correct here.</p>
+<p><a class="reference internal" href="api/models.html#fastapi_restly.models.IDBase" title="fastapi_restly.models.IDBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDBase</span></code></a> auto-generates the table name
+from the class name (<code class="docutils literal notranslate"><span class="pre">User</span></code> becomes <code class="docutils literal notranslate"><span class="pre">user</span></code>, <code class="docutils literal notranslate"><span class="pre">Article</span></code> becomes <code class="docutils literal notranslate"><span class="pre">article</span></code>). That
+is why <code class="docutils literal notranslate"><span class="pre">ForeignKey(&quot;user.id&quot;)</span></code> is correct here.</p>
 </section>
 <section id="schema-setup">
-<h2>Schema Setup<a class="headerlink" href="#schema-setup" title="Link to this heading">#</a></h2>
+<h2>Schema setup<a class="headerlink" href="#schema-setup" title="Link to this heading">#</a></h2>
+<p>With the models in place, declare the foreign-key column on the schema as a
+checked reference:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
 
@@ -631,7 +641,9 @@ scalar:</p>
 </div>
 </section>
 <section id="view-setup">
-<h2>View Setup<a class="headerlink" href="#view-setup" title="Link to this heading">#</a></h2>
+<h2>View setup<a class="headerlink" href="#view-setup" title="Link to this heading">#</a></h2>
+<p>The view is registered as usual; the reference behavior comes entirely from
+the schema:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">ArticleView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/articles&quot;</span>
@@ -641,19 +653,21 @@ scalar:</p>
 </div>
 <p>On create and update, Restly looks up the <code class="docutils literal notranslate"><span class="pre">User</span></code> with <code class="docutils literal notranslate"><span class="pre">id=1</span></code>. If it does not
 exist, the request returns <code class="docutils literal notranslate"><span class="pre">404</span></code>. That lookup is an <em>unscoped</em> existence check;
-see <a class="reference internal" href="#visibility-and-multi-tenancy">Visibility and Multi-Tenancy</a> below. In
+see <a class="reference internal" href="#visibility-and-multi-tenancy">Visibility and multi-tenancy</a> below. In
 hooks, <code class="docutils literal notranslate"><span class="pre">data.author_id</span></code> is the plain integer.</p>
 </section>
 <section id="list-filtering">
 <h2>List filtering<a class="headerlink" href="#list-filtering" title="Link to this heading">#</a></h2>
-<p>The FK field is filterable on the list endpoint by its own public name —
-<code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/articles/?author_id=1</span></code> (also <code class="docutils literal notranslate"><span class="pre">author_id__in</span></code>, <code class="docutils literal notranslate"><span class="pre">author_id__ne</span></code>,
-<code class="docutils literal notranslate"><span class="pre">author_id__isnull</span></code>, and — since a <code class="docutils literal notranslate"><span class="pre">MustExist[int,</span> <span class="pre">...]</span></code> id is a plain integer —
-the range family <code class="docutils literal notranslate"><span class="pre">author_id__gte</span></code> / <code class="docutils literal notranslate"><span class="pre">__lte</span></code> / <code class="docutils literal notranslate"><span class="pre">__gt</span></code> / <code class="docutils literal notranslate"><span class="pre">__lt</span></code>). See
-<a class="reference internal" href="howto_query_modifiers.html#foreign-key-filtering"><span class="std std-ref">Query Modifiers → Foreign-key filtering</span></a>.</p>
+<p>The FK field is filterable on the list endpoint by its own public name, as in
+<code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/articles/?author_id=1</span></code>. The suffixed operators <code class="docutils literal notranslate"><span class="pre">author_id__in</span></code>,
+<code class="docutils literal notranslate"><span class="pre">author_id__ne</span></code>, and <code class="docutils literal notranslate"><span class="pre">author_id__isnull</span></code> are available as well, and because a
+<code class="docutils literal notranslate"><span class="pre">MustExist[int,</span> <span class="pre">...]</span></code> id is a plain integer, so is the range family
+<code class="docutils literal notranslate"><span class="pre">author_id__gte</span></code> / <code class="docutils literal notranslate"><span class="pre">__lte</span></code> / <code class="docutils literal notranslate"><span class="pre">__gt</span></code> / <code class="docutils literal notranslate"><span class="pre">__lt</span></code>. See
+<a class="reference internal" href="howto_query_modifiers.html#foreign-key-filtering"><span class="std std-ref">Foreign-key filtering</span></a> for the
+full behavior.</p>
 </section>
 <section id="field-naming">
-<h2>Field Naming<a class="headerlink" href="#field-naming" title="Link to this heading">#</a></h2>
+<h2>Field naming<a class="headerlink" href="#field-naming" title="Link to this heading">#</a></h2>
 <p>Name the schema field after a mapped attribute on the model: a foreign-key
 column for <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">MustExist</span></code></a>, or a
 relationship for <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDRef</span></code></a> /
@@ -665,7 +679,7 @@ named anything; the <code class="docutils literal notranslate"><span class="pre"
 <span class="n">author</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">IDRef</span><span class="p">[</span><span class="n">User</span><span class="p">]</span>              <span class="c1"># the Article.author relationship</span>
 </pre></div>
 </div>
-<p>The Python field name is what Restly matches against the mapped attribute — it
+<p>The Python field name is what Restly matches against the mapped attribute: it
 builds the model with that name as a keyword argument, so the two must match. To
 expose a different name only <em>on the wire</em> (a camelCase API, say), keep the field
 named after the attribute and add a Pydantic alias:</p>
@@ -698,7 +712,7 @@ relationship, or more than one relationship shares the FK column (ambiguous),
 Restly sets the FK column and leaves the relationship to you.</p>
 </section>
 <section id="lists-of-references">
-<h2>Lists of References<a class="headerlink" href="#lists-of-references" title="Link to this heading">#</a></h2>
+<h2>Lists of references<a class="headerlink" href="#lists-of-references" title="Link to this heading">#</a></h2>
 <p>A to-many reference serializes as a plain id array with <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">list[fr.IDRef[Model]]</span></code></a>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">OrderRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
     <span class="n">customer_name</span><span class="p">:</span> <span class="nb">str</span>
@@ -707,20 +721,23 @@ Restly sets the FK column and leaves the relationship to you.</p>
 </div>
 <p>On input, each element accepts both raw scalars and <code class="docutils literal notranslate"><span class="pre">{&quot;id&quot;:</span> <span class="pre">...}</span></code> shapes, so
 the same field doubles as a permissive write-side type when paired with a
-custom <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create" title="fastapi_restly.views.RestView.create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create</span></code></a> / <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.update" title="fastapi_restly.views.RestView.update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">update</span></code></a> business verb that resolves the list. For
+custom <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create" title="fastapi_restly.views.RestView.create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create</span></code></a> / <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.update" title="fastapi_restly.views.RestView.update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">update</span></code></a> business method that resolves the list. For
 relationship objects that must stay nested on the wire, use
-<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDSchema[Model]</span></code></a> (below).
+<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDSchema[Model]</span></code></a> (see
+<a class="reference internal" href="#nested-relationship-objects">Nested relationship objects</a>).
 <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">MustExist</span></code></a> is for a single scalar FK
 column; a to-many field is a relationship, so use
 <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">list[fr.IDRef[Model]]</span></code></a>.</p>
 </section>
 <section id="input-compatibility">
-<h2>Input Compatibility<a class="headerlink" href="#input-compatibility" title="Link to this heading">#</a></h2>
+<h2>Input compatibility<a class="headerlink" href="#input-compatibility" title="Link to this heading">#</a></h2>
 <p><a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDRef</span></code></a> and <code class="docutils literal notranslate"><span class="pre">IDSchema[Model]</span></code> accept both
-scalar ids and <code class="docutils literal notranslate"><span class="pre">{&quot;id&quot;:</span> <span class="pre">...}</span></code> dictionaries on input:</p>
+scalar ids and <code class="docutils literal notranslate"><span class="pre">{&quot;id&quot;:</span> <span class="pre">...}</span></code> dictionaries on input. The flat form passes the id
+directly:</p>
 <div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;author&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="p">}</span>
 </pre></div>
 </div>
+<p>The nested form wraps it in an object:</p>
 <div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;author&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">}</span><span class="w"> </span><span class="p">}</span>
 </pre></div>
 </div>
@@ -731,15 +748,17 @@ already send one form, but the public API contract should keep the other.</p>
 </section>
 <section id="about-idschema">
 <h2>About IDSchema<a class="headerlink" href="#about-idschema" title="Link to this heading">#</a></h2>
-<p>Most examples inherit from <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDSchema</span></code></a> — <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.BaseSchema" title="fastapi_restly.schemas.BaseSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseSchema</span></code></a> plus a read-only <code class="docutils literal notranslate"><span class="pre">id</span></code>
-field. The schema bases, <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> / <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> markers, and aliases are
-owned by <a class="reference internal" href="howto_custom_schema.html"><span class="std std-doc">Custom Schemas and Field Types</span></a>; inherit
-from <code class="docutils literal notranslate"><span class="pre">fr.BaseSchema</span></code> instead if you want every field, including <code class="docutils literal notranslate"><span class="pre">id</span></code>,
+<p>Most examples inherit from <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDSchema</span></code></a>,
+which is <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.BaseSchema" title="fastapi_restly.schemas.BaseSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseSchema</span></code></a> plus a
+read-only <code class="docutils literal notranslate"><span class="pre">id</span></code> field. The schema bases, <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> / <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> markers, and
+aliases are owned by <a class="reference internal" href="howto_custom_schema.html"><span class="std std-doc">Custom Schemas and Field Types</span></a>;
+inherit from <code class="docutils literal notranslate"><span class="pre">fr.BaseSchema</span></code> instead if you want every field, including <code class="docutils literal notranslate"><span class="pre">id</span></code>,
 explicit. When used as a field type (<code class="docutils literal notranslate"><span class="pre">author:</span> <span class="pre">fr.IDSchema[User]</span></code>), it is a
-nested relationship reference (below), separate from its use as a base class.</p>
+nested relationship reference (covered next), separate from its use as a base
+class.</p>
 </section>
 <section id="nested-relationship-objects">
-<h2>Nested Relationship Objects<a class="headerlink" href="#nested-relationship-objects" title="Link to this heading">#</a></h2>
+<h2>Nested relationship objects<a class="headerlink" href="#nested-relationship-objects" title="Link to this heading">#</a></h2>
 <p>Some clients model relationships as objects. For that shape, annotate the
 relationship field with <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDSchema[Model]</span></code></a>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ArticleRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
@@ -759,7 +778,7 @@ relationship, validate the referenced row, and use the same resolver. The
 difference is the API shape: flat id versus nested object.</p>
 </section>
 <section id="dataclass-relationship-setup">
-<h2>Dataclass Relationship Setup<a class="headerlink" href="#dataclass-relationship-setup" title="Link to this heading">#</a></h2>
+<h2>Dataclass relationship setup<a class="headerlink" href="#dataclass-relationship-setup" title="Link to this heading">#</a></h2>
 <p><a class="reference internal" href="api/models.html#fastapi_restly.models.IDBase" title="fastapi_restly.models.IDBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDBase</span></code></a> uses SQLAlchemy’s
 <code class="docutils literal notranslate"><span class="pre">MappedAsDataclass</span></code>, which generates an <code class="docutils literal notranslate"><span class="pre">__init__</span></code> from the model fields.
 Restly’s create/update helpers are aware of that constructor shape when an
@@ -796,7 +815,7 @@ with <code class="docutils literal notranslate"><span class="pre">author:</span>
 plain <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">MustExist</span></code></a> scalar does not take
 part in this reference-pair check; it is a checked column value.</p>
 <section id="standard-sqlalchemy-declarative-models">
-<h3>Standard SQLAlchemy Declarative Models<a class="headerlink" href="#standard-sqlalchemy-declarative-models" title="Link to this heading">#</a></h3>
+<h3>Standard SQLAlchemy declarative models<a class="headerlink" href="#standard-sqlalchemy-declarative-models" title="Link to this heading">#</a></h3>
 <p>If you use a normal SQLAlchemy <code class="docutils literal notranslate"><span class="pre">DeclarativeBase</span></code>, the dataclass constructor
 rules do not apply:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.orm</span><span class="w"> </span><span class="kn">import</span> <span class="n">DeclarativeBase</span><span class="p">,</span> <span class="n">Mapped</span><span class="p">,</span> <span class="n">mapped_column</span><span class="p">,</span> <span class="n">relationship</span>
@@ -817,19 +836,22 @@ rules do not apply:</p>
 </div>
 <p>There is no generated <code class="docutils literal notranslate"><span class="pre">__init__</span></code> contract to satisfy: Restly constructs the
 object and applies the resolved reference to the FK column (and the matching
-relationship attribute, when one is declared) directly.</p>
+relationship attribute, when one is declared) directly. Registering such models
+with Restly is covered in
+<a class="reference internal" href="howto_existing_project.html#use-your-own-declarativebase-models"><span class="std std-ref">Use Your Own DeclarativeBase Models</span></a>.</p>
 </section>
 </section>
 <section id="reference-fields-in-custom-routes">
-<span id="idref-custom-routes"></span><h2>Reference Fields in Custom Routes<a class="headerlink" href="#reference-fields-in-custom-routes" title="Link to this heading">#</a></h2>
+<span id="idref-custom-routes"></span><h2>Reference fields in custom routes<a class="headerlink" href="#reference-fields-in-custom-routes" title="Link to this heading">#</a></h2>
 <p>Generated <code class="docutils literal notranslate"><span class="pre">POST</span></code> and <code class="docutils literal notranslate"><span class="pre">PATCH</span></code> routes validate the body before Restly calls
 <code class="docutils literal notranslate"><span class="pre">make_new_object()</span></code> or <code class="docutils literal notranslate"><span class="pre">update_object()</span></code>, so reference fields are already in the
 right shape. A <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">MustExist</span></code></a> field is a
 plain id; <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDRef[Model]</span></code></a> and
 <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDSchema[Model]</span></code></a> fields are reference
 instances.</p>
-<p>In a custom route, be careful when you construct a schema yourself. Pydantic’s
-<code class="docutils literal notranslate"><span class="pre">model_construct()</span></code> skips validation. For a
+<p>In a <a class="reference internal" href="customize.html#add-a-custom-action-route"><span class="std std-ref">custom route</span></a>, be
+careful when you construct a schema yourself. Pydantic’s <code class="docutils literal notranslate"><span class="pre">model_construct()</span></code>
+skips validation. For a
 <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">MustExist</span></code></a> field, pass the plain id:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi_restly.objects</span><span class="w"> </span><span class="kn">import</span> <span class="n">async_make_new_object</span>
 
@@ -877,17 +899,21 @@ relationship-shaped data. Scalar fields
 their wire format is already scalar.</p>
 </section>
 <section id="visibility-and-multi-tenancy">
-<h2>Visibility and Multi-Tenancy<a class="headerlink" href="#visibility-and-multi-tenancy" title="Link to this heading">#</a></h2>
+<h2>Visibility and multi-tenancy<a class="headerlink" href="#visibility-and-multi-tenancy" title="Link to this heading">#</a></h2>
 <p>Reference resolution is an <strong>unscoped existence check</strong>. Restly fetches the
 referenced row by primary key only (<code class="docutils literal notranslate"><span class="pre">session.get(User,</span> <span class="pre">id)</span></code>). View
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.build_query" title="fastapi_restly.views.RestView.build_query"><code class="xref py py-meth docutils literal notranslate"><span class="pre">build_query</span></code></a> scoping is not applied, so tenant, soft-delete, and row-level
 visibility checks are your responsibility.</p>
 <p>The resolver only knows the referenced <em>model</em> from the field type, not which
-view governs it. References are a <strong>policy</strong> concern.</p>
-<p>Gate in <strong><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.authorize" title="fastapi_restly.views.RestView.authorize"><code class="xref py py-meth docutils literal notranslate"><span class="pre">authorize</span></code></a></strong>, where
-<code class="docutils literal notranslate"><span class="pre">data</span></code> carries the write-side value before resolution. For a
-<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">MustExist</span></code></a> field, <code class="docutils literal notranslate"><span class="pre">data.author_id</span></code> is
-the requested id. For <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDRef</span></code></a> /
+view governs it. References are a <em>policy</em> concern, and they are gated in
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.authorize" title="fastapi_restly.views.RestView.authorize"><code class="xref py py-meth docutils literal notranslate"><span class="pre">authorize</span></code></a> /
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.before_commit" title="fastapi_restly.views.RestView.before_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">before_commit</span></code></a> like any
+other write-path authorization; both hooks are described in
+<a class="reference internal" href="customize.html#authorize-gate-the-action"><span class="std std-ref">Customize RestView</span></a>.</p>
+<p>Gate in <code class="docutils literal notranslate"><span class="pre">authorize</span></code>, where <code class="docutils literal notranslate"><span class="pre">data</span></code> carries the write-side value before
+resolution. For a <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">MustExist</span></code></a> field,
+<code class="docutils literal notranslate"><span class="pre">data.author_id</span></code> is the requested id. For
+<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDRef</span></code></a> /
 <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDSchema</span></code></a>, <code class="docutils literal notranslate"><span class="pre">data.&lt;field&gt;.id</span></code> is the
 requested id (and a list field is a list of references):</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
@@ -904,46 +930,18 @@ requested id (and a list field is a list of references):</p>
 </pre></div>
 </div>
 <p>The resolved ORM object is not available in <code class="docutils literal notranslate"><span class="pre">authorize</span></code>; resolution runs later
-in the business verb. If you need the resolved row, check in <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.before_commit" title="fastapi_restly.views.RestView.before_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">before_commit</span></code></a>,
+in the business method. If you need the resolved row, check in <code class="docutils literal notranslate"><span class="pre">before_commit</span></code>,
 where the built object carries it (for example <code class="docutils literal notranslate"><span class="pre">new.author.org_id</span></code>). Prefer
 <code class="docutils literal notranslate"><span class="pre">authorize</span></code> when the requested id is enough: it rejects before the unscoped
 fetch and is the standard policy seam.</p>
-<p>References are gated in <code class="docutils literal notranslate"><span class="pre">authorize</span></code> / <code class="docutils literal notranslate"><span class="pre">before_commit</span></code> like any other
-write-path authorization.</p>
-</section>
-<section id="behavior-summary">
-<h2>Behavior Summary<a class="headerlink" href="#behavior-summary" title="Link to this heading">#</a></h2>
-<ul class="simple">
-<li><p><a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">MustExist[int,</span> <span class="pre">Model]</span></code></a> uses scalar id
-wire format on request and response. In Python it stays the plain id and adds
-an existence check.</p></li>
-<li><p><a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDRef</span></code></a> and
-<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDSchema</span></code></a> are relationship-field
-variants: flat id for <code class="docutils literal notranslate"><span class="pre">IDRef</span></code>, nested object for <code class="docutils literal notranslate"><span class="pre">IDSchema</span></code>.</p></li>
-<li><p>Missing related ids return <code class="docutils literal notranslate"><span class="pre">404</span></code>.</p></li>
-<li><p>Reference resolution is an <strong>unscoped existence check</strong> (bare PK lookup, no
-<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.build_query" title="fastapi_restly.views.RestView.build_query"><code class="xref py py-meth docutils literal notranslate"><span class="pre">build_query</span></code></a> scoping). Gate cross-tenant / visibility references in
-<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.authorize" title="fastapi_restly.views.RestView.authorize"><code class="xref py py-meth docutils literal notranslate"><span class="pre">authorize</span></code></a> or <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.before_commit" title="fastapi_restly.views.RestView.before_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">before_commit</span></code></a> — see <a class="reference internal" href="#visibility-and-multi-tenancy">Visibility and Multi-Tenancy</a>.</p></li>
-<li><p>Restly matches the field name to a mapped column or relationship via the
-model’s mapper, not by an <code class="docutils literal notranslate"><span class="pre">_id</span></code> suffix.</p></li>
-<li><p>For <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDRef</span></code></a> /
-<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDSchema</span></code></a> fields, a matching
-SQLAlchemy relationship lets Restly keep the FK column and relationship
-attribute in sync.</p></li>
-<li><p>Dataclass models can be FK-first or relationship-first; Restly supplies the
-constructor values the model requires from the same resolved row.</p></li>
-<li><p>If both <code class="docutils literal notranslate"><span class="pre">author_id</span></code> and <code class="docutils literal notranslate"><span class="pre">author</span></code> are explicitly provided as relationship
-references, they must refer to the same row or the request returns <code class="docutils literal notranslate"><span class="pre">422</span></code>.</p></li>
-<li><p><a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDSchema</span></code></a> as a base class adds the resource’s own read-only <code class="docutils literal notranslate"><span class="pre">id</span></code> field.</p></li>
-</ul>
 </section>
 <section id="see-also">
 <h2>See also<a class="headerlink" href="#see-also" title="Link to this heading">#</a></h2>
 <ul class="simple">
-<li><p><a class="reference internal" href="tutorial.html"><span class="std std-doc">Tutorial</span></a> — reference fields in the blog build, in context.</p></li>
-<li><p><a class="reference internal" href="howto_custom_schema.html"><span class="std std-doc">Custom Schemas and Field Types</span></a> — the schema bases
+<li><p><a class="reference internal" href="tutorial.html"><span class="std std-doc">Tutorial</span></a>: reference fields in the blog build, in context.</p></li>
+<li><p><a class="reference internal" href="howto_custom_schema.html"><span class="std std-doc">Custom Schemas and Field Types</span></a>: the schema bases
 and field markers these compose with.</p></li>
-<li><p><a class="reference internal" href="api_reference.html"><span class="std std-doc">API Reference</span></a> — <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">MustExist</span></code></a> / <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDRef</span></code></a> / <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDSchema</span></code></a> signatures and the
+<li><p><a class="reference internal" href="api_reference.html"><span class="std std-doc">API Reference</span></a>: <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">MustExist</span></code></a> / <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDRef</span></code></a> / <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDSchema</span></code></a> signatures and the
 full symbol tables.</p></li>
 </ul>
 </section>
@@ -960,20 +958,20 @@ full symbol tables.</p></li>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="howto_response_schema.html"
+       href="howto_custom_schema.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Response Envelopes and List Metadata</p>
+        <p class="prev-next-title">Custom Schemas and Field Types</p>
       </div>
     </a>
     <a class="right-next"
-       href="howto_query_modifiers.html"
+       href="howto_response_schema.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Filter, Sort, and Paginate Lists</p>
+        <p class="prev-next-title">Response Envelopes and List Metadata</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -996,23 +994,22 @@ full symbol tables.</p></li>
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#choosing-a-reference-style">Choosing a Reference Style</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#model-setup">Model Setup</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#schema-setup">Schema Setup</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#view-setup">View Setup</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#choosing-a-reference-style">Choosing a reference style</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#model-setup">Model setup</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#schema-setup">Schema setup</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#view-setup">View setup</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#list-filtering">List filtering</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#field-naming">Field Naming</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#lists-of-references">Lists of References</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#input-compatibility">Input Compatibility</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#field-naming">Field naming</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#lists-of-references">Lists of references</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#input-compatibility">Input compatibility</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#about-idschema">About IDSchema</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#nested-relationship-objects">Nested Relationship Objects</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#dataclass-relationship-setup">Dataclass Relationship Setup</a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#standard-sqlalchemy-declarative-models">Standard SQLAlchemy Declarative Models</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#nested-relationship-objects">Nested relationship objects</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#dataclass-relationship-setup">Dataclass relationship setup</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#standard-sqlalchemy-declarative-models">Standard SQLAlchemy declarative models</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#reference-fields-in-custom-routes">Reference Fields in Custom Routes</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#visibility-and-multi-tenancy">Visibility and Multi-Tenancy</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#behavior-summary">Behavior Summary</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#reference-fields-in-custom-routes">Reference fields in custom routes</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#visibility-and-multi-tenancy">Visibility and multi-tenancy</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#see-also">See also</a></li>
 </ul>
   </nav></div>
