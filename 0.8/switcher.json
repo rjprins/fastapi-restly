@@ -1,0 +1,23 @@
+[
+  {
+    "name": "stable",
+    "version": "latest",
+    "url": "https://www.fastapi-restly.org/",
+    "preferred": true
+  },
+  {
+    "name": "dev",
+    "version": "dev",
+    "url": "https://www.fastapi-restly.org/dev/"
+  },
+  {
+    "name": "0.8",
+    "version": "0.8",
+    "url": "https://www.fastapi-restly.org/0.8/"
+  },
+  {
+    "name": "0.7",
+    "version": "0.7",
+    "url": "https://www.fastapi-restly.org/0.7/"
+  }
+]

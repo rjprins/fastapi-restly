@@ -1,0 +1,1024 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="./" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, follow">
+
+    <title>Class-Based Views &#8212; FastAPI-Restly 0.8.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=5f490481" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="_static/documentation_options.js?v=486e5634"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=f281be69"></script>
+    <script src="_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'class_based_views';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://www.fastapi-restly.org/switcher.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '0.8';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            false;
+        </script>
+    <script src="_static/newsletter.js?v=e342eb53"></script>
+    <link rel="canonical" href="https://www.fastapi-restly.org/0.8/class_based_views.html" />
+    <link rel="author" title="About these documents" href="about.html" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Customize RestView" href="customize.html" />
+    <link rel="prev" title="Tutorial Part 2: Customizing Views" href="tutorial_customizing.html" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.8" />
+<meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
+<!-- GoatCounter: cookieless, privacy-friendly analytics (ignores localhost) -->
+<script data-goatcounter="https://fastapi-restly.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="_static/restly-cat.png" class="logo__image only-light" alt=""/>
+    <img src="_static/restly-cat.png" class="logo__image only-dark pst-js-only" alt=""/>
+  
+  
+    <p class="title logo__title">FastAPI-Restly</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="getting_started.html">
+    Getting Started
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="tutorial_overview.html">
+    Tutorial
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="#">
+    Views
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="customize.html">
+    Customize
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="user_guide.html">
+    How-To
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="api_reference.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="about.html">
+    About
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="getting_started.html">
+    Getting Started
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="tutorial_overview.html">
+    Tutorial
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="#">
+    Views
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="customize.html">
+    Customize
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="user_guide.html">
+    How-To
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="api_reference.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="about.html">
+    About
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"></div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Class-Based Views</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="class-based-views">
+<h1>Class-Based Views<a class="headerlink" href="#class-based-views" title="Link to this heading">#</a></h1>
+<p>Class-based views are the core of FastAPI-Restly. They make REST scaffolding
+subclassable, keep shared behavior in one place, and let you override one
+method without rewriting the route.</p>
+<section id="when-to-use-what">
+<h2>When to use what<a class="headerlink" href="#when-to-use-what" title="Link to this heading">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">View</span></code> is a general route-organization layer, not just scaffolding for CRUD.
+The table below matches each kind of endpoint group to the construct that
+serves it:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>You are building</p></th>
+<th class="head"><p>Use</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>One simple standalone endpoint</p></td>
+<td><p>A plain FastAPI route; no Restly needed</p></td>
+</tr>
+<tr class="row-odd"><td><p>A group of related non-CRUD endpoints: login/auth flows, webhook receivers, RPC-style actions, composite-key resources</p></td>
+<td><p><a class="reference internal" href="#when-to-use-view-directly"><code class="docutils literal notranslate"><span class="pre">fr.View</span></code></a></p></td>
+</tr>
+<tr class="row-even"><td><p>A database-backed CRUD resource</p></td>
+<td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.AsyncRestView</span></code></a> / <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.RestView</span></code></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>CRUD plus custom actions such as publish, vote, or bulk operations</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">RestView</span></code> with extra <a class="reference internal" href="api/views.html#fastapi_restly.views.get" title="fastapi_restly.views.get"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;fr.get</span></code></a> / <a class="reference internal" href="api/views.html#fastapi_restly.views.post" title="fastapi_restly.views.post"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;fr.post</span></code></a> methods (<a class="reference internal" href="customize.html#add-a-custom-action-route"><span class="std std-ref">custom actions</span></a>)</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>The rest of this page explains the machinery behind all four rows.</p>
+</section>
+<section id="what-is-a-class-based-view">
+<h2>What is a class-based view?<a class="headerlink" href="#what-is-a-class-based-view" title="Link to this heading">#</a></h2>
+<p>A class-based view (CBV) is a class that groups related endpoints together
+with the configuration they share. In plain FastAPI, an endpoint is a
+function:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/users&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">list_users</span><span class="p">(</span><span class="n">session</span><span class="p">:</span> <span class="n">AsyncSession</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_session</span><span class="p">)):</span>
+    <span class="o">...</span>
+
+<span class="nd">@app</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/users&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_user</span><span class="p">(</span><span class="n">payload</span><span class="p">:</span> <span class="n">UserCreate</span><span class="p">,</span> <span class="n">session</span><span class="p">:</span> <span class="n">AsyncSession</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_session</span><span class="p">)):</span>
+    <span class="o">...</span>
+</pre></div>
+</div>
+<p>A class-based view declares the same endpoints as methods on a class instead:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">Depends</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="kn">import</span> <span class="n">select</span>
+
+<span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">View</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>
+    <span class="n">dependencies</span> <span class="o">=</span> <span class="p">[</span><span class="n">Depends</span><span class="p">(</span><span class="n">require_logged_in</span><span class="p">)]</span>
+    <span class="n">session</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">AsyncSessionDep</span>
+
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">list_users</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">UserRead</span><span class="p">]:</span>
+        <span class="n">users</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">scalars</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">User</span><span class="p">))</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">UserRead</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span><span class="n">user</span><span class="p">)</span> <span class="k">for</span> <span class="n">user</span> <span class="ow">in</span> <span class="n">users</span><span class="p">]</span>
+
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_user</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">payload</span><span class="p">:</span> <span class="n">UserCreate</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">UserRead</span><span class="p">:</span>
+        <span class="n">user</span> <span class="o">=</span> <span class="n">User</span><span class="p">(</span><span class="o">**</span><span class="n">payload</span><span class="o">.</span><span class="n">model_dump</span><span class="p">())</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">user</span><span class="p">)</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">UserRead</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span><span class="n">user</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Dependencies, prefix, tags, and metadata are declared once on the class. The
+<code class="docutils literal notranslate"><span class="pre">session</span></code> attribute is a FastAPI dependency too, injected per request and
+available as <code class="docutils literal notranslate"><span class="pre">self.session</span></code>. Methods are ordinary Python methods, so helpers,
+class config, and <code class="docutils literal notranslate"><span class="pre">self</span></code> all work normally.</p>
+</section>
+<section id="why-cbvs-at-all">
+<h2>Why CBVs at all?<a class="headerlink" href="#why-cbvs-at-all" title="Link to this heading">#</a></h2>
+<p>Function endpoints are fine for a few routes, but they become repetitive in
+larger codebases:</p>
+<ul class="simple">
+<li><p>Repetition: the same <code class="docutils literal notranslate"><span class="pre">Depends(get_session)</span></code>, the same auth dependency, and
+the same response config are duplicated across every related endpoint.</p></li>
+<li><p>Scattering: endpoints that conceptually belong together (everything about
+users, everything about invoices) live as separate top-level functions, so
+renames, splits, and shared edits become tedious.</p></li>
+<li><p>No natural place for shared state: a request scope often has a few values
+that every endpoint in a group needs (the current user, a tenant context, a
+serialised filter). With functions, you pass them through parameters or
+recompute them; with a CBV, they are attributes on <code class="docutils literal notranslate"><span class="pre">self</span></code>.</p></li>
+</ul>
+<p>A CBV solves all three with one tool: the class itself.</p>
+</section>
+<section id="declaration-and-registration">
+<h2>Declaration and registration<a class="headerlink" href="#declaration-and-registration" title="Link to this heading">#</a></h2>
+<p>The base class itself is small: FastAPI router metadata plus one
+pre-registration hook.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">View</span><span class="p">:</span>
+    <span class="n">prefix</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">tags</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span> <span class="o">|</span> <span class="n">Enum</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">dependencies</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">responses</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">int</span> <span class="o">|</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]]</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">before_include_view</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span> <span class="o">...</span>
+</pre></div>
+</div>
+<p>Methods on a <a class="reference internal" href="api/views.html#fastapi_restly.views.View" title="fastapi_restly.views.View"><code class="xref py py-class docutils literal notranslate"><span class="pre">View</span></code></a> subclass use <a class="reference internal" href="api/views.html#fastapi_restly.views.get" title="fastapi_restly.views.get"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;fr.get(...)</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.post" title="fastapi_restly.views.post"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;fr.post(...)</span></code></a>, or
+<a class="reference internal" href="api/views.html#fastapi_restly.views.route" title="fastapi_restly.views.route"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;fr.route(...)</span></code></a>. Those decorators only store route metadata; registration
+happens when you call:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">UserView</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>For larger apps, define classes in view modules and include them from the
+app/router composition layer. Small apps can use the decorator shortcut:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">View</span><span class="p">):</span> <span class="o">...</span>
+</pre></div>
+</div>
+<p><a class="reference internal" href="api/views.html#fastapi_restly.views.include_view" title="fastapi_restly.views.include_view"><code class="xref py py-func docutils literal notranslate"><span class="pre">include_view</span></code></a> walks the class’s MRO, collects every method tagged with route
+metadata, wires each method’s <code class="docutils literal notranslate"><span class="pre">self</span></code> up as a dependency on the view class (so
+FastAPI instantiates a fresh view per request), and registers each route on
+the parent router or app.</p>
+<p>Routes are bound at <em>include-time</em> against the class you pass in; they are
+not bound at decoration time. This is what makes subclassing work.</p>
+</section>
+<section id="true-subclassing">
+<h2>True subclassing<a class="headerlink" href="#true-subclassing" title="Link to this heading">#</a></h2>
+<p>The naive way to add CBV support to FastAPI is a class decorator that mutates
+the class on definition:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@cbv</span><span class="p">(</span><span class="n">router</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">:</span>
+    <span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/users&quot;</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">list_users</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span> <span class="o">...</span>
+</pre></div>
+</div>
+<p>That works for a single class, but it falls apart the moment you try to
+subclass:</p>
+<ul class="simple">
+<li><p>Routes are registered on <code class="docutils literal notranslate"><span class="pre">router</span></code> against <code class="docutils literal notranslate"><span class="pre">UserView</span></code>; if you override
+<code class="docutils literal notranslate"><span class="pre">list_users</span></code> on a subclass, the registered handler still calls the
+original.</p></li>
+<li><p>Re-decorate the subclass with <code class="docutils literal notranslate"><span class="pre">&#64;cbv(router)</span></code> and you get duplicate routes.</p></li>
+<li><p>Decorate the subclass on a <em>different</em> router and only the subclass’s
+directly-decorated methods register; the parent’s routes do not follow.</p></li>
+</ul>
+<p>FastAPI-Restly avoids this by deferring registration:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">AdminUserView</span><span class="p">(</span><span class="n">UserView</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">list_users</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># filter to soft-deleted users</span>
+        <span class="o">...</span>
+
+<span class="n">fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">admin_app</span><span class="p">,</span> <span class="n">AdminUserView</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>When <a class="reference internal" href="api/views.html#fastapi_restly.views.include_view" title="fastapi_restly.views.include_view"><code class="xref py py-func docutils literal notranslate"><span class="pre">include_view</span></code></a> runs, it walks <code class="docutils literal notranslate"><span class="pre">AdminUserView.__mro__</span></code>, finds inherited
+route metadata, and registers handlers against <code class="docutils literal notranslate"><span class="pre">AdminUserView</span></code>, so your
+override runs. The same view can be included on multiple routers; including
+it twice on the <em>same</em> router is a no-op, never a duplicate route set.</p>
+<p>That is what “true class-based views” means in this framework. You can:</p>
+<ul class="simple">
+<li><p>Define an abstract parent that supplies handlers but is never registered.</p></li>
+<li><p>Subclass a working view to specialise it for a different prefix, a
+different role, or a different audience.</p></li>
+<li><p>Mix in behaviour through multiple inheritance, as shown in the
+<a class="reference internal" href="howto_inheritance.html"><span class="std std-doc">share-behaviour guide</span></a>.</p></li>
+</ul>
+</section>
+<section id="one-base-view-for-the-whole-app">
+<span id="app-wide-base-view"></span><h2>One base view for the whole app<a class="headerlink" href="#one-base-view-for-the-whole-app" title="Link to this heading">#</a></h2>
+<p>The simplest payoff of true subclassing is an application-wide base view:
+declare your app’s request context once, on a bare <a class="reference internal" href="api/views.html#fastapi_restly.views.View" title="fastapi_restly.views.View"><code class="xref py py-class docutils literal notranslate"><span class="pre">View</span></code></a>, and subclass
+it everywhere. No CRUD is required:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">Depends</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">AppView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">View</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Project base; every endpoint group in the app subclasses this.&quot;&quot;&quot;</span>
+
+    <span class="n">session</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">AsyncSessionDep</span>
+    <span class="n">current_user</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">User</span><span class="p">,</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_current_user</span><span class="p">)]</span>
+
+
+<span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ProfileView</span><span class="p">(</span><span class="n">AppView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/profile&quot;</span>
+
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">whoami</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;user&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_user</span><span class="o">.</span><span class="n">name</span><span class="p">}</span>
+
+
+<span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">BillingView</span><span class="p">(</span><span class="n">AppView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/billing&quot;</span>
+
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/checkout&quot;</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">checkout</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">payload</span><span class="p">:</span> <span class="n">CheckoutRequest</span><span class="p">):</span>
+        <span class="n">order</span> <span class="o">=</span> <span class="n">Order</span><span class="p">(</span><span class="n">user_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">current_user</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="o">**</span><span class="n">payload</span><span class="o">.</span><span class="n">model_dump</span><span class="p">())</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">order</span><span class="p">)</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;order_id&quot;</span><span class="p">:</span> <span class="n">order</span><span class="o">.</span><span class="n">id</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>In plain FastAPI, <code class="docutils literal notranslate"><span class="pre">session</span></code> and <code class="docutils literal notranslate"><span class="pre">current_user</span></code> would be <code class="docutils literal notranslate"><span class="pre">Depends</span></code> parameters
+re-declared on every function in the project. Here they are declared once and
+read from <code class="docutils literal notranslate"><span class="pre">self</span></code> in every method of every subclass. The same base also
+composes under CRUD views, so the whole app shares one context layer:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">AppRestView</span><span class="p">(</span><span class="n">AppView</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;CRUD resources get the same session + current_user attributes.&quot;&quot;&quot;</span>
+</pre></div>
+</div>
+<p>Testing inherits the benefit: FastAPI’s <code class="docutils literal notranslate"><span class="pre">dependency_overrides</span></code> applies to the
+class-level dependencies, so overriding <code class="docutils literal notranslate"><span class="pre">get_current_user</span></code> reaches
+<code class="docutils literal notranslate"><span class="pre">self.current_user</span></code> in every view at once.</p>
+</section>
+<section id="the-view-hierarchy">
+<h2>The view hierarchy<a class="headerlink" href="#the-view-hierarchy" title="Link to this heading">#</a></h2>
+<p>The CRUD rows of the opening table are served by a short inheritance chain,
+in which each layer adds behavior to the one above it:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>View                   ← class-based view primitive (no CRUD)
+└── BaseRestView       ← CRUD configuration + helpers (no endpoints)
+    ├── RestView         ← sync CRUD endpoints
+    │   └── ReactAdminView      ← + ra-data-simple-rest contract
+    └── AsyncRestView    ← async CRUD endpoints
+        └── AsyncReactAdminView ← + ra-data-simple-rest contract
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><a class="reference internal" href="api/views.html#fastapi_restly.views.View" title="fastapi_restly.views.View"><code class="xref py py-class docutils literal notranslate"><span class="pre">View</span></code></a> is the bare CBV primitive. Use it for non-CRUD endpoints: auth flows,
+custom RPC, file uploads, or composite-key resources.</p></li>
+<li><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView" title="fastapi_restly.views.BaseRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseRestView</span></code></a> extends <code class="docutils literal notranslate"><span class="pre">View</span></code> with <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.model" title="fastapi_restly.views.BaseRestView.model"><code class="xref py py-attr docutils literal notranslate"><span class="pre">model</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema" title="fastapi_restly.views.BaseRestView.schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema</span></code></a>, the auto-generated
+<a class="reference internal" href="technical_details.html#generated-input-schemas"><span class="std std-ref">create/update schemas</span></a>
+(<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_create" title="fastapi_restly.views.BaseRestView.schema_create"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_create</span></code></a> / <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_update" title="fastapi_restly.views.BaseRestView.schema_update"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_update</span></code></a>), <a class="reference internal" href="howto_query_modifiers.html"><span class="std std-doc">query-modifier</span></a>
+configuration, and helper methods like <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_response" title="fastapi_restly.views.BaseRestView.to_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_response()</span></code></a> and
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_response_schema" title="fastapi_restly.views.BaseRestView.to_response_schema"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_response_schema()</span></code></a>. The concrete CRUD methods live on <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a> /
+<a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a>; <code class="docutils literal notranslate"><span class="pre">BaseRestView</span></code> is an abstract scaffold with no endpoints of
+its own.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">RestView</span></code> and <code class="docutils literal notranslate"><span class="pre">AsyncRestView</span></code> provide the concrete sync and async
+implementations of the CRUD endpoints; one of these two is usually the
+class you subclass. They assume a single scalar resource id for the
+generated <code class="docutils literal notranslate"><span class="pre">/{id}</span></code> routes; composite primary keys are not supported by the
+default CRUD view contract. For legacy tables with composite keys, subclass
+<code class="docutils literal notranslate"><span class="pre">View</span></code> directly and define routes that match your API shape.</p></li>
+</ul>
+<p>The public method surface is classified in the
+<a class="reference internal" href="api_reference.html#view-method-surface"><span class="std std-ref">API reference</span></a>. Each CRUD verb is split
+into three tiers: <code class="docutils literal notranslate"><span class="pre">&lt;verb&gt;_endpoint</span></code> (HTTP contract), <code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code>
+(authorization + commit bracket), and <code class="docutils literal notranslate"><span class="pre">&lt;verb&gt;</span></code> (domain operation). Cross-cutting
+override points include <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.build_query" title="fastapi_restly.views.RestView.build_query"><code class="xref py py-meth docutils literal notranslate"><span class="pre">build_query</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.authorize" title="fastapi_restly.views.RestView.authorize"><code class="xref py py-meth docutils literal notranslate"><span class="pre">authorize</span></code></a>, hooks, and <code class="docutils literal notranslate"><span class="pre">to_response</span></code>.</p>
+</section>
+<section id="a-complete-example-a-tenant-scoped-base-view">
+<h2>A complete example: a tenant-scoped base view<a class="headerlink" href="#a-complete-example-a-tenant-scoped-base-view" title="Link to this heading">#</a></h2>
+<p>A common situation is that every view in your app needs auth, tenant scoping,
+and a common <a class="reference internal" href="howto_error_responses.html#change-the-error-envelope-app-wide"><span class="std std-ref">error envelope</span></a>.
+With a shared base view you express that once and inherit it:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">Depends</span>
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">require_logged_in</span><span class="p">(</span><span class="n">user_id</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_current_user_id</span><span class="p">))</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">user_id</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">TenantScopedView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Internal base, never registered directly.&quot;&quot;&quot;</span>
+    <span class="n">dependencies</span> <span class="o">=</span> <span class="p">[</span><span class="n">Depends</span><span class="p">(</span><span class="n">require_logged_in</span><span class="p">)]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">build_query</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># Automatic tenant filtering for every read: list, pagination</span>
+        <span class="c1"># total, and single-row retrieve all route through this method.</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">build_query</span><span class="p">()</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">tenant_id</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">tenant_id</span>
+        <span class="p">)</span>
+
+
+<span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">InvoiceView</span><span class="p">(</span><span class="n">TenantScopedView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/invoices&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Invoice</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">InvoiceRead</span>
+
+
+<span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">CustomerView</span><span class="p">(</span><span class="n">TenantScopedView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/customers&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Customer</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">CustomerRead</span>
+</pre></div>
+</div>
+<p>The result is two views with one shared dependency and one shared filter. Add
+a new tenant-scoped resource and it inherits the same auth and scoping
+behavior. For soft delete, audit stamps, and permission scoping, see
+<a class="reference internal" href="howto_compose_views_with_mixins.html"><span class="std std-doc">Composing views with mixins</span></a>.</p>
+</section>
+<section id="override-a-single-tier">
+<h2>Override a single tier<a class="headerlink" href="#override-a-single-tier" title="Link to this heading">#</a></h2>
+<p><a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a> and <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a> split every CRUD verb into three tiers: the
+endpoint method (HTTP contract), the handler (authorization + commit
+bracket), and the business method (domain logic, auth-free and commit-free).
+One behavior change therefore means one method override, while routing,
+authorization, and the commit stay framework-owned. The tier model, both
+request lifecycles, the override decision table, and task-shaped recipes
+live in <a class="reference internal" href="customize.html"><span class="std std-doc">Customize RestView</span></a>.</p>
+</section>
+<section id="dependency-injection-on-class-attributes">
+<h2>Dependency injection on class attributes<a class="headerlink" href="#dependency-injection-on-class-attributes" title="Link to this heading">#</a></h2>
+<p>A class attribute on a view is wired as a FastAPI dependency only when its
+annotation either:</p>
+<ul class="simple">
+<li><p>carries an <code class="docutils literal notranslate"><span class="pre">Annotated[...,</span> <span class="pre">Depends(...)]</span></code> marker, or</p></li>
+<li><p>names one of FastAPI’s bare-injectable special types (<code class="docutils literal notranslate"><span class="pre">Request</span></code>,
+<code class="docutils literal notranslate"><span class="pre">Response</span></code>, <code class="docutils literal notranslate"><span class="pre">BackgroundTasks</span></code>, <code class="docutils literal notranslate"><span class="pre">WebSocket</span></code>).</p></li>
+</ul>
+<p>This matches FastAPI function parameters; a plain annotation like
+<code class="docutils literal notranslate"><span class="pre">model:</span> <span class="pre">type[Foo]</span></code> is only a type hint. The following view demonstrates each
+case:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">Request</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="c1"># Wired: AsyncSessionDep is Annotated[AsyncSession, Depends(...)].</span>
+    <span class="n">session</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">AsyncSessionDep</span>
+
+    <span class="c1"># Wired: Request is one of FastAPI&#39;s bare-injectable specials.</span>
+    <span class="n">request</span><span class="p">:</span> <span class="n">Request</span>
+
+    <span class="c1"># Wired: explicit Depends marker.</span>
+    <span class="n">current_user</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">User</span><span class="p">,</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_current_user</span><span class="p">)]</span>
+
+    <span class="c1"># NOT wired: plain annotation, just a type hint.</span>
+    <span class="n">model</span><span class="p">:</span> <span class="nb">type</span><span class="p">[</span><span class="n">User</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>The shipped <code class="docutils literal notranslate"><span class="pre">AsyncSessionDep</span></code> / <code class="docutils literal notranslate"><span class="pre">SessionDep</span></code> aliases carry <code class="docutils literal notranslate"><span class="pre">Depends</span></code>, so
+they keep working unchanged. The <code class="docutils literal notranslate"><span class="pre">request</span></code> attribute on <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView" title="fastapi_restly.views.BaseRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseRestView</span></code></a>
+relies on the special-type rule. Any custom dependency declared on a view
+class must use the <code class="docutils literal notranslate"><span class="pre">Annotated[X,</span> <span class="pre">Depends(...)]</span></code> form unless it is one of
+the bare-injectable types.</p>
+<p>This rule makes mixins safe: a mixin can declare what it expects from its
+host without shadowing the host’s wiring. See
+<a class="reference internal" href="howto_compose_views_with_mixins.html"><span class="std std-doc">Composing views with mixins</span></a> for the
+mixin pattern.</p>
+</section>
+<section id="when-to-use-view-directly">
+<h2>When to use <code class="docutils literal notranslate"><span class="pre">View</span></code> directly<a class="headerlink" href="#when-to-use-view-directly" title="Link to this heading">#</a></h2>
+<p><a class="reference internal" href="api/views.html#fastapi_restly.views.View" title="fastapi_restly.views.View"><code class="xref py py-class docutils literal notranslate"><span class="pre">View</span></code></a> is the right tool when your endpoints do not fit a CRUD shape:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">AuthView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">View</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/auth&quot;</span>
+    <span class="n">tags</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;auth&quot;</span><span class="p">]</span>
+
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/login&quot;</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">login</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">credentials</span><span class="p">:</span> <span class="n">LoginRequest</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Token</span><span class="p">:</span>
+        <span class="o">...</span>
+
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/refresh&quot;</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">refresh</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">token</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Token</span><span class="p">:</span>
+        <span class="o">...</span>
+
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/logout&quot;</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">logout</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="o">...</span>
+</pre></div>
+</div>
+<p>The class gives three related endpoints one shared prefix and tag, and a
+single place for auth dependencies, with no model, no schema, and no CRUD.</p>
+</section>
+<section id="when-not-to-use-a-cbv">
+<h2>When <em>not</em> to use a CBV<a class="headerlink" href="#when-not-to-use-a-cbv" title="Link to this heading">#</a></h2>
+<p>If you have a single one-off endpoint that does not share anything with
+others, write a plain function endpoint. CBVs pay off when you have shared
+metadata, shared dependencies, or related endpoints that benefit from being
+co-located. Do not reach for them just for the sake of structure.</p>
+</section>
+<section id="cross-references">
+<h2>Cross-references<a class="headerlink" href="#cross-references" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="customize.html"><span class="std std-doc">Customize RestView</span></a>: the tier model behind every CRUD verb,
+both request lifecycles, the override decision table, and every override
+recipe.</p></li>
+<li><p><a class="reference internal" href="howto_inheritance.html"><span class="std std-doc">Share Behaviour with Base Views</span></a>: patterns for
+multi-tenant scoping, role-based filtering, and shared mixins.</p></li>
+<li><p><a class="reference internal" href="api_reference.html"><span class="std std-doc">API Reference</span></a>: full <a class="reference internal" href="api/views.html#fastapi_restly.views.View" title="fastapi_restly.views.View"><code class="xref py py-class docutils literal notranslate"><span class="pre">View</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView" title="fastapi_restly.views.BaseRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseRestView</span></code></a>,
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a> signatures and class attributes.</p></li>
+</ul>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="tutorial_customizing.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Tutorial Part 2: Customizing Views</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="customize.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Customize RestView</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#when-to-use-what">When to use what</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#what-is-a-class-based-view">What is a class-based view?</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#why-cbvs-at-all">Why CBVs at all?</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#declaration-and-registration">Declaration and registration</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#true-subclassing">True subclassing</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#one-base-view-for-the-whole-app">One base view for the whole app</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#the-view-hierarchy">The view hierarchy</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#a-complete-example-a-tenant-scoped-base-view">A complete example: a tenant-scoped base view</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#override-a-single-tier">Override a single tier</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#dependency-injection-on-class-attributes">Dependency injection on class attributes</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#when-to-use-view-directly">When to use <code class="docutils literal notranslate"><span class="pre">View</span></code> directly</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#when-not-to-use-a-cbv">When <em>not</em> to use a CBV</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#cross-references">Cross-references</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+<p class="sidebar-newsletter">
+  <a href="newsletter.html">Subscribe to newsletter</a>
+</p></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, Rutger Prins.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>
