@@ -173,7 +173,12 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         loader_options = self.get_relationship_loader_options()
         if loader_options:
             query = query.options(*loader_options)
-        obj = self.session.scalars(query).first()
+        # unique(): parity with get_many. SQLAlchemy documents unique() as
+        # required for joined eager loads against collections; only .all()
+        # currently enforces it, but the shared loader seam accepts a
+        # joinedload-to-many, so both read paths follow the documented
+        # contract rather than an enforcement detail.
+        obj = self.session.scalars(query).unique().first()
         if obj is None:
             raise NotFound(f"{self.model.__name__} with id {id!r} was not found")
         return cast(ModelT, obj)
