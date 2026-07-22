@@ -64,9 +64,6 @@ html_context = {
 # Branding is shared with the docs build; templates stay local because the
 # docs newsletter template links by docname, which does not exist here.
 html_static_path = ["../docs/_static"]
-# Redirect stubs for renamed posts; gh-pages keep_files would otherwise
-# keep serving the stale page at the old URL.
-html_extra_path = ["_redirects"]
 templates_path = ["_templates"]
 html_logo = "../docs/_static/restly-cat.png"
 html_css_files = ["custom.css"]
