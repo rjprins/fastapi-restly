@@ -11,6 +11,7 @@ from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from starlette.datastructures import QueryParams
 
+import fastapi_restly as fr
 from fastapi_restly.models import DataclassBase
 from fastapi_restly.query import apply_list_params, create_list_params_schema
 from fastapi_restly.query._impl import (
@@ -621,3 +622,102 @@ class TestMakeWhereClause:
         # SQLite renders ILIKE as LIKE LOWER(...).
         assert "%oh%" in sql or "%%oh%%" in sql
         assert "lower" in sql.lower() or "ILIKE" in sql
+
+
+def test_three_level_dotted_filter_executes_with_correct_joins(sync_db):
+    """Regression: a 3-segment dotted path (``city.country.code``) resolved and
+    was advertised, but 500'd at execution — filter joins were collected into
+    an unordered set, so the second hop could be joined before the first,
+    which SQLAlchemy renders as an implicit cartesian product (ambiguous-join
+    OperationalError). Joins now apply in path order, as sorting always did,
+    so deep paths execute and return exactly the matching rows."""
+    engine, make_session = sync_db
+
+    class Country(fr.IDBase):
+        code: Mapped[str]
+
+    class City(fr.IDBase):
+        name: Mapped[str]
+        country_id: Mapped[int] = mapped_column(ForeignKey("country.id"))
+        # init=False: constructing with the FK id must not have the
+        # relationship default of None null it back out at flush.
+        country: Mapped[Country] = relationship(init=False)
+
+    class Resident(fr.IDBase):
+        name: Mapped[str]
+        city_id: Mapped[int] = mapped_column(ForeignKey("city.id"))
+        city: Mapped[City] = relationship(init=False)
+
+    class CountryRead(fr.IDSchema):
+        code: str
+
+    class CityRead(fr.IDSchema):
+        name: str
+        country: CountryRead | None = None
+
+    class ResidentRead(fr.IDSchema):
+        name: str
+        city: CityRead | None = None
+
+    # The deep path is advertised — and must therefore execute.
+    params_schema = create_list_params_schema(ResidentRead, Resident)
+    assert "city.country.code" in params_schema.model_fields
+
+    fr.DataclassBase.metadata.create_all(engine)
+
+    with make_session() as session:
+        nl = Country(code="NL")
+        de = Country(code="DE")
+        session.add_all([nl, de])
+        session.flush()
+        ams = City(name="Amsterdam", country_id=nl.id)
+        ber = City(name="Berlin", country_id=de.id)
+        session.add_all([ams, ber])
+        session.flush()
+        session.add_all(
+            [
+                Resident(name="Anna", city_id=ams.id),
+                Resident(name="Arend", city_id=ams.id),
+                Resident(name="Bert", city_id=ber.id),
+            ]
+        )
+        session.flush()
+
+        def names(query_params: dict[str, str]) -> list[str]:
+            query = apply_list_params(
+                QueryParams(query_params),
+                sqlalchemy.select(Resident),
+                Resident,
+                ResidentRead,
+            )
+            return [r.name for r in session.scalars(query).all()]
+
+        # Each NL resident exactly once — a cartesian product would either
+        # raise or duplicate rows.
+        assert names({"city.country.code": "NL", "sort": "name"}) == ["Anna", "Arend"]
+
+        # A shared first hop (deep path + 2-level path) dedupes cleanly.
+        assert names(
+            {"city.country.code": "NL", "city.name": "Amsterdam", "sort": "name"}
+        ) == ["Anna", "Arend"]
+
+        # Sorting on the same deep path keeps working alongside the filter.
+        assert names({"city.country.code__ne": "NL", "sort": "-city.country.code"}) == [
+            "Bert"
+        ]
+
+        # Pin the join structure in the compiled SQL: hops appear in path
+        # order and nothing falls into a comma-separated (cartesian) FROM
+        # element. (The pre-fix failure depended on set-iteration order --
+        # allocation addresses -- so pure execution asserts could pass by
+        # luck in some run contexts; the structural assert narrows that.)
+        query = apply_list_params(
+            QueryParams({"city.country.code": "NL"}),
+            sqlalchemy.select(Resident),
+            Resident,
+            ResidentRead,
+        )
+        sql = _render_sql(query)
+        from_clause = sql[sql.index("FROM") : sql.index("WHERE")]
+        assert "," not in from_clause, from_clause
+        assert from_clause.index("JOIN city") < from_clause.index("JOIN country")

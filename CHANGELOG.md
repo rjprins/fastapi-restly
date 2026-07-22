@@ -63,6 +63,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Filtering on a dotted path deeper than one relationship hop
+  (`?city.country.code=NL`) no longer fails with a 500. Deep paths were
+  advertised and resolved, but the filter clause collected its joins into an
+  unordered set, so the second hop could be joined before the first — an
+  implicit cartesian product that the database rejects as an ambiguous join.
+  Filter joins now apply in path order, as sorting always did. Two shapes
+  remain unsupported and are now documented as such: paths through a
+  self-referential relationship, and two filter paths that reach the same
+  table — those need per-path join aliasing.
+
 - Registering the same view class twice on the same app or router
   (`fr.include_view(app, V); fr.include_view(app, V)` — a double import, or the
   decorator form combined with an explicit call) no longer mounts its routes

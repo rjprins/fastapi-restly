@@ -521,7 +521,12 @@ def _apply_filtering(
     filters: dict[InstrumentedAttribute[Any], list[ColumnElement[Any]]] = defaultdict(
         list
     )
-    joins: set[InstrumentedAttribute[Any]] = set()
+    # Ordered and deduped (dict, not set): a multi-hop path such as
+    # ``city.country.code`` must join each hop from the previous hop's entity,
+    # so joins are applied in path order. An unordered set could join the
+    # second hop first, which SQLAlchemy renders as an implicit cartesian
+    # product (an ambiguous-join OperationalError at execution).
+    joins: dict[InstrumentedAttribute[Any], None] = {}
 
     for key, raw_value in query_params.multi_items():
         if key in _RESERVED_NAMES:
@@ -533,7 +538,8 @@ def _apply_filtering(
             column_name, op = key, "eq"
 
         column_joins, column = _resolve_column(model, column_name, schema_cls)
-        joins.update(column_joins)
+        for column_join in column_joins:
+            joins.setdefault(column_join, None)
         parser = functools.partial(_parse_value, schema_cls, column_name)
 
         if op == "isnull":

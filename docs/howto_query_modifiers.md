@@ -126,6 +126,10 @@ name with `-` for descending order:
 GET /users/?sort=-created_at,name
 ```
 
+Dotted relation paths sort exactly as they filter:
+`?sort=-city.country.code` orders by the related column, joining each hop
+of the path.
+
 When no `sort` parameter is given and the model has an `id` column, the
 framework automatically applies `ORDER BY id ASC`. Models without an `id`
 column return results in an unspecified order.
@@ -217,7 +221,11 @@ The relation must be defined on both the SQLAlchemy model (as a
 [nested schema field](howto_relationship_idschema.md#nested-relationship-objects)).
 Optional nested schemas (`UserRead | None`) and deep nesting
 (`?blog.author.name=Alice`) are supported. Lists of nested schemas
-(`list[UserRead]`) are not.
+(`list[UserRead]`) are not. Two current limitations: paths through a
+self-referential relationship (`?manager.name=...` on a model relating to
+itself), and combining two filter paths that reach the same table
+(`?city.country.code=NL&club.country.code=NL`), are not supported — the
+joins are not aliased per path.
 
 Aliases apply to **every** segment of the dotted path, both the relation
 field and the nested column, because the list-params keys always follow
