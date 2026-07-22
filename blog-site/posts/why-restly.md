@@ -4,7 +4,7 @@ date: 2026-07-22
 category: meta
 ---
 
-# Why I made FastAPI-Restly
+# FastAPI-Restly: the story so far
 
 Four years ago I joined the team at ClearBlue Markets. They had started a new project where customers could see their position on CO2 credits markets.
 CO2 credit markets and EU emission rules is a fascinating and promising niche, btw.
