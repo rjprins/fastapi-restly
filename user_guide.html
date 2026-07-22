@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>How-To Guides &#8212; FastAPI-Restly 0.7.0 documentation</title>
+    <title>How-To Guides &#8212; FastAPI-Restly 0.8.0 documentation</title>
   
   
   
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=fe7df9b0"></script>
+    <script src="_static/documentation_options.js?v=486e5634"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -61,11 +61,11 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Use Restly in an Existing Project" href="howto_existing_project.html" />
-    <link rel="prev" title="How Overrides Work: The Three Tiers" href="the_handle_design.html" />
+    <link rel="prev" title="Customize RestView" href="customize.html" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.7" />
+  <meta name="docsearch:version" content="0.8" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
 <!-- GoatCounter: cookieless, privacy-friendly analytics (ignores localhost) -->
 <script data-goatcounter="https://fastapi-restly.goatcounter.com/count"
@@ -176,8 +176,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="the_handle_design.html">
-    Overrides
+  <a class="nav-link nav-internal" href="customize.html">
+    Customize
   </a>
 </li>
 
@@ -206,6 +206,13 @@
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="about.html">
     About
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
   </a>
 </li>
 
@@ -340,8 +347,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="the_handle_design.html">
-    Overrides
+  <a class="nav-link nav-internal" href="customize.html">
+    Customize
   </a>
 </li>
 
@@ -370,6 +377,13 @@
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="about.html">
     About
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
   </a>
 </li>
 
@@ -438,12 +452,12 @@
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="howto_existing_project.html">Use Restly in an Existing Project</a></li>
-<li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_custom_schema.html">Custom Schemas and Field Types</a></li>
-<li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys Using IDRef</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys and Relationships</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_response_schema.html">Response Envelopes and List Metadata</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_query_modifiers.html">Filter, Sort, and Paginate Lists</a></li>
-<li class="toctree-l1"><a class="reference internal" href="howto_override_endpoints.html">Override CRUD Behavior and Add Custom Endpoints</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_error_responses.html">Shape Error Responses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_inheritance.html">Share Behaviour with Base Views</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_compose_views_with_mixins.html">Compose Views with Mixins</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_typing.html">Use Type Annotations</a></li>
@@ -510,9 +524,14 @@
                   
   <section id="how-to-guides">
 <h1>How-To Guides<a class="headerlink" href="#how-to-guides" title="Link to this heading">#</a></h1>
-<p>Task-focused guides for working with FastAPI-Restly. New to the framework?
-Start with <a class="reference internal" href="getting_started.html"><span class="std std-doc">Getting Started</span></a>, then the
-<a class="reference internal" href="tutorial.html"><span class="std std-doc">Tutorial</span></a>; come back here when you have a concrete task.</p>
+<p>These guides are task-focused: each one shows how to accomplish a specific
+goal with FastAPI-Restly. If you are new to the framework, start with
+<a class="reference internal" href="getting_started.html"><span class="std std-doc">Getting Started</span></a>, then the <a class="reference internal" href="tutorial.html"><span class="std std-doc">Tutorial</span></a>, and
+come back here when you have a concrete task.</p>
+<section id="adopting-and-modeling">
+<h2>Adopting and Modeling<a class="headerlink" href="#adopting-and-modeling" title="Link to this heading">#</a></h2>
+<p>These guides cover bringing Restly into a codebase and defining the models and
+schemas it works from.</p>
 <div class="sd-container-fluid sd-sphinx-override sd-mb-4 docutils">
 <div class="sd-row sd-row-cols-1 sd-row-cols-xs-1 sd-row-cols-sm-2 sd-row-cols-md-2 sd-row-cols-lg-2 sd-g-3 sd-g-xs-3 sd-g-sm-3 sd-g-md-3 sd-g-lg-3 docutils">
 <div class="sd-col sd-d-flex-row docutils">
@@ -528,17 +547,6 @@ Use Restly in an Existing Project</div>
 <div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
 <div class="sd-card-body docutils">
 <div class="sd-card-title sd-font-weight-bold docutils">
-Patterns</div>
-<p class="sd-card-text">The idiomatic answers: nested resources and sub-resources, a different list
-schema, restoring soft-deleted rows, webhook receivers, login flows, custom
-actions, tenant scoping.</p>
-</div>
-<a class="sd-stretched-link sd-hide-link-text reference internal" href="patterns.html"><span class="doc">Patterns</span></a></div>
-</div>
-<div class="sd-col sd-d-flex-row docutils">
-<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
-<div class="sd-card-body docutils">
-<div class="sd-card-title sd-font-weight-bold docutils">
 Custom Schemas and Field Types</div>
 <p class="sd-card-text">Define schemas with field aliases, write-only fields, and read-only computed fields.</p>
 </div>
@@ -548,10 +556,29 @@ Custom Schemas and Field Types</div>
 <div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
 <div class="sd-card-body docutils">
 <div class="sd-card-title sd-font-weight-bold docutils">
-Work with Foreign Keys Using IDRef</div>
-<p class="sd-card-text">Reference related objects by ID with automatic resolution and 404 on missing.</p>
+Work with Foreign Keys and Relationships</div>
+<p class="sd-card-text">Check foreign-key columns with MustExist and resolve relationships with IDRef or IDSchema, with a 404 on missing rows.</p>
 </div>
-<a class="sd-stretched-link sd-hide-link-text reference internal" href="howto_relationship_idschema.html"><span class="doc">Work with Foreign Keys Using IDRef</span></a></div>
+<a class="sd-stretched-link sd-hide-link-text reference internal" href="howto_relationship_idschema.html"><span class="doc">Work with Foreign Keys and Relationships</span></a></div>
+</div>
+</div>
+</div>
+</section>
+<section id="shaping-requests-and-responses">
+<h2>Shaping Requests and Responses<a class="headerlink" href="#shaping-requests-and-responses" title="Link to this heading">#</a></h2>
+<p>These guides control what list endpoints accept and what your API returns,
+including errors.</p>
+<div class="sd-container-fluid sd-sphinx-override sd-mb-4 docutils">
+<div class="sd-row sd-row-cols-1 sd-row-cols-xs-1 sd-row-cols-sm-2 sd-row-cols-md-2 sd-row-cols-lg-2 sd-g-3 sd-g-xs-3 sd-g-sm-3 sd-g-md-3 sd-g-lg-3 docutils">
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
+<div class="sd-card-body docutils">
+<div class="sd-card-title sd-font-weight-bold docutils">
+Response Envelopes and List Metadata</div>
+<p class="sd-card-text">Wrap successful responses in <code class="docutils literal notranslate"><span class="pre">{data}</span></code> envelopes and add list metadata such as
+total counts, while keeping Restly’s handlers and serialization.</p>
+</div>
+<a class="sd-stretched-link sd-hide-link-text reference internal" href="howto_response_schema.html"><span class="doc">Response Envelopes and List Metadata</span></a></div>
 </div>
 <div class="sd-col sd-d-flex-row docutils">
 <div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
@@ -566,21 +593,41 @@ Filter, Sort, and Paginate Lists</div>
 <div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
 <div class="sd-card-body docutils">
 <div class="sd-card-title sd-font-weight-bold docutils">
-Override CRUD Behavior and Add Custom Endpoints</div>
-<p class="sd-card-text">Override the business methods (<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create" title="fastapi_restly.views.RestView.create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.update" title="fastapi_restly.views.RestView.update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">update</span></code></a>, …), the request handlers,
-or the route shells, and add custom routes alongside generated CRUD.</p>
+Shape Error Responses</div>
+<p class="sd-card-text">Learn the typed <code class="docutils literal notranslate"><span class="pre">fr.exc</span></code> exceptions to raise from overrides, the 422-vs-400
+split, and app-wide error envelopes (problem+json).</p>
 </div>
-<a class="sd-stretched-link sd-hide-link-text reference internal" href="howto_override_endpoints.html"><span class="doc">Override CRUD Behavior and Add Custom Endpoints</span></a></div>
+<a class="sd-stretched-link sd-hide-link-text reference internal" href="howto_error_responses.html"><span class="doc">Shape Error Responses</span></a></div>
+</div>
+</div>
+</div>
+</section>
+<section id="customizing-views">
+<h2>Customizing Views<a class="headerlink" href="#customizing-views" title="Link to this heading">#</a></h2>
+<p>These guides change what the generated views do, from overriding a single
+method to sharing behaviour across many views.</p>
+<div class="sd-container-fluid sd-sphinx-override sd-mb-4 docutils">
+<div class="sd-row sd-row-cols-1 sd-row-cols-xs-1 sd-row-cols-sm-2 sd-row-cols-md-2 sd-row-cols-lg-2 sd-g-3 sd-g-xs-3 sd-g-sm-3 sd-g-md-3 sd-g-lg-3 docutils">
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
+<div class="sd-card-body docutils">
+<div class="sd-card-title sd-font-weight-bold docutils">
+Patterns</div>
+<p class="sd-card-text">Find the idiomatic answers for nested resources and sub-resources, a
+different list schema, restoring soft-deleted rows, webhook receivers, login
+flows, custom actions, and tenant scoping.</p>
+</div>
+<a class="sd-stretched-link sd-hide-link-text reference internal" href="patterns.html"><span class="doc">Patterns</span></a></div>
 </div>
 <div class="sd-col sd-d-flex-row docutils">
 <div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
 <div class="sd-card-body docutils">
 <div class="sd-card-title sd-font-weight-bold docutils">
-Shape Error Responses</div>
-<p class="sd-card-text">The typed <code class="docutils literal notranslate"><span class="pre">fr.exc</span></code> exceptions to raise from overrides, the 422-vs-400 split,
-and app-wide error envelopes (problem+json).</p>
+Customize RestView</div>
+<p class="sd-card-text">Override the business methods (<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create" title="fastapi_restly.views.RestView.create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.update" title="fastapi_restly.views.RestView.update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">update</span></code></a>, …), the handlers,
+or the endpoint methods, and add custom routes alongside generated CRUD.</p>
 </div>
-<a class="sd-stretched-link sd-hide-link-text reference internal" href="howto_error_responses.html"><span class="doc">Shape Error Responses</span></a></div>
+<a class="sd-stretched-link sd-hide-link-text reference internal" href="customize.html"><span class="doc">Customize RestView</span></a></div>
 </div>
 <div class="sd-col sd-d-flex-row docutils">
 <div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
@@ -597,7 +644,7 @@ access control across multiple views.</p>
 <div class="sd-card-body docutils">
 <div class="sd-card-title sd-font-weight-bold docutils">
 Compose Views with Mixins</div>
-<p class="sd-card-text">Layer cross-cutting concerns — tenant scoping, soft delete, audit stamping —
+<p class="sd-card-text">Layer cross-cutting concerns (tenant scoping, soft delete, audit stamping)
 through cooperative mixins.</p>
 </div>
 <a class="sd-stretched-link sd-hide-link-text reference internal" href="howto_compose_views_with_mixins.html"><span class="doc">Compose Views with Mixins</span></a></div>
@@ -612,6 +659,15 @@ fighting the framework.</p>
 </div>
 <a class="sd-stretched-link sd-hide-link-text reference internal" href="howto_typing.html"><span class="doc">Use Type Annotations</span></a></div>
 </div>
+</div>
+</div>
+</section>
+<section id="operating-and-testing">
+<h2>Operating and Testing<a class="headerlink" href="#operating-and-testing" title="Link to this heading">#</a></h2>
+<p>These guides connect the API to the outside world: frontends, OpenAPI
+consumers, tests, and production deployment.</p>
+<div class="sd-container-fluid sd-sphinx-override sd-mb-4 docutils">
+<div class="sd-row sd-row-cols-1 sd-row-cols-xs-1 sd-row-cols-sm-2 sd-row-cols-md-2 sd-row-cols-lg-2 sd-g-3 sd-g-xs-3 sd-g-sm-3 sd-g-md-3 sd-g-lg-3 docutils">
 <div class="sd-col sd-d-flex-row docutils">
 <div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
 <div class="sd-card-body docutils">
@@ -626,8 +682,8 @@ React Admin Integration</div>
 <div class="sd-card-body docutils">
 <div class="sd-card-title sd-font-weight-bold docutils">
 Customize the OpenAPI Schema</div>
-<p class="sd-card-text">Per-view tags and responses, custom-route metadata, replacing a generated
-route’s documented contract, and <code class="docutils literal notranslate"><span class="pre">x-resource-ref</span></code>.</p>
+<p class="sd-card-text">Set per-view tags and responses, add metadata to custom routes, replace a
+generated route’s documented contract, and use <code class="docutils literal notranslate"><span class="pre">x-resource-ref</span></code>.</p>
 </div>
 <a class="sd-stretched-link sd-hide-link-text reference internal" href="howto_openapi.html"><span class="doc">Customize the OpenAPI Schema</span></a></div>
 </div>
@@ -636,8 +692,8 @@ route’s documented contract, and <code class="docutils literal notranslate"><s
 <div class="sd-card-body docutils">
 <div class="sd-card-title sd-font-weight-bold docutils">
 Test APIs with RestlyTestClient and Fixtures</div>
-<p class="sd-card-text">A copy-paste conftest, savepoint-isolated fixtures, and the full fixture
-reference.</p>
+<p class="sd-card-text">Start from a copy-paste conftest, work with savepoint-isolated fixtures, and
+consult the full fixture reference.</p>
 </div>
 <a class="sd-stretched-link sd-hide-link-text reference internal" href="howto_testing.html"><span class="doc">Test APIs with RestlyTestClient and Fixtures</span></a></div>
 </div>
@@ -646,7 +702,8 @@ reference.</p>
 <div class="sd-card-body docutils">
 <div class="sd-card-title sd-font-weight-bold docutils">
 Deploying</div>
-<p class="sd-card-text">Production engine config, Alembic migrations, and an ASGI checklist.</p>
+<p class="sd-card-text">Configure a production engine, set up Alembic migrations, and follow an ASGI
+checklist.</p>
 </div>
 <a class="sd-stretched-link sd-hide-link-text reference internal" href="deploying.html"><span class="doc">Deploying</span></a></div>
 </div>
@@ -654,6 +711,7 @@ Deploying</div>
 </div>
 <div class="toctree-wrapper compound">
 </div>
+</section>
 </section>
 
 
@@ -667,12 +725,12 @@ Deploying</div>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="the_handle_design.html"
+       href="customize.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">How Overrides Work: The Three Tiers</p>
+        <p class="prev-next-title">Customize RestView</p>
       </div>
     </a>
     <a class="right-next"
@@ -694,6 +752,21 @@ Deploying</div>
                 <dialog id="pst-secondary-sidebar-modal"></dialog>
                 <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
 
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#adopting-and-modeling">Adopting and Modeling</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#shaping-requests-and-responses">Shaping Requests and Responses</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#customizing-views">Customizing Views</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#operating-and-testing">Operating and Testing</a></li>
+</ul>
+  </nav></div>
 
   <div class="sidebar-secondary-item">
 <p class="sidebar-newsletter">

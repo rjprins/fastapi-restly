@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Views API &#8212; FastAPI-Restly 0.7.0 documentation</title>
+    <title>Views API &#8212; FastAPI-Restly 0.8.0 documentation</title>
   
   
   
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=fe7df9b0"></script>
+    <script src="../_static/documentation_options.js?v=486e5634"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -65,7 +65,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.7" />
+  <meta name="docsearch:version" content="0.8" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
 <!-- GoatCounter: cookieless, privacy-friendly analytics (ignores localhost) -->
 <script data-goatcounter="https://fastapi-restly.goatcounter.com/count"
@@ -176,8 +176,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../the_handle_design.html">
-    Overrides
+  <a class="nav-link nav-internal" href="../customize.html">
+    Customize
   </a>
 </li>
 
@@ -206,6 +206,13 @@
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="../about.html">
     About
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
   </a>
 </li>
 
@@ -340,8 +347,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../the_handle_design.html">
-    Overrides
+  <a class="nav-link nav-internal" href="../customize.html">
+    Customize
   </a>
 </li>
 
@@ -370,6 +377,13 @@
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="../about.html">
     About
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
   </a>
 </li>
 
@@ -515,20 +529,24 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="module-fastapi_restly.views">
-<span id="views-api"></span><h1>Views API<a class="headerlink" href="#module-fastapi_restly.views" title="Link to this heading">#</a></h1>
-<p>Class-based views: generated CRUD plus explicit override tiers.</p>
+  <section id="views-api">
+<h1>Views API<a class="headerlink" href="#views-api" title="Link to this heading">#</a></h1>
+<p><code class="docutils literal notranslate"><span class="pre">fastapi_restly.views</span></code> implements the class-based view layer: <code class="docutils literal notranslate"><span class="pre">RestView</span></code>
+and <code class="docutils literal notranslate"><span class="pre">AsyncRestView</span></code> generate CRUD endpoints from a model, <code class="docutils literal notranslate"><span class="pre">View</span></code> is the
+bare primitive for hand-written endpoint groups, and <code class="docutils literal notranslate"><span class="pre">include_view()</span></code>
+registers either on a FastAPI app.</p>
+<p id="module-fastapi_restly.views">Class-based views: generated CRUD plus explicit override tiers.</p>
 <p>Every CRUD verb on <code class="docutils literal notranslate"><span class="pre">RestView</span></code> / <code class="docutils literal notranslate"><span class="pre">AsyncRestView</span></code> exists at three tiers —
 name the tier that owns your change and override one method:</p>
 <ol class="arabic simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">&lt;verb&gt;_endpoint</span></code> — the route shell (wire tier): the <code class="docutils literal notranslate"><span class="pre">&#64;route</span></code>, FastAPI
+<li><p><code class="docutils literal notranslate"><span class="pre">&lt;verb&gt;_endpoint</span></code> — the endpoint method: the <code class="docutils literal notranslate"><span class="pre">&#64;route</span></code>, FastAPI
 signature, <code class="docutils literal notranslate"><span class="pre">response_model</span></code>, and <code class="docutils literal notranslate"><span class="pre">to_response</span></code>. Replace only to change
 the HTTP contract.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code> — the request handler: runs <code class="docutils literal notranslate"><span class="pre">authorize</span></code> and the commit
+<li><p><code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code> — the handler: runs <code class="docutils literal notranslate"><span class="pre">authorize</span></code> and the commit
 bracket (<code class="docutils literal notranslate"><span class="pre">before_commit</span></code> -&gt; commit -&gt; <code class="docutils literal notranslate"><span class="pre">after_commit</span></code>). Override for
 orchestration or timing.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">&lt;verb&gt;</span></code> (<code class="docutils literal notranslate"><span class="pre">get_many</span></code>, <code class="docutils literal notranslate"><span class="pre">get_one</span></code>, <code class="docutils literal notranslate"><span class="pre">create</span></code>, <code class="docutils literal notranslate"><span class="pre">update</span></code>, <code class="docutils literal notranslate"><span class="pre">delete</span></code>)
-— the business verb: the domain operation, auth-free and commit-free. The
+— the business method: the domain operation, auth-free and commit-free. The
 usual override point.</p></li>
 </ol>
 <p>Cross-cutting seams: <code class="docutils literal notranslate"><span class="pre">build_query</span></code> (read scope/visibility), <code class="docutils literal notranslate"><span class="pre">authorize</span></code>
@@ -580,9 +598,9 @@ with ra-data-simple-rest.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="fastapi_restly.views.AsyncReactAdminView.get_many_endpoint">
 <em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_many_endpoint</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></span><a class="headerlink" href="#fastapi_restly.views.AsyncReactAdminView.get_many_endpoint" title="Link to this definition">#</a></dt>
-<dd><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code> route shell (wire tier). Override <code class="docutils literal notranslate"><span class="pre">get_many</span></code> for domain
+<dd><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code> endpoint method. Override <code class="docutils literal notranslate"><span class="pre">get_many</span></code> for domain
 logic, <code class="docutils literal notranslate"><span class="pre">handle_get_many</span></code> for orchestration, <code class="docutils literal notranslate"><span class="pre">to_response</span></code> for the
-response shape; replace this shell only to change the HTTP contract.</p>
+response shape; replace this method only to change the HTTP contract.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -604,11 +622,11 @@ Basic usage:</p>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Foo</span>
 </pre></div>
 </div>
-<p>Each verb is three tiers (see “the handle design” in the docs):</p>
+<p>Each verb is three tiers (see “Customize RestView” in the docs):</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">&lt;verb&gt;_endpoint</span></code> — the route shell (wire). Owns the HTTP signature,
+<li><p><code class="docutils literal notranslate"><span class="pre">&lt;verb&gt;_endpoint</span></code> — the endpoint method. Owns the HTTP signature,
 <code class="docutils literal notranslate"><span class="pre">response_model</span></code>, and <code class="docutils literal notranslate"><span class="pre">to_response</span></code>. Rarely overridden.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code> — the request handler. Owns <code class="docutils literal notranslate"><span class="pre">authorize</span></code> and the
+<li><p><code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code> — the handler. Owns <code class="docutils literal notranslate"><span class="pre">authorize</span></code> and the
 commit bracket (<code class="docutils literal notranslate"><span class="pre">before_commit</span></code> -&gt; commit -&gt; <code class="docutils literal notranslate"><span class="pre">after_commit</span></code>); returns
 the domain object. Reuse from custom actions to get the bracket.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">&lt;verb&gt;</span></code> (<code class="docutils literal notranslate"><span class="pre">get_many</span></code> / <code class="docutils literal notranslate"><span class="pre">get_one</span></code> / <code class="docutils literal notranslate"><span class="pre">create</span></code> / <code class="docutils literal notranslate"><span class="pre">update</span></code> /
@@ -624,7 +642,7 @@ enables dirty detection (“notify only if the status changed”).</p>
 <code class="docutils literal notranslate"><span class="pre">new</span></code> or the database here is NOT persisted. A mutation to <code class="docutils literal notranslate"><span class="pre">new</span></code> also
 leaks into this request’s response (which serializes <code class="docutils literal notranslate"><span class="pre">new</span></code> after this
 hook) while being silently discarded from storage – do the mutation in
-the business verb or <code class="docutils literal notranslate"><span class="pre">before_commit</span></code> instead.</p>
+the business method or <code class="docutils literal notranslate"><span class="pre">before_commit</span></code> instead.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -686,10 +704,10 @@ logic (e.g. hash a password): never commits, so the bracket can’t break.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="fastapi_restly.views.AsyncRestView.create_endpoint">
 <em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">create_endpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">schema_obj</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></span><a class="headerlink" href="#fastapi_restly.views.AsyncRestView.create_endpoint" title="Link to this definition">#</a></dt>
-<dd><p><code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/</span></code> route shell (wire tier). Override <code class="docutils literal notranslate"><span class="pre">create</span></code> for domain
+<dd><p><code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/</span></code> endpoint method. Override <code class="docutils literal notranslate"><span class="pre">create</span></code> for domain
 logic (it is commit-free; the handler owns the commit),
 <code class="docutils literal notranslate"><span class="pre">handle_create</span></code> for orchestration, <code class="docutils literal notranslate"><span class="pre">to_response</span></code> for the response
-shape; replace this shell only to change the HTTP contract.</p>
+shape; replace this method only to change the HTTP contract.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -702,9 +720,9 @@ timestamp instead of removing the row.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="fastapi_restly.views.AsyncRestView.delete_endpoint">
 <em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">delete_endpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></span><a class="headerlink" href="#fastapi_restly.views.AsyncRestView.delete_endpoint" title="Link to this definition">#</a></dt>
-<dd><p><code class="docutils literal notranslate"><span class="pre">DELETE</span> <span class="pre">/{id}</span></code> route shell (wire tier). Override <code class="docutils literal notranslate"><span class="pre">delete</span></code> for
+<dd><p><code class="docutils literal notranslate"><span class="pre">DELETE</span> <span class="pre">/{id}</span></code> endpoint method. Override <code class="docutils literal notranslate"><span class="pre">delete</span></code> for
 domain logic (e.g. soft delete), <code class="docutils literal notranslate"><span class="pre">handle_delete</span></code> for orchestration;
-replace this shell only to change the HTTP contract (e.g. return the
+replace this method only to change the HTTP contract (e.g. return the
 deleted object instead of 204).</p>
 </dd></dl>
 
@@ -720,9 +738,9 @@ the <code class="docutils literal notranslate"><span class="pre">authorize</span
 <dl class="py method">
 <dt class="sig sig-object py" id="fastapi_restly.views.AsyncRestView.get_many_endpoint">
 <em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_many_endpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query_params</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></span><a class="headerlink" href="#fastapi_restly.views.AsyncRestView.get_many_endpoint" title="Link to this definition">#</a></dt>
-<dd><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code> route shell (wire tier). Override <code class="docutils literal notranslate"><span class="pre">get_many</span></code> for domain
+<dd><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code> endpoint method. Override <code class="docutils literal notranslate"><span class="pre">get_many</span></code> for domain
 logic, <code class="docutils literal notranslate"><span class="pre">handle_get_many</span></code> for orchestration, <code class="docutils literal notranslate"><span class="pre">to_response</span></code> for the
-response shape; replace this shell only to change the HTTP contract.</p>
+response shape; replace this method only to change the HTTP contract.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -736,10 +754,10 @@ scope is a clean 404 for every caller. <code class="docutils literal notranslate
 <dl class="py method">
 <dt class="sig sig-object py" id="fastapi_restly.views.AsyncRestView.get_one_endpoint">
 <em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_one_endpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></span><a class="headerlink" href="#fastapi_restly.views.AsyncRestView.get_one_endpoint" title="Link to this definition">#</a></dt>
-<dd><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/{id}</span></code> route shell (wire tier). Override <code class="docutils literal notranslate"><span class="pre">get_one</span></code> for domain
+<dd><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/{id}</span></code> endpoint method. Override <code class="docutils literal notranslate"><span class="pre">get_one</span></code> for domain
 logic (visibility lives in <code class="docutils literal notranslate"><span class="pre">build_query</span></code>), <code class="docutils literal notranslate"><span class="pre">handle_get_one</span></code> for
 orchestration, <code class="docutils literal notranslate"><span class="pre">to_response</span></code> for the response shape; replace this
-shell only to change the HTTP contract.</p>
+method only to change the HTTP contract.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -755,7 +773,7 @@ shell only to change the HTTP contract.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="fastapi_restly.views.AsyncRestView.handle_get_many">
 <em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">handle_get_many</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query_params</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#fastapi_restly.views.ListingResult" title="fastapi_restly.views._base.ListingResult"><span class="pre">ListingResult</span></a><span class="p"><span class="pre">[</span></span><span class="pre">ModelT</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#fastapi_restly.views.AsyncRestView.handle_get_many" title="Link to this definition">#</a></dt>
-<dd><p>List request handler: <code class="docutils literal notranslate"><span class="pre">authorize</span></code> then the <code class="docutils literal notranslate"><span class="pre">get_many</span></code> domain op.</p>
+<dd><p>List handler: <code class="docutils literal notranslate"><span class="pre">authorize</span></code> then the <code class="docutils literal notranslate"><span class="pre">get_many</span></code> domain op.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -784,9 +802,9 @@ shell only to change the HTTP contract.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="fastapi_restly.views.AsyncRestView.update_endpoint">
 <em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">update_endpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">schema_obj</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></span><a class="headerlink" href="#fastapi_restly.views.AsyncRestView.update_endpoint" title="Link to this definition">#</a></dt>
-<dd><p><code class="docutils literal notranslate"><span class="pre">PATCH</span> <span class="pre">/{id}</span></code> route shell (wire tier). Override <code class="docutils literal notranslate"><span class="pre">update</span></code> for
+<dd><p><code class="docutils literal notranslate"><span class="pre">PATCH</span> <span class="pre">/{id}</span></code> endpoint method. Override <code class="docutils literal notranslate"><span class="pre">update</span></code> for
 domain logic, <code class="docutils literal notranslate"><span class="pre">handle_update</span></code> for orchestration, <code class="docutils literal notranslate"><span class="pre">to_response</span></code> for
-the response shape; replace this shell only to change the HTTP
+the response shape; replace this method only to change the HTTP
 contract.</p>
 </dd></dl>
 
@@ -932,10 +950,10 @@ prior state); the default delegates to <code class="xref py py-func docutils lit
 <dl class="py method">
 <dt class="sig sig-object py" id="fastapi_restly.views.BaseRestView.to_response">
 <span class="sig-name descname"><span class="pre">to_response</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obj_or_list</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">shape</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#fastapi_restly.views.ResponseShape" title="fastapi_restly.views._base.ResponseShape"><span class="pre">ResponseShape</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">ResponseShape.SINGLE</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></span><a class="headerlink" href="#fastapi_restly.views.BaseRestView.to_response" title="Link to this definition">#</a></dt>
-<dd><p>Route-shell response boundary.</p>
+<dd><p>Endpoint-method response boundary.</p>
 <p><code class="docutils literal notranslate"><span class="pre">shape</span></code> selects the wire form: single object, listing, or empty. It is
 not the write-action name. Override for envelopes or shape-wide status
-behavior; per-endpoint projections belong in the route shell.</p>
+behavior; per-endpoint projections belong in the endpoint method.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -984,9 +1002,9 @@ with ra-data-simple-rest.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="fastapi_restly.views.ReactAdminView.get_many_endpoint">
 <span class="sig-name descname"><span class="pre">get_many_endpoint</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></span><a class="headerlink" href="#fastapi_restly.views.ReactAdminView.get_many_endpoint" title="Link to this definition">#</a></dt>
-<dd><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code> route shell (wire tier). Override <code class="docutils literal notranslate"><span class="pre">get_many</span></code> for domain
+<dd><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code> endpoint method. Override <code class="docutils literal notranslate"><span class="pre">get_many</span></code> for domain
 logic, <code class="docutils literal notranslate"><span class="pre">handle_get_many</span></code> for orchestration, <code class="docutils literal notranslate"><span class="pre">to_response</span></code> for the
-response shape; replace this shell only to change the HTTP contract.</p>
+response shape; replace this method only to change the HTTP contract.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -1000,10 +1018,10 @@ response shape; replace this shell only to change the HTTP contract.</p>
 <dt class="sig sig-object py" id="fastapi_restly.views.ResponseShape">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.views.</span></span><span class="sig-name descname"><span class="pre">ResponseShape</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fastapi_restly.views.ResponseShape" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/enum.html#enum.Enum" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></a></p>
-<p>The wire shape a route shell asks <a class="reference internal" href="#fastapi_restly.views.BaseRestView.to_response" title="fastapi_restly.views.BaseRestView.to_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">BaseRestView.to_response()</span></code></a> to
+<p>The wire shape an endpoint method asks <a class="reference internal" href="#fastapi_restly.views.BaseRestView.to_response" title="fastapi_restly.views.BaseRestView.to_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">BaseRestView.to_response()</span></code></a> to
 produce.</p>
-<p>This is separate from write-action names such as <code class="docutils literal notranslate"><span class="pre">&quot;publish&quot;</span></code>. Route
-shells choose one of these three response shapes; custom actions remain an
+<p>This is separate from write-action names such as <code class="docutils literal notranslate"><span class="pre">&quot;publish&quot;</span></code>. Endpoint
+methods choose one of these three response shapes; custom actions remain an
 open string namespace.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.views.ResponseShape.EMPTY">
@@ -1034,8 +1052,8 @@ Basic usage:</p>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Foo</span>
 </pre></div>
 </div>
-<p>Each verb is three tiers (see “the handle design” in the docs): the
-<code class="docutils literal notranslate"><span class="pre">&lt;verb&gt;_endpoint</span></code> route shell, the <code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code> request handler
+<p>Each verb is three tiers (see “Customize RestView” in the docs): the
+endpoint method <code class="docutils literal notranslate"><span class="pre">&lt;verb&gt;_endpoint</span></code>, the handler <code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code>
 (authorize + commit bracket), and the bare verb <code class="docutils literal notranslate"><span class="pre">&lt;verb&gt;</span></code> (the domain
 operation – the common override point).</p>
 <dl class="py method">
@@ -1045,7 +1063,7 @@ operation – the common override point).</p>
 <p>For <em>external</em> effects only: the write is already durable, so mutating
 <code class="docutils literal notranslate"><span class="pre">new</span></code> or the database here is NOT persisted (and a mutation to <code class="docutils literal notranslate"><span class="pre">new</span></code>
 leaks into this request’s response while being discarded from storage).
-Do the mutation in the business verb or <code class="docutils literal notranslate"><span class="pre">before_commit</span></code> instead.</p>
+Do the mutation in the business method or <code class="docutils literal notranslate"><span class="pre">before_commit</span></code> instead.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -1093,10 +1111,10 @@ to-many relationship doesn’t inflate the total via row fan-out.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="fastapi_restly.views.RestView.create_endpoint">
 <span class="sig-name descname"><span class="pre">create_endpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">schema_obj</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></span><a class="headerlink" href="#fastapi_restly.views.RestView.create_endpoint" title="Link to this definition">#</a></dt>
-<dd><p><code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/</span></code> route shell (wire tier). Override <code class="docutils literal notranslate"><span class="pre">create</span></code> for domain
+<dd><p><code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/</span></code> endpoint method. Override <code class="docutils literal notranslate"><span class="pre">create</span></code> for domain
 logic (it is commit-free; the handler owns the commit),
 <code class="docutils literal notranslate"><span class="pre">handle_create</span></code> for orchestration, <code class="docutils literal notranslate"><span class="pre">to_response</span></code> for the response
-shape; replace this shell only to change the HTTP contract.</p>
+shape; replace this method only to change the HTTP contract.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -1107,9 +1125,9 @@ shape; replace this shell only to change the HTTP contract.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="fastapi_restly.views.RestView.delete_endpoint">
 <span class="sig-name descname"><span class="pre">delete_endpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></span><a class="headerlink" href="#fastapi_restly.views.RestView.delete_endpoint" title="Link to this definition">#</a></dt>
-<dd><p><code class="docutils literal notranslate"><span class="pre">DELETE</span> <span class="pre">/{id}</span></code> route shell (wire tier). Override <code class="docutils literal notranslate"><span class="pre">delete</span></code> for
+<dd><p><code class="docutils literal notranslate"><span class="pre">DELETE</span> <span class="pre">/{id}</span></code> endpoint method. Override <code class="docutils literal notranslate"><span class="pre">delete</span></code> for
 domain logic (e.g. soft delete), <code class="docutils literal notranslate"><span class="pre">handle_delete</span></code> for orchestration;
-replace this shell only to change the HTTP contract (e.g. return the
+replace this method only to change the HTTP contract (e.g. return the
 deleted object instead of 204).</p>
 </dd></dl>
 
@@ -1121,9 +1139,9 @@ deleted object instead of 204).</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="fastapi_restly.views.RestView.get_many_endpoint">
 <span class="sig-name descname"><span class="pre">get_many_endpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query_params</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></span><a class="headerlink" href="#fastapi_restly.views.RestView.get_many_endpoint" title="Link to this definition">#</a></dt>
-<dd><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code> route shell (wire tier). Override <code class="docutils literal notranslate"><span class="pre">get_many</span></code> for domain
+<dd><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code> endpoint method. Override <code class="docutils literal notranslate"><span class="pre">get_many</span></code> for domain
 logic, <code class="docutils literal notranslate"><span class="pre">handle_get_many</span></code> for orchestration, <code class="docutils literal notranslate"><span class="pre">to_response</span></code> for the
-response shape; replace this shell only to change the HTTP contract.</p>
+response shape; replace this method only to change the HTTP contract.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -1134,10 +1152,10 @@ response shape; replace this shell only to change the HTTP contract.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="fastapi_restly.views.RestView.get_one_endpoint">
 <span class="sig-name descname"><span class="pre">get_one_endpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></span><a class="headerlink" href="#fastapi_restly.views.RestView.get_one_endpoint" title="Link to this definition">#</a></dt>
-<dd><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/{id}</span></code> route shell (wire tier). Override <code class="docutils literal notranslate"><span class="pre">get_one</span></code> for domain
+<dd><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/{id}</span></code> endpoint method. Override <code class="docutils literal notranslate"><span class="pre">get_one</span></code> for domain
 logic (visibility lives in <code class="docutils literal notranslate"><span class="pre">build_query</span></code>), <code class="docutils literal notranslate"><span class="pre">handle_get_one</span></code> for
 orchestration, <code class="docutils literal notranslate"><span class="pre">to_response</span></code> for the response shape; replace this
-shell only to change the HTTP contract.</p>
+method only to change the HTTP contract.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -1178,9 +1196,9 @@ shell only to change the HTTP contract.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="fastapi_restly.views.RestView.update_endpoint">
 <span class="sig-name descname"><span class="pre">update_endpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">schema_obj</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></span><a class="headerlink" href="#fastapi_restly.views.RestView.update_endpoint" title="Link to this definition">#</a></dt>
-<dd><p><code class="docutils literal notranslate"><span class="pre">PATCH</span> <span class="pre">/{id}</span></code> route shell (wire tier). Override <code class="docutils literal notranslate"><span class="pre">update</span></code> for
+<dd><p><code class="docutils literal notranslate"><span class="pre">PATCH</span> <span class="pre">/{id}</span></code> endpoint method. Override <code class="docutils literal notranslate"><span class="pre">update</span></code> for
 domain logic, <code class="docutils literal notranslate"><span class="pre">handle_update</span></code> for orchestration, <code class="docutils literal notranslate"><span class="pre">to_response</span></code> for
-the response shape; replace this shell only to change the HTTP
+the response shape; replace this method only to change the HTTP
 contract.</p>
 </dd></dl>
 
@@ -1235,7 +1253,7 @@ grouped non-CRUD endpoints (auth flows, custom RPC routes, etc.).</p>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.views.View.tags">
-<span class="sig-name descname"><span class="pre">tags</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.14)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#fastapi_restly.views.View.tags" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">tags</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.14)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Iterable" title="(in Python v3.14)"><span class="pre">Iterable</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/enum.html#enum.Enum" title="(in Python v3.14)"><span class="pre">Enum</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#fastapi_restly.views.View.tags" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
@@ -1313,6 +1331,9 @@ grouped non-CRUD endpoints (auth flows, custom RPC routes, etc.).</p>
     <span class="o">...</span>
 </pre></div>
 </div>
+<p>Registering a view on several parents mounts its routes on each; calling
+<code class="docutils literal notranslate"><span class="pre">include_view</span></code> again with a parent the view is already registered on is
+a no-op.</p>
 </dd></dl>
 
 <dl class="py function">
@@ -1362,9 +1383,9 @@ The path and api_route_kwargs are passed into APIRouter.add_api_route(), see for
 
 <div class="admonition seealso">
 <p class="admonition-title">See also</p>
-<p><a class="reference internal" href="../class_based_views.html"><span class="doc">Class-Based Views</span></a> — the class-based view concept and hierarchy;
-<a class="reference internal" href="../the_handle_design.html"><span class="doc">How Overrides Work: The Three Tiers</span></a> — the three-tier override model;
-<a class="reference internal" href="../howto_override_endpoints.html"><span class="doc">Override CRUD Behavior and Add Custom Endpoints</span></a> — task-shaped override recipes.</p>
+<p><a class="reference internal" href="../class_based_views.html"><span class="doc">Class-Based Views</span></a> introduces the class-based view concept and
+hierarchy, and <a class="reference internal" href="../customize.html"><span class="doc">Customize RestView</span></a> explains the three-tier override model
+and collects the task-shaped override recipes.</p>
 </div>
 </section>
 

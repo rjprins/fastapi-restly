@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Shape Error Responses &#8212; FastAPI-Restly 0.7.0 documentation</title>
+    <title>Shape Error Responses &#8212; FastAPI-Restly 0.8.0 documentation</title>
   
   
   
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=fe7df9b0"></script>
+    <script src="_static/documentation_options.js?v=486e5634"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -60,12 +60,12 @@
     <link rel="author" title="About these documents" href="about.html" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Share Behaviour with Base Views" href="howto_inheritance.html" />
-    <link rel="prev" title="Override CRUD Behavior and Add Custom Endpoints" href="howto_override_endpoints.html" />
+    <link rel="next" title="Patterns" href="patterns.html" />
+    <link rel="prev" title="Filter, Sort, and Paginate Lists" href="howto_query_modifiers.html" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.7" />
+  <meta name="docsearch:version" content="0.8" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
 <!-- GoatCounter: cookieless, privacy-friendly analytics (ignores localhost) -->
 <script data-goatcounter="https://fastapi-restly.goatcounter.com/count"
@@ -176,8 +176,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="the_handle_design.html">
-    Overrides
+  <a class="nav-link nav-internal" href="customize.html">
+    Customize
   </a>
 </li>
 
@@ -206,6 +206,13 @@
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="about.html">
     About
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
   </a>
 </li>
 
@@ -340,8 +347,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="the_handle_design.html">
-    Overrides
+  <a class="nav-link nav-internal" href="customize.html">
+    Customize
   </a>
 </li>
 
@@ -370,6 +377,13 @@
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="about.html">
     About
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
   </a>
 </li>
 
@@ -438,12 +452,12 @@
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="howto_existing_project.html">Use Restly in an Existing Project</a></li>
-<li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_custom_schema.html">Custom Schemas and Field Types</a></li>
-<li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys Using IDRef</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys and Relationships</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_response_schema.html">Response Envelopes and List Metadata</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_query_modifiers.html">Filter, Sort, and Paginate Lists</a></li>
-<li class="toctree-l1"><a class="reference internal" href="howto_override_endpoints.html">Override CRUD Behavior and Add Custom Endpoints</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Shape Error Responses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_inheritance.html">Share Behaviour with Base Views</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_compose_views_with_mixins.html">Compose Views with Mixins</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_typing.html">Use Type Annotations</a></li>
@@ -517,9 +531,12 @@
 default every error renders as FastAPI’s standard <code class="docutils literal notranslate"><span class="pre">{&quot;detail&quot;:</span> <span class="pre">...}</span></code> body.
 This page covers the typed exceptions your overrides should raise, and how to
 change the error envelope app-wide.</p>
-<p>One rule up front: <strong>errors bypass <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_response" title="fastapi_restly.views.BaseRestView.to_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_response</span></code></a></strong>. The response boundary on a
-view shapes <em>successful</em> payloads; error shaping happens at FastAPI’s
-exception-handler layer, app-wide, exactly like in a plain FastAPI app.</p>
+<p>One rule applies throughout: errors bypass
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_response" title="fastapi_restly.views.BaseRestView.to_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_response</span></code></a>. The
+response boundary on a view shapes <em>successful</em> payloads (see
+<a class="reference internal" href="howto_response_schema.html"><span class="std std-doc">Response Envelopes and List Metadata</span></a>); error
+shaping happens at FastAPI’s exception-handler layer, app-wide, exactly as in
+a plain FastAPI app.</p>
 <section id="the-typed-exceptions">
 <h2>The typed exceptions<a class="headerlink" href="#the-typed-exceptions" title="Link to this heading">#</a></h2>
 <p>All request-time errors live in <code class="docutils literal notranslate"><span class="pre">fr.exc</span></code> and subclass <a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyHTTPError" title="fastapi_restly.exc.RestlyHTTPError"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.exc.RestlyHTTPError</span></code></a>
@@ -534,7 +551,7 @@ exception-handler layer, app-wide, exactly like in a plain FastAPI app.</p>
 <tbody>
 <tr class="row-even"><td><p><a class="reference internal" href="api/exc.html#fastapi_restly.exc.NotFound" title="fastapi_restly.exc.NotFound"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.exc.NotFound</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">404</span></code></p></td>
-<td><p>A row doesn’t exist — or is hidden by <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.build_query" title="fastapi_restly.views.RestView.build_query"><code class="xref py py-meth docutils literal notranslate"><span class="pre">build_query</span></code></a> scoping.</p></td>
+<td><p>A row does not exist, or is hidden by <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.build_query" title="fastapi_restly.views.RestView.build_query"><code class="xref py py-meth docutils literal notranslate"><span class="pre">build_query</span></code></a> scoping.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="api/exc.html#fastapi_restly.exc.Forbidden" title="fastapi_restly.exc.Forbidden"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.exc.Forbidden</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">403</span></code></p></td>
@@ -551,8 +568,8 @@ exception-handler layer, app-wide, exactly like in a plain FastAPI app.</p>
 </tbody>
 </table>
 </div>
-<p>Raise them from your own overrides — <code class="docutils literal notranslate"><span class="pre">authorize</span></code>, business verbs, custom
-routes — and they render through whatever handler is installed:</p>
+<p>Raise them from your own overrides (<code class="docutils literal notranslate"><span class="pre">authorize</span></code>, business methods, custom
+routes), and they render through whatever handler is installed:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ArticleView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="o">...</span>
 
@@ -561,26 +578,35 @@ routes — and they render through whatever handler is installed:</p>
             <span class="k">raise</span> <span class="n">fr</span><span class="o">.</span><span class="n">exc</span><span class="o">.</span><span class="n">Forbidden</span><span class="p">(</span><span class="s2">&quot;deletes need an admin token&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>(<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyError" title="fastapi_restly.exc.RestlyError"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.exc.RestlyError</span></code></a> / <a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyConfigurationError" title="fastapi_restly.exc.RestlyConfigurationError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code></a> are setup-time framework
-errors, not HTTP errors; the warnings <a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyUncommittedChangesWarning" title="fastapi_restly.exc.RestlyUncommittedChangesWarning"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyUncommittedChangesWarning</span></code></a> and
-<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyMisuseWarning" title="fastapi_restly.exc.RestlyMisuseWarning"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyMisuseWarning</span></code></a> also live in <code class="docutils literal notranslate"><span class="pre">fr.exc</span></code>.)</p>
+<p>The remaining names in <code class="docutils literal notranslate"><span class="pre">fr.exc</span></code> are not HTTP errors:
+<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyError" title="fastapi_restly.exc.RestlyError"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.exc.RestlyError</span></code></a> and
+<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyConfigurationError" title="fastapi_restly.exc.RestlyConfigurationError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code></a>
+are setup-time framework errors, and the warnings
+<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyUncommittedChangesWarning" title="fastapi_restly.exc.RestlyUncommittedChangesWarning"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyUncommittedChangesWarning</span></code></a> and
+<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyMisuseWarning" title="fastapi_restly.exc.RestlyMisuseWarning"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyMisuseWarning</span></code></a> also
+live there.</p>
 </section>
 <section id="vs-400-on-list-endpoints">
 <h2>422 vs 400 on list endpoints<a class="headerlink" href="#vs-400-on-list-endpoints" title="Link to this heading">#</a></h2>
-<p>Two layers reject bad query strings, with different statuses:</p>
+<p>Two layers reject bad query strings on list endpoints, each with its own
+status code:</p>
 <ul class="simple">
-<li><p><strong><code class="docutils literal notranslate"><span class="pre">422</span></code></strong> — FastAPI’s request validation, against the schema-derived
-parameters: unknown keys (<code class="docutils literal notranslate"><span class="pre">?nope=1</span></code>), and type-invalid values for typed
-parameters (<code class="docutils literal notranslate"><span class="pre">?page_size=oops</span></code>).</p></li>
-<li><p><strong><code class="docutils literal notranslate"><span class="pre">400</span> <span class="pre">BadQueryParam</span></code></strong> — Restly’s query application, for parameters that
-passed validation but cannot be applied: an unresolvable sort field, an
-invalid filter path.</p></li>
+<li><p>FastAPI’s request validation returns <code class="docutils literal notranslate"><span class="pre">422</span></code> for requests that fail the
+<a class="reference internal" href="howto_query_modifiers.html"><span class="std std-doc">schema-derived parameters</span></a>: unknown keys
+(<code class="docutils literal notranslate"><span class="pre">?nope=1</span></code>), and type-invalid values for typed parameters
+(<code class="docutils literal notranslate"><span class="pre">?page_size=oops</span></code>).</p></li>
+<li><p>Restly’s query application raises
+<a class="reference internal" href="api/exc.html#fastapi_restly.exc.BadQueryParam" title="fastapi_restly.exc.BadQueryParam"><code class="xref py py-class docutils literal notranslate"><span class="pre">BadQueryParam</span></code></a> (<code class="docutils literal notranslate"><span class="pre">400</span></code>) for
+parameters that passed validation but cannot be applied, such as an
+unresolvable sort field or an invalid filter path.</p></li>
 </ul>
 </section>
 <section id="change-the-error-envelope-app-wide">
 <h2>Change the error envelope app-wide<a class="headerlink" href="#change-the-error-envelope-app-wide" title="Link to this heading">#</a></h2>
-<p>Register a handler for <a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyHTTPError" title="fastapi_restly.exc.RestlyHTTPError"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.exc.RestlyHTTPError</span></code></a> — subclass matching means one
-handler covers all four typed errors. An RFC 9457 problem-details envelope:</p>
+<p>To replace the default <code class="docutils literal notranslate"><span class="pre">{&quot;detail&quot;:</span> <span class="pre">...}</span></code> body, register a handler for
+<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyHTTPError" title="fastapi_restly.exc.RestlyHTTPError"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.exc.RestlyHTTPError</span></code></a>; because
+exception handlers match subclasses, one handler covers all four typed
+errors. The handler below renders an RFC 9457 problem-details envelope:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi.responses</span><span class="w"> </span><span class="kn">import</span> <span class="n">JSONResponse</span>
 
 <span class="nd">@app</span><span class="o">.</span><span class="n">exception_handler</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">exc</span><span class="o">.</span><span class="n">RestlyHTTPError</span><span class="p">)</span>
@@ -598,26 +624,28 @@ handler covers all four typed errors. An RFC 9457 problem-details envelope:</p>
 </div>
 <p>With that installed, a hidden row renders as
 <code class="docutils literal notranslate"><span class="pre">{&quot;type&quot;:</span> <span class="pre">&quot;about:blank&quot;,</span> <span class="pre">&quot;title&quot;:</span> <span class="pre">&quot;Doc</span> <span class="pre">with</span> <span class="pre">id</span> <span class="pre">999</span> <span class="pre">was</span> <span class="pre">not</span> <span class="pre">found&quot;,</span> <span class="pre">&quot;status&quot;:</span> <span class="pre">404}</span></code>
-with the <code class="docutils literal notranslate"><span class="pre">application/problem+json</span></code> content type — including the <code class="docutils literal notranslate"><span class="pre">400</span></code>
-query-parameter errors. To also cover FastAPI’s own <code class="docutils literal notranslate"><span class="pre">422</span></code> validation errors
-and plain <code class="docutils literal notranslate"><span class="pre">HTTPException</span></code>s raised elsewhere, register handlers for
-<code class="docutils literal notranslate"><span class="pre">RequestValidationError</span></code> and <code class="docutils literal notranslate"><span class="pre">HTTPException</span></code> the standard FastAPI way.</p>
+with the <code class="docutils literal notranslate"><span class="pre">application/problem+json</span></code> content type, including the <code class="docutils literal notranslate"><span class="pre">400</span></code>
+query-parameter errors. To also cover FastAPI’s
+own <code class="docutils literal notranslate"><span class="pre">422</span></code> validation errors and plain <code class="docutils literal notranslate"><span class="pre">HTTPException</span></code>s raised elsewhere,
+register handlers for <code class="docutils literal notranslate"><span class="pre">RequestValidationError</span></code> and <code class="docutils literal notranslate"><span class="pre">HTTPException</span></code> the
+standard FastAPI way.</p>
 </section>
-<section id="database-conflicts-integrityerror-409">
-<h2>Database conflicts (<code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code> → 409)<a class="headerlink" href="#database-conflicts-integrityerror-409" title="Link to this heading">#</a></h2>
-<p>Restly installs a default handler that translates SQLAlchemy
-<code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code>s into <code class="docutils literal notranslate"><span class="pre">409</span> <span class="pre">Conflict</span></code> responses. It respects a handler you
-registered yourself and can be disabled with
-<a class="reference internal" href="api/db.html#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.configure(app=app,</span> <span class="pre">install_default_exception_handlers=False)</span></code></a> — the exact
-registration contract is in
+<section id="database-conflicts-integrityerror-to-409">
+<h2>Database conflicts: <code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code> to 409<a class="headerlink" href="#database-conflicts-integrityerror-to-409" title="Link to this heading">#</a></h2>
+<p>Not every conflict response comes from your own code: Restly installs a
+default handler that translates SQLAlchemy <code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code>s into
+<code class="docutils literal notranslate"><span class="pre">409</span> <span class="pre">Conflict</span></code> responses. It respects a handler you registered yourself, and
+it can be disabled with
+<a class="reference internal" href="api/db.html#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.configure(app=app,</span> <span class="pre">install_default_exception_handlers=False)</span></code></a>;
+the exact registration contract is in
 <a class="reference internal" href="api_reference.html#default-exception-handling"><span class="std std-ref">Default Exception Handling</span></a>.</p>
 </section>
 <section id="see-also">
 <h2>See also<a class="headerlink" href="#see-also" title="Link to this heading">#</a></h2>
 <ul class="simple">
-<li><p><a class="reference internal" href="the_handle_design.html"><span class="std std-doc">How Overrides Work</span></a> — where <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.authorize" title="fastapi_restly.views.RestView.authorize"><code class="xref py py-meth docutils literal notranslate"><span class="pre">authorize</span></code></a> and the
-business verbs sit; a raised exception skips the commit bracket.</p></li>
-<li><p><a class="reference internal" href="howto_query_modifiers.html"><span class="std std-doc">Filter, Sort, and Paginate Lists</span></a> — the
+<li><p><a class="reference internal" href="customize.html"><span class="std std-doc">Customize RestView</span></a>: where <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.authorize" title="fastapi_restly.views.RestView.authorize"><code class="xref py py-meth docutils literal notranslate"><span class="pre">authorize</span></code></a> and the
+business methods sit; a raised exception skips the commit bracket.</p></li>
+<li><p><a class="reference internal" href="howto_query_modifiers.html"><span class="std std-doc">Filter, Sort, and Paginate Lists</span></a>: the
 parameter grammar whose violations produce the 422/400 split.</p></li>
 </ul>
 </section>
@@ -634,20 +662,20 @@ parameter grammar whose violations produce the 422/400 split.</p></li>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="howto_override_endpoints.html"
+       href="howto_query_modifiers.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Override CRUD Behavior and Add Custom Endpoints</p>
+        <p class="prev-next-title">Filter, Sort, and Paginate Lists</p>
       </div>
     </a>
     <a class="right-next"
-       href="howto_inheritance.html"
+       href="patterns.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Share Behaviour with Base Views</p>
+        <p class="prev-next-title">Patterns</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -673,7 +701,7 @@ parameter grammar whose violations produce the 422/400 split.</p></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#the-typed-exceptions">The typed exceptions</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#vs-400-on-list-endpoints">422 vs 400 on list endpoints</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#change-the-error-envelope-app-wide">Change the error envelope app-wide</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#database-conflicts-integrityerror-409">Database conflicts (<code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code> → 409)</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#database-conflicts-integrityerror-to-409">Database conflicts: <code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code> to 409</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#see-also">See also</a></li>
 </ul>
   </nav></div>

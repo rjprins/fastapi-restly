@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Custom Schemas and Field Types &#8212; FastAPI-Restly 0.7.0 documentation</title>
+    <title>Custom Schemas and Field Types &#8212; FastAPI-Restly 0.8.0 documentation</title>
   
   
   
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=fe7df9b0"></script>
+    <script src="_static/documentation_options.js?v=486e5634"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -60,12 +60,12 @@
     <link rel="author" title="About these documents" href="about.html" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Work with Foreign Keys Using IDRef" href="howto_relationship_idschema.html" />
-    <link rel="prev" title="Patterns" href="patterns.html" />
+    <link rel="next" title="Work with Foreign Keys and Relationships" href="howto_relationship_idschema.html" />
+    <link rel="prev" title="Use Restly in an Existing Project" href="howto_existing_project.html" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.7" />
+  <meta name="docsearch:version" content="0.8" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
 <!-- GoatCounter: cookieless, privacy-friendly analytics (ignores localhost) -->
 <script data-goatcounter="https://fastapi-restly.goatcounter.com/count"
@@ -176,8 +176,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="the_handle_design.html">
-    Overrides
+  <a class="nav-link nav-internal" href="customize.html">
+    Customize
   </a>
 </li>
 
@@ -206,6 +206,13 @@
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="about.html">
     About
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
   </a>
 </li>
 
@@ -340,8 +347,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="the_handle_design.html">
-    Overrides
+  <a class="nav-link nav-internal" href="customize.html">
+    Customize
   </a>
 </li>
 
@@ -370,6 +377,13 @@
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="about.html">
     About
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
   </a>
 </li>
 
@@ -438,12 +452,12 @@
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="howto_existing_project.html">Use Restly in an Existing Project</a></li>
-<li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Custom Schemas and Field Types</a></li>
-<li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys Using IDRef</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys and Relationships</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_response_schema.html">Response Envelopes and List Metadata</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_query_modifiers.html">Filter, Sort, and Paginate Lists</a></li>
-<li class="toctree-l1"><a class="reference internal" href="howto_override_endpoints.html">Override CRUD Behavior and Add Custom Endpoints</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_error_responses.html">Shape Error Responses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_inheritance.html">Share Behaviour with Base Views</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_compose_views_with_mixins.html">Compose Views with Mixins</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_typing.html">Use Type Annotations</a></li>
@@ -521,17 +535,52 @@
 </div>
 <p>Use explicit schemas when you need a stable public contract: aliases, hidden
 fields, computed read-only fields, or relationship IDs. If you omit <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema" title="fastapi_restly.views.BaseRestView.schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema</span></code></a> on
-a view, Restly can auto-generate one from the SQLAlchemy model instead.</p>
+a view, Restly can
+<a class="reference internal" href="technical_details.html#id1"><span class="std std-ref">auto-generate one</span></a> from the
+SQLAlchemy model instead.</p>
+<p>To choose a schema tool, match your goal in the table below; each entry links
+to the section that covers it.</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Goal</p></th>
+<th class="head"><p>Tool</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Stable public contract</p></td>
+<td><p><a class="reference internal" href="#auto-generated-vs-explicit-schemas">Explicit schema</a></p></td>
+</tr>
+<tr class="row-odd"><td><p>Input field hidden from responses</p></td>
+<td><p><a class="reference internal" href="#readonly-and-writeonly"><code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code></a></p></td>
+</tr>
+<tr class="row-even"><td><p>Server-owned field, ignored on input</p></td>
+<td><p><a class="reference internal" href="#readonly-and-writeonly"><code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>Checked foreign-key column</p></td>
+<td><p><a class="reference internal" href="#mustexist"><code class="docutils literal notranslate"><span class="pre">MustExist</span></code></a></p></td>
+</tr>
+<tr class="row-even"><td><p>Relationship as a flat id</p></td>
+<td><p><a class="reference internal" href="howto_relationship_idschema.html#choosing-a-reference-style"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">IDRef</span></code></span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>Relationship as a nested object</p></td>
+<td><p><a class="reference internal" href="#nested-relationship-objects"><code class="docutils literal notranslate"><span class="pre">IDSchema[Model]</span></code></a></p></td>
+</tr>
+</tbody>
+</table>
+</div>
 <section id="baseschema">
 <h2>BaseSchema<a class="headerlink" href="#baseschema" title="Link to this heading">#</a></h2>
 <p><a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.BaseSchema" title="fastapi_restly.schemas.BaseSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.BaseSchema</span></code></a> is Restly’s Pydantic base class. It enables Pydantic’s
 <code class="docutils literal notranslate"><span class="pre">from_attributes=True</span></code>, which lets response schemas validate SQLAlchemy ORM
 objects directly.</p>
-<p>In code, it is intentionally this small:</p>
+<p>Behaviorally, it is equivalent to:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">BaseSchema</span><span class="p">(</span><span class="n">pydantic</span><span class="o">.</span><span class="n">BaseModel</span><span class="p">):</span>
     <span class="n">model_config</span> <span class="o">=</span> <span class="n">pydantic</span><span class="o">.</span><span class="n">ConfigDict</span><span class="p">(</span><span class="n">from_attributes</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </pre></div>
 </div>
+<p>(The real class also installs the import-time check that rejects nested
+<code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>/<code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> markers, described in
+<a class="reference internal" href="#readonly-and-writeonly">ReadOnly and WriteOnly</a>.)</p>
 <p>Generated Restly routes still serialize ORM objects through
 <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_response_schema" title="fastapi_restly.views.BaseRestView.to_response_schema"><code class="xref py py-meth docutils literal notranslate"><span class="pre">self.to_response_schema(obj)</span></code></a>. That is where Restly applies response-specific
 behavior such as <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> filtering and relationship-id normalization.</p>
@@ -582,20 +631,29 @@ update inputs:</p>
     <span class="n">created_by_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">ReadOnly</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
 </pre></div>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">fr.WriteOnly[T]</span></code> marks a field as request-only. It is accepted in create/update
-payloads. Restly strips it only when an object is serialized through
-<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_response_schema" title="fastapi_restly.views.BaseRestView.to_response_schema"><code class="xref py py-meth docutils literal notranslate"><span class="pre">self.to_response_schema(obj)</span></code></a>, which the generated CRUD and ReactAdmin routes
-use:</p>
+<p><code class="docutils literal notranslate"><span class="pre">fr.WriteOnly[T]</span></code> marks a field as request-only. It is accepted in create and
+update payloads but excluded from every serialized response:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
     <span class="n">email</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">password</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">WriteOnly</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
 </pre></div>
 </div>
-<p>Restly applies <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> when it generates <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_create" title="fastapi_restly.views.BaseRestView.schema_create"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_create</span></code></a> and
-<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_update" title="fastapi_restly.views.BaseRestView.schema_update"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_update</span></code></a>, and when its object helpers construct or update ORM objects.
-<code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> is removed from responses by <code class="docutils literal notranslate"><span class="pre">to_response_schema()</span></code>. If you return
-a schema object directly to FastAPI or call Pydantic serialization yourself,
-<code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> is schema metadata only and is not removed automatically.</p>
+<p>The two markers take effect in different places, which matters when a schema
+is used outside a view. <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> sets Pydantic’s field-level <code class="docutils literal notranslate"><span class="pre">exclude</span></code>, so
+every serialization of the schema drops the field: generated routes, FastAPI’s
+<code class="docutils literal notranslate"><span class="pre">response_model</span></code>, and your own <code class="docutils literal notranslate"><span class="pre">model_dump()</span></code> calls all strip it, recursively
+through nested schemas, and the documented response schema in OpenAPI omits it.
+<code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> is applied by Restly itself when it generates
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_create" title="fastapi_restly.views.BaseRestView.schema_create"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_create</span></code></a> and
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_update" title="fastapi_restly.views.BaseRestView.schema_update"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_update</span></code></a>, and
+when its object helpers construct or update ORM objects. On a schema used
+directly, a <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> field validates and serializes like any other field;
+only its OpenAPI schema is marked <code class="docutils literal notranslate"><span class="pre">readOnly</span></code>.</p>
+<p>Either marker must be the field’s outer annotation. Nested inside a union or a
+container (<code class="docutils literal notranslate"><span class="pre">Optional[WriteOnly[str]]</span></code>, <code class="docutils literal notranslate"><span class="pre">WriteOnly[str]</span> <span class="pre">|</span> <span class="pre">None</span></code>,
+<code class="docutils literal notranslate"><span class="pre">list[WriteOnly[str]]</span></code>) the marker would silently do nothing, so Restly
+rejects such a field with a <code class="docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code>. For an optional
+write-only field, write <code class="docutils literal notranslate"><span class="pre">WriteOnly[Optional[str]]</span></code>.</p>
 </section>
 <section id="aliases">
 <h2>Aliases<a class="headerlink" href="#aliases" title="Link to this heading">#</a></h2>
@@ -612,12 +670,12 @@ database attribute:</p>
 <p>Incoming payloads can use <code class="docutils literal notranslate"><span class="pre">firstName</span></code>, and Restly responses use the alias on
 Restly routes.</p>
 </section>
-<section id="idref">
-<h2>IDRef<a class="headerlink" href="#idref" title="Link to this heading">#</a></h2>
-<p>Use <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDRef[Model]</span></code></a> for foreign-key and identifier-reference fields:</p>
+<section id="mustexist">
+<h2>MustExist<a class="headerlink" href="#mustexist" title="Link to this heading">#</a></h2>
+<p>Use <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.MustExist[int,</span> <span class="pre">Model]</span></code></a> for foreign-key columns (primary-key type first, then the target model):</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ArticleRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
     <span class="n">title</span><span class="p">:</span> <span class="nb">str</span>
-    <span class="n">author_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">IDRef</span><span class="p">[</span><span class="n">Author</span><span class="p">]</span>
+    <span class="n">author_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">MustExist</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Author</span><span class="p">]</span>
 </pre></div>
 </div>
 <p>The wire format is a scalar id:</p>
@@ -627,9 +685,9 @@ Restly routes.</p>
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>Restly validates that the referenced <code class="docutils literal notranslate"><span class="pre">Author</span></code> exists and resolves the id before
-creating or updating the ORM object. See <a class="reference internal" href="howto_relationship_idschema.html"><span class="std std-doc">Foreign Keys with IDRef</span></a>
-for the full model and view setup.</p>
+<p>Restly validates that the referenced <code class="docutils literal notranslate"><span class="pre">Author</span></code> exists and keeps the plain id; in
+hooks, <code class="docutils literal notranslate"><span class="pre">data.author_id</span></code> is the plain integer. See <a class="reference internal" href="howto_relationship_idschema.html"><span class="std std-doc">Work with Foreign Keys and
+Relationships</span></a> for the full model and view setup.</p>
 </section>
 <section id="nested-relationship-objects">
 <h2>Nested relationship objects<a class="headerlink" href="#nested-relationship-objects" title="Link to this heading">#</a></h2>
@@ -648,7 +706,11 @@ field type:</p>
 </pre></div>
 </div>
 <p>This is useful for clients or integrations that model relationships as objects.
-For ordinary foreign-key fields, use <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDRef</span></code></a>.</p>
+For the same relationship as a flat id, use <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDRef[Model]</span></code></a>;
+for a plain foreign-key column, use <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.MustExist[int,</span> <span class="pre">Model]</span></code></a>.
+See <a class="reference internal" href="howto_relationship_idschema.html#nested-relationship-objects"><span class="std std-ref">Nested Relationship
+Objects</span></a> for how
+this shape compares with the flat-id form.</p>
 </section>
 <section id="auto-generated-vs-explicit-schemas">
 <h2>Auto-Generated vs Explicit Schemas<a class="headerlink" href="#auto-generated-vs-explicit-schemas" title="Link to this heading">#</a></h2>
@@ -674,10 +736,10 @@ the SQLAlchemy model:</p>
 <section id="see-also">
 <h2>See also<a class="headerlink" href="#see-also" title="Link to this heading">#</a></h2>
 <ul class="simple">
-<li><p><a class="reference internal" href="technical_details.html#id1"><span class="std std-ref">Auto-generated schemas</span></a> — how
-the derived schemas are built when you don’t declare one.</p></li>
+<li><p><a class="reference internal" href="technical_details.html#id1"><span class="std std-ref">Auto-generated schemas</span></a>: how
+the derived schemas are built when you do not declare one.</p></li>
 <li><p><a class="reference internal" href="patterns.html#a-different-schema-for-the-list-endpoint"><span class="std std-ref">Patterns: a different schema for the list
-endpoint</span></a> — when the
+endpoint</span></a>: when the
 list and detail routes need different shapes.</p></li>
 </ul>
 </section>
@@ -694,12 +756,12 @@ list and detail routes need different shapes.</p></li>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="patterns.html"
+       href="howto_existing_project.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Patterns</p>
+        <p class="prev-next-title">Use Restly in an Existing Project</p>
       </div>
     </a>
     <a class="right-next"
@@ -707,7 +769,7 @@ list and detail routes need different shapes.</p></li>
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Work with Foreign Keys Using IDRef</p>
+        <p class="prev-next-title">Work with Foreign Keys and Relationships</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -735,7 +797,7 @@ list and detail routes need different shapes.</p></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#timestamps">Timestamps</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#readonly-and-writeonly">ReadOnly and WriteOnly</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#aliases">Aliases</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#idref">IDRef</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mustexist">MustExist</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#nested-relationship-objects">Nested relationship objects</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#auto-generated-vs-explicit-schemas">Auto-Generated vs Explicit Schemas</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#see-also">See also</a></li>

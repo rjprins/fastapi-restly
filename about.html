@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>About FastAPI-Restly &#8212; FastAPI-Restly 0.7.0 documentation</title>
+    <title>About FastAPI-Restly &#8212; FastAPI-Restly 0.8.0 documentation</title>
   
   
   
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=fe7df9b0"></script>
+    <script src="_static/documentation_options.js?v=486e5634"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -64,7 +64,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.7" />
+  <meta name="docsearch:version" content="0.8" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
 <!-- GoatCounter: cookieless, privacy-friendly analytics (ignores localhost) -->
 <script data-goatcounter="https://fastapi-restly.goatcounter.com/count"
@@ -175,8 +175,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="the_handle_design.html">
-    Overrides
+  <a class="nav-link nav-internal" href="customize.html">
+    Customize
   </a>
 </li>
 
@@ -205,6 +205,13 @@
 <li class="nav-item current active">
   <a class="nav-link nav-internal" href="#">
     About
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
   </a>
 </li>
 
@@ -339,8 +346,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="the_handle_design.html">
-    Overrides
+  <a class="nav-link nav-internal" href="customize.html">
+    Customize
   </a>
 </li>
 
@@ -369,6 +376,13 @@
 <li class="nav-item current active">
   <a class="nav-link nav-internal" href="#">
     About
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
   </a>
 </li>
 
@@ -495,11 +509,13 @@
 <h1>About FastAPI-Restly<a class="headerlink" href="#about-fastapi-restly" title="Link to this heading">#</a></h1>
 <section id="what-it-is">
 <h2>What it is<a class="headerlink" href="#what-it-is" title="Link to this heading">#</a></h2>
-<p>FastAPI-Restly is a REST framework for building larger web applications with FastAPI and SQLAlchemy 2.
-The goal is to establish common patterns, enabling DRY code, and provide out-of-the-box tooling any web app needs.</p>
+<p>FastAPI-Restly is a REST framework for resource-shaped APIs built with FastAPI
+and SQLAlchemy 2. The goal is to keep repeated API patterns in one place while
+staying close to the FastAPI and SQLAlchemy code you already write.</p>
 <p>FastAPI deliberately handles one side of a web application: routing,
-validation, serialization, dependency injection. Everything else, like database handling, users, ORM-to-schema mapping, etc are things every FastAPI project needs builds again.
-Restly tries to fill that gap, with the end goal to provide a complete, batteries-included framework for FastAPI web apps.</p>
+validation, serialization, and dependency injection. Restly focuses on the
+resource layer around that: SQLAlchemy sessions, ORM-to-schema mapping,
+generated CRUD routes, query parameters, error translation, and test fixtures.</p>
 </section>
 <section id="philosophy">
 <h2>Philosophy<a class="headerlink" href="#philosophy" title="Link to this heading">#</a></h2>
@@ -508,21 +524,21 @@ Restly tries to fill that gap, with the end goal to provide a complete, batterie
 stack you already know, not from a parallel abstraction that hides it. You
 can always drop one level down to plain FastAPI or SQLAlchemy.</p></li>
 <li><p><strong>Out of the box.</strong> The common path should not need wiring: engine and
-session setup, commit handling, schema generation, list filtering with
-strict validation, error translation, and savepoint-isolated test fixtures
+session setup, commit handling, schema generation,
+<a class="reference internal" href="howto_query_modifiers.html"><span class="std std-doc">list filtering</span></a> with strict validation,
+<a class="reference internal" href="howto_error_responses.html"><span class="std std-doc">error translation</span></a>, and
+<a class="reference internal" href="howto_testing.html"><span class="std std-doc">savepoint-isolated test fixtures</span></a>
 all work from <a class="reference internal" href="api/db.html#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.configure()</span></code></a> onward.</p></li>
-<li><p><strong>Customization is never off the path.</strong> Real production services are
-never simply CRUD. Every generated operation has explicit override points
-so generated behavior is a starting point, not a boundary (see <a class="reference internal" href="the_handle_design.html"><span class="std std-doc">three tiers</span></a>).</p></li>
-<li><p><strong>A holistic view of web applications.</strong> The long-term goal covers more
-than resource endpoints: auth, permissions, background jobs, admin pages,
-and a plugin system are on the path, each with the same escape hatches.</p></li>
+<li><p><strong>Customization is never off the path.</strong> Applications are rarely just CRUD.
+Every generated operation has explicit override points
+so generated behavior is a starting point, not a boundary (see <a class="reference internal" href="customize.html"><span class="std std-doc">three tiers</span></a>).</p></li>
 <li><p><strong>Documentation you don’t have to guess at.</strong> Common paths have runnable
 examples and extension points say where custom behavior belongs, for your
-team and for coding agents alike.</p></li>
+team.</p></li>
 </ul>
-<p>The core patterns: class-based views, the override hierarchy, and schema
-generation, are proven by four years of internal production use. The public
+<p>The core patterns (<a class="reference internal" href="class_based_views.html"><span class="std std-doc">class-based views</span></a>, the override
+hierarchy, and schema generation) are proven by four years of internal
+production use. The public
 API surface is still settling on the way to <code class="docutils literal notranslate"><span class="pre">1.0.0</span></code> (see the
 <a class="reference internal" href="changelog.html"><span class="std std-doc">changelog</span></a>); a broader user base will find corners we haven’t
 hit yet. If you find something broken or missing,
@@ -538,13 +554,13 @@ needed. It was never released publicly.</p>
 <p>When FastAPI and SQLAlchemy 2 matured, the approach was rebuilt as Restly at
 <strong>Clearblue Markets</strong>, which later allowed the work to be shared publicly,
 and then developed and refined in production at <strong>Brenntag</strong>. Those
-deployments — four years of internal use, plus the lessons of the earlier
-Flask framework — are what became the public project. Thanks to all three
+deployments (four years of internal use, plus the lessons of the earlier
+Flask framework) are what became the public project. We thank all three
 companies for the environments that made it possible.</p>
 </section>
 <section id="privacy">
 <h2>Privacy<a class="headerlink" href="#privacy" title="Link to this heading">#</a></h2>
-<p>This site uses <a class="reference external" href="https://www.goatcounter.com/">GoatCounter</a> for analytics — an
+<p>This site uses <a class="reference external" href="https://www.goatcounter.com/">GoatCounter</a> for analytics, an
 open-source, <strong>cookieless</strong> tool. It counts page views and unique visits
 without setting cookies or storing personal data, so nothing tracks you across
 sites and there is nothing to consent to. No data is shared with third parties.</p>

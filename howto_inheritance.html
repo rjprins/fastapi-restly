@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Share Behaviour with Base Views &#8212; FastAPI-Restly 0.7.0 documentation</title>
+    <title>Share Behaviour with Base Views &#8212; FastAPI-Restly 0.8.0 documentation</title>
   
   
   
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=fe7df9b0"></script>
+    <script src="_static/documentation_options.js?v=486e5634"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -61,11 +61,11 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Compose Views with Mixins" href="howto_compose_views_with_mixins.html" />
-    <link rel="prev" title="Shape Error Responses" href="howto_error_responses.html" />
+    <link rel="prev" title="Patterns" href="patterns.html" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.7" />
+  <meta name="docsearch:version" content="0.8" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
 <!-- GoatCounter: cookieless, privacy-friendly analytics (ignores localhost) -->
 <script data-goatcounter="https://fastapi-restly.goatcounter.com/count"
@@ -176,8 +176,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="the_handle_design.html">
-    Overrides
+  <a class="nav-link nav-internal" href="customize.html">
+    Customize
   </a>
 </li>
 
@@ -206,6 +206,13 @@
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="about.html">
     About
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
   </a>
 </li>
 
@@ -340,8 +347,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="the_handle_design.html">
-    Overrides
+  <a class="nav-link nav-internal" href="customize.html">
+    Customize
   </a>
 </li>
 
@@ -370,6 +377,13 @@
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="about.html">
     About
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
   </a>
 </li>
 
@@ -438,12 +452,12 @@
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="howto_existing_project.html">Use Restly in an Existing Project</a></li>
-<li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_custom_schema.html">Custom Schemas and Field Types</a></li>
-<li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys Using IDRef</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys and Relationships</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_response_schema.html">Response Envelopes and List Metadata</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_query_modifiers.html">Filter, Sort, and Paginate Lists</a></li>
-<li class="toctree-l1"><a class="reference internal" href="howto_override_endpoints.html">Override CRUD Behavior and Add Custom Endpoints</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_error_responses.html">Shape Error Responses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Share Behaviour with Base Views</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_compose_views_with_mixins.html">Compose Views with Mixins</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_typing.html">Use Type Annotations</a></li>
@@ -514,16 +528,16 @@
   <section id="share-behaviour-with-base-views">
 <h1>Share Behaviour with Base Views<a class="headerlink" href="#share-behaviour-with-base-views" title="Link to this heading">#</a></h1>
 <p>FastAPI-Restly views are plain Python classes. Use base classes for shared CRUD overrides, dependencies, access control, and URL namespaces.</p>
-<p>Each CRUD verb is three tiers (see <a class="reference internal" href="howto_override_endpoints.html"><span class="std std-doc">Override Endpoints</span></a> for the full model):</p>
+<p>Each CRUD verb is implemented in three tiers (see <a class="reference internal" href="customize.html"><span class="std std-doc">Customize RestView</span></a> for the full model):</p>
 <ul class="simple">
-<li><p>The <strong>route shell</strong> (<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create_endpoint" title="fastapi_restly.views.RestView.create_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create_endpoint</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one_endpoint" title="fastapi_restly.views.RestView.get_one_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one_endpoint</span></code></a>, …) — the wire boundary. Rarely overridden on a base class.</p></li>
-<li><p>The <strong>request handler</strong> (<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_create" title="fastapi_restly.views.RestView.handle_create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_create</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_get_one" title="fastapi_restly.views.RestView.handle_get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_get_one</span></code></a>, …) — runs <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.authorize" title="fastapi_restly.views.RestView.authorize"><code class="xref py py-meth docutils literal notranslate"><span class="pre">authorize</span></code></a> and the commit bracket.</p></li>
-<li><p>The <strong>business verb</strong> (<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create" title="fastapi_restly.views.RestView.create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.update" title="fastapi_restly.views.RestView.update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">update</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.delete" title="fastapi_restly.views.RestView.delete"><code class="xref py py-meth docutils literal notranslate"><span class="pre">delete</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many" title="fastapi_restly.views.RestView.get_many"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many</span></code></a>) — the auth-free, commit-free domain operation.</p></li>
+<li><p>The <strong>endpoint method</strong> (<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create_endpoint" title="fastapi_restly.views.RestView.create_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create_endpoint</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one_endpoint" title="fastapi_restly.views.RestView.get_one_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one_endpoint</span></code></a>, and so on) owns the HTTP contract. It is rarely overridden on a base class.</p></li>
+<li><p>The <strong>handler</strong> (<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_create" title="fastapi_restly.views.RestView.handle_create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_create</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_get_one" title="fastapi_restly.views.RestView.handle_get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_get_one</span></code></a>, and so on) runs <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.authorize" title="fastapi_restly.views.RestView.authorize"><code class="xref py py-meth docutils literal notranslate"><span class="pre">authorize</span></code></a> and the commit bracket.</p></li>
+<li><p>The <strong>business method</strong> (<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create" title="fastapi_restly.views.RestView.create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.update" title="fastapi_restly.views.RestView.update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">update</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.delete" title="fastapi_restly.views.RestView.delete"><code class="xref py py-meth docutils literal notranslate"><span class="pre">delete</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many" title="fastapi_restly.views.RestView.get_many"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many</span></code></a>) is the auth-free, commit-free domain operation.</p></li>
 </ul>
-<p>The business verb is the natural home for shared behaviour, so most of the examples below override it.</p>
+<p>The business method is the natural home for shared behaviour, so most of the examples below override it.</p>
 <section id="share-a-crud-override-across-multiple-views">
 <h2>Share a CRUD override across multiple views<a class="headerlink" href="#share-a-crud-override-across-multiple-views" title="Link to this heading">#</a></h2>
-<p>Override a business verb on a base class and every subclass picks it up automatically:</p>
+<p>To run the same logic on several resources, override a business method on a base class; every subclass picks it up automatically:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">AuditBase</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">RestView</span><span class="p">):</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">schema_obj</span><span class="p">):</span>
         <span class="n">obj</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">schema_obj</span><span class="p">)</span>
@@ -543,12 +557,11 @@
     <span class="n">schema</span> <span class="o">=</span> <span class="n">OrderRead</span>
 </pre></div>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">audit_log.record</span></code> now runs for both <code class="docutils literal notranslate"><span class="pre">/users/</span></code> and <code class="docutils literal notranslate"><span class="pre">/orders/</span></code>. Register only concrete subclasses, not the base.</p>
-<p>Because <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create" title="fastapi_restly.views.RestView.create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create</span></code></a> is commit-free, the handler persists the same object the base method recorded.</p>
+<p><code class="docutils literal notranslate"><span class="pre">audit_log.record</span></code> now runs for both <code class="docutils literal notranslate"><span class="pre">/users/</span></code> and <code class="docutils literal notranslate"><span class="pre">/orders/</span></code>. Register only concrete subclasses, not the base. Because <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create" title="fastapi_restly.views.RestView.create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create</span></code></a> is commit-free, the handler persists the same object the base method recorded.</p>
 </section>
 <section id="call-super-to-layer-overrides">
 <h2>Call super() to layer overrides<a class="headerlink" href="#call-super-to-layer-overrides" title="Link to this heading">#</a></h2>
-<p>A subclass can call <code class="docutils literal notranslate"><span class="pre">super()</span></code> to extend a base implementation:</p>
+<p>When one view needs its own logic on top of the shared behaviour, call <code class="docutils literal notranslate"><span class="pre">super()</span></code> to extend the base implementation:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">AuditBase</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">RestView</span><span class="p">):</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">schema_obj</span><span class="p">):</span>
         <span class="n">obj</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">schema_obj</span><span class="p">)</span>
@@ -566,11 +579,11 @@
         <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">schema_obj</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>The call chain is <code class="docutils literal notranslate"><span class="pre">OrderView.create</span></code> → <code class="docutils literal notranslate"><span class="pre">AuditBase.create</span></code> → <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create" title="fastapi_restly.views.RestView.create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">RestView.create</span></code></a>. All three layers run in order.</p>
+<p><code class="docutils literal notranslate"><span class="pre">OrderView.create</span></code> runs first and delegates to <code class="docutils literal notranslate"><span class="pre">AuditBase.create</span></code>, which in turn delegates to <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create" title="fastapi_restly.views.RestView.create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">RestView.create</span></code></a>; all three layers run in order.</p>
 </section>
 <section id="share-an-orchestration-override">
 <h2>Share an orchestration override<a class="headerlink" href="#share-an-orchestration-override" title="Link to this heading">#</a></h2>
-<p>When shared behavior is about <em>timing</em>, override the request handler instead of the business verb. This keeps the route shell unchanged:</p>
+<p>When shared behaviour is about <em>timing</em>, override the handler instead of the business method. This keeps the endpoint method unchanged:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">NotifyBase</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">RestView</span><span class="p">):</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">handle_create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">schema_obj</span><span class="p">):</span>
         <span class="n">obj</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">handle_create</span><span class="p">(</span><span class="n">schema_obj</span><span class="p">)</span>
@@ -579,11 +592,11 @@
         <span class="k">return</span> <span class="n">obj</span>
 </pre></div>
 </div>
-<p>Every subclass of <code class="docutils literal notranslate"><span class="pre">NotifyBase</span></code> now fires <code class="docutils literal notranslate"><span class="pre">notify_created</span></code> after commit. For most post-commit side effects, prefer <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.after_commit" title="fastapi_restly.views.RestView.after_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">after_commit</span></code></a>; use a handler override when control flow must change.</p>
+<p>Every subclass of <code class="docutils literal notranslate"><span class="pre">NotifyBase</span></code> now fires <code class="docutils literal notranslate"><span class="pre">notify_created</span></code> after commit. For most post-commit side effects, prefer <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.after_commit" title="fastapi_restly.views.RestView.after_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">after_commit</span></code></a> (see <a class="reference internal" href="customize.html#transaction-hooks-before-commit-after-commit"><span class="std std-ref">transaction hooks</span></a>); use a handler override when control flow must change.</p>
 </section>
 <section id="inherit-a-shared-dependency">
 <h2>Inherit a shared dependency<a class="headerlink" href="#inherit-a-shared-dependency" title="Link to this heading">#</a></h2>
-<p>Dependencies declared as instance annotations on a base class are injected into every subclass.</p>
+<p>To make a value such as the current user available in every subclass, declare the dependency as an instance annotation on the base class:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">Depends</span>
 
@@ -602,11 +615,11 @@
     <span class="n">schema</span> <span class="o">=</span> <span class="n">NoteRead</span>
 </pre></div>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">self.current_user</span></code> is available in every subclass method. Because <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create" title="fastapi_restly.views.RestView.create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create</span></code></a> runs before commit, stamping <code class="docutils literal notranslate"><span class="pre">owner_id</span></code> persists.</p>
+<p><code class="docutils literal notranslate"><span class="pre">self.current_user</span></code> is available in every subclass method, and because <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create" title="fastapi_restly.views.RestView.create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create</span></code></a> runs before commit, stamping <code class="docutils literal notranslate"><span class="pre">owner_id</span></code> persists. The injection mechanism itself is described in <a class="reference internal" href="class_based_views.html#dependency-injection-on-class-attributes"><span class="std std-ref">Dependency injection on class attributes</span></a>.</p>
 </section>
 <section id="apply-router-level-dependencies-to-all-routes">
 <h2>Apply router-level dependencies to all routes<a class="headerlink" href="#apply-router-level-dependencies-to-all-routes" title="Link to this heading">#</a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">dependencies</span> <span class="pre">=</span> <span class="pre">[Depends(fn)]</span></code> applies <code class="docutils literal notranslate"><span class="pre">fn</span></code> to every route. Subclasses inherit it:</p>
+<p>Setting <code class="docutils literal notranslate"><span class="pre">dependencies</span> <span class="pre">=</span> <span class="pre">[Depends(fn)]</span></code> applies <code class="docutils literal notranslate"><span class="pre">fn</span></code> to every route, and subclasses inherit it:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ProtectedBase</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">RestView</span><span class="p">):</span>
     <span class="n">dependencies</span> <span class="o">=</span> <span class="p">[</span><span class="n">Depends</span><span class="p">(</span><span class="n">require_auth</span><span class="p">)]</span>
 
@@ -633,13 +646,13 @@
 
 <span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">ApiV1</span><span class="p">):</span>
-    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>     <span class="c1"># → /api/v1/users</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>     <span class="c1"># becomes /api/v1/users</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
     <span class="n">schema</span> <span class="o">=</span> <span class="n">UserRead</span>
 
 <span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">OrderView</span><span class="p">(</span><span class="n">ApiV1</span><span class="p">):</span>
-    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/orders&quot;</span>    <span class="c1"># → /api/v1/orders</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/orders&quot;</span>    <span class="c1"># becomes /api/v1/orders</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Order</span>
     <span class="n">schema</span> <span class="o">=</span> <span class="n">OrderRead</span>
 </pre></div>
@@ -653,7 +666,7 @@
 
 <span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">ReportView</span><span class="p">(</span><span class="n">V2Base</span><span class="p">):</span>
-    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/reports&quot;</span>   <span class="c1"># → /admin/v2/reports</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/reports&quot;</span>   <span class="c1"># becomes /admin/v2/reports</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Report</span>
     <span class="n">schema</span> <span class="o">=</span> <span class="n">ReportRead</span>
 </pre></div>
@@ -661,7 +674,7 @@
 </section>
 <section id="inherit-custom-routes">
 <h2>Inherit custom routes<a class="headerlink" href="#inherit-custom-routes" title="Link to this heading">#</a></h2>
-<p>Custom routes defined with <a class="reference internal" href="api/views.html#fastapi_restly.views.get" title="fastapi_restly.views.get"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;fr.get</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.post" title="fastapi_restly.views.post"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;fr.post</span></code></a>, etc. on a base class are inherited by all registered subclasses:</p>
+<p>Custom routes defined with <a class="reference internal" href="api/views.html#fastapi_restly.views.get" title="fastapi_restly.views.get"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;fr.get</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.post" title="fastapi_restly.views.post"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;fr.post</span></code></a>, and friends on a base class are inherited by all registered subclasses:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">HealthBase</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">RestView</span><span class="p">):</span>
     <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/health&quot;</span><span class="p">)</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">health</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -678,7 +691,7 @@
 </section>
 <section id="restrict-available-endpoints-on-a-base-class">
 <h2>Restrict available endpoints on a base class<a class="headerlink" href="#restrict-available-endpoints-on-a-base-class" title="Link to this heading">#</a></h2>
-<p>Set <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.exclude_routes" title="fastapi_restly.views.BaseRestView.exclude_routes"><code class="xref py py-attr docutils literal notranslate"><span class="pre">exclude_routes</span></code></a> on a base class to make every subclass read-only (or whatever restriction you need):</p>
+<p>Set <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.exclude_routes" title="fastapi_restly.views.BaseRestView.exclude_routes"><code class="xref py py-attr docutils literal notranslate"><span class="pre">exclude_routes</span></code></a> on a base class to make every subclass read-only, or to apply whatever restriction you need:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ReadOnlyBase</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">RestView</span><span class="p">):</span>
     <span class="n">exclude_routes</span> <span class="o">=</span> <span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">ViewRoute</span><span class="o">.</span><span class="n">CREATE</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">ViewRoute</span><span class="o">.</span><span class="n">UPDATE</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">ViewRoute</span><span class="o">.</span><span class="n">DELETE</span><span class="p">)</span>
 
@@ -693,18 +706,14 @@
 </section>
 <section id="implement-soft-delete-once">
 <h2>Implement soft-delete once<a class="headerlink" href="#implement-soft-delete-once" title="Link to this heading">#</a></h2>
-<p>A base class can override the <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.delete" title="fastapi_restly.views.RestView.delete"><code class="xref py py-meth docutils literal notranslate"><span class="pre">delete</span></code></a> business verb once for every subclass
-— exactly like the audit example above, with the soft-delete body. The
-canonical recipe (idiom: a <code class="docutils literal notranslate"><span class="pre">deleted_at</span></code> timestamp) lives in
-<a class="reference internal" href="howto_override_endpoints.html#soft-delete-recipe"><span class="std std-ref">Override CRUD Behavior</span></a>;
-the reusable mixin that also hides flagged rows on read is in
-<a class="reference internal" href="howto_compose_views_with_mixins.html"><span class="std std-doc">Compose Views with Mixins</span></a>.</p>
+<p>A base class can override the <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.delete" title="fastapi_restly.views.RestView.delete"><code class="xref py py-meth docutils literal notranslate"><span class="pre">delete</span></code></a> business method once for every subclass, exactly like the audit example above but with the soft-delete body. The canonical recipe, built on a <code class="docutils literal notranslate"><span class="pre">deleted_at</span></code> timestamp, lives in <a class="reference internal" href="customize.html#soft-delete-recipe"><span class="std std-ref">Customize RestView</span></a>; the reusable mixin that also hides flagged rows on read is in <a class="reference internal" href="howto_compose_views_with_mixins.html"><span class="std std-doc">Compose Views with Mixins</span></a>.</p>
 </section>
 <section id="cross-references">
 <h2>Cross-references<a class="headerlink" href="#cross-references" title="Link to this heading">#</a></h2>
+<p>The patterns above build on two neighbouring pages:</p>
 <ul class="simple">
-<li><p><a class="reference internal" href="howto_override_endpoints.html"><span class="std std-doc">Override Endpoints</span></a> — the three-tier model and the call chain.</p></li>
-<li><p><a class="reference internal" href="howto_compose_views_with_mixins.html"><span class="std std-doc">Compose Views with Mixins</span></a> — layering structural concerns cooperatively, the richer cousin to single-base inheritance.</p></li>
+<li><p><a class="reference internal" href="customize.html"><span class="std std-doc">Customize RestView</span></a> covers the three-tier model and the call chain.</p></li>
+<li><p><a class="reference internal" href="howto_compose_views_with_mixins.html"><span class="std std-doc">Compose Views with Mixins</span></a> covers layering structural concerns cooperatively; it is the richer cousin to single-base inheritance.</p></li>
 </ul>
 </section>
 </section>
@@ -720,12 +729,12 @@ the reusable mixin that also hides flagged rows on read is in
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="howto_error_responses.html"
+       href="patterns.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Shape Error Responses</p>
+        <p class="prev-next-title">Patterns</p>
       </div>
     </a>
     <a class="right-next"

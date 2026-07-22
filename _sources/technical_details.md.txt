@@ -1,5 +1,10 @@
 # Technical Details
 
+This page documents the implementation behaviour beneath FastAPI-Restly's
+public API: how schemas are generated and derived, how view classes register
+their routes, how list parameters are assembled, and which session defaults
+the framework sets.
+
 ## Schema Generation Under the Hood
 
 FastAPI-Restly builds request and response schemas from your declared schema class,
@@ -8,7 +13,8 @@ view.
 
 ### ReadOnly and WriteOnly
 
-Field-level markers are implemented with `typing.Annotated` metadata:
+`ReadOnly` and `WriteOnly` are field-level markers implemented with
+`typing.Annotated` metadata. A schema declares them inline:
 
 ```python
 class UserRead(IDSchema):
@@ -19,19 +25,27 @@ class UserRead(IDSchema):
 
 {class}`IDSchema <fastapi_restly.schemas.IDSchema>` is primarily a response-schema base: it is {class}`BaseSchema <fastapi_restly.schemas.BaseSchema>` with a
 read-only `id` field. {class}`IDRef[Model] <fastapi_restly.schemas.IDRef>` and `IDSchema[Model]` are the model-aware
-reference forms; their validators coerce the `id` value to match the SQLAlchemy
+[reference forms](howto_relationship_idschema.md#choosing-a-reference-style);
+their validators coerce the `id` value to match the SQLAlchemy
 model's actual primary-key type.
+
+The markers take effect as follows:
 
 - `ReadOnly[...]` fields are excluded from generated create/update input schemas.
 - `WriteOnly[...]` fields are accepted on input and excluded from serialized
-  responses. {meth}`to_response_schema() <fastapi_restly.views.BaseRestView.to_response_schema>` performs the filtering. FastAPI's response
-  model serialization does **not** filter them; bypassing `to_response_schema()`
-  can expose `WriteOnly` fields.
+  responses. The marker carries Pydantic's field-level `exclude`, so the
+  filtering happens in every serialization of the schema, including FastAPI's
+  response model and nested schemas. A response that never passes through the
+  schema (a raw dict or ORM object returned without a `response_model`) is the
+  only way a `WriteOnly` value can leak.
+
+The user-facing behaviour of both markers is covered in
+[ReadOnly and WriteOnly](howto_custom_schema.md#readonly-and-writeonly).
 
 ### Generated Input Schemas
 
-For a view schema `UserRead`, Restly derives two input schemas in
-{meth}`before_include_view() <fastapi_restly.views.BaseRestView.before_include_view>`:
+Restly derives two input schemas from the declared view schema in
+{meth}`before_include_view() <fastapi_restly.views.BaseRestView.before_include_view>`. For a view schema `UserRead`:
 
 - {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>`: produced by `create_model_without_read_only_fields()`,
   which creates a subclass mixing in `OmitReadOnlyMixin` before `UserRead` in
@@ -62,8 +76,8 @@ on the view class before {func}`include_view() <fastapi_restly.views.include_vie
 ### Auto-Generated Schemas
 
 {func}`create_schema_from_model(model_cls, ...) <fastapi_restly.schemas.create_schema_from_model>` walks all `Mapped[...]` annotations
-on the model (including inherited ones) and builds a Pydantic schema. Key
-behaviours:
+on the model (including inherited ones) and builds a Pydantic schema. Three of
+its behaviours are worth noting:
 
 - **Base class selection**: The function checks whether the model has fields
   *named* `id`, `created_at`, and `updated_at` to decide which schema base
@@ -118,44 +132,48 @@ custom column types, declare an explicit schema and bypass auto-generation.
 
 ## View Classes and Registration
 
+The generated schemas feed the view layer, which turns a model and a schema
+into registered FastAPI routes.
+
 ### AsyncRestView and RestView
 
 Both {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` (async) and {class}`RestView <fastapi_restly.views.RestView>` (sync) are public API and
 share the same CRUD structure via an internal abstract base class (not exposed
-as `fr.*`). The choice between them is determined by which class you subclass —
+as `fr.*`). The choice between them is determined by which class you subclass:
 `AsyncRestView` declares `session: AsyncSessionDep` and `RestView` declares
 `session: SessionDep`. A subclass can override that `session` annotation with
-its own `Annotated[..., Depends(...)]` dependency for per-view session wiring.
+its own `Annotated[..., Depends(...)]` dependency for
+[per-view session wiring](howto_existing_project.md#use-a-custom-session-dependency-on-one-view).
 The async and sync variants have identical endpoint signatures; the only
 difference is that the async variant uses `await` in its process methods.
 
 `AsyncSessionDep` and `SessionDep` use Restly's built-in session generators.
 Those generators yield a SQLAlchemy session and manage lifecycle: rollback and
 close on exit. They do **not** commit on response. `handle_<verb>` owns the
-commit and runs {meth}`before_commit <fastapi_restly.views.RestView.before_commit>` → commit → {meth}`after_commit <fastapi_restly.views.RestView.after_commit>` around domain logic.
+commit and runs {meth}`before_commit <fastapi_restly.views.RestView.before_commit>`, then the commit itself, then {meth}`after_commit <fastapi_restly.views.RestView.after_commit>` around domain logic.
 Custom write routes can use the same bracket with
 `async with self.write_action(action, ...)`. If a request ends with uncommitted
 changes, Restly warns with {class}`RestlyUncommittedChangesWarning <fastapi_restly.exc.RestlyUncommittedChangesWarning>` by default.
-Custom session generators control construction and cleanup, not commit
-ownership.
+[Custom session generators](howto_existing_project.md#provide-your-own-session-generator)
+control construction and cleanup, not commit ownership.
 
 Both views expose several class variables that affect endpoint registration and
 runtime behaviour:
 
-- {attr}`schema <fastapi_restly.views.BaseRestView.schema>` — the Pydantic schema class; auto-generated if absent.
-- {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>`, {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>` — derived from `schema` if not declared.
-- {attr}`model <fastapi_restly.views.BaseRestView.model>` — the SQLAlchemy model class.
-- {attr}`id_type <fastapi_restly.views.BaseRestView.id_type>` — Python type for the scalar `{id}` path parameter (default `int`).
+- {attr}`schema <fastapi_restly.views.BaseRestView.schema>` holds the Pydantic schema class; it is auto-generated if absent.
+- {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` and {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>` are derived from `schema` if not declared.
+- {attr}`model <fastapi_restly.views.BaseRestView.model>` names the SQLAlchemy model class.
+- {attr}`id_type <fastapi_restly.views.BaseRestView.id_type>` sets the Python type of the scalar `{id}` path parameter (default `int`).
   Composite primary keys are outside the generated CRUD route contract; use
   {class}`View <fastapi_restly.views.View>` directly when a resource needs a multi-part identity.
-- {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>` — iterable of route names to suppress (e.g.
+- {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>` is an iterable of route names to suppress (e.g.
   `exclude_routes = [fr.ViewRoute.DELETE]`). Route-name strings such as
   `"delete"` are also accepted. Routes listed here have their
   `_api_route_args` marker removed during {meth}`before_include_view() <fastapi_restly.views.BaseRestView.before_include_view>` so FastAPI
   never registers them.
-- {attr}`include_pagination_metadata <fastapi_restly.views.BaseRestView.include_pagination_metadata>` — if `True`, the {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>` route
-  returns a paginated envelope with `items`, `total`, `page`, `page_size`, and
-  `total_pages`.
+- {attr}`include_pagination_metadata <fastapi_restly.views.BaseRestView.include_pagination_metadata>`, if `True`, makes the {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>` route
+  return a [paginated envelope](howto_response_schema.md#list-metadata-and-total-count)
+  with `items`, `total`, `page`, `page_size`, and `total_pages`.
 
 ### include_view()
 
@@ -185,27 +203,28 @@ attach an `APIRouter` to the parent app/router.
 
 ### The Three Tiers of a CRUD Verb
 
-Every CRUD verb is split into a route shell (`<verb>_endpoint`), a request
-handler (`handle_<verb>`), and a business verb (`<verb>`); the model and the
+Every CRUD verb is split into an endpoint method (`<verb>_endpoint`), a
+handler (`handle_<verb>`), and a business method (`<verb>`); the model and the
 override decision table live in
-[How Overrides Work: The Three Tiers](the_handle_design.md).
+[Customize RestView](customize.md).
 
-The implementation detail worth knowing here: the route shell calls
+The implementation detail worth knowing here is that the endpoint method calls
 {meth}`to_response(obj, shape) <fastapi_restly.views.BaseRestView.to_response>`, the single response method, which delegates to
-{meth}`to_response_schema(obj) <fastapi_restly.views.BaseRestView.to_response_schema>` for the per-object serialization (`WriteOnly`
-filtering, relationship-id normalization).
+{meth}`to_response_schema(obj) <fastapi_restly.views.BaseRestView.to_response_schema>` for the per-object serialization
+(relationship-id normalization and response-schema validation).
 
 ### Nested Response Schemas vs Write Payloads
 
 Nested schemas serve two different roles in Restly today:
 
-- **Response serialization**: supported. The CRUD views recursively build
+- **Response serialization** is supported. The CRUD views recursively build
   `selectinload(...)` options for nested relationship fields in the response
   schema, so related objects can be serialized efficiently and with aliases.
-- **Create/update payloads**: not supported in the general case. The default
+- **Create/update payloads** are not supported in the general case. The default
   `make_new_object()` / `update_object()` flow expects payload keys to map
-  directly to model attributes, with `*_id: IDRef[Model]` as the FK case. After
-  resolving an {class}`IDRef <fastapi_restly.schemas.IDRef>` / {class}`IDSchema <fastapi_restly.schemas.IDSchema>` to an ORM object, Restly chooses the FK
+  directly to model attributes, with `*_id: fr.MustExist[int, Model]`
+  (see [MustExist](howto_custom_schema.md#mustexist)) as the FK
+  case. For a relationship-named field, after resolving an {class}`IDRef <fastapi_restly.schemas.IDRef>` / {class}`IDSchema <fastapi_restly.schemas.IDSchema>` to an ORM object, Restly chooses the FK
   scalar, relationship object, or both based on the model constructor. If the
   client supplies both fields, Restly checks they refer to the same row.
 
@@ -213,7 +232,9 @@ If you declare a nested input field like `address: AddressRead` on a write
 schema, the default CRUD implementation will pass that nested Pydantic object
 through to the SQLAlchemy model constructor or attribute setter, which usually
 does not match the ORM model shape. Use a flattened schema or override the
-{meth}`create() <fastapi_restly.views.RestView.create>` / {meth}`update() <fastapi_restly.views.RestView.update>` business verbs to transform the payload first.
+{meth}`create() <fastapi_restly.views.RestView.create>` / {meth}`update() <fastapi_restly.views.RestView.update>` business methods to transform the payload first.
+[Work with Foreign Keys and Relationships](howto_relationship_idschema.md)
+describes the supported reference-field patterns.
 
 (list-parameters-lifecycle)=
 ## List Parameters Lifecycle
@@ -221,17 +242,15 @@ does not match the ORM model shape. Use a flattened schema or override the
 List endpoints accept URL query parameters of the form
 ``name=John``, ``age__gte=18``, ``sort=-created_at``, and
 ``page=2&page_size=50``. The full operator surface (`__ne`, `__isnull`,
-`__contains`, `__icontains`, …) is documented in
-[the how-to guide](howto_query_modifiers.md).
+`__contains`, `__icontains`, and more) is documented in
+[Filter, Sort, and Paginate Lists](howto_query_modifiers.md).
 
 During {meth}`before_include_view() <fastapi_restly.views.BaseRestView.before_include_view>`, the framework freezes a single class-level
-attribute:
-
-- {attr}`cls.listing_param_schema <fastapi_restly.views.BaseRestView.listing_param_schema>` — the query-parameter Pydantic schema generated
-  by {func}`create_list_params_schema(cls.schema, cls.model, default_page_size=..., max_page_size=...) <fastapi_restly.query.create_list_params_schema>`. The schema covers pagination, sorting, and one filter
-  parameter per response-schema field that maps to a filterable column on the
-  model, with optional operator suffixes. It is generated once per registration
-  and never re-derived.
+attribute, {attr}`cls.listing_param_schema <fastapi_restly.views.BaseRestView.listing_param_schema>`: the query-parameter Pydantic schema generated
+by {func}`create_list_params_schema(cls.schema, cls.model, default_page_size=..., max_page_size=...) <fastapi_restly.query.create_list_params_schema>`. The schema covers pagination, sorting, and one filter
+parameter per response-schema field that maps to a filterable column on the
+model, with optional operator suffixes. It is generated once per registration
+and never re-derived.
 
 Custom dialects (e.g. react-admin's
 [`AsyncReactAdminView` / `ReactAdminView`](howto_react_admin.md)) live as
@@ -247,9 +266,9 @@ configure it once during startup:
 fr.configure(async_database_url="sqlite+aiosqlite:///app.db")
 ```
 
-{func}`fr.configure(...) <fastapi_restly.db.configure>` rejects no-op calls — pass at least one setup option. The
+{func}`fr.configure(...) <fastapi_restly.db.configure>` rejects no-op calls; pass at least one setup option. The
 authoritative list of accepted options is the
-[API Reference's Database section](api_reference.md); this page does not
+[API Reference's Database section](api_reference.md#database); this page does not
 duplicate the contract.
 
 Internally, Restly keeps a private context object so its own tests and fixtures
@@ -288,5 +307,5 @@ unless they need different behavior.
 
 ## See Also
 
-- [Filter, Sort, and Paginate Lists](howto_query_modifiers.md) — full
+- [Filter, Sort, and Paginate Lists](howto_query_modifiers.md): the full
   filter, sort, and pagination reference.

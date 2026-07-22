@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Customize the OpenAPI Schema &#8212; FastAPI-Restly 0.7.0 documentation</title>
+    <title>Customize the OpenAPI Schema &#8212; FastAPI-Restly 0.8.0 documentation</title>
   
   
   
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=fe7df9b0"></script>
+    <script src="_static/documentation_options.js?v=486e5634"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -65,7 +65,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.7" />
+  <meta name="docsearch:version" content="0.8" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
 <!-- GoatCounter: cookieless, privacy-friendly analytics (ignores localhost) -->
 <script data-goatcounter="https://fastapi-restly.goatcounter.com/count"
@@ -176,8 +176,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="the_handle_design.html">
-    Overrides
+  <a class="nav-link nav-internal" href="customize.html">
+    Customize
   </a>
 </li>
 
@@ -206,6 +206,13 @@
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="about.html">
     About
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
   </a>
 </li>
 
@@ -340,8 +347,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="the_handle_design.html">
-    Overrides
+  <a class="nav-link nav-internal" href="customize.html">
+    Customize
   </a>
 </li>
 
@@ -370,6 +377,13 @@
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="about.html">
     About
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
   </a>
 </li>
 
@@ -438,12 +452,12 @@
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="howto_existing_project.html">Use Restly in an Existing Project</a></li>
-<li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_custom_schema.html">Custom Schemas and Field Types</a></li>
-<li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys Using IDRef</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys and Relationships</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_response_schema.html">Response Envelopes and List Metadata</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_query_modifiers.html">Filter, Sort, and Paginate Lists</a></li>
-<li class="toctree-l1"><a class="reference internal" href="howto_override_endpoints.html">Override CRUD Behavior and Add Custom Endpoints</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_error_responses.html">Shape Error Responses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_inheritance.html">Share Behaviour with Base Views</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_compose_views_with_mixins.html">Compose Views with Mixins</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_typing.html">Use Type Annotations</a></li>
@@ -514,11 +528,13 @@
   <section id="customize-the-openapi-schema">
 <h1>Customize the OpenAPI Schema<a class="headerlink" href="#customize-the-openapi-schema" title="Link to this heading">#</a></h1>
 <p>Restly’s generated routes are ordinary FastAPI path operations, so everything
-OpenAPI-related composes the FastAPI way. This page maps the knobs.</p>
+OpenAPI-related composes the FastAPI way. This page maps the customization
+points.</p>
 <section id="per-view-metadata">
 <h2>Per-view metadata<a class="headerlink" href="#per-view-metadata" title="Link to this heading">#</a></h2>
-<p><a class="reference internal" href="api/views.html#fastapi_restly.views.View.tags" title="fastapi_restly.views.View.tags"><code class="xref py py-attr docutils literal notranslate"><span class="pre">tags</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.View.responses" title="fastapi_restly.views.View.responses"><code class="xref py py-attr docutils literal notranslate"><span class="pre">responses</span></code></a>, and <a class="reference internal" href="api/views.html#fastapi_restly.views.View.dependencies" title="fastapi_restly.views.View.dependencies"><code class="xref py py-attr docutils literal notranslate"><span class="pre">dependencies</span></code></a> are class attributes on every view;
-they apply to all of the view’s routes, generated and custom:</p>
+<p>To apply OpenAPI metadata across a whole view, set the
+<a class="reference internal" href="api/views.html#fastapi_restly.views.View.tags" title="fastapi_restly.views.View.tags"><code class="xref py py-attr docutils literal notranslate"><span class="pre">tags</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.View.responses" title="fastapi_restly.views.View.responses"><code class="xref py py-attr docutils literal notranslate"><span class="pre">responses</span></code></a>, and <a class="reference internal" href="api/views.html#fastapi_restly.views.View.dependencies" title="fastapi_restly.views.View.dependencies"><code class="xref py py-attr docutils literal notranslate"><span class="pre">dependencies</span></code></a> class attributes;
+they exist on every view and apply to all of its routes, generated and custom:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">InvoiceView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/invoices&quot;</span>
@@ -531,9 +547,9 @@ they apply to all of the view’s routes, generated and custom:</p>
 </section>
 <section id="per-route-metadata-on-custom-routes">
 <h2>Per-route metadata on custom routes<a class="headerlink" href="#per-route-metadata-on-custom-routes" title="Link to this heading">#</a></h2>
-<p>The route decorators forward keyword arguments to FastAPI’s
-<code class="docutils literal notranslate"><span class="pre">add_api_route()</span></code>, so custom actions document themselves like any FastAPI
-endpoint:</p>
+<p>To document a custom route, pass keyword arguments to its route decorator;
+the decorators forward them to FastAPI’s <code class="docutils literal notranslate"><span class="pre">add_api_route()</span></code>, so
+custom actions document themselves like any FastAPI endpoint:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
         <span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">/publish&quot;</span><span class="p">,</span>
         <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
@@ -544,31 +560,37 @@ endpoint:</p>
 </pre></div>
 </div>
 </section>
-<section id="changing-a-generated-route-s-documented-contract">
-<h2>Changing a generated route’s documented contract<a class="headerlink" href="#changing-a-generated-route-s-documented-contract" title="Link to this heading">#</a></h2>
+<section id="change-a-generated-route-s-documented-contract">
+<h2>Change a generated route’s documented contract<a class="headerlink" href="#change-a-generated-route-s-documented-contract" title="Link to this heading">#</a></h2>
 <p>A generated route’s <code class="docutils literal notranslate"><span class="pre">response_model</span></code> (and therefore its documented schema)
-comes from the view’s <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema" title="fastapi_restly.views.BaseRestView.schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema</span></code></a> family. To document — and return — a different
-shape on one verb, replace that route shell with your own decorator and
+comes from the view’s <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema" title="fastapi_restly.views.BaseRestView.schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema</span></code></a> family. To document (and return) a different
+shape on one verb, replace that endpoint method with your own decorator and
 <code class="docutils literal notranslate"><span class="pre">response_model</span></code>; see
-<a class="reference internal" href="patterns.html#a-different-schema-for-the-list-endpoint"><span class="std std-ref">Patterns: a different schema for the list endpoint</span></a>
-and <a class="reference internal" href="howto_override_endpoints.html"><span class="std std-doc">Override CRUD Behavior → Tier 1</span></a>.</p>
+<a class="reference internal" href="howto_response_schema.html"><span class="std std-doc">Response Envelopes and List Metadata</span></a>,
+<a class="reference internal" href="patterns.html#a-different-schema-for-the-list-endpoint"><span class="std std-ref">a different schema for the list endpoint</span></a>,
+and <a class="reference internal" href="customize.html#replace-an-endpoint-method-to-change-the-http-contract"><span class="std std-ref">replacing an endpoint method</span></a>.</p>
 <p>Routes removed with <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.exclude_routes" title="fastapi_restly.views.BaseRestView.exclude_routes"><code class="xref py py-attr docutils literal notranslate"><span class="pre">exclude_routes</span></code></a> disappear from the schema entirely.</p>
 </section>
 <section id="resource-references-x-resource-ref">
 <h2>Resource references (<code class="docutils literal notranslate"><span class="pre">x-resource-ref</span></code>)<a class="headerlink" href="#resource-references-x-resource-ref" title="Link to this heading">#</a></h2>
-<p>Schema fields declared with <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDRef[Model]</span></code></a> are annotated in the generated
-spec with a vendor extension, <code class="docutils literal notranslate"><span class="pre">x-resource-ref:</span> <span class="pre">&quot;&lt;resource-name&gt;&quot;</span></code>, so clients
-and generators can see which resource a scalar id points at. (Known limit:
-views included on an <code class="docutils literal notranslate"><span class="pre">APIRouter</span></code> rather than the app currently lose these
-annotations.)</p>
+<p>Reference fields are annotated in the generated spec so clients and
+generators can see which resource a scalar id points at. Schema fields
+declared with <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.MustExist[int,</span> <span class="pre">Model]</span></code></a>
+(a foreign-key column) or <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDRef[Model]</span></code></a> /
+<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDSchema[Model]</span></code></a> (a relationship)
+carry the vendor extension <code class="docutils literal notranslate"><span class="pre">x-resource-ref:</span> <span class="pre">&quot;&lt;resource-name&gt;&quot;</span></code>. The reference
+styles are covered in
+<a class="reference internal" href="howto_relationship_idschema.html"><span class="std std-doc">Work with Foreign Keys and Relationships</span></a>.</p>
+<p>There is a known limit: views included on an <code class="docutils literal notranslate"><span class="pre">APIRouter</span></code> rather than the app
+currently lose these annotations.</p>
 </section>
 <section id="see-also">
 <h2>See also<a class="headerlink" href="#see-also" title="Link to this heading">#</a></h2>
 <ul class="simple">
-<li><p><a class="reference internal" href="class_based_views.html"><span class="std std-doc">Class-Based Views</span></a> — where the class-level
-attributes come from.</p></li>
-<li><p><a class="reference internal" href="api_reference.html"><span class="std std-doc">API Reference → Endpoint Decorators</span></a> — the decorator
-surface and pass-through kwargs.</p></li>
+<li><p><a class="reference internal" href="class_based_views.html"><span class="std std-doc">Class-Based Views</span></a>: where the class-level attributes
+come from.</p></li>
+<li><p><a class="reference internal" href="api_reference.html#endpoint-decorators"><span class="std std-ref">Endpoint Decorators</span></a>: the decorator
+surface and pass-through keyword arguments.</p></li>
 </ul>
 </section>
 </section>
@@ -622,7 +644,7 @@ surface and pass-through kwargs.</p></li>
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#per-view-metadata">Per-view metadata</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#per-route-metadata-on-custom-routes">Per-route metadata on custom routes</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#changing-a-generated-route-s-documented-contract">Changing a generated route’s documented contract</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#change-a-generated-route-s-documented-contract">Change a generated route’s documented contract</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#resource-references-x-resource-ref">Resource references (<code class="docutils literal notranslate"><span class="pre">x-resource-ref</span></code>)</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#see-also">See also</a></li>
 </ul>

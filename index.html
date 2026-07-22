@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>FastAPI-Restly &#8212; FastAPI-Restly 0.7.0 documentation</title>
+    <title>FastAPI-Restly &#8212; FastAPI-Restly 0.8.0 documentation</title>
   
   
   
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=fe7df9b0"></script>
+    <script src="_static/documentation_options.js?v=486e5634"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -64,7 +64,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.7" />
+  <meta name="docsearch:version" content="0.8" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
 <!-- GoatCounter: cookieless, privacy-friendly analytics (ignores localhost) -->
 <script data-goatcounter="https://fastapi-restly.goatcounter.com/count"
@@ -175,8 +175,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="the_handle_design.html">
-    Overrides
+  <a class="nav-link nav-internal" href="customize.html">
+    Customize
   </a>
 </li>
 
@@ -205,6 +205,13 @@
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="about.html">
     About
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
   </a>
 </li>
 
@@ -341,8 +348,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="the_handle_design.html">
-    Overrides
+  <a class="nav-link nav-internal" href="customize.html">
+    Customize
   </a>
 </li>
 
@@ -371,6 +378,13 @@
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="about.html">
     About
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
   </a>
 </li>
 
@@ -472,17 +486,19 @@
 and Pydantic v2. Views are real Python classes: share behavior with inheritance
 and mixins, and override the one operation you need.</p>
 <blockquote>
-<div><p><strong>Status:</strong> <code class="docutils literal notranslate"><span class="pre">0.7.0</span></code> — public beta, after
+<div><p><strong>Status:</strong> <code class="docutils literal notranslate"><span class="pre">0.8.0</span></code>, a public beta after
 <a class="reference internal" href="about.html"><span class="std std-doc">four years of internal use</span></a>. Expect small breaking changes in
 deeper extension points on the way to <code class="docutils literal notranslate"><span class="pre">1.0.0</span></code>; see the
 <a class="reference internal" href="changelog.html"><span class="std std-doc">changelog</span></a>.</p>
 </div></blockquote>
 <section id="quick-start">
 <h2>Quick Start<a class="headerlink" href="#quick-start" title="Link to this heading">#</a></h2>
+<p>Install FastAPI-Restly along with an async SQLite driver:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;fastapi-restly[standard]&quot;</span><span class="w"> </span>aiosqlite
 </pre></div>
 </div>
-<p>A SQLAlchemy model and a four-line view class — complete and runnable:</p>
+<p>A SQLAlchemy model and a four-line view class make a complete, runnable
+application:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">contextlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">asynccontextmanager</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
@@ -521,7 +537,7 @@ deeper extension points on the way to <code class="docutils literal notranslate"
 </pre></div>
 </div>
 <p>That view exposes these routes, with schemas generated from the model:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET    /users/       # list users — filter, sort, paginate via URL params
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET    /users/       # list users: filter, sort, paginate via URL params
 POST   /users/       # create a user
 GET    /users/{id}   # read one user
 PATCH  /users/{id}   # partially update one user
@@ -529,8 +545,8 @@ DELETE /users/{id}   # delete one user
 </pre></div>
 </div>
 <p>Because the view is a class, changing one behavior means overriding one
-method — routing, validation, and the commit stay framework-owned. Add to
-<code class="docutils literal notranslate"><span class="pre">UserView</span></code>:</p>
+method; routing, validation, and the commit stay framework-owned. Add this
+method to <code class="docutils literal notranslate"><span class="pre">UserView</span></code>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">delete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
         <span class="n">obj</span><span class="o">.</span><span class="n">active</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># deactivate instead of removing the row</span>
 </pre></div>
@@ -538,22 +554,22 @@ method — routing, validation, and the commit stay framework-owned. Add to
 <p><code class="docutils literal notranslate"><span class="pre">DELETE</span> <span class="pre">/users/{id}</span></code> now soft-disables (the row stays readable, with
 <code class="docutils literal notranslate"><span class="pre">active:</span> <span class="pre">false</span></code>); the other four routes are untouched.</p>
 <p>Run it with <code class="docutils literal notranslate"><span class="pre">fastapi</span> <span class="pre">dev</span> <span class="pre">main.py</span></code>. <a class="reference internal" href="getting_started.html"><span class="std std-doc">Getting Started</span></a> walks
-through the same flow step by step — install details, explicit schemas, and a
+through the same flow step by step: install details, explicit schemas, and a
 first test.</p>
 </section>
 <section id="features">
 <h2>Features<a class="headerlink" href="#features" title="Link to this heading">#</a></h2>
 <ul class="simple">
-<li><p><strong><a class="reference internal" href="api_reference.html#generated-rest-endpoints"><span class="std std-ref">Generated REST endpoints</span></a></strong> — GET, POST, PATCH, DELETE with minimal boilerplate</p></li>
-<li><p><strong><a class="reference internal" href="class_based_views.html"><span class="std std-doc">True class-based views</span></a></strong> — inheritance, mixins, and method overrides</p></li>
-<li><p><strong><a class="reference internal" href="the_handle_design.html"><span class="std std-doc">Explicit override points</span></a></strong> — every CRUD verb split into route shell, request handler, and business method</p></li>
-<li><p><strong><a class="reference internal" href="howto_react_admin.html"><span class="std std-doc">React Admin ready</span></a></strong> — <code class="docutils literal notranslate"><span class="pre">AsyncReactAdminView</span></code> speaks <code class="docutils literal notranslate"><span class="pre">ra-data-simple-rest</span></code></p></li>
-<li><p><strong><a class="reference internal" href="getting_started.html"><span class="std std-doc">SQLAlchemy 2.0 support</span></a></strong> — async-first with modern patterns</p></li>
-<li><p><strong><a class="reference internal" href="howto_custom_schema.html"><span class="std std-doc">Pydantic v2 integration</span></a></strong> — validation and serialization for public contracts</p></li>
-<li><p><strong><a class="reference internal" href="technical_details.html#id1"><span class="std std-ref">Automatic schema generation</span></a></strong> — read, create, and update schemas generated automatically</p></li>
-<li><p><strong><a class="reference internal" href="howto_query_modifiers.html"><span class="std std-doc">List parameters</span></a></strong> — filter, sort, and paginate from a stable URL dialect generated from the response schema</p></li>
-<li><p><strong><a class="reference internal" href="howto_relationship_idschema.html"><span class="std std-doc">Relationship support</span></a></strong> — handle foreign keys and nested objects</p></li>
-<li><p><strong><a class="reference internal" href="howto_testing.html"><span class="std std-doc">Testing utilities</span></a></strong> — built-in test helpers with savepoint isolation</p></li>
+<li><p><strong><a class="reference internal" href="api_reference.html#generated-rest-endpoints"><span class="std std-ref">Generated REST endpoints</span></a></strong>: GET, POST, PATCH, DELETE with minimal boilerplate</p></li>
+<li><p><strong><a class="reference internal" href="class_based_views.html"><span class="std std-doc">True class-based views</span></a></strong>: inheritance, mixins, and method overrides</p></li>
+<li><p><strong><a class="reference internal" href="customize.html"><span class="std std-doc">Explicit override points</span></a></strong>: every CRUD verb split into endpoint method, handler, and business method</p></li>
+<li><p><strong><a class="reference internal" href="howto_react_admin.html"><span class="std std-doc">React Admin ready</span></a></strong>: <code class="docutils literal notranslate"><span class="pre">AsyncReactAdminView</span></code> speaks <code class="docutils literal notranslate"><span class="pre">ra-data-simple-rest</span></code></p></li>
+<li><p><strong><a class="reference internal" href="getting_started.html"><span class="std std-doc">SQLAlchemy 2.0 support</span></a></strong>: async-first with modern patterns</p></li>
+<li><p><strong><a class="reference internal" href="howto_custom_schema.html"><span class="std std-doc">Pydantic v2 integration</span></a></strong>: validation and serialization for public contracts</p></li>
+<li><p><strong><a class="reference internal" href="technical_details.html#id1"><span class="std std-ref">Automatic schema generation</span></a></strong>: read, create, and update schemas generated automatically</p></li>
+<li><p><strong><a class="reference internal" href="howto_query_modifiers.html"><span class="std std-doc">List parameters</span></a></strong>: filter, sort, and paginate from a stable URL dialect generated from the response schema</p></li>
+<li><p><strong><a class="reference internal" href="howto_relationship_idschema.html"><span class="std std-doc">Relationship support</span></a></strong>: handle foreign keys and nested objects</p></li>
+<li><p><strong><a class="reference internal" href="howto_testing.html"><span class="std std-doc">Testing utilities</span></a></strong>: built-in test helpers with savepoint isolation</p></li>
 </ul>
 </section>
 <section id="documentation">
@@ -591,10 +607,11 @@ Class-Based Views</div>
 <div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
 <div class="sd-card-body docutils">
 <div class="sd-card-title sd-font-weight-bold docutils">
-How Overrides Work</div>
-<p class="sd-card-text">The three tiers behind every CRUD verb, and which one to override.</p>
+Customize RestView</div>
+<p class="sd-card-text">The three tiers behind every CRUD verb, with recipes for every override
+point.</p>
 </div>
-<a class="sd-stretched-link sd-hide-link-text reference internal" href="the_handle_design.html"><span class="doc">How Overrides Work: The Three Tiers</span></a></div>
+<a class="sd-stretched-link sd-hide-link-text reference internal" href="customize.html"><span class="doc">Customize RestView</span></a></div>
 </div>
 <div class="sd-col sd-d-flex-row docutils">
 <div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">

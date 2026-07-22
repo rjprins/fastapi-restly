@@ -1,6 +1,10 @@
 Models API
 ==========
 
+``fastapi_restly.models`` provides the SQLAlchemy declarative base classes and
+mixins (``DataclassBase``, ``IDBase``, ``IDMixin``, ``TimestampsMixin``) that
+Restly models are declared against.
+
 .. automodule:: fastapi_restly.models
    :members:
    :undoc-members:
@@ -9,5 +13,5 @@ Models API
 
 .. seealso::
 
-   :doc:`/getting_started` — choosing between your own DeclarativeBase and
-   the convenience bases.
+   :doc:`/getting_started` discusses choosing between your own
+   DeclarativeBase and the convenience bases.

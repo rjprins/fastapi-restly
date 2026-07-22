@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Query API &#8212; FastAPI-Restly 0.7.0 documentation</title>
+    <title>Query API &#8212; FastAPI-Restly 0.8.0 documentation</title>
   
   
   
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=fe7df9b0"></script>
+    <script src="../_static/documentation_options.js?v=486e5634"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -65,7 +65,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.7" />
+  <meta name="docsearch:version" content="0.8" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
 <!-- GoatCounter: cookieless, privacy-friendly analytics (ignores localhost) -->
 <script data-goatcounter="https://fastapi-restly.goatcounter.com/count"
@@ -176,8 +176,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../the_handle_design.html">
-    Overrides
+  <a class="nav-link nav-internal" href="../customize.html">
+    Customize
   </a>
 </li>
 
@@ -206,6 +206,13 @@
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="../about.html">
     About
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
   </a>
 </li>
 
@@ -340,8 +347,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../the_handle_design.html">
-    Overrides
+  <a class="nav-link nav-internal" href="../customize.html">
+    Customize
   </a>
 </li>
 
@@ -370,6 +377,13 @@
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="../about.html">
     About
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
   </a>
 </li>
 
@@ -515,9 +529,13 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="module-fastapi_restly.query">
-<span id="query-api"></span><h1>Query API<a class="headerlink" href="#module-fastapi_restly.query" title="Link to this heading">#</a></h1>
-<dl class="py function">
+  <section id="query-api">
+<h1>Query API<a class="headerlink" href="#query-api" title="Link to this heading">#</a></h1>
+<p><code class="docutils literal notranslate"><span class="pre">fastapi_restly.query</span></code> implements list-endpoint filtering, sorting, and
+pagination: <code class="docutils literal notranslate"><span class="pre">create_list_params_schema()</span></code> derives the URL parameter schema
+from a response schema and its model, and <code class="docutils literal notranslate"><span class="pre">apply_list_params()</span></code> applies
+validated parameters to a SQLAlchemy select.</p>
+<dl class="py function" id="module-fastapi_restly.query">
 <dt class="sig sig-object py" id="fastapi_restly.query.apply_list_params">
 <span class="sig-prename descclassname"><span class="pre">fastapi_restly.query.</span></span><span class="sig-name descname"><span class="pre">apply_list_params</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">params</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pydantic.dev/docs/validation/latest/api/pydantic/base_model/#pydantic.BaseModel" title="(in Pydantic v0.0.0)"><span class="pre">BaseModel</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">QueryParams</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">select_query</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.sqlalchemy.org/en/20/core/selectable.html#sqlalchemy.sql.expression.Select" title="(in SQLAlchemy v2.0)"><span class="pre">Select</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/mapping_api.html#sqlalchemy.orm.DeclarativeBase" title="(in SQLAlchemy v2.0)"><span class="pre">DeclarativeBase</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">schema_cls</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://pydantic.dev/docs/validation/latest/api/pydantic/base_model/#pydantic.BaseModel" title="(in Pydantic v0.0.0)"><span class="pre">BaseModel</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.sqlalchemy.org/en/20/core/selectable.html#sqlalchemy.sql.expression.Select" title="(in SQLAlchemy v2.0)"><span class="pre">Select</span></a></span></span><a class="headerlink" href="#fastapi_restly.query.apply_list_params" title="Link to this definition">#</a></dt>
 <dd><p>Apply pagination, sorting, and filtering on a SQL query using validated
@@ -560,9 +578,10 @@ a filterable column on <code class="docutils literal notranslate"><span class="p
 suffixes. Fields that do not resolve to a column (relationship/collection
 fields, or reference traversals the request path would reject) get no filter
 params, so the generated schema – and the OpenAPI it produces – no longer
-advertises filters for fields that are not filterable at all. (This validates
-column existence, the same check the request path makes; it does not promise
-every operator executes for exotic column types such as <code class="docutils literal notranslate"><span class="pre">ARRAY</span></code>/<code class="docutils literal notranslate"><span class="pre">JSON</span></code>.)</p>
+advertises filters for fields that are not filterable at all. Fields whose
+type is a collection (<code class="docutils literal notranslate"><span class="pre">dict</span></code>/<code class="docutils literal notranslate"><span class="pre">list</span></code>, e.g. <code class="docutils literal notranslate"><span class="pre">JSON</span></code> or <code class="docutils literal notranslate"><span class="pre">ARRAY</span></code> columns)
+generate only <code class="docutils literal notranslate"><span class="pre">__isnull</span></code>: a query-string value cannot coerce into them,
+so every other operator would fail at request time.</p>
 <p><code class="docutils literal notranslate"><span class="pre">page</span></code> and <code class="docutils literal notranslate"><span class="pre">page_size</span></code> are validated by Pydantic with bounds
 (<code class="docutils literal notranslate"><span class="pre">page</span> <span class="pre">&gt;=</span> <span class="pre">1</span></code>, <code class="docutils literal notranslate"><span class="pre">1</span> <span class="pre">&lt;=</span> <span class="pre">page_size</span> <span class="pre">&lt;=</span> <span class="pre">max_page_size</span></code>); out-of-range values
 produce a standard 422 response from FastAPI.</p>
@@ -585,8 +604,8 @@ omitted from the generated params.</p>
 
 <div class="admonition seealso">
 <p class="admonition-title">See also</p>
-<p><a class="reference internal" href="../howto_query_modifiers.html"><span class="doc">Filter, Sort, and Paginate Lists</span></a> — the URL filter/sort/pagination grammar
-these helpers implement.</p>
+<p><a class="reference internal" href="../howto_query_modifiers.html"><span class="doc">Filter, Sort, and Paginate Lists</span></a> documents the URL filter, sort, and
+pagination grammar that these helpers implement.</p>
 </div>
 </section>
 

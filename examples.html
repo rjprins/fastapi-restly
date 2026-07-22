@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Examples &#8212; FastAPI-Restly 0.7.0 documentation</title>
+    <title>Examples &#8212; FastAPI-Restly 0.8.0 documentation</title>
   
   
   
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=fe7df9b0"></script>
+    <script src="_static/documentation_options.js?v=486e5634"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -65,7 +65,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.7" />
+  <meta name="docsearch:version" content="0.8" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
 <!-- GoatCounter: cookieless, privacy-friendly analytics (ignores localhost) -->
 <script data-goatcounter="https://fastapi-restly.goatcounter.com/count"
@@ -176,8 +176,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="the_handle_design.html">
-    Overrides
+  <a class="nav-link nav-internal" href="customize.html">
+    Customize
   </a>
 </li>
 
@@ -206,6 +206,13 @@
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="about.html">
     About
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
   </a>
 </li>
 
@@ -340,8 +347,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="the_handle_design.html">
-    Overrides
+  <a class="nav-link nav-internal" href="customize.html">
+    Customize
   </a>
 </li>
 
@@ -370,6 +377,13 @@
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="about.html">
     About
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
   </a>
 </li>
 
@@ -511,9 +525,9 @@ empty app to a working REST resource.</p>
 (<a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/shop/README.md">README</a>)
 shows relationships, multiple primary-key styles, async sessions, and
 React-Admin-compatible endpoints through <a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncReactAdminView" title="fastapi_restly.views.AsyncReactAdminView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncReactAdminView</span></code></a>. It also includes
-a small React Admin frontend wired against the API. Covered in:
-<a class="reference internal" href="howto_react_admin.html"><span class="std std-doc">React Admin Integration</span></a>,
-<a class="reference internal" href="howto_relationship_idschema.html"><span class="std std-doc">Work with Foreign Keys Using IDRef</span></a>.</p>
+a small React Admin frontend wired against the API. These patterns are
+covered in <a class="reference internal" href="howto_react_admin.html"><span class="std std-doc">React Admin Integration</span></a> and
+<a class="reference internal" href="howto_relationship_idschema.html"><span class="std std-doc">Work with Foreign Keys and Relationships</span></a>.</p>
 </section>
 <section id="saas">
 <h2>SaaS<a class="headerlink" href="#saas" title="Link to this heading">#</a></h2>
@@ -521,9 +535,10 @@ a small React Admin frontend wired against the API. Covered in:
 (<a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/README.md">README</a>)
 is the most complete example: a multi-tenant project management API with
 permission patterns, shared base views, mixins, custom create/update schemas,
-query modifiers, Alembic migrations — and a substantial <strong>non-CRUD surface</strong>
-built on the same views. Route highlights, all from
-<code class="docutils literal notranslate"><span class="pre">example-projects/saas/app/views/</span></code>:</p>
+<a class="reference internal" href="howto_query_modifiers.html"><span class="std std-doc">query modifiers</span></a>, and
+<a class="reference internal" href="deploying.html#migrations-with-alembic"><span class="std std-ref">Alembic migrations</span></a>. It also builds a
+substantial non-CRUD surface on the same views. The routes below, all defined
+in <code class="docutils literal notranslate"><span class="pre">example-projects/saas/app/views/</span></code>, highlight the patterns involved:</p>
 <div class="pst-scrollable-table-container"><table class="table">
 <thead>
 <tr class="row-odd"><th class="head"><p>Route</p></th>
@@ -549,17 +564,17 @@ built on the same views. Route highlights, all from
 </tbody>
 </table>
 </div>
-<p>Covered in:
+<p>These patterns are covered in
 <a class="reference internal" href="howto_compose_views_with_mixins.html"><span class="std std-doc">Compose Views with Mixins</span></a>,
 <a class="reference internal" href="howto_inheritance.html"><span class="std std-doc">Share Behaviour with Base Views</span></a>,
-<a class="reference internal" href="howto_override_endpoints.html"><span class="std std-doc">Override CRUD Behavior</span></a>,
+<a class="reference internal" href="customize.html"><span class="std std-doc">Customize RestView</span></a>, and
 <a class="reference internal" href="patterns.html"><span class="std std-doc">Patterns</span></a>.</p>
 </section>
 <section id="running-them">
 <h2>Running them<a class="headerlink" href="#running-them" title="Link to this heading">#</a></h2>
 <p>Each project is self-contained: run <code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">sync</span></code> in its directory, then use the
 commands in its README (linked above).</p>
-<p>Want to build one of these yourself? Start with
+<p>To build one of these yourself, start with
 <a class="reference internal" href="getting_started.html"><span class="std std-doc">Getting Started</span></a> and the <a class="reference internal" href="tutorial.html"><span class="std std-doc">Tutorial</span></a>.</p>
 </section>
 </section>

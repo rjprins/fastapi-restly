@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Schemas API &#8212; FastAPI-Restly 0.7.0 documentation</title>
+    <title>Schemas API &#8212; FastAPI-Restly 0.8.0 documentation</title>
   
   
   
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=fe7df9b0"></script>
+    <script src="../_static/documentation_options.js?v=486e5634"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -65,7 +65,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.7" />
+  <meta name="docsearch:version" content="0.8" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
 <!-- GoatCounter: cookieless, privacy-friendly analytics (ignores localhost) -->
 <script data-goatcounter="https://fastapi-restly.goatcounter.com/count"
@@ -176,8 +176,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../the_handle_design.html">
-    Overrides
+  <a class="nav-link nav-internal" href="../customize.html">
+    Customize
   </a>
 </li>
 
@@ -206,6 +206,13 @@
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="../about.html">
     About
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
   </a>
 </li>
 
@@ -340,8 +347,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../the_handle_design.html">
-    Overrides
+  <a class="nav-link nav-internal" href="../customize.html">
+    Customize
   </a>
 </li>
 
@@ -370,6 +377,13 @@
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="../about.html">
     About
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
   </a>
 </li>
 
@@ -515,9 +529,19 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="module-fastapi_restly.schemas">
-<span id="schemas-api"></span><h1>Schemas API<a class="headerlink" href="#module-fastapi_restly.schemas" title="Link to this heading">#</a></h1>
-<dl class="py class">
+  <section id="schemas-api">
+<h1>Schemas API<a class="headerlink" href="#schemas-api" title="Link to this heading">#</a></h1>
+<p><code class="docutils literal notranslate"><span class="pre">fastapi_restly.schemas</span></code> implements the Pydantic schema layer: schema base
+classes, the <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> and <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> field markers, relationship
+reference types, and schema generation from SQLAlchemy models.</p>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<p><a class="reference internal" href="../howto_relationship_idschema.html"><span class="doc">Work with Foreign Keys and Relationships</span></a> covers <code class="docutils literal notranslate"><span class="pre">MustExist</span></code> checked foreign
+keys and the <code class="docutils literal notranslate"><span class="pre">IDRef</span></code> / <code class="docutils literal notranslate"><span class="pre">IDSchema</span></code> relationship wire contract.
+<a class="reference internal" href="../howto_custom_schema.html"><span class="doc">Custom Schemas and Field Types</span></a> describes schema bases, field markers, and
+aliases in prose.</p>
+</div>
+<dl class="py class" id="module-fastapi_restly.schemas">
 <dt class="sig sig-object py" id="fastapi_restly.schemas.BaseSchema">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.schemas.</span></span><span class="sig-name descname"><span class="pre">BaseSchema</span></span><a class="headerlink" href="#fastapi_restly.schemas.BaseSchema" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://pydantic.dev/docs/validation/latest/api/pydantic/base_model/#pydantic.BaseModel" title="(in Pydantic v0.0.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseModel</span></code></a></p>
@@ -543,23 +567,27 @@ as <code class="docutils literal notranslate"><span class="pre">WriteOnly</span>
 <dt class="sig sig-object py" id="fastapi_restly.schemas.IDRef">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.schemas.</span></span><span class="sig-name descname"><span class="pre">IDRef</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">value:</span> <span class="pre">~typing.Any</span> <span class="pre">=</span> <span class="pre">&lt;object</span> <span class="pre">object&gt;,</span> <span class="pre">*,</span> <span class="pre">id:</span> <span class="pre">~typing.Annotated[~typing.Any,</span> <span class="pre">fr.ReadOnly]</span></em><span class="sig-paren">)</span><a class="headerlink" href="#fastapi_restly.schemas.IDRef" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas._base.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDSchema</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Generic" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Generic</span></code></a>[<code class="xref py py-obj docutils literal notranslate"><span class="pre">SQLAlchemyModel</span></code>]</p>
-<p>Reference to a row of T by id.</p>
-<p>Wire format is the raw id value (e.g. <code class="docutils literal notranslate"><span class="pre">5</span></code>); accepts both scalars and
-<code class="docutils literal notranslate"><span class="pre">{&quot;id&quot;:</span> <span class="pre">N}</span></code> dicts on input. The framework validates the referenced row
-exists and resolves it to the FK column on the way in.</p>
-<p>Use this for typical REST APIs where you want <code class="docutils literal notranslate"><span class="pre">task_id:</span> <span class="pre">5</span></code> on the wire.
-For JSON-API or React-Admin-style nested wire format <code class="docutils literal notranslate"><span class="pre">{&quot;id&quot;:</span> <span class="pre">N}</span></code>, use
-<code class="docutils literal notranslate"><span class="pre">IDSchema[T]</span></code> instead.</p>
+<p>Flat-id reference to a related row, for a RELATIONSHIP-named field.</p>
+<p>Use <code class="docutils literal notranslate"><span class="pre">IDRef[T]</span></code> when the field is named after a relationship
+(<code class="docutils literal notranslate"><span class="pre">author:</span> <span class="pre">IDRef[User]</span></code>, <code class="docutils literal notranslate"><span class="pre">products:</span> <span class="pre">list[IDRef[Product]]</span></code>), not after a
+<code class="docutils literal notranslate"><span class="pre">*_id</span></code> column. The wire format is the raw id (<code class="docutils literal notranslate"><span class="pre">5</span></code>); input also accepts
+<code class="docutils literal notranslate"><span class="pre">{&quot;id&quot;:</span> <span class="pre">N}</span></code>. Restly resolves the id to the related ORM object, so
+<code class="docutils literal notranslate"><span class="pre">data.author</span></code> is an <code class="docutils literal notranslate"><span class="pre">IDRef</span></code> wrapper (read <code class="docutils literal notranslate"><span class="pre">.id</span></code>), not a plain scalar.</p>
+<p>For a scalar foreign-key COLUMN (<code class="docutils literal notranslate"><span class="pre">author_id</span></code>, <code class="docutils literal notranslate"><span class="pre">task_id</span></code>) use
+<code class="docutils literal notranslate"><span class="pre">fr.MustExist[int,</span> <span class="pre">T]</span></code> instead – it keeps the field a plain checked id
+(<code class="docutils literal notranslate"><span class="pre">data.author_id</span> <span class="pre">==</span> <span class="pre">1</span></code>), rather than making a <code class="docutils literal notranslate"><span class="pre">*_id</span></code> field an object
+wrapper. For nested <code class="docutils literal notranslate"><span class="pre">{&quot;id&quot;:</span> <span class="pre">N}</span></code> wire on a relationship, use <code class="docutils literal notranslate"><span class="pre">IDSchema[T]</span></code>.</p>
 <blockquote>
-<div><p>products: list[IDRef[Product]]  # serializes as [“uuid1”, “uuid2”]</p>
+<div><p>author: IDRef[User]             # to-one relationship, flat id
+products: list[IDRef[Product]]  # serializes as [1, 2, 3]</p>
 </div></blockquote>
 <p>Resolution is an UNSCOPED existence check: the row is fetched by primary key
 only, with no view <code class="docutils literal notranslate"><span class="pre">build_query</span></code> scoping (tenant, soft-delete, row-level
 visibility), so a reference to a row the caller cannot otherwise see still
-resolves. If references must respect visibility, gate them in <code class="docutils literal notranslate"><span class="pre">authorize</span></code>
-(<code class="docutils literal notranslate"><span class="pre">data.&lt;field&gt;.id</span></code> is the requested id, before resolution) or
-<code class="docutils literal notranslate"><span class="pre">before_commit</span></code> (the resolved row is on the built object). See the IDRef
-how-to, “Visibility and Multi-Tenancy”.</p>
+resolves. Gate visibility in <code class="docutils literal notranslate"><span class="pre">authorize</span></code> (<code class="docutils literal notranslate"><span class="pre">data.&lt;field&gt;.id</span></code> is the
+requested id, before resolution) or <code class="docutils literal notranslate"><span class="pre">before_commit</span></code> (the resolved row is
+on the built object). See the Foreign Keys and Relationships how-to,
+“Visibility and Multi-Tenancy”.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.schemas.IDRef.model_config">
 <span class="sig-name descname"><span class="pre">model_config</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ClassVar</span><span class="p"><span class="pre">[</span></span><span class="pre">ConfigDict</span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'from_attributes':</span> <span class="pre">True}</span></em><a class="headerlink" href="#fastapi_restly.schemas.IDRef.model_config" title="Link to this definition">#</a></dt>
@@ -572,8 +600,19 @@ how-to, “Visibility and Multi-Tenancy”.</p>
 <dt class="sig sig-object py" id="fastapi_restly.schemas.IDSchema">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.schemas.</span></span><span class="sig-name descname"><span class="pre">IDSchema</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Annotated" title="(in Python v3.14)"><span class="pre">Annotated</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">fr.ReadOnly</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fastapi_restly.schemas.IDSchema" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#fastapi_restly.schemas.BaseSchema" title="fastapi_restly.schemas._base.BaseSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseSchema</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Generic" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Generic</span></code></a>[<code class="xref py py-obj docutils literal notranslate"><span class="pre">SQLAlchemyModel</span></code>]</p>
-<p>Generic schema useful for serializing only the id of objects.
-Can be used as IDSchema[MyModel].</p>
+<p>Response-schema base that adds a read-only <code class="docutils literal notranslate"><span class="pre">id</span></code>; parametrized as a
+field type, a nested-object relationship reference.</p>
+<ul class="simple">
+<li><p>As a BASE CLASS (<code class="docutils literal notranslate"><span class="pre">class</span> <span class="pre">UserRead(IDSchema):</span> <span class="pre">...</span></code>) it adds the resource’s
+own read-only <code class="docutils literal notranslate"><span class="pre">id</span></code> – the common use.</p></li>
+<li><p>As a FIELD TYPE on a RELATIONSHIP-named field (<code class="docutils literal notranslate"><span class="pre">author:</span> <span class="pre">IDSchema[User]</span></code>)
+the wire format is <code class="docutils literal notranslate"><span class="pre">{&quot;id&quot;:</span> <span class="pre">N}</span></code> (JSON-API / React-Admin); Restly resolves
+the id to the related ORM object, so <code class="docutils literal notranslate"><span class="pre">data.author</span></code> is a wrapper (read
+<code class="docutils literal notranslate"><span class="pre">.id</span></code>). Use <code class="docutils literal notranslate"><span class="pre">IDRef[User]</span></code> for flat-id wire (<code class="docutils literal notranslate"><span class="pre">5</span></code>) instead.</p></li>
+</ul>
+<p>For a scalar foreign-key COLUMN (<code class="docutils literal notranslate"><span class="pre">author_id</span></code>), use <code class="docutils literal notranslate"><span class="pre">fr.MustExist[int,</span> <span class="pre">T]</span></code>
+rather than <code class="docutils literal notranslate"><span class="pre">IDSchema</span></code>/<code class="docutils literal notranslate"><span class="pre">IDRef</span></code>: it keeps the field a plain checked id
+instead of turning a <code class="docutils literal notranslate"><span class="pre">*_id</span></code> field into an object wrapper.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="fastapi_restly.schemas.IDSchema.get_sql_model_annotation">
 <span class="sig-name descname"><span class="pre">get_sql_model_annotation</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><span class="pre">SQLAlchemyModel</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#fastapi_restly.schemas.IDSchema.get_sql_model_annotation" title="Link to this definition">#</a></dt>
@@ -600,9 +639,10 @@ Can be used as IDSchema[MyModel].</p>
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.schemas.</span></span><span class="sig-name descname"><span class="pre">MustExist</span></span><a class="headerlink" href="#fastapi_restly.schemas.MustExist" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>Existence-checked scalar foreign key.</p>
-<p><code class="docutils literal notranslate"><span class="pre">MustExist[Post]</span></code> desugars to <code class="docutils literal notranslate"><span class="pre">Annotated[int,</span> <span class="pre">RefExists(Post)]</span></code>; for a
-non-int primary key, pass it as the second argument –
-<code class="docutils literal notranslate"><span class="pre">MustExist[Account,</span> <span class="pre">UUID]</span></code> -&gt; <code class="docutils literal notranslate"><span class="pre">Annotated[UUID,</span> <span class="pre">RefExists(Account)]</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">MustExist[int]</span></code> is a checked <code class="docutils literal notranslate"><span class="pre">int</span></code> foreign key; the target model is
+inferred from the column’s <code class="docutils literal notranslate"><span class="pre">ForeignKey</span></code>. Spell the model out with a
+second argument when you want it explicit (<code class="docutils literal notranslate"><span class="pre">MustExist[int,</span> <span class="pre">Post]</span></code>), and
+use the first for a non-int primary key (<code class="docutils literal notranslate"><span class="pre">MustExist[UUID,</span> <span class="pre">Account]</span></code>).</p>
 <p>Unlike <code class="docutils literal notranslate"><span class="pre">IDRef</span></code>/<code class="docutils literal notranslate"><span class="pre">IDSchema</span></code> this is <strong>not</strong> a wrapper: the field stays
 the pk scalar everywhere (wire, column, <code class="docutils literal notranslate"><span class="pre">data.&lt;field&gt;</span></code>), plus a batched
 existence check on write (404 on a miss). It is exactly the marker form
@@ -646,12 +686,6 @@ include_readonly_fields: Whether to include read-only fields like id, created_at
 </dl>
 </dd></dl>
 
-<div class="admonition seealso">
-<p class="admonition-title">See also</p>
-<p><a class="reference internal" href="../howto_custom_schema.html"><span class="doc">Custom Schemas and Field Types</span></a> — schema bases, field markers, and aliases in
-prose; <a class="reference internal" href="../howto_relationship_idschema.html"><span class="doc">Work with Foreign Keys Using IDRef</span></a> — the IDRef / IDSchema wire
-contract.</p>
-</div>
 </section>
 
 
