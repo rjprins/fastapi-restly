@@ -374,12 +374,65 @@ def iter_creatable_fields(
         yield field_name, value
 
 
+def _add_null_reference_to_create_plan(
+    plan: _CreatePlan, model_cls: type[DeclarativeBase], field_name: str
+) -> None:
+    """Write a null reference (explicit ``post=None``, or an omitted field
+    defaulting to None) into the plan.
+
+    Unlike a resolved reference, a null writes only the field's own slot, plus
+    a partner slot when — and only when — the dataclass ``__init__`` demands
+    it. It never mirrors further, and never overwrites a slot another field
+    already planned: schemas may declare both names of an FK/relationship pair
+    as reference fields, and the unset sibling's default None must not clobber
+    the side the client supplied. (Later fields overwrite a planned None
+    naturally, so the ``setdefault`` guards are order-independent. The guards
+    operate on the plan, so they protect reference-typed siblings; a plain
+    scalar FK *column* field beside a relationship reference still follows
+    SQLAlchemy's relationship-wins flush semantics, exactly as in a plain
+    ``Model(fk=id)`` construction when the relationship defaults to None.)
+    """
+    relationship = _get_relationship_property(model_cls, field_name)
+    if relationship is None and not _is_mapped_column(model_cls, field_name):
+        return  # unmapped reference name; nothing to write
+
+    if _accepts_init_kwarg(model_cls, field_name):
+        plan.kwargs.setdefault(field_name, None)
+    elif _has_model_attr(model_cls, field_name):
+        plan.post_assignments.setdefault(field_name, None)
+
+    if relationship is None:
+        # Mirror direction: a null on the FK-named side whose partner
+        # *relationship* is a required init kwarg (``relationship()`` with no
+        # default) must construct that kwarg too.
+        relation_name = _relationship_name_for_fk(model_cls, field_name)
+        if relation_name is not None and _requires_init_kwarg(
+            model_cls, relation_name
+        ):
+            plan.kwargs.setdefault(relation_name, None)
+        return
+
+    # A required-init partner FK column must be constructed even for a null
+    # reference, or ``__init__`` rejects the missing kwarg. A composite-FK
+    # relationship has no single partner column — but a null also has no id to
+    # route, so there is nothing to infer; skip instead of raising.
+    try:
+        fk_name = _get_unambiguous_local_fk_name(model_cls, field_name)
+    except ValueError:
+        return
+    if fk_name and _requires_init_kwarg(model_cls, fk_name):
+        plan.kwargs.setdefault(fk_name, None)
+
+
 def _add_resolved_reference_to_create_plan(
     plan: _CreatePlan,
     model_cls: type[DeclarativeBase],
     field_name: str,
     value: DeclarativeBase,
 ) -> None:
+    # ``cast`` only; ``.id`` is accessed lazily inside the branches so a
+    # composite-keyed relationship raises its descriptive ValueError (from
+    # the single-FK inference) before any ``.id`` attribute error.
     ref = cast(_HasID, value)
     # Route by what the field maps to on the model (mapper introspection), not
     # by its name: a relationship gets the ORM object, a scalar FK column gets
@@ -491,6 +544,9 @@ def build_create_plan(
                 plan.kwargs[field_name] = value.id
             else:
                 plan.post_assignments[field_name] = value.id
+            continue
+        if value is None and is_reference_field(schema_cls, field_name):
+            _add_null_reference_to_create_plan(plan, model_cls, field_name)
             continue
         if isinstance(value, DeclarativeBase) and is_reference_field(
             schema_cls, field_name

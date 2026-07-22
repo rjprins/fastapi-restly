@@ -92,6 +92,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   argument`. Declaring the FK column `init=False` is still supported but no
   longer required.
 
+- A null reference — an explicit `post=None` for a `post: fr.IDRef[Post] | None`
+  field, or such a field omitted and defaulting to `None` — no longer raises
+  `TypeError: __init__() missing 1 required keyword-only argument: 'post_id'`
+  when the model's local FK column is a required constructor argument (no
+  `init=False` and no default). A null reference now takes a dedicated plan
+  path that writes the field's own slot and passes a partner kwarg (as
+  `NULL`) at construction when the dataclass requires it — in either
+  direction (FK column or relationship) and nothing more, so an unset sibling
+  reference field (schemas may declare both names of an FK/relationship pair
+  as reference fields) never clobbers the side the client supplied. A null
+  reference to a *nullable* FK creates the row with a NULL FK; to a
+  *non-nullable* FK it now fails at flush as a regular `IntegrityError` (the
+  standard 409 path) instead of the 500 `TypeError`.
+
 - `fr.IDRef[T]` now serializes through the type itself under plain Pydantic
   `from_attributes`, so a reference field validated outside a Restly route — a
   nested model, a custom endpoint, or `response_model=` on a raw schema — no

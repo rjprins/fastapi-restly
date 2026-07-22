@@ -284,6 +284,13 @@ In that shape, Restly passes the resolved `User` object to the constructor and
 keeps `author_id` in sync. More generally, Restly supplies the constructor
 values your dataclass model requires: FK scalar, relationship object, or both.
 
+Optional references follow the same contract. A field typed
+`author: fr.IDRef[User] | None` accepts an explicit `null`, and may simply be
+omitted when it defaults to `None`; the row is created with a `NULL` foreign
+key, with the constructor again receiving whatever the dataclass requires. A
+`null` against a `NOT NULL` column fails at the database and surfaces as the
+standard `409`, not a server error.
+
 If a schema exposes the same link as two reference fields, for example a
 FK-named {class}`IDRef <fastapi_restly.schemas.IDRef>` field alongside the
 relationship, Restly validates that they match:

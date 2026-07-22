@@ -13,7 +13,8 @@ import asyncio
 
 import pytest
 from fastapi import HTTPException
-from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKey, ForeignKeyConstraint
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -490,8 +491,8 @@ def test_relationship_field_with_required_init_fk_async():
 
 
 def test_relationship_field_required_fk_with_init_false_relationship_sync(sync_db):
-    """Adjacent to the required-init FK fix above (shares its new branch's else arm, but is not
-    guarded by it): when the relationship is ``init=False`` and the FK is a
+    """Adjacent to the required-init FK fix above (shares its new branch's else
+    arm, but is not guarded by it): when the relationship is ``init=False`` and the FK is a
     required init kwarg, the FK id is constructed and the relationship -- which
     can't be an init kwarg -- is mirrored on afterward. This shape already routed
     correctly via the FK-accepts-init path; the test pins that it stays put."""
@@ -540,3 +541,480 @@ def test_relationship_field_required_fk_with_init_false_relationship_sync(sync_d
         session.flush()
         assert comment.post is p2
         assert comment.post_id == p2.id
+
+
+def test_explicit_null_reference_nullable_required_init_fk_sync(sync_db):
+    """Sibling of the required-init FK fix above, for the NULL side: an explicit
+    ``post=None`` (or an omitted field defaulting to None) never entered the
+    reference branch, so the required-init FK kwarg went missing and dataclass
+    ``__init__`` raised ``TypeError: missing ... 'post_id'``. A null reference on
+    a nullable FK must instead create the row with a NULL FK, and an update to
+    null must clear an existing reference."""
+    engine, make_session = sync_db
+
+    class Post(fr.IDBase):
+        title: Mapped[str]
+
+    class Comment(fr.IDBase):
+        content: Mapped[str]
+        # Nullable, but still a *required* init kwarg: no init=False, no default.
+        post_id: Mapped[int | None] = mapped_column(ForeignKey("post.id"))
+        post: Mapped[Post | None] = relationship(default=None)
+
+    class CommentSchema(fr.BaseSchema):
+        content: str
+        post: fr.IDRef[Post] | None = None
+
+    fr.DataclassBase.metadata.create_all(engine)
+
+    with make_session() as session:
+        p1 = Post(title="p1")
+        session.add(p1)
+        session.flush()
+
+        # The null reaches both sides of the pair at construction.
+        plan = build_create_plan(
+            Comment, CommentSchema(content="hi", post=None), CommentSchema
+        )
+        assert plan.kwargs["post_id"] is None
+        assert plan.kwargs["post"] is None
+
+        # Explicit null: row created with a NULL FK (used to TypeError).
+        orphan = make_new_object(
+            session, Comment, CommentSchema(content="hi", post=None)
+        )
+        session.flush()
+        assert orphan.post is None
+        assert orphan.post_id is None
+
+        # Omitted field defaulting to None: same path, same result.
+        implicit = make_new_object(session, Comment, CommentSchema(content="alone"))
+        session.flush()
+        assert implicit.post_id is None
+
+        # Updating an existing reference to null clears FK and relationship.
+        attached = make_new_object(
+            session, Comment, CommentSchema(content="hi", post=p1.id)
+        )
+        session.flush()
+        assert attached.post_id == p1.id
+        update_object(session, attached, CommentSchema(content="hi", post=None))
+        session.flush()
+        assert attached.post is None
+        assert attached.post_id is None
+
+
+def test_explicit_null_reference_nullable_required_init_fk_async():
+    """Async parity for the explicit-null nullable required-init FK above."""
+
+    class Post(fr.IDBase):
+        title: Mapped[str]
+
+    class Comment(fr.IDBase):
+        content: Mapped[str]
+        post_id: Mapped[int | None] = mapped_column(ForeignKey("post.id"))
+        post: Mapped[Post | None] = relationship(default=None)
+
+    class CommentSchema(fr.BaseSchema):
+        content: str
+        post: fr.IDRef[Post] | None = None
+
+    async def run():
+        engine, make_session = _make_async_engine_and_session()
+        async with engine.begin() as conn:
+            await conn.run_sync(fr.DataclassBase.metadata.create_all)
+        async with make_session() as session:
+            p1 = Post(title="p1")
+            session.add(p1)
+            await session.flush()
+
+            plan = build_create_plan(
+                Comment, CommentSchema(content="hi", post=None), CommentSchema
+            )
+            assert plan.kwargs["post_id"] is None
+            assert plan.kwargs["post"] is None
+
+            orphan = await async_make_new_object(
+                session, Comment, CommentSchema(content="hi", post=None)
+            )
+            await session.flush()
+            assert orphan.post is None
+            assert orphan.post_id is None
+
+            implicit = await async_make_new_object(
+                session, Comment, CommentSchema(content="alone")
+            )
+            await session.flush()
+            assert implicit.post_id is None
+
+            attached = await async_make_new_object(
+                session, Comment, CommentSchema(content="hi", post=p1.id)
+            )
+            await session.flush()
+            assert attached.post_id == p1.id
+            await async_update_object(
+                session, attached, CommentSchema(content="hi", post=None)
+            )
+            await session.flush()
+            assert attached.post is None
+            assert attached.post_id is None
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_explicit_null_reference_non_nullable_fk_fails_at_flush_sync(sync_db):
+    """A null reference to a NON-nullable FK cannot succeed; it must fail as a
+    database ``IntegrityError`` at flush (the framework's standard 409 path),
+    not as a ``TypeError`` blown out of the dataclass ``__init__``. The schema
+    opted into ``| None`` on a column the database forbids to be NULL, so the
+    database stays the authority."""
+    engine, make_session = sync_db
+
+    class Post(fr.IDBase):
+        title: Mapped[str]
+
+    class Comment(fr.IDBase):
+        content: Mapped[str]
+        # NOT NULL and a required init kwarg.
+        post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
+        post: Mapped[Post] = relationship(default=None)
+
+    class CommentSchema(fr.BaseSchema):
+        content: str
+        post: fr.IDRef[Post] | None = None
+
+    fr.DataclassBase.metadata.create_all(engine)
+
+    with make_session() as session:
+        # Construction succeeds (used to TypeError)...
+        make_new_object(session, Comment, CommentSchema(content="hi", post=None))
+        # ...and the constraint speaks at flush.
+        with pytest.raises(IntegrityError):
+            session.flush()
+
+
+def test_explicit_null_reference_non_nullable_fk_fails_at_flush_async():
+    """Async parity for the non-nullable explicit-null case above."""
+
+    class Post(fr.IDBase):
+        title: Mapped[str]
+
+    class Comment(fr.IDBase):
+        content: Mapped[str]
+        post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
+        post: Mapped[Post] = relationship(default=None)
+
+    class CommentSchema(fr.BaseSchema):
+        content: str
+        post: fr.IDRef[Post] | None = None
+
+    async def run():
+        engine, make_session = _make_async_engine_and_session()
+        async with engine.begin() as conn:
+            await conn.run_sync(fr.DataclassBase.metadata.create_all)
+        async with make_session() as session:
+            await async_make_new_object(
+                session, Comment, CommentSchema(content="hi", post=None)
+            )
+            with pytest.raises(IntegrityError):
+                await session.flush()
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_unset_sibling_reference_does_not_clobber_supplied_side_sync(sync_db):
+    """A schema may declare BOTH names of one FK/relationship pair as optional
+    reference fields (the dual shape the consistency validator exists for).
+    Creatable-field iteration also yields the UNSET sibling (its default None),
+    and that None must not clobber the side the client actually supplied — in
+    either declaration order, whichever side is sent."""
+    engine, make_session = sync_db
+
+    class Post(fr.IDBase):
+        title: Mapped[str]
+
+    class Comment(fr.IDBase):
+        content: Mapped[str]
+        post_id: Mapped[int | None] = mapped_column(ForeignKey("post.id"))
+        post: Mapped[Post | None] = relationship(default=None)
+
+    class RelationFirstSchema(fr.BaseSchema):
+        content: str
+        post: fr.IDRef[Post] | None = None
+        post_id: fr.IDRef[Post] | None = None
+
+    class ColumnFirstSchema(fr.BaseSchema):
+        content: str
+        post_id: fr.IDRef[Post] | None = None
+        post: fr.IDRef[Post] | None = None
+
+    fr.DataclassBase.metadata.create_all(engine)
+
+    with make_session() as session:
+        p1 = Post(title="p1")
+        session.add(p1)
+        session.flush()
+
+        for schema_cls in (RelationFirstSchema, ColumnFirstSchema):
+            for supplied in ("post", "post_id"):
+                comment = make_new_object(
+                    session,
+                    Comment,
+                    schema_cls(content="hi", **{supplied: p1.id}),
+                )
+                session.flush()
+                assert comment.post_id == p1.id, (schema_cls.__name__, supplied)
+                assert comment.post is p1, (schema_cls.__name__, supplied)
+
+
+def test_unset_sibling_reference_does_not_clobber_supplied_side_async():
+    """Async parity for the unset-sibling no-clobber contract above."""
+
+    class Post(fr.IDBase):
+        title: Mapped[str]
+
+    class Comment(fr.IDBase):
+        content: Mapped[str]
+        post_id: Mapped[int | None] = mapped_column(ForeignKey("post.id"))
+        post: Mapped[Post | None] = relationship(default=None)
+
+    class DualSchema(fr.BaseSchema):
+        content: str
+        post: fr.IDRef[Post] | None = None
+        post_id: fr.IDRef[Post] | None = None
+
+    async def run():
+        engine, make_session = _make_async_engine_and_session()
+        async with engine.begin() as conn:
+            await conn.run_sync(fr.DataclassBase.metadata.create_all)
+        async with make_session() as session:
+            p1 = Post(title="p1")
+            session.add(p1)
+            await session.flush()
+
+            for supplied in ("post", "post_id"):
+                comment = await async_make_new_object(
+                    session, Comment, DualSchema(content="hi", **{supplied: p1.id})
+                )
+                await session.flush()
+                assert comment.post_id == p1.id, supplied
+                assert comment.post is p1, supplied
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_null_reference_on_composite_fk_relationship_creates_row(sync_db):
+    """A MANYTOONE relationship over a composite FK has no single partner
+    column to infer — but a null reference also has no id to route, so the
+    single-FK inference must be skipped, not raised. Creating with the optional
+    reference field omitted or explicitly null must succeed with NULL FKs.
+    (Supplying a non-null reference to such a relationship remains unsupported
+    and still raises the descriptive inference error.)"""
+    engine, make_session = sync_db
+
+    class CompositeTenant(fr.DataclassBase):
+        __tablename__ = "null_ref_composite_tenant"
+        id1: Mapped[int] = mapped_column(primary_key=True)
+        id2: Mapped[int] = mapped_column(primary_key=True)
+
+    class TenantItem(fr.DataclassBase):
+        __tablename__ = "null_ref_tenant_item"
+        __table_args__ = (
+            ForeignKeyConstraint(
+                ["tenant_a", "tenant_b"],
+                ["null_ref_composite_tenant.id1", "null_ref_composite_tenant.id2"],
+            ),
+        )
+        id: Mapped[int] = mapped_column(
+            primary_key=True, autoincrement=True, init=False
+        )
+        name: Mapped[str]
+        tenant_a: Mapped[int | None] = mapped_column(default=None)
+        tenant_b: Mapped[int | None] = mapped_column(default=None)
+        tenant: Mapped[CompositeTenant | None] = relationship(default=None)
+
+    class ItemSchema(fr.BaseSchema):
+        name: str
+        tenant: fr.IDRef[CompositeTenant] | None = None
+
+    fr.DataclassBase.metadata.create_all(engine)
+
+    with make_session() as session:
+        explicit = make_new_object(
+            session, TenantItem, ItemSchema(name="explicit", tenant=None)
+        )
+        omitted = make_new_object(session, TenantItem, ItemSchema(name="omitted"))
+        session.flush()
+        assert explicit.tenant is None and explicit.tenant_a is None
+        assert omitted.tenant is None and omitted.tenant_a is None
+
+
+def test_scalar_named_null_reference_writes_only_its_own_column(sync_db):
+    """An explicit null on a scalar-FK-named reference (``post_id:
+    IDRef[Post] | None``) writes the column and nothing else: no relationship
+    mirror (a null has nothing to pair), no TypeError, a row with a NULL FK."""
+    engine, make_session = sync_db
+
+    class Post(fr.IDBase):
+        title: Mapped[str]
+
+    class Comment(fr.IDBase):
+        content: Mapped[str]
+        post_id: Mapped[int | None] = mapped_column(ForeignKey("post.id"))
+        post: Mapped[Post | None] = relationship(default=None)
+
+    class CommentSchema(fr.BaseSchema):
+        content: str
+        post_id: fr.IDRef[Post] | None = None
+
+    fr.DataclassBase.metadata.create_all(engine)
+
+    plan = build_create_plan(
+        Comment, CommentSchema(content="hi", post_id=None), CommentSchema
+    )
+    assert plan.kwargs["post_id"] is None
+    assert "post" not in plan.kwargs
+    assert "post" not in plan.post_assignments
+
+    with make_session() as session:
+        comment = make_new_object(
+            session, Comment, CommentSchema(content="hi", post_id=None)
+        )
+        session.flush()
+        assert comment.post_id is None
+
+
+def test_idschema_null_reference_creates_row_with_null_fk(sync_db):
+    """The null path covers ``IDSchema``-typed reference fields the same as
+    ``IDRef`` ones."""
+    engine, make_session = sync_db
+
+    class Post(fr.IDBase):
+        title: Mapped[str]
+
+    class Comment(fr.IDBase):
+        content: Mapped[str]
+        post_id: Mapped[int | None] = mapped_column(ForeignKey("post.id"))
+        post: Mapped[Post | None] = relationship(default=None)
+
+    class CommentSchema(fr.BaseSchema):
+        content: str
+        post: fr.IDSchema[Post] | None = None
+
+    fr.DataclassBase.metadata.create_all(engine)
+
+    with make_session() as session:
+        comment = make_new_object(
+            session, Comment, CommentSchema(content="hi", post=None)
+        )
+        session.flush()
+        assert comment.post is None
+        assert comment.post_id is None
+
+
+def test_async_null_reference_e2e(client):
+    """HTTP end-to-end: POSTing an explicit ``"post": null`` (and omitting the
+    field) creates a row with a NULL FK on a nullable column, and turns into
+    the framework's 409 — not a 500 — when the column is NOT NULL."""
+
+    class Post(fr.IDBase):
+        title: Mapped[str]
+
+    class Comment(fr.IDBase):
+        content: Mapped[str]
+        post_id: Mapped[int | None] = mapped_column(ForeignKey("post.id"))
+        post: Mapped[Post | None] = relationship(default=None)
+
+    class StrictComment(fr.IDBase):
+        content: Mapped[str]
+        post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
+        post: Mapped[Post] = relationship(default=None)
+
+    class PostSchema(fr.IDSchema):
+        title: str
+
+    class CommentSchema(fr.IDSchema):
+        content: str
+        post: fr.IDRef[Post] | None = None
+
+    class StrictCommentSchema(fr.IDSchema):
+        content: str
+        post: fr.IDRef[Post] | None = None
+
+    @fr.include_view(client.app)
+    class PostView(fr.AsyncRestView):
+        prefix = "/posts"
+        model = Post
+        schema = PostSchema
+
+    @fr.include_view(client.app)
+    class CommentView(fr.AsyncRestView):
+        prefix = "/comments"
+        model = Comment
+        schema = CommentSchema
+
+    @fr.include_view(client.app)
+    class StrictCommentView(fr.AsyncRestView):
+        prefix = "/strict-comments"
+        model = StrictComment
+        schema = StrictCommentSchema
+
+    create_tables()
+
+    explicit = client.post(
+        "/comments/", json={"content": "hi", "post": None}, assert_status_code=201
+    ).json()
+    assert explicit["post"] is None
+
+    omitted = client.post(
+        "/comments/", json={"content": "solo"}, assert_status_code=201
+    ).json()
+    assert omitted["post"] is None
+
+    # NOT NULL column: the database refuses, surfaced as the standard 409.
+    client.post(
+        "/strict-comments/",
+        json={"content": "hi", "post": None},
+        assert_status_code=409,
+    )
+
+
+def test_null_fk_named_reference_with_required_init_relationship(sync_db):
+    """Mirror of the required-init FK case: the null arrives via the FK-NAMED
+    reference field while the partner *relationship* is the required init
+    kwarg (``relationship()`` with no default). The relationship kwarg must be
+    constructed as None too, instead of ``__init__`` rejecting it missing."""
+    engine, make_session = sync_db
+
+    class Post(fr.IDBase):
+        title: Mapped[str]
+
+    class Comment(fr.IDBase):
+        content: Mapped[str]
+        post_id: Mapped[int | None] = mapped_column(ForeignKey("post.id"))
+        # No default at all: a required init kwarg on the relationship side.
+        post: Mapped[Post | None] = relationship()
+
+    class CommentSchema(fr.BaseSchema):
+        content: str
+        post_id: fr.IDRef[Post] | None = None
+
+    fr.DataclassBase.metadata.create_all(engine)
+
+    plan = build_create_plan(
+        Comment, CommentSchema(content="hi", post_id=None), CommentSchema
+    )
+    assert plan.kwargs["post_id"] is None
+    assert plan.kwargs["post"] is None
+
+    with make_session() as session:
+        explicit = make_new_object(
+            session, Comment, CommentSchema(content="hi", post_id=None)
+        )
+        omitted = make_new_object(session, Comment, CommentSchema(content="solo"))
+        session.flush()
+        assert explicit.post_id is None
+        assert omitted.post_id is None
