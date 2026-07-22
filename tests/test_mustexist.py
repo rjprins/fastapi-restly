@@ -1,4 +1,4 @@
-"""``MustExist``: existence-checked scalar foreign keys (ticket ``0lq.9``).
+"""``MustExist``: existence-checked scalar foreign keys.
 
 ``MustExist[int]`` is a checked ``int`` foreign key -- a plain scalar everywhere
 (wire, column, ``data.<field>``) plus a batched existence check on write (404 on a

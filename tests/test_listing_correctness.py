@@ -10,7 +10,7 @@ Covers two list-endpoint bugs:
   the PK). These are asserted on the compiled SQL, so they hold regardless of a
   given backend's incidental tie ordering.
 
-* **0lq.3** — a ``build_query`` that JOINs a to-many relationship fans out
+* **to-many JOIN fan-out** — a ``build_query`` that JOINs a to-many relationship fans out
   (one row per child), which duplicated entities in the page and inflated the
   total. ``get_many`` now de-duplicates via ``.unique()`` and ``count`` counts a
   ``DISTINCT`` subquery. (Not reachable through the public URL grammar -- dotted
@@ -83,7 +83,7 @@ def test_react_admin_sort_by_pk_is_not_duplicated():
 
 
 # ---------------------------------------------------------------------------
-# 0lq.3 -- a to-many JOIN in build_query must not duplicate rows / inflate count
+# A to-many JOIN in build_query must not duplicate rows / inflate count
 # ---------------------------------------------------------------------------
 
 

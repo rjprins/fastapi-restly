@@ -1,4 +1,4 @@
-"""Regression for ticket e52v: RestlyUncommittedChangesWarning must not
+"""Regression: RestlyUncommittedChangesWarning must not
 false-positive under the savepoint test fixtures.
 
 The fixtures patch ``commit`` to ``flush(); begin_nested()`` (a savepoint, never
@@ -35,7 +35,7 @@ class _Base(DeclarativeBase):
 
 
 class _Row(_Base):
-    __tablename__ = "e52v_row"
+    __tablename__ = "uncommitted_warning_row"
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str]
 

@@ -1,4 +1,4 @@
-"""A WriteOnly field must never leak into a response (ticket 477).
+"""A WriteOnly field must never leak into a response.
 
 Two layers, tested independently:
 
@@ -125,7 +125,7 @@ def test_schema_instance_path_does_not_rerun_validators(client):
 
 def test_writeonly_stripped_in_nested_schema():
     """`exclude` on the marker recurses: a WriteOnly field on a NESTED response
-    schema is stripped from serialization too (ticket aajo). The top-level loop
+    schema is stripped from serialization too. The top-level loop
     in to_response_schema never reached this -- the field-level exclude does."""
 
     class OrgNested(fr.IDSchema):

@@ -1,4 +1,4 @@
-"""IDRef / IDSchema serialize through the type itself (ticket 0lq.10).
+"""IDRef / IDSchema serialize through the type itself.
 
 The view layer used to pre-extract a reference's scalar id before re-validating
 the response (`_serialize_idschema_value`). That workaround is gone: the

@@ -1,4 +1,4 @@
-"""IDRef reference resolution is an UNSCOPED existence check (ticket d6d).
+"""IDRef reference resolution is an UNSCOPED existence check.
 
 Resolution does a bare primary-key lookup with no view ``build_query`` scoping,
 so visibility of references is the application's responsibility. This pins the

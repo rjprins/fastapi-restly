@@ -294,9 +294,7 @@ def _duplicate_routes(app):
 
 
 def test_subclass_and_parent_on_same_app_have_no_duplicate_routes(sync_db):
-    """Regression for bug naa.
-
-    Registering a base View AND a subclass of it on the SAME app must not
+    """Registering a base View AND a subclass of it on the SAME app must not
     duplicate the child's routes. Registering the base copies its CRUD
     endpoints into the base's ``__dict__``; walking the child's MRO then saw
     each endpoint twice (base original + base copy) and registered every child
@@ -414,7 +412,8 @@ def test_subclass_route_override_wins_on_same_app(sync_db):
 
 
 def test_parent_exclude_routes_with_coregistered_subclass_does_not_crash(sync_db):
-    """Regression for the exclude-routes interaction surfaced while fixing naa.
+    """Regression for the exclude-routes interaction surfaced while fixing the
+    base-plus-subclass duplication above.
 
     A parent that excludes a route, co-registered with a subclass that inherits
     ``exclude_routes``, must register cleanly. The subclass inherits the

@@ -225,33 +225,33 @@ def test_async_update_object_only_applies_set_fields():
 
 
 def test_async_object_helpers_are_dataclass_init_aware_for_resolved_refs():
-    class Dd8AsyncAuthor(fr.IDBase):
+    class RefRoutingAsyncAuthor(fr.IDBase):
         name: Mapped[str]
 
-    class Dd8AsyncRelationshipFirstArticle(fr.IDBase):
+    class RefRoutingAsyncRelationshipFirstArticle(fr.IDBase):
         title: Mapped[str]
         author_id: Mapped[int] = mapped_column(
-            ForeignKey("dd8_async_author.id"), init=False
+            ForeignKey("ref_routing_async_author.id"), init=False
         )
-        author: Mapped[Dd8AsyncAuthor] = relationship(default=None)
+        author: Mapped[RefRoutingAsyncAuthor] = relationship(default=None)
 
-    class Dd8AsyncRelationshipFieldFallbackArticle(fr.IDBase):
+    class RefRoutingAsyncRelationshipFieldFallbackArticle(fr.IDBase):
         title: Mapped[str]
-        author_id: Mapped[int] = mapped_column(ForeignKey("dd8_async_author.id"))
-        author: Mapped[Dd8AsyncAuthor] = relationship(default=None, init=False)
+        author_id: Mapped[int] = mapped_column(ForeignKey("ref_routing_async_author.id"))
+        author: Mapped[RefRoutingAsyncAuthor] = relationship(default=None, init=False)
 
     class FKSchema(fr.BaseSchema):
         title: str
-        author_id: fr.IDRef[Dd8AsyncAuthor]
+        author_id: fr.IDRef[RefRoutingAsyncAuthor]
 
     class RelationshipSchema(fr.BaseSchema):
         title: str
-        author: fr.IDSchema[Dd8AsyncAuthor]
+        author: fr.IDSchema[RefRoutingAsyncAuthor]
 
     class BothReferenceSchema(fr.BaseSchema):
         title: str
-        author_id: fr.IDRef[Dd8AsyncAuthor]
-        author: fr.IDSchema[Dd8AsyncAuthor]
+        author_id: fr.IDRef[RefRoutingAsyncAuthor]
+        author: fr.IDSchema[RefRoutingAsyncAuthor]
 
     async def run():
         engine, make_session = _make_engine_and_session()
@@ -259,14 +259,14 @@ def test_async_object_helpers_are_dataclass_init_aware_for_resolved_refs():
             await conn.run_sync(fr.DataclassBase.metadata.create_all)
 
         async with make_session() as session:
-            first = Dd8AsyncAuthor(name="Alice")
-            second = Dd8AsyncAuthor(name="Bob")
+            first = RefRoutingAsyncAuthor(name="Alice")
+            second = RefRoutingAsyncAuthor(name="Bob")
             session.add_all([first, second])
             await session.flush()
 
             article = await async_make_new_object(
                 session,
-                Dd8AsyncRelationshipFirstArticle,
+                RefRoutingAsyncRelationshipFirstArticle,
                 FKSchema(title="async", author_id=first.id),
                 FKSchema,
             )
@@ -285,7 +285,7 @@ def test_async_object_helpers_are_dataclass_init_aware_for_resolved_refs():
             with pytest.raises(HTTPException) as create_exc:
                 await async_make_new_object(
                     session,
-                    Dd8AsyncRelationshipFirstArticle,
+                    RefRoutingAsyncRelationshipFirstArticle,
                     BothReferenceSchema(
                         title="conflict", author_id=first.id, author={"id": second.id}
                     ),
@@ -306,7 +306,7 @@ def test_async_object_helpers_are_dataclass_init_aware_for_resolved_refs():
 
             fallback = await async_make_new_object(
                 session,
-                Dd8AsyncRelationshipFieldFallbackArticle,
+                RefRoutingAsyncRelationshipFieldFallbackArticle,
                 RelationshipSchema(title="fallback", author={"id": first.id}),
                 RelationshipSchema,
             )

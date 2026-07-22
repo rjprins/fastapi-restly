@@ -1,4 +1,4 @@
-"""Regression for ticket 73t: a list view must not advertise filter params for
+"""Regression: a list view must not advertise filter params for
 fields that are not filterable columns.
 
 A to-many relationship (``books: list[BookRef]``) and a reference field that does

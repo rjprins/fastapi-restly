@@ -1,4 +1,4 @@
-"""Regression for ticket oiul: an ``fr.IDRef[T]``-typed FK field on the response
+"""Regression: an ``fr.IDRef[T]``-typed FK field on the response
 schema must derive list filter params.
 
 A scalar ``post_id: fr.IDRef[Post]`` FK field -- now discouraged in favor of
@@ -70,13 +70,13 @@ def test_idref_fk_uuid_pk_yields_the_same_opaque_set():
     # Uniformity: the operator set does not depend on the PK type. A uuid PK
     # gets exactly the same four operators as an int PK -- no range either way.
     class UPost(fr.DataclassBase):
-        __tablename__ = "oiul_upost"
+        __tablename__ = "idref_filter_upost"
         id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default_factory=uuid4)
         title: Mapped[str] = mapped_column(default="t")
 
     class UComment(fr.IDBase):
         content: Mapped[str] = mapped_column()
-        post_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("oiul_upost.id"))
+        post_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("idref_filter_upost.id"))
 
     class UCommentRead(fr.IDSchema):
         content: str

@@ -1,11 +1,11 @@
-"""Regression for tickets bb6 + cyv: IDRef LIST resolution.
+"""Regression tests for IDRef LIST resolution.
 
-bb6: a DUPLICATE id must not 404 when all referenced rows exist; a missing id
-must 404 naming it. (The old code compared ``len(ids) != len(rows)``, but ``IN``
-returns DISTINCT rows, so any repeat raised ``Id not found: set()``.)
+Duplicates: a DUPLICATE id must not 404 when all referenced rows exist; a
+missing id must 404 naming it. (The old code compared ``len(ids) != len(rows)``,
+but ``IN`` returns DISTINCT rows, so any repeat raised ``Id not found: set()``.)
 
-cyv: the resolved list follows the CLIENT's order, not the ``IN`` query's DB/PK
-order -- the resolver builds an id -> row map and rebuilds in first-appearance
+Ordering: the resolved list follows the CLIENT's order, not the ``IN`` query's
+DB/PK order -- the resolver builds an id -> row map and rebuilds in first-appearance
 order (deduped), which also subsumes the existence check.
 
 Exercises the resolver directly (sync + async), as in
@@ -32,29 +32,29 @@ from fastapi_restly.schemas._base import (
 async def test_async_idref_list_resolution_order_dedup_and_missing():
     async_engine = create_async_engine("sqlite+aiosqlite:///:memory:")
 
-    class Bb6TagAsync(fr.IDBase):
+    class ListResTagAsync(fr.IDBase):
         name: Mapped[str]
 
     class TagRefSchema(fr.BaseSchema):
-        tags: list[fr.IDRef[Bb6TagAsync]]
+        tags: list[fr.IDRef[ListResTagAsync]]
 
     try:
         async with async_engine.begin() as conn:
             await conn.run_sync(fr.DataclassBase.metadata.create_all)
 
         async with AsyncSession(bind=async_engine, expire_on_commit=False) as session:
-            t1, t2 = Bb6TagAsync(name="a"), Bb6TagAsync(name="b")
+            t1, t2 = ListResTagAsync(name="a"), ListResTagAsync(name="b")
             session.add_all([t1, t2])
             await session.commit()
 
             # Duplicate-of-existing must NOT 404; the client's order is kept and
-            # deduped (cyv): [t2, t2, t1] -> [t2, t1], not the IN/PK order. The
+            # deduped: [t2, t2, t1] -> [t2, t1], not the IN/PK order. The
             # resolver returns a {field: resolved} mapping (it no longer mutates
-            # the payload, ticket 4in).
+            # the payload).
             payload = TagRefSchema(tags=[t2.id, t2.id, t1.id])
             resolved = await _async_resolve_ids_to_sqlalchemy_objects(session, payload)
             assert [t.id for t in resolved["tags"]] == [t2.id, t1.id]
-            # 4in: the request model keeps its wire shape (still IDRefs).
+            # The request model keeps its wire shape (still IDRefs).
             assert all(isinstance(t, fr.IDRef) for t in payload.tags)
 
             # A genuinely missing id 404s and NAMES the id (not the old "set()").
@@ -74,28 +74,28 @@ def test_sync_idref_list_resolution_order_dedup_and_missing():
         "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
     )
 
-    class Bb6TagSync(fr.IDBase):
+    class ListResTagSync(fr.IDBase):
         name: Mapped[str]
 
     class TagRefSchema(fr.BaseSchema):
-        tags: list[fr.IDRef[Bb6TagSync]]
+        tags: list[fr.IDRef[ListResTagSync]]
 
     try:
         fr.DataclassBase.metadata.create_all(engine)
 
         with Session(bind=engine, expire_on_commit=False) as session:
-            t1, t2 = Bb6TagSync(name="a"), Bb6TagSync(name="b")
+            t1, t2 = ListResTagSync(name="a"), ListResTagSync(name="b")
             session.add_all([t1, t2])
             session.commit()
 
             # Duplicate-of-existing must NOT 404; the client's order is kept and
-            # deduped (cyv): [t2, t2, t1] -> [t2, t1], not the IN/PK order. The
+            # deduped: [t2, t2, t1] -> [t2, t1], not the IN/PK order. The
             # resolver returns a {field: resolved} mapping (it no longer mutates
-            # the payload, ticket 4in).
+            # the payload).
             payload = TagRefSchema(tags=[t2.id, t2.id, t1.id])
             resolved = _resolve_ids_to_sqlalchemy_objects(session, payload)
             assert [t.id for t in resolved["tags"]] == [t2.id, t1.id]
-            # 4in: the request model keeps its wire shape (still IDRefs).
+            # The request model keeps its wire shape (still IDRefs).
             assert all(isinstance(t, fr.IDRef) for t in payload.tags)
 
             missing_id = t2.id + 100

@@ -1,4 +1,4 @@
-"""Regression for ticket 3u1r (extended to ReadOnly): a ReadOnly/WriteOnly
+"""Regression, later extended to ReadOnly: a ReadOnly/WriteOnly
 marker buried inside a union member silently no-ops -- WriteOnly fails to exclude
 the field from responses (it leaks), ReadOnly fails to drop it from create/update
 (it stays writable). The framework now rejects the misuse loudly:

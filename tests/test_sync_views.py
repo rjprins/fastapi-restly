@@ -168,122 +168,122 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
     class DeclarativeModelBase(DeclarativeBase):
         pass
 
-    class Dd8SyncAuthor(fr.IDBase):
+    class RefRoutingSyncAuthor(fr.IDBase):
         name: Mapped[str]
 
-    class Dd8SyncFkFirstArticle(fr.IDBase):
+    class RefRoutingSyncFkFirstArticle(fr.IDBase):
         title: Mapped[str]
-        author_id: Mapped[int] = mapped_column(ForeignKey("dd8_sync_author.id"))
-        author: Mapped[Dd8SyncAuthor] = relationship(default=None, init=False)
+        author_id: Mapped[int] = mapped_column(ForeignKey("ref_routing_sync_author.id"))
+        author: Mapped[RefRoutingSyncAuthor] = relationship(default=None, init=False)
 
-    class Dd8SyncRelationshipFirstArticle(fr.IDBase):
-        title: Mapped[str]
-        author_id: Mapped[int] = mapped_column(
-            ForeignKey("dd8_sync_author.id"), init=False
-        )
-        author: Mapped[Dd8SyncAuthor] = relationship(default=None)
-
-    class Dd8SyncPostAssignArticle(fr.IDBase):
+    class RefRoutingSyncRelationshipFirstArticle(fr.IDBase):
         title: Mapped[str]
         author_id: Mapped[int] = mapped_column(
-            ForeignKey("dd8_sync_author.id"), init=False
+            ForeignKey("ref_routing_sync_author.id"), init=False
         )
-        author: Mapped[Dd8SyncAuthor] = relationship(default=None, init=False)
+        author: Mapped[RefRoutingSyncAuthor] = relationship(default=None)
 
-    class Dd8SyncBothInitArticle(fr.IDBase):
-        title: Mapped[str]
-        author_id: Mapped[int] = mapped_column(ForeignKey("dd8_sync_author.id"))
-        author: Mapped[Dd8SyncAuthor] = relationship(default=None)
-
-    class Dd8SyncRelationshipFieldFirstArticle(fr.IDBase):
+    class RefRoutingSyncPostAssignArticle(fr.IDBase):
         title: Mapped[str]
         author_id: Mapped[int] = mapped_column(
-            ForeignKey("dd8_sync_author.id"), init=False
+            ForeignKey("ref_routing_sync_author.id"), init=False
         )
-        author: Mapped[Dd8SyncAuthor] = relationship(default=None)
+        author: Mapped[RefRoutingSyncAuthor] = relationship(default=None, init=False)
 
-    class Dd8SyncRelationshipFieldFallbackArticle(fr.IDBase):
+    class RefRoutingSyncBothInitArticle(fr.IDBase):
         title: Mapped[str]
-        author_id: Mapped[int] = mapped_column(ForeignKey("dd8_sync_author.id"))
-        author: Mapped[Dd8SyncAuthor] = relationship(default=None, init=False)
+        author_id: Mapped[int] = mapped_column(ForeignKey("ref_routing_sync_author.id"))
+        author: Mapped[RefRoutingSyncAuthor] = relationship(default=None)
 
-    class Dd8SyncDeclarativeAuthor(DeclarativeModelBase):
-        __tablename__ = "dd8_sync_declarative_author"
+    class RefRoutingSyncRelationshipFieldFirstArticle(fr.IDBase):
+        title: Mapped[str]
+        author_id: Mapped[int] = mapped_column(
+            ForeignKey("ref_routing_sync_author.id"), init=False
+        )
+        author: Mapped[RefRoutingSyncAuthor] = relationship(default=None)
+
+    class RefRoutingSyncRelationshipFieldFallbackArticle(fr.IDBase):
+        title: Mapped[str]
+        author_id: Mapped[int] = mapped_column(ForeignKey("ref_routing_sync_author.id"))
+        author: Mapped[RefRoutingSyncAuthor] = relationship(default=None, init=False)
+
+    class RefRoutingSyncDeclarativeAuthor(DeclarativeModelBase):
+        __tablename__ = "ref_routing_sync_declarative_author"
 
         id: Mapped[int] = mapped_column(primary_key=True)
         name: Mapped[str]
 
-    class Dd8SyncDeclarativeArticle(DeclarativeModelBase):
-        __tablename__ = "dd8_sync_declarative_article"
+    class RefRoutingSyncDeclarativeArticle(DeclarativeModelBase):
+        __tablename__ = "ref_routing_sync_declarative_article"
 
         id: Mapped[int] = mapped_column(primary_key=True)
         title: Mapped[str]
         author_id: Mapped[int] = mapped_column(
-            ForeignKey("dd8_sync_declarative_author.id")
+            ForeignKey("ref_routing_sync_declarative_author.id")
         )
-        author: Mapped[Dd8SyncDeclarativeAuthor] = relationship()
+        author: Mapped[RefRoutingSyncDeclarativeAuthor] = relationship()
 
-    class Dd8SyncCompositeParent(fr.DataclassBase):
-        __tablename__ = "dd8_sync_composite_parent"
+    class RefRoutingSyncCompositeParent(fr.DataclassBase):
+        __tablename__ = "ref_routing_sync_composite_parent"
 
         id1: Mapped[int] = mapped_column(primary_key=True)
         id2: Mapped[int] = mapped_column(primary_key=True)
         name: Mapped[str]
 
-    class Dd8SyncCompositeChild(fr.IDBase):
-        __tablename__ = "dd8_sync_composite_child"
+    class RefRoutingSyncCompositeChild(fr.IDBase):
+        __tablename__ = "ref_routing_sync_composite_child"
         __table_args__ = (
             ForeignKeyConstraint(
                 ["parent_id1", "parent_id2"],
-                ["dd8_sync_composite_parent.id1", "dd8_sync_composite_parent.id2"],
+                ["ref_routing_sync_composite_parent.id1", "ref_routing_sync_composite_parent.id2"],
             ),
         )
 
         title: Mapped[str]
         parent_id1: Mapped[int]
         parent_id2: Mapped[int]
-        parent: Mapped[Dd8SyncCompositeParent] = relationship(default=None)
+        parent: Mapped[RefRoutingSyncCompositeParent] = relationship(default=None)
 
     class FKSchema(fr.BaseSchema):
         title: str
-        author_id: fr.IDRef[Dd8SyncAuthor]
+        author_id: fr.IDRef[RefRoutingSyncAuthor]
 
     class RelationshipSchema(fr.BaseSchema):
         title: str
-        author: fr.IDSchema[Dd8SyncAuthor]
+        author: fr.IDSchema[RefRoutingSyncAuthor]
 
     class BothReferenceSchema(fr.BaseSchema):
         title: str
-        author_id: fr.IDRef[Dd8SyncAuthor]
-        author: fr.IDSchema[Dd8SyncAuthor]
+        author_id: fr.IDRef[RefRoutingSyncAuthor]
+        author: fr.IDSchema[RefRoutingSyncAuthor]
 
     class OptionalBothReferenceSchema(fr.BaseSchema):
         title: str
-        author_id: fr.IDRef[Dd8SyncAuthor] | None = None
-        author: fr.IDSchema[Dd8SyncAuthor] | None = None
+        author_id: fr.IDRef[RefRoutingSyncAuthor] | None = None
+        author: fr.IDSchema[RefRoutingSyncAuthor] | None = None
 
     class DeclarativeFKSchema(fr.BaseSchema):
         title: str
-        author_id: fr.IDRef[Dd8SyncDeclarativeAuthor]
+        author_id: fr.IDRef[RefRoutingSyncDeclarativeAuthor]
 
     class CompositeRelationshipSchema(fr.BaseSchema):
         title: str
-        parent: fr.IDSchema[Dd8SyncCompositeParent]
+        parent: fr.IDSchema[RefRoutingSyncCompositeParent]
 
     fr.DataclassBase.metadata.create_all(engine)
     DeclarativeModelBase.metadata.create_all(engine)
 
     with make_session() as session:
-        first = Dd8SyncAuthor(name="Alice")
-        second = Dd8SyncAuthor(name="Bob")
-        declarative_author = Dd8SyncDeclarativeAuthor(name="Declarative Alice")
+        first = RefRoutingSyncAuthor(name="Alice")
+        second = RefRoutingSyncAuthor(name="Bob")
+        declarative_author = RefRoutingSyncDeclarativeAuthor(name="Declarative Alice")
         session.add_all([first, second, declarative_author])
         session.flush()
 
         for model_cls in (
-            Dd8SyncFkFirstArticle,
-            Dd8SyncRelationshipFirstArticle,
-            Dd8SyncPostAssignArticle,
+            RefRoutingSyncFkFirstArticle,
+            RefRoutingSyncRelationshipFirstArticle,
+            RefRoutingSyncPostAssignArticle,
         ):
             article = make_new_object(
                 session,
@@ -304,7 +304,7 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
             assert article.author is second
 
         both_init_plan = build_create_plan(
-            Dd8SyncBothInitArticle,
+            RefRoutingSyncBothInitArticle,
             FKSchema.model_construct(title="both", author_id=first),
             FKSchema,
         )
@@ -324,7 +324,7 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
                 _fields_set=fields_set, **values
             )
             validate_resolved_reference_consistency(
-                Dd8SyncRelationshipFirstArticle, payload, OptionalBothReferenceSchema
+                RefRoutingSyncRelationshipFirstArticle, payload, OptionalBothReferenceSchema
             )
 
         validate_optional_payload({"title", "author"}, author=first)
@@ -355,17 +355,17 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
 
         with pytest.raises(ValueError, match="Cannot infer a single local FK"):
             build_create_plan(
-                Dd8SyncCompositeChild,
+                RefRoutingSyncCompositeChild,
                 CompositeRelationshipSchema.model_construct(
                     title="composite",
-                    parent=Dd8SyncCompositeParent(id1=1, id2=2, name="Composite"),
+                    parent=RefRoutingSyncCompositeParent(id1=1, id2=2, name="Composite"),
                 ),
                 CompositeRelationshipSchema,
             )
 
         both_explicit = make_new_object(
             session,
-            Dd8SyncRelationshipFirstArticle,
+            RefRoutingSyncRelationshipFirstArticle,
             BothReferenceSchema(
                 title="both explicit", author_id=first.id, author={"id": first.id}
             ),
@@ -377,7 +377,7 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
         with pytest.raises(HTTPException) as create_exc:
             make_new_object(
                 session,
-                Dd8SyncRelationshipFirstArticle,
+                RefRoutingSyncRelationshipFirstArticle,
                 BothReferenceSchema(
                     title="conflict", author_id=first.id, author={"id": second.id}
                 ),
@@ -398,7 +398,7 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
 
         relation_first = make_new_object(
             session,
-            Dd8SyncRelationshipFieldFirstArticle,
+            RefRoutingSyncRelationshipFieldFirstArticle,
             RelationshipSchema(title="relation", author={"id": first.id}),
             RelationshipSchema,
         )
@@ -407,7 +407,7 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
 
         relation_fallback = make_new_object(
             session,
-            Dd8SyncRelationshipFieldFallbackArticle,
+            RefRoutingSyncRelationshipFieldFallbackArticle,
             RelationshipSchema(title="fallback", author={"id": first.id}),
             RelationshipSchema,
         )
@@ -416,7 +416,7 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
 
         declarative_article = make_new_object(
             session,
-            Dd8SyncDeclarativeArticle,
+            RefRoutingSyncDeclarativeArticle,
             DeclarativeFKSchema(title="declarative", author_id=declarative_author.id),
             DeclarativeFKSchema,
         )

@@ -1,5 +1,4 @@
-"""IDRef foreign-key fields must work under any column name, not only ``_id``
-(ticket z0oy).
+"""IDRef foreign-key fields must work under any column name, not only ``_id``.
 
 Resolution keys on the field's *type* (``IDSchema``), so a reference is resolved
 to an ORM row regardless of the field name. Routing the resolved row onto the
@@ -388,7 +387,7 @@ def test_renamed_db_column_relationship_field_sync(sync_db):
 def test_relationship_field_with_required_init_fk_sync(sync_db):
     """Relationship exposed as a reference (``post: IDRef[Post]``) when the local
     FK column is a *required* init kwarg -- no ``init=False`` and no default
-    (ticket qxlg). The FK id must be passed at construction, not post-assigned,
+    The FK id must be passed at construction, not post-assigned,
     or the dataclass ``__init__`` rejects the missing required kwarg. SQLAlchemy
     accepts receiving both the relationship object and its FK id (consistent)."""
     engine, make_session = sync_db
@@ -438,7 +437,7 @@ def test_relationship_field_with_required_init_fk_sync(sync_db):
 
 
 def test_relationship_field_with_required_init_fk_async():
-    """Async parity for the required-init FK relationship field above (qxlg)."""
+    """Async parity for the required-init FK relationship field above."""
 
     class Post(fr.IDBase):
         title: Mapped[str]
@@ -491,7 +490,7 @@ def test_relationship_field_with_required_init_fk_async():
 
 
 def test_relationship_field_required_fk_with_init_false_relationship_sync(sync_db):
-    """Adjacent to the qxlg fix (shares its new branch's else arm, but is not
+    """Adjacent to the required-init FK fix above (shares its new branch's else arm, but is not
     guarded by it): when the relationship is ``init=False`` and the FK is a
     required init kwarg, the FK id is constructed and the relationship -- which
     can't be an init kwarg -- is mirrored on afterward. This shape already routed
