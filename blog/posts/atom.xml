@@ -2,18 +2,18 @@
 <feed xmlns="http://www.w3.org/2005/Atom" xml:lang="en">
   <id>https://www.fastapi-restly.org/blog/</id>
   <title>FastAPI-Restly Blog</title>
-  <updated>2026-07-22T08:46:45.408848+00:00</updated>
+  <updated>2026-07-22T11:39:00.818036+00:00</updated>
   <link href="https://www.fastapi-restly.org/blog/"/>
   <link href="https://www.fastapi-restly.org/blog/posts/atom.xml" rel="self"/>
   <generator uri="https://ablog.readthedocs.io/" version="0.11.13">ABlog</generator>
   <entry>
-    <id>https://www.fastapi-restly.org/blog/posts/why-restly.html</id>
-    <title>Why I made FastAPI-Restly</title>
+    <id>https://www.fastapi-restly.org/blog/posts/story-so-far.html</id>
+    <title>FastAPI-Restly: the story so far</title>
     <updated>2026-07-22T00:00:00+00:00</updated>
     <author>
       <name>Rutger Prins</name>
     </author>
-    <content type="html">&lt;section id="why-i-made-fastapi-restly"&gt;
+    <content type="html">&lt;section id="fastapi-restly-the-story-so-far"&gt;
 
 &lt;p&gt;Four years ago I joined the team at ClearBlue Markets. They had started a new project where customers could see their position on CO2 credits markets.
 CO2 credit markets and EU emission rules is a fascinating and promising niche, btw.
@@ -33,7 +33,7 @@ The project involved both customer-scoping of data and typical admin interface n
 &lt;p&gt;Meanwhile, I will keep improving, polishing, and extending Restly. I checked and the solution I want still isn’t there in 2026. Only Django/DRF really matches what I am looking for, but that topic is for another post.&lt;/p&gt;
 &lt;/section&gt;
 </content>
-    <link href="https://www.fastapi-restly.org/blog/posts/why-restly.html"/>
+    <link href="https://www.fastapi-restly.org/blog/posts/story-so-far.html"/>
     <summary>Four years ago I joined the team at ClearBlue Markets. They had started a new project where customers could see their position on CO2 credits markets.
 CO2 credit markets and EU emission rules is a fascinating and promising niche, btw.
 The project involved both customer-scoping of data and typical admin interface needs.</summary>
