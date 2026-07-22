@@ -73,6 +73,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   self-referential relationship, and two filter paths that reach the same
   table — those need per-path join aliasing.
 
+- List views no longer advertise filter parameters that can never execute for
+  collection-typed columns (`JSON`/`ARRAY`, i.e. fields typed `dict`,
+  `list[...]`, `Sequence`, and similar). A query-string value cannot coerce
+  into a collection, so `eq`/`__in`/`__ne` — and, for parametrized generics
+  such as `list[str]`, the range family — answered 400 on every request;
+  those parameters are now omitted from the generated schema and OpenAPI, and
+  only `__isnull`, which works, is kept. On generated endpoints, requests
+  using the removed parameters now fail validation as unknown parameters
+  (422) instead of passing validation and failing at execution; callers
+  passing raw `QueryParams` to `apply_list_params` still get the 400.
+  `pydantic.Json[...]` fields keep their filters: their validation parses
+  the query string into the collection, so they execute.
+
 - Registering the same view class twice on the same app or router
   (`fr.include_view(app, V); fr.include_view(app, V)` — a double import, or the
   decorator form combined with an explicit call) no longer mounts its routes

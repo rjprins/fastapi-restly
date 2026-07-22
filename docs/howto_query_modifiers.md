@@ -53,7 +53,10 @@ Operator suffixes on the field name select other comparisons:
 Not every operator is generated for every field. Range operators
 (`__gte`/`__lte`/`__gt`/`__lt`) are only generated for orderable column
 types; they are omitted for booleans and UUIDs. `__contains` and
-`__icontains` are only generated for string fields.
+`__icontains` are only generated for string fields. Collection-typed fields
+(`dict`/`list`, typically `JSON` or `ARRAY` columns) generate only
+`__isnull`: a query-string value cannot coerce into a collection, so the
+other operators would fail on every request.
 
 ### Comma logic on bare equality
 

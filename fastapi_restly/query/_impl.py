@@ -1,9 +1,19 @@
+import collections.abc as _abc
 import datetime as _dt
 import decimal as _decimal
 import functools
 import uuid as _uuid
 from collections import defaultdict
-from typing import Annotated, Any, Callable, Iterator, Optional, cast
+from typing import (
+    Annotated,
+    Any,
+    Callable,
+    Iterator,
+    Optional,
+    cast,
+    get_args,
+    get_origin,
+)
 
 import pydantic
 import sqlalchemy
@@ -78,6 +88,42 @@ def _is_idref_field(field: FieldInfo) -> bool:
     return isinstance(annotation, type) and issubclass(annotation, IDRef)
 
 
+def _supports_scalar_operators(field: FieldInfo) -> bool:
+    """False for collection-typed fields (``dict``, ``list[str]``, ``Sequence``,
+    ...) that no query-string value can coerce into: ``eq``/``__in``/``__ne``
+    (and range) filters on such a field would always 400 at request time, so
+    only ``__isnull`` is generated -- the same advertise-only-what-works
+    principle applied to non-column fields.
+
+    The check mirrors what the request path's ``_parse_value`` (full Pydantic
+    field validation) will accept. ``Annotated`` wrappers are unwrapped even
+    inside ``Optional`` (``conlist(...)`` produces those), and a
+    ``pydantic.Json[...]`` field counts as scalar: its validation parses the
+    query string as JSON, so its filters work. ``str``/``bytes`` are
+    collections in the abc sense but coerce fine, so they stay scalar.
+    """
+    annotation = field.annotation
+    metadata: list[Any] = list(field.metadata)
+    while True:
+        annotation = _unwrap_optional_annotation(annotation)
+        if get_origin(annotation) is Annotated:
+            annotation, *extra = get_args(annotation)
+            metadata.extend(extra)
+            continue
+        break
+    # ``pydantic.Json`` is a real class at runtime; the type stubs model it as
+    # an ``Annotated`` factory, hence the cast.
+    json_marker = cast(type, pydantic.Json)
+    if any(isinstance(item, json_marker) for item in metadata):
+        return True
+    origin = get_origin(annotation) or annotation
+    return not (
+        isinstance(origin, type)
+        and issubclass(origin, _abc.Collection)
+        and not issubclass(origin, (str, bytes))
+    )
+
+
 def _supports_range_operators(field: FieldInfo) -> bool:
     annotation = _unwrap_optional_annotation(field.annotation)
     if annotation is bool:
@@ -111,9 +157,10 @@ def create_list_params_schema(
     suffixes. Fields that do not resolve to a column (relationship/collection
     fields, or reference traversals the request path would reject) get no filter
     params, so the generated schema -- and the OpenAPI it produces -- no longer
-    advertises filters for fields that are not filterable at all. (This validates
-    column existence, the same check the request path makes; it does not promise
-    every operator executes for exotic column types such as ``ARRAY``/``JSON``.)
+    advertises filters for fields that are not filterable at all. Fields whose
+    type is a collection (``dict``/``list``, e.g. ``JSON`` or ``ARRAY`` columns)
+    generate only ``__isnull``: a query-string value cannot coerce into them,
+    so every other operator would fail at request time.
 
     ``page`` and ``page_size`` are validated by Pydantic with bounds
     (``page >= 1``, ``1 <= page_size <= max_page_size``); out-of-range values
@@ -196,30 +243,35 @@ def create_list_params_schema(
         # parameters as a list and downstream ``_parse_value`` can perform
         # field-type coercion. ``__isnull`` stays a scalar bool because
         # repeating it makes no sense.
-        eq_desc = (
-            f"Filter by ``{name}``. Comma-separated values are OR-combined "
-            "(SQL ``IN``). Repeat the parameter to AND multiple predicates."
-        )
-        ne_desc = (
-            f"Exclude rows where ``{name}`` matches. Comma-separated values "
-            "are AND-combined (SQL ``NOT IN``)."
-        )
-        in_desc = (
-            f"Filter by ``{name}`` with explicit SQL ``IN`` semantics. "
-            "Provide comma-separated values."
-        )
-        fields[name] = (
-            Annotated[Optional[list[str]], Field(description=eq_desc)],
-            None,
-        )
-        fields[f"{name}__in"] = (
-            Annotated[Optional[list[str]], Field(description=in_desc)],
-            None,
-        )
-        fields[f"{name}__ne"] = (
-            Annotated[Optional[list[str]], Field(description=ne_desc)],
-            None,
-        )
+        # Collection/JSON-typed fields (``dict``, ``list[str]``) resolve to
+        # real columns, but no query-string value can coerce into them, so
+        # every operator except ``__isnull`` would 400 at request time.
+        supports_scalar = _supports_scalar_operators(field)
+        if supports_scalar:
+            eq_desc = (
+                f"Filter by ``{name}``. Comma-separated values are OR-combined "
+                "(SQL ``IN``). Repeat the parameter to AND multiple predicates."
+            )
+            ne_desc = (
+                f"Exclude rows where ``{name}`` matches. Comma-separated values "
+                "are AND-combined (SQL ``NOT IN``)."
+            )
+            in_desc = (
+                f"Filter by ``{name}`` with explicit SQL ``IN`` semantics. "
+                "Provide comma-separated values."
+            )
+            fields[name] = (
+                Annotated[Optional[list[str]], Field(description=eq_desc)],
+                None,
+            )
+            fields[f"{name}__in"] = (
+                Annotated[Optional[list[str]], Field(description=in_desc)],
+                None,
+            )
+            fields[f"{name}__ne"] = (
+                Annotated[Optional[list[str]], Field(description=ne_desc)],
+                None,
+            )
         fields[f"{name}__isnull"] = (
             Annotated[
                 Optional[bool],
@@ -233,7 +285,7 @@ def create_list_params_schema(
             None,
         )
 
-        if _supports_range_operators(field):
+        if supports_scalar and _supports_range_operators(field):
             for suffix, sql in (
                 ("__gte", ">="),
                 ("__lte", "<="),
