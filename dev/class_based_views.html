@@ -665,7 +665,8 @@ directly-decorated methods register; the parent’s routes do not follow.</p></l
 </div>
 <p>When <a class="reference internal" href="api/views.html#fastapi_restly.views.include_view" title="fastapi_restly.views.include_view"><code class="xref py py-func docutils literal notranslate"><span class="pre">include_view</span></code></a> runs, it walks <code class="docutils literal notranslate"><span class="pre">AdminUserView.__mro__</span></code>, finds inherited
 route metadata, and registers handlers against <code class="docutils literal notranslate"><span class="pre">AdminUserView</span></code>, so your
-override runs. The same view can be included on multiple routers.</p>
+override runs. The same view can be included on multiple routers; including
+it twice on the <em>same</em> router is a no-op, never a duplicate route set.</p>
 <p>That is what “true class-based views” means in this framework. You can:</p>
 <ul class="simple">
 <li><p>Define an abstract parent that supplies handlers but is never registered.</p></li>

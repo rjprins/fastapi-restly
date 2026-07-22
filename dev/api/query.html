@@ -579,9 +579,10 @@ a filterable column on <code class="docutils literal notranslate"><span class="p
 suffixes. Fields that do not resolve to a column (relationship/collection
 fields, or reference traversals the request path would reject) get no filter
 params, so the generated schema – and the OpenAPI it produces – no longer
-advertises filters for fields that are not filterable at all. (This validates
-column existence, the same check the request path makes; it does not promise
-every operator executes for exotic column types such as <code class="docutils literal notranslate"><span class="pre">ARRAY</span></code>/<code class="docutils literal notranslate"><span class="pre">JSON</span></code>.)</p>
+advertises filters for fields that are not filterable at all. Fields whose
+type is a collection (<code class="docutils literal notranslate"><span class="pre">dict</span></code>/<code class="docutils literal notranslate"><span class="pre">list</span></code>, e.g. <code class="docutils literal notranslate"><span class="pre">JSON</span></code> or <code class="docutils literal notranslate"><span class="pre">ARRAY</span></code> columns)
+generate only <code class="docutils literal notranslate"><span class="pre">__isnull</span></code>: a query-string value cannot coerce into them,
+so every other operator would fail at request time.</p>
 <p><code class="docutils literal notranslate"><span class="pre">page</span></code> and <code class="docutils literal notranslate"><span class="pre">page_size</span></code> are validated by Pydantic with bounds
 (<code class="docutils literal notranslate"><span class="pre">page</span> <span class="pre">&gt;=</span> <span class="pre">1</span></code>, <code class="docutils literal notranslate"><span class="pre">1</span> <span class="pre">&lt;=</span> <span class="pre">page_size</span> <span class="pre">&lt;=</span> <span class="pre">max_page_size</span></code>); out-of-range values
 produce a standard 422 response from FastAPI.</p>

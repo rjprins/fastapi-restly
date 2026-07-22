@@ -1332,6 +1332,9 @@ grouped non-CRUD endpoints (auth flows, custom RPC routes, etc.).</p>
     <span class="o">...</span>
 </pre></div>
 </div>
+<p>Registering a view on several parents mounts its routes on each; calling
+<code class="docutils literal notranslate"><span class="pre">include_view</span></code> again with a parent the view is already registered on is
+a no-op.</p>
 </dd></dl>
 
 <dl class="py function">

@@ -814,6 +814,12 @@ the constructor needs it and keeps <code class="docutils literal notranslate"><s
 <p>In that shape, Restly passes the resolved <code class="docutils literal notranslate"><span class="pre">User</span></code> object to the constructor and
 keeps <code class="docutils literal notranslate"><span class="pre">author_id</span></code> in sync. More generally, Restly supplies the constructor
 values your dataclass model requires: FK scalar, relationship object, or both.</p>
+<p>Optional references follow the same contract. A field typed
+<code class="docutils literal notranslate"><span class="pre">author:</span> <span class="pre">fr.IDRef[User]</span> <span class="pre">|</span> <span class="pre">None</span></code> accepts an explicit <code class="docutils literal notranslate"><span class="pre">null</span></code>, and may simply be
+omitted when it defaults to <code class="docutils literal notranslate"><span class="pre">None</span></code>; the row is created with a <code class="docutils literal notranslate"><span class="pre">NULL</span></code> foreign
+key, with the constructor again receiving whatever the dataclass requires. A
+<code class="docutils literal notranslate"><span class="pre">null</span></code> against a <code class="docutils literal notranslate"><span class="pre">NOT</span> <span class="pre">NULL</span></code> column fails at the database and surfaces as the
+standard <code class="docutils literal notranslate"><span class="pre">409</span></code>, not a server error.</p>
 <p>If a schema exposes the same link as two reference fields, for example a
 FK-named <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDRef</span></code></a> field alongside the
 relationship, Restly validates that they match:</p>

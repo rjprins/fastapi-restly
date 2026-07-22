@@ -598,6 +598,36 @@ own engine with <code class="docutils literal notranslate"><span class="pre">jso
 <section id="fixed">
 <h3>Fixed<a class="headerlink" href="#fixed" title="Link to this heading">#</a></h3>
 <ul class="simple">
+<li><p>Filtering on a dotted path deeper than one relationship hop
+(<code class="docutils literal notranslate"><span class="pre">?city.country.code=NL</span></code>) no longer fails with a 500. Deep paths were
+advertised and resolved, but the filter clause collected its joins into an
+unordered set, so the second hop could be joined before the first — an
+implicit cartesian product that the database rejects as an ambiguous join.
+Filter joins now apply in path order, as sorting always did. Two shapes
+remain unsupported and are now documented as such: paths through a
+self-referential relationship, and two filter paths that reach the same
+table — those need per-path join aliasing.</p></li>
+<li><p>List views no longer advertise filter parameters that can never execute for
+collection-typed columns (<code class="docutils literal notranslate"><span class="pre">JSON</span></code>/<code class="docutils literal notranslate"><span class="pre">ARRAY</span></code>, i.e. fields typed <code class="docutils literal notranslate"><span class="pre">dict</span></code>,
+<code class="docutils literal notranslate"><span class="pre">list[...]</span></code>, <code class="docutils literal notranslate"><span class="pre">Sequence</span></code>, and similar). A query-string value cannot coerce
+into a collection, so <code class="docutils literal notranslate"><span class="pre">eq</span></code>/<code class="docutils literal notranslate"><span class="pre">__in</span></code>/<code class="docutils literal notranslate"><span class="pre">__ne</span></code> — and, for parametrized generics
+such as <code class="docutils literal notranslate"><span class="pre">list[str]</span></code>, the range family — answered 400 on every request;
+those parameters are now omitted from the generated schema and OpenAPI, and
+only <code class="docutils literal notranslate"><span class="pre">__isnull</span></code>, which works, is kept. On generated endpoints, requests
+using the removed parameters now fail validation as unknown parameters
+(422) instead of passing validation and failing at execution; callers
+passing raw <code class="docutils literal notranslate"><span class="pre">QueryParams</span></code> to <code class="docutils literal notranslate"><span class="pre">apply_list_params</span></code> still get the 400.
+<code class="docutils literal notranslate"><span class="pre">pydantic.Json[...]</span></code> fields keep their filters: their validation parses
+the query string into the collection, so they execute.</p></li>
+<li><p>Registering the same view class twice on the same app or router
+(<code class="docutils literal notranslate"><span class="pre">fr.include_view(app,</span> <span class="pre">V);</span> <span class="pre">fr.include_view(app,</span> <span class="pre">V)</span></code> — a double import, or the
+decorator form combined with an explicit call) no longer mounts its routes
+twice. The duplicate call is now a no-op: each parent tracks the view classes
+already mounted on it, and an app and its <code class="docutils literal notranslate"><span class="pre">.router</span></code> attribute count as one
+parent. The opt-in <code class="docutils literal notranslate"><span class="pre">fr.configure(warn_on_misuse=True)</span></code> lint flags the
+duplicate call with a <code class="docutils literal notranslate"><span class="pre">RestlyMisuseWarning</span></code>. Registering on <em>different</em>
+parents (a public and an admin app, <code class="docutils literal notranslate"><span class="pre">/v1</span></code> and <code class="docutils literal notranslate"><span class="pre">/v2</span></code> sub-apps) still mounts
+on each, as before.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">fr.IDRef[T]</span></code> / <code class="docutils literal notranslate"><span class="pre">fr.IDSchema[T]</span></code> foreign-key fields now work under any column
 name, not only fields ending in <code class="docutils literal notranslate"><span class="pre">_id</span></code>. A field like
 <code class="docutils literal notranslate"><span class="pre">post_fk:</span> <span class="pre">fr.IDRef[Post]</span></code> backed by a non-<code class="docutils literal notranslate"><span class="pre">_id</span></code> FK column was silently
@@ -614,6 +644,19 @@ reference to an existing row is supplied. The resolved row’s id is now passed
 at construction instead of being assigned afterward, so the dataclass
 <code class="docutils literal notranslate"><span class="pre">__init__</span></code> no longer raises <code class="docutils literal notranslate"><span class="pre">TypeError:</span> <span class="pre">...</span> <span class="pre">missing</span> <span class="pre">1</span> <span class="pre">required</span> <span class="pre">keyword-only</span> <span class="pre">argument</span></code>. Declaring the FK column <code class="docutils literal notranslate"><span class="pre">init=False</span></code> is still supported but no
 longer required.</p></li>
+<li><p>A null reference — an explicit <code class="docutils literal notranslate"><span class="pre">post=None</span></code> for a <code class="docutils literal notranslate"><span class="pre">post:</span> <span class="pre">fr.IDRef[Post]</span> <span class="pre">|</span> <span class="pre">None</span></code>
+field, or such a field omitted and defaulting to <code class="docutils literal notranslate"><span class="pre">None</span></code> — no longer raises
+<code class="docutils literal notranslate"><span class="pre">TypeError:</span> <span class="pre">__init__()</span> <span class="pre">missing</span> <span class="pre">1</span> <span class="pre">required</span> <span class="pre">keyword-only</span> <span class="pre">argument:</span> <span class="pre">'post_id'</span></code>
+when the model’s local FK column is a required constructor argument (no
+<code class="docutils literal notranslate"><span class="pre">init=False</span></code> and no default). A null reference now takes a dedicated plan
+path that writes the field’s own slot and passes a partner kwarg (as
+<code class="docutils literal notranslate"><span class="pre">NULL</span></code>) at construction when the dataclass requires it — in either
+direction (FK column or relationship) and nothing more, so an unset sibling
+reference field (schemas may declare both names of an FK/relationship pair
+as reference fields) never clobbers the side the client supplied. A null
+reference to a <em>nullable</em> FK creates the row with a NULL FK; to a
+<em>non-nullable</em> FK it now fails at flush as a regular <code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code> (the
+standard 409 path) instead of the 500 <code class="docutils literal notranslate"><span class="pre">TypeError</span></code>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">fr.IDRef[T]</span></code> now serializes through the type itself under plain Pydantic
 <code class="docutils literal notranslate"><span class="pre">from_attributes</span></code>, so a reference field validated outside a Restly route — a
 nested model, a custom endpoint, or <code class="docutils literal notranslate"><span class="pre">response_model=</span></code> on a raw schema — no

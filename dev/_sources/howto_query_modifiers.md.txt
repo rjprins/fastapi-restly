@@ -53,7 +53,10 @@ Operator suffixes on the field name select other comparisons:
 Not every operator is generated for every field. Range operators
 (`__gte`/`__lte`/`__gt`/`__lt`) are only generated for orderable column
 types; they are omitted for booleans and UUIDs. `__contains` and
-`__icontains` are only generated for string fields.
+`__icontains` are only generated for string fields. Collection-typed fields
+(`dict`/`list`, typically `JSON` or `ARRAY` columns) generate only
+`__isnull`: a query-string value cannot coerce into a collection, so the
+other operators would fail on every request.
 
 ### Comma logic on bare equality
 
@@ -125,6 +128,10 @@ name with `-` for descending order:
 ```text
 GET /users/?sort=-created_at,name
 ```
+
+Dotted relation paths sort exactly as they filter:
+`?sort=-city.country.code` orders by the related column, joining each hop
+of the path.
 
 When no `sort` parameter is given and the model has an `id` column, the
 framework automatically applies `ORDER BY id ASC`. Models without an `id`
@@ -217,7 +224,11 @@ The relation must be defined on both the SQLAlchemy model (as a
 [nested schema field](howto_relationship_idschema.md#nested-relationship-objects)).
 Optional nested schemas (`UserRead | None`) and deep nesting
 (`?blog.author.name=Alice`) are supported. Lists of nested schemas
-(`list[UserRead]`) are not.
+(`list[UserRead]`) are not. Two current limitations: paths through a
+self-referential relationship (`?manager.name=...` on a model relating to
+itself), and combining two filter paths that reach the same table
+(`?city.country.code=NL&club.country.code=NL`), are not supported — the
+joins are not aliased per path.
 
 Aliases apply to **every** segment of the dotted path, both the relation
 field and the nested column, because the list-params keys always follow

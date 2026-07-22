@@ -612,7 +612,10 @@ URL. Plain equality uses the bare field name:</p>
 <p>Not every operator is generated for every field. Range operators
 (<code class="docutils literal notranslate"><span class="pre">__gte</span></code>/<code class="docutils literal notranslate"><span class="pre">__lte</span></code>/<code class="docutils literal notranslate"><span class="pre">__gt</span></code>/<code class="docutils literal notranslate"><span class="pre">__lt</span></code>) are only generated for orderable column
 types; they are omitted for booleans and UUIDs. <code class="docutils literal notranslate"><span class="pre">__contains</span></code> and
-<code class="docutils literal notranslate"><span class="pre">__icontains</span></code> are only generated for string fields.</p>
+<code class="docutils literal notranslate"><span class="pre">__icontains</span></code> are only generated for string fields. Collection-typed fields
+(<code class="docutils literal notranslate"><span class="pre">dict</span></code>/<code class="docutils literal notranslate"><span class="pre">list</span></code>, typically <code class="docutils literal notranslate"><span class="pre">JSON</span></code> or <code class="docutils literal notranslate"><span class="pre">ARRAY</span></code> columns) generate only
+<code class="docutils literal notranslate"><span class="pre">__isnull</span></code>: a query-string value cannot coerce into a collection, so the
+other operators would fail on every request.</p>
 <section id="comma-logic-on-bare-equality">
 <h3>Comma logic on bare equality<a class="headerlink" href="#comma-logic-on-bare-equality" title="Link to this heading">#</a></h3>
 <p>Comma-separated values in a plain equality filter are OR-combined:</p>
@@ -672,6 +675,9 @@ name with <code class="docutils literal notranslate"><span class="pre">-</span><
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users/?sort=-created_at,name
 </pre></div>
 </div>
+<p>Dotted relation paths sort exactly as they filter:
+<code class="docutils literal notranslate"><span class="pre">?sort=-city.country.code</span></code> orders by the related column, joining each hop
+of the path.</p>
 <p>When no <code class="docutils literal notranslate"><span class="pre">sort</span></code> parameter is given and the model has an <code class="docutils literal notranslate"><span class="pre">id</span></code> column, the
 framework automatically applies <code class="docutils literal notranslate"><span class="pre">ORDER</span> <span class="pre">BY</span> <span class="pre">id</span> <span class="pre">ASC</span></code>. Models without an <code class="docutils literal notranslate"><span class="pre">id</span></code>
 column return results in an unspecified order.</p>
@@ -749,7 +755,11 @@ GET /orders/?user.name__contains=ali
 <a class="reference internal" href="howto_relationship_idschema.html#nested-relationship-objects"><span class="std std-ref">nested schema field</span></a>).
 Optional nested schemas (<code class="docutils literal notranslate"><span class="pre">UserRead</span> <span class="pre">|</span> <span class="pre">None</span></code>) and deep nesting
 (<code class="docutils literal notranslate"><span class="pre">?blog.author.name=Alice</span></code>) are supported. Lists of nested schemas
-(<code class="docutils literal notranslate"><span class="pre">list[UserRead]</span></code>) are not.</p>
+(<code class="docutils literal notranslate"><span class="pre">list[UserRead]</span></code>) are not. Two current limitations: paths through a
+self-referential relationship (<code class="docutils literal notranslate"><span class="pre">?manager.name=...</span></code> on a model relating to
+itself), and combining two filter paths that reach the same table
+(<code class="docutils literal notranslate"><span class="pre">?city.country.code=NL&amp;club.country.code=NL</span></code>), are not supported — the
+joins are not aliased per path.</p>
 <p>Aliases apply to <strong>every</strong> segment of the dotted path, both the relation
 field and the nested column, because the list-params keys always follow
 the response schema’s public names:</p>
