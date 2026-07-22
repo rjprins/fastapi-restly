@@ -6,7 +6,8 @@ the same view under two different prefixes for back-compat, or registering on
 both an admin app and a public app). The class-level preparation (schema
 generation, endpoint annotation, dataclass __init__ setup) runs only once and
 is reused across registrations; each registration produces its own APIRouter
-mounted on the target parent.
+mounted on the target parent. Re-registering a view on the SAME parent is a
+no-op: each parent tracks the view classes already mounted on it.
 
 Without the idempotency guard in ``_init_view_cls_and_add_to_router``,
 registering the same View twice would:
@@ -452,6 +453,251 @@ def test_parent_exclude_routes_with_coregistered_subclass_does_not_crash(sync_db
     # delete is excluded on BOTH the parent and the subclass.
     assert client.delete("/relays/1").status_code in (404, 405)
     assert client.delete("/relays/sub/1").status_code in (404, 405)
+
+
+def test_same_view_registered_twice_on_same_app_mounts_once(sync_db):
+    """``include_view(app, V); include_view(app, V)`` on the SAME app used to
+    mount V's routes twice (distinct from the base-plus-subclass duplication
+    covered above): class preparation is guarded by ``_fr_initialised``, but
+    every call still built a fresh APIRouter and ran ``include_router``. The
+    second call must now be a no-op.
+    """
+    engine, _ = sync_db
+
+    class Pulley(fr.IDBase):
+        label: Mapped[str]
+
+    class PulleySchema(fr.IDSchema):
+        label: str
+
+    class PulleyView(fr.RestView):
+        prefix = "/pulleys"
+        model = Pulley
+        schema = PulleySchema
+
+    app = FastAPI()
+    fr.include_view(app, PulleyView)
+    fr.include_view(app, PulleyView)
+
+    assert _duplicate_routes(app) == {}
+    paths = {path for path, _ in _effective_route_pairs(app)}
+    assert "/pulleys/" in paths
+    assert "/pulleys/{id}" in paths
+
+    # Still answers end-to-end.
+    fr.DataclassBase.metadata.create_all(engine)
+    client = TestClient(app)
+    resp = client.post("/pulleys/", json={"label": "p"})
+    assert resp.status_code == 201, resp.text
+    assert client.get("/pulleys/").status_code == 200
+
+
+def test_same_view_registered_twice_on_same_router_mounts_once(sync_db):
+    """The same-parent no-op also holds for APIRouter parents."""
+    from fastapi import APIRouter
+
+    engine, _ = sync_db
+
+    class Crank(fr.IDBase):
+        label: Mapped[str]
+
+    class CrankSchema(fr.IDSchema):
+        label: str
+
+    class CrankView(fr.RestView):
+        prefix = "/cranks"
+        model = Crank
+        schema = CrankSchema
+
+    router = APIRouter()
+    fr.include_view(router, CrankView)
+    fr.include_view(router, CrankView)
+
+    app = FastAPI()
+    app.include_router(router)
+
+    assert _duplicate_routes(app) == {}
+
+    fr.DataclassBase.metadata.create_all(engine)
+    client = TestClient(app)
+    resp = client.post("/cranks/", json={"label": "c"})
+    assert resp.status_code == 201, resp.text
+
+
+def test_same_app_noop_does_not_block_other_parents(sync_db):
+    """The duplicate-registration no-op is scoped per parent: after a double
+    registration on app A, registering on app B still mounts normally."""
+    engine, _ = sync_db
+
+    class Spring(fr.IDBase):
+        label: Mapped[str]
+
+    class SpringSchema(fr.IDSchema):
+        label: str
+
+    class SpringView(fr.RestView):
+        prefix = "/springs"
+        model = Spring
+        schema = SpringSchema
+
+    app_a = FastAPI()
+    fr.include_view(app_a, SpringView)
+    fr.include_view(app_a, SpringView)  # no-op
+
+    app_b = FastAPI()
+    fr.include_view(app_b, SpringView)
+
+    assert _duplicate_routes(app_a) == {}
+    assert _duplicate_routes(app_b) == {}
+
+    fr.DataclassBase.metadata.create_all(engine)
+    client_b = TestClient(app_b)
+    resp = client_b.post("/springs/", json={"label": "s"})
+    assert resp.status_code == 201, resp.text
+
+
+def test_base_and_subclass_both_mount_on_same_app_despite_guard(sync_db):
+    """The same-parent guard keys on the class object: a base and its subclass
+    are distinct entries, so co-registering both on one app keeps working (the
+    base-plus-subclass arrangement above), while re-registering either one is
+    still a no-op."""
+    engine, _ = sync_db
+
+    class Cog(fr.IDBase):
+        label: Mapped[str]
+
+    class CogSchema(fr.IDSchema):
+        label: str
+
+    class CogBase(fr.RestView):
+        prefix = "/cogs"
+        model = Cog
+        schema = CogSchema
+
+    class FancyCogView(CogBase):
+        prefix = "/fancy"
+
+    app = FastAPI()
+    fr.include_view(app, CogBase)
+    fr.include_view(app, FancyCogView)
+    fr.include_view(app, CogBase)  # no-op
+    fr.include_view(app, FancyCogView)  # no-op
+
+    assert _duplicate_routes(app) == {}
+    paths = {path for path, _ in _effective_route_pairs(app)}
+    assert "/cogs/" in paths
+    assert "/cogs/fancy/" in paths
+
+    fr.DataclassBase.metadata.create_all(engine)
+    client = TestClient(app)
+    assert client.post("/cogs/", json={"label": "a"}).status_code == 201
+    assert client.post("/cogs/fancy/", json={"label": "b"}).status_code == 201
+
+
+def test_decorator_form_plus_explicit_call_is_noop(sync_db):
+    """The changelog names this exact story: ``@fr.include_view(app)`` on the
+    class combined with a later explicit ``fr.include_view(app, V)`` must not
+    duplicate routes. Pins the decorator path against ever diverging from the
+    call path."""
+    engine, _ = sync_db
+
+    class Belt(fr.IDBase):
+        label: Mapped[str]
+
+    class BeltSchema(fr.IDSchema):
+        label: str
+
+    app = FastAPI()
+
+    @fr.include_view(app)
+    class BeltView(fr.RestView):
+        prefix = "/belts"
+        model = Belt
+        schema = BeltSchema
+
+    fr.include_view(app, BeltView)
+
+    assert _duplicate_routes(app) == {}
+
+    fr.DataclassBase.metadata.create_all(engine)
+    client = TestClient(app)
+    assert client.post("/belts/", json={"label": "b"}).status_code == 201
+
+
+def test_app_and_its_router_count_as_one_parent(sync_db):
+    """A FastAPI app delegates ``include_router`` to its ``.router``, so the
+    two are aliases for one route table. The same-parent guard must treat them
+    as one parent: mixing ``include_view(app, V)`` and
+    ``include_view(app.router, V)`` mounts once, in either order."""
+    engine, _ = sync_db
+
+    class Gear(fr.IDBase):
+        label: Mapped[str]
+
+    class GearSchema(fr.IDSchema):
+        label: str
+
+    class GearView(fr.RestView):
+        prefix = "/gears"
+        model = Gear
+        schema = GearSchema
+
+    app = FastAPI()
+    fr.include_view(app, GearView)
+    fr.include_view(app.router, GearView)  # aliased parent → no-op
+    fr.include_view(app, GearView)  # and back again → still a no-op
+
+    assert _duplicate_routes(app) == {}
+    paths = {path for path, _ in _effective_route_pairs(app)}
+    assert "/gears/" in paths
+
+    fr.DataclassBase.metadata.create_all(engine)
+    client = TestClient(app)
+    assert client.post("/gears/", json={"label": "g"}).status_code == 201
+
+
+def test_failed_registration_is_not_recorded_as_mounted(sync_db):
+    """A registration that raises must not mark the view as mounted on the
+    parent — otherwise a later, corrected ``include_view`` call would silently
+    no-op and the app would serve no routes for the view at all. Pins the
+    record-after-mount ordering in ``_init_view_cls_and_add_to_router``.
+
+    (The retried registration currently re-runs endpoint renaming, so route
+    *names*/operation IDs come out double-prefixed — a pre-existing prep
+    re-entrancy bug, tracked separately; this test only asserts the routes
+    mount and answer.)
+    """
+    engine, _ = sync_db
+
+    class Winch(fr.IDBase):
+        label: Mapped[str]
+
+    class WinchSchema(fr.IDSchema):
+        label: str
+
+    class WinchView(fr.RestView):
+        prefix = "/winches"
+        model = Winch
+        schema = WinchSchema
+        exclude_routes = ("delete",)  # business name, not the route name
+
+    app = FastAPI()
+    with pytest.raises(AttributeError, match="not a route"):
+        fr.include_view(app, WinchView)
+
+    # Fix the mistake and retry on the SAME app: the failed attempt must not
+    # have been recorded, so this call really mounts.
+    WinchView.exclude_routes = ("delete_endpoint",)
+    fr.include_view(app, WinchView)
+
+    assert _duplicate_routes(app) == {}
+    paths = {path for path, _ in _effective_route_pairs(app)}
+    assert "/winches/" in paths
+
+    fr.DataclassBase.metadata.create_all(engine)
+    client = TestClient(app)
+    assert client.post("/winches/", json={"label": "w"}).status_code == 201
+    assert client.delete("/winches/1").status_code in (404, 405)
 
 
 def test_exclude_routes_unknown_name_still_raises():

@@ -3,8 +3,9 @@
 ``fr.configure(warn_on_misuse=True)`` makes ``include_view`` lint the
 registered class for the dominant misuse patterns (route-shell override,
 manual ``session.commit()`` in a view method, hand-rolled CRUD on a bare
-``View``, and a reference type named after a scalar FK column) and emit
-:class:`RestlyMisuseWarning` for each. Off by default.
+``View``, a reference type named after a scalar FK column, and a duplicate
+registration on the same parent) and emit :class:`RestlyMisuseWarning` for
+each. Off by default.
 
 The lint runs before parent endpoints are copied into the subclass, so a clean
 view must not warn even though its ``__dict__`` gains the five shells during
@@ -248,6 +249,48 @@ def test_mustexist_on_scalar_fk_does_not_warn():
 
     # MustExist is the recommended form -- a plain scalar, not a reference type.
     assert _register(CheckedFKView) == []
+
+
+def test_duplicate_registration_warns():
+    class DupPost(fr.IDBase):
+        title: orm.Mapped[str]
+
+    class DupPostView(fr.AsyncRestView):
+        prefix = "/dup-posts"
+        model = DupPost
+
+    app = fastapi.FastAPI()
+    with RestlyContext():
+        fr.configure(warn_on_misuse=True)
+        fr.include_view(app, DupPostView)
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            fr.include_view(app, DupPostView)
+    messages = [
+        str(w.message) for w in caught if issubclass(w.category, RestlyMisuseWarning)
+    ]
+    assert len(messages) == 1
+    assert "already registered" in messages[0]
+    assert "no-op" in messages[0]
+
+
+def test_duplicate_registration_silent_by_default():
+    class QuietDupPost(fr.IDBase):
+        title: orm.Mapped[str]
+
+    class QuietDupPostView(fr.AsyncRestView):
+        prefix = "/quiet-dup-posts"
+        model = QuietDupPost
+
+    app = fastapi.FastAPI()
+    with RestlyContext():
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            fr.include_view(app, QuietDupPostView)
+            fr.include_view(app, QuietDupPostView)
+    assert [
+        str(w.message) for w in caught if issubclass(w.category, RestlyMisuseWarning)
+    ] == []
 
 
 def test_scalar_named_reference_off_by_default():

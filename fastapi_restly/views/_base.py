@@ -713,6 +713,10 @@ def include_view(
         @include_view(app)
         class MyView(AsyncRestView):
             ...
+
+    Registering a view on several parents mounts its routes on each; calling
+    ``include_view`` again with a parent the view is already registered on is
+    a no-op.
     """
     if view_cls is not None:
         _init_view_cls_and_add_to_router(view_cls, parent_router)
@@ -1141,15 +1145,39 @@ def _init_view_cls_and_add_to_router(
     registering the same view on *different* routers safe (e.g. a public app and
     an admin app, or ``/v1`` and ``/v2`` sub-apps).
 
-    Re-mounting the same view on the *same* router, however, duplicates its
-    routes (each call still runs ``include_router``); don't register a view more
-    than once on a given parent. (Tracked: bug for a same-router idempotency
-    guard.)
+    Re-registering the same view on the *same* parent is a no-op (flagged by
+    the opt-in misuse lint): each parent tracks the view classes already
+    mounted on it, so a duplicate ``include_view()`` call (double import,
+    decorator plus explicit call) cannot mount the same routes twice.
     """
+    # A FastAPI app delegates include_router to its .router; track mounted
+    # views on the router so app and app.router count as one parent.
+    holder = (
+        parent_router.router
+        if isinstance(parent_router, fastapi.FastAPI)
+        else parent_router
+    )
+    mounted: set[type[View]] = getattr(holder, "_fr_mounted_views", None) or set()
+    if view_cls in mounted:
+        if _fr_globals.warn_on_misuse:
+            warnings.warn(
+                f"{view_cls.__name__} is already registered on this app/router; "
+                f"this include_view() call is a no-op. Duplicate registration "
+                f"usually means a double import or the decorator form combined "
+                f"with an explicit include_view() call.",
+                RestlyMisuseWarning,
+                stacklevel=4,
+            )
+        return
     _prepare_view_class(view_cls)
     api_router = _init_api_router(view_cls)
     _register_for_resource_ref(parent_router, view_cls)
     parent_router.include_router(api_router)
+    # Record only after the mount succeeded: a failed registration must not be
+    # marked as mounted, or the next call would silently no-op a view whose
+    # routes never made it onto the parent.
+    mounted.add(view_cls)
+    setattr(holder, "_fr_mounted_views", mounted)
     # Fallback registration for users who skip ``fr.configure(app=...)``.
     # ``register_default_exception_handlers`` is idempotent and only acts on
     # FastAPI apps (it ignores nested APIRouter parents).

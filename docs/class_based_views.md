@@ -158,7 +158,8 @@ fr.include_view(admin_app, AdminUserView)
 
 When {func}`include_view <fastapi_restly.views.include_view>` runs, it walks `AdminUserView.__mro__`, finds inherited
 route metadata, and registers handlers against `AdminUserView`, so your
-override runs. The same view can be included on multiple routers.
+override runs. The same view can be included on multiple routers; including
+it twice on the *same* router is a no-op, never a duplicate route set.
 
 That is what "true class-based views" means in this framework. You can:
 

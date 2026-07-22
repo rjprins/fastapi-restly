@@ -63,6 +63,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Registering the same view class twice on the same app or router
+  (`fr.include_view(app, V); fr.include_view(app, V)` — a double import, or the
+  decorator form combined with an explicit call) no longer mounts its routes
+  twice. The duplicate call is now a no-op: each parent tracks the view classes
+  already mounted on it, and an app and its `.router` attribute count as one
+  parent. The opt-in `fr.configure(warn_on_misuse=True)` lint flags the
+  duplicate call with a `RestlyMisuseWarning`. Registering on *different*
+  parents (a public and an admin app, `/v1` and `/v2` sub-apps) still mounts
+  on each, as before.
+
 - `fr.IDRef[T]` / `fr.IDSchema[T]` foreign-key fields now work under any column
   name, not only fields ending in `_id`. A field like
   `post_fk: fr.IDRef[Post]` backed by a non-`_id` FK column was silently
