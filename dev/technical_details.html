@@ -776,10 +776,25 @@ override decision table live in
 <section id="nested-response-schemas-vs-write-payloads">
 <h3>Nested Response Schemas vs Write Payloads<a class="headerlink" href="#nested-response-schemas-vs-write-payloads" title="Link to this heading">#</a></h3>
 <p>Nested schemas serve two different roles in Restly today:</p>
-<ul class="simple">
+<ul>
 <li><p><strong>Response serialization</strong> is supported. The CRUD views recursively build
 <code class="docutils literal notranslate"><span class="pre">selectinload(...)</span></code> options for nested relationship fields in the response
-schema, so related objects can be serialized efficiently and with aliases.</p></li>
+schema, so related objects can be serialized efficiently and with aliases.
+Reads apply those options in <code class="docutils literal notranslate"><span class="pre">get_one</span></code> / <code class="docutils literal notranslate"><span class="pre">get_many</span></code>; writes apply the same
+ones in <code class="docutils literal notranslate"><span class="pre">save_object</span></code>, because the refresh that follows a flush leaves
+relationships unloaded. Without that, serializing a create or update response
+would reach them one lazy query at a time, which on an async session raises
+<code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code> rather than merely costing queries. The reload is skipped
+when everything the schema names is already loaded, and it runs without
+<code class="docutils literal notranslate"><span class="pre">populate_existing</span></code>, so a relationship the caller has already populated keeps
+its value.</p>
+<p>Loader options follow relationships the schema <em>names</em>. Code that reaches
+past that set – an <code class="docutils literal notranslate"><span class="pre">after_commit</span></code> hook, a custom business method, a
+<code class="docutils literal notranslate"><span class="pre">&#64;property</span></code> walking a relationship nothing else loads – runs in plain async
+context, where a bare attribute access raises <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code>. Restly’s
+declarative base mixes in SQLAlchemy’s <code class="docutils literal notranslate"><span class="pre">AsyncAttrs</span></code> for exactly that case, so
+those reads can be spelled <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">obj.awaitable_attrs.items</span></code>.</p>
+</li>
 <li><p><strong>Create/update payloads</strong> are not supported in the general case. The default
 <code class="docutils literal notranslate"><span class="pre">make_new_object()</span></code> / <code class="docutils literal notranslate"><span class="pre">update_object()</span></code> flow expects payload keys to map
 directly to model attributes, with <code class="docutils literal notranslate"><span class="pre">*_id:</span> <span class="pre">fr.MustExist[int,</span> <span class="pre">Model]</span></code>
@@ -856,12 +871,13 @@ sets a few SQLAlchemy session options intentionally:</p>
 </table>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">expire_on_commit=False</span></code> is used for both sync and async sessions so ORM
-objects remain readable after a route commits. FastAPI response serialization
-and Restly’s response-schema conversion read attributes from ORM objects after
-the write path has flushed and refreshed them. If commit expired those
-attributes, serialization could trigger implicit database reads. In async code
-that can fail outside an awaited SQLAlchemy call; in sync code it makes response
-rendering unexpectedly database-dependent.</p>
+objects remain readable after a route commits. Restly’s write handlers commit
+inside the request, and the response-schema conversion reads attributes from the
+committed object afterwards (as does an <code class="docutils literal notranslate"><span class="pre">after_commit</span></code> hook that inspects it).
+With <code class="docutils literal notranslate"><span class="pre">expire_on_commit=True</span></code> the commit expires those attributes, so each such
+read becomes an implicit database read: in async code it raises
+<code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code>, because the serializer – and any such hook – runs in plain
+async context; in sync code it quietly makes response rendering database-dependent.</p>
 <p>The autoflush setting is intentionally different. Async sessions disable
 autoflush because autoflush can turn a read operation into an implicit write and
 database I/O must happen at explicit awaited SQLAlchemy boundaries. Restly’s

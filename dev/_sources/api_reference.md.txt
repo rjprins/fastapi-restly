@@ -115,7 +115,7 @@ These base classes and mixins form the declarative foundation for SQLAlchemy mod
 
 | Symbol | Description |
 |---|---|
-| {class}`fr.DataclassBase <fastapi_restly.models.DataclassBase>` | SQLAlchemy declarative base with dataclass semantics and auto snake_case table names. |
+| {class}`fr.DataclassBase <fastapi_restly.models.DataclassBase>` | SQLAlchemy declarative base with dataclass semantics and auto snake_case table names. Mixes in SQLAlchemy's `AsyncAttrs`, so every model has `awaitable_attrs`. |
 | {class}`fr.IDBase <fastapi_restly.models.IDBase>` | Convenience alias combining `DataclassBase` with an auto-incrementing integer `id` primary key. |
 | {class}`fr.TimestampsMixin <fastapi_restly.models.TimestampsMixin>` | Dataclass mixin adding `created_at` / `updated_at` to any `DataclassBase` subclass. |
 | {class}`fr.models.IDMixin <fastapi_restly.models.IDMixin>` | Dataclass mixin adding integer `id` to a custom `DataclassBase` subclass. |
@@ -204,7 +204,7 @@ On `AsyncRestView` every method below is `async`; the signatures are otherwise i
 | Helper | {meth}`to_paginated_listing_response <fastapi_restly.views.BaseRestView.to_paginated_listing_response>` | `(query_params, listing_result)` | pagination envelope | Serialize a `ListingResult` into the paginated list response shape. |
 | Domain utility | `make_new_object` | `(schema_obj)` | `Model` | Build and stage a new object without flushing. The cooperative override point for stamping extra fields on create: call `super()`, then mutate the returned object. |
 | Domain utility | `update_object` | `(obj, schema_obj)` | `Model` | Apply writable fields without flushing. The cooperative override point for stamping extra fields on update: call `super()`, then mutate the returned object. |
-| Domain utility | `save_object` | `(obj)` | `Model` | Flush and refresh a staged object. Does not commit; `handle_<verb>` owns the commit. |
+| Domain utility | `save_object` | `(obj)` | `Model` | Flush and refresh a staged object, then eager-load the relationships the response schema names. Does not commit; `handle_<verb>` owns the commit. |
 | Domain utility | `delete_object` | `(obj)` | `None` | Delete and flush an existing object. Does not commit. |
 
 Internal methods prefixed with `_`, such as `_reject_unknown_query_params`, are implementation details even though they are visible on instances.

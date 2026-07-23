@@ -734,7 +734,7 @@ custom alternatives are covered in
 </thead>
 <tbody>
 <tr class="row-even"><td><p><a class="reference internal" href="api/models.html#fastapi_restly.models.DataclassBase" title="fastapi_restly.models.DataclassBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.DataclassBase</span></code></a></p></td>
-<td><p>SQLAlchemy declarative base with dataclass semantics and auto snake_case table names.</p></td>
+<td><p>SQLAlchemy declarative base with dataclass semantics and auto snake_case table names. Mixes in SQLAlchemy’s <code class="docutils literal notranslate"><span class="pre">AsyncAttrs</span></code>, so every model has <code class="docutils literal notranslate"><span class="pre">awaitable_attrs</span></code>.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="api/models.html#fastapi_restly.models.IDBase" title="fastapi_restly.models.IDBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDBase</span></code></a></p></td>
 <td><p>Convenience alias combining <code class="docutils literal notranslate"><span class="pre">DataclassBase</span></code> with an auto-incrementing integer <code class="docutils literal notranslate"><span class="pre">id</span></code> primary key.</p></td>
@@ -1035,7 +1035,7 @@ utilities</strong> that you call rather than override (<code class="docutils lit
 <td><p><code class="docutils literal notranslate"><span class="pre">save_object</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">(obj)</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">Model</span></code></p></td>
-<td><p>Flush and refresh a staged object. Does not commit; <code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code> owns the commit.</p></td>
+<td><p>Flush and refresh a staged object, then eager-load the relationships the response schema names. Does not commit; <code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code> owns the commit.</p></td>
 </tr>
 <tr class="row-even"><td><p>Domain utility</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">delete_object</span></code></p></td>

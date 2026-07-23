@@ -220,6 +220,21 @@ Nested schemas serve two different roles in Restly today:
 - **Response serialization** is supported. The CRUD views recursively build
   `selectinload(...)` options for nested relationship fields in the response
   schema, so related objects can be serialized efficiently and with aliases.
+  Reads apply those options in `get_one` / `get_many`; writes apply the same
+  ones in `save_object`, because the refresh that follows a flush leaves
+  relationships unloaded. Without that, serializing a create or update response
+  would reach them one lazy query at a time, which on an async session raises
+  `MissingGreenlet` rather than merely costing queries. The reload is skipped
+  when everything the schema names is already loaded, and it runs without
+  `populate_existing`, so a relationship the caller has already populated keeps
+  its value.
+
+  Loader options follow relationships the schema *names*. Code that reaches
+  past that set -- an `after_commit` hook, a custom business method, a
+  `@property` walking a relationship nothing else loads -- runs in plain async
+  context, where a bare attribute access raises `MissingGreenlet`. Restly's
+  declarative base mixes in SQLAlchemy's `AsyncAttrs` for exactly that case, so
+  those reads can be spelled `await obj.awaitable_attrs.items`.
 - **Create/update payloads** are not supported in the general case. The default
   `make_new_object()` / `update_object()` flow expects payload keys to map
   directly to model attributes, with `*_id: fr.MustExist[int, Model]`
@@ -288,12 +303,13 @@ sets a few SQLAlchemy session options intentionally:
 | Sync `sessionmaker` | SQLAlchemy default (`True`) | `False` |
 
 `expire_on_commit=False` is used for both sync and async sessions so ORM
-objects remain readable after a route commits. FastAPI response serialization
-and Restly's response-schema conversion read attributes from ORM objects after
-the write path has flushed and refreshed them. If commit expired those
-attributes, serialization could trigger implicit database reads. In async code
-that can fail outside an awaited SQLAlchemy call; in sync code it makes response
-rendering unexpectedly database-dependent.
+objects remain readable after a route commits. Restly's write handlers commit
+inside the request, and the response-schema conversion reads attributes from the
+committed object afterwards (as does an `after_commit` hook that inspects it).
+With `expire_on_commit=True` the commit expires those attributes, so each such
+read becomes an implicit database read: in async code it raises
+`MissingGreenlet`, because the serializer -- and any such hook -- runs in plain
+async context; in sync code it quietly makes response rendering database-dependent.
 
 The autoflush setting is intentionally different. Async sessions disable
 autoflush because autoflush can turn a read operation into an implicit write and

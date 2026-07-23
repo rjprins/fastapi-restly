@@ -62,7 +62,7 @@ class PostView(fr.AsyncRestView):
         return await self.save_object(obj)
 ```
 
-`make_new_object` builds the ORM instance. `save_object` flushes and refreshes it, but does not commit. For fields stamped on both create and update, override `make_new_object` / `update_object` instead; see [Stamping extra fields](#stamping-extra-fields).
+`make_new_object` builds the ORM instance. `save_object` flushes and refreshes it, then eager-loads the relationships the response schema names, but does not commit. For fields stamped on both create and update, override `make_new_object` / `update_object` instead; see [Stamping extra fields](#stamping-extra-fields).
 
 ### update: validate before saving
 
@@ -182,7 +182,7 @@ The business methods are built from a small set of object utilities. `save_objec
 
 ```
 create  →  make_new_object(schema_obj)   # build ORM object (override point for stamping)
-        →  save_object(obj)              # flush + refresh (no commit)
+        →  save_object(obj)              # flush + refresh + eager-load (no commit)
 
 update  →  update_object(obj, schema_obj)  # apply payload (override point for stamping)
         →  save_object(obj)
@@ -190,7 +190,7 @@ update  →  update_object(obj, schema_obj)  # apply payload (override point for
 delete  →  delete_object(obj)              # delete + flush (no commit)
 ```
 
-`make_new_object` and `update_object` do not flush. `save_object` flushes and refreshes, but does *not* commit. The same operations are available as free functions for services and workers.
+`make_new_object` and `update_object` do not flush. `save_object` flushes, refreshes, and eager-loads the relationships the response schema names, but does *not* commit. The same operations are available as free functions for services and workers; the free `save_object` has no view to read a schema from, so it flushes and refreshes only.
 
 ## Custom routes
 
