@@ -234,10 +234,12 @@ async def test_user_created(restly_async_session):
     assert result.name == "Bob"
 ```
 
-> **Note:** `restly_async_session` shares a DBAPI connection with
-> `restly_session` only when both sessionmakers are configured and both
-> engines use `psycopg` (`postgresql+psycopg://`). Other driver combinations,
-> such as `psycopg2` + `asyncpg`, do not share writes inside one test.
+> **Note:** When both a sync and an async session source are configured,
+> `restly_async_session` reuses the connection `restly_session` opens, so the
+> two fixtures share one transaction and a write through either is visible to
+> the other within the same test. The async session runs over that sync
+> connection, so point both at the same database; the async driver itself is
+> not exercised in this mode.
 
 ### `restly_project_root`
 

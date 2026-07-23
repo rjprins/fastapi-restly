@@ -23,6 +23,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   how-to, "Relationship Loading and Async", collects the loading model and the
   `MissingGreenlet` fixes.
 
+- `restly_async_session` no longer errors when a sync sessionmaker is also
+  configured; it shares the sync fixture's connection instead of failing every
+  test that uses it in a hybrid sync+async project.
+
 ### Changed
 
 - A session fixture with a generator but no matching sessionmaker now raises

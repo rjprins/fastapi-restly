@@ -152,11 +152,12 @@ else:
                     yield async_conn
                 return
 
-            async_conn = AsyncConnection(
-                async_engine, sync_connection=_shared_connection
-            )
-            async with async_conn:
-                yield async_conn
+            # The sync connection is already open and owned by the
+            # _shared_connection fixture. An AsyncConnection wrapping an
+            # existing sync_connection is already started, so entering it
+            # would call start() and raise "connection is already started".
+            # Yield it directly; the sync fixture closes the connection.
+            yield AsyncConnection(async_engine, sync_connection=_shared_connection)
 
         async with get_bound_async_connection() as async_conn:
             async with _fr_globals.async_make_session(bind=async_conn) as sess:

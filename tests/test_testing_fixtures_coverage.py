@@ -9,7 +9,11 @@ import pytest
 from _pytest.outcomes import Exit
 from fastapi import FastAPI
 from sqlalchemy import create_engine
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import (
+    AsyncConnection,
+    async_sessionmaker,
+    create_async_engine,
+)
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -228,6 +232,46 @@ async def test_async_fixture_begin_context_flushes_on_successful_exit():
 
             await agen.aclose()
     finally:
+        await async_engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_async_fixture_reuses_configured_sync_connection():
+    # Regression (fznb.11): when a sync sessionmaker is also configured,
+    # _shared_connection is a real sync connection. The async fixture must bind
+    # to it, not error. It used to enter a pre-bound AsyncConnection, which
+    # raises "connection is already started" on every test of a hybrid project.
+    sync_engine = create_engine(
+        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
+    )
+    async_engine = create_async_engine("sqlite+aiosqlite://", poolclass=StaticPool)
+    make_session = sessionmaker(bind=sync_engine, expire_on_commit=False)
+    async_make_session = async_sessionmaker(bind=async_engine, expire_on_commit=False)
+
+    try:
+        with RestlyContext():
+            from fastapi_restly.db._globals import _fr_globals
+
+            _fr_globals.make_session = make_session
+            _fr_globals.async_make_session = async_make_session
+
+            conn_gen = _fixtures._shared_connection.__wrapped__()
+            shared_conn = next(conn_gen)
+            assert shared_conn is not None  # sync sessionmaker -> real connection
+
+            agen = _fixtures.restly_async_session.__wrapped__(shared_conn)
+            try:
+                session = await agen.__anext__()
+                # Bound to an AsyncConnection over the sync fixture's connection,
+                # not a fresh connection of the async engine's own.
+                assert isinstance(session.bind, AsyncConnection)
+                assert session.bind.sync_connection is shared_conn
+            finally:
+                await agen.aclose()
+
+            next(conn_gen, None)  # close the shared connection
+    finally:
+        sync_engine.dispose()
         await async_engine.dispose()
 
 
