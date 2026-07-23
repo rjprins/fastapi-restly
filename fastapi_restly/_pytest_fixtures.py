@@ -186,11 +186,25 @@ else:
                     AsyncSessionContext(flush_on_success=True)
                 )
 
+                original_aexit = SA_AsyncSession.__aexit__
+                original_commit = SA_AsyncSession.commit
+
+                # commit and __aexit__ are patched on the class, so they fire for
+                # every AsyncSession in the process, including ones on an
+                # unrelated engine. Dispatch on identity: only the fixture's own
+                # session gets savepoint treatment; any other session behaves
+                # normally (real commit, real close).
                 async def passthrough_exit(self, exc_type, exc_value, traceback):
+                    if self is not sess:
+                        return await original_aexit(
+                            self, exc_type, exc_value, traceback
+                        )
                     await sess.flush()
                     return False  # re-raise any exception
 
                 async def patched_commit(self):
+                    if self is not sess:
+                        return await original_commit(self)
                     await sess.flush()
                     await sess.begin_nested()
                     # Treat the savepoint as this fixture's commit boundary.
@@ -274,11 +288,22 @@ def restly_session(_shared_connection) -> Iterator[SA_Session]:
                 sess.flush()
             return False  # re-raise any exception
 
+        original_exit = SA_Session.__exit__
+        original_commit = SA_Session.commit
+
+        # commit and __exit__ are patched on the class, so they fire for every
+        # Session in the process, including ones on an unrelated engine. Dispatch
+        # on identity: only the fixture's own session gets savepoint treatment;
+        # any other session behaves normally (real commit, real close).
         def passthrough_exit(self, exc_type, exc_value, traceback):
+            if self is not sess:
+                return original_exit(self, exc_type, exc_value, traceback)
             sess.flush()
             return False  # re-raise any exception
 
         def patched_commit(self):
+            if self is not sess:
+                return original_commit(self)
             sess.flush()
             sess.begin_nested()
             # Mimic after_commit (see the async fixture for the full rationale):

@@ -27,6 +27,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   configured; it shares the sync fixture's connection instead of failing every
   test that uses it in a hybrid sync+async project.
 
+- The session fixtures no longer hijack unrelated sessions. Their patched
+  `commit()` and context-exit fire for every session in the process; they now
+  act only on the fixture's own session, so a session on a different engine
+  commits and closes normally while a fixture is active.
+
 ### Changed
 
 - A session fixture with a generator but no matching sessionmaker now raises
