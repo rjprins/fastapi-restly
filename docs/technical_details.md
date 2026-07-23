@@ -220,6 +220,21 @@ Nested schemas serve two different roles in Restly today:
 - **Response serialization** is supported. The CRUD views recursively build
   `selectinload(...)` options for nested relationship fields in the response
   schema, so related objects can be serialized efficiently and with aliases.
+  Reads apply those options in `get_one` / `get_many`; writes apply the same
+  ones in `save_object`, because the refresh that follows a flush leaves
+  relationships unloaded. Without that, serializing a create or update response
+  would reach them one lazy query at a time, which on an async session raises
+  `MissingGreenlet` rather than merely costing queries. The reload is skipped
+  when everything the schema names is already loaded, and it runs without
+  `populate_existing`, so a relationship the caller has already populated keeps
+  its value.
+
+  Loader options follow relationships the schema *names*. Code that reaches
+  past that set -- an `after_commit` hook, a custom business method, a
+  `@property` walking a relationship nothing else loads -- runs in plain async
+  context, where a bare attribute access raises `MissingGreenlet`. Restly's
+  declarative base mixes in SQLAlchemy's `AsyncAttrs` for exactly that case, so
+  those reads can be spelled `await obj.awaitable_attrs.items`.
 - **Create/update payloads** are not supported in the general case. The default
   `make_new_object()` / `update_object()` flow expects payload keys to map
   directly to model attributes, with `*_id: fr.MustExist[int, Model]`

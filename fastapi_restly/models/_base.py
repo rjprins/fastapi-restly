@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy import Enum, func
+from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import (
     DeclarativeBase,
     Mapped,
@@ -67,8 +68,17 @@ def underscore(name: str) -> str:
     return s2.lower()
 
 
-class DataclassBase(TableNameMixin, MappedAsDataclass, DeclarativeBase, kw_only=True):
-    """SQLAlchemy declarative base with dataclass semantics."""
+class DataclassBase(
+    AsyncAttrs, TableNameMixin, MappedAsDataclass, DeclarativeBase, kw_only=True
+):
+    """SQLAlchemy declarative base with dataclass semantics.
+
+    ``AsyncAttrs`` adds ``awaitable_attrs``, so an unloaded attribute can be
+    reached from plain async code -- ``await obj.awaitable_attrs.items`` --
+    where a bare ``obj.items`` would raise ``MissingGreenlet``. Views eager-load
+    what the response schema names, so this is for the code that runs outside
+    that: an ``after_commit`` hook, a custom business method.
+    """
 
     type_annotation_map = {
         # native_enum=False so enums are persisted as strings in the

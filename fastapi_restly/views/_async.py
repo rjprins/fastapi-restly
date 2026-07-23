@@ -291,10 +291,23 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         )
 
     async def save_object(self, obj: ModelT) -> ModelT:
-        """Flush the session and refresh ``obj`` from the database. Does not
-        commit -- ``handle_<verb>`` owns the commit.
+        """Flush the session and refresh ``obj`` from the database, eager-loading
+        the relationships the response schema names. Does not commit --
+        ``handle_<verb>`` owns the commit.
+
+        The refresh leaves relationships unloaded, so without the eager load the
+        serializer would reach them one lazy query at a time -- which on an async
+        session is not slow but fatal: a lazy load in the endpoint coroutine has
+        no greenlet to suspend into and raises ``MissingGreenlet``. Reads apply
+        the same options in ``get_one`` / ``get_many``.
         """
-        return await object_async_save_object(self.session, obj)
+        obj = await object_async_save_object(self.session, obj)
+        statement = self._get_response_reload_statement(obj)
+        if statement is not None:
+            # unique(): the loader-options seam is public and may return a
+            # joinedload against a collection, which fans the row set out.
+            (await self.session.scalars(statement)).unique().all()
+        return obj
 
     async def delete_object(self, obj: ModelT) -> None:
         """Remove ``obj`` from the session and flush. Does not commit."""

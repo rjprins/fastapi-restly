@@ -239,8 +239,20 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         return object_update_object(self.session, obj, schema_obj, self.schema)
 
     def save_object(self, obj: ModelT) -> ModelT:
-        """Flush + refresh. Does not commit -- ``handle_<verb>`` owns the commit."""
-        return object_save_object(self.session, obj)
+        """Flush + refresh, eager-loading the relationships the response schema
+        names. Does not commit -- ``handle_<verb>`` owns the commit.
+
+        The refresh leaves relationships unloaded, so without the eager load the
+        serializer would reach them one lazy query at a time. Reads apply the
+        same options in ``get_one`` / ``get_many``.
+        """
+        obj = object_save_object(self.session, obj)
+        statement = self._get_response_reload_statement(obj)
+        if statement is not None:
+            # unique(): the loader-options seam is public and may return a
+            # joinedload against a collection, which fans the row set out.
+            self.session.scalars(statement).unique().all()
+        return obj
 
     def delete_object(self, obj: ModelT) -> None:
         object_delete_object(self.session, obj)

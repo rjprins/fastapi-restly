@@ -43,6 +43,7 @@ from fastapi import BackgroundTasks, Request, Response, WebSocket
 from fastapi.params import Depends as _DependsMarker
 from pydantic import create_model
 from sqlalchemy import inspect as sa_inspect
+from sqlalchemy import select as sa_select
 from sqlalchemy.orm import DeclarativeBase, selectinload
 from starlette.datastructures import QueryParams
 from typing_extensions import TypeVar
@@ -716,6 +717,74 @@ def _build_relationship_loader_options(
     return options
 
 
+def _relationship_reload_statement(obj: Any, options: list[Any]) -> Any:
+    """A primary-key SELECT that fills ``obj``'s unloaded relationships.
+
+    Deliberately *not* ``populate_existing``: that would expire every
+    relationship the options do not name and overwrite the ones they do, so a
+    value the caller had already put there would be replaced by a fresh read.
+    Without it the loaders fill only what is unloaded, which is exactly what
+    serialization would otherwise have lazy-loaded.
+    """
+    state = sa_inspect(obj)
+    if state.identity is None:
+        return None
+    mapper = state.mapper
+    conditions = [
+        column == value
+        for column, value in zip(mapper.primary_key, state.identity, strict=True)
+    ]
+    return sa_select(mapper.class_).where(*conditions).options(*options)
+
+
+def _schema_relationships_are_loaded(
+    obj: Any,
+    model_cls: type[DeclarativeBase],
+    schema_cls: type[pydantic.BaseModel],
+    seen: set[int] | None = None,
+) -> bool:
+    """Is every relationship ``schema_cls`` reaches already loaded on ``obj``?
+
+    Walks the same model/schema pairing as
+    :func:`_build_relationship_loader_options`, so it answers exactly the
+    question "would serializing this object need IO?". Reads only the committed
+    attribute dict, never the descriptors, so asking cannot itself emit a query.
+    """
+    if seen is None:
+        seen = set()
+    if id(obj) in seen:
+        return True
+    seen.add(id(obj))
+
+    state = sa_inspect(obj, raiseerr=False)
+    if state is None:
+        return True
+
+    mapper = sa_inspect(model_cls)
+    for field_name, field_info in schema_cls.model_fields.items():
+        if field_name not in mapper.relationships:
+            continue
+        if field_name in state.unloaded:
+            return False
+
+        nested_schema = _get_nested_schema_annotation(field_info.annotation)
+        if nested_schema is None:
+            continue
+
+        value = state.dict.get(field_name)
+        if value is None:
+            continue
+        relationship_prop = mapper.relationships[field_name]
+        related = value if relationship_prop.uselist else [value]
+        for item in related:
+            if not _schema_relationships_are_loaded(
+                item, relationship_prop.mapper.class_, nested_schema, seen
+            ):
+                return False
+
+    return True
+
+
 class View:
     """
     Class-based view primitive for FastAPI.
@@ -902,6 +971,20 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
 
     def get_relationship_loader_options(self) -> list[Any]:
         return _build_relationship_loader_options(self.model, self.schema)
+
+    def _get_response_reload_statement(self, obj: Any) -> Any:
+        """The SELECT that makes ``obj`` serializable, or ``None`` if it already is.
+
+        Called by ``save_object`` *after* the flush and refresh, because the
+        refresh is itself what leaves relationships unloaded -- asking earlier
+        would see a value the refresh is about to discard.
+        """
+        if _schema_relationships_are_loaded(obj, self.model, self.schema):
+            return None
+        options = self.get_relationship_loader_options()
+        if not options:
+            return None
+        return _relationship_reload_statement(obj, options)
 
     def _reject_unknown_query_params(self) -> None:
         """Reject any query-string key that isn't part of ``listing_param_schema``.

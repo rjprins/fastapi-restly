@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- A response schema embedding a relationship-backed field (`owner: OwnerRead`,
+  `author: fr.IDRef[Author]`, or a list of either) worked on reads but 500'd on
+  create and update with `MissingGreenlet` — for a row that had already
+  committed. Reads eager-load those relationships from the response schema;
+  writes flushed and refreshed with no loader options, and the refresh is what
+  leaves a relationship unloaded, so the serializer hit a lazy load in the
+  endpoint coroutine where SQLAlchemy's asyncio layer has no greenlet to suspend
+  into. `save_object` now applies the same options reads do.
+
+  The reload is skipped when everything the response schema names is already
+  loaded, so a write whose response needs no relationship data costs no extra
+  statement. It runs without `populate_existing`, so a relationship the caller
+  had already populated keeps its value rather than being overwritten by a fresh
+  read.
+
+  Sync views never raised, but paid the same loads implicitly, one query at a
+  time, during serialization. They now eager-load identically.
+
+### Added
+
+- Restly's declarative base mixes in SQLAlchemy's `AsyncAttrs`, so every model
+  has `awaitable_attrs`: `await obj.awaitable_attrs.items` reads an unloaded
+  attribute from plain async code, where a bare `obj.items` raises
+  `MissingGreenlet`. Views eager-load what the response schema names, so this is
+  for the code that runs outside that set — an `after_commit` hook, a custom
+  business method.
+
 ## [0.8.0] - 2026-07-22
 
 ### Added
