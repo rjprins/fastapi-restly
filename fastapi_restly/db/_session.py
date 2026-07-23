@@ -34,11 +34,12 @@ def _setup_async_database_connection(
     if factory_kw is not None and factory_kw.get("expire_on_commit", True):
         warnings.warn(
             "The async session factory passed to fr.configure() has "
-            "expire_on_commit=True. Restly's write handlers commit before "
-            "building the response, so committed ORM attributes will expire "
-            "and the async serializer will trigger a lazy reload outside the "
-            "async context (MissingGreenlet). Pass expire_on_commit=False to "
-            "your async_sessionmaker.",
+            "expire_on_commit=True. Restly's write handlers commit inside the "
+            "request, so the commit expires every loaded attribute on the "
+            "object the response is built from. Reading one back -- first in an "
+            "after_commit hook, then in the serializer -- happens in plain "
+            "async context, where SQLAlchemy raises MissingGreenlet. Pass "
+            "expire_on_commit=False to your async_sessionmaker.",
             stacklevel=3,
         )
 

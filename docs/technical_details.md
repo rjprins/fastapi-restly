@@ -303,12 +303,13 @@ sets a few SQLAlchemy session options intentionally:
 | Sync `sessionmaker` | SQLAlchemy default (`True`) | `False` |
 
 `expire_on_commit=False` is used for both sync and async sessions so ORM
-objects remain readable after a route commits. FastAPI response serialization
-and Restly's response-schema conversion read attributes from ORM objects after
-the write path has flushed and refreshed them. If commit expired those
-attributes, serialization could trigger implicit database reads. In async code
-that can fail outside an awaited SQLAlchemy call; in sync code it makes response
-rendering unexpectedly database-dependent.
+objects remain readable after a route commits. Restly's write handlers commit
+inside the request, and both the `after_commit` hook and the response-schema
+conversion read attributes from the committed object afterwards. With
+`expire_on_commit=True` the commit expires those attributes, so each of those
+reads becomes an implicit database read: in async code it raises
+`MissingGreenlet`, because the hook and the serializer both run in plain async
+context; in sync code it quietly makes response rendering database-dependent.
 
 The autoflush setting is intentionally different. Async sessions disable
 autoflush because autoflush can turn a read operation into an implicit write and
