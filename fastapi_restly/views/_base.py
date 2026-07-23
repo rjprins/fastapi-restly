@@ -741,7 +741,7 @@ def _schema_relationships_are_loaded(
     obj: Any,
     model_cls: type[DeclarativeBase],
     schema_cls: type[pydantic.BaseModel],
-    seen: set[int] | None = None,
+    seen: set[tuple[int, type[pydantic.BaseModel]]] | None = None,
 ) -> bool:
     """Is every relationship ``schema_cls`` reaches already loaded on ``obj``?
 
@@ -752,9 +752,14 @@ def _schema_relationships_are_loaded(
     """
     if seen is None:
         seen = set()
-    if id(obj) in seen:
+    # Dedup on (instance, schema), not the instance alone: the same object can
+    # be reached under two response sub-schemas that name different
+    # relationships, and each pairing must be checked. Mirrors the
+    # (model, schema) dedup in _build_relationship_loader_options.
+    key = (id(obj), schema_cls)
+    if key in seen:
         return True
-    seen.add(id(obj))
+    seen.add(key)
 
     state = sa_inspect(obj, raiseerr=False)
     if state is None:

@@ -304,12 +304,12 @@ sets a few SQLAlchemy session options intentionally:
 
 `expire_on_commit=False` is used for both sync and async sessions so ORM
 objects remain readable after a route commits. Restly's write handlers commit
-inside the request, and both the `after_commit` hook and the response-schema
-conversion read attributes from the committed object afterwards. With
-`expire_on_commit=True` the commit expires those attributes, so each of those
-reads becomes an implicit database read: in async code it raises
-`MissingGreenlet`, because the hook and the serializer both run in plain async
-context; in sync code it quietly makes response rendering database-dependent.
+inside the request, and the response-schema conversion reads attributes from the
+committed object afterwards (as does an `after_commit` hook that inspects it).
+With `expire_on_commit=True` the commit expires those attributes, so each such
+read becomes an implicit database read: in async code it raises
+`MissingGreenlet`, because the serializer -- and any such hook -- runs in plain
+async context; in sync code it quietly makes response rendering database-dependent.
 
 The autoflush setting is intentionally different. Async sessions disable
 autoflush because autoflush can turn a read operation into an implicit write and
