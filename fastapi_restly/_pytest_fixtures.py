@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session as SA_Session
 from .db import activate_savepoint_only_mode
 from .db._globals import _fr_globals, _get_restly_context
 from .db._session import _clear_uncommitted
+from .exc import RestlyConfigurationError
 
 if TYPE_CHECKING:
     from .testing._client import RestlyTestClient
@@ -115,9 +116,31 @@ else:
         from production behavior. To undo all changes in a test, use session.rollback()
         after each commit(), but be aware that data added before the last commit() is
         still visible.
+
+        A configured ``session_generator`` is cleared for the duration of the
+        test and restored afterwards, so the request receives this fixture's
+        session. Anything the generator body runs per session (a ``SET``
+        statement, for example) does not run during the test. Without an async
+        sessionmaker to build the session from, the fixture raises instead of
+        skipping with "Database connection not set up".
+
+        ``fr.open_async_session()`` resolves the generator the same way, so it
+        also yields this fixture's session during a test.
         """
         # Only run if database connections are set up
         if not _fr_globals.async_make_session:
+            if _fr_globals.session_generator is not None:
+                raise RestlyConfigurationError(
+                    "restly_async_session cannot isolate a session built by "
+                    "your session_generator: AsyncSessionDep reads the "
+                    "generator before the session factory this fixture patches, "
+                    "so each request would get its own session, with no "
+                    "isolation. Configure an async sessionmaker for the tests "
+                    "as well: pass async_database_url=, async_engine= or "
+                    "async_make_session= to fr.configure(). The fixture then "
+                    "builds the isolated session from it and ignores the "
+                    "generator during each test."
+                )
             pytest.skip("Database connection not set up")
 
         async_engine = _fr_globals.async_make_session.kw["bind"]
@@ -176,7 +199,12 @@ else:
 
                 globals_obj = _get_restly_context()
                 original_async_make_session = globals_obj.async_make_session
+                original_session_generator = globals_obj.session_generator
                 globals_obj.async_make_session = mock_sessionmaker
+                # AsyncSessionDep reads the generator first. Leaving it set
+                # would give each request its own real session, with no
+                # isolation.
+                globals_obj.session_generator = None
                 try:
                     with (
                         patch.object(SA_AsyncSession, "__aexit__", passthrough_exit),
@@ -185,6 +213,7 @@ else:
                         yield sess
                 finally:
                     globals_obj.async_make_session = original_async_make_session
+                    globals_obj.session_generator = original_session_generator
 
 
 @pytest.fixture
@@ -200,9 +229,30 @@ def restly_session(_shared_connection) -> Iterator[SA_Session]:
     from production behavior. To undo all changes in a test, use session.rollback()
     after each commit(), but be aware that data added before the last commit() is
     still visible.
+
+    A configured ``sync_session_generator`` is cleared for the duration of the
+    test and restored afterwards, so the request receives this fixture's
+    session. Anything the generator body runs per session (a ``SET`` statement,
+    for example) does not run during the test. Without a sync sessionmaker to
+    build the session from, the fixture raises instead of skipping with
+    "Database connection not set up".
+
+    ``fr.open_session()`` resolves the generator the same way, so it also yields
+    this fixture's session during a test.
     """
     # Only run if database connections are set up
     if not _fr_globals.make_session:
+        if _fr_globals.sync_session_generator is not None:
+            raise RestlyConfigurationError(
+                "restly_session cannot isolate a session built by your "
+                "sync_session_generator: SessionDep reads the generator before "
+                "the session factory this fixture patches, so each request "
+                "would get its own session, with no isolation. Configure a sync "
+                "sessionmaker for the tests as well: pass database_url=, "
+                "engine= or make_session= to fr.configure(). The fixture then "
+                "builds the isolated session from it and ignores the generator "
+                "during each test."
+            )
         pytest.skip("Database connection not set up")
 
     with _fr_globals.make_session(bind=_shared_connection) as sess:
@@ -237,7 +287,11 @@ def restly_session(_shared_connection) -> Iterator[SA_Session]:
 
         globals_obj = _get_restly_context()
         original_make_session = globals_obj.make_session
+        original_sync_session_generator = globals_obj.sync_session_generator
         globals_obj.make_session = mock_sessionmaker
+        # SessionDep reads the generator first. Leaving it set would give each
+        # request its own real session, with no isolation.
+        globals_obj.sync_session_generator = None
         try:
             with (
                 patch.object(SA_Session, "__exit__", passthrough_exit),
@@ -247,6 +301,7 @@ def restly_session(_shared_connection) -> Iterator[SA_Session]:
                 yield sess
         finally:
             globals_obj.make_session = original_make_session
+            globals_obj.sync_session_generator = original_sync_session_generator
 
 
 @pytest.fixture

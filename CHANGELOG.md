@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Restly's declarative base mixes in SQLAlchemy's `AsyncAttrs`, so every model
+  has `awaitable_attrs`: `await obj.awaitable_attrs.items` reads an unloaded
+  attribute from plain async code, where a bare `obj.items` raises
+  `MissingGreenlet`. Views eager-load what the response schema names, so this is
+  for the code that runs outside that set — an `after_commit` hook, a custom
+  business method.
+
+- `get_relationship_loader_options()` is now a documented override point: it
+  returns the `selectinload(...)` options derived from the response schema,
+  applied on reads and on the write-response reload. Override it to eager-load
+  relationships the schema does not name on both read and write paths. New
+  how-to, "Relationship Loading and Async", collects the loading model and the
+  `MissingGreenlet` fixes.
+
+### Changed
+
+- A session fixture with a generator but no matching sessionmaker now raises
+  instead of skipping, so a suite can no longer silently skip every test.
+
 ### Fixed
 
 - A response schema embedding a relationship-backed field (`owner: OwnerRead`,
@@ -27,21 +48,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Sync views never raised, but paid the same loads implicitly, one query at a
   time, during serialization. They now eager-load identically.
 
-### Added
-
-- Restly's declarative base mixes in SQLAlchemy's `AsyncAttrs`, so every model
-  has `awaitable_attrs`: `await obj.awaitable_attrs.items` reads an unloaded
-  attribute from plain async code, where a bare `obj.items` raises
-  `MissingGreenlet`. Views eager-load what the response schema names, so this is
-  for the code that runs outside that set — an `after_commit` hook, a custom
-  business method.
-
-- `get_relationship_loader_options()` is now a documented override point: it
-  returns the `selectinload(...)` options derived from the response schema,
-  applied on reads and on the write-response reload. Override it to eager-load
-  relationships the schema does not name on both read and write paths. New
-  how-to, "Relationship Loading and Async", collects the loading model and the
-  `MissingGreenlet` fixes.
+- The session fixtures now isolate projects configured with a
+  `session_generator` / `sync_session_generator`; previously such a project's
+  request ran on its own session and its write was silently dropped.
 
 ## [0.8.0] - 2026-07-22
 

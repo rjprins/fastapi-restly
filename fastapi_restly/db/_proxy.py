@@ -18,6 +18,9 @@ async def open_async_session() -> AsyncGenerator[SA_AsyncSession]:
     uncommitted-changes check is not armed here -- off-HTTP code owns its commit,
     exactly as a custom write route does.)
 
+    Under the ``restly_async_session`` test fixture the generator is cleared, so
+    this yields the fixture's isolated session like every other session source.
+
     Example::
 
         async with fr.open_async_session() as session:
@@ -45,6 +48,9 @@ def open_session() -> Generator[SA_Session]:
     is configured, otherwise the built-in sync session factory. (The request-only
     uncommitted-changes check is not armed here -- off-HTTP code owns its commit,
     exactly as a custom write route does.)
+
+    Under the ``restly_session`` test fixture the generator is cleared, so this
+    yields the fixture's isolated session like every other session source.
 
     Example::
 

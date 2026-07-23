@@ -186,7 +186,17 @@ fixture (the conftest recipe's autouse wrapper does this for every test).
 A SQLAlchemy `Session` on a connection whose outer transaction is never
 committed. `commit()` is patched to `flush()` + `begin_nested()`, so writes
 are visible during the test without persisting afterward. The fixture skips
-automatically if no sync database connection is configured.
+automatically if no sync session source is configured at all.
+
+A configured `sync_session_generator` is cleared for the duration of the test
+and restored afterwards, so the request receives the fixture's session. What is
+lost is anything the generator body runs per session, a `SET search_path` for
+example. Configure a sync sessionmaker for the tests as well: with only a
+generator the fixture has nothing to build the session from, and it raises
+rather than skip.
+
+`fr.open_session()` reads the generator the same way `SessionDep` does, so it
+also yields the fixture's session during a test.
 
 A committed write can be read back within the same test:
 
@@ -207,7 +217,10 @@ def test_user_created(restly_session):
 The async version of `restly_session`; it requires the [async pytest
 setup](#a-complete-conftestpy). In async-only projects it needs only
 `fr.configure(async_database_url=...)`. It skips automatically if no async
-database connection is configured.
+session source is configured at all. It handles a configured `session_generator`
+(and `fr.open_async_session()`) the same way `restly_session` handles
+`sync_session_generator`, including the raise when no async sessionmaker is
+configured.
 
 Usage mirrors `restly_session`, with `await`:
 
@@ -243,9 +256,10 @@ test and rolled back afterward.
 1. The fixture opens a connection for the test and binds the SQLAlchemy
    session to that connection.
 2. The fixtures patch Restly's session factory so code under test receives
-   the same isolated session. This patch is what makes app/client requests
-   isolated too, and it is why the conftest recipe requests the session
-   fixture for every test.
+   the same isolated session, and clear a configured session generator, which
+   the session dependency would otherwise read first. Together these are what
+   make app/client requests isolated too, and it is why the conftest recipe
+   requests the session fixture for every test.
 3. The fixtures patch `commit()` to `flush()` + `begin_nested()`, making
    state visible without a real database commit.
 4. After the test, the connection is closed without committing, rolling back

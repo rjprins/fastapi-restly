@@ -190,6 +190,12 @@ def my_get_db() -> Iterator[Session]:
 fr.configure(sync_session_generator=my_get_db)
 ```
 
+The [test fixtures](howto_testing.md#restly_session) clear a configured
+generator for the duration of a test, so the request receives the fixture's
+isolated session. Configure a sessionmaker (or a database URL) for the tests as
+well, and note that whatever the generator body runs per session does not run
+there.
+
 ## Use a Custom Session Dependency on One View
 
 Use {func}`fr.configure(...) <fastapi_restly.db.configure>` when one session source should be the default for the
