@@ -1132,6 +1132,8 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         page = int(params.get("page", "1"))
         page_size = int(params.get("page_size") or self.default_page_size)
         total = listing_result.total_count or 0
+        # Keys mirror :class:`PaginatedEnvelope` (the list ``response_model``);
+        # keep the two in sync.
         return {
             "data": data,
             "total_count": total,

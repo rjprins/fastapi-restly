@@ -667,3 +667,23 @@ def test_sync_react_admin_list_uses_handle_get_many_get_many_and_response_seams(
     assert events[-1] == ("to_response", fr.ResponseShape.LISTING)
     assert response.json()[0]["name"] == "a"
     assert response.headers["Content-Range"].endswith("/11")
+
+
+def test_react_admin_view_cannot_disable_pagination(client):
+    """A react-admin view reports its total via Content-Range, which needs the
+    count query, so ``paginated = False`` is rejected at registration."""
+
+    class Gadget(fr.IDBase):
+        name: Mapped[str]
+
+    class GadgetSchema(fr.IDSchema):
+        name: str
+
+    with pytest.raises(ValueError, match="cannot disable pagination"):
+
+        @fr.include_view(client.app)
+        class GadgetView(fr.AsyncReactAdminView):
+            prefix = "/gadgets"
+            model = Gadget
+            schema = GadgetSchema
+            paginated = False

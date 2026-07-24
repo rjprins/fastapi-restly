@@ -241,6 +241,7 @@ class _ReactAdminViewProtocol(Protocol):
     schema_update: ClassVar[type[pydantic.BaseModel]]
     id_type: ClassVar[type[Any]]
     default_page_size: ClassVar[int]
+    paginated: ClassVar[bool]
     get_many_endpoint: ClassVar[Any]
     put: ClassVar[Any]
 
@@ -285,7 +286,9 @@ class _ReactAdminMixin:
             return params
 
         view = cast(_ReactAdminViewProtocol, self)
-        default_page_size = view.default_page_size or DEFAULT_REACT_ADMIN_PAGE_SIZE
+        # ``paginated`` is forced True on react-admin and ``default_page_size`` is
+        # range-validated at registration, so it is always a usable int here.
+        default_page_size = view.default_page_size
         sort_raw = params.get("sort") if hasattr(params, "get") else None
         range_raw = params.get("range") if hasattr(params, "get") else None
         filter_raw = params.get("filter") if hasattr(params, "get") else None
@@ -372,8 +375,16 @@ class _ReactAdminMixin:
 
     @classmethod
     def before_include_view(cls) -> None:
-        cast(Any, super()).before_include_view()
         view_cls = cast(type[_ReactAdminViewProtocol], cls)
+        # React-admin reports its total through the Content-Range header, which
+        # needs the count query -- gated on ``paginated``. Disabling it would
+        # report a total of 0 and silently break the client's paging.
+        if not view_cls.paginated:
+            raise ValueError(
+                f"{cls.__name__}: a react-admin view cannot disable pagination; "
+                "'paginated' must stay True so the Content-Range total is counted."
+            )
+        cast(Any, super()).before_include_view()
         # Override the list return annotation set by BaseRestView to Response,
         # since we return a raw Response with Content-Range header.
         if hasattr(view_cls, "get_many_endpoint"):
