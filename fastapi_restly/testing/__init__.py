@@ -1,9 +1,5 @@
 try:
     from fastapi_restly._test_setup import configure_tests
-    from fastapi_restly.db import (
-        activate_savepoint_only_mode,
-        deactivate_savepoint_only_mode,
-    )
 
     from ._client import RestlyTestClient
 except ModuleNotFoundError as exc:  # pragma: no cover -- exercised via
@@ -18,9 +14,4 @@ except ModuleNotFoundError as exc:  # pragma: no cover -- exercised via
         ) from exc
     raise
 
-__all__ = [
-    "RestlyTestClient",
-    "activate_savepoint_only_mode",
-    "configure_tests",
-    "deactivate_savepoint_only_mode",
-]
+__all__ = ["RestlyTestClient", "configure_tests"]

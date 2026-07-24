@@ -22,9 +22,7 @@ from fastapi_restly.db._session import (
     _generate_session,
     _setup_async_database_connection,
     _setup_database_connection,
-    activate_savepoint_only_mode,
     configure,
-    deactivate_savepoint_only_mode,
     get_async_engine,
     get_engine,
 )
@@ -72,14 +70,14 @@ def test_public_session_context_manager_exports_use_open_names():
     assert not hasattr(fr, "async_session")
     assert "session" not in fr.__all__
     assert "async_session" not in fr.__all__
+    # The savepoint-only helpers are gone; the session fixtures are the isolation
+    # entry point. Pinned so they are not reintroduced on either surface.
     assert not hasattr(fr, "activate_savepoint_only_mode")
     assert not hasattr(fr, "deactivate_savepoint_only_mode")
-    assert "activate_savepoint_only_mode" not in fr.__all__
-    assert "deactivate_savepoint_only_mode" not in fr.__all__
-    assert fr_testing.activate_savepoint_only_mode is activate_savepoint_only_mode
-    assert fr_testing.deactivate_savepoint_only_mode is deactivate_savepoint_only_mode
-    assert "activate_savepoint_only_mode" in fr_testing.__all__
-    assert "deactivate_savepoint_only_mode" in fr_testing.__all__
+    assert not hasattr(fr_testing, "activate_savepoint_only_mode")
+    assert not hasattr(fr_testing, "deactivate_savepoint_only_mode")
+    assert "activate_savepoint_only_mode" not in fr_testing.__all__
+    assert "deactivate_savepoint_only_mode" not in fr_testing.__all__
 
 
 def test_private_restly_context_is_context_manager():
@@ -272,48 +270,6 @@ def test_configure_accepts_explicit_sessionmakers():
         import asyncio
 
         asyncio.run(async_engine.dispose())
-
-
-def test_activate_and_deactivate_savepoint_only_mode_for_sync_sessionmaker():
-    engine = create_engine(
-        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
-    )
-    make_session = sessionmaker(bind=engine, expire_on_commit=False)
-    original_connect = engine.connect
-
-    try:
-        activate_savepoint_only_mode(make_session)
-        assert engine.connect is not original_connect
-        assert hasattr(engine.connect, "_original_connect")
-        assert make_session.kw["join_transaction_mode"] == "create_savepoint"
-
-        activate_savepoint_only_mode(make_session)
-        assert hasattr(engine.connect, "_original_connect")
-
-        deactivate_savepoint_only_mode(make_session)
-        assert not hasattr(engine.connect, "_original_connect")
-        assert make_session.kw["join_transaction_mode"] is None
-    finally:
-        engine.dispose()
-
-
-@pytest.mark.asyncio
-async def test_activate_and_deactivate_savepoint_only_mode_for_async_sessionmaker():
-    async_engine = create_async_engine("sqlite+aiosqlite:///:memory:")
-    make_session = async_sessionmaker(bind=async_engine, expire_on_commit=False)
-    original_connect = async_engine.sync_engine.connect
-
-    try:
-        activate_savepoint_only_mode(make_session)
-        assert async_engine.sync_engine.connect is not original_connect
-        assert hasattr(async_engine.sync_engine.connect, "_original_connect")
-        assert make_session.kw["join_transaction_mode"] == "create_savepoint"
-
-        deactivate_savepoint_only_mode(make_session)
-        assert not hasattr(async_engine.sync_engine.connect, "_original_connect")
-        assert make_session.kw["join_transaction_mode"] is None
-    finally:
-        await async_engine.dispose()
 
 
 def test_generate_session_does_not_commit_and_exits_context_on_failure():

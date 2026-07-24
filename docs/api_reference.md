@@ -311,8 +311,6 @@ The testing utilities provide a status-asserting client and savepoint-based isol
 | Symbol | Description |
 |---|---|
 | {class}`fastapi_restly.testing.RestlyTestClient` | Sync test client wrapper around FastAPI's `TestClient` with default status-code assertions. It can test async FastAPI routes and `AsyncRestView` endpoints. |
-| {func}`fastapi_restly.testing.activate_savepoint_only_mode(make_session) <fastapi_restly.testing.activate_savepoint_only_mode>` | Wrap a session factory in savepoint-only mode so test data never commits to the database; intended for tests. Use it when building your own harness without the shipped fixtures (which implement the same isolation themselves). |
-| {func}`fastapi_restly.testing.deactivate_savepoint_only_mode(make_session) <fastapi_restly.testing.deactivate_savepoint_only_mode>` | Restore normal session behavior after testing. |
 
 The pytest fixtures below are auto-loaded by the `testing` extra; their full
 behavior is documented in [Testing](howto_testing.md#fixture-reference):

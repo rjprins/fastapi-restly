@@ -352,12 +352,7 @@ def test_fixture_exports_and_client_helpers():
     assert "session" not in exported_fixtures.__all__
     assert "autouse_alembic_upgrade" not in exported_fixtures.__all__
     assert "autouse_savepoint_only_mode_sessions" not in exported_fixtures.__all__
-    assert testing.__all__ == [
-        "RestlyTestClient",
-        "activate_savepoint_only_mode",
-        "configure_tests",
-        "deactivate_savepoint_only_mode",
-    ]
+    assert testing.__all__ == ["RestlyTestClient", "configure_tests"]
     assert not hasattr(testing, "app")
     assert not hasattr(testing, "session")
 

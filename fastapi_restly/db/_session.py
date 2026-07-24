@@ -176,55 +176,6 @@ def configure(
         register_default_exception_handlers(app)
 
 
-def activate_savepoint_only_mode(
-    make_session: async_sessionmaker[Any] | sessionmaker[Any],
-) -> None:
-    """
-    Intended for use in tests. Puts the session factory into savepoint-only mode so
-    that no test data is ever committed to the database. Each test can roll back
-    instantly by closing the session, leaving the database clean for the next test.
-
-    This is done with "create_savepoint" mode and a wrapper on engine.connect() that
-    begins the outer transaction before the Session can use it.
-    https://docs.sqlalchemy.org/en/20/orm/session_transaction.html#session-external-transaction
-    """
-    engine = _get_sync_engine(make_session)
-
-    # Check if already activated (look for the marker attribute we set)
-    if hasattr(engine.connect, "_original_connect"):
-        return  # Already activated, skip
-
-    original_connect = engine.connect
-
-    def _begin_on_connect():
-        connection = original_connect()
-        connection.begin()
-        return connection
-
-    # Using setattr to silence pyright
-    setattr(_begin_on_connect, "_original_connect", original_connect)
-
-    engine.connect = _begin_on_connect
-    make_session.configure(join_transaction_mode="create_savepoint")
-
-
-def deactivate_savepoint_only_mode(
-    make_session: async_sessionmaker[Any] | sessionmaker[Any],
-) -> None:
-    """
-    Reverts the effect of `activate_savepoint_only_mode`.
-    Restores the original engine.connect and disables savepoint-only mode.
-    """
-    engine = _get_sync_engine(make_session)
-    _begin_on_connect = cast(Any, engine.connect)
-    if hasattr(_begin_on_connect, "_original_connect"):
-        # Restore the original connect that was saved by activate_savepoint_only_mode
-        engine.connect = _begin_on_connect._original_connect
-    # If engine was never activated, there is nothing to restore; this is safe to call
-
-    make_session.configure(join_transaction_mode=None)
-
-
 def get_async_engine() -> AsyncEngine:
     """Return the async engine registered via configure()."""
     if _fr_globals.async_make_session is None:
@@ -304,15 +255,6 @@ async def async_create_all(base_or_metadata: type[DeclarativeBase] | MetaData) -
     else:
         async with bind.begin() as conn:
             await conn.run_sync(metadata.create_all)
-
-
-def _get_sync_engine(
-    make_session: async_sessionmaker[Any] | sessionmaker[Any],
-) -> Engine:
-    engine = make_session.kw["bind"]
-    if isinstance(engine, AsyncEngine):
-        return engine.sync_engine
-    return engine
 
 
 def _should_warn_uncommitted() -> bool:

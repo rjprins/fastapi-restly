@@ -42,11 +42,9 @@ fastapi_restly:
 fastapi_restly.db:
   - AsyncSessionDep
   - SessionDep
-  - activate_savepoint_only_mode
   - async_create_all
   - configure
   - create_all
-  - deactivate_savepoint_only_mode
   - get_async_engine
   - get_engine
   - open_async_session
@@ -101,9 +99,7 @@ fastapi_restly.schemas:
   - create_schema_from_model
 fastapi_restly.testing:
   - RestlyTestClient
-  - activate_savepoint_only_mode
   - configure_tests
-  - deactivate_savepoint_only_mode
 fastapi_restly.views:
   - Action
   - AsyncReactAdminView
@@ -129,10 +125,8 @@ fastapi_restly.views:
 
 submodule-only exports:
 fastapi_restly.db:
-  - activate_savepoint_only_mode
   - async_create_all
   - create_all
-  - deactivate_savepoint_only_mode
   - get_async_engine
   - get_engine
 fastapi_restly.exc:
@@ -175,9 +169,7 @@ fastapi_restly.schemas:
   - create_schema_from_model
 fastapi_restly.testing:
   - RestlyTestClient
-  - activate_savepoint_only_mode
   - configure_tests
-  - deactivate_savepoint_only_mode
 fastapi_restly.views:
   - BaseRestView
   - Envelope

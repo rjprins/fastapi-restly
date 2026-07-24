@@ -108,6 +108,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `fr.db.get_engine()` / `create_all()` and their async forms work inside the
   fixtures instead of silently no-opping.
 
+### Removed
+
+- `fr.testing.activate_savepoint_only_mode()` and its `deactivate_` counterpart.
+  They isolate per session, not per test, so chained requests never shared a
+  view. Use the session fixtures, or `fr.testing.configure_tests()`.
+
 ## [0.8.0] - 2026-07-22
 
 ### Added
