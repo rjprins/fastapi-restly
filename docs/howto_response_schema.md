@@ -33,9 +33,9 @@ List endpoints paginate by default: the route wraps the page of objects in a
 }
 ```
 
-The page is capped at
+When the client omits `?page_size=`, the endpoint uses
 {attr}`default_page_size <fastapi_restly.views.BaseRestView.default_page_size>`
-(50) unless the client sends a smaller `?page_size=`;
+(50). An explicit `page_size` may be smaller or larger than that default;
 {attr}`max_page_size <fastapi_restly.views.BaseRestView.max_page_size>` is the
 ceiling above which the request is rejected with 422.
 

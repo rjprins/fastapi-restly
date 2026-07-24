@@ -215,6 +215,10 @@ class ProductView(fr.AsyncReactAdminView):
     default_page_size = 50
 ```
 
+React-admin views cannot disable pagination with `paginated = False`. Their
+`Content-Range` response header requires the total count; Restly therefore
+rejects that setting at registration.
+
 ### Change the Content-Range unit
 
 `ra-data-simple-rest` ignores the unit part of the header (it only parses the

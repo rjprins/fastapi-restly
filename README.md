@@ -328,7 +328,7 @@ List endpoints return a `data` envelope with pagination metadata:
 ```
 
 Set `paginated = False` to return every matching row in a bare `data` envelope
-(no cap, no metadata), or override `to_listing_response()` for a different shape:
+(no cap, no metadata):
 
 ```python
 @fr.include_view(app)
@@ -338,6 +338,10 @@ class TagView(fr.AsyncRestView):
     paginated = False
     # Response: {"data": [...]}
 ```
+
+For a different response shape, replace `get_many_endpoint` with a matching
+`response_model`; use `to_listing_response()` inside the replacement when you
+want to reuse the default serialization and page-metadata calculation.
 
 ## Testing
 
