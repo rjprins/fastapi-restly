@@ -35,6 +35,7 @@ async app:
 ```python
 # conftest.py
 import asyncio
+from pathlib import Path
 
 import fastapi_restly as fr
 import pytest
@@ -47,6 +48,11 @@ fr.configure(async_database_url="sqlite+aiosqlite:///./test.db")
 
 @pytest.fixture(scope="session", autouse=True)
 def _create_schema():
+    # Start from a clean file: a leftover test.db (an interrupted run, or an
+    # older schema) would seed rows and tables below the per-test transaction
+    # that never roll back.
+    for leftover in Path().glob("test.db*"):
+        leftover.unlink()
     asyncio.run(fr.db.async_create_all(Base))
 
 

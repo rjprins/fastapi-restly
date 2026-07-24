@@ -1,3 +1,4 @@
+import asyncio
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from pathlib import Path
@@ -19,11 +20,43 @@ if _checkout not in _frl.parents:
         f"This example's venv isn't synced to this tree — run `uv sync` here."
     )
 
+# Dog-food Restly's shipped testing fixtures (fznb.5): configure once against a
+# file-backed SQLite database, create the schema once, and let
+# ``restly_async_session`` isolate every test with a savepoint. This is the
+# recipe documented in docs/howto_testing.md. ``app.main`` configures ``saas.db``
+# for real runs; the line below repoints the suite at a throwaway ``test.db``
+# (gitignored) that the savepoint fixture keeps clean between tests.
+fr.configure(async_database_url="sqlite+aiosqlite:///./test.db")
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _create_schema():
+    """Create the schema once for the whole session; tests roll back their data.
+
+    Start from a clean database file so a leftover ``test.db`` (an interrupted
+    run, or an older schema) cannot seed rows or stale tables that would sit
+    below the per-test transaction and never roll back.
+    """
+    for leftover in Path().glob("test.db*"):
+        leftover.unlink()
+    asyncio.run(fr.db.async_create_all(fr.DataclassBase))
+
 
 @pytest.fixture
-def client() -> RestlyTestClient:
-    """Create a test client backed by the saas FastAPI app."""
-    return RestlyTestClient(app)
+def restly_app():
+    """The app ``restly_client`` wraps."""
+    return app
+
+
+@pytest.fixture
+def client(restly_client) -> RestlyTestClient:
+    """The suite's existing name for the isolated Restly test client."""
+    return restly_client
+
+
+@pytest.fixture(autouse=True)
+async def _isolate_every_test(restly_async_session):
+    """Give every test savepoint isolation, client requests included."""
 
 
 @pytest.fixture(autouse=True)
@@ -54,14 +87,3 @@ def auth_context() -> Callable[..., Iterator[None]]:
             app.dependency_overrides.update(previous)
 
     return override
-
-
-@pytest.fixture(autouse=True)
-async def use_in_memory_database():
-    """Switch to a fresh in-memory SQLite database for each test."""
-    fr.configure(async_database_url="sqlite+aiosqlite:///:memory:")
-    await fr.db.async_create_all(fr.DataclassBase)
-    yield
-    # Dispose while the event loop is still open — otherwise aiosqlite's
-    # worker thread tries to call back into a closed loop on next test.
-    await fr.db.get_async_engine().dispose()
