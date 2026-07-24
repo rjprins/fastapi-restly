@@ -15,8 +15,8 @@ registering their own handler for ``IntegrityError`` *before* the framework
 gets a chance to install one.
 
 The detail-message extraction is best-effort: it understands the most common
-PostgreSQL SQLSTATE codes (via psycopg's ``orig.pgcode``) and the SQLite
-error-message conventions. For unrecognised dialects/messages we fall back
+PostgreSQL SQLSTATE codes (via ``orig.sqlstate`` / ``orig.pgcode``) and the
+SQLite error-message conventions. For unrecognised dialects/messages we fall back
 to a generic conflict message that includes a truncated version of the
 underlying error text.
 """
@@ -61,11 +61,13 @@ _PG_SQLSTATE_DETAILS: dict[str, str] = {
 def _extract_postgres_detail(orig: Any) -> str | None:
     """Return a user-facing detail message for a Postgres-driver error.
 
-    Looks at ``orig.pgcode`` (set by psycopg / psycopg2 / asyncpg-via-psycopg)
-    and, when available, ``orig.diag.constraint_name`` /
-    ``orig.diag.column_name`` to enrich the message.
+    Reads the SQLSTATE code and, when psycopg's ``orig.diag`` is present, its
+    ``constraint_name`` / ``column_name`` to enrich the message. The attribute
+    holding the code differs by driver: psycopg 3 exposes ``sqlstate``, psycopg 2
+    exposes ``pgcode`` -- read whichever is present. Reading only ``pgcode``
+    silently degraded every psycopg 3 error to the generic fallback.
     """
-    pgcode = getattr(orig, "pgcode", None)
+    pgcode = getattr(orig, "sqlstate", None) or getattr(orig, "pgcode", None)
     if not pgcode:
         return None
 
@@ -125,7 +127,8 @@ def _build_integrity_detail(exc: IntegrityError) -> str:
 
     Best-effort across dialects:
 
-    * PostgreSQL — switches on ``exc.orig.pgcode`` (SQLSTATE class 23).
+    * PostgreSQL — switches on the SQLSTATE code (``exc.orig.sqlstate`` /
+      ``pgcode``, class 23).
     * SQLite — pattern-matches ``str(exc.orig)`` against known prefixes.
     * Anything else — returns a generic fallback that includes a truncated
       copy of the original error text so the body is still useful for

@@ -144,8 +144,13 @@ def test_include_view_registers_handler_as_fallback(client):
 # ---------------------------------------------------------------------------
 
 
+# The SQLSTATE code lives under a different attribute per driver: psycopg 3
+# (Restly's PostgreSQL stack) and asyncpg expose ``sqlstate``, psycopg 2 exposes
+# ``pgcode``. Cover both so the classifier can't silently regress on either --
+# reading only ``pgcode`` degraded every psycopg 3 error to the generic fallback.
+@pytest.mark.parametrize("code_attr", ["sqlstate", "pgcode"])
 @pytest.mark.parametrize(
-    "pgcode, expected_substring",
+    "code, expected_substring",
     [
         ("23505", "unique"),
         ("23503", "foreign key"),
@@ -153,20 +158,21 @@ def test_include_view_registers_handler_as_fallback(client):
         ("23514", "check"),
     ],
 )
-def test_postgres_pgcode_classification(pgcode, expected_substring):
+def test_postgres_sqlstate_classification(code_attr, code, expected_substring):
     """Postgres SQLSTATE codes drive the human-readable detail."""
     orig = SimpleNamespace(
-        pgcode=pgcode, diag=SimpleNamespace(constraint_name=None, column_name=None)
+        **{code_attr: code},
+        diag=SimpleNamespace(constraint_name=None, column_name=None),
     )
     exc = _make_integrity_error(orig)
     detail = _build_integrity_detail(exc)
     assert expected_substring in detail.lower()
 
 
-def test_postgres_pgcode_includes_constraint_name():
+def test_postgres_sqlstate_includes_constraint_name():
     """When psycopg's ``orig.diag`` carries a constraint name, we surface it."""
     orig = SimpleNamespace(
-        pgcode="23505",
+        sqlstate="23505",
         diag=SimpleNamespace(constraint_name="uq_user_email", column_name=None),
     )
     exc = _make_integrity_error(orig)
@@ -175,9 +181,10 @@ def test_postgres_pgcode_includes_constraint_name():
     assert "unique" in detail.lower()
 
 
-def test_postgres_pgcode_not_null_includes_column():
+def test_postgres_sqlstate_not_null_includes_column():
     orig = SimpleNamespace(
-        pgcode="23502", diag=SimpleNamespace(constraint_name=None, column_name="email")
+        sqlstate="23502",
+        diag=SimpleNamespace(constraint_name=None, column_name="email"),
     )
     detail = _build_integrity_detail(_make_integrity_error(orig))
     assert "not-null" in detail.lower()

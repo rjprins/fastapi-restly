@@ -1,4 +1,4 @@
-.PHONY: test test-framework test-typing test-examples test-all clean install-dev lint pre-commit-install pre-commit-run docs docs-serve blog blog-serve build-pages
+.PHONY: test test-framework test-typing test-postgres test-examples test-all clean install-dev lint pre-commit-install pre-commit-run docs docs-serve blog blog-serve build-pages
 
 # Default target
 all: test-all
@@ -42,6 +42,15 @@ test-blog:
 test-saas:
 	@echo "=== Testing SaaS Example ==="
 	cd example-projects/saas && uv run pytest tests/ -v
+
+# Test the PostgreSQL dialect leg. Requires a reachable PostgreSQL server; point
+# RESTLY_TEST_DATABASE_URL at it (the CI leg runs this against a service
+# container). Kept out of test-all: it needs a server, and errors out if
+# RESTLY_TEST_DATABASE_URL is unset.
+test-postgres:
+	@echo "=== Testing PostgreSQL dialect leg ==="
+	@test -n "$$RESTLY_TEST_DATABASE_URL" || { echo "Set RESTLY_TEST_DATABASE_URL to a PostgreSQL URL first (see tests/postgres/conftest.py)"; exit 1; }
+	uv run --with "psycopg[binary]" pytest tests/postgres/ -v
 
 # Test all examples
 test-examples: test-shop test-blog test-saas
@@ -110,6 +119,7 @@ help:
 	@echo "  test-shop       - Test the shop example"
 	@echo "  test-blog       - Test the blog example"
 	@echo "  test-saas       - Test the SaaS example"
+	@echo "  test-postgres   - Test the PostgreSQL dialect leg (needs RESTLY_TEST_DATABASE_URL)"
 	@echo "  test-examples   - Test all examples"
 	@echo "  test-all        - Test framework and all examples"
 	@echo "  test            - Quick test (just framework)"

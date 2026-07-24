@@ -23,6 +23,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   how-to, "Relationship Loading and Async", collects the loading model and the
   `MissingGreenlet` fixes.
 
+- A PostgreSQL CI leg now exercises the dialect-divergent surface SQLite hides:
+  case-sensitive `contains` vs case-folding `icontains` (including non-ASCII),
+  default `NULL` ordering, duplicate-sort-key pagination, real constraint
+  violations classified into clean 409 details, and the psycopg cross-session
+  fixture sharing.
+
 ### Changed
 
 - The session fixtures (`restly_session` / `restly_async_session`) now isolate
@@ -35,6 +41,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   instead of skipping.
 
 ### Fixed
+
+- Postgres 409 detail messages degraded to a generic fallback on psycopg 3. The
+  `IntegrityError` classifier read `pgcode` (psycopg 2's attribute), but
+  psycopg 3 — the driver Restly's PostgreSQL stack uses — exposes the SQLSTATE as
+  `sqlstate`, so every constraint violation fell through to the raw driver text
+  instead of a clean message like `Unique constraint violated: <constraint>`. It
+  now reads `sqlstate` first, falling back to `pgcode`.
 
 - A response schema embedding a relationship-backed field (`owner: OwnerRead`,
   `author: fr.IDRef[Author]`, or a list of either) worked on reads but 500'd on
