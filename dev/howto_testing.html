@@ -556,6 +556,7 @@ they never create the schema. Here is a minimal, copy-paste setup for an
 async app:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># conftest.py</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">pytest</span>
@@ -568,6 +569,11 @@ async app:</p>
 
 <span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span><span class="p">(</span><span class="n">scope</span><span class="o">=</span><span class="s2">&quot;session&quot;</span><span class="p">,</span> <span class="n">autouse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">_create_schema</span><span class="p">():</span>
+    <span class="c1"># Start from a clean file: a leftover test.db (an interrupted run, or an</span>
+    <span class="c1"># older schema) would seed rows and tables below the per-test transaction</span>
+    <span class="c1"># that never roll back.</span>
+    <span class="k">for</span> <span class="n">leftover</span> <span class="ow">in</span> <span class="n">Path</span><span class="p">()</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;test.db*&quot;</span><span class="p">):</span>
+        <span class="n">leftover</span><span class="o">.</span><span class="n">unlink</span><span class="p">()</span>
     <span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">async_create_all</span><span class="p">(</span><span class="n">Base</span><span class="p">))</span>
 
 
