@@ -201,3 +201,74 @@ def test_pagination_metadata_reports_explicit_page_size(client):
     assert payload["page_size"] == 3
     assert payload["total_pages"] == 3
     assert len(payload["data"]) == 3
+
+
+def test_openapi_list_route_refs_the_envelope_component(client):
+    """The list route's 200 response references the generated envelope component
+    (``PaginatedEnvelope_<Schema>_`` when paginated, ``Envelope_<Schema>_`` when
+    not), wrapping the response schema in ``data``. This pins the public OpenAPI
+    contract the docs promise Restly keeps in sync."""
+
+    class Crate(fr.IDBase):
+        name: Mapped[str]
+
+    class CrateSchema(fr.IDSchema):
+        name: str
+
+    @fr.include_view(client.app)
+    class CrateView(fr.AsyncRestView):
+        prefix = "/crates"
+        model = Crate
+        schema = CrateSchema
+
+    class Barrel(fr.IDBase):
+        name: Mapped[str]
+
+    class BarrelSchema(fr.IDSchema):
+        name: str
+
+    @fr.include_view(client.app)
+    class BarrelView(fr.AsyncRestView):
+        prefix = "/barrels"
+        model = Barrel
+        schema = BarrelSchema
+        paginated = False
+
+    create_tables()
+    spec = client.app.openapi()
+
+    def list_200_component(prefix):
+        for candidate in (prefix, prefix + "/"):
+            route = spec["paths"].get(candidate, {}).get("get")
+            if route is not None:
+                ref = route["responses"]["200"]["content"]["application/json"][
+                    "schema"
+                ]["$ref"]
+                return ref.removeprefix("#/components/schemas/")
+        raise AssertionError(f"no list GET registered for {prefix}")
+
+    components = spec["components"]["schemas"]
+
+    # Paginated (default): PaginatedEnvelope wrapping the schema, all fields required.
+    paginated = list_200_component("/crates")
+    assert paginated == "PaginatedEnvelope_CrateSchema_"
+    paginated_schema = components[paginated]
+    assert paginated_schema["properties"]["data"]["type"] == "array"
+    assert (
+        paginated_schema["properties"]["data"]["items"]["$ref"]
+        == "#/components/schemas/CrateSchema"
+    )
+    assert set(paginated_schema["required"]) == {
+        "data",
+        "total_count",
+        "page",
+        "page_size",
+        "total_pages",
+    }
+
+    # Unpaginated: plain Envelope, only ``data``.
+    unpaginated = list_200_component("/barrels")
+    assert unpaginated == "Envelope_BarrelSchema_"
+    unpaginated_schema = components[unpaginated]
+    assert set(unpaginated_schema["properties"]) == {"data"}
+    assert unpaginated_schema["required"] == ["data"]
