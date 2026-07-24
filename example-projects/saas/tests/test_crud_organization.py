@@ -39,7 +39,7 @@ class TestOrganizationCRUD:
 
         # List
         response = client.get("/organizations/")
-        orgs = response.json()
+        orgs = response.json()["data"]
 
         assert len(orgs) >= 2
 
