@@ -355,6 +355,7 @@ def test_fixture_exports_and_client_helpers():
     assert testing.__all__ == [
         "RestlyTestClient",
         "activate_savepoint_only_mode",
+        "configure_tests",
         "deactivate_savepoint_only_mode",
     ]
     assert not hasattr(testing, "app")

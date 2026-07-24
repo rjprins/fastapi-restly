@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession as SA_AsyncSession
 from sqlalchemy.orm import Session as SA_Session
 from sqlalchemy.orm import sessionmaker
 
+from ._test_setup import _create_schema, _current_setup
 from .db._globals import _fr_globals, _get_restly_context
 from .exc import RestlyConfigurationError
 
@@ -295,9 +296,48 @@ def restly_session(_shared_connection) -> Iterator[SA_Session]:
         session.close()
 
 
+@pytest.fixture(scope="session", autouse=True)
+def _restly_managed_schema(request: pytest.FixtureRequest) -> Iterator[None]:
+    """Build the schema once per session when ``fr.testing.configure()`` asked for it.
+
+    Session-scoped so it lands before the per-test isolation below: those fixtures
+    wrap each test in a transaction that rolls back, so a schema created inside a
+    test would be rolled back with it. pytest's rootdir anchors relative Alembic
+    paths, so the invocation directory does not decide which config is found.
+    """
+    setup = _current_setup()
+    if setup is not None:
+        _create_schema(setup, root=Path(request.config.rootpath))
+    yield
+
+
+@pytest.fixture(autouse=True)
+def _restly_managed_isolation(request: pytest.FixtureRequest) -> Iterator[None]:
+    """Isolate every test when ``fr.testing.configure()`` was called.
+
+    Requests whichever session fixture matches the configured leg, so a suite gets
+    isolation without writing an autouse wrapper of its own. Inert (rather than
+    skipping) when nothing is configured, so tests that never touch the database
+    still run.
+    """
+    if _current_setup() is not None:
+        if _fr_globals.async_make_session is not None:
+            request.getfixturevalue("restly_async_session")
+        elif _fr_globals.make_session is not None:
+            request.getfixturevalue("restly_session")
+    yield
+
+
 @pytest.fixture
 def restly_app() -> FastAPI:
-    """Create a FastAPI app instance for testing."""
+    """Return the application under test.
+
+    ``fr.testing.configure(app=...)`` sets this. Without it you get a bare
+    ``FastAPI()``; override the fixture in your ``conftest.py`` to supply your own.
+    """
+    setup = _current_setup()
+    if setup is not None and setup.app is not None:
+        return setup.app
     return FastAPI()
 
 

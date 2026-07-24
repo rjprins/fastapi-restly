@@ -104,3 +104,13 @@ __all__ = [
     "patch",
     "delete",
 ]
+
+
+def __getattr__(name: str):
+    # ``fr.testing`` on demand: importing it eagerly would drag the HTTP test
+    # client (and httpx) into every production import of fastapi_restly.
+    if name == "testing":
+        import fastapi_restly.testing as testing_module
+
+        return testing_module
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

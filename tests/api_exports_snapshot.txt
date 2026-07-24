@@ -102,6 +102,7 @@ fastapi_restly.schemas:
 fastapi_restly.testing:
   - RestlyTestClient
   - activate_savepoint_only_mode
+  - configure_tests
   - deactivate_savepoint_only_mode
 fastapi_restly.views:
   - Action
@@ -175,6 +176,7 @@ fastapi_restly.schemas:
 fastapi_restly.testing:
   - RestlyTestClient
   - activate_savepoint_only_mode
+  - configure_tests
   - deactivate_savepoint_only_mode
 fastapi_restly.views:
   - BaseRestView

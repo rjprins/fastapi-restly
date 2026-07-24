@@ -1,4 +1,5 @@
 try:
+    from fastapi_restly._test_setup import configure_tests
     from fastapi_restly.db import (
         activate_savepoint_only_mode,
         deactivate_savepoint_only_mode,
@@ -20,5 +21,6 @@ except ModuleNotFoundError as exc:  # pragma: no cover -- exercised via
 __all__ = [
     "RestlyTestClient",
     "activate_savepoint_only_mode",
+    "configure_tests",
     "deactivate_savepoint_only_mode",
 ]
