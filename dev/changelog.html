@@ -554,6 +554,11 @@ applied on reads and on the write-response reload. Override it to eager-load
 relationships the schema does not name on both read and write paths. New
 how-to, “Relationship Loading and Async”, collects the loading model and the
 <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code> fixes.</p></li>
+<li><p>A PostgreSQL CI leg now exercises the dialect-divergent surface SQLite hides:
+case-sensitive <code class="docutils literal notranslate"><span class="pre">contains</span></code> vs case-folding <code class="docutils literal notranslate"><span class="pre">icontains</span></code> (including non-ASCII),
+default <code class="docutils literal notranslate"><span class="pre">NULL</span></code> ordering, duplicate-sort-key pagination, real constraint
+violations classified into clean 409 details, and the psycopg cross-session
+fixture sharing.</p></li>
 </ul>
 </section>
 <section id="changed">
@@ -571,6 +576,12 @@ instead of skipping.</p></li>
 <section id="fixed">
 <h3>Fixed<a class="headerlink" href="#fixed" title="Link to this heading">#</a></h3>
 <ul>
+<li><p>Postgres 409 detail messages degraded to a generic fallback on psycopg 3. The
+<code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code> classifier read <code class="docutils literal notranslate"><span class="pre">pgcode</span></code> (psycopg 2’s attribute), but
+psycopg 3 — the driver Restly’s PostgreSQL stack uses — exposes the SQLSTATE as
+<code class="docutils literal notranslate"><span class="pre">sqlstate</span></code>, so every constraint violation fell through to the raw driver text
+instead of a clean message like <code class="docutils literal notranslate"><span class="pre">Unique</span> <span class="pre">constraint</span> <span class="pre">violated:</span> <span class="pre">&lt;constraint&gt;</span></code>. It
+now reads <code class="docutils literal notranslate"><span class="pre">sqlstate</span></code> first, falling back to <code class="docutils literal notranslate"><span class="pre">pgcode</span></code>.</p></li>
 <li><p>A response schema embedding a relationship-backed field (<code class="docutils literal notranslate"><span class="pre">owner:</span> <span class="pre">OwnerRead</span></code>,
 <code class="docutils literal notranslate"><span class="pre">author:</span> <span class="pre">fr.IDRef[Author]</span></code>, or a list of either) worked on reads but 500’d on
 create and update with <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code> — for a row that had already
