@@ -1,20 +1,26 @@
-# FastAPI-Restly
-
-[![PyPI](https://img.shields.io/pypi/v/fastapi-restly)](https://pypi.org/project/fastapi-restly/)
-[![CI](https://github.com/rjprins/fastapi-restly/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/rjprins/fastapi-restly/actions/workflows/ci.yml)
-[![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue)](https://github.com/rjprins/fastapi-restly/blob/main/pyproject.toml)
-[![License](https://img.shields.io/github/license/rjprins/fastapi-restly)](https://github.com/rjprins/fastapi-restly/blob/main/LICENSE)
-[![Coverage](https://www.fastapi-restly.org/coverage/badge.svg)](https://www.fastapi-restly.org/coverage/)
-
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/rjprins/fastapi-restly?quickstart=1)
-
-Try FastAPI-Restly in your browser: the badge above opens a GitHub Codespace with the dev environment installed, ready to run a live example API.
-
 <p align="center">
-  <img src="https://raw.githubusercontent.com/rjprins/fastapi-restly/main/docs/_static/restly-cat-white-bg.png" alt="FastAPI-Restly logo" width="200">
+  <img src="https://raw.githubusercontent.com/rjprins/fastapi-restly/main/docs/_static/fr-wordmark.svg" alt="FastAPI-Restly" width="664">
 </p>
 
-**Build maintainable REST APIs on FastAPI, SQLAlchemy 2.0, and Pydantic v2 — with real class-based views.**
+<p align="center">
+  <a href="https://pypi.org/project/fastapi-restly/"><img src="https://img.shields.io/pypi/v/fastapi-restly" alt="PyPI"></a>
+  <a href="https://github.com/rjprins/fastapi-restly/actions/workflows/ci.yml"><img src="https://github.com/rjprins/fastapi-restly/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
+  <a href="https://github.com/rjprins/fastapi-restly/blob/main/pyproject.toml"><img src="https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue" alt="Python"></a>
+  <a href="https://github.com/rjprins/fastapi-restly/blob/main/LICENSE"><img src="https://img.shields.io/github/license/rjprins/fastapi-restly" alt="License"></a>
+  <a href="https://www.fastapi-restly.org/coverage/"><img src="https://www.fastapi-restly.org/coverage/badge.svg" alt="Coverage"></a>
+</p>
+
+<p align="center">
+  <a href="https://codespaces.new/rjprins/fastapi-restly?quickstart=1"><img src="https://github.com/codespaces/badge.svg" alt="Open in GitHub Codespaces"></a>
+</p>
+
+<p align="center">
+  Try FastAPI-Restly in your browser: the badge above opens a GitHub Codespace with the dev environment installed, ready to run a live example API.
+</p>
+
+<p align="center">
+  <strong>Build maintainable REST APIs on FastAPI, SQLAlchemy 2.0, and Pydantic v2 — with real class-based views.</strong>
+</p>
 
 > **Status:** public beta release ([changelog](https://github.com/rjprins/fastapi-restly/blob/main/CHANGELOG.md)).
 >
