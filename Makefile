@@ -44,20 +44,17 @@ test-saas:
 	@echo "=== Testing SaaS Example ==="
 	cd example-projects/saas && uv run pytest tests/ -v
 
-# Test the PostgreSQL dialect leg. Requires a reachable PostgreSQL server; point
-# RESTLY_TEST_DATABASE_URL at it (the CI leg runs this against a service
-# container). Kept out of test-all: it needs a server, and errors out if
-# RESTLY_TEST_DATABASE_URL is unset.
+# Test the PostgreSQL dialect leg. Runs against RESTLY_TEST_DATABASE_URL when
+# set, otherwise against a throwaway container on the image CI uses.
 test-postgres:
 	@echo "=== Testing PostgreSQL dialect leg ==="
-	@test -n "$$RESTLY_TEST_DATABASE_URL" || { echo "Set RESTLY_TEST_DATABASE_URL to a PostgreSQL URL first (see tests/postgres/conftest.py)"; exit 1; }
-	uv run --with "psycopg[binary]" pytest tests/postgres/ -v
+	scripts/with_postgres.sh uv run --with "psycopg[binary]" pytest tests/postgres/ -v
 
 # Test all examples
 test-examples: test-shop test-blog test-saas
 
 # Test everything
-test-all: test-framework test-typing test-examples
+test-all: test-framework test-typing test-postgres test-examples
 	@echo "=== All Tests Complete ==="
 
 # Quick test (just framework)
@@ -120,9 +117,9 @@ help:
 	@echo "  test-shop       - Test the shop example"
 	@echo "  test-blog       - Test the blog example"
 	@echo "  test-saas       - Test the SaaS example"
-	@echo "  test-postgres   - Test the PostgreSQL dialect leg (needs RESTLY_TEST_DATABASE_URL)"
+	@echo "  test-postgres   - Test the PostgreSQL dialect leg (starts a container if needed)"
 	@echo "  test-examples   - Test all examples"
-	@echo "  test-all        - Test framework and all examples"
+	@echo "  test-all        - Test framework, dialect leg, and all examples"
 	@echo "  test            - Quick test (just framework)"
 	@echo "  test-coverage   - Run tests with coverage reports"
 	@echo "  install-dev     - Install all development dependencies"

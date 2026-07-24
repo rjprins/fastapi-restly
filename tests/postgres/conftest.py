@@ -8,8 +8,13 @@ server, plus the psycopg cross-session connection sharing the fixtures document
 but no SQLite run can reach.
 
 Skipped entirely unless ``RESTLY_TEST_DATABASE_URL`` names a PostgreSQL
-database. The CI ``postgres`` job sets it; local runs and every other CI leg
-leave it unset and never touch PostgreSQL. Run locally with, e.g.::
+database, so every other leg leaves PostgreSQL untouched. The CI ``postgres``
+job sets it from its service container. Locally, run::
+
+    make test-postgres
+
+which starts a throwaway container when the variable is unset, or set it
+yourself to run against a server you already have::
 
     RESTLY_TEST_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/restly_test \\
         uv run --with 'psycopg[binary]' pytest tests/postgres/

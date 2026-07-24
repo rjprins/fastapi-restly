@@ -217,11 +217,11 @@ def restly_app() -> FastAPI:
 
 
 def _names(response) -> list[str]:
-    return sorted(row["name"] for row in response.json())
+    return sorted(row["name"] for row in response.json()["data"])
 
 
 def _labels(response) -> list[str]:
-    return [row["label"] for row in response.json()]
+    return [row["label"] for row in response.json()["data"]]
 
 
 def test_contains_is_case_sensitive_for_ascii(restly_client):
@@ -269,8 +269,10 @@ def test_pagination_is_stable_under_duplicate_sort_keys(restly_client):
     # skip or repeat rows across pages. Paging must return each row exactly once.
     seen: list[int] = []
     for page in (1, 2, 3):
-        rows = restly_client.get(f"/paged/?sort=bucket&page_size=2&page={page}").json()
-        seen.extend(row["id"] for row in rows)
+        payload = restly_client.get(
+            f"/paged/?sort=bucket&page_size=2&page={page}"
+        ).json()
+        seen.extend(row["id"] for row in payload["data"])
     assert len(seen) == 5
     assert len(set(seen)) == 5
     # The id tiebreak makes the page order deterministic (ascending id).
