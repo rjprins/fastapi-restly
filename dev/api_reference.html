@@ -1291,11 +1291,11 @@ behavior is documented in <a class="reference internal" href="howto_testing.html
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">restly_session</span></code></p></td>
 <td><p>function</p></td>
-<td><p>Savepoint-isolated SQLAlchemy <code class="docutils literal notranslate"><span class="pre">Session</span></code>; skips without a sync DB.</p></td>
+<td><p>Savepoint-isolated SQLAlchemy <code class="docutils literal notranslate"><span class="pre">Session</span></code>; needs a sync sessionmaker — skips if nothing is configured, raises if only a <code class="docutils literal notranslate"><span class="pre">sync_session_generator</span></code> is.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">restly_async_session</span></code></p></td>
 <td><p>function</p></td>
-<td><p>Async savepoint-isolated session; skips without an async DB.</p></td>
+<td><p>Async savepoint-isolated session; needs an async sessionmaker — skips if nothing is configured, raises if only a <code class="docutils literal notranslate"><span class="pre">session_generator</span></code> is.</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">restly_project_root</span></code></p></td>
 <td><p>session</p></td>

@@ -583,7 +583,7 @@ async app:</p>
 </pre></div>
 </div>
 <p>The last fixture matters: the savepoint isolation lives in the <em>session</em>
-fixtures, which patch Restly’s session factory for the duration of a test.
+fixtures, which swap Restly’s session factory for the duration of a test.
 <code class="docutils literal notranslate"><span class="pre">restly_client</span></code> alone does not isolate: a client-only test commits real rows
 to the configured database. The autouse wrapper opts every test in.</p>
 <p>The session fixtures need an async pytest plugin such as <code class="docutils literal notranslate"><span class="pre">pytest-asyncio</span></code>;
@@ -705,10 +705,20 @@ fixture (the conftest recipe’s autouse wrapper does this for every test).</p>
 <section id="restly-session">
 <h3><code class="docutils literal notranslate"><span class="pre">restly_session</span></code><a class="headerlink" href="#restly-session" title="Link to this heading">#</a></h3>
 <p><strong>Scope:</strong> <code class="docutils literal notranslate"><span class="pre">function</span></code></p>
-<p>A SQLAlchemy <code class="docutils literal notranslate"><span class="pre">Session</span></code> on a connection whose outer transaction is never
-committed. <code class="docutils literal notranslate"><span class="pre">commit()</span></code> is patched to <code class="docutils literal notranslate"><span class="pre">flush()</span></code> + <code class="docutils literal notranslate"><span class="pre">begin_nested()</span></code>, so writes
-are visible during the test without persisting afterward. The fixture skips
-automatically if no sync database connection is configured.</p>
+<p>A SQLAlchemy <code class="docutils literal notranslate"><span class="pre">Session</span></code> on a pinned connection whose outer transaction is never
+committed. Each request during the test builds its own real session that joins
+that transaction through a savepoint (SQLAlchemy’s <code class="docutils literal notranslate"><span class="pre">create_savepoint</span></code> mode), so
+<code class="docutils literal notranslate"><span class="pre">commit()</span></code> and <code class="docutils literal notranslate"><span class="pre">rollback()</span></code> behave as in production while nothing persists past
+the test. The fixture skips automatically if no sync session source is
+configured at all.</p>
+<p>A configured <code class="docutils literal notranslate"><span class="pre">sync_session_generator</span></code> is cleared for the duration of the test
+and restored afterwards, so the request builds its own isolated session on the
+fixture’s connection instead. What is lost is anything the generator body runs
+per session, a <code class="docutils literal notranslate"><span class="pre">SET</span> <span class="pre">search_path</span></code> for example. Configure a sync sessionmaker for
+the tests as well: with only a generator the fixture has nothing to build the
+session from, and it raises rather than skip.</p>
+<p><code class="docutils literal notranslate"><span class="pre">fr.open_session()</span></code> resolves the same factory <code class="docutils literal notranslate"><span class="pre">SessionDep</span></code> does, so it too
+yields an isolated session on the fixture’s connection during a test.</p>
 <p>A committed write can be read back within the same test:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">test_user_created</span><span class="p">(</span><span class="n">restly_session</span><span class="p">):</span>
     <span class="n">user</span> <span class="o">=</span> <span class="n">User</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;Alice&quot;</span><span class="p">)</span>
@@ -726,7 +736,10 @@ automatically if no sync database connection is configured.</p>
 <p>The async version of <code class="docutils literal notranslate"><span class="pre">restly_session</span></code>; it requires the <a class="reference internal" href="#a-complete-conftest-py">async pytest
 setup</a>. In async-only projects it needs only
 <code class="docutils literal notranslate"><span class="pre">fr.configure(async_database_url=...)</span></code>. It skips automatically if no async
-database connection is configured.</p>
+session source is configured at all. It handles a configured <code class="docutils literal notranslate"><span class="pre">session_generator</span></code>
+(and <code class="docutils literal notranslate"><span class="pre">fr.open_async_session()</span></code>) the same way <code class="docutils literal notranslate"><span class="pre">restly_session</span></code> handles
+<code class="docutils literal notranslate"><span class="pre">sync_session_generator</span></code>, including the raise when no async sessionmaker is
+configured.</p>
 <p>Usage mirrors <code class="docutils literal notranslate"><span class="pre">restly_session</span></code>, with <code class="docutils literal notranslate"><span class="pre">await</span></code>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">test_user_created</span><span class="p">(</span><span class="n">restly_async_session</span><span class="p">):</span>
     <span class="n">user</span> <span class="o">=</span> <span class="n">User</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;Bob&quot;</span><span class="p">)</span>
@@ -738,10 +751,12 @@ database connection is configured.</p>
 </pre></div>
 </div>
 <blockquote>
-<div><p><strong>Note:</strong> <code class="docutils literal notranslate"><span class="pre">restly_async_session</span></code> shares a DBAPI connection with
-<code class="docutils literal notranslate"><span class="pre">restly_session</span></code> only when both sessionmakers are configured and both
-engines use <code class="docutils literal notranslate"><span class="pre">psycopg</span></code> (<code class="docutils literal notranslate"><span class="pre">postgresql+psycopg://</span></code>). Other driver combinations,
-such as <code class="docutils literal notranslate"><span class="pre">psycopg2</span></code> + <code class="docutils literal notranslate"><span class="pre">asyncpg</span></code>, do not share writes inside one test.</p>
+<div><p><strong>Note:</strong> When both a sync and an async session source are configured,
+<code class="docutils literal notranslate"><span class="pre">restly_async_session</span></code> reuses the connection <code class="docutils literal notranslate"><span class="pre">restly_session</span></code> opens, so the
+two fixtures share one transaction and a write committed through either is
+visible to the other within the same test. The async session runs over that
+sync connection, so point both at the same database; the async driver itself
+is not exercised in this mode.</p>
 </div></blockquote>
 </section>
 <section id="restly-project-root">
@@ -760,24 +775,25 @@ test and rolled back afterward.</p>
 <ol class="arabic simple">
 <li><p>The fixture opens a connection for the test and binds the SQLAlchemy
 session to that connection.</p></li>
-<li><p>The fixtures patch Restly’s session factory so code under test receives
-the same isolated session. This patch is what makes app/client requests
-isolated too, and it is why the conftest recipe requests the session
-fixture for every test.</p></li>
-<li><p>The fixtures patch <code class="docutils literal notranslate"><span class="pre">commit()</span></code> to <code class="docutils literal notranslate"><span class="pre">flush()</span></code> + <code class="docutils literal notranslate"><span class="pre">begin_nested()</span></code>, making
-state visible without a real database commit.</p></li>
+<li><p>The fixtures swap Restly’s session factory for one bound to that connection
+in <code class="docutils literal notranslate"><span class="pre">create_savepoint</span></code> mode, so code under test builds its own isolated
+session on the shared connection, and clear a configured session generator,
+which the session dependency would otherwise read first. Together these are
+what make app/client requests isolated too, and it is why the conftest recipe
+requests the session fixture for every test.</p></li>
+<li><p>Each session joins the outer transaction through a savepoint, so its
+<code class="docutils literal notranslate"><span class="pre">commit()</span></code> releases the savepoint (state visible on the connection) without a
+real database commit, and its <code class="docutils literal notranslate"><span class="pre">rollback()</span></code> discards only that session’s own
+work.</p></li>
 <li><p>After the test, the connection is closed without committing, rolling back
 all changes and restoring the database to its pre-test state.</p></li>
 </ol>
 <p>Savepoints keep in-test commits usable; the uncommitted outer transaction
 provides the final isolation. Tests that never call <code class="docutils literal notranslate"><span class="pre">commit()</span></code> are still
 isolated, and there is no per-test teardown code or schema rebuild.</p>
-<p>Explicit transaction blocks are supported: <code class="docutils literal notranslate"><span class="pre">with</span> <span class="pre">restly_session.begin():</span> <span class="pre">...</span></code>
-and <code class="docutils literal notranslate"><span class="pre">async</span> <span class="pre">with</span> <span class="pre">restly_async_session.begin():</span> <span class="pre">...</span></code> flush pending changes when
-the block exits successfully. The fixtures still run under savepoint-based
-isolation, not production transaction management: if a test depends on precise
-rollback behavior at that boundary, prefer explicit <code class="docutils literal notranslate"><span class="pre">flush()</span></code> / <code class="docutils literal notranslate"><span class="pre">rollback()</span></code>
-calls, or test through the client instead of fixture internals.</p>
+<p>Explicit transaction blocks behave as in production: <code class="docutils literal notranslate"><span class="pre">with</span> <span class="pre">restly_session.begin():</span> <span class="pre">...</span></code> and <code class="docutils literal notranslate"><span class="pre">async</span> <span class="pre">with</span> <span class="pre">restly_async_session.begin():</span> <span class="pre">...</span></code> commit on success and
+roll back on error, scoped to the fixture’s outer transaction so nothing persists
+past the test.</p>
 </section>
 </section>
 

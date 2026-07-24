@@ -701,6 +701,11 @@ away from Restly.</p>
 <span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">sync_session_generator</span><span class="o">=</span><span class="n">my_get_db</span><span class="p">)</span>
 </pre></div>
 </div>
+<p>The <a class="reference internal" href="howto_testing.html#restly-session"><span class="std std-ref">test fixtures</span></a> clear a configured
+generator for the duration of a test, so the request receives the fixture’s
+isolated session. Configure a sessionmaker (or a database URL) for the tests as
+well, and note that whatever the generator body runs per session does not run
+there.</p>
 </section>
 <section id="use-a-custom-session-dependency-on-one-view">
 <h2>Use a Custom Session Dependency on One View<a class="headerlink" href="#use-a-custom-session-dependency-on-one-view" title="Link to this heading">#</a></h2>

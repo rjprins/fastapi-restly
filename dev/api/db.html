@@ -645,6 +645,8 @@ Restores the original engine.connect and disables savepoint-only mode.</p>
 configured, otherwise the built-in async session factory. (The request-only
 uncommitted-changes check is not armed here – off-HTTP code owns its commit,
 exactly as a custom write route does.)</p>
+<p>Under the <code class="docutils literal notranslate"><span class="pre">restly_async_session</span></code> test fixture the generator is cleared, so
+this yields the fixture’s isolated session like every other session source.</p>
 <p>Example:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">async</span> <span class="k">with</span> <span class="n">fr</span><span class="o">.</span><span class="n">open_async_session</span><span class="p">()</span> <span class="k">as</span> <span class="n">session</span><span class="p">:</span>
     <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">User</span><span class="p">))</span>
@@ -661,6 +663,8 @@ exactly as a custom write route does.)</p>
 is configured, otherwise the built-in sync session factory. (The request-only
 uncommitted-changes check is not armed here – off-HTTP code owns its commit,
 exactly as a custom write route does.)</p>
+<p>Under the <code class="docutils literal notranslate"><span class="pre">restly_session</span></code> test fixture the generator is cleared, so this
+yields the fixture’s isolated session like every other session source.</p>
 <p>Example:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">fr</span><span class="o">.</span><span class="n">open_session</span><span class="p">()</span> <span class="k">as</span> <span class="n">session</span><span class="p">:</span>
     <span class="n">result</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">User</span><span class="p">))</span>
