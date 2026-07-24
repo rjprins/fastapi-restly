@@ -44,13 +44,15 @@ blog_feed_fulltext = True
 
 html_theme = "pydata_sphinx_theme"
 html_theme_options = {
-    "logo": {"text": "FastAPI-Restly Blog"},
+    "logo": {
+        "text": "FastAPI-Restly",
+        "image_light": "../docs/_static/fr-monogram.svg",
+        "image_dark": "../docs/_static/fr-monogram-dark.svg",
+    },
     "github_url": "https://github.com/rjprins/fastapi-restly",
     "use_edit_page_button": True,
     "icon_links": [],
-    "external_links": [
-        {"name": "Docs", "url": SITE_URL},
-    ],
+    "external_links": [{"name": "Docs", "url": SITE_URL}],
     # No version switcher: the blog is unversioned.
     "navbar_end": ["theme-switcher", "navbar-icon-links"],
     "secondary_sidebar_items": ["page-toc", "newsletter-link"],
@@ -65,6 +67,7 @@ html_context = {
 # docs newsletter template links by docname, which does not exist here.
 html_static_path = ["../docs/_static"]
 templates_path = ["_templates"]
-html_logo = "../docs/_static/restly-cat.png"
+html_logo = "../docs/_static/fr-monogram.svg"
+html_favicon = "../docs/_static/favicon.svg"
 html_css_files = ["custom.css"]
 html_js_files = ["newsletter.js"]

@@ -76,7 +76,11 @@ exclude_patterns = []
 
 html_theme = "pydata_sphinx_theme"
 html_theme_options = {
-    "logo": {"text": "FastAPI-Restly"},
+    "logo": {
+        "text": "FastAPI-Restly",
+        "image_light": "_static/fr-monogram.svg",
+        "image_dark": "_static/fr-monogram-dark.svg",
+    },
     "github_url": "https://github.com/rjprins/fastapi-restly",
     "use_edit_page_button": True,
     "show_toc_level": 2,
@@ -85,15 +89,10 @@ html_theme_options = {
     # All eight top-level sections plus the Blog link in the header; no
     # "More" dropdown.
     "header_links_before_dropdown": 9,
-    "external_links": [
-        {"name": "Blog", "url": f"{SITE_URL}blog/"},
-    ],
+    "external_links": [{"name": "Blog", "url": f"{SITE_URL}blog/"}],
     # Version dropdown. json_url is absolute so frozen snapshots read the same
     # canonical list and surface versions published after they were built.
-    "switcher": {
-        "json_url": f"{SITE_URL}switcher.json",
-        "version_match": DOCS_VERSION,
-    },
+    "switcher": {"json_url": f"{SITE_URL}switcher.json", "version_match": DOCS_VERSION},
     "navbar_end": ["version-switcher", "theme-switcher", "navbar-icon-links"],
     # Right sidebar: page TOC, then the newsletter call-to-action. The
     # edit-this-page/show-source page-tools block is intentionally dropped.
@@ -109,7 +108,8 @@ html_static_path = ["_static"]
 # CNAME must ship in every publish: ghp-import replaces the gh-pages branch
 # wholesale, and GitHub Pages drops the custom domain if the file disappears.
 html_extra_path = ["robots.txt", "CNAME"]
-html_logo = "_static/restly-cat.png"
+html_logo = "_static/fr-monogram.svg"
+html_favicon = "_static/favicon.svg"
 html_css_files = ["custom.css"]
 html_js_files = ["newsletter.js"]
 
@@ -134,7 +134,8 @@ def _noindex_snapshots(app, pagename, templatename, context, doctree):
     single indexed copy."""
     if DOCS_VERSION != "latest":
         context["metatags"] = (
-            context.get("metatags", "") + '<meta name="robots" content="noindex, follow">\n'
+            context.get("metatags", "")
+            + '<meta name="robots" content="noindex, follow">\n'
         )
 
 
