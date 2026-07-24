@@ -7,11 +7,20 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm.clsregistry import _ModuleMarker, _MultipleClassMarker
 from sqlalchemy.pool import StaticPool
 
 import fastapi_restly as fr
 from fastapi_restly.db._globals import _fr_globals
 from fastapi_restly.pytest_fixtures import restly_client as restly_client
+
+# _cleanup_registry below scrubs SQLAlchemy's private declarative registry
+# between tests (see fznb.7 for why the suite depends on these internals).
+# Importing the marker types here is the first tripwire: if SA renames either,
+# collection fails immediately naming the symbol, instead of the nested walk
+# going silently inert and resurrecting the SAWarning flood e4e5623 / 389a800
+# were written to kill.
+_SA_MODULE_REGISTRY_KEY = "_sa_module_registry"
 
 
 @pytest.fixture
@@ -20,45 +29,74 @@ def client(restly_client):
     return restly_client
 
 
+def _cleanup_registry(base_cls: type) -> None:
+    """Drop test-local model registrations from ``base_cls``'s SQLAlchemy registry.
+
+    Tests declare models in function locals on shared bases, so their
+    registrations leak across tests without this scrub (fznb.7). Every access to
+    SQLAlchemy's private registry internals is direct: a moved or renamed
+    internal raises here, naming what moved, rather than skipping the walk and
+    letting the SAWarning flood return.
+    """
+    class_registry = base_cls.registry._class_registry  # type: ignore[attr-defined]
+
+    module_registry = class_registry.get(_SA_MODULE_REGISTRY_KEY)
+    if module_registry is None:
+        # SA creates the module registry the first time any class is added, so
+        # class entries with no module registry means SA moved the module tree.
+        if any(key != _SA_MODULE_REGISTRY_KEY for key in class_registry):
+            raise RuntimeError(
+                f"class_registry holds classes but no {_SA_MODULE_REGISTRY_KEY!r}; "
+                "SQLAlchemy moved the module tree -- update this cleanup (fznb.7)."
+            )
+    elif not isinstance(module_registry, _ModuleMarker):
+        raise RuntimeError(
+            f"{_SA_MODULE_REGISTRY_KEY!r} is a {type(module_registry).__name__}, "
+            "expected _ModuleMarker; SQLAlchemy internals moved -- update this "
+            "cleanup (fznb.7)."
+        )
+
+    # Outer pass: drop locally-scoped classes and name-collision markers from the
+    # top-level registry.
+    for key, value in list(class_registry.items()):
+        if key == _SA_MODULE_REGISTRY_KEY:
+            continue
+        if isinstance(value, _MultipleClassMarker):
+            class_registry.pop(key, None)
+            continue
+        if (
+            isinstance(value, type)
+            and issubclass(value, base_cls)
+            and "<locals>" in getattr(value, "__qualname__", "")
+        ):
+            class_registry.pop(key, None)
+
+    # Inner pass: SA stores each class a second time under module_name →
+    # class_name. Without scrubbing it too, the next test redefining the same
+    # model triggers an SAWarning.
+    if module_registry is None:
+        return
+    for module_marker in list(module_registry.contents.values()):
+        if not isinstance(module_marker, _ModuleMarker):
+            raise RuntimeError(
+                f"module tree holds a {type(module_marker).__name__}, expected "
+                "_ModuleMarker; SQLAlchemy internals moved (fznb.7)."
+            )
+        entries = module_marker.contents
+        for name, marker in list(entries.items()):
+            if isinstance(marker, (_ModuleMarker, _MultipleClassMarker)):
+                entries.pop(name, None)
+            else:
+                raise RuntimeError(
+                    f"unexpected {type(marker).__name__} under {module_marker.name!r} "
+                    "in SQLAlchemy's module tree -- update this cleanup (fznb.7)."
+                )
+
+
 @pytest.fixture(autouse=True)
 def reset_metadata():
     """Reset global framework state between tests to avoid cross-test leakage."""
     framework_bases = (fr.DataclassBase,)
-
-    def _cleanup_registry(base_cls: type) -> None:
-        class_registry = base_cls.registry._class_registry  # type: ignore[attr-defined]
-        for key, value in list(class_registry.items()):
-            if key == "_sa_module_registry":
-                continue
-            if value.__class__.__name__ == "_MultipleClassMarker":
-                class_registry.pop(key, None)
-                continue
-            if (
-                isinstance(value, type)
-                and issubclass(value, base_cls)
-                and "<locals>" in getattr(value, "__qualname__", "")
-            ):
-                class_registry.pop(key, None)
-
-        # Also walk the nested _sa_module_registry. SA stores the class a
-        # second time under module_name → class_name; without this pass the
-        # next test redefining the same model triggers an SAWarning.
-        module_registry = class_registry.get("_sa_module_registry")
-        if module_registry is None:
-            return
-        for module_marker in list(getattr(module_registry, "contents", {}).values()):
-            inner = getattr(module_marker, "contents", None)
-            if inner is None:
-                continue
-            for class_name, marker in list(inner.items()):
-                if marker.__class__.__name__ == "_MultipleClassMarker":
-                    inner.pop(class_name, None)
-                    continue
-                cls_ref = getattr(marker, "cls", None)
-                cls = cls_ref() if callable(cls_ref) else None
-                if cls is None or "<locals>" in getattr(cls, "__qualname__", ""):
-                    inner.pop(class_name, None)
-
     for base_cls in framework_bases:
         _cleanup_registry(base_cls)
         base_cls.metadata.clear()
