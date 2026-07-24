@@ -361,7 +361,7 @@ async def test_session_recovers_after_integrity_conflict(restly_async_session):
         listed = await client.get("/unique/")
     assert listed.status_code == 200
     # Only the two successful writes survive; the conflicting insert left nothing.
-    assert sorted(row["code"] for row in listed.json()) == ["rec", "rec-2"]
+    assert sorted(row["code"] for row in listed.json()["data"]) == ["rec", "rec-2"]
 
 
 @pytest.mark.asyncio
