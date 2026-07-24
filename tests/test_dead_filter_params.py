@@ -200,9 +200,9 @@ def test_collection_typed_fields_isnull_works_end_to_end(client):
     )
     client.post("/json-rows/", json={"name": "bare"}, assert_status_code=201)
 
-    with_meta = client.get("/json-rows/?meta__isnull=false").json()
+    with_meta = client.get("/json-rows/?meta__isnull=false").json()["data"]
     assert [row["name"] for row in with_meta] == ["with-meta"]
-    without_meta = client.get("/json-rows/?meta__isnull=true").json()
+    without_meta = client.get("/json-rows/?meta__isnull=true").json()["data"]
     assert [row["name"] for row in without_meta] == ["bare"]
 
     # The dead operators are no longer advertised, so they fail validation as

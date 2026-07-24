@@ -240,7 +240,7 @@ class _ReactAdminViewProtocol(Protocol):
     schema: ClassVar[type[pydantic.BaseModel]]
     schema_update: ClassVar[type[pydantic.BaseModel]]
     id_type: ClassVar[type[Any]]
-    default_page_size: ClassVar[int | None]
+    default_page_size: ClassVar[int]
     get_many_endpoint: ClassVar[Any]
     put: ClassVar[Any]
 
@@ -269,7 +269,7 @@ class _ReactAdminMixin:
     """
 
     #: Implicit page size when no ``range`` parameter is sent. Override per-view.
-    default_page_size: ClassVar[int | None] = DEFAULT_REACT_ADMIN_PAGE_SIZE
+    default_page_size: ClassVar[int] = DEFAULT_REACT_ADMIN_PAGE_SIZE
 
     def get_react_admin_range_unit(self) -> str:
         """Return the unit string used in the Content-Range header."""
@@ -358,7 +358,7 @@ class _ReactAdminMixin:
         params = self._coerce_react_admin_params(listing_result.query_params)
         return self._build_react_admin_list_response(
             self._serialize_items(listing_result.objects),
-            listing_result.total_count,
+            listing_result.total_count or 0,
             params.start,
             params.end,
         )

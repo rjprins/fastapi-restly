@@ -57,7 +57,6 @@ def test_rest_view_route_and_hook_names_are_current():
         "build_query",
         "count",
         "to_listing_response",
-        "to_paginated_listing_response",
         "to_response_schema",
     )
 

@@ -219,7 +219,7 @@ def test_list_endpoint(client):
 
     # Test list endpoint
     response = client.get("/categories/")
-    categories_list = response.json()
+    categories_list = response.json()["data"]
 
     assert len(categories_list) == 3
     assert all("id" in category for category in categories_list)

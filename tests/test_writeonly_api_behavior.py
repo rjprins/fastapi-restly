@@ -199,7 +199,7 @@ class TestWriteOnlyAPIBasicBehavior:
         # Test GET list - should NOT include WriteOnly fields
         response = client.get("/users/")
         assert response.status_code == 200
-        users = response.json()
+        users = response.json()["data"]
 
         assert len(users) == 3
         for user in users:

@@ -67,7 +67,7 @@ class TestOneToManyRelationships:
         asyncio.run(insert_test_data())
 
         response = client.get("/users1/")
-        users = response.json()
+        users = response.json()["data"]
 
         assert len(users) == 1
         user = users[0]
@@ -138,7 +138,7 @@ class TestOneToManyRelationships:
         # Test GET - should return nested addresses with aliases
         response = client.get("/users/")
         assert response.status_code == 200
-        users = response.json()
+        users = response.json()["data"]
 
         # Now we actually test the aliases
         assert len(users) > 0, "No users returned"
@@ -208,7 +208,7 @@ class TestOneToOneRelationships:
         asyncio.run(insert_test_data())
 
         response = client.get("/users3/")
-        users = response.json()
+        users = response.json()["data"]
 
         assert len(users) == 1
         user = users[0]
@@ -267,7 +267,7 @@ class TestOneToOneRelationships:
         asyncio.run(insert_test_data())
 
         response = client.get("/users4/")
-        users = response.json()
+        users = response.json()["data"]
 
         assert len(users) == 1
         user = users[0]
@@ -347,7 +347,7 @@ class TestManyToManyRelationships:
         asyncio.run(insert_test_data())
 
         response = client.get("/users5/")
-        users = response.json()
+        users = response.json()["data"]
 
         assert len(users) == 1
         user = users[0]
@@ -458,7 +458,7 @@ class TestDeeplyNestedRelationships:
         asyncio.run(insert_test_data())
 
         response = client.get("/companies6/")
-        companies = response.json()
+        companies = response.json()["data"]
 
         assert len(companies) == 1
         company = companies[0]
@@ -533,7 +533,7 @@ class TestRelationshipWithReadOnlyFields:
         asyncio.run(insert_test_data())
 
         response = client.get("/users7/")
-        users = response.json()
+        users = response.json()["data"]
 
         assert len(users) == 1
         user = users[0]

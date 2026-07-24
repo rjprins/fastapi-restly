@@ -72,4 +72,4 @@ def test_before_commit_failure_aborts_the_write(client):
     client.post("/docs/", json={"title": "v1"}, assert_status_code=409)
 
     # The failed before_commit means the create was never committed.
-    assert client.get("/docs/").json() == []
+    assert client.get("/docs/").json()["data"] == []

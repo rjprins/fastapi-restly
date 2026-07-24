@@ -45,7 +45,7 @@ def test_default_authorize_is_noop_allows_all_verbs(client):
     created = client.post("/items/", json={"name": "x", "hidden": False}).json()
     item_id = created["id"]
 
-    assert client.get("/items/").json()[0]["name"] == "x"
+    assert client.get("/items/").json()["data"][0]["name"] == "x"
     assert client.get(f"/items/{item_id}").status_code == 200
     assert client.patch(f"/items/{item_id}", json={"name": "y"}).json()["name"] == "y"
     client.delete(f"/items/{item_id}", assert_status_code=204)
@@ -71,7 +71,7 @@ def test_authorize_rejects_by_data_before_write(client):
     )
     client.post("/items/", json={"name": "fine", "hidden": False})
 
-    names = [row["name"] for row in client.get("/items/").json()]
+    names = [row["name"] for row in client.get("/items/").json()["data"]]
     assert names == ["fine"]  # the blocked create never persisted
 
 

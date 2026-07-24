@@ -287,7 +287,7 @@ def test_idref_relationship_field_serializes_flat_e2e(client):
     fetched = client.get(f"/comments/{comment_id}").json()
     assert fetched["post"] == post_id
 
-    listed = client.get("/comments/").json()
+    listed = client.get("/comments/").json()["data"]
     assert listed[0]["post"] == post_id
 
 
@@ -326,5 +326,6 @@ def test_react_admin_serializes_idref_flat_e2e(client):
     p1 = client.post("/posts/", json={"title": "p1"}).json()
     client.post("/comments/", json={"content": "hi", "post_fk": p1["id"]})
 
+    # ReactAdminView returns a bare array + Content-Range header, not the envelope.
     listed = client.get("/comments/").json()
     assert listed[0]["post_fk"] == p1["id"]

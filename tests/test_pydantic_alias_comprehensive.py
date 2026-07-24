@@ -52,7 +52,7 @@ def test_get_requests_return_aliases(client):
     # Test GET list returns aliases
     response = client.get("/users/")
     assert response.status_code == 200
-    users = response.json()
+    users = response.json()["data"]
     assert len(users) == 1
     user = users[0]
     assert "userName" in user
@@ -197,14 +197,14 @@ def test_query_modifiers_with_aliases(client):
     # Test query with aliases
     response = client.get("/customers/?customerName=John Doe")
     assert response.status_code == 200
-    customers = response.json()
+    customers = response.json()["data"]
     assert len(customers) == 1
     assert customers[0]["customerName"] == "John Doe"
 
     # Test range queries with aliases
     response = client.get("/customers/?registrationDate__gte=2024-01-02")
     assert response.status_code == 200
-    customers = response.json()
+    customers = response.json()["data"]
     assert len(customers) == 1
     assert customers[0]["customerName"] == "Jane Smith"
 

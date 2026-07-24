@@ -134,11 +134,13 @@ def test_list_returns_200_and_array(view_client: TestClient):
     response = view_client.get("/gadgets/")
     assert response.status_code == 200
     body = response.json()
-    assert isinstance(body, list)
-    assert len(body) == 2
-    assert {item["name"] for item in body} == {"A", "B"}
+    data = body["data"]
+    assert isinstance(data, list)
+    assert len(data) == 2
+    assert body["total_count"] == 2
+    assert {item["name"] for item in data} == {"A", "B"}
     # Same shape: id, name, price keys (order doesn't matter)
-    assert set(body[0].keys()) == {"id", "name", "price"}
+    assert set(data[0].keys()) == {"id", "name", "price"}
 
 
 @pytest.mark.parametrize("view_client", ["sync", "async"], indirect=True)
@@ -157,7 +159,7 @@ def test_collection_routes_accept_slash_and_no_slash(view_client: TestClient):
     assert no_slash_list.status_code == 200
     assert slash_list.status_code == 200
     assert no_slash_list.json() == slash_list.json()
-    assert {item["name"] for item in no_slash_list.json()} == {"No slash", "Slash"}
+    assert {item["name"] for item in no_slash_list.json()["data"]} == {"No slash", "Slash"}
 
 
 @pytest.mark.parametrize("view_client", ["sync", "async"], indirect=True)

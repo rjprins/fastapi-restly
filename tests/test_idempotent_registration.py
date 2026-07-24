@@ -19,8 +19,7 @@ registering the same View twice would:
 * Re-trip ``_exclude_routes``: ``del view_func._api_route_args`` raises
   AttributeError on the second run, since the attribute was already removed.
 * Risk corrupting the first registration's class attributes (``cls.schema``,
-  ``cls.schema_create``, ``cls.schema_update``, ``cls.listing_param_schema``,
-  ``cls.pagination_response_schema``).
+  ``cls.schema_create``, ``cls.schema_update``, ``cls.listing_param_schema``).
 """
 
 import pytest
@@ -72,8 +71,8 @@ def test_view_registered_on_two_apps_both_work(sync_db):
 
     # Both registrations list — and they see the same rows because they share
     # the underlying SQLAlchemy table.
-    items_a = client_a.get("/gadgets/").json()
-    items_b = client_b.get("/gadgets/").json()
+    items_a = client_a.get("/gadgets/").json()["data"]
+    items_b = client_b.get("/gadgets/").json()["data"]
     names_a = sorted(item["name"] for item in items_a)
     names_b = sorted(item["name"] for item in items_b)
     assert names_a == names_b == ["alpha", "beta"]
@@ -113,8 +112,8 @@ def test_view_mounted_under_two_prefixes_via_subapp(sync_db):
     resp = client.post("/v2/gizmos/", json={"name": "two"})
     assert resp.status_code == 201, resp.text
 
-    names_v1 = sorted(item["name"] for item in client.get("/v1/gizmos/").json())
-    names_v2 = sorted(item["name"] for item in client.get("/v2/gizmos/").json())
+    names_v1 = sorted(item["name"] for item in client.get("/v1/gizmos/").json()["data"])
+    names_v2 = sorted(item["name"] for item in client.get("/v2/gizmos/").json()["data"])
     assert names_v1 == names_v2 == ["one", "two"]
 
 

@@ -31,11 +31,12 @@ from ._shared import _escape_like_value
 
 SchemaType = type[pydantic.BaseModel]
 
-#: Default ``page_size`` applied to list endpoints when the client does not
-#: send one. ``None`` disables the implicit cap (lists return every matching
-#: row and ``page`` is ignored). Override per-view via
-#: :attr:`BaseRestView.default_page_size`.
-DEFAULT_PAGE_SIZE: int | None = None
+#: Default ``page_size`` applied to paginated list endpoints when the client
+#: does not send one. A bounded default keeps a forgotten ``page_size`` from
+#: returning an entire table. Override per-view via
+#: :attr:`BaseRestView.default_page_size`; to return every row, set
+#: :attr:`BaseRestView.paginated` to ``False`` instead of removing the cap.
+DEFAULT_PAGE_SIZE: int = 50
 
 #: Maximum ``page_size`` accepted by list endpoints. Values above this are
 #: rejected with a 422 by the FastAPI Pydantic-Query validation layer.
@@ -145,6 +146,7 @@ def create_list_params_schema(
     *,
     default_page_size: int | None = DEFAULT_PAGE_SIZE,
     max_page_size: int = MAX_PAGE_SIZE,
+    paginated: bool = True,
 ) -> SchemaType:
     """
     Create a Pydantic model that describes and validates URL query parameters
@@ -162,9 +164,12 @@ def create_list_params_schema(
     generate only ``__isnull``: a query-string value cannot coerce into them,
     so every other operator would fail at request time.
 
-    ``page`` and ``page_size`` are validated by Pydantic with bounds
-    (``page >= 1``, ``1 <= page_size <= max_page_size``); out-of-range values
-    produce a standard 422 response from FastAPI.
+    When ``paginated`` is true (the default), ``page`` and ``page_size`` are
+    added and validated by Pydantic with bounds (``page >= 1``,
+    ``1 <= page_size <= max_page_size``); out-of-range values produce a standard
+    422 response from FastAPI. When it is false, no pagination parameters are
+    emitted at all -- the endpoint returns every matching row -- while sorting
+    and filtering stay available.
 
     Args:
         schema_cls: The response schema whose fields drive the available
@@ -172,27 +177,20 @@ def create_list_params_schema(
         model: The SQLAlchemy model the list endpoint queries. Used to verify
             each field resolves to a filterable column; non-column fields are
             omitted from the generated params.
-        default_page_size: Default value for the ``page_size`` parameter.
-            ``None`` (the default) means "no implicit page size" — omitting
-            ``page_size`` returns every matching row and ``page`` is ignored.
+        default_page_size: Default value for the ``page_size`` parameter when
+            the client omits it. Only used when ``paginated`` is true.
         max_page_size: Upper bound (inclusive) for the ``page_size``
             parameter. Defaults to :data:`MAX_PAGE_SIZE`.
+        paginated: Whether to emit ``page``/``page_size`` parameters. False for
+            an unpaginated view, which returns the full result set.
     """
-    fields: dict[str, Any] = {
-        "page": (
-            Annotated[
-                int,
-                Field(
-                    ge=1,
-                    description=(
-                        "1-based page number. Only takes effect when "
-                        "``page_size`` is also set."
-                    ),
-                ),
-            ],
+    fields: dict[str, Any] = {}
+    if paginated:
+        fields["page"] = (
+            Annotated[int, Field(ge=1, description="1-based page number.")],
             1,
-        ),
-        "page_size": (
+        )
+        fields["page_size"] = (
             Annotated[
                 Optional[int],
                 Field(
@@ -200,26 +198,25 @@ def create_list_params_schema(
                     le=max_page_size,
                     description=(
                         f"Number of items per page (1–{max_page_size}). "
-                        "Omit to return every matching row (no implicit cap)."
+                        f"Defaults to {default_page_size}."
                     ),
                 ),
             ],
             default_page_size,
-        ),
-        "sort": (
-            Annotated[
-                Optional[str],
-                Field(
-                    description=(
-                        "Comma-separated list of fields to sort by. Prefix a "
-                        "field with ``-`` for descending order. Example: "
-                        "``-created_at,name``."
-                    )
-                ),
-            ],
-            None,
-        ),
-    }
+        )
+    fields["sort"] = (
+        Annotated[
+            Optional[str],
+            Field(
+                description=(
+                    "Comma-separated list of fields to sort by. Prefix a "
+                    "field with ``-`` for descending order. Example: "
+                    "``-created_at,name``."
+                )
+            ),
+        ],
+        None,
+    )
     for name, field in _iter_fields_including_nested(schema_cls):
         if name in _RESERVED_NAMES:
             raise ValueError(

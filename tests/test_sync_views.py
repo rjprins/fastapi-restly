@@ -465,7 +465,6 @@ def test_sync_rest_view_crud_and_pagination(sync_db):
         schema = OrderSchema
         schema_create = OrderInputSchema
         schema_update = OrderInputSchema
-        include_pagination_metadata = True
 
     Base.metadata.create_all(engine)
 
@@ -490,11 +489,11 @@ def test_sync_rest_view_crud_and_pagination(sync_db):
         assert second.customer.name == "Acme"
 
         paginated = view.get_many_endpoint({"page": "1", "page_size": "10"})
-        assert paginated["total"] == 2
+        assert paginated["total_count"] == 2
         assert paginated["page"] == 1
         assert paginated["page_size"] == 10
         assert paginated["total_pages"] == 1
-        assert {item.item_name for item in paginated["items"]} == {"Keyboard", "Mouse"}
+        assert {item.item_name for item in paginated["data"]} == {"Keyboard", "Mouse"}
 
         detail = view.get_one_endpoint(first.id)
         assert detail.customer.name == "Acme"

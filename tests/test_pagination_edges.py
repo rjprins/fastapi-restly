@@ -13,7 +13,7 @@ import fastapi_restly as fr
 from .conftest import create_tables
 
 
-def _setup_view(client, *, include_metadata: bool = False):
+def _setup_view(client):
     class Widget(fr.IDBase):
         name: Mapped[str]
 
@@ -25,7 +25,6 @@ def _setup_view(client, *, include_metadata: bool = False):
         prefix = "/widgets"
         model = Widget
         schema = WidgetSchema
-        include_pagination_metadata = include_metadata
 
     create_tables()
     return Widget, WidgetSchema
@@ -36,39 +35,42 @@ def _setup_view(client, *, include_metadata: bool = False):
 # ---------------------------------------------------------------------------
 
 
-def test_empty_result_returns_empty_list(client):
+def test_empty_result_returns_empty_data(client):
     _setup_view(client)
 
     response = client.get("/widgets/")
     assert response.status_code == 200
-    assert response.json() == []
+    payload = response.json()
+    assert payload["data"] == []
+    assert payload["total_count"] == 0
+    assert payload["total_pages"] == 0
 
 
-def test_empty_result_with_metadata_unlimited(client):
-    """Default behaviour: no implicit page size — metadata leaves page* keys None."""
-    _setup_view(client, include_metadata=True)
+def test_empty_result_metadata_uses_default_page_size(client):
+    """Empty result with the default page size: metadata is fully populated."""
+    _setup_view(client)
 
     response = client.get("/widgets/")
     assert response.status_code == 200
     payload = response.json()
 
-    assert payload["total"] == 0
-    assert payload["items"] == []
-    assert payload["page"] is None
-    assert payload["page_size"] is None
-    assert payload["total_pages"] is None
+    assert payload["total_count"] == 0
+    assert payload["data"] == []
+    assert payload["page"] == 1
+    assert payload["page_size"] == fr.query.DEFAULT_PAGE_SIZE
+    assert payload["total_pages"] == 0
 
 
 def test_empty_result_with_metadata_explicit_page_size(client):
     """When ``page_size`` is provided explicitly the metadata is populated."""
-    _setup_view(client, include_metadata=True)
+    _setup_view(client)
 
     response = client.get("/widgets/?page_size=10")
     assert response.status_code == 200
     payload = response.json()
 
-    assert payload["total"] == 0
-    assert payload["items"] == []
+    assert payload["total_count"] == 0
+    assert payload["data"] == []
     assert payload["page"] == 1
     assert payload["page_size"] == 10
     # total_pages is the ceiling of total/page_size; 0/N = 0.
@@ -77,15 +79,15 @@ def test_empty_result_with_metadata_explicit_page_size(client):
 
 def test_single_item_page_size_one_metadata(client):
     """A one-row result with page_size=1 should report exactly one total page."""
-    _setup_view(client, include_metadata=True)
+    _setup_view(client)
     client.post("/widgets/", json={"name": "A"})
 
     response = client.get("/widgets/?page=1&page_size=1")
     assert response.status_code == 200
     payload = response.json()
 
-    assert payload["total"] == 1
-    assert len(payload["items"]) == 1
+    assert payload["total_count"] == 1
+    assert len(payload["data"]) == 1
     assert payload["page"] == 1
     assert payload["page_size"] == 1
     assert payload["total_pages"] == 1
@@ -98,7 +100,7 @@ def test_single_item_page_size_one_metadata(client):
 
 def test_page_zero_returns_422(client):
     """``page=0`` is rejected by the Pydantic schema (``ge=1``) with a 422."""
-    _setup_view(client, include_metadata=True)
+    _setup_view(client)
     client.post("/widgets/", json={"name": "A"})
 
     response = client.get("/widgets/?page=0", assert_status_code=422)
@@ -109,7 +111,7 @@ def test_page_zero_returns_422(client):
 
 def test_negative_page_returns_422(client):
     """``page=-1`` is rejected by the Pydantic schema (``ge=1``) with a 422."""
-    _setup_view(client, include_metadata=True)
+    _setup_view(client)
 
     response = client.get("/widgets/?page=-1", assert_status_code=422)
     assert response.status_code == 422
@@ -117,7 +119,7 @@ def test_negative_page_returns_422(client):
 
 def test_page_size_zero_returns_422(client):
     """``page_size=0`` is rejected by the Pydantic schema (``ge=1``) with a 422."""
-    _setup_view(client, include_metadata=True)
+    _setup_view(client)
     client.post("/widgets/", json={"name": "A"})
 
     response = client.get("/widgets/?page_size=0", assert_status_code=422)
@@ -134,7 +136,7 @@ def test_page_size_zero_returns_422(client):
 
 def test_negative_page_size_returns_422(client):
     """Negative ``page_size`` is rejected by the Pydantic schema with a 422."""
-    _setup_view(client, include_metadata=True)
+    _setup_view(client)
 
     response = client.get("/widgets/?page_size=-10", assert_status_code=422)
     assert response.status_code == 422
@@ -143,15 +145,15 @@ def test_negative_page_size_returns_422(client):
 def test_page_out_of_range_returns_empty_items(client):
     """Past last page returns empty items but the metadata still describes the
     requested page (not the last one). Pin this contract."""
-    _setup_view(client, include_metadata=True)
+    _setup_view(client)
     for name in ["A", "B", "C", "D"]:
         client.post("/widgets/", json={"name": name})
 
     response = client.get("/widgets/?page=999&page_size=10")
     assert response.status_code == 200
     payload = response.json()
-    assert payload["total"] == 4
-    assert payload["items"] == []
+    assert payload["total_count"] == 4
+    assert payload["data"] == []
     assert payload["page"] == 999
     assert payload["page_size"] == 10
     assert payload["total_pages"] == 1
@@ -159,7 +161,7 @@ def test_page_out_of_range_returns_empty_items(client):
 
 def test_very_large_page_size_is_capped_at_max(client):
     """``page_size`` is capped at :data:`fr.query.MAX_PAGE_SIZE`. Anything above is 422."""
-    _setup_view(client, include_metadata=True)
+    _setup_view(client)
     for i in range(3):
         client.post("/widgets/", json={"name": f"X{i}"})
 

@@ -41,7 +41,6 @@ import fastapi
 import pydantic
 from fastapi import BackgroundTasks, Request, Response, WebSocket
 from fastapi.params import Depends as _DependsMarker
-from pydantic import create_model
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy import select as sa_select
 from sqlalchemy.orm import DeclarativeBase, selectinload
@@ -78,13 +77,38 @@ UpdateSchemaT = TypeVar(
 )
 IdT = TypeVar("IdT", default=int)
 
+DataT = TypeVar("DataT")
+
+
+class Envelope(pydantic.BaseModel, Generic[DataT]):
+    """List response wrapper -- ``{"data": [...]}``.
+
+    The response shape for an unpaginated view. A paginated view uses
+    :class:`PaginatedEnvelope`, which adds the pagination metadata.
+    """
+
+    data: Sequence[DataT]
+
+
+class PaginatedEnvelope(Envelope[DataT]):
+    """Paginated list response -- ``data`` plus pagination metadata."""
+
+    total_count: int
+    page: int
+    page_size: int
+    total_pages: int
+
 
 @dataclasses.dataclass(frozen=True)
 class ListingResult(Generic[ModelT]):
-    """Result returned by ``get_many`` before HTTP response formatting."""
+    """Result returned by ``get_many`` before HTTP response formatting.
+
+    ``total_count`` is ``None`` for an unpaginated listing, which does not run
+    the count query.
+    """
 
     objects: Sequence[ModelT]
-    total_count: int
+    total_count: int | None = None
     query_params: Any = None
 
 
@@ -955,22 +979,24 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     schema_update: ClassVar[type[pydantic.BaseModel]]
     model: ClassVar[type[DeclarativeBase]]
     id_type: ClassVar[type[Any]] = int
-    include_pagination_metadata: ClassVar[bool] = (
-        False  # Set True to include count/total in list responses
-    )
     exclude_routes: ClassVar[Iterable[str | ViewRoute]] = ()
     #: Extra query-parameter keys to allow on the listing endpoint beyond those
     #: derived from the response schema. Use this when a view consumes a custom
     #: parameter (e.g. ``?include_deleted=true`` on a soft-delete mixin). Without
     #: this, the strict unknown-key guard rejects the request with 422.
     extra_query_params: ClassVar[Iterable[str]] = ()
-    #: Default ``page_size`` for list endpoints. ``None`` means "no implicit
-    #: cap" (the framework default). Override per-view.
-    default_page_size: ClassVar[int | None] = DEFAULT_PAGE_SIZE
+    #: Whether list endpoints paginate. ``True`` (the default) wraps the list in
+    #: a :class:`PaginatedEnvelope` (``data`` plus ``total_count`` / ``page`` /
+    #: ``page_size`` / ``total_pages``), emits ``page`` / ``page_size`` query
+    #: parameters, and runs the count query. ``False`` returns every matching row
+    #: in a plain :class:`Envelope` (``data`` only) with no count. To emit a bare
+    #: array or another shape, override :meth:`to_listing_response`.
+    paginated: ClassVar[bool] = True
+    #: Default ``page_size`` when the client omits it (paginated views only).
+    default_page_size: ClassVar[int] = DEFAULT_PAGE_SIZE
     #: Maximum ``page_size`` accepted on list endpoints. Above this returns 422.
     max_page_size: ClassVar[int] = MAX_PAGE_SIZE
     listing_param_schema: ClassVar[type[pydantic.BaseModel]]
-    pagination_response_schema: ClassVar[type[pydantic.BaseModel]]
 
     request: fastapi.Request
 
@@ -1085,55 +1111,30 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
             return QueryParams({k: str(v) for k, v in query_params.items()})
         return QueryParams(query_params)
 
-    @classmethod
-    def _create_pagination_response_schema(
-        cls, response_schema: type[pydantic.BaseModel]
-    ) -> type[pydantic.BaseModel]:
-        return create_model(
-            f"{cls.__name__}PaginatedResponse",
-            items=(Sequence[response_schema], ...),
-            total=(int, ...),
-            page=(int | None, None),
-            page_size=(int | None, None),
-            total_pages=(int | None, None),
-        )
-
-    def to_paginated_listing_response(
-        self, query_params: Any, listing_result: ListingResult[Any]
-    ) -> dict[str, Any]:
-        params = self._to_query_params(query_params)
-        payload: dict[str, Any] = {
-            "items": [self.to_response_schema(obj) for obj in listing_result.objects],
-            "total": listing_result.total_count,
-            "page": None,
-            "page_size": None,
-            "total_pages": None,
-        }
-        page_size_raw = params.get("page_size")
-        if page_size_raw is None and self.default_page_size is None:
-            # No implicit cap and the client did not ask for one. Leave
-            # page/page_size/total_pages as None.
-            return payload
-        page = int(params.get("page", "1"))
-        if page_size_raw is not None:
-            page_size = int(page_size_raw)
-        else:
-            # The early return above guarantees default_page_size is non-None here.
-            page_size = cast(int, self.default_page_size)
-        payload["page"] = page
-        payload["page_size"] = page_size
-        payload["total_pages"] = (
-            ceil(listing_result.total_count / page_size) if page_size > 0 else 0
-        )
-        return payload
-
     def to_listing_response(
         self, query_params: Any, listing_result: ListingResult[ModelT]
     ) -> Any:
-        if not self.include_pagination_metadata:
-            return [self.to_response_schema(obj) for obj in listing_result.objects]
+        """Serialize a :class:`ListingResult` into the list response body.
 
-        return self.to_paginated_listing_response(query_params, listing_result)
+        The default shape is the ``{"data": [...]}`` envelope -- with pagination
+        metadata (``total_count`` / ``page`` / ``page_size`` / ``total_pages``)
+        when :attr:`paginated` is true. Override to emit a bare array, a
+        ``Content-Range`` header, or any other list shape.
+        """
+        data = [self.to_response_schema(obj) for obj in listing_result.objects]
+        if not self.paginated:
+            return {"data": data}
+        params = self._to_query_params(query_params)
+        page = int(params.get("page", "1"))
+        page_size = int(params.get("page_size") or self.default_page_size)
+        total = listing_result.total_count or 0
+        return {
+            "data": data,
+            "total_count": total,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": ceil(total / page_size) if page_size > 0 else 0,
+        }
 
     def to_response(
         self, obj_or_list: Any, shape: ResponseShape = ResponseShape.SINGLE
@@ -1191,6 +1192,7 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
                 cls.model,
                 default_page_size=cls.default_page_size,
                 max_page_size=cls.max_page_size,
+                paginated=cls.paginated,
             )
         if "schema_create" not in cls.__dict__:
             cls.schema_create = cast(
@@ -1208,12 +1210,11 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         response_schema = cls.schema
 
         # Only annotate if the methods exist (they will be overridden in subclasses)
-        listing_response_annotation: Any = Sequence[response_schema]
-        if cls.include_pagination_metadata:
-            cls.pagination_response_schema = cls._create_pagination_response_schema(
-                response_schema
-            )
-            listing_response_annotation = cls.pagination_response_schema
+        listing_response_annotation: Any = (
+            PaginatedEnvelope[response_schema]
+            if cls.paginated
+            else Envelope[response_schema]
+        )
 
         # The ``*_endpoint`` methods are defined on AsyncRestView/RestView
         # subclasses and may be excluded by ``exclude_routes``, so they aren't

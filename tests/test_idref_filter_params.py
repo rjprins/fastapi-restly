@@ -171,7 +171,7 @@ def _assert_fk_filtering(client, p1, p2):
     def post_ids(query):
         resp = client.get(f"/comments/{query}")
         assert resp.status_code == 200, (query, resp.status_code, resp.text)
-        return sorted(c["post_id"] for c in resp.json())
+        return sorted(c["post_id"] for c in resp.json()["data"])
 
     # The headline fix: filtering by the FK no longer 422s and returns the
     # matching children only.

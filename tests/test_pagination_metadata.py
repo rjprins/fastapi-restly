@@ -1,4 +1,4 @@
-"""Tests for optional pagination metadata responses."""
+"""Tests for the list response envelope and pagination metadata."""
 
 from sqlalchemy.orm import Mapped
 
@@ -7,7 +7,10 @@ import fastapi_restly as fr
 from .conftest import create_tables
 
 
-def test_index_response_defaults_to_plain_list(client):
+def test_index_response_defaults_to_paginated_envelope(client):
+    """A view paginates by default: the list is wrapped in the ``data``
+    envelope with pagination metadata."""
+
     class Product(fr.IDBase):
         name: Mapped[str]
 
@@ -28,12 +31,51 @@ def test_index_response_defaults_to_plain_list(client):
     response = client.get("/products/")
     assert response.status_code == 200
     payload = response.json()
-    assert isinstance(payload, list)
-    assert len(payload) == 2
+    assert isinstance(payload["data"], list)
+    assert len(payload["data"]) == 2
+    assert payload["total_count"] == 2
+    assert payload["page"] == 1
+    assert payload["page_size"] == fr.query.DEFAULT_PAGE_SIZE
+    assert payload["total_pages"] == 1
 
 
-def test_pagination_metadata_returns_all_items_when_no_page_size(client):
-    """Default is unlimited: omitting ``page_size`` returns every row."""
+def test_unpaginated_view_returns_data_envelope_without_metadata(client):
+    """``paginated = False`` returns every row in a plain ``{"data": [...]}``
+    envelope -- no pagination metadata, and no ``page``/``page_size`` params."""
+
+    class Widget(fr.IDBase):
+        name: Mapped[str]
+
+    class WidgetSchema(fr.IDSchema):
+        name: str
+
+    @fr.include_view(client.app)
+    class WidgetView(fr.AsyncRestView):
+        prefix = "/widgets"
+        model = Widget
+        schema = WidgetSchema
+        paginated = False
+
+    create_tables()
+
+    for i in range(30):
+        client.post("/widgets/", json={"name": f"Item {i}"})
+
+    response = client.get("/widgets/")
+    assert response.status_code == 200
+    payload = response.json()
+    assert len(payload["data"]) == 30
+    assert set(payload) == {"data"}  # no total_count/page/page_size/total_pages
+
+    # page_size is not a parameter on an unpaginated view.
+    rejected = client.get("/widgets/?page_size=5", assert_status_code=422)
+    locs = [item.get("loc") for item in rejected.json().get("detail", [])]
+    assert ["query", "page_size"] in locs
+
+
+def test_default_page_size_caps_a_large_result_set(client):
+    """Omitting ``page_size`` caps at ``default_page_size`` rather than
+    returning the whole table."""
 
     class PaginatedItem(fr.IDBase):
         name: Mapped[str]
@@ -46,7 +88,7 @@ def test_pagination_metadata_returns_all_items_when_no_page_size(client):
         prefix = "/paginated-items"
         model = PaginatedItem
         schema = PaginatedItemSchema
-        include_pagination_metadata = True
+        default_page_size = 10
 
     create_tables()
 
@@ -57,11 +99,11 @@ def test_pagination_metadata_returns_all_items_when_no_page_size(client):
     response = client.get("/paginated-items/")
     payload = response.json()
 
-    assert payload["total"] == total_items
-    assert payload["page"] is None
-    assert payload["page_size"] is None
-    assert payload["total_pages"] is None
-    assert len(payload["items"]) == total_items
+    assert payload["total_count"] == total_items
+    assert payload["page"] == 1
+    assert payload["page_size"] == 10
+    assert payload["total_pages"] == 3
+    assert len(payload["data"]) == 10
 
 
 def test_pagination_metadata_reports_explicit_page_size(client):
@@ -78,7 +120,6 @@ def test_pagination_metadata_reports_explicit_page_size(client):
         prefix = "/paginated-things"
         model = PaginatedThing
         schema = PaginatedThingSchema
-        include_pagination_metadata = True
 
     create_tables()
 
@@ -88,8 +129,8 @@ def test_pagination_metadata_reports_explicit_page_size(client):
     response = client.get("/paginated-things/?page_size=3&page=2")
     payload = response.json()
 
-    assert payload["total"] == 7
+    assert payload["total_count"] == 7
     assert payload["page"] == 2
     assert payload["page_size"] == 3
     assert payload["total_pages"] == 3
-    assert len(payload["items"]) == 3
+    assert len(payload["data"]) == 3

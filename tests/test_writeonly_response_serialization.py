@@ -44,6 +44,6 @@ def test_writeonly_fields_are_excluded_from_post_get_and_list(client):
 
     response = client.get("/users/")
     assert response.status_code == 200
-    users = response.json()
+    users = response.json()["data"]
     assert users
     assert "password" not in users[0]

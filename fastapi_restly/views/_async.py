@@ -172,7 +172,7 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         """
         query = self.build_query()
         query = self.apply_query_params(query, query_params)
-        total_count = await self.count(query)
+        total_count = (await self.count(query)) if self.paginated else None
         loader_options = self.get_relationship_loader_options()
         if loader_options:
             query = query.options(*loader_options)

@@ -75,7 +75,7 @@ def _assert_detail_and_list_survive(client):
     assert one["name"] == "ann"
 
     # The list keeps deduplicating: one author, not one per joined book row.
-    many = client.get("/loader-authors/", assert_status_code=200).json()
+    many = client.get("/loader-authors/", assert_status_code=200).json()["data"]
     assert [a["name"] for a in many] == ["ann"]
 
 

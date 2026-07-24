@@ -31,6 +31,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- List endpoints now paginate by default and return a `data` envelope. `GET /things`
+  responds with `{"data": [...], "total_count", "page", "page_size", "total_pages"}`,
+  capped at `default_page_size` (50) instead of returning the whole table. Set
+  `paginated = False` on a view for an unpaginated `{"data": [...]}` response — no
+  metadata, and no `page`/`page_size` query parameters. Single-object responses are
+  unchanged (bare object). This replaces the opt-in `include_pagination_metadata`
+  flag (which defaulted to an unbounded bare array) and renames the envelope keys
+  (`items` → `data`, `total` → `total_count`). `include_pagination_metadata` and
+  `to_paginated_listing_response()` are removed; override `to_listing_response()`
+  to emit a bare array or another shape.
+
 - The session fixtures (`restly_session` / `restly_async_session`) now isolate
   each test with SQLAlchemy's `create_savepoint` mode instead of patching
   `Session` / `AsyncSession`. `commit()` / `rollback()` behave as in production,

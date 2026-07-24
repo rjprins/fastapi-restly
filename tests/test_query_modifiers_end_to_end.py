@@ -78,30 +78,35 @@ def _ids(rows):
     return sorted(r["id"] for r in rows)
 
 
+def _rows(response):
+    """The list items out of the paginated ``{"data": [...]}`` envelope."""
+    return response.json()["data"]
+
+
 def test_range_operator_on_int_column(people_client):
     response = people_client.get("/people/?age__gte=18")
-    names = sorted(r["name"] for r in response.json())
+    names = sorted(r["name"] for r in _rows(response))
     assert names == ["Bob", "Carol"]
 
 
 def test_range_operator_on_datetime_column(people_client):
     response = people_client.get("/people/?created_at__gte=2024-09-01")
-    names = sorted(r["name"] for r in response.json())
+    names = sorted(r["name"] for r in _rows(response))
     assert names == ["Bob", "Carol"]
 
 
 def test_or_list_filter(people_client):
-    rows_before = people_client.get("/people/").json()
+    rows_before = _rows(people_client.get("/people/"))
     target_ids = _ids(rows_before)
     csv = ",".join(str(i) for i in target_ids)
 
     response = people_client.get(f"/people/?id={csv}")
-    assert _ids(response.json()) == target_ids
+    assert _ids(_rows(response)) == target_ids
 
 
 def test_explicit_in_filter_operator(people_client):
     response = people_client.get("/people/?name__in=Alice,Carol")
-    names = sorted(r["name"] for r in response.json())
+    names = sorted(r["name"] for r in _rows(response))
     assert names == ["Alice", "Carol"]
 
 
@@ -115,26 +120,26 @@ def test_or_list_filter_on_datetime_column(people_client):
     response = people_client.get(
         "/people/?created_at=2024-06-01T00:00:00,2024-09-15T00:00:00"
     )
-    names = sorted(r["name"] for r in response.json())
+    names = sorted(r["name"] for r in _rows(response))
     assert names == ["Alice", "Bob"]
 
 
 def test_isnull_filter(people_client):
     response = people_client.get("/people/?deleted_at__isnull=true")
-    names = sorted(r["name"] for r in response.json())
+    names = sorted(r["name"] for r in _rows(response))
     assert names == ["Alice", "Carol"]
 
 
 def test_ne_filter(people_client):
     response = people_client.get("/people/?name__ne=Bob")
-    names = sorted(r["name"] for r in response.json())
+    names = sorted(r["name"] for r in _rows(response))
     assert names == ["Alice", "Carol"]
 
 
 def test_ne_with_comma_means_not_in(people_client):
     """``status__ne=a,b`` excludes both values (NOT IN semantics)."""
     response = people_client.get("/people/?name__ne=Bob,Carol")
-    names = sorted(r["name"] for r in response.json())
+    names = sorted(r["name"] for r in _rows(response))
     assert names == ["Alice"]
 
 
@@ -169,11 +174,11 @@ def test_range_operators_not_emitted_for_bool(client):
     client.post("/flagged/", json={"name": "y", "active": False})
 
     response = client.get("/flagged/?active=true")
-    assert sorted(r["name"] for r in response.json()) == ["x"]
+    assert sorted(r["name"] for r in _rows(response)) == ["x"]
     response = client.get("/flagged/?active__ne=true")
-    assert sorted(r["name"] for r in response.json()) == ["y"]
+    assert sorted(r["name"] for r in _rows(response)) == ["y"]
     response = client.get("/flagged/?active__isnull=false")
-    assert len(response.json()) == 2
+    assert len(_rows(response)) == 2
 
     # ``active__gte`` is not part of the schema for a bool field. The
     # generated endpoint rejects unknown query params with 422 rather
@@ -193,22 +198,22 @@ def test_repeated_contains_ands_predicates(people_client):
     """
     # Sanity check: the first term alone matches two rows.
     response = people_client.get("/people/?name__contains=c")
-    names = sorted(r["name"] for r in response.json())
+    names = sorted(r["name"] for r in _rows(response))
     assert names == ["Alice", "Carol"]
 
     # Both terms together should narrow to Alice.
     response = people_client.get("/people/?name__contains=e&name__contains=c")
-    names = sorted(r["name"] for r in response.json())
+    names = sorted(r["name"] for r in _rows(response))
     assert names == ["Alice"]
 
     # Fully disjoint terms must return no rows.
     response = people_client.get("/people/?name__contains=hi&name__contains=ho")
-    assert response.json() == []
+    assert _rows(response) == []
 
 
 def test_icontains_uses_case_insensitive_matching(people_client):
     response = people_client.get("/people/?name__icontains=ali")
-    names = sorted(r["name"] for r in response.json())
+    names = sorted(r["name"] for r in _rows(response))
     assert names == ["Alice"]
 
 

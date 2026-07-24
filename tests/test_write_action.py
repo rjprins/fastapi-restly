@@ -126,7 +126,7 @@ def test_create_shaped_action_returns_via_handle(client):
     a = client.post("/items/", json={"name": "x"}).json()
     cloned = client.post(f"/items/clone/{a['id']}").json()
     assert cloned["name"] == "x (copy)"
-    assert len(client.get("/items/").json()) == 2
+    assert len(client.get("/items/").json()["data"]) == 2
 
 
 def test_create_shaped_action_without_deposit_raises_and_rolls_back(client):
@@ -160,7 +160,7 @@ def test_create_shaped_action_without_deposit_raises_and_rolls_back(client):
         client.post("/things/sneaky")
 
     # The guard fired before commit, so the flushed row never persisted.
-    assert client.get("/things/").json() == []
+    assert client.get("/things/").json()["data"] == []
 
 
 def test_explicit_no_object_write_is_allowed(client):

@@ -4,7 +4,7 @@ Tests for class-based view inheritance in FastAPI-Restly.
 Views are real Python classes — not decorators or function wrappers — so the
 full Python inheritance model applies:
 
-  - Class variables (model, schema, exclude_routes, include_pagination_metadata,
+  - Class variables (model, schema, exclude_routes, paginated,
     id_type, dependencies) are inherited and can be overridden per-subclass.
   - Business verb overrides (create/update/delete/get_one/get_many) and custom
     routes defined on a base view are shared by all subclasses; each subclass can
@@ -227,12 +227,12 @@ def test_exclude_routes_accepts_view_route_enum(sync_db):
 
 
 # ---------------------------------------------------------------------------
-# 5. Inherited class-variable: include_pagination_metadata
+# 5. Inherited class-variable: paginated
 # ---------------------------------------------------------------------------
 
 
-def test_inherit_include_pagination_metadata(sync_db):
-    """include_pagination_metadata=True on a base view is inherited by subclasses."""
+def test_inherit_paginated(sync_db):
+    """paginated=False on a base view is inherited by subclasses."""
     engine, _ = sync_db
 
     class Ticket(fr.IDBase):
@@ -241,12 +241,12 @@ def test_inherit_include_pagination_metadata(sync_db):
     class TicketSchema(fr.IDSchema):
         title: str
 
-    class PaginatedBase(fr.RestView):
+    class UnpaginatedBase(fr.RestView):
         model = Ticket
         schema = TicketSchema
-        include_pagination_metadata = True
+        paginated = False
 
-    class TicketView(PaginatedBase):
+    class TicketView(UnpaginatedBase):
         prefix = "/tickets"
 
     fr.DataclassBase.metadata.create_all(engine)
@@ -257,14 +257,13 @@ def test_inherit_include_pagination_metadata(sync_db):
         view.create(TicketSchema(id=0, title="Bug"))
         view.create(TicketSchema(id=0, title="Feature"))
 
-        query_params = {"page": "1", "page_size": "10"}
-        listing_result = view.get_many(query_params)
-        result = view.to_listing_response(query_params, listing_result)
+        listing_result = view.get_many({})
+        result = view.to_listing_response({}, listing_result)
 
+    # Inherited paginated=False -> plain data envelope, no pagination metadata.
     assert isinstance(result, dict)
-    assert result["total"] == 2
-    assert result["page"] == 1
-    assert {item.title for item in result["items"]} == {"Bug", "Feature"}
+    assert set(result) == {"data"}
+    assert {item.title for item in result["data"]} == {"Bug", "Feature"}
 
 
 # ---------------------------------------------------------------------------
@@ -431,7 +430,7 @@ def test_subclass_can_override_the_restly_session_dependency():
         response = TestClient(app).get("/reports/")
 
         assert response.status_code == 200
-        assert response.json() == [{"id": 1, "title": "Revenue"}]
+        assert response.json()["data"] == [{"id": 1, "title": "Revenue"}]
     finally:
         engine.dispose()
 
@@ -555,7 +554,7 @@ def test_prefix_concatenation_two_levels(sync_db):
 
     resp = client.get("/api/v1/bolts/")
     assert resp.status_code == 200
-    assert len(resp.json()) == 1
+    assert len(resp.json()["data"]) == 1
 
     # Without the prefix, routes do not exist
     assert client.get("/bolts/").status_code == 404
@@ -601,7 +600,7 @@ def test_prefix_concatenation_three_levels(sync_db):
 
     resp = client.get("/admin/v2/nuts/")
     assert resp.status_code == 200
-    assert resp.json()[0]["grade"] == "8.8"
+    assert resp.json()["data"][0]["grade"] == "8.8"
 
 
 # ---------------------------------------------------------------------------

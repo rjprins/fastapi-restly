@@ -107,7 +107,6 @@ def test_to_many_join_in_build_query_does_not_duplicate_or_inflate(client):
         prefix = "/authors"
         model = Author
         schema = AuthorSchema
-        include_pagination_metadata = True
 
         def build_query(self):
             # A collection JOIN: one row per book -> fan-out without dedup.
@@ -128,6 +127,6 @@ def test_to_many_join_in_build_query_does_not_duplicate_or_inflate(client):
     payload = client.get("/authors/").json()
 
     # Without .unique()/.distinct() this would be 3 duplicate authors, total 3.
-    assert payload["total"] == 1
-    assert len(payload["items"]) == 1
-    assert payload["items"][0]["name"] == "A"
+    assert payload["total_count"] == 1
+    assert len(payload["data"]) == 1
+    assert payload["data"][0]["name"] == "A"
