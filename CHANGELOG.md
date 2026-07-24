@@ -29,6 +29,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   violations classified into clean 409 details, and the psycopg cross-session
   fixture sharing.
 
+- The list envelope models `fastapi_restly.views.Envelope` and
+  `fastapi_restly.views.PaginatedEnvelope` (generic over the response schema) are
+  public, for annotating or subclassing a custom list response. Like
+  `BaseRestView`, they live in the `views` submodule, not the top-level namespace.
+
 ### Changed
 
 - List endpoints now paginate by default and return a `data` envelope. `GET /things`

@@ -55,7 +55,8 @@ class TagView(fr.AsyncRestView):
 
 Restly keeps `response_model` and OpenAPI in sync with the envelope
 automatically: the list route's response annotation is a generated
-`PaginatedEnvelope` wrapping the response schema (a plain `Envelope` when
+{class}`PaginatedEnvelope <fastapi_restly.views.PaginatedEnvelope>` wrapping the
+response schema (a plain {class}`Envelope <fastapi_restly.views.Envelope>` when
 `paginated` is false), so no route-shell code is needed.
 
 For how clients *request* pages (the `page` and `page_size` inputs), see

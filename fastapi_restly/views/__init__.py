@@ -23,7 +23,9 @@ from ._async import AsyncRestView
 from ._base import (
     Action,
     BaseRestView,
+    Envelope,
     ListingResult,
+    PaginatedEnvelope,
     ResponseShape,
     View,
     ViewRoute,
@@ -52,6 +54,8 @@ __all__ = [
     "ReactAdminView",
     "BaseRestView",
     "ListingResult",
+    "Envelope",
+    "PaginatedEnvelope",
     "Action",
     "ResponseShape",
     "View",

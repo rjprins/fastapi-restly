@@ -108,7 +108,9 @@ fastapi_restly.views:
   - AsyncReactAdminView
   - AsyncRestView
   - BaseRestView
+  - Envelope
   - ListingResult
+  - PaginatedEnvelope
   - ReactAdminView
   - ResponseShape
   - RestView
@@ -176,5 +178,7 @@ fastapi_restly.testing:
   - deactivate_savepoint_only_mode
 fastapi_restly.views:
   - BaseRestView
+  - Envelope
+  - PaginatedEnvelope
   - async_run_write_action
   - run_write_action
