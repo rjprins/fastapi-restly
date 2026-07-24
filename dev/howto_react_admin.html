@@ -767,7 +767,7 @@ class can share them across views.</p>
 <h3>Set the default page size<a class="headerlink" href="#set-the-default-page-size" title="Link to this heading">#</a></h3>
 <p>When the frontend does not send a <code class="docutils literal notranslate"><span class="pre">range</span></code> query parameter, the react-admin
 views return the first 25 rows, overriding the framework-wide
-<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.default_page_size" title="fastapi_restly.views.BaseRestView.default_page_size"><code class="xref py py-attr docutils literal notranslate"><span class="pre">default_page_size</span></code></a> default of <code class="docutils literal notranslate"><span class="pre">None</span></code> (no implicit cap). Set the
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.default_page_size" title="fastapi_restly.views.BaseRestView.default_page_size"><code class="xref py py-attr docutils literal notranslate"><span class="pre">default_page_size</span></code></a> default of 50. Set the
 attribute on the view to choose a different value:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">ProductView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncReactAdminView</span><span class="p">):</span>
@@ -776,6 +776,9 @@ attribute on the view to choose a different value:</p>
     <span class="n">default_page_size</span> <span class="o">=</span> <span class="mi">50</span>
 </pre></div>
 </div>
+<p>React-admin views cannot disable pagination with <code class="docutils literal notranslate"><span class="pre">paginated</span> <span class="pre">=</span> <span class="pre">False</span></code>. Their
+<code class="docutils literal notranslate"><span class="pre">Content-Range</span></code> response header requires the total count; Restly therefore
+rejects that setting at registration.</p>
 </section>
 <section id="change-the-content-range-unit">
 <h3>Change the Content-Range unit<a class="headerlink" href="#change-the-content-range-unit" title="Link to this heading">#</a></h3>

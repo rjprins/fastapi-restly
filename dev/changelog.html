@@ -564,11 +564,29 @@ case-sensitive <code class="docutils literal notranslate"><span class="pre">cont
 default <code class="docutils literal notranslate"><span class="pre">NULL</span></code> ordering, duplicate-sort-key pagination, real constraint
 violations classified into clean 409 details, and the psycopg cross-session
 fixture sharing.</p></li>
+<li><p>The list envelope models <code class="docutils literal notranslate"><span class="pre">fastapi_restly.views.Envelope</span></code> and
+<code class="docutils literal notranslate"><span class="pre">fastapi_restly.views.PaginatedEnvelope</span></code> (generic over the response schema) are
+public, for annotating or subclassing a custom list response. Like
+<code class="docutils literal notranslate"><span class="pre">BaseRestView</span></code>, they live in the <code class="docutils literal notranslate"><span class="pre">views</span></code> submodule, not the top-level namespace.</p></li>
 </ul>
 </section>
 <section id="changed">
 <h3>Changed<a class="headerlink" href="#changed" title="Link to this heading">#</a></h3>
 <ul class="simple">
+<li><p>List endpoints now paginate by default and return a <code class="docutils literal notranslate"><span class="pre">data</span></code> envelope. <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/things</span></code>
+responds with <code class="docutils literal notranslate"><span class="pre">{&quot;data&quot;:</span> <span class="pre">[...],</span> <span class="pre">&quot;total_count&quot;,</span> <span class="pre">&quot;page&quot;,</span> <span class="pre">&quot;page_size&quot;,</span> <span class="pre">&quot;total_pages&quot;}</span></code>,
+capped at <code class="docutils literal notranslate"><span class="pre">default_page_size</span></code> (50) instead of returning the whole table. Set
+<code class="docutils literal notranslate"><span class="pre">paginated</span> <span class="pre">=</span> <span class="pre">False</span></code> on a view for an unpaginated <code class="docutils literal notranslate"><span class="pre">{&quot;data&quot;:</span> <span class="pre">[...]}</span></code> response — no
+metadata, and no <code class="docutils literal notranslate"><span class="pre">page</span></code>/<code class="docutils literal notranslate"><span class="pre">page_size</span></code> query parameters. Single-object responses are
+unchanged (bare object). A paginated view’s <code class="docutils literal notranslate"><span class="pre">default_page_size</span></code> must be an int in
+<code class="docutils literal notranslate"><span class="pre">[1,</span> <span class="pre">max_page_size]</span></code>; <code class="docutils literal notranslate"><span class="pre">None</span></code> (the old “no cap” idiom) or an out-of-range value now
+raises at registration. Set <code class="docutils literal notranslate"><span class="pre">paginated</span> <span class="pre">=</span> <span class="pre">False</span></code> to return every row uncapped.
+This replaces the opt-in <code class="docutils literal notranslate"><span class="pre">include_pagination_metadata</span></code>
+flag (which defaulted to an unbounded bare array) and renames the envelope keys
+(<code class="docutils literal notranslate"><span class="pre">items</span></code> → <code class="docutils literal notranslate"><span class="pre">data</span></code>, <code class="docutils literal notranslate"><span class="pre">total</span></code> → <code class="docutils literal notranslate"><span class="pre">total_count</span></code>). <code class="docutils literal notranslate"><span class="pre">include_pagination_metadata</span></code> and
+<code class="docutils literal notranslate"><span class="pre">to_paginated_listing_response()</span></code> are removed; <code class="docutils literal notranslate"><span class="pre">to_listing_response()</span></code> overrides
+the list body, and a non-envelope shape (a bare array) needs <code class="docutils literal notranslate"><span class="pre">get_many_endpoint</span></code>
+replaced with a matching <code class="docutils literal notranslate"><span class="pre">response_model</span></code>.</p></li>
 <li><p>The session fixtures (<code class="docutils literal notranslate"><span class="pre">restly_session</span></code> / <code class="docutils literal notranslate"><span class="pre">restly_async_session</span></code>) now isolate
 each test with SQLAlchemy’s <code class="docutils literal notranslate"><span class="pre">create_savepoint</span></code> mode instead of patching
 <code class="docutils literal notranslate"><span class="pre">Session</span></code> / <code class="docutils literal notranslate"><span class="pre">AsyncSession</span></code>. <code class="docutils literal notranslate"><span class="pre">commit()</span></code> / <code class="docutils literal notranslate"><span class="pre">rollback()</span></code> behave as in production,

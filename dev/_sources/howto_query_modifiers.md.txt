@@ -5,14 +5,12 @@ pagination through URL query parameters out of the box. Filter parameters
 are derived from the response schema; sort and pagination use a fixed set
 of names.
 
-Pagination is opt-in: lists return every matching row when no `page_size`
-is supplied. Pass `page_size` (and optionally `page`) to enable
-pagination, or set
+Pagination is on by default: lists are capped at
 {attr}`default_page_size <fastapi_restly.views.BaseRestView.default_page_size>`
-on the view class if you want every request to be paginated by default.
-For public endpoints, set `default_page_size` and
-{attr}`max_page_size <fastapi_restly.views.BaseRestView.max_page_size>`;
-without a default cap, a missing `page_size` scans the full table.
+(50) and wrapped in a `data` envelope. Clients page with `page` and
+`page_size`. Lower the default and set
+{attr}`max_page_size <fastapi_restly.views.BaseRestView.max_page_size>` on
+public endpoints; set `paginated = False` to return every matching row uncapped.
 
 Unknown query keys are rejected with 422. Filters are narrowing controls,
 so a typo or unsupported operator silently ignored could widen the result
@@ -146,10 +144,9 @@ GET /users/?page=2&page_size=50
 ```
 
 `page` is 1-based. `page_size` must be `>= 1` and `<= max_page_size`
-(default 1000). When `page_size` is omitted, the endpoint returns every
-matching row (no implicit cap). To enforce a default page size, set
+(default 1000). When the client omits `page_size`, the endpoint falls back to
 {attr}`default_page_size <fastapi_restly.views.BaseRestView.default_page_size>`
-on the view class:
+(50). Tune both on the view class:
 
 ```python
 class UserView(fr.AsyncRestView):
@@ -162,17 +159,17 @@ FastAPI.
 
 ### The pagination envelope
 
-By default a list endpoint returns a plain JSON array. Set
-`include_pagination_metadata = True` on the view to wrap the items with a
-`total` and page metadata:
+A list endpoint wraps its rows in a `data` envelope with `total_count` and
+page metadata. Set `paginated = False` to drop the count and page fields and
+return every matching row in a bare `data` envelope:
 
 ```python
 class UserView(fr.AsyncRestView):
-    include_pagination_metadata = True
+    paginated = False
 ```
 
 [Response Envelopes and List Metadata](howto_response_schema.md) is
-canonical for the envelope's shape and when each field is populated.
+canonical for the envelope's shape.
 
 ## Extra query parameters
 

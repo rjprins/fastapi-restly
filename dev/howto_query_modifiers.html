@@ -538,14 +538,12 @@
 pagination through URL query parameters out of the box. Filter parameters
 are derived from the response schema; sort and pagination use a fixed set
 of names.</p>
-<p>Pagination is opt-in: lists return every matching row when no <code class="docutils literal notranslate"><span class="pre">page_size</span></code>
-is supplied. Pass <code class="docutils literal notranslate"><span class="pre">page_size</span></code> (and optionally <code class="docutils literal notranslate"><span class="pre">page</span></code>) to enable
-pagination, or set
+<p>Pagination is on by default: lists are capped at
 <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.default_page_size" title="fastapi_restly.views.BaseRestView.default_page_size"><code class="xref py py-attr docutils literal notranslate"><span class="pre">default_page_size</span></code></a>
-on the view class if you want every request to be paginated by default.
-For public endpoints, set <code class="docutils literal notranslate"><span class="pre">default_page_size</span></code> and
-<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.max_page_size" title="fastapi_restly.views.BaseRestView.max_page_size"><code class="xref py py-attr docutils literal notranslate"><span class="pre">max_page_size</span></code></a>;
-without a default cap, a missing <code class="docutils literal notranslate"><span class="pre">page_size</span></code> scans the full table.</p>
+(50) and wrapped in a <code class="docutils literal notranslate"><span class="pre">data</span></code> envelope. Clients page with <code class="docutils literal notranslate"><span class="pre">page</span></code> and
+<code class="docutils literal notranslate"><span class="pre">page_size</span></code>. Lower the default and set
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.max_page_size" title="fastapi_restly.views.BaseRestView.max_page_size"><code class="xref py py-attr docutils literal notranslate"><span class="pre">max_page_size</span></code></a> on
+public endpoints; set <code class="docutils literal notranslate"><span class="pre">paginated</span> <span class="pre">=</span> <span class="pre">False</span></code> to return every matching row uncapped.</p>
 <p>Unknown query keys are rejected with 422. Filters are narrowing controls,
 so a typo or unsupported operator silently ignored could widen the result
 set. Generated list endpoints therefore validate the request against the
@@ -695,10 +693,9 @@ column return results in an unspecified order.</p>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">page</span></code> is 1-based. <code class="docutils literal notranslate"><span class="pre">page_size</span></code> must be <code class="docutils literal notranslate"><span class="pre">&gt;=</span> <span class="pre">1</span></code> and <code class="docutils literal notranslate"><span class="pre">&lt;=</span> <span class="pre">max_page_size</span></code>
-(default 1000). When <code class="docutils literal notranslate"><span class="pre">page_size</span></code> is omitted, the endpoint returns every
-matching row (no implicit cap). To enforce a default page size, set
+(default 1000). When the client omits <code class="docutils literal notranslate"><span class="pre">page_size</span></code>, the endpoint falls back to
 <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.default_page_size" title="fastapi_restly.views.BaseRestView.default_page_size"><code class="xref py py-attr docutils literal notranslate"><span class="pre">default_page_size</span></code></a>
-on the view class:</p>
+(50). Tune both on the view class:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">default_page_size</span> <span class="o">=</span> <span class="mi">25</span>
     <span class="n">max_page_size</span> <span class="o">=</span> <span class="mi">200</span>
@@ -708,15 +705,15 @@ on the view class:</p>
 FastAPI.</p>
 <section id="the-pagination-envelope">
 <h3>The pagination envelope<a class="headerlink" href="#the-pagination-envelope" title="Link to this heading">#</a></h3>
-<p>By default a list endpoint returns a plain JSON array. Set
-<code class="docutils literal notranslate"><span class="pre">include_pagination_metadata</span> <span class="pre">=</span> <span class="pre">True</span></code> on the view to wrap the items with a
-<code class="docutils literal notranslate"><span class="pre">total</span></code> and page metadata:</p>
+<p>A list endpoint wraps its rows in a <code class="docutils literal notranslate"><span class="pre">data</span></code> envelope with <code class="docutils literal notranslate"><span class="pre">total_count</span></code> and
+page metadata. Set <code class="docutils literal notranslate"><span class="pre">paginated</span> <span class="pre">=</span> <span class="pre">False</span></code> to drop the count and page fields and
+return every matching row in a bare <code class="docutils literal notranslate"><span class="pre">data</span></code> envelope:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
-    <span class="n">include_pagination_metadata</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">paginated</span> <span class="o">=</span> <span class="kc">False</span>
 </pre></div>
 </div>
 <p><a class="reference internal" href="howto_response_schema.html"><span class="std std-doc">Response Envelopes and List Metadata</span></a> is
-canonical for the envelope’s shape and when each field is populated.</p>
+canonical for the envelope’s shape.</p>
 </section>
 </section>
 <section id="extra-query-parameters">

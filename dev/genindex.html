@@ -642,6 +642,8 @@
 <h2 id="D">D</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/views.html#fastapi_restly.views.Envelope.data">data (fastapi_restly.views.Envelope attribute)</a>
+</li>
       <li><a href="api/models.html#fastapi_restly.models.DataclassBase">DataclassBase (class in fastapi_restly.models)</a>
 </li>
       <li><a href="api/db.html#fastapi_restly.db.deactivate_savepoint_only_mode">deactivate_savepoint_only_mode() (in module fastapi_restly.db)</a>
@@ -699,6 +701,8 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/views.html#fastapi_restly.views.ResponseShape.EMPTY">EMPTY (fastapi_restly.views.ResponseShape attribute)</a>
+</li>
+      <li><a href="api/views.html#fastapi_restly.views.Envelope">Envelope (class in fastapi_restly.views)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
@@ -896,8 +900,6 @@
 </li>
       <li><a href="api/schemas.html#fastapi_restly.schemas.IDSchema">IDSchema (class in fastapi_restly.schemas)</a>
 </li>
-      <li><a href="api/views.html#fastapi_restly.views.BaseRestView.include_pagination_metadata">include_pagination_metadata (fastapi_restly.views.BaseRestView attribute)</a>
-</li>
       <li><a href="api/views.html#fastapi_restly.views.include_view">include_view() (in module fastapi_restly.views)</a>
 </li>
   </ul></td>
@@ -935,7 +937,13 @@
 </li>
         <li><a href="api/schemas.html#fastapi_restly.schemas.TimestampsSchemaMixin.model_config">(fastapi_restly.schemas.TimestampsSchemaMixin attribute)</a>
 </li>
+        <li><a href="api/views.html#fastapi_restly.views.Envelope.model_config">(fastapi_restly.views.Envelope attribute)</a>
+</li>
+        <li><a href="api/views.html#fastapi_restly.views.PaginatedEnvelope.model_config">(fastapi_restly.views.PaginatedEnvelope attribute)</a>
+</li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li>
     module
 
@@ -957,8 +965,6 @@
         <li><a href="api/views.html#module-fastapi_restly.views">fastapi_restly.views</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/schemas.html#fastapi_restly.schemas.MustExist">MustExist (class in fastapi_restly.schemas)</a>
 </li>
   </ul></td>
@@ -989,7 +995,13 @@
 <h2 id="P">P</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/views.html#fastapi_restly.views.BaseRestView.pagination_response_schema">pagination_response_schema (fastapi_restly.views.BaseRestView attribute)</a>
+      <li><a href="api/views.html#fastapi_restly.views.PaginatedEnvelope.page">page (fastapi_restly.views.PaginatedEnvelope attribute)</a>
+</li>
+      <li><a href="api/views.html#fastapi_restly.views.PaginatedEnvelope.page_size">page_size (fastapi_restly.views.PaginatedEnvelope attribute)</a>
+</li>
+      <li><a href="api/views.html#fastapi_restly.views.BaseRestView.paginated">paginated (fastapi_restly.views.BaseRestView attribute)</a>
+</li>
+      <li><a href="api/views.html#fastapi_restly.views.PaginatedEnvelope">PaginatedEnvelope (class in fastapi_restly.views)</a>
 </li>
       <li><a href="api/testing.html#fastapi_restly.testing.RestlyTestClient.patch">patch() (fastapi_restly.testing.RestlyTestClient method)</a>
 
@@ -997,14 +1009,14 @@
         <li><a href="api/views.html#fastapi_restly.views.patch">(in module fastapi_restly.views)</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/testing.html#fastapi_restly.testing.RestlyTestClient.post">post() (fastapi_restly.testing.RestlyTestClient method)</a>
 
       <ul>
         <li><a href="api/views.html#fastapi_restly.views.post">(in module fastapi_restly.views)</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/views.html#fastapi_restly.views.View.prefix">prefix (fastapi_restly.views.View attribute)</a>
 </li>
       <li><a href="api/testing.html#fastapi_restly.testing.RestlyTestClient.put">put() (fastapi_restly.testing.RestlyTestClient method)</a>
@@ -1121,15 +1133,19 @@
 </li>
       <li><a href="api/views.html#fastapi_restly.views.BaseRestView.to_listing_response">to_listing_response() (fastapi_restly.views.BaseRestView method)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/views.html#fastapi_restly.views.BaseRestView.to_paginated_listing_response">to_paginated_listing_response() (fastapi_restly.views.BaseRestView method)</a>
-</li>
       <li><a href="api/views.html#fastapi_restly.views.BaseRestView.to_response">to_response() (fastapi_restly.views.BaseRestView method)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/views.html#fastapi_restly.views.BaseRestView.to_response_schema">to_response_schema() (fastapi_restly.views.BaseRestView method)</a>
 </li>
       <li><a href="api/views.html#fastapi_restly.views.ListingResult.total_count">total_count (fastapi_restly.views.ListingResult attribute)</a>
+
+      <ul>
+        <li><a href="api/views.html#fastapi_restly.views.PaginatedEnvelope.total_count">(fastapi_restly.views.PaginatedEnvelope attribute)</a>
+</li>
+      </ul></li>
+      <li><a href="api/views.html#fastapi_restly.views.PaginatedEnvelope.total_pages">total_pages (fastapi_restly.views.PaginatedEnvelope attribute)</a>
 </li>
       <li><a href="api/models.html#fastapi_restly.models.DataclassBase.type_annotation_map">type_annotation_map (fastapi_restly.models.DataclassBase attribute)</a>
 </li>

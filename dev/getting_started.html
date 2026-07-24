@@ -631,8 +631,17 @@ not for production. Then open <code class="docutils literal notranslate"><span c
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>The database assigned the <code class="docutils literal notranslate"><span class="pre">id</span></code>, and <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/users/</span></code> now returns
-<code class="docutils literal notranslate"><span class="pre">[{&quot;id&quot;:</span> <span class="pre">1,</span> <span class="pre">&quot;name&quot;:</span> <span class="pre">&quot;Jane&quot;,</span> <span class="pre">&quot;email&quot;:</span> <span class="pre">&quot;jane&#64;example.com&quot;}]</span></code>.</p>
+<p>The database assigned the <code class="docutils literal notranslate"><span class="pre">id</span></code>, and <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/users/</span></code> now returns that row in the
+default <code class="docutils literal notranslate"><span class="pre">data</span></code> envelope:</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;data&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Jane&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;email&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;jane@example.com&quot;</span><span class="p">}],</span>
+<span class="w">  </span><span class="nt">&quot;total_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;page&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;page_size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">50</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;total_pages&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span>
+<span class="p">}</span>
+</pre></div>
+</div>
 <p>Update semantics are <code class="docutils literal notranslate"><span class="pre">PATCH</span></code> (partial update); see
 <a class="reference internal" href="api_reference.html#generated-rest-endpoints"><span class="std std-ref">Generated REST Endpoints</span></a> for the
 full contract. Filter lists with query parameters, for example

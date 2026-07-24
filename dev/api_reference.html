@@ -619,9 +619,9 @@ foreign-key filtering, and alias rules, is
 </tbody>
 </table>
 </div>
-<p>Pagination is opt-in, and the response is a bare JSON array unless the view
-opts into the metadata envelope. Four class attributes on <code class="docutils literal notranslate"><span class="pre">RestView</span></code> /
-<code class="docutils literal notranslate"><span class="pre">AsyncRestView</span></code> tune this behavior:</p>
+<p>Pagination is on by default, and list responses are wrapped in a <code class="docutils literal notranslate"><span class="pre">data</span></code>
+envelope. Four class attributes on <code class="docutils literal notranslate"><span class="pre">RestView</span></code> / <code class="docutils literal notranslate"><span class="pre">AsyncRestView</span></code> tune this
+behavior:</p>
 <div class="pst-scrollable-table-container"><table class="table">
 <thead>
 <tr class="row-odd"><th class="head"><p>Attribute</p></th>
@@ -632,19 +632,19 @@ opts into the metadata envelope. Four class attributes on <code class="docutils 
 </thead>
 <tbody>
 <tr class="row-even"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.default_page_size" title="fastapi_restly.views.BaseRestView.default_page_size"><code class="xref py py-attr docutils literal notranslate"><span class="pre">default_page_size</span></code></a></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[int</span> <span class="pre">|</span> <span class="pre">None]</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Default <code class="docutils literal notranslate"><span class="pre">?page_size=</span></code>. <code class="docutils literal notranslate"><span class="pre">None</span></code> means no implicit cap: every matching row is returned. Set it and <code class="docutils literal notranslate"><span class="pre">max_page_size</span></code> on public endpoints.</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[int]</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">50</span></code></p></td>
+<td><p>Page cap when the client omits <code class="docutils literal notranslate"><span class="pre">?page_size=</span></code> (paginated views only). Lower it and cap <code class="docutils literal notranslate"><span class="pre">max_page_size</span></code> on public endpoints.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.max_page_size" title="fastapi_restly.views.BaseRestView.max_page_size"><code class="xref py py-attr docutils literal notranslate"><span class="pre">max_page_size</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[int]</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">1000</span></code></p></td>
 <td><p>Upper bound for <code class="docutils literal notranslate"><span class="pre">?page_size=</span></code>; higher values are rejected with <code class="docutils literal notranslate"><span class="pre">422</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.include_pagination_metadata" title="fastapi_restly.views.BaseRestView.include_pagination_metadata"><code class="xref py py-attr docutils literal notranslate"><span class="pre">include_pagination_metadata</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.paginated" title="fastapi_restly.views.BaseRestView.paginated"><code class="xref py py-attr docutils literal notranslate"><span class="pre">paginated</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[bool]</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">False</span></code></p></td>
-<td><p>Set <code class="docutils literal notranslate"><span class="pre">True</span></code> to wrap the list items in the metadata envelope (<code class="docutils literal notranslate"><span class="pre">items</span></code>, <code class="docutils literal notranslate"><span class="pre">total</span></code>, <code class="docutils literal notranslate"><span class="pre">page</span></code>, <code class="docutils literal notranslate"><span class="pre">page_size</span></code>, <code class="docutils literal notranslate"><span class="pre">total_pages</span></code>).</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">True</span></code></p></td>
+<td><p>When <code class="docutils literal notranslate"><span class="pre">True</span></code> (default) list endpoints paginate and return the <code class="docutils literal notranslate"><span class="pre">PaginatedEnvelope</span></code> (<code class="docutils literal notranslate"><span class="pre">data</span></code> plus <code class="docutils literal notranslate"><span class="pre">total_count</span></code> / <code class="docutils literal notranslate"><span class="pre">page</span></code> / <code class="docutils literal notranslate"><span class="pre">page_size</span></code> / <code class="docutils literal notranslate"><span class="pre">total_pages</span></code>). <code class="docutils literal notranslate"><span class="pre">False</span></code> returns every row in a plain <code class="docutils literal notranslate"><span class="pre">Envelope</span></code> (<code class="docutils literal notranslate"><span class="pre">data</span></code> only).</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.extra_query_params" title="fastapi_restly.views.BaseRestView.extra_query_params"><code class="xref py py-attr docutils literal notranslate"><span class="pre">extra_query_params</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[Iterable[str]]</span></code></p></td>
@@ -654,8 +654,7 @@ opts into the metadata envelope. Four class attributes on <code class="docutils 
 </tbody>
 </table>
 </div>
-<p>The envelope’s shape, when its page fields are populated versus <code class="docutils literal notranslate"><span class="pre">null</span></code>, and
-custom alternatives are covered in
+<p>The envelope’s shape and custom alternatives are covered in
 <a class="reference internal" href="howto_response_schema.html"><span class="std std-doc">Response Envelopes and List Metadata</span></a>.</p>
 <p>At a lower level, <code class="docutils literal notranslate"><span class="pre">fr.query.create_list_params_schema(...)</span></code> and <code class="docutils literal notranslate"><span class="pre">fr.query.apply_list_params(...)</span></code> power the generated list endpoints. Use the view classes for normal CRUD; call these helpers directly only for custom endpoints that need the same list grammar, and pass a validated params-schema instance rather than raw <code class="docutils literal notranslate"><span class="pre">QueryParams</span></code>.</p>
 </section>
@@ -866,7 +865,7 @@ utilities</strong> that you call rather than override (<code class="docutils lit
 <tr class="row-even"><td><p>Route shell</p></td>
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many_endpoint" title="fastapi_restly.views.RestView.get_many_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many_endpoint</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">(query_params)</span></code></p></td>
-<td><p>response schema list or pagination envelope</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">PaginatedEnvelope[Schema]</span></code> or <code class="docutils literal notranslate"><span class="pre">Envelope[Schema]</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code>; validates query parameters and serializes the listing result via <code class="docutils literal notranslate"><span class="pre">to_response</span></code>.</p></td>
 </tr>
 <tr class="row-odd"><td><p>Route shell</p></td>
@@ -933,7 +932,7 @@ utilities</strong> that you call rather than override (<code class="docutils lit
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many" title="fastapi_restly.views.RestView.get_many"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">(query_params)</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">ListingResult[Model]</span></code></p></td>
-<td><p>Scoped, filtered, paginated page plus total count, via <code class="docutils literal notranslate"><span class="pre">build_query</span></code> + <code class="docutils literal notranslate"><span class="pre">apply_query_params</span></code> + <code class="docutils literal notranslate"><span class="pre">count</span></code>. Auth-free.</p></td>
+<td><p>Scoped and filtered listing via <code class="docutils literal notranslate"><span class="pre">build_query</span></code> + <code class="docutils literal notranslate"><span class="pre">apply_query_params</span></code>. Paginated views return one page plus a total count; unpaginated views return every matching row with <code class="docutils literal notranslate"><span class="pre">total_count=None</span></code> and skip <code class="docutils literal notranslate"><span class="pre">count</span></code>. Auth-free.</p></td>
 </tr>
 <tr class="row-even"><td><p>Business method</p></td>
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one</span></code></a></p></td>
@@ -975,7 +974,7 @@ utilities</strong> that you call rather than override (<code class="docutils lit
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.count" title="fastapi_restly.views.RestView.count"><code class="xref py py-meth docutils literal notranslate"><span class="pre">count</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">(query)</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">int</span></code></p></td>
-<td><p>Total for the list: receives the same params-applied query and strips <code class="docutils literal notranslate"><span class="pre">ORDER</span> <span class="pre">BY</span></code>, <code class="docutils literal notranslate"><span class="pre">LIMIT</span></code>, and <code class="docutils literal notranslate"><span class="pre">OFFSET</span></code> before counting. Override for estimated counts on huge tables.</p></td>
+<td><p>Total for a paginated list: receives the same params-applied query and strips <code class="docutils literal notranslate"><span class="pre">ORDER</span> <span class="pre">BY</span></code>, <code class="docutils literal notranslate"><span class="pre">LIMIT</span></code>, and <code class="docutils literal notranslate"><span class="pre">OFFSET</span></code> before counting. Unpaginated views skip it. Override for estimated counts on huge tables.</p></td>
 </tr>
 <tr class="row-odd"><td><p>Override point</p></td>
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.authorize" title="fastapi_restly.views.RestView.authorize"><code class="xref py py-meth docutils literal notranslate"><span class="pre">authorize</span></code></a></p></td>
@@ -1022,34 +1021,28 @@ utilities</strong> that you call rather than override (<code class="docutils lit
 <tr class="row-even"><td><p>Helper</p></td>
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_listing_response" title="fastapi_restly.views.BaseRestView.to_listing_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_listing_response</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">(query_params,</span> <span class="pre">listing_result)</span></code></p></td>
-<td><p>response schema list or pagination envelope</p></td>
-<td><p>Serialize a <code class="docutils literal notranslate"><span class="pre">ListingResult</span></code> into the configured list HTTP response shape.</p></td>
+<td><p>list response body</p></td>
+<td><p>Serialize a <code class="docutils literal notranslate"><span class="pre">ListingResult</span></code> into the list HTTP response body: the <code class="docutils literal notranslate"><span class="pre">data</span></code> envelope, with pagination metadata when <code class="docutils literal notranslate"><span class="pre">paginated</span></code>. Overriding this reshapes the body only; a non-envelope shape (bare array) also needs <code class="docutils literal notranslate"><span class="pre">get_many_endpoint</span></code> replaced with a matching <code class="docutils literal notranslate"><span class="pre">response_model</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p>Helper</p></td>
-<td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_paginated_listing_response" title="fastapi_restly.views.BaseRestView.to_paginated_listing_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_paginated_listing_response</span></code></a></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">(query_params,</span> <span class="pre">listing_result)</span></code></p></td>
-<td><p>pagination envelope</p></td>
-<td><p>Serialize a <code class="docutils literal notranslate"><span class="pre">ListingResult</span></code> into the paginated list response shape.</p></td>
-</tr>
-<tr class="row-even"><td><p>Domain utility</p></td>
+<tr class="row-odd"><td><p>Domain utility</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">make_new_object</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">(schema_obj)</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">Model</span></code></p></td>
 <td><p>Build and stage a new object without flushing. The cooperative override point for stamping extra fields on create: call <code class="docutils literal notranslate"><span class="pre">super()</span></code>, then mutate the returned object.</p></td>
 </tr>
-<tr class="row-odd"><td><p>Domain utility</p></td>
+<tr class="row-even"><td><p>Domain utility</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">update_object</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">(obj,</span> <span class="pre">schema_obj)</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">Model</span></code></p></td>
 <td><p>Apply writable fields without flushing. The cooperative override point for stamping extra fields on update: call <code class="docutils literal notranslate"><span class="pre">super()</span></code>, then mutate the returned object.</p></td>
 </tr>
-<tr class="row-even"><td><p>Domain utility</p></td>
+<tr class="row-odd"><td><p>Domain utility</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">save_object</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">(obj)</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">Model</span></code></p></td>
 <td><p>Flush and refresh a staged object, then eager-load the relationships the response schema names (via <code class="docutils literal notranslate"><span class="pre">get_relationship_loader_options</span></code>). Does not commit; <code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code> owns the commit.</p></td>
 </tr>
-<tr class="row-odd"><td><p>Domain utility</p></td>
+<tr class="row-even"><td><p>Domain utility</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">delete_object</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">(obj)</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
@@ -1127,7 +1120,7 @@ utilities</strong> that you call rather than override (<code class="docutils lit
 </tbody>
 </table>
 </div>
-<p>The list-tuning attributes (<code class="docutils literal notranslate"><span class="pre">default_page_size</span></code>, <code class="docutils literal notranslate"><span class="pre">max_page_size</span></code>, <code class="docutils literal notranslate"><span class="pre">include_pagination_metadata</span></code>, <code class="docutils literal notranslate"><span class="pre">extra_query_params</span></code>) are tabulated under <a class="reference internal" href="#list-endpoint-behavior">List Endpoint Behavior</a>.</p>
+<p>The list-tuning attributes (<code class="docutils literal notranslate"><span class="pre">default_page_size</span></code>, <code class="docutils literal notranslate"><span class="pre">max_page_size</span></code>, <code class="docutils literal notranslate"><span class="pre">paginated</span></code>, <code class="docutils literal notranslate"><span class="pre">extra_query_params</span></code>) are tabulated under <a class="reference internal" href="#list-endpoint-behavior">List Endpoint Behavior</a>.</p>
 </section>
 <section id="advanced-object-helpers">
 <h3>Advanced Object Helpers<a class="headerlink" href="#advanced-object-helpers" title="Link to this heading">#</a></h3>
