@@ -33,22 +33,39 @@ class FixtureItem(FixtureTestBase):
     name: Mapped[str]
 
 
-def test_restly_project_root_discovers_pyproject(monkeypatch, tmp_path: Path):
+def test_find_project_root_walks_up_to_nearest_pyproject(tmp_path: Path):
     project_root = tmp_path / "project"
     nested = project_root / "src" / "deep"
     nested.mkdir(parents=True)
     (project_root / "pyproject.toml").write_text("[project]\nname='demo'\n")
 
-    monkeypatch.chdir(nested)
-
-    assert _fixtures.restly_project_root.__wrapped__() == project_root
+    assert _fixtures._find_project_root(nested) == project_root
 
 
-def test_restly_project_root_raises_without_pyproject(monkeypatch, tmp_path: Path):
-    monkeypatch.chdir(tmp_path)
+def test_find_project_root_resolves_nested_subproject_not_outer(tmp_path: Path):
+    # Monorepo (fznb.9): an outer project and an inner sub-project each own a
+    # pyproject.toml. Discovery stops at the inner one that owns the test, rather
+    # than walking past it to the outer root.
+    outer = tmp_path / "monorepo"
+    inner = outer / "packages" / "api"
+    inner_tests = inner / "tests"
+    inner_tests.mkdir(parents=True)
+    (outer / "pyproject.toml").write_text("[project]\nname='monorepo'\n")
+    (inner / "pyproject.toml").write_text("[project]\nname='api'\n")
 
+    assert _fixtures._find_project_root(inner_tests) == inner
+
+
+def test_find_project_root_raises_without_pyproject(tmp_path: Path):
     with pytest.raises(Exception, match="Could not find a pyproject.toml"):
-        _fixtures.restly_project_root.__wrapped__()
+        _fixtures._find_project_root(tmp_path)
+
+
+def test_restly_project_root_fixture_anchors_to_test_file(restly_project_root):
+    # The fixture resolves from this test file, so it lands on this repo's root
+    # independently of the invocation cwd.
+    assert (restly_project_root / "pyproject.toml").exists()
+    assert Path(__file__).resolve().is_relative_to(restly_project_root.resolve())
 
 
 def test_shared_connection_yields_none_or_real_connection():

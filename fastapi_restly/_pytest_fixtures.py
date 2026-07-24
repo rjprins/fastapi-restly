@@ -32,16 +32,29 @@ _TESTING_EXTRA_MESSAGE = (
 )
 
 
-@pytest.fixture(scope="session")
-def restly_project_root() -> Path:
-    """Return the project root directory."""
-    # Try to find the project root by looking for pyproject.toml
-    current = Path.cwd()
-    while current != current.parent:
-        if (current / "pyproject.toml").exists():
-            return current
-        current = current.parent
-    raise Exception("Could not find a pyproject.toml to establish project root")
+def _find_project_root(start: Path) -> Path:
+    """Walk up from ``start`` to the nearest ancestor holding a ``pyproject.toml``."""
+    for candidate in (start, *start.parents):
+        if (candidate / "pyproject.toml").exists():
+            return candidate
+    raise Exception(
+        f"Could not find a pyproject.toml at or above {start} to establish "
+        "the project root"
+    )
+
+
+@pytest.fixture
+def restly_project_root(request: pytest.FixtureRequest) -> Path:
+    """Return the root of the project that owns the requesting test.
+
+    Walks up from the requesting test file to the nearest ancestor directory
+    that holds a ``pyproject.toml``. Discovery is anchored to the test file, not
+    the working directory, so it returns the same root no matter where pytest
+    was invoked, and in a monorepo each test resolves to its own sub-project's
+    root. Use it to locate project files (migration configs, test data) without
+    hardcoding absolute paths.
+    """
+    return _find_project_root(request.path.parent)
 
 
 # Test engines whose pysqlite legacy-transaction shim has already been neutralised.

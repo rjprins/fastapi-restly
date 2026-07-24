@@ -251,12 +251,14 @@ async def test_user_created(restly_async_session):
 
 ### `restly_project_root`
 
-**Scope:** `session`
+**Scope:** `function`
 
-Walks up from the current working directory until it finds a
-`pyproject.toml` and returns that directory as a `Path`. This is a
-convenience for locating project files (migration configs, test data) from
-tests regardless of where pytest was invoked.
+Walks up from the requesting test file until it finds a `pyproject.toml` and
+returns that directory as a `Path`. This is a convenience for locating project
+files (migration configs, test data) from tests. Because discovery is anchored
+to the test file rather than the working directory, it returns the same root
+regardless of where pytest was invoked, and in a monorepo each test resolves to
+its own sub-project's root.
 
 ## Isolation model
 

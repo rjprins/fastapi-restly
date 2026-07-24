@@ -70,6 +70,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The session fixtures isolate projects configured with a `session_generator` /
   `sync_session_generator` instead of dropping the request's write.
 
+- `restly_project_root` now anchors to the requesting test file instead of the
+  current working directory, so it returns the same root regardless of where
+  pytest was invoked, and in a monorepo resolves each test to its own
+  sub-project's root.
+
 - `restly_async_session` no longer errors when a sync sessionmaker is also
   configured; it shares the sync fixture's connection.
 
