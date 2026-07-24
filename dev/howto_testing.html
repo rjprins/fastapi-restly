@@ -772,11 +772,13 @@ is not exercised in this mode.</p>
 </section>
 <section id="restly-project-root">
 <h3><code class="docutils literal notranslate"><span class="pre">restly_project_root</span></code><a class="headerlink" href="#restly-project-root" title="Link to this heading">#</a></h3>
-<p><strong>Scope:</strong> <code class="docutils literal notranslate"><span class="pre">session</span></code></p>
-<p>Walks up from the current working directory until it finds a
-<code class="docutils literal notranslate"><span class="pre">pyproject.toml</span></code> and returns that directory as a <code class="docutils literal notranslate"><span class="pre">Path</span></code>. This is a
-convenience for locating project files (migration configs, test data) from
-tests regardless of where pytest was invoked.</p>
+<p><strong>Scope:</strong> <code class="docutils literal notranslate"><span class="pre">function</span></code></p>
+<p>Walks up from the requesting test file until it finds a <code class="docutils literal notranslate"><span class="pre">pyproject.toml</span></code> and
+returns that directory as a <code class="docutils literal notranslate"><span class="pre">Path</span></code>. This is a convenience for locating project
+files (migration configs, test data) from tests. Because discovery is anchored
+to the test file rather than the working directory, it returns the same root
+regardless of where pytest was invoked, and in a monorepo each test resolves to
+its own sub-project’s root.</p>
 </section>
 </section>
 <section id="isolation-model">

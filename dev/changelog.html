@@ -605,6 +605,10 @@ time, during serialization. They now eager-load identically.</p>
 </li>
 <li><p>The session fixtures isolate projects configured with a <code class="docutils literal notranslate"><span class="pre">session_generator</span></code> /
 <code class="docutils literal notranslate"><span class="pre">sync_session_generator</span></code> instead of dropping the request’s write.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">restly_project_root</span></code> now anchors to the requesting test file instead of the
+current working directory, so it returns the same root regardless of where
+pytest was invoked, and in a monorepo resolves each test to its own
+sub-project’s root.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">restly_async_session</span></code> no longer errors when a sync sessionmaker is also
 configured; it shares the sync fixture’s connection.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">fr.db.get_engine()</span></code> / <code class="docutils literal notranslate"><span class="pre">create_all()</span></code> and their async forms work inside the

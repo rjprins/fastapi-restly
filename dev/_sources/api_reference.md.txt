@@ -325,7 +325,7 @@ behavior is documented in [Testing](howto_testing.md#fixture-reference):
 | `restly_client` | function | `RestlyTestClient` wrapping `restly_app`. |
 | `restly_session` | function | Savepoint-isolated SQLAlchemy `Session`; needs a sync sessionmaker — skips if nothing is configured, raises if only a `sync_session_generator` is. |
 | `restly_async_session` | function | Async savepoint-isolated session; needs an async sessionmaker — skips if nothing is configured, raises if only a `session_generator` is. |
-| `restly_project_root` | session | `Path` of the nearest ancestor with a `pyproject.toml`. |
+| `restly_project_root` | function | `Path` of the nearest ancestor of the requesting test file with a `pyproject.toml`. |
 
 ### Default Exception Handling
 
