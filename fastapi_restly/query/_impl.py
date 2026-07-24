@@ -144,7 +144,7 @@ def create_list_params_schema(
     schema_cls: SchemaType,
     model: type[DeclarativeBase],
     *,
-    default_page_size: int | None = DEFAULT_PAGE_SIZE,
+    default_page_size: int = DEFAULT_PAGE_SIZE,
     max_page_size: int = MAX_PAGE_SIZE,
     paginated: bool = True,
 ) -> SchemaType:
