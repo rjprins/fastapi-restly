@@ -204,7 +204,7 @@ class can share them across views.
 
 When the frontend does not send a `range` query parameter, the react-admin
 views return the first 25 rows, overriding the framework-wide
-{attr}`default_page_size <fastapi_restly.views.BaseRestView.default_page_size>` default of `None` (no implicit cap). Set the
+{attr}`default_page_size <fastapi_restly.views.BaseRestView.default_page_size>` default of 50. Set the
 attribute on the view to choose a different value:
 
 ```python

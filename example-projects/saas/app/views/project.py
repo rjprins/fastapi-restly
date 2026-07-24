@@ -61,7 +61,6 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
     prefix = "/projects"
     model = Project
     schema = ProjectSchema
-    include_pagination_metadata = True
     exclude_routes = [fr.ViewRoute.DELETE]  # replaced by soft_delete below
 
     async def _decorate_project_response(self, project: Project) -> Project:

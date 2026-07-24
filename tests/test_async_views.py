@@ -330,7 +330,7 @@ def test_async_object_helpers_importable_from_objects_module():
 
 def test_async_rest_view_crud_and_pagination():
     """Call AsyncRestView methods directly to cover CRUD route methods
-    and include_pagination_metadata=True, mirroring test_sync_views.py."""
+    and the default pagination envelope, mirroring test_sync_views.py."""
 
     class Base(DeclarativeBase):
         pass

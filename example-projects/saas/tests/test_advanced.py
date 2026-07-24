@@ -449,7 +449,7 @@ class TestTenantIsolation:
 
         # Without tenant isolation, both projects visible
         response = client.get("/projects/")
-        all_projects = response.json()["items"]
+        all_projects = response.json()["data"]
         all_ids = [p["id"] for p in all_projects]
         assert org1_project_id in all_ids
         assert org2_project_id in all_ids
@@ -457,7 +457,7 @@ class TestTenantIsolation:
         # With tenant isolation for org1, only org1 projects visible
         with auth_context(org_id=org1_id):
             response = client.get("/projects/")
-            filtered_projects = response.json()["items"]
+            filtered_projects = response.json()["data"]
             filtered_ids = [p["id"] for p in filtered_projects]
             assert org1_project_id in filtered_ids
             assert org2_project_id not in filtered_ids
@@ -570,7 +570,7 @@ class TestRowLevelPermissions:
 
         # Without row-level permissions, all tasks visible
         response = client.get("/tasks/")
-        all_tasks = response.json()
+        all_tasks = response.json()["data"]
         all_ids = [t["id"] for t in all_tasks]
         assert user1_task_id in all_ids
         assert user2_task_id in all_ids
@@ -578,7 +578,7 @@ class TestRowLevelPermissions:
         # With row-level permissions for user1, only user1's tasks visible
         with auth_context(user_id=user1_id):
             response = client.get("/tasks/")
-            filtered_tasks = response.json()
+            filtered_tasks = response.json()["data"]
             filtered_ids = [t["id"] for t in filtered_tasks]
             assert user1_task_id in filtered_ids
             assert user2_task_id not in filtered_ids

@@ -83,7 +83,7 @@ class TestFiltering:
 
         # Filter for todo tasks
         response = client.get("/tasks/?status=todo")
-        tasks = response.json()
+        tasks = response.json()["data"]
 
         assert all(t["status"] == "todo" for t in tasks)
         assert len(tasks) >= 2  # At least 2 from our test data
@@ -94,7 +94,7 @@ class TestFiltering:
 
         # Filter for critical priority
         response = client.get("/tasks/?priority=1")
-        tasks = response.json()
+        tasks = response.json()["data"]
 
         assert all(t["priority"] == 1 for t in tasks)
         assert len(tasks) >= 2  # At least 2 from our test data
@@ -105,7 +105,7 @@ class TestFiltering:
 
         # Filter for admins
         response = client.get("/users/?role=admin")
-        users = response.json()
+        users = response.json()["data"]
 
         assert all(u["role"] == "admin" for u in users)
         assert len(users) >= 1
@@ -119,7 +119,7 @@ class TestSorting:
         setup_test_data(client)
 
         response = client.get("/tasks/?sort=priority")
-        tasks = response.json()
+        tasks = response.json()["data"]
 
         priorities = [t["priority"] for t in tasks]
         assert priorities == sorted(priorities)
@@ -129,7 +129,7 @@ class TestSorting:
         setup_test_data(client)
 
         response = client.get("/tasks/?sort=-priority")
-        tasks = response.json()
+        tasks = response.json()["data"]
 
         priorities = [t["priority"] for t in tasks]
         assert priorities == sorted(priorities, reverse=True)
@@ -139,7 +139,7 @@ class TestSorting:
         setup_test_data(client)
 
         response = client.get("/users/?sort=name")
-        users = response.json()
+        users = response.json()["data"]
 
         names = [u["name"] for u in users]
         assert names == sorted(names)
@@ -153,7 +153,7 @@ class TestPagination:
         setup_test_data(client)
 
         response = client.get("/tasks/?page_size=2")
-        tasks = response.json()
+        tasks = response.json()["data"]
 
         assert len(tasks) == 2
 
@@ -162,9 +162,9 @@ class TestPagination:
         setup_test_data(client)
 
         response = client.get("/tasks/?sort=title&page_size=2")
-        first_page = response.json()
+        first_page = response.json()["data"]
         response = client.get("/tasks/?sort=title&page_size=2&page=2")
-        second_page = response.json()
+        second_page = response.json()["data"]
 
         assert len(first_page) == 2
         assert len(second_page) >= 1
@@ -179,7 +179,7 @@ class TestCombinedQueries:
         setup_test_data(client)
 
         response = client.get("/tasks/?status=todo&sort=-priority")
-        tasks = response.json()
+        tasks = response.json()["data"]
 
         # All should be todo
         assert all(t["status"] == "todo" for t in tasks)
@@ -192,7 +192,7 @@ class TestCombinedQueries:
         setup_test_data(client)
 
         response = client.get("/tasks/?status=in_progress&sort=title&page_size=1")
-        tasks = response.json()
+        tasks = response.json()["data"]
 
         assert len(tasks) == 1
         assert tasks[0]["status"] == "in_progress"
@@ -228,7 +228,7 @@ class TestLabelFiltering:
         self._setup_labels(client)
 
         response = client.get("/labels/?name=urgent")
-        labels = response.json()
+        labels = response.json()["data"]
 
         assert all(lb["name"] == "urgent" for lb in labels)
         assert len(labels) >= 1
@@ -238,7 +238,7 @@ class TestLabelFiltering:
         self._setup_labels(client)
 
         response = client.get("/labels/?sort=name")
-        labels = response.json()
+        labels = response.json()["data"]
 
         names = [lb["name"] for lb in labels]
         assert names == sorted(names)
@@ -248,7 +248,7 @@ class TestLabelFiltering:
         self._setup_labels(client)
 
         response = client.get("/labels/?page_size=2&page=1")
-        labels = response.json()
+        labels = response.json()["data"]
 
         assert len(labels) <= 2
 
@@ -274,17 +274,17 @@ class TestLabelFiltering:
 
         with auth_context(org_id=org1["id"]):
             response = client.get("/labels/?name=shared")
-            labels = response.json()
+            labels = response.json()["data"]
 
         assert [label["id"] for label in labels] == [label1["id"]]
         assert label2["id"] not in {label["id"] for label in labels}
 
 
-class TestPaginationMetadata:
-    """Test include_pagination_metadata on ProjectView."""
+class TestPaginationEnvelope:
+    """List endpoints paginate by default and wrap rows in the ``data`` envelope."""
 
     def test_project_list_returns_pagination_envelope(self, client):
-        """Project list response wraps items in a pagination envelope."""
+        """Project list response wraps rows in the default pagination envelope."""
         unique = str(uuid.uuid4())[:8]
         response = client.post(
             "/organizations/",
@@ -300,11 +300,11 @@ class TestPaginationMetadata:
         response = client.get("/projects/")
         data = response.json()
 
-        # With include_pagination_metadata = True, the response is an envelope
-        assert "items" in data
-        assert "total" in data
+        # Views paginate by default, so the response is the pagination envelope.
+        assert "data" in data
+        assert "total_count" in data
         assert "page" in data
         assert "page_size" in data
         assert "total_pages" in data
-        assert data["total"] >= 3
-        assert isinstance(data["items"], list)
+        assert data["total_count"] >= 3
+        assert isinstance(data["data"], list)

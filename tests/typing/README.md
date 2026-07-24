@@ -42,7 +42,7 @@ Coverage checklist:
 - [x] Plain Pydantic `BaseModel` create/update schemas
 - [x] Custom extra routes via `@fr.get` and `@fr.route`
 - [x] `perform_*` handler overrides
-- [x] View options: `include_pagination_metadata`
+- [x] View options: `paginated`
 - [x] View options: `exclude_routes`
 - [x] View options: class-level `dependencies`
 - [x] `AsyncReactAdminView`

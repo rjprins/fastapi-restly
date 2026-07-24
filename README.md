@@ -223,8 +223,10 @@ GET /users/?sort=-created_at&page=2&page_size=10
 Parameter keys use the **response schema's public names**, including dotted
 relation paths; unknown keys are rejected with `422`.
 
-Pagination is opt-in: omitting `page_size` returns every matching row. For
-public endpoints, set `default_page_size` and `max_page_size` on the view:
+Pagination is on by default: list endpoints wrap rows in a `data` envelope and
+cap each page at `default_page_size` (50). Clients page with `?page=` and
+`?page_size=`. Tune the default and set a `max_page_size` ceiling on public
+endpoints:
 
 ```python
 class UserView(fr.AsyncRestView):
@@ -317,15 +319,24 @@ class UserView(fr.AsyncRestView):
     exclude_routes = (fr.ViewRoute.DELETE,)
 ```
 
-### Pagination metadata
+### List response envelope
+
+List endpoints return a `data` envelope with pagination metadata:
+
+```json
+{"data": [...], "total_count": 123, "page": 1, "page_size": 50, "total_pages": 3}
+```
+
+Set `paginated = False` to return every matching row in a bare `data` envelope
+(no cap, no metadata), or override `to_listing_response()` for a different shape:
 
 ```python
 @fr.include_view(app)
-class UserView(fr.AsyncRestView):
-    prefix = "/users"
-    model = User
-    include_pagination_metadata = True
-    # Response: {"items": [...], "total": N, "page": 1, "page_size": 100, "total_pages": N, ...}
+class TagView(fr.AsyncRestView):
+    prefix = "/tags"
+    model = Tag
+    paginated = False
+    # Response: {"data": [...]}
 ```
 
 ## Testing

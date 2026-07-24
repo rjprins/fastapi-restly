@@ -303,7 +303,7 @@ class TestPolymorphicTasks:
 
         # Filter by bug type
         response = client.get("/tasks/?task_type=bug")
-        bugs = response.json()
+        bugs = response.json()["data"]
 
         # All returned should be bugs
         for task in bugs:
@@ -433,7 +433,7 @@ class TestSoftDelete:
 
         # Should not appear in list by default
         response = client.get("/projects/")
-        projects = response.json()["items"]
+        projects = response.json()["data"]
         project_ids = [p["id"] for p in projects]
         assert project_id not in project_ids
 
@@ -461,14 +461,14 @@ class TestSoftDelete:
 
         # List without include_deleted
         response = client.get("/projects/")
-        projects = response.json()["items"]
+        projects = response.json()["data"]
         project_ids = [p["id"] for p in projects]
         assert active_id in project_ids
         assert deleted_id not in project_ids
 
         # List with include_deleted=true
         response = client.get("/projects/?include_deleted=true")
-        projects = response.json()["items"]
+        projects = response.json()["data"]
         project_ids = [p["id"] for p in projects]
         assert active_id in project_ids
         assert deleted_id in project_ids
@@ -497,7 +497,7 @@ class TestSoftDelete:
 
         # Should appear in list again
         response = client.get("/projects/")
-        projects = response.json()["items"]
+        projects = response.json()["data"]
         project_ids = [p["id"] for p in projects]
         assert project_id in project_ids
 

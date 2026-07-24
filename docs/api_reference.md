@@ -42,19 +42,18 @@ foreign-key filtering, and alias rules, is
 | Pagination | `?page=2&page_size=10` |
 | Unknown keys | rejected with `422` |
 
-Pagination is opt-in, and the response is a bare JSON array unless the view
-opts into the metadata envelope. Four class attributes on `RestView` /
-`AsyncRestView` tune this behavior:
+Pagination is on by default, and list responses are wrapped in a `data`
+envelope. Four class attributes on `RestView` / `AsyncRestView` tune this
+behavior:
 
 | Attribute | Type | Default | Purpose |
 |---|---|---|---|
-| {attr}`default_page_size <fastapi_restly.views.BaseRestView.default_page_size>` | `ClassVar[int \| None]` | `None` | Default `?page_size=`. `None` means no implicit cap: every matching row is returned. Set it and `max_page_size` on public endpoints. |
+| {attr}`default_page_size <fastapi_restly.views.BaseRestView.default_page_size>` | `ClassVar[int]` | `50` | Page cap when the client omits `?page_size=` (paginated views only). Lower it and cap `max_page_size` on public endpoints. |
 | {attr}`max_page_size <fastapi_restly.views.BaseRestView.max_page_size>` | `ClassVar[int]` | `1000` | Upper bound for `?page_size=`; higher values are rejected with `422`. |
-| {attr}`include_pagination_metadata <fastapi_restly.views.BaseRestView.include_pagination_metadata>` | `ClassVar[bool]` | `False` | Set `True` to wrap the list items in the metadata envelope (`items`, `total`, `page`, `page_size`, `total_pages`). |
+| {attr}`paginated <fastapi_restly.views.BaseRestView.paginated>` | `ClassVar[bool]` | `True` | When `True` (default) list endpoints paginate and return the `PaginatedEnvelope` (`data` plus `total_count` / `page` / `page_size` / `total_pages`). `False` returns every row in a plain `Envelope` (`data` only). |
 | {attr}`extra_query_params <fastapi_restly.views.BaseRestView.extra_query_params>` | `ClassVar[Iterable[str]]` | `()` | Query keys to allow beyond those derived from the response schema, for view-specific parameters consumed outside the list grammar (e.g. `?include_deleted=true`). |
 
-The envelope's shape, when its page fields are populated versus `null`, and
-custom alternatives are covered in
+The envelope's shape and custom alternatives are covered in
 [Response Envelopes and List Metadata](howto_response_schema.md).
 
 At a lower level, `fr.query.create_list_params_schema(...)` and `fr.query.apply_list_params(...)` power the generated list endpoints. Use the view classes for normal CRUD; call these helpers directly only for custom endpoints that need the same list grammar, and pass a validated params-schema instance rather than raw `QueryParams`.
@@ -202,8 +201,7 @@ On `AsyncRestView` every method below is `async`; the signatures are otherwise i
 | Override point | {meth}`snapshot <fastapi_restly.views.BaseRestView.snapshot>` | `(obj)` | `dict[str, Any]` | Frozen capture of an object's column values at load time, passed as `old` to the commit hooks. |
 | Override point | {meth}`get_relationship_loader_options <fastapi_restly.views.BaseRestView.get_relationship_loader_options>` | `()` | `list[Any]` | Loader options (`selectinload(...)`) for the relationships the response schema names, applied on reads (`get_one` / `get_many`) and on the write-response reload in `save_object`. Override to eager-load relationships the schema does not name on both paths; see [Relationship Loading and Async](howto_relationship_loading.md). |
 | Helper | {meth}`to_response_schema <fastapi_restly.views.BaseRestView.to_response_schema>` | `(obj)` | response schema | Validate and serialize an ORM object with Restly's alias/reference/write-only handling. Override for custom projections or an intentional `model_construct()` fast path. |
-| Helper | {meth}`to_listing_response <fastapi_restly.views.BaseRestView.to_listing_response>` | `(query_params, listing_result)` | response schema list or pagination envelope | Serialize a `ListingResult` into the configured list HTTP response shape. |
-| Helper | {meth}`to_paginated_listing_response <fastapi_restly.views.BaseRestView.to_paginated_listing_response>` | `(query_params, listing_result)` | pagination envelope | Serialize a `ListingResult` into the paginated list response shape. |
+| Helper | {meth}`to_listing_response <fastapi_restly.views.BaseRestView.to_listing_response>` | `(query_params, listing_result)` | list response body | Serialize a `ListingResult` into the list HTTP response body: the `data` envelope, with pagination metadata when `paginated`. Override for a bare array or other list shape. |
 | Domain utility | `make_new_object` | `(schema_obj)` | `Model` | Build and stage a new object without flushing. The cooperative override point for stamping extra fields on create: call `super()`, then mutate the returned object. |
 | Domain utility | `update_object` | `(obj, schema_obj)` | `Model` | Apply writable fields without flushing. The cooperative override point for stamping extra fields on update: call `super()`, then mutate the returned object. |
 | Domain utility | `save_object` | `(obj)` | `Model` | Flush and refresh a staged object, then eager-load the relationships the response schema names (via `get_relationship_loader_options`). Does not commit; `handle_<verb>` owns the commit. |
@@ -235,7 +233,7 @@ Every `View` subclass, CRUD or not, honors these class attributes:
 | {attr}`id_type <fastapi_restly.views.BaseRestView.id_type>` | `ClassVar[type]` | Scalar primary-key type used in the generated `/{id}` routes. Defaults to `int`. |
 | {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>` | `ClassVar[Iterable[str \| ViewRoute]]` | Route names to suppress. |
 
-The list-tuning attributes (`default_page_size`, `max_page_size`, `include_pagination_metadata`, `extra_query_params`) are tabulated under [List Endpoint Behavior](#list-endpoint-behavior).
+The list-tuning attributes (`default_page_size`, `max_page_size`, `paginated`, `extra_query_params`) are tabulated under [List Endpoint Behavior](#list-endpoint-behavior).
 
 ### Advanced Object Helpers
 

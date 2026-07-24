@@ -332,7 +332,7 @@ class TestReadOnlyLookup:
             session.add(Country(code="DE", name="Germany"))
             await session.commit()
 
-        listing = client.get("/countries/").json()
+        listing = client.get("/countries/").json()["data"]
         codes = {c["code"] for c in listing}
         assert {"NL", "DE"} <= codes
 
@@ -479,7 +479,7 @@ class TestAdminBypass:
     def test_non_admin_sees_only_own_org(self, client, auth_context):
         a_id, _b_id, pa_id, pb_id = self._setup_two_orgs_with_projects(client)
         with auth_context(org_id=a_id):
-            ids = {p["id"] for p in client.get("/projects/").json()["items"]}
+            ids = {p["id"] for p in client.get("/projects/").json()["data"]}
             assert pa_id in ids
             assert pb_id not in ids
 
@@ -494,7 +494,7 @@ class TestAdminBypass:
         monkeypatch.setattr(TenantBase, "_is_admin", lambda self: True)
 
         with auth_context(org_id=a_id):  # would normally hide org B
-            ids = {p["id"] for p in client.get("/projects/").json()["items"]}
+            ids = {p["id"] for p in client.get("/projects/").json()["data"]}
             assert pa_id in ids
             assert pb_id in ids  # admin sees other org despite current org
 
@@ -538,12 +538,12 @@ class TestAdminBypass:
 
         # As u1, only T1 visible
         with auth_context(user_id=u1["id"]):
-            titles = {t["title"] for t in client.get("/tasks/").json()}
+            titles = {t["title"] for t in client.get("/tasks/").json()["data"]}
             assert titles == {"T1"}
 
             # Now flip admin on while user_id is still u1 — should see both.
             monkeypatch.setattr(TenantBase, "_is_admin", lambda self: True)
-            titles = {t["title"] for t in client.get("/tasks/").json()}
+            titles = {t["title"] for t in client.get("/tasks/").json()["data"]}
             assert titles == {"T1", "T2"}
 
 
@@ -684,7 +684,7 @@ class TestSiblingCreation:
                 assert_status_code=404,
             )
             # No Label leaked into org A from the rejected attach.
-            assert client.get("/labels/").json() == []
+            assert client.get("/labels/").json()["data"] == []
 
     def test_create_and_attach_missing_task_returns_404(self, client, auth_context):
         """A task id that matches no row reads as 404 under the scoped lookup."""
@@ -695,7 +695,7 @@ class TestSiblingCreation:
                 json={"task_id": 999_999, "label_name": "ghost"},
                 assert_status_code=404,
             )
-            assert client.get("/labels/").json() == []
+            assert client.get("/labels/").json()["data"] == []
 
     def test_create_and_attach_requires_org_context(self, client):
         """Without a current org, create-and-attach refuses with 400.

@@ -87,7 +87,7 @@ class TestProjectClone:
 
         # Verify tasks were cloned
         response = client.get(f"/tasks/?project_id={cloned['id']}")
-        cloned_tasks = response.json()
+        cloned_tasks = response.json()["data"]
         assert len(cloned_tasks) == 3
 
     def test_clone_project_default_name(self, client):
@@ -133,7 +133,7 @@ class TestProjectClone:
 
         # Verify no tasks were cloned
         response = client.get(f"/tasks/?project_id={cloned['id']}")
-        cloned_tasks = response.json()
+        cloned_tasks = response.json()["data"]
         assert len(cloned_tasks) == 0
 
 

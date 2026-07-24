@@ -88,7 +88,6 @@ class PostView(fr.AsyncRestView):
     prefix = "/posts"
     model = Post
     schema = PostRead
-    include_pagination_metadata = True
 
     def build_query(self):
         user_id = self.request.state.user_id

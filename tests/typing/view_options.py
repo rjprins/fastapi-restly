@@ -22,7 +22,7 @@ class TicketRead(fr.IDSchema[Ticket]):
 class TicketBase(fr.AsyncRestView):
     model = Ticket
     schema = TicketRead
-    include_pagination_metadata = True
+    paginated = False
     exclude_routes = [fr.ViewRoute.DELETE]
     dependencies: ClassVar[list[Any]] = [Depends(lambda: None)]
 

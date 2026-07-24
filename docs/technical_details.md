@@ -171,9 +171,10 @@ runtime behaviour:
   `"delete"` are also accepted. Routes listed here have their
   `_api_route_args` marker removed during {meth}`before_include_view() <fastapi_restly.views.BaseRestView.before_include_view>` so FastAPI
   never registers them.
-- {attr}`include_pagination_metadata <fastapi_restly.views.BaseRestView.include_pagination_metadata>`, if `True`, makes the {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>` route
-  return a [paginated envelope](howto_response_schema.md#list-metadata-and-total-count)
-  with `items`, `total`, `page`, `page_size`, and `total_pages`.
+- {attr}`paginated <fastapi_restly.views.BaseRestView.paginated>` (default `True`) makes the {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>` route
+  return a [paginated `data` envelope](howto_response_schema.md#the-list-envelope)
+  with `total_count`, `page`, `page_size`, and `total_pages`. Set it to `False`
+  to return every row in a plain `data` envelope.
 
 ### include_view()
 
@@ -266,7 +267,7 @@ List endpoints accept URL query parameters of the form
 
 During {meth}`before_include_view() <fastapi_restly.views.BaseRestView.before_include_view>`, the framework freezes a single class-level
 attribute, {attr}`cls.listing_param_schema <fastapi_restly.views.BaseRestView.listing_param_schema>`: the query-parameter Pydantic schema generated
-by {func}`create_list_params_schema(cls.schema, cls.model, default_page_size=..., max_page_size=...) <fastapi_restly.query.create_list_params_schema>`. The schema covers pagination, sorting, and one filter
+by {func}`create_list_params_schema(cls.schema, cls.model, default_page_size=..., max_page_size=..., paginated=...) <fastapi_restly.query.create_list_params_schema>`. The schema covers pagination, sorting, and one filter
 parameter per response-schema field that maps to a filterable column on the
 model, with optional operator suffixes. It is generated once per registration
 and never re-derived.
