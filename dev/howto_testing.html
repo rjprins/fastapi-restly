@@ -644,6 +644,17 @@ in the same session fixture instead:</p>
 </div>
 </li>
 </ul>
+<p>The Alembic fixture above runs migrations through your <code class="docutils literal notranslate"><span class="pre">alembic/env.py</span></code>, which
+resolves its own database URL, often your development database rather than the
+one you pass to <code class="docutils literal notranslate"><span class="pre">fr.configure()</span></code>. Point <code class="docutils literal notranslate"><span class="pre">env.py</span></code> at the same URL Restly is
+configured with (read it from the environment, say), or the upgrade lands on the
+wrong database and the tests run against an unmigrated one.</p>
+<p>Both approaches above are session-scoped deliberately, and must run before the
+per-test session fixtures. Those fixtures wrap each test in an outer transaction
+that rolls back at teardown, so <code class="docutils literal notranslate"><span class="pre">fr.db.create_all()</span></code> (or <code class="docutils literal notranslate"><span class="pre">async_create_all()</span></code>)
+called from inside a test creates its tables on that test’s connection and loses
+them when the transaction rolls back. Created once per session, the schema is in
+place before any test swaps the session factory, and every test sees it.</p>
 <p>See <a class="reference internal" href="deploying.html#migrations-with-alembic"><span class="std std-ref">Migrations with Alembic</span></a> for
 production migration setup.</p>
 </section>
