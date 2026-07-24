@@ -989,8 +989,9 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     #: a :class:`PaginatedEnvelope` (``data`` plus ``total_count`` / ``page`` /
     #: ``page_size`` / ``total_pages``), emits ``page`` / ``page_size`` query
     #: parameters, and runs the count query. ``False`` returns every matching row
-    #: in a plain :class:`Envelope` (``data`` only) with no count. To emit a bare
-    #: array or another shape, override :meth:`to_listing_response`.
+    #: in a plain :class:`Envelope` (``data`` only) with no count. For a bare
+    #: array or another non-envelope shape, replace ``get_many_endpoint`` with a
+    #: matching ``response_model`` (see :class:`AsyncReactAdminView`).
     paginated: ClassVar[bool] = True
     #: Default ``page_size`` when the client omits it (paginated views only).
     default_page_size: ClassVar[int] = DEFAULT_PAGE_SIZE
@@ -1118,8 +1119,11 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
 
         The default shape is the ``{"data": [...]}`` envelope -- with pagination
         metadata (``total_count`` / ``page`` / ``page_size`` / ``total_pages``)
-        when :attr:`paginated` is true. Override to emit a bare array, a
-        ``Content-Range`` header, or any other list shape.
+        when :attr:`paginated` is true. This builds the body only; the route's
+        ``response_model`` is fixed from :attr:`paginated` separately. For a bare
+        array or a ``Content-Range`` header, replace ``get_many_endpoint`` with a
+        matching ``response_model`` (as :class:`AsyncReactAdminView` does), not by
+        overriding this method alone, which would fail response validation.
         """
         data = [self.to_response_schema(obj) for obj in listing_result.objects]
         if not self.paginated:

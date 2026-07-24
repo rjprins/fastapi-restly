@@ -47,8 +47,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   This replaces the opt-in `include_pagination_metadata`
   flag (which defaulted to an unbounded bare array) and renames the envelope keys
   (`items` → `data`, `total` → `total_count`). `include_pagination_metadata` and
-  `to_paginated_listing_response()` are removed; override `to_listing_response()`
-  to emit a bare array or another shape.
+  `to_paginated_listing_response()` are removed; `to_listing_response()` overrides
+  the list body, and a non-envelope shape (a bare array) needs `get_many_endpoint`
+  replaced with a matching `response_model`.
 
 - The session fixtures (`restly_session` / `restly_async_session`) now isolate
   each test with SQLAlchemy's `create_savepoint` mode instead of patching
