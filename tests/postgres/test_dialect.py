@@ -341,6 +341,30 @@ async def test_unique_violation_returns_409(restly_async_session):
 
 
 @pytest.mark.asyncio
+async def test_session_recovers_after_integrity_conflict(restly_async_session):
+    """A 409 leaves the connection usable for the next request.
+
+    On PostgreSQL an IntegrityError aborts the transaction; without a rollback the
+    next statement raises InFailedSqlTransaction and the follow-up request would
+    500. The framework rolls the per-request session back at request end (here, to
+    its savepoint), so a distinct valid POST after the conflict still succeeds.
+    This recovery is invisible on SQLite, which has no failed-transaction state.
+    """
+    async with _async_client() as client:
+        assert (await client.post("/unique/", json={"code": "rec"})).status_code == 201
+        conflict = await client.post("/unique/", json={"code": "rec"})
+        assert conflict.status_code == 409
+        # The real assertion: the connection recovered from the aborted insert, so
+        # a distinct valid row still goes in on the same request flow.
+        recovered = await client.post("/unique/", json={"code": "rec-2"})
+        assert recovered.status_code == 201
+        listed = await client.get("/unique/")
+    assert listed.status_code == 200
+    # Only the two successful writes survive; the conflicting insert left nothing.
+    assert sorted(row["code"] for row in listed.json()) == ["rec", "rec-2"]
+
+
+@pytest.mark.asyncio
 async def test_foreign_key_violation_returns_409(restly_async_session):
     # SQLite does not enforce foreign keys by default, so this path only fires on
     # PostgreSQL. No parent row exists, so the insert violates the FK.
