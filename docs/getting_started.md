@@ -131,8 +131,18 @@ The response is `201 Created` with the stored record:
 }
 ```
 
-The database assigned the `id`, and `GET /users/` now returns
-`[{"id": 1, "name": "Jane", "email": "jane@example.com"}]`.
+The database assigned the `id`, and `GET /users/` now returns that row in the
+default `data` envelope:
+
+```json
+{
+  "data": [{"id": 1, "name": "Jane", "email": "jane@example.com"}],
+  "total_count": 1,
+  "page": 1,
+  "page_size": 50,
+  "total_pages": 1
+}
+```
 
 Update semantics are `PATCH` (partial update); see
 [Generated REST Endpoints](api_reference.md#generated-rest-endpoints) for the
