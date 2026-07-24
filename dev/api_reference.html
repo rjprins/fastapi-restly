@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=5f490481" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=4d7f15e9" />
   
   <!-- So that users can add custom icons -->
   <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -842,7 +842,8 @@ the model and the decision table live in
 <a class="reference internal" href="customize.html"><span class="std std-doc">Customize RestView</span></a>.</p>
 <p>Alongside the tiers are cross-cutting <strong>override points</strong> (<code class="docutils literal notranslate"><span class="pre">build_query</span></code>,
 <code class="docutils literal notranslate"><span class="pre">apply_query_params</span></code>, <code class="docutils literal notranslate"><span class="pre">count</span></code>, <code class="docutils literal notranslate"><span class="pre">authorize</span></code>,
-<code class="docutils literal notranslate"><span class="pre">before_commit</span></code> / <code class="docutils literal notranslate"><span class="pre">after_commit</span></code>, <code class="docutils literal notranslate"><span class="pre">to_response</span></code>, <code class="docutils literal notranslate"><span class="pre">snapshot</span></code>) and <strong>domain
+<code class="docutils literal notranslate"><span class="pre">before_commit</span></code> / <code class="docutils literal notranslate"><span class="pre">after_commit</span></code>, <code class="docutils literal notranslate"><span class="pre">to_response</span></code>,
+<code class="docutils literal notranslate"><span class="pre">get_relationship_loader_options</span></code>, <code class="docutils literal notranslate"><span class="pre">snapshot</span></code>) and <strong>domain
 utilities</strong> that you call rather than override (<code class="docutils literal notranslate"><span class="pre">make_new_object</span></code>,
 <code class="docutils literal notranslate"><span class="pre">update_object</span></code>, <code class="docutils literal notranslate"><span class="pre">save_object</span></code>, <code class="docutils literal notranslate"><span class="pre">delete_object</span></code>). <code class="docutils literal notranslate"><span class="pre">make_new_object</span></code> /
 <code class="docutils literal notranslate"><span class="pre">update_object</span></code> are also the cooperative override point for field stamps.</p>
@@ -1001,43 +1002,49 @@ utilities</strong> that you call rather than override (<code class="docutils lit
 <td><p><code class="docutils literal notranslate"><span class="pre">dict[str,</span> <span class="pre">Any]</span></code></p></td>
 <td><p>Frozen capture of an object’s column values at load time, passed as <code class="docutils literal notranslate"><span class="pre">old</span></code> to the commit hooks.</p></td>
 </tr>
-<tr class="row-even"><td><p>Helper</p></td>
+<tr class="row-even"><td><p>Override point</p></td>
+<td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.get_relationship_loader_options" title="fastapi_restly.views.BaseRestView.get_relationship_loader_options"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_relationship_loader_options</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">()</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">list[Any]</span></code></p></td>
+<td><p>Loader options (<code class="docutils literal notranslate"><span class="pre">selectinload(...)</span></code>) for the relationships the response schema names, applied on reads (<code class="docutils literal notranslate"><span class="pre">get_one</span></code> / <code class="docutils literal notranslate"><span class="pre">get_many</span></code>) and on the write-response reload in <code class="docutils literal notranslate"><span class="pre">save_object</span></code>. Override to eager-load relationships the schema does not name on both paths; see <a class="reference internal" href="howto_relationship_loading.html"><span class="std std-doc">Relationship Loading and Async</span></a>.</p></td>
+</tr>
+<tr class="row-odd"><td><p>Helper</p></td>
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_response_schema" title="fastapi_restly.views.BaseRestView.to_response_schema"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_response_schema</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">(obj)</span></code></p></td>
 <td><p>response schema</p></td>
 <td><p>Validate and serialize an ORM object with Restly’s alias/reference/write-only handling. Override for custom projections or an intentional <code class="docutils literal notranslate"><span class="pre">model_construct()</span></code> fast path.</p></td>
 </tr>
-<tr class="row-odd"><td><p>Helper</p></td>
+<tr class="row-even"><td><p>Helper</p></td>
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_listing_response" title="fastapi_restly.views.BaseRestView.to_listing_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_listing_response</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">(query_params,</span> <span class="pre">listing_result)</span></code></p></td>
 <td><p>response schema list or pagination envelope</p></td>
 <td><p>Serialize a <code class="docutils literal notranslate"><span class="pre">ListingResult</span></code> into the configured list HTTP response shape.</p></td>
 </tr>
-<tr class="row-even"><td><p>Helper</p></td>
+<tr class="row-odd"><td><p>Helper</p></td>
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_paginated_listing_response" title="fastapi_restly.views.BaseRestView.to_paginated_listing_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_paginated_listing_response</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">(query_params,</span> <span class="pre">listing_result)</span></code></p></td>
 <td><p>pagination envelope</p></td>
 <td><p>Serialize a <code class="docutils literal notranslate"><span class="pre">ListingResult</span></code> into the paginated list response shape.</p></td>
 </tr>
-<tr class="row-odd"><td><p>Domain utility</p></td>
+<tr class="row-even"><td><p>Domain utility</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">make_new_object</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">(schema_obj)</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">Model</span></code></p></td>
 <td><p>Build and stage a new object without flushing. The cooperative override point for stamping extra fields on create: call <code class="docutils literal notranslate"><span class="pre">super()</span></code>, then mutate the returned object.</p></td>
 </tr>
-<tr class="row-even"><td><p>Domain utility</p></td>
+<tr class="row-odd"><td><p>Domain utility</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">update_object</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">(obj,</span> <span class="pre">schema_obj)</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">Model</span></code></p></td>
 <td><p>Apply writable fields without flushing. The cooperative override point for stamping extra fields on update: call <code class="docutils literal notranslate"><span class="pre">super()</span></code>, then mutate the returned object.</p></td>
 </tr>
-<tr class="row-odd"><td><p>Domain utility</p></td>
+<tr class="row-even"><td><p>Domain utility</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">save_object</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">(obj)</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">Model</span></code></p></td>
-<td><p>Flush and refresh a staged object, then eager-load the relationships the response schema names. Does not commit; <code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code> owns the commit.</p></td>
+<td><p>Flush and refresh a staged object, then eager-load the relationships the response schema names (via <code class="docutils literal notranslate"><span class="pre">get_relationship_loader_options</span></code>). Does not commit; <code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code> owns the commit.</p></td>
 </tr>
-<tr class="row-even"><td><p>Domain utility</p></td>
+<tr class="row-odd"><td><p>Domain utility</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">delete_object</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">(obj)</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>

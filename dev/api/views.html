@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=5f490481" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=4d7f15e9" />
   
   <!-- So that users can add custom icons -->
   <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -870,7 +870,14 @@ this, the strict unknown-key guard rejects the request with 422.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="fastapi_restly.views.BaseRestView.get_relationship_loader_options">
 <span class="sig-name descname"><span class="pre">get_relationship_loader_options</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#fastapi_restly.views.BaseRestView.get_relationship_loader_options" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
+<dd><p>Loader options for the relationships the response schema names.</p>
+<p>Returns recursive <code class="docutils literal notranslate"><span class="pre">selectinload(...)</span></code> options derived from
+<code class="docutils literal notranslate"><span class="pre">self.schema</span></code>, applied on reads (<code class="docutils literal notranslate"><span class="pre">get_one</span></code> / <code class="docutils literal notranslate"><span class="pre">get_many</span></code>) and on
+the post-write reload in <code class="docutils literal notranslate"><span class="pre">save_object</span></code>. Override to eager-load
+relationships the schema does not name on both paths; append to
+<code class="docutils literal notranslate"><span class="pre">super().get_relationship_loader_options()</span></code> to keep the schema-derived
+loads. See the “Relationship Loading and Async” how-to.</p>
+</dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.views.BaseRestView.id_type">

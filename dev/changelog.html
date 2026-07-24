@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=5f490481" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=4d7f15e9" />
   
   <!-- So that users can add custom icons -->
   <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -569,6 +569,12 @@ attribute from plain async code, where a bare <code class="docutils literal notr
 <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code>. Views eager-load what the response schema names, so this is
 for the code that runs outside that set — an <code class="docutils literal notranslate"><span class="pre">after_commit</span></code> hook, a custom
 business method.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">get_relationship_loader_options()</span></code> is now a documented override point: it
+returns the <code class="docutils literal notranslate"><span class="pre">selectinload(...)</span></code> options derived from the response schema,
+applied on reads and on the write-response reload. Override it to eager-load
+relationships the schema does not name on both read and write paths. New
+how-to, “Relationship Loading and Async”, collects the loading model and the
+<code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code> fixes.</p></li>
 </ul>
 </section>
 </section>

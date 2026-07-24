@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=5f490481" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=4d7f15e9" />
   
   <!-- So that users can add custom icons -->
   <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -739,7 +739,7 @@ request context through <code class="docutils literal notranslate"><span class="
 <p>For reusable soft-delete that also hides rows on read, see <code class="docutils literal notranslate"><span class="pre">SoftDeleteMixin</span></code> in <a class="reference internal" href="howto_compose_views_with_mixins.html"><span class="std std-doc">Compose Views with Mixins</span></a>.</p>
 </section>
 <section id="get-one-eager-load-extra-relationships">
-<h3><code class="docutils literal notranslate"><span class="pre">get_one</span></code>: eager-load extra relationships<a class="headerlink" href="#get-one-eager-load-extra-relationships" title="Link to this heading">#</a></h3>
+<span id="eager-load-extra-relationships"></span><h3><code class="docutils literal notranslate"><span class="pre">get_one</span></code>: eager-load extra relationships<a class="headerlink" href="#get-one-eager-load-extra-relationships" title="Link to this heading">#</a></h3>
 <p>The default <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one</span></code></a> loads through <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.build_query" title="fastapi_restly.views.RestView.build_query"><code class="xref py py-meth docutils literal notranslate"><span class="pre">build_query</span></code></a> and schema-derived loader options. If one endpoint needs extra eager loading, keep <code class="docutils literal notranslate"><span class="pre">build_query</span></code> in the query so visibility still applies:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="kn">import</span> <span class="n">inspect</span> <span class="k">as</span> <span class="n">sa_inspect</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.orm</span><span class="w"> </span><span class="kn">import</span> <span class="n">selectinload</span>
@@ -755,6 +755,10 @@ request context through <code class="docutils literal notranslate"><span class="
         <span class="k">return</span> <span class="n">obj</span>
 </pre></div>
 </div>
+<p>Overriding <code class="docutils literal notranslate"><span class="pre">get_one</span></code> this way applies the extra load to reads only. To
+eager-load a relationship on the create/update response as well, override
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.get_relationship_loader_options" title="fastapi_restly.views.BaseRestView.get_relationship_loader_options"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_relationship_loader_options</span></code></a>
+instead; see <a class="reference internal" href="howto_relationship_loading.html"><span class="std std-doc">Relationship Loading and Async</span></a>.</p>
 </section>
 <section id="get-many-decorate-results-after-the-query">
 <h3><code class="docutils literal notranslate"><span class="pre">get_many</span></code>: decorate results after the query<a class="headerlink" href="#get-many-decorate-results-after-the-query" title="Link to this heading">#</a></h3>
@@ -799,7 +803,7 @@ access into two independent concerns; each has its own override point:</p>
         <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">build_query</span><span class="p">()</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">Document</span><span class="o">.</span><span class="n">owner_id</span> <span class="o">==</span> <span class="n">user_id</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Calling <code class="docutils literal notranslate"><span class="pre">super().build_query()</span></code> and chaining <code class="docutils literal notranslate"><span class="pre">.where(...)</span></code> composes with base-class and mixin filters. Put joins, eager-loading <code class="docutils literal notranslate"><span class="pre">.options(...)</span></code>, and other read-wide <code class="docutils literal notranslate"><span class="pre">Select</span></code> changes here.</p>
+<p>Calling <code class="docutils literal notranslate"><span class="pre">super().build_query()</span></code> and chaining <code class="docutils literal notranslate"><span class="pre">.where(...)</span></code> composes with base-class and mixin filters. Put joins, eager-loading <code class="docutils literal notranslate"><span class="pre">.options(...)</span></code>, and other read-wide <code class="docutils literal notranslate"><span class="pre">Select</span></code> changes here. Eager loads added here cover reads only; for a relationship that must also appear on create/update responses, use <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.get_relationship_loader_options" title="fastapi_restly.views.BaseRestView.get_relationship_loader_options"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_relationship_loader_options</span></code></a> (see <a class="reference internal" href="howto_relationship_loading.html"><span class="std std-doc">Relationship Loading and Async</span></a>).</p>
 <p><code class="docutils literal notranslate"><span class="pre">get_one</span></code> stays auth-free even though it 404s on hidden rows: visibility comes from the query. Custom routes that call <code class="docutils literal notranslate"><span class="pre">get_one(id)</span></code> get the same scope.</p>
 </section>
 <section id="authorize-gate-the-action">

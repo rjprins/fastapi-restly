@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=5f490481" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=4d7f15e9" />
   
   <!-- So that users can add custom icons -->
   <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -61,7 +61,7 @@
     <link rel="author" title="About these documents" href="about.html" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Filter, Sort, and Paginate Lists" href="howto_query_modifiers.html" />
+    <link rel="next" title="Relationship Loading and Async" href="howto_relationship_loading.html" />
     <link rel="prev" title="Work with Foreign Keys and Relationships" href="howto_relationship_idschema.html" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -456,6 +456,7 @@
 <li class="toctree-l1"><a class="reference internal" href="howto_custom_schema.html">Custom Schemas and Field Types</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys and Relationships</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Response Envelopes and List Metadata</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_relationship_loading.html">Relationship Loading and Async</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_query_modifiers.html">Filter, Sort, and Paginate Lists</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_error_responses.html">Shape Error Responses</a></li>
 <li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
@@ -704,6 +705,7 @@ override for the runtime shape, and a replaced shell with a matching
 <li><p><a class="reference internal" href="customize.html"><span class="std std-doc">Customize RestView</span></a>: endpoint-method replacement mechanics, and <a class="reference internal" href="patterns.html#a-different-schema-for-the-list-endpoint"><span class="std std-ref">a different schema for the list endpoint</span></a>.</p></li>
 <li><p><a class="reference internal" href="howto_error_responses.html"><span class="std std-doc">Shape Error Responses</span></a>: errors bypass <code class="docutils literal notranslate"><span class="pre">to_response</span></code>.</p></li>
 <li><p><a class="reference internal" href="howto_query_modifiers.html"><span class="std std-doc">Filter, Sort, and Paginate Lists</span></a>: the pagination inputs clients send.</p></li>
+<li><p><a class="reference internal" href="howto_relationship_loading.html"><span class="std std-doc">Relationship Loading and Async</span></a>: how nested relationship fields load, and <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code> on async.</p></li>
 </ul>
 </section>
 </section>
@@ -728,11 +730,11 @@ override for the runtime shape, and a replaced shell with a matching
       </div>
     </a>
     <a class="right-next"
-       href="howto_query_modifiers.html"
+       href="howto_relationship_loading.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Filter, Sort, and Paginate Lists</p>
+        <p class="prev-next-title">Relationship Loading and Async</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>

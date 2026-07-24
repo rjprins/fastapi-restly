@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=5f490481" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=4d7f15e9" />
   
   <!-- So that users can add custom icons -->
   <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -793,7 +793,11 @@ past that set – an <code class="docutils literal notranslate"><span class="pre
 <code class="docutils literal notranslate"><span class="pre">&#64;property</span></code> walking a relationship nothing else loads – runs in plain async
 context, where a bare attribute access raises <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code>. Restly’s
 declarative base mixes in SQLAlchemy’s <code class="docutils literal notranslate"><span class="pre">AsyncAttrs</span></code> for exactly that case, so
-those reads can be spelled <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">obj.awaitable_attrs.items</span></code>.</p>
+those reads can be spelled <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">obj.awaitable_attrs.items</span></code>. The
+task-focused guide to all of this, including extending the loaded set and
+resolving <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code>, is
+<a class="reference internal" href="howto_relationship_loading.html"><span class="std std-doc">Relationship Loading and Async</span></a>; this section
+covers the mechanism behind it.</p>
 </li>
 <li><p><strong>Create/update payloads</strong> are not supported in the general case. The default
 <code class="docutils literal notranslate"><span class="pre">make_new_object()</span></code> / <code class="docutils literal notranslate"><span class="pre">update_object()</span></code> flow expects payload keys to map

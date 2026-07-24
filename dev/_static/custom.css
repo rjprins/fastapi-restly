@@ -77,3 +77,13 @@
     font-weight: 600;
     color: var(--pst-color-primary);
 }
+
+/* Mark body links that leave the site with the theme's external-link icon (the
+   same marker the navbar applies via .nav-external). Scoped to body content;
+   skips links that wrap an image (e.g. the README badges). */
+.bd-article a.reference.external:not(:has(img))::after {
+    content: var(--pst-icon-external-link);
+    font: var(--fa-font-solid);
+    font-size: 0.75em;
+    margin-left: 0.3em;
+}

@@ -166,7 +166,8 @@ the model and the decision table live in
 
 Alongside the tiers are cross-cutting **override points** (`build_query`,
 `apply_query_params`, `count`, `authorize`,
-`before_commit` / `after_commit`, `to_response`, `snapshot`) and **domain
+`before_commit` / `after_commit`, `to_response`,
+`get_relationship_loader_options`, `snapshot`) and **domain
 utilities** that you call rather than override (`make_new_object`,
 `update_object`, `save_object`, `delete_object`). `make_new_object` /
 `update_object` are also the cooperative override point for field stamps.
@@ -199,12 +200,13 @@ On `AsyncRestView` every method below is `async`; the signatures are otherwise i
 | Override point | {meth}`after_commit <fastapi_restly.views.RestView.after_commit>` | `(action, new, old=None)` | `None` | Post-commit side effect (email, webhook, cache invalidation). `old` enables dirty detection. |
 | Override point | {meth}`to_response <fastapi_restly.views.BaseRestView.to_response>` | `(obj_or_list, shape=ResponseShape.SINGLE)` | response payload | The single wire-level response method, called by the endpoint methods with the wire `ResponseShape` (`SINGLE` / `LISTING` / `EMPTY`), not the write action. Override for envelopes or custom status codes; for a per-verb HTTP contract change, override that verb's endpoint method. |
 | Override point | {meth}`snapshot <fastapi_restly.views.BaseRestView.snapshot>` | `(obj)` | `dict[str, Any]` | Frozen capture of an object's column values at load time, passed as `old` to the commit hooks. |
+| Override point | {meth}`get_relationship_loader_options <fastapi_restly.views.BaseRestView.get_relationship_loader_options>` | `()` | `list[Any]` | Loader options (`selectinload(...)`) for the relationships the response schema names, applied on reads (`get_one` / `get_many`) and on the write-response reload in `save_object`. Override to eager-load relationships the schema does not name on both paths; see [Relationship Loading and Async](howto_relationship_loading.md). |
 | Helper | {meth}`to_response_schema <fastapi_restly.views.BaseRestView.to_response_schema>` | `(obj)` | response schema | Validate and serialize an ORM object with Restly's alias/reference/write-only handling. Override for custom projections or an intentional `model_construct()` fast path. |
 | Helper | {meth}`to_listing_response <fastapi_restly.views.BaseRestView.to_listing_response>` | `(query_params, listing_result)` | response schema list or pagination envelope | Serialize a `ListingResult` into the configured list HTTP response shape. |
 | Helper | {meth}`to_paginated_listing_response <fastapi_restly.views.BaseRestView.to_paginated_listing_response>` | `(query_params, listing_result)` | pagination envelope | Serialize a `ListingResult` into the paginated list response shape. |
 | Domain utility | `make_new_object` | `(schema_obj)` | `Model` | Build and stage a new object without flushing. The cooperative override point for stamping extra fields on create: call `super()`, then mutate the returned object. |
 | Domain utility | `update_object` | `(obj, schema_obj)` | `Model` | Apply writable fields without flushing. The cooperative override point for stamping extra fields on update: call `super()`, then mutate the returned object. |
-| Domain utility | `save_object` | `(obj)` | `Model` | Flush and refresh a staged object, then eager-load the relationships the response schema names. Does not commit; `handle_<verb>` owns the commit. |
+| Domain utility | `save_object` | `(obj)` | `Model` | Flush and refresh a staged object, then eager-load the relationships the response schema names (via `get_relationship_loader_options`). Does not commit; `handle_<verb>` owns the commit. |
 | Domain utility | `delete_object` | `(obj)` | `None` | Delete and flush an existing object. Does not commit. |
 
 Internal methods prefixed with `_`, such as `_reject_unknown_query_params`, are implementation details even though they are visible on instances.
