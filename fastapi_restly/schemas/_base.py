@@ -75,9 +75,7 @@ ReadOnly = Annotated[_T, readonly_marker, Field(json_schema_extra={"readOnly": T
 # union member the exclude rides on the inner type and does NOT apply, so the
 # field would leak.
 WriteOnly = Annotated[
-    _T,
-    writeonly_marker,
-    Field(json_schema_extra={"writeOnly": True}, exclude=True),
+    _T, writeonly_marker, Field(json_schema_extra={"writeOnly": True}, exclude=True)
 ]
 
 
@@ -363,7 +361,9 @@ class RefExists:
 
     def __repr__(self) -> str:
         name = (
-            "infer" if self.model is _Infer else getattr(self.model, "__name__", self.model)
+            "infer"
+            if self.model is _Infer
+            else getattr(self.model, "__name__", self.model)
         )
         return f"RefExists({name})"
 
@@ -397,9 +397,7 @@ else:
         """
 
         def __class_getitem__(cls, params: Any) -> Any:
-            pk_type, model = (
-                params if isinstance(params, tuple) else (params, _Infer)
-            )
+            pk_type, model = params if isinstance(params, tuple) else (params, _Infer)
             return Annotated[pk_type, RefExists(model)]
 
 
@@ -640,8 +638,7 @@ def _infer_ref_model(
 
 
 def _ref_exists_fields(
-    model_cls: type[DeclarativeBase],
-    schema_obj: pydantic.BaseModel,
+    model_cls: type[DeclarativeBase], schema_obj: pydantic.BaseModel
 ) -> dict[type[DeclarativeBase], list[tuple[str, Any]]]:
     """Group provided, non-``None`` ``RefExists``-marked scalar fields by target model.
 

@@ -54,9 +54,7 @@ def test_mustexist_desugars_to_checked_scalar():
 def test_mustexist_non_int_pk_type_is_the_first_arg():
     class Account(fr.DataclassBase):
         __tablename__ = "mustexist_desugar_account"
-        id: Mapped[UUID] = mapped_column(
-            Uuid, primary_key=True, default_factory=uuid4
-        )
+        id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default_factory=uuid4)
 
     pk_type, marker = get_args(fr.MustExist[UUID, Account])
     assert pk_type is UUID
@@ -253,9 +251,7 @@ def test_sync_uuid_pk_existence_check(sync_db):
 
     class Account(fr.DataclassBase):
         __tablename__ = "mustexist_uuid_account"
-        id: Mapped[UUID] = mapped_column(
-            Uuid, primary_key=True, default_factory=uuid4
-        )
+        id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default_factory=uuid4)
 
     class Membership(fr.IDBase):
         account_id: Mapped[UUID] = mapped_column(
@@ -328,9 +324,7 @@ def test_optional_mustexist_checks_when_provided_and_skips_none(sync_db):
 
     class Comment(fr.IDBase):
         content: Mapped[str]
-        post_id: Mapped[int | None] = mapped_column(
-            ForeignKey("post.id"), default=None
-        )
+        post_id: Mapped[int | None] = mapped_column(ForeignKey("post.id"), default=None)
 
     class CommentSchema(fr.BaseSchema):
         content: str
@@ -452,7 +446,5 @@ def test_mustexist_e2e_flat_wire_and_404(client):
 
     # A missing id is a clean 404 at validation, not a flush-time IntegrityError.
     client.post(
-        "/comments/",
-        json={"content": "x", "post_id": 99999},
-        assert_status_code=404,
+        "/comments/", json={"content": "x", "post_id": 99999}, assert_status_code=404
     )

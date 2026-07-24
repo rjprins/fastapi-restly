@@ -95,8 +95,7 @@ class TaskLabelView(TenantBase):
 
             # 2) Build TaskLabel with plain ids so references are checked.
             link_schema = TaskLabelSchema.model_construct(
-                task_id=request.task_id,
-                label_id=label.id,
+                task_id=request.task_id, label_id=label.id
             )
             task_label = await async_make_new_object(
                 self.session, TaskLabel, link_schema

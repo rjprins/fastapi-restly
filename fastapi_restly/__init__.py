@@ -52,7 +52,9 @@ from .views import (
 
 try:
     __version__ = _version("fastapi-restly")
-except _PackageNotFoundError:  # pragma: no cover - only possible from an unpackaged tree
+except (
+    _PackageNotFoundError
+):  # pragma: no cover - only possible from an unpackaged tree
     __version__ = "0+unknown"
 
 # Public API surface for fastapi-restly.

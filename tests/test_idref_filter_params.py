@@ -18,7 +18,6 @@ choosing ``IDRef`` over ``int`` signals "reference", not "orderable quantity").
 Sync and async share the query layer, so both are exercised here for parity.
 """
 
-
 from uuid import UUID, uuid4
 
 from fastapi import FastAPI

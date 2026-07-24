@@ -187,11 +187,7 @@ def test_to_response_schema_idschema_relationship_serializes_nested(sync_db):
         session.flush()
 
         dumped = CommentView().to_response_schema(comment).model_dump(mode="json")
-        assert dumped == {
-            "id": comment.id,
-            "content": "hi",
-            "post": {"id": post.id},
-        }
+        assert dumped == {"id": comment.id, "content": "hi", "post": {"id": post.id}}
 
 
 def test_to_response_schema_nested_idschema_subclass_keeps_all_fields(sync_db):

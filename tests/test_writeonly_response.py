@@ -39,9 +39,7 @@ def _build(client):
             # Return a FULL schema instance with the WriteOnly field populated --
             # the path that used to leak via the isinstance short-circuit. This
             # custom route has no response_model, so only layer (a) protects it.
-            return self.to_response(
-                UserSchema(id=id, name="bob", password="secret")
-            )
+            return self.to_response(UserSchema(id=id, name="bob", password="secret"))
 
     create_tables()
     return UserSchema

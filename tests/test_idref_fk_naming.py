@@ -92,9 +92,7 @@ def test_async_non_id_fk_field_create_update_get_e2e(client):
 
     # A reference to a non-existent row still 404s by id, same as the _id form.
     client.post(
-        "/comments/",
-        json={"content": "bad", "post_fk": 99999},
-        assert_status_code=404,
+        "/comments/", json={"content": "bad", "post_fk": 99999}, assert_status_code=404
     )
 
 
@@ -173,9 +171,7 @@ def test_sync_non_id_fk_object_helpers_populate_column_and_relationship(sync_db)
         assert comment.post_fk == p1.id
         assert comment.post is p1
 
-        update_object(
-            session, comment, CommentSchema(content="hi", post_fk=p2.id)
-        )
+        update_object(session, comment, CommentSchema(content="hi", post_fk=p2.id))
         assert comment.post_fk == p2.id
         assert comment.post is p2
 
@@ -300,9 +296,7 @@ def test_renamed_db_column_fk_field_sync(sync_db):
         assert comment.post_id == p1.id
         assert comment.post is p1
 
-        update_object(
-            session, comment, CommentSchema(content="hi", post_id=p2.id)
-        )
+        update_object(session, comment, CommentSchema(content="hi", post_id=p2.id))
         session.flush()
         assert comment.post_id == p2.id
         assert comment.post is p2
@@ -760,9 +754,7 @@ def test_unset_sibling_reference_does_not_clobber_supplied_side_sync(sync_db):
         for schema_cls in (RelationFirstSchema, ColumnFirstSchema):
             for supplied in ("post", "post_id"):
                 comment = make_new_object(
-                    session,
-                    Comment,
-                    schema_cls(content="hi", **{supplied: p1.id}),
+                    session, Comment, schema_cls(content="hi", **{supplied: p1.id})
                 )
                 session.flush()
                 assert comment.post_id == p1.id, (schema_cls.__name__, supplied)

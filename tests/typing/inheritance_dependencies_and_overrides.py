@@ -23,7 +23,9 @@ class ProjectRead(fr.IDSchema[Project]):
     name: str
 
 
-class TenantScopedView(fr.AsyncRestView[Project, ProjectRead, ProjectRead, ProjectRead, int]):
+class TenantScopedView(
+    fr.AsyncRestView[Project, ProjectRead, ProjectRead, ProjectRead, int]
+):
     prefix = "/tenants"
     model = Project
     schema = ProjectRead

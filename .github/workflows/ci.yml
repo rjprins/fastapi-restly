@@ -33,6 +33,9 @@ jobs:
       - name: Install dependencies
         run: make install-dev
 
+      - name: Run lint checks
+        run: make lint
+
       - name: Run pre-commit hooks
         run: make pre-commit-run
 

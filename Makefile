@@ -18,6 +18,7 @@ pre-commit-run:
 
 lint:
 	uv run ruff check .
+	uv run ruff format --check .
 
 test-typing:
 	@echo "=== Testing Typing Compatibility Fixtures ==="

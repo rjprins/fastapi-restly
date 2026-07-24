@@ -65,9 +65,7 @@ def test_idref_reference_is_unresolved_and_gatable_in_authorize(client):
     # A reference to the "invisible" author is rejected in authorize, by id,
     # before resolution would have fetched it unscoped.
     client.post(
-        "/articles/",
-        json={"title": "x", "author_id": a1["id"]},
-        assert_status_code=404,
+        "/articles/", json={"title": "x", "author_id": a1["id"]}, assert_status_code=404
     )
     assert seen["ref_id"] == a1["id"]
     assert seen["ref_type"] != "Author"  # unresolved reference, not the ORM row

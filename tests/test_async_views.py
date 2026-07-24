@@ -237,7 +237,9 @@ def test_async_object_helpers_are_dataclass_init_aware_for_resolved_refs():
 
     class RefRoutingAsyncRelationshipFieldFallbackArticle(fr.IDBase):
         title: Mapped[str]
-        author_id: Mapped[int] = mapped_column(ForeignKey("ref_routing_async_author.id"))
+        author_id: Mapped[int] = mapped_column(
+            ForeignKey("ref_routing_async_author.id")
+        )
         author: Mapped[RefRoutingAsyncAuthor] = relationship(default=None, init=False)
 
     class FKSchema(fr.BaseSchema):
@@ -599,7 +601,9 @@ def test_async_build_query_is_consulted_by_list_and_count():
             assert results.total_count == 2
             assert all(g.active for g in results.objects)
 
-            query = fr.query.apply_list_params({}, view.build_query(), Gizmo, GizmoSchema)
+            query = fr.query.apply_list_params(
+                {}, view.build_query(), Gizmo, GizmoSchema
+            )
             total = await view.count(query)
             assert total == 2
 

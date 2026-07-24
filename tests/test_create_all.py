@@ -65,7 +65,9 @@ def test_create_all_rejects_non_base():
     try:
         with RestlyContext():
             fr.configure(engine=engine)
-            with pytest.raises(TypeError, match="DeclarativeBase subclass or a MetaData"):
+            with pytest.raises(
+                TypeError, match="DeclarativeBase subclass or a MetaData"
+            ):
                 fr.db.create_all(object())  # type: ignore[arg-type]
     finally:
         engine.dispose()
@@ -77,7 +79,9 @@ async def test_async_create_all_rejects_non_base():
     try:
         with RestlyContext():
             fr.configure(async_engine=engine)
-            with pytest.raises(TypeError, match="DeclarativeBase subclass or a MetaData"):
+            with pytest.raises(
+                TypeError, match="DeclarativeBase subclass or a MetaData"
+            ):
                 await fr.db.async_create_all(object())  # type: ignore[arg-type]
     finally:
         await engine.dispose()

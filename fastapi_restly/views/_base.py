@@ -275,10 +275,7 @@ def _relationship_name_for_fk(
         relationship_property.key
         for relationship_property in mapper.relationships
         if getattr(relationship_property.direction, "name", None) == "MANYTOONE"
-        and any(
-            column is fk_column
-            for column in relationship_property.local_columns
-        )
+        and any(column is fk_column for column in relationship_property.local_columns)
     ]
     return matches[0] if len(matches) == 1 else None
 
@@ -431,9 +428,7 @@ def _add_null_reference_to_create_plan(
         # *relationship* is a required init kwarg (``relationship()`` with no
         # default) must construct that kwarg too.
         relation_name = _relationship_name_for_fk(model_cls, field_name)
-        if relation_name is not None and _requires_init_kwarg(
-            model_cls, relation_name
-        ):
+        if relation_name is not None and _requires_init_kwarg(model_cls, relation_name):
             plan.kwargs.setdefault(relation_name, None)
         return
 
@@ -641,9 +636,7 @@ def apply_update_to_object(
     for field_name, value in get_writable_inputs(schema_obj, schema_cls).items():
         if field_name in resolved:
             value = resolved[field_name]
-        if isinstance(value, IDSchema) and _is_mapped_column(
-            type(obj), field_name
-        ):
+        if isinstance(value, IDSchema) and _is_mapped_column(type(obj), field_name):
             setattr(obj, field_name, value.id)
             continue
         if isinstance(value, DeclarativeBase) and is_reference_field(

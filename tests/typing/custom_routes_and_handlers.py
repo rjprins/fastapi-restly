@@ -21,9 +21,7 @@ class WidgetInput(fr.BaseSchema):
 
 
 @fr.include_view(app)
-class WidgetView(
-    fr.RestView[Widget, WidgetRead, WidgetInput, WidgetInput, int]
-):
+class WidgetView(fr.RestView[Widget, WidgetRead, WidgetInput, WidgetInput, int]):
     prefix = "/widgets"
     model = Widget
     schema = WidgetRead

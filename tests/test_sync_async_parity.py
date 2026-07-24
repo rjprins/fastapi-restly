@@ -159,7 +159,10 @@ def test_collection_routes_accept_slash_and_no_slash(view_client: TestClient):
     assert no_slash_list.status_code == 200
     assert slash_list.status_code == 200
     assert no_slash_list.json() == slash_list.json()
-    assert {item["name"] for item in no_slash_list.json()["data"]} == {"No slash", "Slash"}
+    assert {item["name"] for item in no_slash_list.json()["data"]} == {
+        "No slash",
+        "Slash",
+    }
 
 
 @pytest.mark.parametrize("view_client", ["sync", "async"], indirect=True)

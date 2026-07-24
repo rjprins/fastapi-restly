@@ -44,9 +44,7 @@ def _warn_count(check) -> int:
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         check()
-    return sum(
-        issubclass(w.category, RestlyUncommittedChangesWarning) for w in caught
-    )
+    return sum(issubclass(w.category, RestlyUncommittedChangesWarning) for w in caught)
 
 
 def test_savepoint_sync_commit_does_not_false_warn():

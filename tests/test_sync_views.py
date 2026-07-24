@@ -235,7 +235,10 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
         __table_args__ = (
             ForeignKeyConstraint(
                 ["parent_id1", "parent_id2"],
-                ["ref_routing_sync_composite_parent.id1", "ref_routing_sync_composite_parent.id2"],
+                [
+                    "ref_routing_sync_composite_parent.id1",
+                    "ref_routing_sync_composite_parent.id2",
+                ],
             ),
         )
 
@@ -324,7 +327,9 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
                 _fields_set=fields_set, **values
             )
             validate_resolved_reference_consistency(
-                RefRoutingSyncRelationshipFirstArticle, payload, OptionalBothReferenceSchema
+                RefRoutingSyncRelationshipFirstArticle,
+                payload,
+                OptionalBothReferenceSchema,
             )
 
         validate_optional_payload({"title", "author"}, author=first)
@@ -358,7 +363,9 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
                 RefRoutingSyncCompositeChild,
                 CompositeRelationshipSchema.model_construct(
                     title="composite",
-                    parent=RefRoutingSyncCompositeParent(id1=1, id2=2, name="Composite"),
+                    parent=RefRoutingSyncCompositeParent(
+                        id1=1, id2=2, name="Composite"
+                    ),
                 ),
                 CompositeRelationshipSchema,
             )
