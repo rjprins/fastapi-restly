@@ -3,10 +3,8 @@ from __future__ import annotations
 import subprocess
 import sys
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
-from _pytest.outcomes import Exit
 from fastapi import FastAPI
 from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import (
@@ -53,53 +51,6 @@ def test_restly_project_root_raises_without_pyproject(monkeypatch, tmp_path: Pat
         _fixtures.restly_project_root.__wrapped__()
 
 
-def test_run_alembic_upgrade_handles_missing_and_failing_migrations(tmp_path: Path):
-    _fixtures._run_alembic_upgrade(tmp_path)
-
-    project_root = tmp_path / "with-alembic"
-    alembic_dir = project_root / "alembic"
-    alembic_dir.mkdir(parents=True)
-    (project_root / "alembic.ini").write_text("[alembic]\n")
-
-    with patch("alembic.command.upgrade", side_effect=RuntimeError("boom")):
-        with pytest.raises(Exit, match="Alembic migrations failed: boom"):
-            _fixtures._run_alembic_upgrade(project_root)
-
-
-def test_activate_savepoint_only_mode_sessions_activates_only_configured_sessions():
-    with RestlyContext():
-        with patch(
-            "fastapi_restly._pytest_fixtures.activate_savepoint_only_mode"
-        ) as activate:
-            _fixtures._activate_savepoint_only_mode_sessions()
-            activate.assert_not_called()
-
-    sync_engine = create_engine(
-        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
-    )
-    async_engine = create_async_engine("sqlite+aiosqlite:///:memory:")
-    sync_make_session = sessionmaker(bind=sync_engine, expire_on_commit=False)
-    async_make_session = async_sessionmaker(bind=async_engine, expire_on_commit=False)
-
-    try:
-        with RestlyContext():
-            from fastapi_restly.db._globals import _fr_globals
-
-            _fr_globals.make_session = sync_make_session
-            _fr_globals.async_make_session = async_make_session
-
-            with patch(
-                "fastapi_restly._pytest_fixtures.activate_savepoint_only_mode"
-            ) as activate:
-                _fixtures._activate_savepoint_only_mode_sessions()
-                assert activate.call_count == 2
-    finally:
-        sync_engine.dispose()
-        import asyncio
-
-        asyncio.run(async_engine.dispose())
-
-
 def test_shared_connection_yields_none_or_real_connection():
     with RestlyContext():
         gen = _fixtures._shared_connection.__wrapped__()
@@ -126,7 +77,7 @@ def test_shared_connection_yields_none_or_real_connection():
         engine.dispose()
 
 
-def test_sync_fixture_wrapper_patches_and_restores_sessionmaker():
+def test_sync_fixture_swaps_in_an_isolated_factory_and_restores():
     engine = create_engine(
         "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
     )
@@ -137,16 +88,29 @@ def test_sync_fixture_wrapper_patches_and_restores_sessionmaker():
             from fastapi_restly.db._globals import _fr_globals
 
             _fr_globals.make_session = make_session
-            gen = _fixtures.restly_session.__wrapped__(None)
-            session = next(gen)
+            with engine.connect() as conn:
+                conn.begin()
+                gen = _fixtures.restly_session.__wrapped__(conn)
+                session = next(gen)
 
-            mocked_make_session = _fr_globals.make_session
-            assert mocked_make_session is not make_session
-            assert mocked_make_session() is session
-            assert mocked_make_session.begin.return_value.__enter__() is session
+                # The factory is swapped for a real create_savepoint factory
+                # bound to the pinned connection -- not a MagicMock, not the
+                # original.
+                swapped = _fr_globals.make_session
+                assert swapped is not make_session
+                assert isinstance(swapped, sessionmaker)
+                assert swapped.kw["join_transaction_mode"] == "create_savepoint"
+                assert swapped.kw["bind"] is conn
 
-            with pytest.raises(StopIteration):
-                next(gen)
+                # Each call builds a real, distinct session on the same connection
+                # (no shared identity map).
+                other = swapped()
+                assert other is not session
+                assert other.get_bind() is session.get_bind() is conn
+                other.close()
+
+                with pytest.raises(StopIteration):
+                    next(gen)
 
             assert _fr_globals.make_session is make_session
     finally:
@@ -183,7 +147,7 @@ def test_sync_fixture_begin_context_flushes_on_successful_exit():
 
 
 @pytest.mark.asyncio
-async def test_async_fixture_wrapper_patches_and_restores_sessionmaker():
+async def test_async_fixture_swaps_in_an_isolated_factory_and_restores():
     async_engine = create_async_engine("sqlite+aiosqlite:///:memory:")
     make_session = async_sessionmaker(bind=async_engine, expire_on_commit=False)
 
@@ -195,15 +159,95 @@ async def test_async_fixture_wrapper_patches_and_restores_sessionmaker():
             agen = _fixtures.restly_async_session.__wrapped__(None)
             session = await agen.__anext__()
 
-            mocked_make_session = _fr_globals.async_make_session
-            assert mocked_make_session is not make_session
-            async with mocked_make_session() as context_session:
-                assert context_session is session
-            async with mocked_make_session.begin() as context_session:
-                assert context_session is session
+            # The factory is swapped for a real create_savepoint factory bound to
+            # the pinned connection -- not a MagicMock, not the original.
+            swapped = _fr_globals.async_make_session
+            assert swapped is not make_session
+            assert isinstance(swapped, async_sessionmaker)
+            assert swapped.kw["join_transaction_mode"] == "create_savepoint"
 
+            # Each call builds a real, distinct session on the same connection
+            # (no shared identity map).
+            other = swapped()
+            assert other is not session
+            assert other.get_bind() is session.get_bind()
+            await other.close()
+
+            # Close the fixture before disposing the engine, so its pinned
+            # connection tears down cleanly.
             await agen.aclose()
             assert _fr_globals.async_make_session is make_session
+    finally:
+        await async_engine.dispose()
+
+
+def test_sync_fixture_restores_globals_even_if_session_close_raises():
+    # Regression: the factory/generator restore must not be gated on
+    # session.close() succeeding. A teardown-time close() failure otherwise
+    # leaks the isolated factory (bound to the pinned connection) into every
+    # later test.
+    engine = create_engine(
+        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
+    )
+    make_session = sessionmaker(bind=engine, expire_on_commit=False)
+
+    def sentinel_gen():  # pragma: no cover - never called
+        raise AssertionError("generator must not run")
+        yield
+
+    try:
+        with RestlyContext():
+            from fastapi_restly.db._globals import _fr_globals
+
+            _fr_globals.make_session = make_session
+            _fr_globals.sync_session_generator = sentinel_gen
+            with engine.connect() as conn:
+                conn.begin()
+                gen = _fixtures.restly_session.__wrapped__(conn)
+                session = next(gen)
+
+                def _boom():
+                    raise RuntimeError("close boom")
+
+                session.close = _boom
+                with pytest.raises(RuntimeError, match="close boom"):
+                    next(gen)
+
+                # Restored despite the close() failure.
+                assert _fr_globals.make_session is make_session
+                assert _fr_globals.sync_session_generator is sentinel_gen
+    finally:
+        engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_async_fixture_restores_globals_even_if_session_close_raises():
+    async_engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+    make_session = async_sessionmaker(bind=async_engine, expire_on_commit=False)
+
+    async def sentinel_gen():  # pragma: no cover - never called
+        raise AssertionError("generator must not run")
+        yield
+
+    try:
+        with RestlyContext():
+            from fastapi_restly.db._globals import _fr_globals
+
+            _fr_globals.async_make_session = make_session
+            _fr_globals.session_generator = sentinel_gen
+            agen = _fixtures.restly_async_session.__wrapped__(None)
+            session = await agen.__anext__()
+
+            async def _boom():
+                raise RuntimeError("close boom")
+
+            session.close = _boom
+            with pytest.raises(RuntimeError, match="close boom"):
+                await agen.__anext__()
+
+            # Restored despite the close() failure.
+            assert _fr_globals.async_make_session is make_session
+            assert _fr_globals.session_generator is sentinel_gen
     finally:
         await async_engine.dispose()
 
@@ -377,7 +421,9 @@ def test_pytest_plugin_reports_missing_pytest():
     fixtures module, so blocking it exercises the friendly re-raise in
     ``pytest_fixtures.py``.
     """
-    result = _run_with_blocked_imports("import fastapi_restly.pytest_fixtures", "pytest")
+    result = _run_with_blocked_imports(
+        "import fastapi_restly.pytest_fixtures", "pytest"
+    )
 
     assert result.returncode != 0
     assert 'pip install "fastapi-restly[testing]"' in result.stderr

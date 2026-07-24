@@ -62,7 +62,7 @@ async def _isolate_every_test(restly_async_session):
 ```
 
 The last fixture matters: the savepoint isolation lives in the *session*
-fixtures, which patch Restly's session factory for the duration of a test.
+fixtures, which swap Restly's session factory for the duration of a test.
 `restly_client` alone does not isolate: a client-only test commits real rows
 to the configured database. The autouse wrapper opts every test in.
 
@@ -183,20 +183,22 @@ fixture (the conftest recipe's autouse wrapper does this for every test).
 
 **Scope:** `function`
 
-A SQLAlchemy `Session` on a connection whose outer transaction is never
-committed. `commit()` is patched to `flush()` + `begin_nested()`, so writes
-are visible during the test without persisting afterward. The fixture skips
-automatically if no sync session source is configured at all.
+A SQLAlchemy `Session` on a pinned connection whose outer transaction is never
+committed. Each request during the test builds its own real session that joins
+that transaction through a savepoint (SQLAlchemy's `create_savepoint` mode), so
+`commit()` and `rollback()` behave as in production while nothing persists past
+the test. The fixture skips automatically if no sync session source is
+configured at all.
 
 A configured `sync_session_generator` is cleared for the duration of the test
-and restored afterwards, so the request receives the fixture's session. What is
-lost is anything the generator body runs per session, a `SET search_path` for
-example. Configure a sync sessionmaker for the tests as well: with only a
-generator the fixture has nothing to build the session from, and it raises
-rather than skip.
+and restored afterwards, so the request builds its own isolated session on the
+fixture's connection instead. What is lost is anything the generator body runs
+per session, a `SET search_path` for example. Configure a sync sessionmaker for
+the tests as well: with only a generator the fixture has nothing to build the
+session from, and it raises rather than skip.
 
-`fr.open_session()` reads the generator the same way `SessionDep` does, so it
-also yields the fixture's session during a test.
+`fr.open_session()` resolves the same factory `SessionDep` does, so it too
+yields an isolated session on the fixture's connection during a test.
 
 A committed write can be read back within the same test:
 
@@ -236,10 +238,10 @@ async def test_user_created(restly_async_session):
 
 > **Note:** When both a sync and an async session source are configured,
 > `restly_async_session` reuses the connection `restly_session` opens, so the
-> two fixtures share one transaction and a write through either is visible to
-> the other within the same test. The async session runs over that sync
-> connection, so point both at the same database; the async driver itself is
-> not exercised in this mode.
+> two fixtures share one transaction and a write committed through either is
+> visible to the other within the same test. The async session runs over that
+> sync connection, so point both at the same database; the async driver itself
+> is not exercised in this mode.
 
 ### `restly_project_root`
 
@@ -257,13 +259,16 @@ test and rolled back afterward.
 
 1. The fixture opens a connection for the test and binds the SQLAlchemy
    session to that connection.
-2. The fixtures patch Restly's session factory so code under test receives
-   the same isolated session, and clear a configured session generator, which
-   the session dependency would otherwise read first. Together these are what
-   make app/client requests isolated too, and it is why the conftest recipe
+2. The fixtures swap Restly's session factory for one bound to that connection
+   in `create_savepoint` mode, so code under test builds its own isolated
+   session on the shared connection, and clear a configured session generator,
+   which the session dependency would otherwise read first. Together these are
+   what make app/client requests isolated too, and it is why the conftest recipe
    requests the session fixture for every test.
-3. The fixtures patch `commit()` to `flush()` + `begin_nested()`, making
-   state visible without a real database commit.
+3. Each session joins the outer transaction through a savepoint, so its
+   `commit()` releases the savepoint (state visible on the connection) without a
+   real database commit, and its `rollback()` discards only that session's own
+   work.
 4. After the test, the connection is closed without committing, rolling back
    all changes and restoring the database to its pre-test state.
 
@@ -271,9 +276,7 @@ Savepoints keep in-test commits usable; the uncommitted outer transaction
 provides the final isolation. Tests that never call `commit()` are still
 isolated, and there is no per-test teardown code or schema rebuild.
 
-Explicit transaction blocks are supported: `with restly_session.begin(): ...`
-and `async with restly_async_session.begin(): ...` flush pending changes when
-the block exits successfully. The fixtures still run under savepoint-based
-isolation, not production transaction management: if a test depends on precise
-rollback behavior at that boundary, prefer explicit `flush()` / `rollback()`
-calls, or test through the client instead of fixture internals.
+Explicit transaction blocks behave as in production: `with restly_session.begin():
+...` and `async with restly_async_session.begin(): ...` commit on success and
+roll back on error, scoped to the fixture's outer transaction so nothing persists
+past the test.

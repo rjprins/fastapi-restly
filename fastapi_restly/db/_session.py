@@ -4,8 +4,13 @@ from inspect import signature
 from typing import Annotated, Any, cast
 
 from fastapi import Depends, FastAPI
-from sqlalchemy import Engine, MetaData, create_engine, event
-from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker, create_async_engine
+from sqlalchemy import Connection, Engine, MetaData, create_engine, event
+from sqlalchemy.ext.asyncio import (
+    AsyncConnection,
+    AsyncEngine,
+    async_sessionmaker,
+    create_async_engine,
+)
 from sqlalchemy.ext.asyncio import AsyncSession as SA_AsyncSession
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 from sqlalchemy.orm import Session as SA_Session
@@ -226,14 +231,24 @@ def get_async_engine() -> AsyncEngine:
         raise RestlyConfigurationError(
             "Call fr.configure() before using get_async_engine()."
         )
-    return _fr_globals.async_make_session.kw["bind"]
+    bind = _fr_globals.async_make_session.kw["bind"]
+    # Under restly_async_session the factory is bound to a pinned AsyncConnection;
+    # resolve its engine so this keeps returning the real AsyncEngine.
+    if isinstance(bind, AsyncConnection):
+        return bind.engine
+    return bind
 
 
 def get_engine() -> Engine:
     """Return the sync engine registered via configure()."""
     if _fr_globals.make_session is None:
         raise RestlyConfigurationError("Call fr.configure() before using get_engine().")
-    return _fr_globals.make_session.kw["bind"]
+    bind = _fr_globals.make_session.kw["bind"]
+    # Under restly_session the factory is bound to a pinned Connection; resolve
+    # its engine so this keeps returning the real Engine.
+    if isinstance(bind, Connection):
+        return bind.engine
+    return bind
 
 
 def _resolve_metadata(base_or_metadata: type[DeclarativeBase] | MetaData) -> MetaData:
@@ -260,7 +275,13 @@ def create_all(base_or_metadata: type[DeclarativeBase] | MetaData) -> None:
     ``MetaData``. Requires :func:`configure` first. Use Alembic migrations in
     production.
     """
-    _resolve_metadata(base_or_metadata).create_all(get_engine())
+    metadata = _resolve_metadata(base_or_metadata)
+    if _fr_globals.make_session is None:
+        raise RestlyConfigurationError("Call fr.configure() before using create_all().")
+    # Create against the configured bind: the engine in production, or the pinned
+    # Connection under restly_session so the schema is visible to the test's
+    # isolated sessions instead of silently landing on a throwaway connection.
+    metadata.create_all(_fr_globals.make_session.kw["bind"])
 
 
 async def async_create_all(base_or_metadata: type[DeclarativeBase] | MetaData) -> None:
@@ -271,9 +292,18 @@ async def async_create_all(base_or_metadata: type[DeclarativeBase] | MetaData) -
         await fr.db.async_create_all(Base)
     """
     metadata = _resolve_metadata(base_or_metadata)
-    engine = get_async_engine()
-    async with engine.begin() as conn:
-        await conn.run_sync(metadata.create_all)
+    if _fr_globals.async_make_session is None:
+        raise RestlyConfigurationError(
+            "Call fr.configure() before using async_create_all()."
+        )
+    bind = _fr_globals.async_make_session.kw["bind"]
+    if isinstance(bind, AsyncConnection):
+        # Under restly_async_session: create on the pinned connection, inside the
+        # outer transaction, so the tables are visible to the test's sessions.
+        await bind.run_sync(metadata.create_all)
+    else:
+        async with bind.begin() as conn:
+            await conn.run_sync(metadata.create_all)
 
 
 def _get_sync_engine(

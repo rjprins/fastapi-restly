@@ -23,19 +23,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   how-to, "Relationship Loading and Async", collects the loading model and the
   `MissingGreenlet` fixes.
 
-- `restly_async_session` no longer errors when a sync sessionmaker is also
-  configured; it shares the sync fixture's connection instead of failing every
-  test that uses it in a hybrid sync+async project.
-
-- The session fixtures no longer hijack unrelated sessions. Their patched
-  `commit()` and context-exit fire for every session in the process; they now
-  act only on the fixture's own session, so a session on a different engine
-  commits and closes normally while a fixture is active.
-
 ### Changed
 
+- The session fixtures (`restly_session` / `restly_async_session`) now isolate
+  each test with SQLAlchemy's `create_savepoint` mode instead of patching
+  `Session` / `AsyncSession`. `commit()` / `rollback()` behave as in production,
+  and there is no shared identity map: a value added directly to the fixture
+  session reaches a request only after a `flush()` or `commit()`.
+
 - A session fixture with a generator but no matching sessionmaker now raises
-  instead of skipping, so a suite can no longer silently skip every test.
+  instead of skipping.
 
 ### Fixed
 
@@ -57,9 +54,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Sync views never raised, but paid the same loads implicitly, one query at a
   time, during serialization. They now eager-load identically.
 
-- The session fixtures now isolate projects configured with a
-  `session_generator` / `sync_session_generator`; previously such a project's
-  request ran on its own session and its write was silently dropped.
+- The session fixtures isolate projects configured with a `session_generator` /
+  `sync_session_generator` instead of dropping the request's write.
+
+- `restly_async_session` no longer errors when a sync sessionmaker is also
+  configured; it shares the sync fixture's connection.
+
+- `fr.db.get_engine()` / `create_all()` and their async forms work inside the
+  fixtures instead of silently no-opping.
 
 ## [0.8.0] - 2026-07-22
 

@@ -1,15 +1,15 @@
 """Regression: a configured ``session_generator`` / ``sync_session_generator``
 must not break the shipped session fixtures.
 
-``SessionDep`` and ``AsyncSessionDep`` read the generator before the session
-factory the fixtures patch. A project that configured one got no isolation: the
-request built its own real session, and its write was dropped, because the
-patched ``commit`` writes to the fixture's session instead.
+``SessionDep`` and ``AsyncSessionDep`` resolve the generator before the session
+factory the fixtures swap. A project that configured one got no isolation: the
+request built its own real session from the generator, outside the fixture's
+transaction, so its write escaped the rollback.
 
 The fixtures now clear the generator for the duration of a test and restore it
-afterwards, so the request receives the fixture's session. Without a sessionmaker
-to build that session from, the fixture raises instead of skipping with a
-misleading "Database connection not set up".
+afterwards, so the request is built from the fixture's isolated factory on the
+shared connection. Without a sessionmaker to build from, the fixture raises
+instead of skipping with a misleading "Database connection not set up".
 """
 
 from __future__ import annotations
@@ -72,7 +72,11 @@ def test_sync_fixture_isolates_a_generator_configured_project():
 
                     request_gen = _generate_session()
                     request_session = next(request_gen)
-                    assert request_session is session
+                    # No shared identity map now: the request builds its own
+                    # session, isolated onto the fixture's pinned connection --
+                    # not one from the project generator.
+                    assert request_session is not session
+                    assert request_session.get_bind() is session.get_bind()
 
                     row = _Row(name="written in a request")
                     request_session.add(row)
@@ -150,7 +154,11 @@ async def test_async_fixture_isolates_a_generator_configured_project():
 
                 request_gen = _async_generate_session()
                 request_session = await request_gen.__anext__()
-                assert request_session is session
+                # No shared identity map now: the request builds its own session,
+                # isolated onto the fixture's pinned connection -- not one from the
+                # project generator.
+                assert request_session is not session
+                assert request_session.get_bind() is session.get_bind()
 
                 row = _Row(name="written in a request")
                 request_session.add(row)
@@ -195,9 +203,10 @@ async def test_async_fixture_raises_when_only_a_generator_is_configured():
             await agen.aclose()
 
 
-def test_open_session_yields_the_fixture_session_with_a_generator_configured():
+def test_open_session_yields_an_isolated_session_with_a_generator_configured():
     # fr.open_session() reads sync_session_generator the same way SessionDep
-    # does, so off-request code also gets the fixture's isolated session.
+    # does, so off-request code also gets an isolated session on the fixture's
+    # connection rather than one from the (cleared) project generator.
     engine = create_engine(
         "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
     )
@@ -216,7 +225,10 @@ def test_open_session_yields_the_fixture_session_with_a_generator_configured():
                 try:
                     session = next(gen)
                     with fr.open_session() as opened:
-                        assert opened is session
+                        # A distinct session now, isolated onto the fixture's
+                        # connection -- reaching the project generator would raise.
+                        assert opened is not session
+                        assert opened.get_bind() is session.get_bind()
                 finally:
                     gen.close()
     finally:
@@ -224,7 +236,7 @@ def test_open_session_yields_the_fixture_session_with_a_generator_configured():
 
 
 @pytest.mark.asyncio
-async def test_open_async_session_yields_the_fixture_session_with_a_generator_configured():
+async def test_open_async_session_yields_an_isolated_session_with_a_generator_configured():
     async_engine = create_async_engine(
         "sqlite+aiosqlite:///:memory:", poolclass=StaticPool
     )
@@ -242,7 +254,10 @@ async def test_open_async_session_yields_the_fixture_session_with_a_generator_co
             try:
                 session = await agen.__anext__()
                 async with fr.open_async_session() as opened:
-                    assert opened is session
+                    # A distinct session now, isolated onto the fixture's
+                    # connection -- reaching the project generator would raise.
+                    assert opened is not session
+                    assert opened.get_bind() is session.get_bind()
             finally:
                 await agen.aclose()
     finally:

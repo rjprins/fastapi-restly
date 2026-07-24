@@ -1,23 +1,19 @@
 from __future__ import annotations
 
-import traceback
+import weakref
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, AsyncIterator, Iterator
-from unittest.mock import MagicMock, patch
 
-import alembic
-import alembic.command
-import alembic.config
 import pytest
 from fastapi import FastAPI
-from sqlalchemy.ext.asyncio import AsyncConnection
+from sqlalchemy import Engine, event
+from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, async_sessionmaker
 from sqlalchemy.ext.asyncio import AsyncSession as SA_AsyncSession
 from sqlalchemy.orm import Session as SA_Session
+from sqlalchemy.orm import sessionmaker
 
-from .db import activate_savepoint_only_mode
 from .db._globals import _fr_globals, _get_restly_context
-from .db._session import _clear_uncommitted
 from .exc import RestlyConfigurationError
 
 if TYPE_CHECKING:
@@ -48,46 +44,63 @@ def restly_project_root() -> Path:
     raise Exception("Could not find a pyproject.toml to establish project root")
 
 
-def _run_alembic_upgrade(project_root: Path) -> None:
-    # Only run alembic migrations if the alembic directory exists
-    alembic_dir = project_root / "alembic"
-    if not alembic_dir.exists():
-        return  # Skip if no alembic directory
-
-    # restly_project_root owns discovery; this helper only builds Alembic config.
-    alembic_cfg = alembic.config.Config(project_root / "alembic.ini")
-    alembic_cfg.set_main_option("script_location", str(alembic_dir))
-    try:
-        alembic.command.upgrade(alembic_cfg, "head")
-    except Exception as exc:
-        tb = traceback.format_exc()
-        pytest.exit(
-            f"Alembic migrations failed: {exc}\n\nTraceback:\n{tb}", returncode=1
-        )
+# Test engines whose pysqlite legacy-transaction shim has already been neutralised.
+_sqlite_savepoint_fixed: weakref.WeakSet = weakref.WeakSet()
 
 
-def _activate_savepoint_only_mode_sessions() -> None:
-    # Only run if database connections are set up
-    if not _fr_globals.async_make_session and not _fr_globals.make_session:
-        return  # Skip if no database connections
+def _install_sqlite_savepoint_fix(engine: Engine | AsyncEngine) -> None:
+    """Neutralise pysqlite's legacy transaction shim on a test engine.
 
-    if _fr_globals.async_make_session:
-        activate_savepoint_only_mode(_fr_globals.async_make_session)
-    if _fr_globals.make_session:
-        activate_savepoint_only_mode(_fr_globals.make_session)
+    stdlib ``sqlite3`` emulates PEP 249 by sniffing SQL keywords and issuing an
+    implicit ``BEGIN``, which turns ``RELEASE`` of the outermost ``SAVEPOINT``
+    into a real commit. Under ``create_savepoint`` isolation that would leak
+    committed test data past the outer-transaction rollback (measured on
+    aiosqlite). Hand transaction control to SQLAlchemy: disable the shim and emit
+    ``BEGIN`` explicitly, so every ``SAVEPOINT`` nests inside a real transaction.
+
+    Fixtures-only, sqlite-only, idempotent per engine. Deliberately NOT applied to
+    production engines (fznb.12): an adopter may pass their own engine, so an
+    engine-wide fix could never be complete, and it would change production
+    locking and DDL semantics. On Python 3.12+ the connect handler is a one-liner
+    (``dbapi_connection.autocommit = False``); the ``isolation_level = None`` form
+    stays while ``requires-python`` still includes 3.10/3.11.
+    """
+    sync_engine = engine.sync_engine if isinstance(engine, AsyncEngine) else engine
+    if sync_engine.dialect.name != "sqlite":
+        return
+    if sync_engine in _sqlite_savepoint_fixed:
+        return
+    _sqlite_savepoint_fixed.add(sync_engine)
+
+    @event.listens_for(sync_engine, "connect")
+    def _disable_legacy_transaction_control(dbapi_connection, connection_record):
+        dbapi_connection.isolation_level = None
+
+    @event.listens_for(sync_engine, "begin")
+    def _emit_begin(conn):
+        conn.exec_driver_sql("BEGIN")
 
 
 @pytest.fixture
 def _shared_connection():
-    # Sync tests need a sync sessionmaker, but async-only projects should still
-    # be able to use the restly_async_session fixture without one.
+    # One pinned connection shared by the sync and async fixtures, so a test that
+    # uses both sees a single database. Each request during the test joins this
+    # connection's outer transaction through a SAVEPOINT (create_savepoint mode);
+    # the outer transaction is never committed and rolls back at teardown, so no
+    # test data is ever persisted. Async-only projects have no sync sessionmaker;
+    # restly_async_session pins its own connection in that case.
     if not _fr_globals.make_session:
         yield None
         return
 
     engine = _fr_globals.make_session.kw["bind"]
+    _install_sqlite_savepoint_fix(engine)
     with engine.connect() as conn:
-        yield conn
+        trans = conn.begin()
+        try:
+            yield conn
+        finally:
+            trans.rollback()
 
 
 if pytest_asyncio is None:
@@ -106,34 +119,35 @@ else:
         _shared_connection,
     ) -> AsyncIterator[SA_AsyncSession]:
         """
-        Pytest fixture providing a database session with savepoint-based isolation.
+        Pytest fixture providing an isolated async database session.
 
-        Each test runs inside a savepoint. At the end of the test, the savepoint is
-        rolled back, leaving the database clean for the next test.
+        The async equivalent of :func:`restly_session`. Each request during the
+        test builds its own real ``AsyncSession`` that joins a never-committed
+        outer transaction through a SAVEPOINT (SQLAlchemy's ``create_savepoint``
+        mode), so a request's ``commit()`` and ``rollback()`` behave as in
+        production. The outer transaction rolls back at teardown, leaving the
+        database clean
+        for the next test -- nothing is ever persisted. When a sync sessionmaker is
+        also configured, this fixture shares the sync fixture's pinned connection,
+        so a test that uses both sees one database.
 
-        NOTE: Calling session.rollback() inside a test rolls back to the last savepoint
-        (created by each patched commit()), NOT to the start of the test. This differs
-        from production behavior. To undo all changes in a test, use session.rollback()
-        after each commit(), but be aware that data added before the last commit() is
-        still visible.
+        As with the sync fixture there is no shared identity map: this fixture and
+        the request are separate sessions on one connection, so a write made
+        directly on this session becomes visible to a request only after a flush or
+        commit. Configure an async sessionmaker for the tests (``async_database_url=``,
+        ``async_engine=`` or ``async_make_session=`` to ``fr.configure()``); a
+        ``session_generator`` alone cannot be isolated, because ``AsyncSessionDep``
+        resolves it before the factory this fixture swaps.
 
-        A configured ``session_generator`` is cleared for the duration of the
-        test and restored afterwards, so the request receives this fixture's
-        session. Anything the generator body runs per session (a ``SET``
-        statement, for example) does not run during the test. Without an async
-        sessionmaker to build the session from, the fixture raises instead of
-        skipping with "Database connection not set up".
-
-        ``fr.open_async_session()`` resolves the generator the same way, so it
-        also yields this fixture's session during a test.
+        ``fr.open_async_session()`` resolves the same factory, so it also yields an
+        isolated session during a test.
         """
-        # Only run if database connections are set up
         if not _fr_globals.async_make_session:
             if _fr_globals.session_generator is not None:
                 raise RestlyConfigurationError(
                     "restly_async_session cannot isolate a session built by "
                     "your session_generator: AsyncSessionDep reads the "
-                    "generator before the session factory this fixture patches, "
+                    "generator before the session factory this fixture swaps, "
                     "so each request would get its own session, with no "
                     "isolation. Configure an async sessionmaker for the tests "
                     "as well: pass async_database_url=, async_engine= or "
@@ -143,125 +157,89 @@ else:
                 )
             pytest.skip("Database connection not set up")
 
-        async_engine = _fr_globals.async_make_session.kw["bind"]
+        original = _fr_globals.async_make_session
+        async_engine = original.kw["bind"]
 
         @asynccontextmanager
-        async def get_bound_async_connection():
-            if _shared_connection is None:
-                async with async_engine.connect() as async_conn:
-                    yield async_conn
+        async def _pinned_async_connection():
+            if _shared_connection is not None:
+                # Share the sync fixture's pinned connection and its already-open
+                # outer transaction. An AsyncConnection wrapping a live sync
+                # connection is already started, so entering it would re-run
+                # start() and raise; use it directly and let _shared_connection
+                # own the teardown.
+                yield AsyncConnection(async_engine, sync_connection=_shared_connection)
                 return
 
-            # The sync connection is already open and owned by the
-            # _shared_connection fixture. An AsyncConnection wrapping an
-            # existing sync_connection is already started, so entering it
-            # would call start() and raise "connection is already started".
-            # Yield it directly; the sync fixture closes the connection.
-            yield AsyncConnection(async_engine, sync_connection=_shared_connection)
+            _install_sqlite_savepoint_fix(async_engine)
+            async with async_engine.connect() as conn:
+                # Begin the outer transaction the request sessions join via
+                # savepoint; the connection close rolls it back at teardown.
+                await conn.begin()
+                yield conn
 
-        async with get_bound_async_connection() as async_conn:
-            async with _fr_globals.async_make_session(bind=async_conn) as sess:
-
-                class AsyncSessionContext:
-                    def __init__(self, *, flush_on_success: bool) -> None:
-                        self.flush_on_success = flush_on_success
-
-                    async def __aenter__(self):
-                        await sess.begin_nested()
-                        return sess
-
-                    async def __aexit__(self, exc_type, exc_value, tb):
-                        if self.flush_on_success and exc_type is None:
-                            await sess.flush()
-                        return False  # re-raise any exception
-
-                mock_sessionmaker = MagicMock()
-                mock_sessionmaker.side_effect = lambda *args, **kwargs: (
-                    AsyncSessionContext(flush_on_success=False)
-                )
-                # session.begin() is used as a context manager (async with
-                # session.begin():). Return the same isolated session and flush
-                # pending changes after successful explicit transaction blocks.
-                mock_sessionmaker.begin.side_effect = lambda *args, **kwargs: (
-                    AsyncSessionContext(flush_on_success=True)
-                )
-
-                original_aexit = SA_AsyncSession.__aexit__
-                original_commit = SA_AsyncSession.commit
-
-                # commit and __aexit__ are patched on the class, so they fire for
-                # every AsyncSession in the process, including ones on an
-                # unrelated engine. Dispatch on identity: only the fixture's own
-                # session gets savepoint treatment; any other session behaves
-                # normally (real commit, real close).
-                async def passthrough_exit(self, exc_type, exc_value, traceback):
-                    if self is not sess:
-                        return await original_aexit(
-                            self, exc_type, exc_value, traceback
-                        )
-                    await sess.flush()
-                    return False  # re-raise any exception
-
-                async def patched_commit(self):
-                    if self is not sess:
-                        return await original_commit(self)
-                    await sess.flush()
-                    await sess.begin_nested()
-                    # Treat the savepoint as this fixture's commit boundary.
-                    # Clear the pending-change flag set by flush; a write that
-                    # never calls commit() still leaves the flag set and warns.
-                    _clear_uncommitted(getattr(sess, "sync_session", sess))
-
-                globals_obj = _get_restly_context()
-                original_async_make_session = globals_obj.async_make_session
-                original_session_generator = globals_obj.session_generator
-                globals_obj.async_make_session = mock_sessionmaker
-                # AsyncSessionDep reads the generator first. Leaving it set
-                # would give each request its own real session, with no
-                # isolation.
-                globals_obj.session_generator = None
-                try:
-                    with (
-                        patch.object(SA_AsyncSession, "__aexit__", passthrough_exit),
-                        patch.object(SA_AsyncSession, "commit", patched_commit),
-                    ):
-                        yield sess
-                finally:
-                    globals_obj.async_make_session = original_async_make_session
-                    globals_obj.session_generator = original_session_generator
+        async with _pinned_async_connection() as async_conn:
+            # A real factory bound to the pinned connection, in create_savepoint
+            # mode. Every request (and this fixture) gets its own real session
+            # joining the outer transaction via a savepoint -- no method patching,
+            # no MagicMock factory, no session shared across requests. (A per-mapper
+            # ``binds=`` in the original factory rides along and would escape
+            # isolation; unsupported until someone actually needs it.)
+            isolated_make_session = async_sessionmaker(
+                class_=original.class_,
+                **{
+                    **original.kw,
+                    "bind": async_conn,
+                    "join_transaction_mode": "create_savepoint",
+                },
+            )
+            globals_obj = _get_restly_context()
+            original_async_make_session = globals_obj.async_make_session
+            original_session_generator = globals_obj.session_generator
+            globals_obj.async_make_session = isolated_make_session
+            # AsyncSessionDep resolves the generator first; clearing it routes
+            # requests through the isolated factory.
+            globals_obj.session_generator = None
+            session = isolated_make_session()
+            try:
+                yield session
+            finally:
+                # Restore before closing: a teardown-time close() failure must not
+                # leak the swapped factory into the next test.
+                globals_obj.async_make_session = original_async_make_session
+                globals_obj.session_generator = original_session_generator
+                await session.close()
 
 
 @pytest.fixture
 def restly_session(_shared_connection) -> Iterator[SA_Session]:
     """
-    Pytest fixture providing a database session with savepoint-based isolation.
+    Pytest fixture providing an isolated database session.
 
-    Each test runs inside a savepoint. At the end of the test, the savepoint is
-    rolled back, leaving the database clean for the next test.
+    The session joins a never-committed outer transaction through a SAVEPOINT
+    (SQLAlchemy's ``create_savepoint`` mode). Every request during the test builds
+    its own real session on the same pinned connection, so a request's
+    ``commit()`` and ``rollback()`` behave as in production, and the outer
+    transaction rolls back at teardown, leaving the database clean for the next
+    test -- nothing is ever persisted.
 
-    NOTE: Calling session.rollback() inside a test rolls back to the last savepoint
-    (created by each patched commit()), NOT to the start of the test. This differs
-    from production behavior. To undo all changes in a test, use session.rollback()
-    after each commit(), but be aware that data added before the last commit() is
-    still visible.
+    Unlike production, this fixture and the request are separate sessions on one
+    connection, so a write made directly on this session becomes visible to a
+    request only after a flush or commit (there is no shared identity map).
+    Configure a sync sessionmaker for the tests (``database_url=``, ``engine=`` or
+    ``make_session=`` to ``fr.configure()``); a ``sync_session_generator`` alone
+    cannot be isolated, because ``SessionDep`` resolves it before the factory this
+    fixture swaps.
 
-    A configured ``sync_session_generator`` is cleared for the duration of the
-    test and restored afterwards, so the request receives this fixture's
-    session. Anything the generator body runs per session (a ``SET`` statement,
-    for example) does not run during the test. Without a sync sessionmaker to
-    build the session from, the fixture raises instead of skipping with
-    "Database connection not set up".
-
-    ``fr.open_session()`` resolves the generator the same way, so it also yields
-    this fixture's session during a test.
+    ``fr.open_session()`` resolves the same factory, so it also yields an isolated
+    session during a test.
     """
-    # Only run if database connections are set up
     if not _fr_globals.make_session:
         if _fr_globals.sync_session_generator is not None:
             raise RestlyConfigurationError(
                 "restly_session cannot isolate a session built by your "
                 "sync_session_generator: SessionDep reads the generator before "
-                "the session factory this fixture patches, so each request "
+                "the session factory this fixture swaps, so each request "
                 "would get its own session, with no isolation. Configure a sync "
                 "sessionmaker for the tests as well: pass database_url=, "
                 "engine= or make_session= to fr.configure(). The fixture then "
@@ -270,64 +248,38 @@ def restly_session(_shared_connection) -> Iterator[SA_Session]:
             )
         pytest.skip("Database connection not set up")
 
-    with _fr_globals.make_session(bind=_shared_connection) as sess:
+    original = _fr_globals.make_session
+    # A real factory bound to the pinned connection, in create_savepoint mode.
+    # Every request (and this fixture) gets its own real session joining the outer
+    # transaction via a savepoint -- no method patching, no MagicMock factory, no
+    # session shared across requests. (A per-mapper ``binds=`` in the original
+    # factory rides along and would route those models off the pinned connection,
+    # escaping isolation; unsupported until someone actually needs it.)
+    isolated_make_session = sessionmaker(
+        class_=original.class_,
+        **{
+            **original.kw,
+            "bind": _shared_connection,
+            "join_transaction_mode": "create_savepoint",
+        },
+    )
 
-        def begin_nested():
-            sess.begin_nested()
-            return sess
-
-        mock_sessionmaker = MagicMock()
-        mock_sessionmaker.side_effect = begin_nested
-        # session.begin() is used as a context manager (with session.begin():)
-        # We need it to also return our savepoint session so explicit transaction
-        # blocks work correctly with our isolation mechanism
-        mock_sessionmaker.begin.return_value.__enter__.side_effect = begin_nested
-
-        def exit_nested(exc_type, exc_value, tb):
-            if exc_type is None:
-                sess.flush()
-            return False  # re-raise any exception
-
-        original_exit = SA_Session.__exit__
-        original_commit = SA_Session.commit
-
-        # commit and __exit__ are patched on the class, so they fire for every
-        # Session in the process, including ones on an unrelated engine. Dispatch
-        # on identity: only the fixture's own session gets savepoint treatment;
-        # any other session behaves normally (real commit, real close).
-        def passthrough_exit(self, exc_type, exc_value, traceback):
-            if self is not sess:
-                return original_exit(self, exc_type, exc_value, traceback)
-            sess.flush()
-            return False  # re-raise any exception
-
-        def patched_commit(self):
-            if self is not sess:
-                return original_commit(self)
-            sess.flush()
-            sess.begin_nested()
-            # Mimic after_commit (see the async fixture for the full rationale):
-            # clear the uncommitted-changes flag so the request-end check does not
-            # false-warn under savepoint mode.
-            _clear_uncommitted(getattr(sess, "sync_session", sess))
-
-        globals_obj = _get_restly_context()
-        original_make_session = globals_obj.make_session
-        original_sync_session_generator = globals_obj.sync_session_generator
-        globals_obj.make_session = mock_sessionmaker
-        # SessionDep reads the generator first. Leaving it set would give each
-        # request its own real session, with no isolation.
-        globals_obj.sync_session_generator = None
-        try:
-            with (
-                patch.object(SA_Session, "__exit__", passthrough_exit),
-                patch.object(SA_Session, "commit", patched_commit),
-            ):
-                mock_sessionmaker.begin.return_value.__exit__.side_effect = exit_nested
-                yield sess
-        finally:
-            globals_obj.make_session = original_make_session
-            globals_obj.sync_session_generator = original_sync_session_generator
+    globals_obj = _get_restly_context()
+    original_make_session = globals_obj.make_session
+    original_sync_session_generator = globals_obj.sync_session_generator
+    globals_obj.make_session = isolated_make_session
+    # SessionDep resolves the generator first; clearing it routes requests through
+    # the isolated factory.
+    globals_obj.sync_session_generator = None
+    session = isolated_make_session()
+    try:
+        yield session
+    finally:
+        # Restore before closing: a teardown-time close() failure must not leak
+        # the swapped factory (bound to the pinned connection) into the next test.
+        globals_obj.make_session = original_make_session
+        globals_obj.sync_session_generator = original_sync_session_generator
+        session.close()
 
 
 @pytest.fixture
