@@ -9,7 +9,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="noindex, follow">
 
-    <title>Customize the OpenAPI Schema &#8212; FastAPI-Restly 0.8.0 documentation</title>
+    <title>fr. logo prototypes &#8212; FastAPI-Restly 0.8.0 documentation</title>
   
   
   
@@ -48,7 +48,7 @@
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="_static/copybutton.js?v=f281be69"></script>
     <script src="_static/design-tabs.js?v=f930bc37"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'howto_openapi';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'logo_prototypes';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://www.fastapi-restly.org/switcher.json';
@@ -57,13 +57,11 @@
             false;
         </script>
     <script src="_static/newsletter.js?v=e342eb53"></script>
-    <link rel="canonical" href="https://www.fastapi-restly.org/dev/howto_openapi.html" />
+    <link rel="canonical" href="https://www.fastapi-restly.org/dev/logo_prototypes.html" />
     <link rel="icon" href="_static/favicon.svg"/>
     <link rel="author" title="About these documents" href="about.html" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Test APIs with RestlyTestClient and Fixtures" href="howto_testing.html" />
-    <link rel="prev" title="React Admin Integration" href="howto_react_admin.html" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
@@ -188,7 +186,7 @@
 </li>
 
 
-<li class="nav-item current active">
+<li class="nav-item ">
   <a class="nav-link nav-internal" href="user_guide.html">
     How-To
   </a>
@@ -315,8 +313,10 @@
       
       
       
+        
+      
       <dialog id="pst-primary-sidebar-modal"></dialog>
-      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
         
 
   
@@ -359,7 +359,7 @@
 </li>
 
 
-<li class="nav-item current active">
+<li class="nav-item ">
   <a class="nav-link nav-internal" href="user_guide.html">
     How-To
   </a>
@@ -451,32 +451,6 @@
     
   </div>
   
-    <div class="sidebar-primary-items__start sidebar-primary__section">
-        <div class="sidebar-primary-item">
-<nav class="bd-docs-nav bd-links"
-     aria-label="Section Navigation">
-  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
-  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="howto_existing_project.html">Use Restly in an Existing Project</a></li>
-<li class="toctree-l1"><a class="reference internal" href="howto_custom_schema.html">Custom Schemas and Field Types</a></li>
-<li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys and Relationships</a></li>
-<li class="toctree-l1"><a class="reference internal" href="howto_response_schema.html">Response Envelopes and List Metadata</a></li>
-<li class="toctree-l1"><a class="reference internal" href="howto_relationship_loading.html">Relationship Loading and Async</a></li>
-<li class="toctree-l1"><a class="reference internal" href="howto_query_modifiers.html">Filter, Sort, and Paginate Lists</a></li>
-<li class="toctree-l1"><a class="reference internal" href="howto_error_responses.html">Shape Error Responses</a></li>
-<li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
-<li class="toctree-l1"><a class="reference internal" href="howto_inheritance.html">Share Behaviour with Base Views</a></li>
-<li class="toctree-l1"><a class="reference internal" href="howto_compose_views_with_mixins.html">Compose Views with Mixins</a></li>
-<li class="toctree-l1"><a class="reference internal" href="howto_typing.html">Use Type Annotations</a></li>
-<li class="toctree-l1"><a class="reference internal" href="howto_react_admin.html">React Admin Integration</a></li>
-<li class="toctree-l1 current active"><a class="current reference internal" href="#">Customize the OpenAPI Schema</a></li>
-<li class="toctree-l1"><a class="reference internal" href="howto_testing.html">Test APIs with RestlyTestClient and Fixtures</a></li>
-<li class="toctree-l1"><a class="reference internal" href="deploying.html">Deploying</a></li>
-</ul>
-</div>
-</nav></div>
-    </div>
-  
   
   <div class="sidebar-primary-items__end sidebar-primary__section">
       <div class="sidebar-primary-item">
@@ -512,10 +486,7 @@
         <i class="fa-solid fa-home"></i>
       </a>
     </li>
-    
-    <li class="breadcrumb-item"><a href="user_guide.html" class="nav-link">How-To Guides</a></li>
-    
-    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Customize the OpenAPI Schema</span></li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis"><code class="docutils literal notranslate"><span class="pre">fr.</span></code> logo prototypes</span></li>
   </ul>
 </nav>
 </div>
@@ -532,73 +503,409 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="customize-the-openapi-schema">
-<h1>Customize the OpenAPI Schema<a class="headerlink" href="#customize-the-openapi-schema" title="Link to this heading">#</a></h1>
-<p>Restly’s generated routes are ordinary FastAPI path operations, so everything
-OpenAPI-related composes the FastAPI way. This page maps the customization
-points.</p>
-<section id="per-view-metadata">
-<h2>Per-view metadata<a class="headerlink" href="#per-view-metadata" title="Link to this heading">#</a></h2>
-<p>To apply OpenAPI metadata across a whole view, set the
-<a class="reference internal" href="api/views.html#fastapi_restly.views.View.tags" title="fastapi_restly.views.View.tags"><code class="xref py py-attr docutils literal notranslate"><span class="pre">tags</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.View.responses" title="fastapi_restly.views.View.responses"><code class="xref py py-attr docutils literal notranslate"><span class="pre">responses</span></code></a>, and <a class="reference internal" href="api/views.html#fastapi_restly.views.View.dependencies" title="fastapi_restly.views.View.dependencies"><code class="xref py py-attr docutils literal notranslate"><span class="pre">dependencies</span></code></a> class attributes;
-they exist on every view and apply to all of its routes, generated and custom:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">InvoiceView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
-    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/invoices&quot;</span>
-    <span class="n">tags</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;billing&quot;</span><span class="p">]</span>
-    <span class="n">responses</span> <span class="o">=</span> <span class="p">{</span><span class="mi">402</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Payment required&quot;</span><span class="p">}}</span>
-    <span class="n">model</span> <span class="o">=</span> <span class="n">Invoice</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">InvoiceRead</span>
-</pre></div>
+  <section id="fr-logo-prototypes">
+<h1><code class="docutils literal notranslate"><span class="pre">fr.</span></code> logo prototypes<a class="headerlink" href="#fr-logo-prototypes" title="Link to this heading">#</a></h1>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This is the temporary review archive. It is intentionally absent from the documentation navigation; the selected 85 px version now powers the live documentation branding.</p>
+</div>
+<p>Direction 01 and Archivo are selected for the FastAPI-Restly lockup at an 85 px title against the 88 px icon. The controls below retain the nearby comparisons.</p>
+<style>
+  @import url("https://fonts.googleapis.com/css2?family=Archivo:wght@700&family=IBM+Plex+Sans:wght@600&family=Manrope:wght@700&display=swap");
+
+  .wordmark-study {
+    display: grid;
+    gap: 0;
+    margin: 1.5rem 0 3rem;
+    border-bottom: 1px solid var(--pst-color-border);
+  }
+
+  .wordmark-option {
+    padding: 1.5rem 0;
+    border-top: 1px solid var(--pst-color-border);
+  }
+
+  .wordmark-option__label {
+    margin: 0 0 1rem;
+    color: var(--pst-color-text-muted);
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .wordmark-option__lockup {
+    display: flex;
+    align-items: center;
+    gap: clamp(0.75rem, 2vw, 1.25rem);
+    min-width: 0;
+    color: var(--pst-color-text-base);
+  }
+
+  .wordmark-option__lockup img {
+    width: clamp(3.75rem, 10vw, 5.5rem);
+    height: auto;
+    flex: none;
+  }
+
+  .wordmark-option__name {
+    font-size: clamp(1.75rem, 5vw, 3.25rem);
+    line-height: 1;
+    letter-spacing: -0.045em;
+    white-space: nowrap;
+  }
+
+  .wordmark-option__nav {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    margin: 1.25rem 0 0;
+    color: var(--pst-color-text-base);
+  }
+
+  .wordmark-option__nav img {
+    width: 2rem;
+    height: 2rem;
+  }
+
+  .wordmark-option__nav span {
+    font-size: 1.125rem;
+    line-height: 1;
+    letter-spacing: -0.025em;
+  }
+
+  .wordmark-manrope {
+    font-family: "Manrope", sans-serif;
+    font-weight: 700;
+  }
+
+  .wordmark-archivo {
+    font-family: "Archivo", sans-serif;
+    font-weight: 700;
+  }
+
+  .wordmark-option--selected {
+    --archivo-title-size: 85px;
+    --archivo-title-fluid-size: 5.902778vw;
+    --archivo-title-min-size: 28.011px;
+    --archivo-nav-title-size: 30.909px;
+  }
+
+  .wordmark-option--selected .wordmark-option__lockup {
+    gap: clamp(6.591px, 1.388889vw, 20px);
+  }
+
+  .wordmark-option--selected .wordmark-option__lockup img {
+    width: clamp(29px, 6.111111vw, 88px);
+  }
+
+  .wordmark-option--selected .wordmark-option__name {
+    font-size: clamp(
+      var(--archivo-title-min-size),
+      var(--archivo-title-fluid-size),
+      var(--archivo-title-size)
+    );
+  }
+
+  .wordmark-option--selected .wordmark-option__nav {
+    gap: 7.273px;
+    font-size: var(--archivo-nav-title-size);
+  }
+
+  .wordmark-option--selected .wordmark-option__nav img {
+    width: 32px;
+    height: 32px;
+  }
+
+  .wordmark-option--selected .wordmark-option__nav span {
+    font-size: 1em;
+  }
+
+  .wordmark-option--selected .wordmark-option__label {
+    color: var(--pst-color-primary);
+  }
+
+  .wordmark-size-control {
+    display: grid;
+    grid-template-columns: auto minmax(12rem, 1fr) auto;
+    gap: 0.75rem 1rem;
+    align-items: center;
+    padding: 1rem;
+    border: 1px solid var(--pst-color-border);
+    background: var(--pst-color-surface);
+  }
+
+  .wordmark-size-control label {
+    margin: 0;
+    font-weight: 700;
+  }
+
+  .wordmark-size-control input {
+    width: 100%;
+    accent-color: var(--pst-color-primary);
+  }
+
+  .wordmark-size-control output {
+    min-width: 12rem;
+    color: var(--pst-color-text-muted);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+
+  .wordmark-size-control p {
+    grid-column: 1 / -1;
+    margin: 0;
+    color: var(--pst-color-text-muted);
+    font-size: 0.875rem;
+  }
+
+  .wordmark-size-presets {
+    display: flex;
+    grid-column: 1 / -1;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  .wordmark-size-presets button {
+    padding: 0.35rem 0.7rem;
+    border: 1px solid var(--pst-color-border);
+    border-radius: 0.2rem;
+    background: var(--pst-color-surface);
+    color: var(--pst-color-text-base);
+    font: inherit;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+  }
+
+  .wordmark-size-presets button:hover {
+    border-color: var(--pst-color-primary);
+  }
+
+  .wordmark-size-presets button[aria-pressed="true"] {
+    border-color: var(--pst-color-primary);
+    color: var(--pst-color-primary);
+    font-weight: 700;
+  }
+
+  .wordmark-size-presets button:focus-visible {
+    outline: 2px solid var(--pst-color-primary);
+    outline-offset: 2px;
+  }
+
+  .wordmark-plex {
+    font-family: "IBM Plex Sans", sans-serif;
+    font-weight: 600;
+  }
+
+  .logo-scale-test {
+    display: flex;
+    align-items: end;
+    gap: 2rem;
+    margin-top: 1rem;
+  }
+
+  .logo-scale-test figure {
+    display: grid;
+    gap: 0.5rem;
+    justify-items: center;
+    margin: 0;
+  }
+
+  .logo-scale-test figcaption {
+    color: var(--pst-color-text-muted);
+    font-size: 0.75rem;
+  }
+
+  @media (max-width: 30rem) {
+    .wordmark-option__name {
+      font-size: 1.5rem;
+    }
+
+    .wordmark-size-control {
+      grid-template-columns: 1fr auto;
+    }
+
+    .wordmark-size-control input {
+      grid-column: 1 / -1;
+      grid-row: 2;
+    }
+
+    .wordmark-size-control output {
+      min-width: auto;
+    }
+  }
+</style>
+<section id="selected-wordmark-and-alternatives">
+<h2>Selected wordmark and alternatives<a class="headerlink" href="#selected-wordmark-and-alternatives" title="Link to this heading">#</a></h2>
+<p>The 88 px icon stays fixed while you tune the Archivo title beside it. Once chosen, that title/icon ratio scales as a unit.</p>
+<div class="wordmark-size-control">
+  <label for="archivo-wordmark-size">Title size against 88 px icon</label>
+  <input id="archivo-wordmark-size" type="range" min="44" max="110" step="1" value="85">
+  <output id="archivo-wordmark-size-output" for="archivo-wordmark-size" aria-live="polite">85 px title · 88 px icon</output>
+  <div class="wordmark-size-presets" role="group" aria-label="Title size presets">
+    <button type="button" data-title-size="85" aria-pressed="true">85 px</button>
+    <button type="button" data-title-size="90" aria-pressed="false">90 px</button>
+    <button type="button" data-title-size="95" aria-pressed="false">95 px</button>
+  </div>
+  <p>Choose the ratio at design scale. The display and navigation previews then preserve exactly the same proportions.</p>
+</div>
+<div class="wordmark-study">
+  <section class="wordmark-option wordmark-option--selected">
+    <p class="wordmark-option__label">Selected — Archivo 700 · 85 px title / 88 px icon</p>
+    <div class="wordmark-option__lockup wordmark-archivo">
+      <img src="_images/01-editorial.svg" alt="">
+      <span class="wordmark-option__name">FastAPI-Restly</span>
+    </div>
+    <div class="wordmark-option__nav wordmark-archivo" aria-label="Selected Archivo lockup at documentation navigation size">
+      <img src="_images/01-editorial.svg" alt="">
+      <span>FastAPI-Restly</span>
+    </div>
+  </section>
+  <section class="wordmark-option">
+    <p class="wordmark-option__label">Alternative — Manrope 700</p>
+    <div class="wordmark-option__lockup wordmark-manrope">
+      <img src="_images/01-editorial.svg" alt="">
+      <span class="wordmark-option__name">FastAPI-Restly</span>
+    </div>
+    <div class="wordmark-option__nav wordmark-manrope" aria-label="Manrope lockup at documentation navigation size">
+      <img src="_images/01-editorial.svg" alt="">
+      <span>FastAPI-Restly</span>
+    </div>
+  </section>
+  <section class="wordmark-option">
+    <p class="wordmark-option__label">Alternative — IBM Plex Sans 600</p>
+    <div class="wordmark-option__lockup wordmark-plex">
+      <img src="_images/01-editorial.svg" alt="">
+      <span class="wordmark-option__name">FastAPI-Restly</span>
+    </div>
+    <div class="wordmark-option__nav wordmark-plex" aria-label="IBM Plex Sans lockup at documentation navigation size">
+      <img src="_images/01-editorial.svg" alt="">
+      <span>FastAPI-Restly</span>
+    </div>
+  </section>
+</div>
+<script>
+  (() => {
+    const slider = document.querySelector("#archivo-wordmark-size");
+    const output = document.querySelector("#archivo-wordmark-size-output");
+    const selected = document.querySelector(".wordmark-option--selected");
+    const selectedLabel = selected?.querySelector(".wordmark-option__label");
+    const presets = document.querySelectorAll("[data-title-size]");
+
+    if (!slider || !output || !selected) {
+      return;
+    }
+
+    const iconSize = 88;
+    const navigationIconSize = 32;
+    const minimumIconSize = 29;
+    const designViewport = 1440;
+
+    const updateWordmarkSize = () => {
+      const titleSize = Number(slider.value);
+      const navigationTitleSize = titleSize * navigationIconSize / iconSize;
+      const fluidTitleSize = titleSize / (designViewport / 100);
+      const minimumTitleSize = titleSize * minimumIconSize / iconSize;
+
+      selected.style.setProperty("--archivo-title-size", `${titleSize}px`);
+      selected.style.setProperty("--archivo-title-fluid-size", `${fluidTitleSize}vw`);
+      selected.style.setProperty("--archivo-title-min-size", `${minimumTitleSize}px`);
+      selected.style.setProperty("--archivo-nav-title-size", `${navigationTitleSize}px`);
+      output.textContent = `${titleSize} px title · ${iconSize} px icon`;
+      slider.setAttribute(
+        "aria-valuetext",
+        `${titleSize} pixel title against an ${iconSize} pixel icon`,
+      );
+
+      if (selectedLabel) {
+        selectedLabel.textContent =
+          `Selected — Archivo 700 · ${titleSize} px title / ${iconSize} px icon`;
+      }
+
+      presets.forEach((preset) => {
+        preset.setAttribute(
+          "aria-pressed",
+          String(Number(preset.dataset.titleSize) === titleSize),
+        );
+      });
+    };
+
+    presets.forEach((preset) => {
+      preset.addEventListener("click", () => {
+        slider.value = preset.dataset.titleSize;
+        updateWordmarkSize();
+      });
+    });
+
+    slider.addEventListener("input", updateWordmarkSize);
+    updateWordmarkSize();
+  })();
+</script>
+</section>
+<section id="selected-icon-editorial-sans">
+<h2>Selected icon — Editorial sans<a class="headerlink" href="#selected-icon-editorial-sans" title="Link to this heading">#</a></h2>
+<div class="sd-container-fluid sd-sphinx-override sd-mb-4 docutils">
+<div class="sd-row sd-row-cols-1 sd-row-cols-xs-1 sd-row-cols-sm-2 sd-row-cols-md-2 sd-row-cols-lg-2 sd-g-3 sd-g-xs-3 sd-g-sm-3 sd-g-md-3 sd-g-lg-3 docutils">
+<div class="sd-col sd-d-flex-column docutils">
+<a class="reference internal image-reference" href="_images/01-editorial.svg"><img alt="Editorial fr. monogram" class="align-center" src="_images/01-editorial.svg" style="width: 280px;" />
+</a>
+</div>
+<div class="sd-col sd-d-flex-column docutils">
+<p>An unboxed, heavy lowercase mark. The open letterforms feel established and direct; the teal period carries the only brand colour.</p>
+<p><a class="reference download internal" download="" href="_downloads/c40b1149f57abc7f377b98edc7c77e71/01-editorial.svg"><code class="xref download docutils literal notranslate"><span class="pre">Open</span> <span class="pre">the</span> <span class="pre">standalone</span> <span class="pre">SVG</span></code></a></p>
+<p class="rubric" id="scale-test">Scale test</p>
+<div class="logo-scale-test" aria-label="Editorial mark at several sizes">
+  <figure><img src="_images/01-editorial.svg" alt="" width="64" height="64"><figcaption>64 px</figcaption></figure>
+  <figure><img src="_images/01-editorial.svg" alt="" width="32" height="32"><figcaption>32 px</figcaption></figure>
+  <figure><img src="_images/01-editorial.svg" alt="" width="16" height="16"><figcaption>16 px</figcaption></figure>
+</div>
+</div>
+</div>
 </div>
 </section>
-<section id="per-route-metadata-on-custom-routes">
-<h2>Per-route metadata on custom routes<a class="headerlink" href="#per-route-metadata-on-custom-routes" title="Link to this heading">#</a></h2>
-<p>To document a custom route, pass keyword arguments to its route decorator;
-the decorators forward them to FastAPI’s <code class="docutils literal notranslate"><span class="pre">add_api_route()</span></code>, so
-custom actions document themselves like any FastAPI endpoint:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
-        <span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">/publish&quot;</span><span class="p">,</span>
-        <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
-        <span class="n">summary</span><span class="o">=</span><span class="s2">&quot;Publish an article&quot;</span><span class="p">,</span>
-        <span class="n">responses</span><span class="o">=</span><span class="p">{</span><span class="mi">409</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Already published&quot;</span><span class="p">}},</span>
-    <span class="p">)</span>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">publish</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span> <span class="o">...</span>
-</pre></div>
+<hr class="docutils" />
+<section id="previous-direction-code-tile">
+<h2>Previous direction — Code tile<a class="headerlink" href="#previous-direction-code-tile" title="Link to this heading">#</a></h2>
+<div class="sd-container-fluid sd-sphinx-override sd-mb-4 docutils">
+<div class="sd-row sd-row-cols-1 sd-row-cols-xs-1 sd-row-cols-sm-2 sd-row-cols-md-2 sd-row-cols-lg-2 sd-g-3 sd-g-xs-3 sd-g-sm-3 sd-g-md-3 sd-g-lg-3 docutils">
+<div class="sd-col sd-d-flex-column docutils">
+<a class="reference internal image-reference" href="_images/02-code-tile.svg"><img alt="Code tile fr. monogram" class="align-center" src="_images/02-code-tile.svg" style="width: 280px;" />
+</a>
+</div>
+<div class="sd-col sd-d-flex-column docutils">
+<p>A monospaced lettermark held inside a compact charcoal tile. It is the most immediately useful favicon and package avatar, with a slightly stronger developer-tool character.</p>
+<p><a class="reference download internal" download="" href="_downloads/08fe5fa5347df53fffd13e0232d708eb/02-code-tile.svg"><code class="xref download docutils literal notranslate"><span class="pre">Open</span> <span class="pre">the</span> <span class="pre">standalone</span> <span class="pre">SVG</span></code></a></p>
+<p class="rubric" id="id1">Scale test</p>
+<div class="logo-scale-test" aria-label="Code tile mark at several sizes">
+  <figure><img src="_images/02-code-tile.svg" alt="" width="64" height="64"><figcaption>64 px</figcaption></figure>
+  <figure><img src="_images/02-code-tile.svg" alt="" width="32" height="32"><figcaption>32 px</figcaption></figure>
+  <figure><img src="_images/02-code-tile.svg" alt="" width="16" height="16"><figcaption>16 px</figcaption></figure>
+</div>
+</div>
+</div>
 </div>
 </section>
-<section id="change-a-generated-route-s-documented-contract">
-<h2>Change a generated route’s documented contract<a class="headerlink" href="#change-a-generated-route-s-documented-contract" title="Link to this heading">#</a></h2>
-<p>A generated route’s <code class="docutils literal notranslate"><span class="pre">response_model</span></code> (and therefore its documented schema)
-comes from the view’s <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema" title="fastapi_restly.views.BaseRestView.schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema</span></code></a> family. To document (and return) a different
-shape on one verb, replace that endpoint method with your own decorator and
-<code class="docutils literal notranslate"><span class="pre">response_model</span></code>; see
-<a class="reference internal" href="howto_response_schema.html"><span class="std std-doc">Response Envelopes and List Metadata</span></a>,
-<a class="reference internal" href="patterns.html#a-different-schema-for-the-list-endpoint"><span class="std std-ref">a different schema for the list endpoint</span></a>,
-and <a class="reference internal" href="customize.html#replace-an-endpoint-method-to-change-the-http-contract"><span class="std std-ref">replacing an endpoint method</span></a>.</p>
-<p>Routes removed with <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.exclude_routes" title="fastapi_restly.views.BaseRestView.exclude_routes"><code class="xref py py-attr docutils literal notranslate"><span class="pre">exclude_routes</span></code></a> disappear from the schema entirely.</p>
-</section>
-<section id="resource-references-x-resource-ref">
-<h2>Resource references (<code class="docutils literal notranslate"><span class="pre">x-resource-ref</span></code>)<a class="headerlink" href="#resource-references-x-resource-ref" title="Link to this heading">#</a></h2>
-<p>Reference fields are annotated in the generated spec so clients and
-generators can see which resource a scalar id points at. Schema fields
-declared with <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.MustExist[int,</span> <span class="pre">Model]</span></code></a>
-(a foreign-key column) or <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDRef[Model]</span></code></a> /
-<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDSchema[Model]</span></code></a> (a relationship)
-carry the vendor extension <code class="docutils literal notranslate"><span class="pre">x-resource-ref:</span> <span class="pre">&quot;&lt;resource-name&gt;&quot;</span></code>. The reference
-styles are covered in
-<a class="reference internal" href="howto_relationship_idschema.html"><span class="std std-doc">Work with Foreign Keys and Relationships</span></a>.</p>
-<p>There is a known limit: views included on an <code class="docutils literal notranslate"><span class="pre">APIRouter</span></code> rather than the app
-currently lose these annotations.</p>
-</section>
-<section id="see-also">
-<h2>See also<a class="headerlink" href="#see-also" title="Link to this heading">#</a></h2>
-<ul class="simple">
-<li><p><a class="reference internal" href="class_based_views.html"><span class="std std-doc">Class-Based Views</span></a>: where the class-level attributes
-come from.</p></li>
-<li><p><a class="reference internal" href="api_reference.html#endpoint-decorators"><span class="std std-ref">Endpoint Decorators</span></a>: the decorator
-surface and pass-through keyword arguments.</p></li>
-</ul>
+<hr class="docutils" />
+<section id="previous-direction-constructed-ligature">
+<h2>Previous direction — Constructed ligature<a class="headerlink" href="#previous-direction-constructed-ligature" title="Link to this heading">#</a></h2>
+<div class="sd-container-fluid sd-sphinx-override sd-mb-4 docutils">
+<div class="sd-row sd-row-cols-1 sd-row-cols-xs-1 sd-row-cols-sm-2 sd-row-cols-md-2 sd-row-cols-lg-2 sd-g-3 sd-g-xs-3 sd-g-sm-3 sd-g-md-3 sd-g-lg-3 docutils">
+<div class="sd-col sd-d-flex-column docutils">
+<a class="reference internal image-reference" href="_images/03-constructed.svg"><img alt="Constructed fr. monogram" class="align-center" src="_images/03-constructed.svg" style="width: 280px;" />
+</a>
+</div>
+<div class="sd-col sd-d-flex-column docutils">
+<p>A custom geometric mark that joins the crossbar of the <em>f</em> to the stem of the <em>r</em>. It is the most ownable direction, but also the furthest from familiar typography.</p>
+<p><a class="reference download internal" download="" href="_downloads/9a780e44daa348a668fa265824d61ffe/03-constructed.svg"><code class="xref download docutils literal notranslate"><span class="pre">Open</span> <span class="pre">the</span> <span class="pre">standalone</span> <span class="pre">SVG</span></code></a></p>
+<p class="rubric" id="id2">Scale test</p>
+<div class="logo-scale-test" aria-label="Constructed mark at several sizes">
+  <figure><img src="_images/03-constructed.svg" alt="" width="64" height="64"><figcaption>64 px</figcaption></figure>
+  <figure><img src="_images/03-constructed.svg" alt="" width="32" height="32"><figcaption>32 px</figcaption></figure>
+  <figure><img src="_images/03-constructed.svg" alt="" width="16" height="16"><figcaption>16 px</figcaption></figure>
+</div>
+</div>
+</div>
+</div>
 </section>
 </section>
 
@@ -612,24 +919,6 @@ surface and pass-through keyword arguments.</p></li>
                 <footer class="prev-next-footer d-print-none">
                   
 <div class="prev-next-area">
-    <a class="left-prev"
-       href="howto_react_admin.html"
-       title="previous page">
-      <i class="fa-solid fa-angle-left"></i>
-      <div class="prev-next-info">
-        <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">React Admin Integration</p>
-      </div>
-    </a>
-    <a class="right-next"
-       href="howto_testing.html"
-       title="next page">
-      <div class="prev-next-info">
-        <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Test APIs with RestlyTestClient and Fixtures</p>
-      </div>
-      <i class="fa-solid fa-angle-right"></i>
-    </a>
 </div>
                 </footer>
               
@@ -649,11 +938,10 @@ surface and pass-through keyword arguments.</p></li>
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#per-view-metadata">Per-view metadata</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#per-route-metadata-on-custom-routes">Per-route metadata on custom routes</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#change-a-generated-route-s-documented-contract">Change a generated route’s documented contract</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#resource-references-x-resource-ref">Resource references (<code class="docutils literal notranslate"><span class="pre">x-resource-ref</span></code>)</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#see-also">See also</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#selected-wordmark-and-alternatives">Selected wordmark and alternatives</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#selected-icon-editorial-sans">Selected icon — Editorial sans</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#previous-direction-code-tile">Previous direction — Code tile</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#previous-direction-constructed-ligature">Previous direction — Constructed ligature</a></li>
 </ul>
   </nav></div>
 

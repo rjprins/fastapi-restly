@@ -1,6 +1,81 @@
-/* Slightly tighten the hero title on the index page */
-.bd-content h1:first-of-type {
-    font-size: 2.4rem;
+/* Documentation wordmark: preserve the selected 85 px title / 88 px icon ratio. */
+.navbar-brand.logo:has(> img[src$="fr-monogram.svg"]) {
+    gap: 0.235294em;
+    font-family: "Archivo", var(--pst-font-family-heading);
+    font-size: 30.909px;
+    font-weight: 700;
+}
+
+.navbar-brand.logo:has(> img[src$="fr-monogram.svg"]) .logo__image {
+    flex: 0 0 auto;
+    width: 1.035294em;
+    height: 1.035294em;
+}
+
+.navbar-brand.logo:has(> img[src$="fr-monogram.svg"]) .logo__title {
+    font-size: 1em;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.045em;
+}
+
+@media (min-width: 62rem) {
+    .bd-header .navbar-header-items__start,
+    .bd-header .navbar-header-items {
+        width: auto;
+    }
+
+    .bd-header .navbar-header-items {
+        min-width: 0;
+    }
+}
+
+@media (min-width: 84rem) {
+    .bd-header ul.bd-navbar-elements > li.nav-item {
+        margin-inline: 0.25rem;
+    }
+}
+
+@media (max-width: 35rem) {
+    .navbar-brand.logo:has(> img[src$="fr-monogram.svg"]) {
+        font-size: 27px;
+    }
+}
+
+.bd-header .nav-link.nav-external[href="https://www.fastapi-restly.org/blog/"]::after,
+.bd-header .nav-link.nav-external[href="https://www.fastapi-restly.org/"]::after {
+    content: none;
+}
+
+/* Homepage wordmark: keep the mark and title together. */
+.bd-article h1:has(> img[src$="fr-monogram.svg"]) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.235294em;
+    margin: 0 0 2rem;
+    font-family: "Archivo", var(--pst-font-family-heading);
+    font-size: clamp(1.75rem, 5.902778vw, 5.3125rem);
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.045em;
+    white-space: nowrap;
+}
+
+.bd-article h1 > img[src$="fr-monogram.svg"] {
+    flex: 0 0 auto;
+    width: 1.035294em;
+    height: auto;
+}
+
+.bd-article h1:has(> img[src$="fr-monogram.svg"]) > .headerlink {
+    display: none;
+}
+
+html[data-theme="dark"] .bd-article h1 > img[src$="fr-monogram.svg"] {
+    border-radius: 0;
+    background-color: transparent;
+    content: url("fr-monogram-dark.svg");
 }
 
 /* Hide the "Section Navigation" sidebar block when it has no links */
@@ -80,7 +155,7 @@
 
 /* Mark body links that leave the site with the theme's external-link icon (the
    same marker the navbar applies via .nav-external). Scoped to body content;
-   skips links that wrap an image (e.g. the README badges). */
+   skips links that wrap an image, such as linked badges. */
 .bd-article a.reference.external:not(:has(img))::after {
     content: var(--pst-icon-external-link);
     font: var(--fa-font-solid);
