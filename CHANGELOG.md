@@ -41,7 +41,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   capped at `default_page_size` (50) instead of returning the whole table. Set
   `paginated = False` on a view for an unpaginated `{"data": [...]}` response — no
   metadata, and no `page`/`page_size` query parameters. Single-object responses are
-  unchanged (bare object). This replaces the opt-in `include_pagination_metadata`
+  unchanged (bare object). A paginated view's `default_page_size` must be an int in
+  `[1, max_page_size]`; `None` (the old "no cap" idiom) or an out-of-range value now
+  raises at registration. Set `paginated = False` to return every row uncapped.
+  This replaces the opt-in `include_pagination_metadata`
   flag (which defaulted to an unbounded bare array) and renames the envelope keys
   (`items` → `data`, `total` → `total_count`). `include_pagination_metadata` and
   `to_paginated_listing_response()` are removed; override `to_listing_response()`

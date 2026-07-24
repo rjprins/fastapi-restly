@@ -1,5 +1,6 @@
 """Tests for the list response envelope and pagination metadata."""
 
+import pytest
 from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
@@ -71,6 +72,72 @@ def test_unpaginated_view_returns_data_envelope_without_metadata(client):
     rejected = client.get("/widgets/?page_size=5", assert_status_code=422)
     locs = [item.get("loc") for item in rejected.json().get("detail", [])]
     assert ["query", "page_size"] in locs
+
+
+def test_paginated_view_rejects_out_of_range_default_page_size(client):
+    """A paginated view whose ``default_page_size`` falls outside
+    ``[1, max_page_size]`` (e.g. ``0``) is rejected at registration rather than
+    silently returning empty pages."""
+
+    class Gizmo(fr.IDBase):
+        name: Mapped[str]
+
+    class GizmoSchema(fr.IDSchema):
+        name: str
+
+    with pytest.raises(ValueError, match="set 'paginated = False'"):
+
+        @fr.include_view(client.app)
+        class GizmoView(fr.AsyncRestView):
+            prefix = "/gizmos"
+            model = Gizmo
+            schema = GizmoSchema
+            default_page_size = 0
+
+
+def test_paginated_view_rejects_none_default_page_size(client):
+    """``default_page_size = None`` (the pre-envelope "no cap" idiom) now raises
+    at registration instead of 500ing on the first list request."""
+
+    class Doohickey(fr.IDBase):
+        name: Mapped[str]
+
+    class DoohickeySchema(fr.IDSchema):
+        name: str
+
+    with pytest.raises(ValueError, match="set 'paginated = False'"):
+
+        @fr.include_view(client.app)
+        class DoohickeyView(fr.AsyncRestView):
+            prefix = "/doohickeys"
+            model = Doohickey
+            schema = DoohickeySchema
+            default_page_size = None  # type: ignore[assignment]
+
+
+def test_unpaginated_view_ignores_default_page_size(client):
+    """``default_page_size`` is unused when ``paginated = False``, so an
+    otherwise-invalid value must not trip the guard."""
+
+    class Sprocket(fr.IDBase):
+        name: Mapped[str]
+
+    class SprocketSchema(fr.IDSchema):
+        name: str
+
+    @fr.include_view(client.app)
+    class SprocketView(fr.AsyncRestView):
+        prefix = "/sprockets"
+        model = Sprocket
+        schema = SprocketSchema
+        paginated = False
+        default_page_size = 0  # unused; must not raise
+
+    create_tables()
+
+    response = client.get("/sprockets/")
+    assert response.status_code == 200
+    assert set(response.json()) == {"data"}
 
 
 def test_default_page_size_caps_a_large_result_set(client):

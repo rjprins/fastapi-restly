@@ -1181,6 +1181,22 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
                 type[SchemaT], auto_generate_schema_for_view(cls, cls.model)
             )
 
+        # A paginated view always caps at ``default_page_size``, so it must be a
+        # usable size. Reject ``None`` (the pre-envelope "no cap" idiom) and
+        # out-of-range values at registration -- otherwise ``None`` would 500 at
+        # request time and ``0`` would silently return empty pages. Point the
+        # author at the real "don't paginate" switch.
+        if cls.paginated and (
+            not isinstance(cls.default_page_size, int)
+            or not (1 <= cls.default_page_size <= cls.max_page_size)
+        ):
+            raise ValueError(
+                f"{cls.__name__}.default_page_size must be an int in "
+                f"[1, {cls.max_page_size}], got {cls.default_page_size!r}. "
+                "To return every matching row without pagination, "
+                "set 'paginated = False'."
+            )
+
         if "listing_param_schema" not in cls.__dict__:
             if not hasattr(cls, "model"):
                 raise ValueError(
