@@ -123,6 +123,19 @@ session:
       command.upgrade(Config("alembic.ini"), "head")
   ```
 
+The Alembic fixture above runs migrations through your `alembic/env.py`, which
+resolves its own database URL, often your development database rather than the
+one you pass to `fr.configure()`. Point `env.py` at the same URL Restly is
+configured with (read it from the environment, say), or the upgrade lands on the
+wrong database and the tests run against an unmigrated one.
+
+Both approaches above are session-scoped deliberately, and must run before the
+per-test session fixtures. Those fixtures wrap each test in an outer transaction
+that rolls back at teardown, so `fr.db.create_all()` (or `async_create_all()`)
+called from inside a test creates its tables on that test's connection and loses
+them when the transaction rolls back. Created once per session, the schema is in
+place before any test swaps the session factory, and every test sees it.
+
 See [Migrations with Alembic](deploying.md#migrations-with-alembic) for
 production migration setup.
 
