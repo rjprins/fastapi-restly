@@ -2,7 +2,7 @@
 <feed xmlns="http://www.w3.org/2005/Atom" xml:lang="en">
   <id>https://www.fastapi-restly.org/blog/</id>
   <title>FastAPI-Restly Blog</title>
-  <updated>2026-07-24T14:36:45.678658+00:00</updated>
+  <updated>2026-07-24T14:46:35.758020+00:00</updated>
   <link href="https://www.fastapi-restly.org/blog/"/>
   <link href="https://www.fastapi-restly.org/blog/posts/atom.xml" rel="self"/>
   <generator uri="https://ablog.readthedocs.io/" version="0.11.13">ABlog</generator>
