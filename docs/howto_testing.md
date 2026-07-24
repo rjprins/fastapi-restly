@@ -1,9 +1,8 @@
 # Test APIs with RestlyTestClient and Fixtures
 
 FastAPI-Restly ships a test client with sensible status-code assertions and a
-small pytest plugin with savepoint-isolated database fixtures. This page is a
-recipe first and a reference second: set up a working `conftest.py`, write a
-first test, then look up exact fixture behavior below.
+small pytest plugin that isolates every test on your database. You configure the
+suite once, and then write tests that only talk to your API.
 
 ## Setup
 
@@ -23,57 +22,29 @@ manually in `conftest.py`:
 pytest_plugins = ["fastapi_restly.pytest_fixtures"]
 ```
 
-Restly registers no autouse fixtures; nothing happens until a test requests
-one.
-
-## A complete conftest.py
-
-The fixtures isolate tests on whatever database {func}`fr.configure() <fastapi_restly.db.configure>` points at;
-they never create the schema. Here is a minimal, copy-paste setup for an
-async app:
+Then configure the suite:
 
 ```python
 # conftest.py
-import asyncio
-from pathlib import Path
-
 import fastapi_restly as fr
-import pytest
 
-from myapp.main import app as myapp
+from myapp.main import app
 from myapp.models import Base
 
-fr.configure(async_database_url="sqlite+aiosqlite:///./test.db")
-
-
-@pytest.fixture(scope="session", autouse=True)
-def _create_schema():
-    # Start from a clean file: a leftover test.db (an interrupted run, or an
-    # older schema) would seed rows and tables below the per-test transaction
-    # that never roll back.
-    for leftover in Path().glob("test.db*"):
-        leftover.unlink()
-    asyncio.run(fr.db.async_create_all(Base))
-
-
-@pytest.fixture
-def restly_app():
-    # restly_client wraps whatever this fixture returns.
-    return myapp
-
-
-@pytest.fixture(autouse=True)
-async def _isolate_every_test(restly_async_session):
-    """Give every test savepoint isolation, client tests included."""
+fr.testing.configure_tests(
+    app=app,
+    async_database_url="sqlite+aiosqlite:///./test.db",
+    create_all_from=Base,
+)
 ```
 
-The last fixture matters: the savepoint isolation lives in the *session*
-fixtures, which swap Restly's session factory for the duration of a test.
-`restly_client` alone does not isolate: a client-only test commits real rows
-to the configured database. The autouse wrapper opts every test in.
+That is the whole setup. Until you call
+{func}`configure_tests() <fastapi_restly.testing.configure_tests>` the plugin does
+nothing: its fixtures are there, but none of them act on a suite that has not
+asked for them.
 
-The session fixtures need an async pytest plugin such as `pytest-asyncio`;
-configure it in `pyproject.toml`:
+Async suites need an async pytest plugin such as `pytest-asyncio`. Configure it
+in `pyproject.toml`:
 
 ```toml
 [tool.pytest.ini_options]
@@ -81,12 +52,35 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 ```
 
-Without that (or an equivalent `anyio` setup), async tests and fixtures fail
-to collect or produce confusing errors.
+Without that, or an equivalent `anyio` setup, async tests and fixtures fail to
+collect or produce confusing errors. Your tests themselves can stay synchronous
+even when your app is async.
+
+## What you get
+
+Four things, which is about what any database-backed suite needs.
+
+**A test database of your own.** The URL you pass replaces whatever your
+application configured when it was imported, so the suite never writes to your
+development database. Pass no database and Restly raises rather than pick one
+for you.
+
+**A schema that is already there.** Tables are created once, before the first
+test, either from your models with `create_all_from=` or by running your
+migrations with `alembic_upgrade=`.
+
+**A clean database in every test.** Everything a test writes is rolled back when
+it finishes, so no test sees another's rows and the suite does not care what
+order it runs in. There is no teardown to write and no database to rebuild
+between tests, which is what keeps a suite fast as it grows. See
+[the isolation model](#isolation-model) for how that rollback works.
+
+**A client wired to your app.** `restly_client` sends real requests to the app
+you passed, and those requests roll back with everything else.
 
 ## A first test
 
-With the conftest in place, a test only needs to request `restly_client`:
+A test needs nothing but the client:
 
 ```python
 # test_users.py
@@ -100,41 +94,41 @@ def test_create_and_fetch_user(restly_client):
     assert data["name"] == "Jane"
 ```
 
-Everything the test writes (through the client or a session fixture) is
-rolled back afterward; see [the isolation model](#isolation-model).
+The user this test creates is gone by the time the next test runs. To work
+against the database directly instead of through the API, ask for a session
+fixture; see [the fixture reference](#fixture-reference).
 
 ## Test databases and migrations
 
-Point {func}`fr.configure() <fastapi_restly.db.configure>` at a dedicated test database; the fixtures roll back
-everything after each test, but schema setup is still your job, once per
-session:
+The schema has to come from somewhere, and `configure_tests()` gives you three
+options.
 
-- **{func}`async_create_all <fastapi_restly.db.async_create_all>`** (above) builds the schema straight from your models;
-  this is fine when migrations are not part of what you are testing.
-- **Alembic**: if you want tests to run against the migrated schema, upgrade
-  in the same session fixture instead:
+**From your models**, with `create_all_from=Base`, which builds the tables the
+way {func}`fr.db.create_all() <fastapi_restly.db.create_all>` does. This is the
+quickest route, and the right one when migrations are not part of what you are
+testing. Point it at a database you are willing to lose: a leftover file from an
+older run keeps its stale tables, since creating a schema never drops one.
 
-  ```python
-  from alembic import command
-  from alembic.config import Config
+**From your migrations**, with `alembic_upgrade=True`, which runs
+`alembic upgrade head` before the first test. Restly resolves `alembic.ini`
+relative to your project rather than to the directory you happened to run pytest
+from, and sets `sqlalchemy.url` on the config to the database configured here.
+A stock `env.py` that reads that URL therefore migrates your test database, not
+whatever it would otherwise resolve on its own. Pass a path if the config lives
+somewhere else:
 
-  @pytest.fixture(scope="session", autouse=True)
-  def _migrate_schema():
-      command.upgrade(Config("alembic.ini"), "head")
-  ```
+```python
+fr.testing.configure_tests(
+    app=app,
+    database_url="postgresql+psycopg://localhost/myapp_test",
+    alembic_upgrade="backend/alembic.ini",
+)
+```
 
-The Alembic fixture above runs migrations through your `alembic/env.py`, which
-resolves its own database URL, often your development database rather than the
-one you pass to `fr.configure()`. Point `env.py` at the same URL Restly is
-configured with (read it from the environment, say), or the upgrade lands on the
-wrong database and the tests run against an unmigrated one.
-
-Both approaches above are session-scoped deliberately, and must run before the
-per-test session fixtures. Those fixtures wrap each test in an outer transaction
-that rolls back at teardown, so `fr.db.create_all()` (or `async_create_all()`)
-called from inside a test creates its tables on that test's connection and loses
-them when the transaction rolls back. Created once per session, the schema is in
-place before any test swaps the session factory, and every test sees it.
+**Yourself**, by passing neither. Restly then leaves the schema alone, which is
+what you want when your suite already builds it or your migrations are not
+Alembic. Build it once per session rather than per test: each test runs inside a
+transaction that rolls back, so tables created inside one are discarded with it.
 
 See [Migrations with Alembic](deploying.md#migrations-with-alembic) for
 production migration setup.
@@ -187,16 +181,19 @@ behavior.
 
 **Scope:** `function`
 
-Returns a bare `FastAPI()` instance. Override it in your `conftest.py` (as in
-the recipe above) so `restly_client` wraps your actual application.
+Returns the app you passed to `configure_tests(app=...)`. Without one it returns
+a bare `FastAPI()`, and every request answers 404; override this fixture in your
+`conftest.py` if you would rather supply the app that way.
 
 ### `restly_client`
 
 **Scope:** `function`
 
 A [`RestlyTestClient`](#restlytestclient) wrapping the `restly_app` fixture.
-On its own it provides **no database isolation**; pair it with a session
-fixture (the conftest recipe's autouse wrapper does this for every test).
+Requests made through it are isolated along with the rest of the test. On its
+own, in a suite that never called `configure_tests()` and requests no session
+fixture, it provides **no isolation**: a client-only test commits real rows to
+the configured database.
 
 ### `restly_session`
 
@@ -236,7 +233,7 @@ def test_user_created(restly_session):
 **Scope:** `function`
 
 The async version of `restly_session`; it requires the [async pytest
-setup](#a-complete-conftestpy). In async-only projects it needs only
+setup](#setup). In async-only projects it needs only
 `fr.configure(async_database_url=...)`. It skips automatically if no async
 session source is configured at all. It handles a configured `session_generator`
 (and `fr.open_async_session()`) the same way `restly_session` handles
@@ -276,7 +273,9 @@ its own sub-project's root.
 ## Isolation model
 
 Both session fixtures use layered transactions: data is visible during the
-test and rolled back afterward.
+test and rolled back afterward. This is SQLAlchemy's own recipe for test
+suites, [joining a session into an external
+transaction](https://docs.sqlalchemy.org/en/20/orm/session_transaction.html#session-external-transaction).
 
 1. The fixture opens a connection for the test and binds the SQLAlchemy
    session to that connection.
@@ -284,8 +283,7 @@ test and rolled back afterward.
    in `create_savepoint` mode, so code under test builds its own isolated
    session on the shared connection, and clear a configured session generator,
    which the session dependency would otherwise read first. Together these are
-   what make app/client requests isolated too, and it is why the conftest recipe
-   requests the session fixture for every test.
+   what make app and client requests isolated too.
 3. Each session joins the outer transaction through a savepoint, so its
    `commit()` releases the savepoint (state visible on the connection) without a
    real database commit, and its `rollback()` discards only that session's own
@@ -296,6 +294,11 @@ test and rolled back afterward.
 Savepoints keep in-test commits usable; the uncommitted outer transaction
 provides the final isolation. Tests that never call `commit()` are still
 isolated, and there is no per-test teardown code or schema rebuild.
+
+That last point is what makes the approach fast. Cleaning up is a single
+rollback on a connection that is already open, so it costs the same whether a
+test wrote one row or a thousand, and unlike dropping and recreating tables it
+does not get slower as your schema grows.
 
 Explicit transaction blocks behave as in production: `with restly_session.begin():
 ...` and `async with restly_async_session.begin(): ...` commit on success and

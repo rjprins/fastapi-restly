@@ -310,6 +310,7 @@ The testing utilities provide a status-asserting client and savepoint-based isol
 
 | Symbol | Description |
 |---|---|
+| {func}`fastapi_restly.testing.configure_tests(...) <fastapi_restly.testing.configure_tests>` | Configure a test suite in one call: the app under test, the test database, an optional schema step (`create_all_from=` or `alembic_upgrade=`), and isolation for every test. Raises rather than inherit an already-configured database. |
 | {class}`fastapi_restly.testing.RestlyTestClient` | Sync test client wrapper around FastAPI's `TestClient` with default status-code assertions. It can test async FastAPI routes and `AsyncRestView` endpoints. |
 
 The pytest fixtures below are auto-loaded by the `testing` extra; their full
@@ -317,7 +318,7 @@ behavior is documented in [Testing](howto_testing.md#fixture-reference):
 
 | Fixture | Scope | One-liner |
 |---|---|---|
-| `restly_app` | function | Bare `FastAPI()`; override in `conftest.py` to return your app. |
+| `restly_app` | function | The app passed to `configure_tests(app=...)`; a bare `FastAPI()` otherwise. |
 | `restly_client` | function | `RestlyTestClient` wrapping `restly_app`. |
 | `restly_session` | function | Savepoint-isolated SQLAlchemy `Session`; needs a sync sessionmaker — skips if nothing is configured, raises if only a `sync_session_generator` is. |
 | `restly_async_session` | function | Async savepoint-isolated session; needs an async sessionmaker — skips if nothing is configured, raises if only a `session_generator` is. |

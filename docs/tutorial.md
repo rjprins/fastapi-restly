@@ -257,8 +257,24 @@ item = client.get(f"/posts/{post.json()['id']}")
 ```
 
 For test isolation, install the testing extra (`pip install "fastapi-restly[testing]"`);
-pytest then auto-loads Restly's fixtures. The `restly_client` fixture used below wraps
-each test in a database savepoint, so changes never persist between tests:
+pytest then auto-loads Restly's fixtures. Point the suite at a test database in
+`conftest.py`:
+
+```python
+# conftest.py
+import fastapi_restly as fr
+
+from main import app
+
+fr.testing.configure_tests(
+    app=app,
+    async_database_url="sqlite+aiosqlite:///./test.db",
+    create_all_from=fr.IDBase,
+)
+```
+
+Tests then need nothing but the client, and everything they write is rolled back
+when they finish:
 
 ```python
 # test_posts.py
