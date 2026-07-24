@@ -103,6 +103,7 @@ html_context = {
     "github_repo": "fastapi-restly",
     "github_version": "main",
     "doc_path": "docs",
+    "default_mode": "auto",
 }
 html_static_path = ["_static"]
 # CNAME must ship in every publish: ghp-import replaces the gh-pages branch

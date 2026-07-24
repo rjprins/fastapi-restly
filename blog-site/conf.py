@@ -62,6 +62,7 @@ html_context = {
     "github_repo": "fastapi-restly",
     "github_version": "main",
     "doc_path": "blog",
+    "default_mode": "auto",
 }
 # Branding is shared with the docs build; templates stay local because the
 # docs newsletter template links by docname, which does not exist here.
