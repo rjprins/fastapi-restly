@@ -975,6 +975,15 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     request: fastapi.Request
 
     def get_relationship_loader_options(self) -> list[Any]:
+        """Loader options for the relationships the response schema names.
+
+        Returns recursive ``selectinload(...)`` options derived from
+        ``self.schema``, applied on reads (``get_one`` / ``get_many``) and on
+        the post-write reload in ``save_object``. Override to eager-load
+        relationships the schema does not name on both paths; append to
+        ``super().get_relationship_loader_options()`` to keep the schema-derived
+        loads. See the "Relationship Loading and Async" how-to.
+        """
         return _build_relationship_loader_options(self.model, self.schema)
 
     def _get_response_reload_statement(self, obj: Any) -> Any:

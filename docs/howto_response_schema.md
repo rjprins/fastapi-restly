@@ -174,3 +174,4 @@ override for the runtime shape, and a replaced shell with a matching
 - [Customize RestView](customize.md): endpoint-method replacement mechanics, and [a different schema for the list endpoint](patterns.md#a-different-schema-for-the-list-endpoint).
 - [Shape Error Responses](howto_error_responses.md): errors bypass `to_response`.
 - [Filter, Sort, and Paginate Lists](howto_query_modifiers.md): the pagination inputs clients send.
+- [Relationship Loading and Async](howto_relationship_loading.md): how nested relationship fields load, and `MissingGreenlet` on async.

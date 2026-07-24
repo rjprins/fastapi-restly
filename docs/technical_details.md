@@ -234,7 +234,11 @@ Nested schemas serve two different roles in Restly today:
   `@property` walking a relationship nothing else loads -- runs in plain async
   context, where a bare attribute access raises `MissingGreenlet`. Restly's
   declarative base mixes in SQLAlchemy's `AsyncAttrs` for exactly that case, so
-  those reads can be spelled `await obj.awaitable_attrs.items`.
+  those reads can be spelled `await obj.awaitable_attrs.items`. The
+  task-focused guide to all of this, including extending the loaded set and
+  resolving `MissingGreenlet`, is
+  [Relationship Loading and Async](howto_relationship_loading.md); this section
+  covers the mechanism behind it.
 - **Create/update payloads** are not supported in the general case. The default
   `make_new_object()` / `update_object()` flow expects payload keys to map
   directly to model attributes, with `*_id: fr.MustExist[int, Model]`

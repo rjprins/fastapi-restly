@@ -36,6 +36,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   for the code that runs outside that set — an `after_commit` hook, a custom
   business method.
 
+- `get_relationship_loader_options()` is now a documented override point: it
+  returns the `selectinload(...)` options derived from the response schema,
+  applied on reads and on the write-response reload. Override it to eager-load
+  relationships the schema does not name on both read and write paths. New
+  how-to, "Relationship Loading and Async", collects the loading model and the
+  `MissingGreenlet` fixes.
+
 ## [0.8.0] - 2026-07-22
 
 ### Added
