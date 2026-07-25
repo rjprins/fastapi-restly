@@ -192,11 +192,34 @@ def register_default_exception_handlers(app: FastAPI) -> None:
 
     app.add_exception_handler(IntegrityError, integrity_error_handler)
     setattr(app.state, _HANDLERS_INSTALLED_FLAG, True)
-    # Starlette caches the handler set the first time the app is called, which
-    # includes entering a test client to run its lifespan. Registering a view
-    # after that would otherwise leave this handler out of the stack, and an
-    # IntegrityError would surface as a 500 instead of a 409.
-    app.middleware_stack = None
+    _register_on_built_stack(app)
+
+
+def _register_on_built_stack(app: FastAPI) -> None:
+    """Also register on an application that has already been called.
+
+    Starlette builds its middleware stack on the first call and the stack caches
+    the handler map, so a view registered after that would leave this handler out
+    and an ``IntegrityError`` would surface as a 500. Entering a test client to
+    run the lifespan is enough to build it.
+
+    Reach the ``ExceptionMiddleware`` already in the stack rather than discarding
+    the stack to force a rebuild: rebuilding constructs every user middleware
+    again, dropping whatever state the live instances hold, and it would briefly
+    disarm Starlette's own "cannot add middleware after startup" check.
+    """
+    stack = getattr(app, "middleware_stack", None)
+    if stack is None:
+        return
+
+    from starlette.middleware.exceptions import ExceptionMiddleware
+
+    node: Any = stack
+    while node is not None:
+        if isinstance(node, ExceptionMiddleware):
+            node.add_exception_handler(IntegrityError, integrity_error_handler)
+            return
+        node = getattr(node, "app", None)
 
 
 __all__ = ["integrity_error_handler", "register_default_exception_handlers"]

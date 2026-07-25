@@ -35,6 +35,7 @@ DB_CLEANUP_MODES = (ROLLBACK, TRUNCATE, NONE)
 #: Overrides the ``db_cleanup=`` argument; ``--restly-db-cleanup`` overrides this.
 DB_CLEANUP_ENV_VAR = "RESTLY_DB_CLEANUP"
 
+
 @dataclass(frozen=True)
 class _TestSetup:
     """What :func:`configure_tests` recorded, read by the plugin's autouse fixtures."""

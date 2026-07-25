@@ -267,3 +267,40 @@ def test_handler_callable_signature():
     app = FastAPI()
     app.add_exception_handler(IntegrityError, integrity_error_handler)
     assert app.exception_handlers[IntegrityError] is integrity_error_handler
+
+
+def test_registering_after_the_app_ran_does_not_rebuild_the_middleware_stack():
+    """Discarding the stack to force a rebuild would construct every user
+    middleware again, dropping the state the live instances hold, and would
+    briefly disarm Starlette's own post-startup guard."""
+    from starlette.middleware.base import BaseHTTPMiddleware
+
+    from fastapi_restly._exception_handlers import register_default_exception_handlers
+    from fastapi_restly.testing import RestlyTestClient
+
+    constructions = []
+
+    class Counting(BaseHTTPMiddleware):
+        def __init__(self, app, **kwargs):
+            constructions.append("built")
+            super().__init__(app, **kwargs)
+
+        async def dispatch(self, request, call_next):
+            return await call_next(request)
+
+    app = FastAPI()
+    app.add_middleware(Counting)
+
+    @app.get("/ping")
+    def ping():
+        return {"ok": True}
+
+    with RestlyTestClient(app) as client:
+        client.get("/ping")
+        assert constructions == ["built"]
+
+        register_default_exception_handlers(app)  # what include_view does
+
+        client.get("/ping")
+        assert constructions == ["built"], "user middleware was constructed again"
+        assert app.middleware_stack is not None, "the stack was discarded"
