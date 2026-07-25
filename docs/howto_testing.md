@@ -1,7 +1,7 @@
 # Test APIs with RestlyTestClient and Fixtures
 
 FastAPI-Restly ships a test client with sensible status-code assertions and a
-small pytest plugin that isolates every test on your database. You configure the
+small pytest plugin that gives every test a clean database. You configure the
 suite once, and then write tests that only talk to your API.
 
 ## Setup
@@ -73,7 +73,7 @@ migrations with `alembic_upgrade=`.
 it finishes, so no test sees another's rows and the suite does not care what
 order it runs in. There is no teardown to write and no database to rebuild
 between tests, which is what keeps a suite fast as it grows. See
-[the isolation model](#isolation-model) for how that rollback works, and
+[savepoints and rollback](#savepoints-and-rollback) for how that works, and
 [cleaning up between tests](#cleaning-up-between-tests) for the two cases it
 cannot serve.
 
@@ -141,9 +141,9 @@ Every test starts from a clean database, and `db_cleanup` decides how. The
 default suits most suites; the other two exist for what it cannot serve.
 
 **`"rollback"`**, the default, wraps each test in a transaction and rolls it back
-at the end, through the savepoints [the isolation model](#isolation-model)
-describes. Nothing is ever committed, which is what makes it the fastest option,
-and it leaves reference data your migrations seeded untouched.
+at the end, through the savepoints described [below](#savepoints-and-rollback).
+Nothing is ever committed, which is what makes it the fastest option, and it
+leaves reference data your migrations seeded untouched.
 
 **`"truncate"`** empties the tables before each test instead, and lets writes
 commit for real. It is slower and wants a database of its own, but the rows the
@@ -243,9 +243,9 @@ a bare `FastAPI()`, and every request answers 404; override this fixture in your
 **Scope:** `function`
 
 A [`RestlyTestClient`](#restlytestclient) wrapping the `restly_app` fixture.
-Requests made through it are isolated along with the rest of the test. On its
-own, in a suite that never called `configure_tests()` and requests no session
-fixture, it provides **no isolation**: a client-only test commits real rows to
+Requests made through it are rolled back with the rest of the test. On its own,
+in a suite that never called `configure_tests()` and requests no session
+fixture, **nothing rolls them back**: a client-only test commits real rows to
 the configured database.
 
 ### `restly_session`
@@ -260,14 +260,14 @@ the test. The fixture skips automatically if no sync session source is
 configured at all.
 
 A configured `sync_session_generator` is cleared for the duration of the test
-and restored afterwards, so the request builds its own isolated session on the
+and restored afterwards, so the request builds its own session on the
 fixture's connection instead. What is lost is anything the generator body runs
 per session, a `SET search_path` for example. Configure a sync sessionmaker for
 the tests as well: with only a generator the fixture has nothing to build the
 session from, and it raises rather than skip.
 
 `fr.open_session()` resolves the same factory `SessionDep` does, so it too
-yields an isolated session on the fixture's connection during a test.
+yields a session on the fixture's connection during a test.
 
 Under any [cleanup mode](#cleaning-up-between-tests) other than `rollback` this
 fixture yields a plain session on the configured database instead, since rolling
@@ -327,40 +327,28 @@ to the test file rather than the working directory, it returns the same root
 regardless of where pytest was invoked, and in a monorepo each test resolves to
 its own sub-project's root.
 
-## Isolation model
+## Savepoints and rollback
 
-Both session fixtures use layered transactions: data is visible during the
-test and rolled back afterward. This is SQLAlchemy's own recipe for test
-suites, [joining a session into an external
+The default mode follows SQLAlchemy's own recipe for test suites, [joining a
+session into an external
 transaction](https://docs.sqlalchemy.org/en/20/orm/session_transaction.html#session-external-transaction).
+The fixture opens one connection, begins a transaction on it, and points Restly's
+session factory at that connection in `create_savepoint` mode. Every session
+built during the test, including the ones requests build, joins that transaction
+through a savepoint.
 
-1. The fixture opens a connection for the test and binds the SQLAlchemy
-   session to that connection.
-2. The fixtures swap Restly's session factory for one bound to that connection
-   in `create_savepoint` mode, so code under test builds its own isolated
-   session on the shared connection, and clear a configured session generator,
-   which the session dependency would otherwise read first. Together these are
-   what make app and client requests isolated too.
-3. Each session joins the outer transaction through a savepoint, so its
-   `commit()` releases the savepoint (state visible on the connection) without a
-   real database commit, and its `rollback()` discards only that session's own
-   work.
-4. After the test, the connection is closed without committing, rolling back
-   all changes and restoring the database to its pre-test state.
+A `commit()` therefore releases a savepoint rather than reaching the database,
+and a `rollback()` discards only that session's own work, so both behave the way
+they do in production. The outer transaction is never committed: closing the
+connection at the end of the test undoes everything at once.
 
-Savepoints keep in-test commits usable; the uncommitted outer transaction
-provides the final isolation. Tests that never call `commit()` are still
-isolated, and there is no per-test teardown code or schema rebuild.
+That is also what makes it fast. Cleanup is one rollback on a connection that is
+already open, so it costs the same whether a test wrote one row or a thousand,
+and it does not slow down as your schema grows.
 
-That last point is what makes the approach fast. Cleaning up is a single
-rollback on a connection that is already open, so it costs the same whether a
-test wrote one row or a thousand, and unlike dropping and recreating tables it
-does not get slower as your schema grows.
-
-Explicit transaction blocks behave as in production: `with restly_session.begin():
-...` and `async with restly_async_session.begin(): ...` commit on success and
-roll back on error, scoped to the fixture's outer transaction so nothing persists
-past the test.
+Explicit transaction blocks behave as in production too: `with
+restly_session.begin(): ...` and its async form commit on success and roll back
+on error, scoped to the outer transaction so nothing survives the test.
 
 ## Inspecting the database
 
