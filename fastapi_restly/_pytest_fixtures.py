@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import weakref
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -14,6 +15,7 @@ from sqlalchemy.orm import Session as SA_Session
 from sqlalchemy.orm import sessionmaker
 
 from ._test_setup import (
+    DB_CLEANUP_ENV_VAR,
     DB_CLEANUP_MODES,
     NONE,
     ROLLBACK,
@@ -122,15 +124,31 @@ def pytest_addoption(parser: pytest.Parser) -> None:
     )
 
 
-# The command-line mode, captured once. Kept here rather than read through each
-# fixture's ``request`` because it is a property of the run, not of a test.
-_cli_db_cleanup: str | None = None
+# The flag or environment override, resolved once. A property of the run, not of
+# a test: reading the environment again per test would let the mode announced in
+# the header and the mode enforced during the run disagree.
+_db_cleanup_override: str | None = None
 
 
 def pytest_configure(config: pytest.Config) -> None:
-    global _cli_db_cleanup
+    global _db_cleanup_override
     chosen = config.getoption("restly_db_cleanup")
-    _cli_db_cleanup = chosen if isinstance(chosen, str) else None
+    if not isinstance(chosen, str):
+        chosen = os.environ.get(DB_CLEANUP_ENV_VAR) or None
+        if chosen is not None and chosen not in DB_CLEANUP_MODES:
+            # Raised here rather than from a later hook, where pytest would
+            # report it as an INTERNALERROR with a pluggy traceback.
+            raise pytest.UsageError(
+                f"{DB_CLEANUP_ENV_VAR} is {chosen!r}; expected one of "
+                f"{', '.join(repr(mode) for mode in DB_CLEANUP_MODES)}."
+            )
+    _db_cleanup_override = chosen
+
+
+def pytest_unconfigure(config: pytest.Config) -> None:
+    # A nested in-process run would otherwise leak its mode to the outer one.
+    global _db_cleanup_override
+    _db_cleanup_override = None
 
 
 def pytest_report_header(config: pytest.Config) -> str | None:
@@ -153,7 +171,7 @@ def _cleanup_mode() -> str:
     setup = _current_setup()
     if setup is None:
         return ROLLBACK
-    return _resolve_db_cleanup(setup, _cli_db_cleanup)
+    return _resolve_db_cleanup(setup, _db_cleanup_override)
 
 
 @pytest.fixture
@@ -222,6 +240,10 @@ else:
 
         ``fr.open_async_session()`` resolves the same factory, so it also yields an
         isolated session during a test.
+
+        All of that describes the default ``db_cleanup="rollback"``. Under the
+        other modes this yields a plain session on the configured database, since
+        rolling it back would undo writes those modes mean to commit.
         """
         if _cleanup_mode() != ROLLBACK:
             # The fixture follows the suite's cleanup mode. Rolling this session
@@ -327,6 +349,10 @@ def restly_session(_shared_connection) -> Iterator[SA_Session]:
 
     ``fr.open_session()`` resolves the same factory, so it also yields an isolated
     session during a test.
+
+    All of that describes the default ``db_cleanup="rollback"``. Under the other
+    modes this yields a plain session on the configured database, since rolling it
+    back would undo writes those modes mean to commit.
     """
     if _cleanup_mode() != ROLLBACK:
         # The fixture follows the suite's cleanup mode. Rolling this session back
@@ -433,8 +459,12 @@ def _restly_managed_isolation(request: pytest.FixtureRequest) -> Iterator[None]:
     # this mode then cleans. Routing must not depend on the cleanup mode.
     globals_obj = _get_restly_context()
     generators = (globals_obj.session_generator, globals_obj.sync_session_generator)
-    globals_obj.session_generator = None
-    globals_obj.sync_session_generator = None
+    # Only where a factory can take the routing over: clearing a generator that is
+    # the sole session source would leave the dependency with nothing to yield.
+    if _fr_globals.async_make_session is not None:
+        globals_obj.session_generator = None
+    if _fr_globals.make_session is not None:
+        globals_obj.sync_session_generator = None
     try:
         if mode == TRUNCATE:
             # Before, not after: whatever the last test wrote is still there when

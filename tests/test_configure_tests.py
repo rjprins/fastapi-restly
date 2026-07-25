@@ -9,6 +9,7 @@ that would assert on them.
 from __future__ import annotations
 
 import contextlib
+import os
 import subprocess
 import sys
 import textwrap
@@ -487,6 +488,18 @@ asyncio_default_fixture_loop_scope = "function"
 """
 
 
+def _clean_env(**overrides: str) -> dict[str, str]:
+    """The ambient environment without the variable this feature reads.
+
+    The docs tell developers to export it, so a suite testing the default mode
+    has to say so rather than inherit whatever the shell happens to hold.
+    """
+    environment = {**os.environ}
+    environment.pop(DB_CLEANUP_ENV_VAR, None)
+    environment.update(overrides)
+    return environment
+
+
 def _run_pytest(project: Path, quiet: bool = True) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [
@@ -505,6 +518,7 @@ def _run_pytest(project: Path, quiet: bool = True) -> subprocess.CompletedProces
         capture_output=True,
         text=True,
         cwd=project,
+        env=_clean_env(),
     )
 
 
@@ -577,6 +591,7 @@ def test_the_flag_switches_a_rollback_suite_to_truncate(tmp_path: Path):
         capture_output=True,
         text=True,
         cwd=tmp_path,
+        env=_clean_env(),
     )
 
     assert result.returncode == 0, result.stdout + result.stderr
@@ -848,8 +863,6 @@ def test_an_inherited_generator_does_not_route_requests_away(tmp_path: Path):
         _LEAK_TESTS,
         app_module=_SYNC_APP_MODULE,
     )
-    import os
-
     result = subprocess.run(
         [
             sys.executable,
@@ -867,7 +880,7 @@ def test_an_inherited_generator_does_not_route_requests_away(tmp_path: Path):
         capture_output=True,
         text=True,
         cwd=tmp_path,
-        env={**os.environ, "APP_USES_GENERATOR": "1", DB_CLEANUP_ENV_VAR: ""},
+        env=_clean_env(APP_USES_GENERATOR="1"),
     )
 
     assert result.returncode == 0, result.stdout + result.stderr
@@ -943,3 +956,125 @@ def test_a_sessionmaker_bound_to_a_connection_is_unwrapped(tmp_path: Path):
                 _clean_database(setup)  # type: ignore[arg-type]
     finally:
         engine.dispose()
+
+
+# ---------------------------------------------------------------------------
+# The mode surface
+# ---------------------------------------------------------------------------
+
+
+def test_a_misspelled_environment_mode_is_a_usage_error(tmp_path: Path):
+    """Raised from a later hook it would surface as a pytest INTERNALERROR."""
+    _write_project(tmp_path, _CONFTEST, _TESTS)
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            str(tmp_path),
+            "-p",
+            "no:cacheprovider",
+            "-c",
+            str(tmp_path / "pyproject.toml"),
+            "--rootdir",
+            str(tmp_path),
+        ],
+        capture_output=True,
+        text=True,
+        cwd=tmp_path,
+        env=_clean_env(**{DB_CLEANUP_ENV_VAR: "trunkate"}),
+    )
+
+    assert result.returncode != 0
+    combined = result.stdout + result.stderr
+    assert "INTERNALERROR" not in combined
+    assert "trunkate" in combined
+    assert "expected one of" in combined
+
+
+def test_truncate_cleans_nothing_when_no_database_is_configured(tmp_path: Path):
+    """configure_tests(app=...) with no database is supported, so switching mode
+    for one run must not turn every test into an error."""
+    (tmp_path / "pyproject.toml").write_text(textwrap.dedent(_PYPROJECT))
+    (tmp_path / "conftest.py").write_text(
+        textwrap.dedent("""
+        from fastapi import FastAPI
+        import fastapi_restly as fr
+
+        app = FastAPI()
+
+        @app.get("/ping")
+        def ping():
+            return {"ok": True}
+
+        fr.testing.configure_tests(app=app)
+        """)
+    )
+    (tmp_path / "test_generated.py").write_text(
+        "def test_client_works(restly_client):\n"
+        '    assert restly_client.get("/ping").json() == {"ok": True}\n'
+    )
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            str(tmp_path),
+            "-q",
+            "-p",
+            "no:cacheprovider",
+            "-c",
+            str(tmp_path / "pyproject.toml"),
+            "--rootdir",
+            str(tmp_path),
+        ],
+        capture_output=True,
+        text=True,
+        cwd=tmp_path,
+        env=_clean_env(**{DB_CLEANUP_ENV_VAR: "truncate"}),
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "1 passed" in result.stdout
+
+
+def test_truncate_says_what_a_generator_only_suite_is_missing():
+    """It needs a connection of its own; a generator does not provide one."""
+    with _isolated_config():
+
+        def generator():  # pragma: no cover - never called
+            yield None
+
+        fr.configure(sync_session_generator=generator)
+        setup = _TestSetup(
+            app=None,
+            create_all_from=None,
+            alembic_upgrade=False,
+            db_cleanup=TRUNCATE,
+            db_cleanup_exclude=(),
+        )
+        with pytest.raises(RestlyConfigurationError, match="session_generator"):
+            _clean_database(setup)
+
+
+def test_the_exclusion_error_does_not_claim_to_have_checked_the_database(tmp_path):
+    """On the create_all_from path the names come from model metadata."""
+    database = tmp_path / "wording.db"
+    with _isolated_config():
+
+        class Cam(fr.IDBase):
+            name: Mapped[str]
+
+        configure_tests(
+            database_url=f"sqlite:///{database}",
+            create_all_from=fr.DataclassBase,
+            db_cleanup=TRUNCATE,
+            db_cleanup_exclude=["nope"],
+        )
+        setup = _current_setup()
+        _create_schema(setup)  # type: ignore[arg-type]
+        with pytest.raises(RestlyConfigurationError) as excinfo:
+            _clean_database(setup)  # type: ignore[arg-type]
+
+    assert "not in the database" not in str(excinfo.value)
+    assert "would" in str(excinfo.value)

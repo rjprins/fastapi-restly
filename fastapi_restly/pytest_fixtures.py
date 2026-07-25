@@ -6,6 +6,7 @@ try:
         pytest_addoption,  # noqa: F401 -- pytest hook; must be found on the plugin module
         pytest_configure,  # noqa: F401 -- pytest hook; must be found on the plugin module
         pytest_report_header,  # noqa: F401 -- pytest hook; must be found on the plugin module
+        pytest_unconfigure,  # noqa: F401 -- pytest hook; must be found on the plugin module
         restly_app,
         restly_async_session,
         restly_client,

@@ -99,8 +99,9 @@ def configure_tests(
         )
 
     That is the whole setup. Every test then runs against ``app`` on the given
-    database, isolated in a transaction that rolls back afterwards, including
-    tests that only drive ``restly_client``.
+    database and starts from a clean one, including tests that only drive
+    ``restly_client``. How that cleaning happens is ``db_cleanup`` below; by
+    default each test is rolled back and nothing is ever committed.
 
     Four things happen, in this order:
 
@@ -139,9 +140,9 @@ def configure_tests(
       committed, which makes it the fastest option and the reason no other
       process can see a test's data, not even after a failure.
     * ``"truncate"`` empties the tables *before* each test instead, and lets
-      writes commit for real. It is slower, but the failing test's rows are still
-      in the database when the run ends, so you can inspect them with ordinary
-      tools. Tests still cannot see each other's data, and it needs a database of
+      writes commit for real. It is slower, but the last test's rows are still in
+      the database when the run ends, so you can inspect them with ordinary tools;
+      run with ``-k`` and the last test is the one you are looking at. Tests still cannot see each other's data, and it needs a database of
       its own: two suites truncating one database will fight.
     * ``"none"`` cleans nothing and leaves it to you. Reach for it when neither of
       the others fits: tests that drive a browser or a second process (nothing
@@ -256,8 +257,8 @@ def _tables_to_clean(setup: _TestSetup, bind: Any) -> list[Any]:
         raise RestlyConfigurationError(
             "fr.testing.configure_tests(db_cleanup_exclude=...) names "
             f"{', '.join(repr(name) for name in unknown)}, which "
-            f"{'is' if len(unknown) == 1 else 'are'} not in the database. Known "
-            f"tables: {', '.join(sorted(known))}."
+            f"{'is' if len(unknown) == 1 else 'are'} not among the tables it would "
+            f"empty: {', '.join(sorted(known))}."
         )
 
     spared = _NEVER_TRUNCATED | set(setup.db_cleanup_exclude)
@@ -333,10 +334,18 @@ def _clean_database(setup: _TestSetup) -> None:
         return
 
     if _fr_globals.async_make_session is None:
-        raise RestlyConfigurationError(
-            'fr.testing.configure_tests(db_cleanup="truncate") needs a '
-            "configured database to empty."
-        )
+        if (
+            _fr_globals.session_generator is not None
+            or _fr_globals.sync_session_generator is not None
+        ):
+            raise RestlyConfigurationError(
+                'fr.testing.configure_tests(db_cleanup="truncate") builds its own '
+                "connection to empty the tables, and a session_generator does not "
+                "give it one. Configure a sessionmaker for the tests as well: pass "
+                "database_url=, engine= or make_session= (or their async forms)."
+            )
+        # No database at all, which configure_tests() allows. Nothing to empty.
+        return
 
     async_engine = _resolve_engine(_fr_globals.async_make_session.kw["bind"])
 
