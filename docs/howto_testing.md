@@ -98,7 +98,7 @@ def test_create_and_fetch_user(restly_client):
 
 The user this test creates is gone by the time the next test runs. To work
 against the database directly instead of through the API, ask for a session
-fixture; see [the fixture reference](#fixture-reference).
+fixture; see [the fixture reference](#pytest-fixture-reference).
 
 ## Test databases and migrations
 
@@ -225,7 +225,7 @@ Passing `assert_status_code=None` relaxes the check to "any status below
 400"; it does **not** skip the assertion. To inspect an error response
 yourself, pass the error code you expect.
 
-## Fixture reference
+## Pytest fixture reference
 
 These are the fixtures the plugin registers, with their scope and exact
 behavior.

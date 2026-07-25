@@ -314,7 +314,7 @@ The testing utilities provide a status-asserting client and savepoint-based isol
 | {class}`fastapi_restly.testing.RestlyTestClient` | Sync test client wrapper around FastAPI's `TestClient` with default status-code assertions. It can test async FastAPI routes and `AsyncRestView` endpoints. |
 
 The pytest fixtures below are auto-loaded by the `testing` extra; their full
-behavior is documented in [Testing](howto_testing.md#fixture-reference):
+behavior is documented in [Testing](howto_testing.md#pytest-fixture-reference):
 
 | Fixture | Scope | One-liner |
 |---|---|---|
