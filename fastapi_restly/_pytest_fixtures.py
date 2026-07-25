@@ -391,7 +391,7 @@ def restly_session(_shared_connection) -> Iterator[SA_Session]:
 
 @pytest.fixture(scope="session", autouse=True)
 def _restly_managed_schema(request: pytest.FixtureRequest) -> Iterator[None]:
-    """Build the schema once per session when ``fr.testing.configure()`` asked for it.
+    """Build the schema once per session when ``fr.testing.configure_tests()`` asked for it.
 
     Session-scoped so it lands before the per-test isolation below: those fixtures
     wrap each test in a transaction that rolls back, so a schema created inside a
@@ -449,7 +449,7 @@ def _restly_managed_isolation(request: pytest.FixtureRequest) -> Iterator[None]:
 def restly_app() -> FastAPI:
     """Return the application under test.
 
-    ``fr.testing.configure(app=...)`` sets this. Without it you get a bare
+    ``fr.testing.configure_tests(app=...)`` sets this. Without it you get a bare
     ``FastAPI()``; override the fixture in your ``conftest.py`` to supply your own.
     """
     setup = _current_setup()

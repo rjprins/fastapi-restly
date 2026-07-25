@@ -281,19 +281,43 @@ def _clean_tables(connection: Any, tables: list[Any]) -> None:
         # satisfies the foreign keys among them, and RESTART IDENTITY makes ids
         # repeatable. Deliberately not CASCADE: that would silently empty tables
         # outside this list that reference these, so let PostgreSQL raise instead.
-        names = ", ".join(f'"{table.name}"' for table in tables)
-        connection.execute(text(f"TRUNCATE {names} RESTART IDENTITY"))
+        # The dialect renders the names: it keeps the schema on a qualified table,
+        # which hand-quoting drops, and escapes anything needing it.
+        preparer = connection.dialect.identifier_preparer
+        names = ", ".join(preparer.format_table(table) for table in tables)
+        connection.exec_driver_sql(f"TRUNCATE {names} RESTART IDENTITY")
         return
 
     for table in tables:
         connection.execute(table.delete())
     if connection.dialect.name == "sqlite":
-        # SQLite keeps AUTOINCREMENT counters here; clearing it restarts ids.
+        # SQLite keeps AUTOINCREMENT counters here, and only for tables declared
+        # with sqlite_autoincrement. Restart the ones being emptied, and leave an
+        # excluded table's counter alone: its rows are still there.
         has_sequence = connection.exec_driver_sql(
             "SELECT name FROM sqlite_master WHERE type='table' AND name='sqlite_sequence'"
         ).first()
         if has_sequence:
-            connection.exec_driver_sql("DELETE FROM sqlite_sequence")
+            placeholders = ", ".join(f":name_{index}" for index in range(len(tables)))
+            connection.execute(
+                text(f"DELETE FROM sqlite_sequence WHERE name IN ({placeholders})"),
+                {f"name_{index}": table.name for index, table in enumerate(tables)},
+            )
+
+
+def _resolve_engine(bind: Any) -> Any:
+    """Return the engine behind ``bind``, which a caller may have set to a
+    Connection just as ``fr.configure(make_session=...)`` allows.
+
+    Only a Connection is unwrapped. ``AsyncEngine`` also carries an ``engine``
+    attribute, but it is the sync engine underneath, which cannot be awaited.
+    """
+    from sqlalchemy import Connection
+    from sqlalchemy.ext.asyncio import AsyncConnection
+
+    if isinstance(bind, (Connection, AsyncConnection)):
+        return bind.engine
+    return bind
 
 
 def _clean_database(setup: _TestSetup) -> None:
@@ -303,7 +327,7 @@ def _clean_database(setup: _TestSetup) -> None:
     the database when the run ends and can be inspected.
     """
     if _fr_globals.make_session is not None:
-        engine = _fr_globals.make_session.kw["bind"]
+        engine = _resolve_engine(_fr_globals.make_session.kw["bind"])
         with engine.begin() as connection:
             _clean_tables(connection, _tables_to_clean(setup, connection))
         return
@@ -314,7 +338,7 @@ def _clean_database(setup: _TestSetup) -> None:
             "configured database to empty."
         )
 
-    async_engine = _fr_globals.async_make_session.kw["bind"]
+    async_engine = _resolve_engine(_fr_globals.async_make_session.kw["bind"])
 
     async def clean() -> None:
         async with async_engine.begin() as connection:
@@ -413,9 +437,9 @@ def _create_schema(setup: _TestSetup, root: Path | None = None) -> None:
             asyncio.run(_session.async_create_all(setup.create_all_from))
         else:
             raise RestlyConfigurationError(
-                "fr.testing.configure(create_all_from=...) needs a configured "
+                "fr.testing.configure_tests(create_all_from=...) needs a configured "
                 "database. Pass database_url= or async_database_url= to "
-                "fr.testing.configure(), or call fr.configure() before it."
+                "fr.testing.configure_tests(), or call fr.configure() before it."
             )
     elif setup.alembic_upgrade:
         _run_alembic_upgrade(setup.alembic_upgrade, root)
@@ -430,7 +454,7 @@ def _run_alembic_upgrade(
         from alembic.config import Config
     except ModuleNotFoundError as exc:  # pragma: no cover - depends on the env
         raise ModuleNotFoundError(
-            "fr.testing.configure(alembic_upgrade=...) requires Alembic. "
+            "fr.testing.configure_tests(alembic_upgrade=...) requires Alembic. "
             "Install it with: pip install alembic",
             name="alembic",
         ) from exc
@@ -442,7 +466,7 @@ def _run_alembic_upgrade(
     ini_path = given if given.is_absolute() else base / given
     if not ini_path.exists():
         raise RestlyConfigurationError(
-            f"fr.testing.configure(alembic_upgrade=...) found no Alembic config at "
+            f"fr.testing.configure_tests(alembic_upgrade=...) found no Alembic config at "
             f"{str(ini_path)!r}. Pass a path relative to your project root, e.g. "
             "alembic_upgrade='backend/alembic.ini'."
         )
@@ -460,5 +484,8 @@ def _run_alembic_upgrade(
     # development database, leaving the test database unmigrated.
     url = _fr_globals.database_url or _fr_globals.async_database_url
     if url is not None:
-        config.set_main_option("sqlalchemy.url", url)
+        # Alembic stores this in a ConfigParser with interpolation on, where a
+        # bare % is a syntax error. Percent-encoded passwords are ordinary, and
+        # the resulting ValueError would echo the whole URL into the log.
+        config.set_main_option("sqlalchemy.url", url.replace("%", "%%"))
     command.upgrade(config, "head")

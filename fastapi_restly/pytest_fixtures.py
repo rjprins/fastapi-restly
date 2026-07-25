@@ -1,7 +1,7 @@
 try:
     from fastapi_restly._pytest_fixtures import (
-        _restly_managed_isolation,  # noqa: F401 -- autouse; inert until fr.testing.configure()
-        _restly_managed_schema,  # noqa: F401 -- autouse; inert until fr.testing.configure()
+        _restly_managed_isolation,  # noqa: F401 -- autouse; inert until fr.testing.configure_tests()
+        _restly_managed_schema,  # noqa: F401 -- autouse; inert until fr.testing.configure_tests()
         _shared_connection,  # noqa: F401 -- re-exported so dependent fixtures resolve it
         pytest_addoption,  # noqa: F401 -- pytest hook; must be found on the plugin module
         pytest_configure,  # noqa: F401 -- pytest hook; must be found on the plugin module

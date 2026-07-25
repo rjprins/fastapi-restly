@@ -873,3 +873,73 @@ def test_an_inherited_generator_does_not_route_requests_away(tmp_path: Path):
     assert result.returncode == 0, result.stdout + result.stderr
     # Requests went to the configured test database, not the generator's.
     assert _rows(tmp_path / "dev.db") in (None, 0)
+
+
+# ---------------------------------------------------------------------------
+# Dialect and driver details
+# ---------------------------------------------------------------------------
+
+
+def test_postgres_truncate_keeps_the_schema_qualifier():
+    """Hand-quoting drops table.schema, so a qualified table resolves through
+    search_path to a different table, or errors."""
+    from sqlalchemy import Column, Integer, MetaData, Table
+    from sqlalchemy.dialects import postgresql
+
+    metadata = MetaData()
+    qualified = Table("audit", metadata, Column("id", Integer), schema="reporting")
+    awkward = Table('we"ird', metadata, Column("id", Integer))
+
+    preparer = postgresql.dialect().identifier_preparer
+    assert preparer.format_table(qualified) == "reporting.audit"
+    assert preparer.format_table(awkward) == '"we""ird"'
+
+
+def test_alembic_accepts_a_percent_encoded_password(tmp_path: Path):
+    """A percent-encoded password is ordinary; ConfigParser interpolation would
+    reject it, and the ValueError would carry the whole URL into the log."""
+    from alembic.config import Config
+
+    ini = tmp_path / "alembic.ini"
+    ini.write_text("[alembic]\nscript_location = alembic\n")
+    url = "postgresql://app:p%40ssw0rd%23x@db.internal:5432/prod"
+
+    config = Config(str(ini))
+    config.set_main_option("sqlalchemy.url", url.replace("%", "%%"))
+    assert config.get_main_option("sqlalchemy.url") == url
+
+
+def test_error_messages_name_a_function_that_exists():
+    """The rename left messages pointing at fr.testing.configure()."""
+    import fastapi_restly.testing as testing
+    from fastapi_restly import _pytest_fixtures, _test_setup
+
+    assert not hasattr(testing, "configure")
+    for module in (_test_setup, _pytest_fixtures):
+        source = Path(module.__file__).read_text()  # type: ignore[arg-type]
+        assert "fr.testing.configure(" not in source
+
+
+def test_a_sessionmaker_bound_to_a_connection_is_unwrapped(tmp_path: Path):
+    """fr.configure(make_session=...) allows a Connection as the bind; cleaning
+    needs the engine behind it, not the connection's transaction."""
+    database = tmp_path / "bound.db"
+    engine = create_engine(f"sqlite:///{database}")
+    try:
+        with engine.connect() as connection:
+            with _isolated_config():
+
+                class Bolt(fr.IDBase):
+                    name: Mapped[str]
+
+                configure_tests(
+                    make_session=sessionmaker(bind=connection),
+                    create_all_from=fr.DataclassBase,
+                    db_cleanup=TRUNCATE,
+                )
+                setup = _current_setup()
+                _create_schema(setup)  # type: ignore[arg-type]
+                # Would raise AttributeError on RootTransaction without the unwrap.
+                _clean_database(setup)  # type: ignore[arg-type]
+    finally:
+        engine.dispose()

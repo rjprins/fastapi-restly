@@ -177,6 +177,7 @@ fr.testing.configure_tests(
     app=app,
     database_url="postgresql+psycopg://localhost/myapp_test",
     alembic_upgrade=True,
+    db_cleanup="truncate",
     db_cleanup_exclude=["country", "role"],
 )
 ```
