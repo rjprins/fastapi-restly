@@ -76,6 +76,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The `restly_client` fixture now runs your application's `lifespan`. Starlette
+  only runs startup and shutdown inside the client's context manager, and the
+  fixture handed back an unentered one, so whatever `lifespan=` set up never
+  happened. Registering a view after the client exists keeps working: Restly
+  invalidates the cached middleware stack when it installs its `IntegrityError`
+  handler.
+
 - Postgres 409 detail messages degraded to a generic fallback on psycopg 3. The
   `IntegrityError` classifier read `pgcode` (psycopg 2's attribute), but
   psycopg 3 — the driver Restly's PostgreSQL stack uses — exposes the SQLSTATE as

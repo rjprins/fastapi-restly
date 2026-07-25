@@ -489,8 +489,14 @@ def restly_app() -> FastAPI:
 
 
 @pytest.fixture
-def restly_client(restly_app) -> RestlyTestClient:
-    """Create a RestlyTestClient instance for testing."""
+def restly_client(restly_app) -> Iterator[RestlyTestClient]:
+    """A test client for ``restly_app``, entered so the app's lifespan runs.
+
+    Starlette's client only runs startup and shutdown inside its context manager.
+    Returning an unentered one meant a ``lifespan=`` that opens a pool, warms a
+    cache or registers a dependency never ran, and the failure surfaced far from
+    here as a missing resource.
+    """
     try:
         from .testing._client import RestlyTestClient
     except ModuleNotFoundError as exc:
@@ -501,4 +507,8 @@ def restly_client(restly_app) -> RestlyTestClient:
             raise ModuleNotFoundError(_TESTING_EXTRA_MESSAGE, name=exc.name) from exc
         raise
 
-    return RestlyTestClient(restly_app)
+    # Bound before the block: Starlette's __enter__ returns the base TestClient,
+    # which would lose the subclass and its status-code assertions.
+    client = RestlyTestClient(restly_app)
+    with client:
+        yield client

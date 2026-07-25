@@ -192,6 +192,11 @@ def register_default_exception_handlers(app: FastAPI) -> None:
 
     app.add_exception_handler(IntegrityError, integrity_error_handler)
     setattr(app.state, _HANDLERS_INSTALLED_FLAG, True)
+    # Starlette caches the handler set the first time the app is called, which
+    # includes entering a test client to run its lifespan. Registering a view
+    # after that would otherwise leave this handler out of the stack, and an
+    # IntegrityError would surface as a 500 instead of a 409.
+    app.middleware_stack = None
 
 
 __all__ = ["integrity_error_handler", "register_default_exception_handlers"]

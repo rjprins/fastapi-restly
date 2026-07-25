@@ -340,8 +340,11 @@ def test_fixture_exports_and_client_helpers():
     app = _fixtures.restly_app.__wrapped__()
     assert isinstance(app, FastAPI)
 
-    client = _fixtures.restly_client.__wrapped__(app)
+    # The fixture yields an entered client now, so drive the generator.
+    clients = _fixtures.restly_client.__wrapped__(app)
+    client = next(clients)
     assert isinstance(client, RestlyTestClient)
+    clients.close()
 
     assert exported_fixtures.restly_app is _fixtures.restly_app
     assert exported_fixtures.restly_session is _fixtures.restly_session
@@ -417,7 +420,7 @@ def test_restly_client_reports_missing_optional_dependencies():
     result = _run_with_blocked_imports(
         """
 from fastapi_restly.pytest_fixtures import restly_app, restly_client
-restly_client.__wrapped__(restly_app.__wrapped__())
+next(restly_client.__wrapped__(restly_app.__wrapped__()))
 """,
         "httpx",
         "httpx2",

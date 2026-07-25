@@ -1121,3 +1121,88 @@ def test_the_exclusion_error_does_not_claim_to_have_checked_the_database(tmp_pat
 
     assert "not in the database" not in str(excinfo.value)
     assert "would" in str(excinfo.value)
+
+
+# ---------------------------------------------------------------------------
+# The client
+# ---------------------------------------------------------------------------
+
+_LIFESPAN_APP = """
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
+
+import fastapi_restly as fr
+
+EVENTS = []
+
+
+@asynccontextmanager
+async def lifespan(app):
+    EVENTS.append("startup")
+    yield
+    EVENTS.append("shutdown")
+
+
+app = FastAPI(lifespan=lifespan)
+
+
+@app.get("/ping")
+def ping():
+    return {"ok": True}
+"""
+
+
+def test_the_client_runs_the_application_lifespan(tmp_path: Path):
+    """Starlette only runs startup and shutdown inside the client's context, so an
+    unentered one silently skips whatever lifespan= sets up."""
+    _write_project(
+        tmp_path,
+        "import fastapi_restly as fr\nfrom myapp import app\n\n"
+        "fr.testing.configure_tests(app=app)\n",
+        "from myapp import EVENTS\n\n\n"
+        "def test_startup_ran(restly_client):\n"
+        '    restly_client.get("/ping")\n'
+        '    assert EVENTS == ["startup"]\n',
+        app_module=_LIFESPAN_APP,
+    )
+    result = _run_pytest(tmp_path)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_a_view_registered_after_the_client_still_gets_the_409_handler(tmp_path: Path):
+    """Entering the client builds Starlette's middleware stack, which caches the
+    exception handlers. A suite that registers views inside its tests installs the
+    409 handler after that, and it must not be left out of the stack.
+
+    The app is deliberately not passed to configure_tests(): doing so installs the
+    handler up front, which is the case that never had a problem.
+    """
+    _write_project(
+        tmp_path,
+        "import pytest\n"
+        "from fastapi import FastAPI\n"
+        "import fastapi_restly as fr\n\n"
+        "fr.testing.configure_tests(\n"
+        '    async_database_url="sqlite+aiosqlite:///./test.db",\n'
+        "    create_all_from=fr.DataclassBase,\n"
+        ")\n\n\n"
+        "@pytest.fixture\n"
+        "def restly_app():\n"
+        "    return FastAPI()\n",
+        "import fastapi_restly as fr\n"
+        "from myapp import Note, NoteSchema\n\n\n"
+        "def test_duplicate_is_a_conflict(restly_client):\n"
+        "    @fr.include_view(restly_client.app)\n"
+        "    class LateView(fr.AsyncRestView):\n"
+        '        prefix = "/late"\n'
+        "        model = Note\n"
+        "        schema = NoteSchema\n\n"
+        '    restly_client.post("/late/", json={"text": "dup"})\n'
+        "    response = restly_client.post(\n"
+        '        "/late/", json={"text": "dup"}, assert_status_code=409\n'
+        "    )\n"
+        "    assert response.status_code == 409\n",
+    )
+    result = _run_pytest(tmp_path)
+    assert result.returncode == 0, result.stdout + result.stderr
