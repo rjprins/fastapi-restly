@@ -65,8 +65,9 @@ def _current_setup() -> _TestSetup | None:
 
 def _reset_setup() -> None:
     """Drop the recorded setup. For Restly's own tests, not for user suites."""
-    global _setup
+    global _setup, _cached_for
     _setup = None
+    _cached_for = None
 
 
 def configure_tests(
@@ -235,8 +236,24 @@ def _resolve_db_cleanup(setup: _TestSetup, flag: str | None) -> str:
     return setup.db_cleanup
 
 
+#: The table list for the setup it was computed under. The schema is built once
+#: per session, so reflecting it again before every test only costs round trips.
+_cached_for: _TestSetup | None = None
+_cached_tables: list[Any] = []
+
+
 def _tables_to_clean(setup: _TestSetup, bind: Any) -> list[Any]:
-    """Return the tables truncation should empty, parents last.
+    """Return the tables truncation should empty, parents last, computing the
+    list once per setup rather than before every test."""
+    global _cached_for, _cached_tables
+    if _cached_for is not setup:
+        _cached_tables = _resolve_tables_to_clean(setup, bind)
+        _cached_for = setup
+    return _cached_tables
+
+
+def _resolve_tables_to_clean(setup: _TestSetup, bind: Any) -> list[Any]:
+    """Work out the tables truncation should empty, parents last.
 
     ``create_all_from`` already names the metadata. Migrations do not, so the
     database is reflected instead, which also picks up tables no model declares.

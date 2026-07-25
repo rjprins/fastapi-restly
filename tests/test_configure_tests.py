@@ -32,6 +32,7 @@ from fastapi_restly._test_setup import (
     _reset_setup,
     _resolve_db_cleanup,
     _safe_url,
+    _tables_to_clean,
     _TestSetup,
     configure_tests,
 )
@@ -387,36 +388,78 @@ def test_excluding_a_table_that_does_not_exist_raises(tmp_path: Path):
     assert "gizmo" in message  # the known tables, so the fix is obvious
 
 
-def test_alembic_bookkeeping_is_never_emptied(tmp_path: Path):
-    """Emptying alembic_version would leave the database at no revision."""
-    database = tmp_path / "cleanup.db"
-    with _isolated_config():
-
-        class Cog(fr.IDBase):
-            name: Mapped[str]
-
-        configure_tests(
-            database_url=f"sqlite:///{database}",
-            create_all_from=fr.DataclassBase,
-            db_cleanup=TRUNCATE,
-        )
-        setup = _current_setup()
-        _create_schema(setup)  # type: ignore[arg-type]
-
-        engine = fr.db.get_engine()
+def _seeded_database(path: Path) -> None:
+    """A database as migrations would leave it, Restly having declared no models."""
+    engine = create_engine(f"sqlite:///{path}")
+    try:
         with engine.begin() as connection:
             connection.execute(text("CREATE TABLE alembic_version (version_num TEXT)"))
             connection.execute(text("INSERT INTO alembic_version VALUES ('abc123')"))
-            connection.execute(text("INSERT INTO cog (name) VALUES ('gone')"))
+            connection.execute(text("CREATE TABLE cog (id INTEGER PRIMARY KEY)"))
+            connection.execute(text("INSERT INTO cog (id) VALUES (1)"))
+    finally:
+        engine.dispose()
 
+
+def test_alembic_bookkeeping_is_never_emptied(tmp_path: Path):
+    """Emptying alembic_version would leave the database at no revision.
+
+    Reached through reflection, with no ``create_all_from``: that is the only path
+    on which alembic_version is ever in the table list, and so the only one where
+    sparing it does anything. Declaring models instead would make this pass
+    whether or not the guard exists.
+    """
+    database = tmp_path / "migrated.db"
+    _seeded_database(database)
+    with _isolated_config():
+        configure_tests(database_url=f"sqlite:///{database}", db_cleanup=TRUNCATE)
+        setup = _current_setup()
         _clean_database(setup)  # type: ignore[arg-type]
 
+        engine = fr.db.get_engine()
         with engine.connect() as connection:
             assert connection.execute(text("SELECT count(*) FROM cog")).scalar() == 0
             revision = connection.execute(
                 text("SELECT version_num FROM alembic_version")
             ).scalar()
     assert revision == "abc123"
+
+
+def test_the_table_list_comes_from_the_database_without_models(tmp_path: Path):
+    """The migration path declares nothing, so the tables have to be reflected."""
+    database = tmp_path / "reflected.db"
+    _seeded_database(database)
+    with _isolated_config():
+        configure_tests(database_url=f"sqlite:///{database}", db_cleanup=TRUNCATE)
+        setup = _current_setup()
+        assert setup is not None
+        with fr.db.get_engine().connect() as connection:
+            names = [table.name for table in _tables_to_clean(setup, connection)]
+    assert names == ["cog"]
+
+
+def test_the_table_list_is_worked_out_once(tmp_path: Path, monkeypatch):
+    """Reflecting the whole schema again before every test is many round trips on
+    a real server, and the schema is built once per session."""
+    from sqlalchemy import MetaData
+
+    database = tmp_path / "cached.db"
+    _seeded_database(database)
+    reflections = 0
+    original = MetaData.reflect
+
+    def counting_reflect(self, *args, **kwargs):
+        nonlocal reflections
+        reflections += 1
+        return original(self, *args, **kwargs)
+
+    monkeypatch.setattr(MetaData, "reflect", counting_reflect)
+    with _isolated_config():
+        configure_tests(database_url=f"sqlite:///{database}", db_cleanup=TRUNCATE)
+        setup = _current_setup()
+        for _ in range(3):
+            _clean_database(setup)  # type: ignore[arg-type]
+    assert reflections == 1
 
 
 # ---------------------------------------------------------------------------
