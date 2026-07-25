@@ -1,9 +1,8 @@
 Testing API
 ===========
 
-``fastapi_restly.testing`` provides ``RestlyTestClient`` and the
-savepoint-only mode switches for writing isolated tests against a Restly
-application.
+``fastapi_restly.testing`` provides ``configure_tests()``, which sets a suite up
+in one call, and ``RestlyTestClient``, the status-asserting test client.
 
 Install the optional testing dependencies before importing this module::
 
@@ -26,5 +25,5 @@ without needing to import them individually.
 
 .. seealso::
 
-   :doc:`/howto_testing` provides the conftest recipe, the fixture
-   reference, and the savepoint isolation model.
+   :doc:`/howto_testing` covers the setup, the cleanup modes, the fixture
+   reference, and how the rollback works.

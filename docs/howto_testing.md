@@ -12,7 +12,14 @@ Install the testing extra:
 pip install "fastapi-restly[testing]"
 ```
 
-The `testing` extra is independent of `standard`, which is runtime-only.
+The `testing` extra is independent of `standard`, which is runtime-only. Neither
+carries a database driver, since Restly does not choose one for you, so install
+the driver your test database needs as well. The examples below use SQLite
+through `aiosqlite`:
+
+```bash
+pip install aiosqlite
+```
 
 The extra registers a `pytest11` entry point, so pytest auto-loads the Restly
 fixtures. If your project disables plugin autoloading, register the plugin

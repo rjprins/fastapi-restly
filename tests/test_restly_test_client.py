@@ -129,3 +129,31 @@ def test_restly_test_client_backward_compatibility():
 
     assert regular_response.status_code == restly_response.status_code
     assert regular_response.json() == restly_response.json()
+
+
+def test_assert_status_code_none_still_rejects_an_error_status():
+    """None relaxes the check to "any status below 400"; it does not skip it.
+
+    The five method docstrings said "skip the assertion", and the only test for
+    None used a 200, which passes either way.
+    """
+    from fastapi import FastAPI
+    from fastapi.responses import JSONResponse
+
+    from fastapi_restly.testing import RestlyTestClient
+
+    app = FastAPI()
+
+    @app.get("/gone")
+    def gone():
+        return JSONResponse({"detail": "nope"}, status_code=404)
+
+    @app.get("/fine")
+    def fine():
+        return {"ok": True}
+
+    client = RestlyTestClient(app)
+    with client:
+        assert client.get("/fine", assert_status_code=None).status_code == 200
+        with pytest.raises(AssertionError):
+            client.get("/gone", assert_status_code=None)
