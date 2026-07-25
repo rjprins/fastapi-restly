@@ -26,14 +26,13 @@ from fastapi_restly._test_setup import (
     DB_CLEANUP_ENV_VAR,
     ROLLBACK,
     TRUNCATE,
-    _clean_database,
+    _clean_database_sync,
     _create_schema,
     _current_setup,
     _reset_setup,
     _resolve_db_cleanup,
     _run_alembic_upgrade,
     _safe_url,
-    _tables_to_clean,
     _TestSetup,
     configure_tests,
 )
@@ -79,7 +78,8 @@ def test_the_two_schema_options_are_mutually_exclusive():
     with pytest.raises(RestlyConfigurationError, match="not both"):
         configure_tests(
             database_url="sqlite://",
-            create_all_from=fr.DataclassBase,
+            base=fr.DataclassBase,
+            create_all=True,
             alembic_upgrade=True,
         )
 
@@ -210,7 +210,7 @@ def test_restly_app_falls_back_to_a_bare_app_when_unconfigured():
 # ---------------------------------------------------------------------------
 
 
-def test_create_all_from_builds_the_schema(tmp_path: Path):
+def test_create_all_builds_the_schema(tmp_path: Path):
     database = tmp_path / "schema.db"
     with _isolated_config():
 
@@ -218,7 +218,7 @@ def test_create_all_from_builds_the_schema(tmp_path: Path):
             name: Mapped[str]
 
         configure_tests(
-            database_url=f"sqlite:///{database}", create_all_from=fr.DataclassBase
+            database_url=f"sqlite:///{database}", base=fr.DataclassBase, create_all=True
         )
         _create_schema(_current_setup())  # type: ignore[arg-type]
 
@@ -229,11 +229,12 @@ def test_create_all_from_builds_the_schema(tmp_path: Path):
         engine.dispose()
 
 
-def test_create_all_from_without_a_database_raises():
+def test_create_all_without_a_database_raises():
     with _isolated_config():
         setup = _TestSetup(
             app=None,
-            create_all_from=fr.DataclassBase,
+            base=fr.DataclassBase,
+            create_all=True,
             alembic_upgrade=False,
             db_cleanup=ROLLBACK,
             db_cleanup_exclude=(),
@@ -248,7 +249,7 @@ def test_neither_schema_option_does_nothing():
         _create_schema(
             _TestSetup(
                 app=None,
-                create_all_from=None,
+                base=None,
                 alembic_upgrade=False,
                 db_cleanup=ROLLBACK,
                 db_cleanup_exclude=(),
@@ -259,7 +260,7 @@ def test_neither_schema_option_does_nothing():
 def test_missing_alembic_config_names_the_path_it_looked_for(tmp_path: Path):
     setup = _TestSetup(
         app=None,
-        create_all_from=None,
+        base=None,
         alembic_upgrade=True,
         db_cleanup=ROLLBACK,
         db_cleanup_exclude=(),
@@ -275,7 +276,7 @@ def test_alembic_config_is_resolved_against_the_root_not_the_cwd(tmp_path: Path)
     (tmp_path / "alembic.ini").write_text("[alembic]\nscript_location = migrations\n")
     setup = _TestSetup(
         app=None,
-        create_all_from=None,
+        base=None,
         alembic_upgrade=True,
         db_cleanup=ROLLBACK,
         db_cleanup_exclude=(),
@@ -301,7 +302,7 @@ def test_an_unknown_cleanup_mode_is_rejected():
 def _setup_with(mode: str) -> _TestSetup:
     return _TestSetup(
         app=None,
-        create_all_from=None,
+        base=None,
         alembic_upgrade=False,
         db_cleanup=mode,
         db_cleanup_exclude=(),
@@ -343,7 +344,8 @@ def test_excluded_tables_keep_their_rows(tmp_path: Path):
 
         configure_tests(
             database_url=f"sqlite:///{database}",
-            create_all_from=fr.DataclassBase,
+            base=fr.DataclassBase,
+            create_all=True,
             db_cleanup=TRUNCATE,
             db_cleanup_exclude=["region"],
         )
@@ -355,7 +357,7 @@ def test_excluded_tables_keep_their_rows(tmp_path: Path):
             connection.execute(text("INSERT INTO region (name) VALUES ('seeded')"))
             connection.execute(text("INSERT INTO widget (name) VALUES ('test data')"))
 
-        _clean_database(setup)  # type: ignore[arg-type]
+        _clean_database_sync(setup)  # type: ignore[arg-type]
 
         with engine.connect() as connection:
             regions = connection.execute(text("SELECT count(*) FROM region")).scalar()
@@ -374,7 +376,8 @@ def test_excluding_a_table_that_does_not_exist_raises(tmp_path: Path):
 
         configure_tests(
             database_url=f"sqlite:///{database}",
-            create_all_from=fr.DataclassBase,
+            base=fr.DataclassBase,
+            create_all=True,
             db_cleanup=TRUNCATE,
             db_cleanup_exclude=["gizmoo"],
         )
@@ -382,42 +385,46 @@ def test_excluding_a_table_that_does_not_exist_raises(tmp_path: Path):
         _create_schema(setup)  # type: ignore[arg-type]
 
         with pytest.raises(RestlyConfigurationError) as excinfo:
-            _clean_database(setup)  # type: ignore[arg-type]
+            _clean_database_sync(setup)  # type: ignore[arg-type]
 
     message = str(excinfo.value)
     assert "'gizmoo'" in message
     assert "gizmo" in message  # the known tables, so the fix is obvious
 
 
-def _seeded_database(path: Path) -> None:
-    """A database as migrations would leave it, Restly having declared no models."""
-    engine = create_engine(f"sqlite:///{path}")
+def test_truncation_leaves_tables_the_base_does_not_declare(tmp_path: Path):
+    """Alembic's bookkeeping used to need an explicit exception, because the table
+    list was reflected from the database. Taken from the models instead, a table
+    nobody declared is not in the list at all and cannot be emptied."""
+    database = tmp_path / "migrated.db"
+    engine = create_engine(f"sqlite:///{database}")
     try:
         with engine.begin() as connection:
             connection.execute(text("CREATE TABLE alembic_version (version_num TEXT)"))
             connection.execute(text("INSERT INTO alembic_version VALUES ('abc123')"))
-            connection.execute(text("CREATE TABLE cog (id INTEGER PRIMARY KEY)"))
-            connection.execute(text("INSERT INTO cog (id) VALUES (1)"))
     finally:
         engine.dispose()
 
-
-def test_alembic_bookkeeping_is_never_emptied(tmp_path: Path):
-    """Emptying alembic_version would leave the database at no revision.
-
-    Reached through reflection, with no ``create_all_from``: that is the only path
-    on which alembic_version is ever in the table list, and so the only one where
-    sparing it does anything. Declaring models instead would make this pass
-    whether or not the guard exists.
-    """
-    database = tmp_path / "migrated.db"
-    _seeded_database(database)
     with _isolated_config():
-        configure_tests(database_url=f"sqlite:///{database}", db_cleanup=TRUNCATE)
+
+        class Cog(fr.IDBase):
+            name: Mapped[str]
+
+        configure_tests(
+            database_url=f"sqlite:///{database}",
+            base=fr.DataclassBase,
+            create_all=True,
+            db_cleanup=TRUNCATE,
+        )
         setup = _current_setup()
-        _clean_database(setup)  # type: ignore[arg-type]
+        _create_schema(setup)  # type: ignore[arg-type]
 
         engine = fr.db.get_engine()
+        with engine.begin() as connection:
+            connection.execute(text("INSERT INTO cog (name) VALUES ('gone')"))
+
+        _clean_database_sync(setup)  # type: ignore[arg-type]
+
         with engine.connect() as connection:
             assert connection.execute(text("SELECT count(*) FROM cog")).scalar() == 0
             revision = connection.execute(
@@ -426,41 +433,15 @@ def test_alembic_bookkeeping_is_never_emptied(tmp_path: Path):
     assert revision == "abc123"
 
 
-def test_the_table_list_comes_from_the_database_without_models(tmp_path: Path):
-    """The migration path declares nothing, so the tables have to be reflected."""
-    database = tmp_path / "reflected.db"
-    _seeded_database(database)
+def test_truncation_needs_to_be_told_which_tables():
+    """Without a base there is nothing to empty, and guessing is what reflection
+    used to do."""
     with _isolated_config():
-        configure_tests(database_url=f"sqlite:///{database}", db_cleanup=TRUNCATE)
+        fr.configure(database_url="sqlite://")
+        configure_tests(database_url="sqlite://", db_cleanup=TRUNCATE)
         setup = _current_setup()
-        assert setup is not None
-        with fr.db.get_engine().connect() as connection:
-            names = [table.name for table in _tables_to_clean(setup, connection)]
-    assert names == ["cog"]
-
-
-def test_the_table_list_is_worked_out_once(tmp_path: Path, monkeypatch):
-    """Reflecting the whole schema again before every test is many round trips on
-    a real server, and the schema is built once per session."""
-    from sqlalchemy import MetaData
-
-    database = tmp_path / "cached.db"
-    _seeded_database(database)
-    reflections = 0
-    original = MetaData.reflect
-
-    def counting_reflect(self, *args, **kwargs):
-        nonlocal reflections
-        reflections += 1
-        return original(self, *args, **kwargs)
-
-    monkeypatch.setattr(MetaData, "reflect", counting_reflect)
-    with _isolated_config():
-        configure_tests(database_url=f"sqlite:///{database}", db_cleanup=TRUNCATE)
-        setup = _current_setup()
-        for _ in range(3):
-            _clean_database(setup)  # type: ignore[arg-type]
-    assert reflections == 1
+        with pytest.raises(RestlyConfigurationError, match="which tables to empty"):
+            _clean_database_sync(setup)  # type: ignore[arg-type]
 
 
 # ---------------------------------------------------------------------------
@@ -500,7 +481,8 @@ from myapp import app
 fr.testing.configure_tests(
     app=app,
     async_database_url="sqlite+aiosqlite:///./test.db",
-    create_all_from=fr.DataclassBase,
+    base=fr.DataclassBase,
+            create_all=True,
 )
 """
 
@@ -573,7 +555,8 @@ from myapp import app
 fr.testing.configure_tests(
     app=app,
     async_database_url="sqlite+aiosqlite:///./test.db",
-    create_all_from=fr.DataclassBase,
+    base=fr.DataclassBase,
+            create_all=True,
     db_cleanup="truncate",
 )
 """
@@ -657,7 +640,8 @@ from myapp import app
 fr.testing.configure_tests(
     app=app,
     async_database_url="sqlite+aiosqlite:///./test.db",
-    create_all_from=fr.DataclassBase,
+    base=fr.DataclassBase,
+            create_all=True,
     db_cleanup="none",
 )
 """
@@ -790,7 +774,7 @@ def test_inheriting_the_application_database_fails_the_run(tmp_path: Path):
     _write_project(
         tmp_path,
         "import fastapi_restly as fr\nfrom myapp import app\n\n"
-        "fr.testing.configure_tests(app=app, create_all_from=fr.DataclassBase)\n",
+        "fr.testing.configure_tests(app=app, base=fr.DataclassBase)\n",
         "def test_never_runs():\n    assert True\n",
     )
     result = _run_pytest(tmp_path)
@@ -880,7 +864,8 @@ def test_a_hybrid_suite_isolates_its_sync_routes_too(tmp_path: Path):
         "    app=app,\n"
         '    database_url="sqlite:///./test.db",\n'
         '    async_database_url="sqlite+aiosqlite:///./test.db",\n'
-        "    create_all_from=fr.DataclassBase,\n"
+        "    base=fr.DataclassBase,\n"
+        "    create_all=True,\n"
         ")\n",
         _LEAK_TESTS,
         app_module=_SYNC_APP_MODULE,
@@ -901,7 +886,8 @@ def test_an_inherited_generator_does_not_route_requests_away(tmp_path: Path):
         "fr.testing.configure_tests(\n"
         "    app=app,\n"
         '    database_url="sqlite:///./test.db",\n'
-        "    create_all_from=fr.DataclassBase,\n"
+        "    base=fr.DataclassBase,\n"
+        "    create_all=True,\n"
         '    db_cleanup="truncate",\n'
         ")\n",
         _LEAK_TESTS,
@@ -991,13 +977,14 @@ def test_a_sessionmaker_bound_to_a_connection_is_unwrapped(tmp_path: Path):
 
                 configure_tests(
                     make_session=sessionmaker(bind=connection),
-                    create_all_from=fr.DataclassBase,
+                    base=fr.DataclassBase,
+                    create_all=True,
                     db_cleanup=TRUNCATE,
                 )
                 setup = _current_setup()
                 _create_schema(setup)  # type: ignore[arg-type]
                 # Would raise AttributeError on RootTransaction without the unwrap.
-                _clean_database(setup)  # type: ignore[arg-type]
+                _clean_database_sync(setup)  # type: ignore[arg-type]
     finally:
         engine.dispose()
 
@@ -1092,17 +1079,17 @@ def test_truncate_says_what_a_generator_only_suite_is_missing():
         fr.configure(sync_session_generator=generator)
         setup = _TestSetup(
             app=None,
-            create_all_from=None,
+            base=None,
             alembic_upgrade=False,
             db_cleanup=TRUNCATE,
             db_cleanup_exclude=(),
         )
         with pytest.raises(RestlyConfigurationError, match="session_generator"):
-            _clean_database(setup)
+            _clean_database_sync(setup)
 
 
 def test_the_exclusion_error_does_not_claim_to_have_checked_the_database(tmp_path):
-    """On the create_all_from path the names come from model metadata."""
+    """The names come from the models base= declares, not from the database."""
     database = tmp_path / "wording.db"
     with _isolated_config():
 
@@ -1111,14 +1098,15 @@ def test_the_exclusion_error_does_not_claim_to_have_checked_the_database(tmp_pat
 
         configure_tests(
             database_url=f"sqlite:///{database}",
-            create_all_from=fr.DataclassBase,
+            base=fr.DataclassBase,
+            create_all=True,
             db_cleanup=TRUNCATE,
             db_cleanup_exclude=["nope"],
         )
         setup = _current_setup()
         _create_schema(setup)  # type: ignore[arg-type]
         with pytest.raises(RestlyConfigurationError) as excinfo:
-            _clean_database(setup)  # type: ignore[arg-type]
+            _clean_database_sync(setup)  # type: ignore[arg-type]
 
     assert "not in the database" not in str(excinfo.value)
     assert "would" in str(excinfo.value)
@@ -1186,7 +1174,8 @@ def test_a_view_registered_after_the_client_still_gets_the_409_handler(tmp_path:
         "import fastapi_restly as fr\n\n"
         "fr.testing.configure_tests(\n"
         '    async_database_url="sqlite+aiosqlite:///./test.db",\n'
-        "    create_all_from=fr.DataclassBase,\n"
+        "    base=fr.DataclassBase,\n"
+        "    create_all=True,\n"
         ")\n\n\n"
         "@pytest.fixture\n"
         "def restly_app():\n"
@@ -1328,24 +1317,30 @@ class NoteView(fr.AsyncRestView):
 """
 
 
-def test_a_lifespan_cannot_repoint_restly_at_another_database(tmp_path: Path):
-    """It would replace the isolated factory, so the rest of the test would read
-    and write the application's database. Refuse rather than let it happen."""
+def test_a_lifespan_reconfiguring_restly_cannot_reach_the_tests(tmp_path: Path):
+    """An application lifespan that configures Restly at startup now runs, because
+    the client is entered. It used to replace the session factory the fixtures
+    installed. The test's session source is consulted first and is not something
+    fr.configure() writes, so the reconfiguration simply cannot reach the test.
+    """
     _write_project(
         tmp_path,
         "import fastapi_restly as fr\nfrom myapp import app\n\n"
         "fr.testing.configure_tests(\n"
         "    app=app,\n"
         '    async_database_url="sqlite+aiosqlite:///./test.db",\n'
-        "    create_all_from=fr.DataclassBase,\n"
+        "    base=fr.DataclassBase,\n"
+        "    create_all=True,\n"
         ")\n",
         "def test_a(restly_client):\n"
-        '    restly_client.post("/notes/", json={"text": "one"})\n',
+        '    restly_client.post("/notes/", json={"text": "one"})\n'
+        '    assert restly_client.get("/notes/").json()["total_count"] == 1\n\n\n'
+        "def test_b_is_still_isolated(restly_client):\n"
+        '    assert restly_client.get("/notes/").json()["total_count"] == 0\n',
         app_module=_RECONFIGURING_APP,
     )
     result = _run_pytest(tmp_path)
 
-    assert result.returncode != 0
-    assert "while a test is running against an isolated one" in result.stdout
-    # And it was stopped before anything reached the application's database.
+    assert result.returncode == 0, result.stdout + result.stderr
+    # The application's database was never opened, and isolation held.
     assert not (tmp_path / "dev.db").exists()

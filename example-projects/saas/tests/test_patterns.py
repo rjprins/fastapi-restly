@@ -18,6 +18,7 @@ from app.main import app
 from app.models import Country
 from sqlalchemy import select
 
+import fastapi_restly as fr
 from fastapi_restly.testing import RestlyTestClient
 
 
@@ -36,16 +37,13 @@ def org_id(client) -> int:
 
 @asynccontextmanager
 async def _async_session():
-    """Wrap fr_globals.async_make_session() so tests can inspect rows directly.
+    """A session on whatever the test fixtures made current.
 
-    Uses the (test-patched) sessionmaker so changes a route just made are
-    visible to the savepoint we open here.
+    ``fr.open_async_session()`` resolves the same source the request path does, so
+    a row a route just wrote is visible here without reaching into Restly's
+    internals.
     """
-    from fastapi_restly.db._globals import _get_restly_context
-
-    factory = _get_restly_context().async_make_session
-    assert factory is not None, "fr.configure() must run first"
-    async with factory() as session:
+    async with fr.open_async_session() as session:
         yield session
 
 

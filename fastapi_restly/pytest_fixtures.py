@@ -1,5 +1,6 @@
 try:
     from fastapi_restly._pytest_fixtures import (
+        _restly_async_truncate,  # noqa: F401 -- requested by the autouse fixture
         _restly_managed_isolation,  # noqa: F401 -- autouse; inert until fr.testing.configure_tests()
         _restly_managed_schema,  # noqa: F401 -- autouse; inert until fr.testing.configure_tests()
         _shared_connection,  # noqa: F401 -- re-exported so dependent fixtures resolve it

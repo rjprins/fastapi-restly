@@ -14,6 +14,8 @@ class RestlyContext:
     __slots__ = (
         "async_database_url",
         "async_make_session",
+        "test_async_make_session",
+        "test_make_session",
         "database_url",
         "make_session",
         "session_generator",
@@ -24,6 +26,11 @@ class RestlyContext:
 
     async_database_url: str | None
     async_make_session: async_sessionmaker[Any] | None
+    #: Set by the test fixtures for the duration of a test. The session
+    #: dependencies consult it before anything else, so nothing an application
+    #: configures afterwards can route a test's requests elsewhere.
+    test_make_session: sessionmaker[Any] | None
+    test_async_make_session: async_sessionmaker[Any] | None
     database_url: str | None
     make_session: sessionmaker[Any] | None
     session_generator: Callable[[], AsyncIterator[SA_AsyncSession]] | None
@@ -34,6 +41,8 @@ class RestlyContext:
     def __init__(self) -> None:
         self.async_database_url = None
         self.async_make_session = None
+        self.test_make_session = None
+        self.test_async_make_session = None
         self.database_url = None
         self.make_session = None
         self.session_generator = None
@@ -77,24 +86,3 @@ class _FRGlobalsProxy:
 
 
 _fr_globals = _FRGlobalsProxy()
-
-
-# Depth of the test isolation currently installed. While this is non-zero the
-# session factories belong to a test, and re-pointing them at another database
-# (an application lifespan calling fr.configure() at startup, say) would send that
-# test's requests somewhere the fixtures never clean.
-_isolation_depth = 0
-
-
-def _enter_test_isolation() -> None:
-    global _isolation_depth
-    _isolation_depth += 1
-
-
-def _exit_test_isolation() -> None:
-    global _isolation_depth
-    _isolation_depth = max(0, _isolation_depth - 1)
-
-
-def _test_isolation_active() -> bool:
-    return _isolation_depth > 0

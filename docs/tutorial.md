@@ -271,7 +271,8 @@ from main import app
 fr.testing.configure_tests(
     app=app,
     async_database_url="sqlite+aiosqlite:///./test.db",
-    create_all_from=fr.IDBase,
+    base=fr.IDBase,
+    create_all=True,
 )
 ```
 

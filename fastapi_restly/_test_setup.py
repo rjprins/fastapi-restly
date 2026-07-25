@@ -35,23 +35,35 @@ DB_CLEANUP_MODES = (ROLLBACK, TRUNCATE, NONE)
 #: Overrides the ``db_cleanup=`` argument; ``--restly-db-cleanup`` overrides this.
 DB_CLEANUP_ENV_VAR = "RESTLY_DB_CLEANUP"
 
-#: Alembic's bookkeeping table is never test data, and emptying it would strand
-#: the database at no revision for the rest of the session.
-_NEVER_TRUNCATED = frozenset({"alembic_version"})
-
-
 @dataclass(frozen=True)
 class _TestSetup:
     """What :func:`configure_tests` recorded, read by the plugin's autouse fixtures."""
 
-    app: Any
-    create_all_from: Any
-    alembic_upgrade: bool | str | Path
-    db_cleanup: str
-    db_cleanup_exclude: tuple[str, ...]
+    app: Any = None
+    base: Any = None
+    create_all: bool = False
+    alembic_upgrade: bool | str | Path = False
+    db_cleanup: str = ROLLBACK
+    db_cleanup_exclude: tuple[str, ...] = ()
+    #: The session factories in force when the suite was configured. The
+    #: fixtures build from these rather than from the live globals, so an
+    #: application reconfiguring Restly later cannot move the tests.
+    make_session: Any = None
+    async_make_session: Any = None
 
 
 _setup: _TestSetup | None = None
+
+
+def _source_factories() -> tuple[Any, Any]:
+    """The factories the fixtures should build from: the suite's if it recorded
+    any, otherwise whatever is configured now."""
+    setup = _setup
+    if setup is not None and (
+        setup.make_session is not None or setup.async_make_session is not None
+    ):
+        return setup.make_session, setup.async_make_session
+    return _fr_globals.make_session, _fr_globals.async_make_session
 
 
 def _current_setup() -> _TestSetup | None:
@@ -65,9 +77,8 @@ def _current_setup() -> _TestSetup | None:
 
 def _reset_setup() -> None:
     """Drop the recorded setup. For Restly's own tests, not for user suites."""
-    global _setup, _cached_for
+    global _setup
     _setup = None
-    _cached_for = None
 
 
 def configure_tests(
@@ -79,7 +90,8 @@ def configure_tests(
     async_engine: AsyncEngine | None = None,
     make_session: sessionmaker[Any] | None = None,
     async_make_session: async_sessionmaker[Any] | None = None,
-    create_all_from: type[DeclarativeBase] | MetaData | None = None,
+    base: type[DeclarativeBase] | MetaData | None = None,
+    create_all: bool = False,
     alembic_upgrade: bool | str | Path = False,
     db_cleanup: str = ROLLBACK,
     db_cleanup_exclude: Sequence[str] = (),
@@ -96,7 +108,8 @@ def configure_tests(
         fr.testing.configure_tests(
             app=app,
             async_database_url="sqlite+aiosqlite:///./test.db",
-            create_all_from=Base,
+            base=Base,
+            create_all=True,
         )
 
     That is the whole setup. Every test then runs against ``app`` on the given
@@ -114,12 +127,17 @@ def configure_tests(
     2. ``app`` becomes what the ``restly_app`` fixture returns, so ``restly_client``
        wraps your application without an override fixture.
     3. The schema is created once per session, before any test runs, from
-       ``create_all_from`` or ``alembic_upgrade`` (see below).
+       ``create_all`` or ``alembic_upgrade`` (see below).
     4. Every test gets a clean database, by the strategy ``db_cleanup`` names.
 
-    Schema setup is optional and the two options are mutually exclusive:
+    ``base=`` names the models the suite works with. It is what truncation empties
+    between tests, and what ``create_all`` builds. Pass your declarative base, or
+    its ``MetaData``.
 
-    * ``create_all_from=Base`` builds the schema straight from your models, as
+    Who builds the schema is a separate choice, and the two are mutually
+    exclusive:
+
+    * ``create_all=True`` builds it straight from ``base``, as
       :func:`fastapi_restly.db.create_all` does.
     * ``alembic_upgrade=True`` runs ``alembic upgrade head`` through ``alembic.ini``
       next to your project root; pass a path to point at a different config.
@@ -169,12 +187,18 @@ def configure_tests(
             f"{', '.join(repr(mode) for mode in DB_CLEANUP_MODES)}."
         )
 
-    if create_all_from is not None and alembic_upgrade:
+    if create_all and alembic_upgrade:
         raise RestlyConfigurationError(
-            "fr.testing.configure_tests() got both create_all_from= and "
+            "fr.testing.configure_tests() got both create_all= and "
             "alembic_upgrade=. They are two ways to build the same schema: pass "
-            "create_all_from=<Base> to create the tables from your models, or "
+            "create_all=True to create the tables from your models, or "
             "alembic_upgrade=True to run your migrations, not both."
+        )
+
+    if create_all and base is None:
+        raise RestlyConfigurationError(
+            "fr.testing.configure_tests(create_all=True) needs base=<your "
+            "declarative base> to know which tables to create."
         )
 
     # Which legs the application had before we touch anything: fr.configure()
@@ -210,10 +234,13 @@ def configure_tests(
 
     _setup = _TestSetup(
         app=app,
-        create_all_from=create_all_from,
+        base=base,
+        create_all=create_all,
         alembic_upgrade=alembic_upgrade,
         db_cleanup=db_cleanup,
         db_cleanup_exclude=tuple(db_cleanup_exclude),
+        make_session=_fr_globals.make_session,
+        async_make_session=_fr_globals.async_make_session,
     )
 
 
@@ -238,39 +265,19 @@ def _resolve_db_cleanup(setup: _TestSetup, flag: str | None) -> str:
 
 #: The table list for the setup it was computed under. The schema is built once
 #: per session, so reflecting it again before every test only costs round trips.
-_cached_for: _TestSetup | None = None
-_cached_tables: list[Any] = []
+def _tables_to_clean(setup: _TestSetup) -> list[Any]:
+    """The tables truncation empties, children first.
 
-
-def _tables_to_clean(setup: _TestSetup, bind: Any) -> list[Any]:
-    """Return the tables truncation should empty, parents last, computing the
-    list once per setup rather than before every test."""
-    global _cached_for, _cached_tables
-    if _cached_for is not setup:
-        _cached_tables = _resolve_tables_to_clean(setup, bind)
-        _cached_for = setup
-    return _cached_tables
-
-
-def _resolve_tables_to_clean(setup: _TestSetup, bind: Any) -> list[Any]:
-    """Work out the tables truncation should empty, parents last.
-
-    ``create_all_from`` already names the metadata. Migrations do not, so the
-    database is reflected instead, which also picks up tables no model declares.
+    Taken from the models the suite named, never from the database: reflecting a
+    schema before every test costs a round trip per table on a real server, and
+    picks up tables that are not the suite's to empty.
     """
-    from sqlalchemy import MetaData
-
-    if setup.create_all_from is not None:
-        metadata = _session._resolve_metadata(setup.create_all_from)
-    else:
-        metadata = MetaData()
-        # views=False keeps views out of the list; emptying one is an error.
-        metadata.reflect(bind=bind, views=False)
+    metadata = _session._resolve_metadata(setup.base)
     known = {table.name for table in metadata.sorted_tables}
     unknown = sorted(set(setup.db_cleanup_exclude) - known)
     if unknown:
-        # A typo here would silently drop the protection and empty the very table
-        # the caller was trying to keep, so refuse instead.
+        # A typo would silently drop the protection and empty the very table the
+        # caller was trying to keep, so refuse instead.
         raise RestlyConfigurationError(
             "fr.testing.configure_tests(db_cleanup_exclude=...) names "
             f"{', '.join(repr(name) for name in unknown)}, which "
@@ -278,49 +285,80 @@ def _resolve_tables_to_clean(setup: _TestSetup, bind: Any) -> list[Any]:
             f"empty: {', '.join(sorted(known))}."
         )
 
-    spared = _NEVER_TRUNCATED | set(setup.db_cleanup_exclude)
-    # sorted_tables puts parents first, so deleting in reverse respects foreign
-    # keys on databases that enforce them without CASCADE.
+    spared = set(setup.db_cleanup_exclude)
+    # sorted_tables puts parents first, so reversing respects foreign keys on the
+    # databases that enforce them.
     return [
         table for table in reversed(metadata.sorted_tables) if table.name not in spared
     ]
 
 
-def _clean_tables(connection: Any, tables: list[Any]) -> None:
-    """Empty ``tables`` on ``connection``, by whatever the dialect supports."""
-    from sqlalchemy import text
+def _delete_rows(connection: Any, tables: list[Any]) -> None:
+    """Empty ``tables`` on ``connection``.
 
-    if not tables:
-        return
-
-    if connection.dialect.name == "postgresql":
-        # One statement rather than a delete and a sequence reset per table, which
-        # matters when this runs before every test. Truncating the tables together
-        # satisfies the foreign keys among them, and RESTART IDENTITY makes ids
-        # repeatable. Deliberately not CASCADE: that would silently empty tables
-        # outside this list that reference these, so let PostgreSQL raise instead.
-        # The dialect renders the names: it keeps the schema on a qualified table,
-        # which hand-quoting drops, and escapes anything needing it.
-        preparer = connection.dialect.identifier_preparer
-        names = ", ".join(preparer.format_table(table) for table in tables)
-        connection.exec_driver_sql(f"TRUNCATE {names} RESTART IDENTITY")
-        return
-
+    A plain DELETE per table rather than the dialect's bulk statement. SQLAlchemy
+    renders the table name, so the schema qualifier and any quoting are its
+    problem rather than ours, and on the small tables a suite accumulates DELETE
+    is usually the faster of the two anyway.
+    """
     for table in tables:
         connection.execute(table.delete())
-    if connection.dialect.name == "sqlite":
-        # SQLite keeps AUTOINCREMENT counters here, and only for tables declared
-        # with sqlite_autoincrement. Restart the ones being emptied, and leave an
-        # excluded table's counter alone: its rows are still there.
-        has_sequence = connection.exec_driver_sql(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='sqlite_sequence'"
-        ).first()
-        if has_sequence:
-            placeholders = ", ".join(f":name_{index}" for index in range(len(tables)))
-            connection.execute(
-                text(f"DELETE FROM sqlite_sequence WHERE name IN ({placeholders})"),
-                {f"name_{index}": table.name for index, table in enumerate(tables)},
+
+
+def _require_cleanable(setup: _TestSetup) -> list[Any] | None:
+    """The tables to empty, or None when there is no database to empty them in."""
+    make_session, async_make_session = _source_factories()
+    if make_session is None and async_make_session is None:
+        if (
+            _fr_globals.session_generator is not None
+            or _fr_globals.sync_session_generator is not None
+        ):
+            raise RestlyConfigurationError(
+                'fr.testing.configure_tests(db_cleanup="truncate") builds its own '
+                "connection to empty the tables, and a session_generator does not "
+                "give it one. Configure a sessionmaker for the tests as well: pass "
+                "database_url=, engine= or make_session= (or their async forms)."
             )
+        # No database at all, which configure_tests() allows. Nothing to empty.
+        return None
+    if setup.base is None:
+        raise RestlyConfigurationError(
+            'fr.testing.configure_tests(db_cleanup="truncate") needs to know which '
+            "tables to empty. Pass base=<your declarative base>, the same one your "
+            "models are declared on."
+        )
+    return _tables_to_clean(setup)
+
+
+def _clean_database_sync(setup: _TestSetup) -> bool:
+    """Empty the tables over the sync leg. Returns False if there is no sync leg."""
+    tables = _require_cleanable(setup)
+    if tables is None:
+        return True
+    make_session, _ = _source_factories()
+    if make_session is None:
+        return False
+    engine = _resolve_engine(make_session.kw["bind"])
+    with engine.begin() as connection:
+        _delete_rows(connection, tables)
+    return True
+
+
+async def _clean_database_async(setup: _TestSetup) -> None:
+    """Empty the tables over the async leg, on the caller's event loop.
+
+    Driven from an async fixture rather than a fresh ``asyncio.run`` per test: a
+    pooled connection handed to a loop that has since closed is how asyncpg fails.
+    """
+    tables = _require_cleanable(setup)
+    if tables is None:
+        return
+    _, async_make_session = _source_factories()
+    if async_make_session is None:
+        return
+    engine = _resolve_engine(async_make_session.kw["bind"])
+    async with engine.begin() as connection:
+        await connection.run_sync(lambda sync_conn: _delete_rows(sync_conn, tables))
 
 
 def _resolve_engine(bind: Any) -> Any:
@@ -336,48 +374,6 @@ def _resolve_engine(bind: Any) -> Any:
     if isinstance(bind, (Connection, AsyncConnection)):
         return bind.engine
     return bind
-
-
-def _clean_database(setup: _TestSetup) -> None:
-    """Empty every table before a test runs, for ``db_cleanup="truncate"``.
-
-    Runs before rather than after, so whatever the last test wrote is still in
-    the database when the run ends and can be inspected.
-    """
-    if _fr_globals.make_session is not None:
-        engine = _resolve_engine(_fr_globals.make_session.kw["bind"])
-        with engine.begin() as connection:
-            _clean_tables(connection, _tables_to_clean(setup, connection))
-        return
-
-    if _fr_globals.async_make_session is None:
-        if (
-            _fr_globals.session_generator is not None
-            or _fr_globals.sync_session_generator is not None
-        ):
-            raise RestlyConfigurationError(
-                'fr.testing.configure_tests(db_cleanup="truncate") builds its own '
-                "connection to empty the tables, and a session_generator does not "
-                "give it one. Configure a sessionmaker for the tests as well: pass "
-                "database_url=, engine= or make_session= (or their async forms)."
-            )
-        # No database at all, which configure_tests() allows. Nothing to empty.
-        return
-
-    async_engine = _resolve_engine(_fr_globals.async_make_session.kw["bind"])
-
-    async def clean() -> None:
-        async with async_engine.begin() as connection:
-            tables = await connection.run_sync(
-                lambda sync_connection: _tables_to_clean(setup, sync_connection)
-            )
-            await connection.run_sync(
-                lambda sync_conn: _clean_tables(sync_conn, tables)
-            )
-
-    # Safe from a sync fixture: pytest sets fixtures up outside the loop it runs
-    # the test coroutine in, so no loop is running here.
-    asyncio.run(clean())
 
 
 def _safe_url(url: str | None) -> str:
@@ -454,16 +450,27 @@ def _create_schema(setup: _TestSetup, root: Path | None = None) -> None:
     ``root`` anchors relative Alembic paths; the plugin passes pytest's rootdir so
     the config is found no matter which directory pytest was invoked from.
     """
-    if setup.create_all_from is not None:
+    if setup.create_all:
+        # From the factories the suite recorded, not the live ones: an application
+        # module imported during collection reconfigures Restly, and the schema
+        # must land in the same database the tests will read.
+        make_session, async_make_session = _source_factories()
+        metadata = _session._resolve_metadata(setup.base)
         # Prefer the sync leg: it needs no event loop. Either leg creates the
         # tables the other one sees, since both point at the same database.
-        if _fr_globals.make_session is not None:
-            _session.create_all(setup.create_all_from)
-        elif _fr_globals.async_make_session is not None:
-            asyncio.run(_session.async_create_all(setup.create_all_from))
+        if make_session is not None:
+            metadata.create_all(_resolve_engine(make_session.kw["bind"]))
+        elif async_make_session is not None:
+
+            async def _create() -> None:
+                engine = _resolve_engine(async_make_session.kw["bind"])
+                async with engine.begin() as connection:
+                    await connection.run_sync(metadata.create_all)
+
+            asyncio.run(_create())
         else:
             raise RestlyConfigurationError(
-                "fr.testing.configure_tests(create_all_from=...) needs a configured "
+                "fr.testing.configure_tests(create_all=True) needs a configured "
                 "database. Pass database_url= or async_database_url= to "
                 "fr.testing.configure_tests(), or call fr.configure() before it."
             )

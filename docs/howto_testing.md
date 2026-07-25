@@ -41,7 +41,8 @@ from myapp.models import Base
 fr.testing.configure_tests(
     app=app,
     async_database_url="sqlite+aiosqlite:///./test.db",
-    create_all_from=Base,
+    base=Base,
+    create_all=True,
 )
 ```
 
@@ -72,8 +73,8 @@ development database. Pass no database and Restly raises rather than pick one
 for you.
 
 **A schema that is already there.** Tables are created once, before the first
-test, either from your models with `create_all_from=` or by running your
-migrations with `alembic_upgrade=`.
+test, either from your models with `create_all=True` or by running your
+migrations with `alembic_upgrade=True`.
 
 **A clean database in every test.** Everything a test writes is rolled back when
 it finishes, so no test sees another's rows and the suite does not care what
@@ -108,10 +109,13 @@ fixture; see [the fixture reference](#pytest-fixture-reference).
 
 ## Test databases and migrations
 
-The schema has to come from somewhere, and `configure_tests()` gives you three
-options.
+`base=Base` names your models. It is what `configure_tests()` cleans between
+tests, and what it builds the schema from if you ask it to. Pass your declarative
+base, or its `MetaData`.
 
-**From your models**, with `create_all_from=Base`, which builds the tables the
+Who builds the schema is a separate choice, and there are three answers.
+
+**From your models**, with `create_all=True`, which builds the tables the
 way {func}`fr.db.create_all() <fastapi_restly.db.create_all>` does. This is the
 quickest route, and the right one when migrations are not part of what you are
 testing. Point it at a database you are willing to lose: a leftover file from an
@@ -129,6 +133,7 @@ somewhere else:
 fr.testing.configure_tests(
     app=app,
     database_url="postgresql+psycopg://localhost/myapp_test",
+    base=Base,
     alembic_upgrade="backend/alembic.ini",
 )
 ```
@@ -175,14 +180,15 @@ header at normal verbosity only, so `-q` hides it.
 
 ### Reference data and truncation
 
-Truncation empties every table it finds, including the ones your migrations
-seeded with reference data, and nothing puts those rows back. Name them and they
-are left alone:
+Truncation empties the tables `base=` declares, including the ones your
+migrations seeded with reference data, and nothing puts those rows back. Name
+them and they are left alone:
 
 ```python
 fr.testing.configure_tests(
     app=app,
     database_url="postgresql+psycopg://localhost/myapp_test",
+    base=Base,
     alembic_upgrade=True,
     db_cleanup="truncate",
     db_cleanup_exclude=["country", "role"],

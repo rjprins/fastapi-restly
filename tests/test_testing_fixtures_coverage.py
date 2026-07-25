@@ -113,7 +113,8 @@ def test_sync_fixture_swaps_in_an_isolated_factory_and_restores():
                 # The factory is swapped for a real create_savepoint factory
                 # bound to the pinned connection -- not a MagicMock, not the
                 # original.
-                swapped = _fr_globals.make_session
+                swapped = _fr_globals.test_make_session
+                assert swapped is not None
                 assert swapped is not make_session
                 assert isinstance(swapped, sessionmaker)
                 assert swapped.kw["join_transaction_mode"] == "create_savepoint"
@@ -129,6 +130,7 @@ def test_sync_fixture_swaps_in_an_isolated_factory_and_restores():
                 with pytest.raises(StopIteration):
                     next(gen)
 
+            assert _fr_globals.test_make_session is None
             assert _fr_globals.make_session is make_session
     finally:
         engine.dispose()
@@ -152,7 +154,7 @@ def test_sync_fixture_begin_context_flushes_on_successful_exit():
                 next(gen)
 
                 item = FixtureItem(name="sync")
-                with _fr_globals.make_session.begin() as session:
+                with _fr_globals.test_make_session.begin() as session:
                     session.add(item)
 
                 assert item.id is not None
@@ -178,7 +180,8 @@ async def test_async_fixture_swaps_in_an_isolated_factory_and_restores():
 
             # The factory is swapped for a real create_savepoint factory bound to
             # the pinned connection -- not a MagicMock, not the original.
-            swapped = _fr_globals.async_make_session
+            swapped = _fr_globals.test_async_make_session
+            assert swapped is not None
             assert swapped is not make_session
             assert isinstance(swapped, async_sessionmaker)
             assert swapped.kw["join_transaction_mode"] == "create_savepoint"
@@ -193,6 +196,7 @@ async def test_async_fixture_swaps_in_an_isolated_factory_and_restores():
             # Close the fixture before disposing the engine, so its pinned
             # connection tears down cleanly.
             await agen.aclose()
+            assert _fr_globals.test_async_make_session is None
             assert _fr_globals.async_make_session is make_session
     finally:
         await async_engine.dispose()
@@ -230,7 +234,9 @@ def test_sync_fixture_restores_globals_even_if_session_close_raises():
                 with pytest.raises(RuntimeError, match="close boom"):
                     next(gen)
 
-                # Restored despite the close() failure.
+                # Cleared despite the close() failure, and the application's own
+                # configuration was never touched.
+                assert _fr_globals.test_make_session is None
                 assert _fr_globals.make_session is make_session
                 assert _fr_globals.sync_session_generator is sentinel_gen
     finally:
@@ -263,6 +269,7 @@ async def test_async_fixture_restores_globals_even_if_session_close_raises():
                 await agen.__anext__()
 
             # Restored despite the close() failure.
+            assert _fr_globals.test_async_make_session is None
             assert _fr_globals.async_make_session is make_session
             assert _fr_globals.session_generator is sentinel_gen
     finally:
@@ -286,7 +293,7 @@ async def test_async_fixture_begin_context_flushes_on_successful_exit():
             await agen.__anext__()
 
             item = FixtureItem(name="async")
-            async with _fr_globals.async_make_session.begin() as session:
+            async with _fr_globals.test_async_make_session.begin() as session:
                 session.add(item)
 
             assert item.id is not None

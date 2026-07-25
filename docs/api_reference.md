@@ -310,7 +310,7 @@ The testing utilities provide a status-asserting client and savepoint-based isol
 
 | Symbol | Description |
 |---|---|
-| {func}`fastapi_restly.testing.configure_tests(...) <fastapi_restly.testing.configure_tests>` | Configure a test suite in one call: the app under test, the test database, an optional schema step (`create_all_from=` or `alembic_upgrade=`), and a clean database for every test. `db_cleanup=` picks the strategy (`"rollback"`, `"truncate"`, `"none"`), `db_cleanup_exclude=` spares seeded tables, and `--restly-db-cleanup` / `RESTLY_DB_CLEANUP` override it for one run. Raises rather than inherit an already-configured database. |
+| {func}`fastapi_restly.testing.configure_tests(...) <fastapi_restly.testing.configure_tests>` | Configure a test suite in one call: the app under test, the test database, your models (`base=`) and an optional schema step (`create_all=` or `alembic_upgrade=`), and a clean database for every test. `db_cleanup=` picks the strategy (`"rollback"`, `"truncate"`, `"none"`), `db_cleanup_exclude=` spares seeded tables, and `--restly-db-cleanup` / `RESTLY_DB_CLEANUP` override it for one run. Raises rather than inherit an already-configured database. |
 | {class}`fastapi_restly.testing.RestlyTestClient` | Sync test client wrapper around FastAPI's `TestClient` with default status-code assertions. It can test async FastAPI routes and `AsyncRestView` endpoints. |
 
 The pytest fixtures below are auto-loaded by the `testing` extra; their full

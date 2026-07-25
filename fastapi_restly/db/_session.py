@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session as SA_Session
 
 from .._exception_handlers import register_default_exception_handlers
 from ..exc import RestlyConfigurationError, RestlyUncommittedChangesWarning
-from ._globals import _fr_globals, _test_isolation_active
+from ._globals import _fr_globals
 
 
 def _setup_async_database_connection(
@@ -164,26 +164,6 @@ def configure(
             async_engine=async_engine,
             async_make_session=async_make_session,
         )
-    database_arguments = (
-        database_url,
-        async_database_url,
-        engine,
-        async_engine,
-        make_session,
-        async_make_session,
-    )
-    if _test_isolation_active() and any(a is not None for a in database_arguments):
-        raise RestlyConfigurationError(
-            "fr.configure() was given a database while a test is running against "
-            "an isolated one. This usually means an application lifespan "
-            "configures Restly at startup, and the test client now runs that "
-            "startup: it would replace the session factory the fixtures installed, "
-            "so the rest of the test would read and write your application's "
-            "database instead of the test one. Configure the database once at "
-            "import, or guard the lifespan so it does not reconfigure Restly when "
-            "a suite already has."
-        )
-
     if database_url is not None or engine is not None or make_session is not None:
         _setup_database_connection(
             database_url=database_url, engine=engine, make_session=make_session
@@ -196,13 +176,23 @@ def configure(
         register_default_exception_handlers(app)
 
 
+def _active_make_session():
+    """The sync factory in force: a test's, if one installed it."""
+    return _fr_globals.test_make_session or _fr_globals.make_session
+
+
+def _active_async_make_session():
+    """The async factory in force: a test's, if one installed it."""
+    return _fr_globals.test_async_make_session or _fr_globals.async_make_session
+
+
 def get_async_engine() -> AsyncEngine:
     """Return the async engine registered via configure()."""
     if _fr_globals.async_make_session is None:
         raise RestlyConfigurationError(
             "Call fr.configure() before using get_async_engine()."
         )
-    bind = _fr_globals.async_make_session.kw["bind"]
+    bind = _active_async_make_session().kw["bind"]
     # Under restly_async_session the factory is bound to a pinned AsyncConnection;
     # resolve its engine so this keeps returning the real AsyncEngine.
     if isinstance(bind, AsyncConnection):
@@ -214,7 +204,7 @@ def get_engine() -> Engine:
     """Return the sync engine registered via configure()."""
     if _fr_globals.make_session is None:
         raise RestlyConfigurationError("Call fr.configure() before using get_engine().")
-    bind = _fr_globals.make_session.kw["bind"]
+    bind = _active_make_session().kw["bind"]
     # Under restly_session the factory is bound to a pinned Connection; resolve
     # its engine so this keeps returning the real Engine.
     if isinstance(bind, Connection):
@@ -252,7 +242,7 @@ def create_all(base_or_metadata: type[DeclarativeBase] | MetaData) -> None:
     # Create against the configured bind: the engine in production, or the pinned
     # Connection under restly_session so the schema is visible to the test's
     # isolated sessions instead of silently landing on a throwaway connection.
-    metadata.create_all(_fr_globals.make_session.kw["bind"])
+    metadata.create_all(_active_make_session().kw["bind"])
 
 
 async def async_create_all(base_or_metadata: type[DeclarativeBase] | MetaData) -> None:
@@ -267,7 +257,7 @@ async def async_create_all(base_or_metadata: type[DeclarativeBase] | MetaData) -
         raise RestlyConfigurationError(
             "Call fr.configure() before using async_create_all()."
         )
-    bind = _fr_globals.async_make_session.kw["bind"]
+    bind = _active_async_make_session().kw["bind"]
     if isinstance(bind, AsyncConnection):
         # Under restly_async_session: create on the pinned connection, inside the
         # outer transaction, so the tables are visible to the test's sessions.
@@ -347,6 +337,12 @@ def _warn_if_uncommitted(session: SA_AsyncSession | SA_Session) -> None:
 
 async def _async_generate_session() -> AsyncIterator[SA_AsyncSession]:
     """FastAPI dependency for async database session."""
+    if _fr_globals.test_async_make_session is not None:
+        async with _fr_globals.test_async_make_session() as session:
+            _arm_uncommitted_warning(session)
+            yield session
+            _warn_if_uncommitted(session)
+        return
     if _fr_globals.session_generator is not None:
         async for session in _fr_globals.session_generator():
             _arm_uncommitted_warning(session)
@@ -384,6 +380,14 @@ AsyncSessionDep = Annotated[
 
 def _generate_session() -> Iterator[SA_Session]:
     """FastAPI dependency for sync database session."""
+    # A test's session source wins over everything, including a generator and
+    # anything reconfigured after the test started.
+    if _fr_globals.test_make_session is not None:
+        with _fr_globals.test_make_session() as session:
+            _arm_uncommitted_warning(session)
+            yield session
+            _warn_if_uncommitted(session)
+        return
     if _fr_globals.sync_session_generator is not None:
         for session in _fr_globals.sync_session_generator():
             _arm_uncommitted_warning(session)

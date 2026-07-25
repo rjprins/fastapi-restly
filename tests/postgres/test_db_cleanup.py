@@ -18,7 +18,7 @@ from sqlalchemy import Column, Integer, MetaData, String, Table, text
 import fastapi_restly as fr
 from fastapi_restly._test_setup import (
     TRUNCATE,
-    _clean_database,
+    _clean_database_sync,
     _create_schema,
     _current_setup,
     _reset_setup,
@@ -78,7 +78,8 @@ def pg_context():
         configure_tests(
             # str(URL) masks the password; the driver needs the real one.
             database_url=PG_URL.render_as_string(hide_password=False),
-            create_all_from=metadata,
+            base=metadata,
+            create_all=True,
             db_cleanup=TRUNCATE,
             **kwargs,
         )
@@ -123,25 +124,29 @@ def test_truncate_empties_every_table_at_once(pg_context):
     assert _count("cleanup_widget") == 1
     assert _count("cleanup_churn") == 1
 
-    _clean_database(setup)
+    _clean_database_sync(setup)
 
     assert _count("cleanup_widget") == 0
     assert _count("cleanup_churn") == 0
 
 
-def test_truncate_restarts_identity(pg_context):
-    """Ids begin again after cleaning, which is what makes them predictable."""
+def test_cleaning_does_not_reset_sequences(pg_context):
+    """Cleaning deletes rows; it does not touch sequences.
+
+    Restarting identity needs TRUNCATE, whose bulk form has to render table names
+    itself and takes a heavier lock. Rows are what a test needs cleaned, so ids
+    simply keep counting, as they do in production.
+    """
     setup = pg_context()
     _insert("cleanup_widget", "a")
-    _insert("cleanup_widget", "b")
 
-    _clean_database(setup)
+    _clean_database_sync(setup)
 
     with fr.db.get_engine().begin() as connection:
-        first = connection.execute(
-            text("INSERT INTO cleanup_widget (name) VALUES ('c') RETURNING id")
+        following = connection.execute(
+            text("INSERT INTO cleanup_widget (name) VALUES ('b') RETURNING id")
         ).scalar()
-    assert first == 1
+    assert following > 1
 
 
 def test_truncate_keeps_the_schema_qualifier(pg_context):
@@ -149,7 +154,7 @@ def test_truncate_keeps_the_schema_qualifier(pg_context):
     _insert(f"{SCHEMA}.item", "x")
     assert _count(f"{SCHEMA}.item") == 1
 
-    _clean_database(setup)
+    _clean_database_sync(setup)
 
     assert _count(f"{SCHEMA}.item") == 0
 
@@ -159,7 +164,7 @@ def test_excluded_tables_survive_truncation(pg_context):
     _insert("cleanup_reference", "seed")
     _insert("cleanup_churn", "data")
 
-    _clean_database(setup)
+    _clean_database_sync(setup)
 
     assert _count("cleanup_reference") == 1
     assert _count("cleanup_churn") == 0
@@ -168,14 +173,14 @@ def test_excluded_tables_survive_truncation(pg_context):
 def test_an_unknown_excluded_table_is_rejected(pg_context):
     setup = pg_context(db_cleanup_exclude=["cleanup_refrence"])
     with pytest.raises(RestlyConfigurationError, match="cleanup_refrence"):
-        _clean_database(setup)
+        _clean_database_sync(setup)
 
 
-def test_truncate_refuses_rather_than_cascade(pg_context):
-    """CASCADE would silently empty a table outside the list that references one
-    inside it, so PostgreSQL is left to raise instead."""
+def test_cleaning_refuses_to_orphan_a_row_it_does_not_know_about(pg_context):
+    """A table outside base= may reference one inside it. Deleting the parent row
+    raises, rather than removing something the suite never declared."""
     setup = pg_context()
-    # A referencing table Restly does not know about, as a migration might leave.
+    # A referencing table with a row, as a migration-created table might have.
     with fr.db.get_engine().begin() as connection:
         connection.execute(
             text(
@@ -184,7 +189,15 @@ def test_truncate_refuses_rather_than_cascade(pg_context):
                 "parent_id integer REFERENCES cleanup_parent(id))"
             )
         )
+    _insert("cleanup_parent", "referenced")
+    with fr.db.get_engine().begin() as connection:
+        connection.execute(
+            text(
+                "INSERT INTO cleanup_outsider (parent_id) "
+                "SELECT id FROM cleanup_parent LIMIT 1"
+            )
+        )
 
     with pytest.raises(Exception) as excinfo:
-        _clean_database(setup)
+        _clean_database_sync(setup)
     assert "cleanup_outsider" in str(excinfo.value)

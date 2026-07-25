@@ -20,18 +20,15 @@ from ._test_setup import (
     NONE,
     ROLLBACK,
     TRUNCATE,
-    _clean_database,
+    _clean_database_async,
+    _clean_database_sync,
     _create_schema,
     _current_setup,
     _resolve_db_cleanup,
     _resolve_engine,
+    _source_factories,
 )
-from .db._globals import (
-    _enter_test_isolation,
-    _exit_test_isolation,
-    _fr_globals,
-    _get_restly_context,
-)
+from .db._globals import _fr_globals, _get_restly_context
 from .exc import RestlyConfigurationError
 
 if TYPE_CHECKING:
@@ -217,14 +214,15 @@ def _shared_connection():
         yield None
         return
 
-    if not _fr_globals.make_session:
+    make_session, _ = _source_factories()
+    if not make_session:
         yield None
         return
 
     # The bind may be a Connection, as fr.configure(make_session=...) allows.
     # Pin a connection of our own from the engine behind it; events and connect()
     # are engine-level, and a caller's Connection carries its own transaction.
-    engine = _resolve_engine(_fr_globals.make_session.kw["bind"])
+    engine = _resolve_engine(make_session.kw["bind"])
     _install_sqlite_savepoint_fix(engine)
     with engine.connect() as conn:
         trans = conn.begin()
@@ -305,7 +303,7 @@ else:
                 )
             pytest.skip("Database connection not set up")
 
-        original = _fr_globals.async_make_session
+        original = _source_factories()[1]
         _reject_per_mapper_binds(original)
         async_engine = _resolve_engine(original.kw["bind"])
 
@@ -343,20 +341,12 @@ else:
                 },
             )
             globals_obj = _get_restly_context()
-            original_async_make_session = globals_obj.async_make_session
-            original_session_generator = globals_obj.session_generator
-            globals_obj.async_make_session = isolated_make_session
-            # AsyncSessionDep resolves the generator first; clearing it routes
-            # requests through the isolated factory.
-            globals_obj.session_generator = None
+            globals_obj.test_async_make_session = isolated_make_session
             session = isolated_make_session()
             try:
                 yield session
             finally:
-                # Restore before closing: a teardown-time close() failure must not
-                # leak the swapped factory into the next test.
-                globals_obj.async_make_session = original_async_make_session
-                globals_obj.session_generator = original_session_generator
+                globals_obj.test_async_make_session = None
                 await session.close()
 
 
@@ -414,7 +404,7 @@ def restly_session(_shared_connection) -> Iterator[SA_Session]:
             )
         pytest.skip("Database connection not set up")
 
-    original = _fr_globals.make_session
+    original = _source_factories()[0]
     _reject_per_mapper_binds(original)
     # A real factory bound to the pinned connection, in create_savepoint mode.
     # Every request (and this fixture) gets its own real session joining the outer
@@ -432,20 +422,16 @@ def restly_session(_shared_connection) -> Iterator[SA_Session]:
     )
 
     globals_obj = _get_restly_context()
-    original_make_session = globals_obj.make_session
-    original_sync_session_generator = globals_obj.sync_session_generator
-    globals_obj.make_session = isolated_make_session
-    # SessionDep resolves the generator first; clearing it routes requests through
-    # the isolated factory.
-    globals_obj.sync_session_generator = None
+    # One field, consulted first by every session source. Nothing the application
+    # configures later can displace it, and no generator is read around it.
+    globals_obj.test_make_session = isolated_make_session
     session = isolated_make_session()
     try:
         yield session
     finally:
-        # Restore before closing: a teardown-time close() failure must not leak
-        # the swapped factory (bound to the pinned connection) into the next test.
-        globals_obj.make_session = original_make_session
-        globals_obj.sync_session_generator = original_sync_session_generator
+        # Clear before closing: a teardown-time close() failure must not leak the
+        # override, which is bound to a connection about to be rolled back.
+        globals_obj.test_make_session = None
         session.close()
 
 
@@ -476,12 +462,7 @@ def _restly_managed_isolation(request: pytest.FixtureRequest) -> Iterator[None]:
         yield
         return
 
-    mode = _cleanup_mode()
-    _enter_test_isolation()
-    try:
-        yield from _managed_isolation(request, setup, mode)
-    finally:
-        _exit_test_isolation()
+    yield from _managed_isolation(request, setup, _cleanup_mode())
 
 
 def _managed_isolation(
@@ -500,25 +481,24 @@ def _managed_isolation(
         yield
         return
 
-    # The session dependencies read a configured generator before the factory, so
-    # an application's generator would route requests to its own database whatever
-    # this mode then cleans. Routing must not depend on the cleanup mode.
+    # These modes pin nothing, but the test still owns routing: point the same
+    # override at the configured factories so an application's generator cannot
+    # serve requests from its own database.
     globals_obj = _get_restly_context()
-    generators = (globals_obj.session_generator, globals_obj.sync_session_generator)
-    # Only where a factory can take the routing over: clearing a generator that is
-    # the sole session source would leave the dependency with nothing to yield.
-    if _fr_globals.async_make_session is not None:
-        globals_obj.session_generator = None
-    if _fr_globals.make_session is not None:
-        globals_obj.sync_session_generator = None
+    globals_obj.test_make_session = _fr_globals.make_session
+    globals_obj.test_async_make_session = _fr_globals.async_make_session
     try:
         if mode == TRUNCATE:
             # Before, not after: whatever the last test wrote is still there when
             # the run ends, which is the point of choosing this mode.
-            _clean_database(setup)
+            if not _clean_database_sync(setup):
+                # Async-only: cleaning must run on the loop the test uses, so it
+                # goes through a fixture rather than a loop of its own.
+                request.getfixturevalue("_restly_async_truncate")
         yield
     finally:
-        globals_obj.session_generator, globals_obj.sync_session_generator = generators
+        globals_obj.test_make_session = None
+        globals_obj.test_async_make_session = None
 
 
 @pytest.fixture
@@ -558,3 +538,26 @@ def restly_client(restly_app) -> Iterator[RestlyTestClient]:
     client = RestlyTestClient(restly_app)
     with client:
         yield client
+
+
+if pytest_asyncio is None:
+
+    @pytest.fixture
+    def _restly_async_truncate() -> None:  # pyright: ignore[reportRedeclaration]
+        # Only reachable in an async suite, which needs the extra anyway.
+        raise ModuleNotFoundError(_TESTING_EXTRA_MESSAGE, name="pytest_asyncio")
+
+else:
+
+    @pytest_asyncio.fixture
+    async def _restly_async_truncate() -> AsyncIterator[None]:
+        """Empty the tables over the async leg, on the test's own event loop.
+
+        Requested by the autouse fixture only for an async-only suite in truncate
+        mode. Running it on a loop of its own would hand a pooled connection to a
+        loop that closes before the test does, which is how asyncpg fails.
+        """
+        setup = _current_setup()
+        if setup is not None:
+            await _clean_database_async(setup)
+        yield
