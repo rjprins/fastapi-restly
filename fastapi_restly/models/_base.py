@@ -71,13 +71,22 @@ def underscore(name: str) -> str:
 class DataclassBase(
     AsyncAttrs, TableNameMixin, MappedAsDataclass, DeclarativeBase, kw_only=True
 ):
-    """SQLAlchemy declarative base with dataclass semantics.
+    """Convenience SQLAlchemy declarative base.
 
-    ``AsyncAttrs`` adds ``awaitable_attrs``, so an unloaded attribute can be
-    reached from plain async code -- ``await obj.awaitable_attrs.items`` --
-    where a bare ``obj.items`` would raise ``MissingGreenlet``. Views eager-load
-    what the response schema names, so this is for the code that runs outside
-    that: an ``after_commit`` hook, a custom business method.
+    * ``MappedAsDataclass`` provides keyword-only dataclass constructors.
+    * ``AsyncAttrs`` adds ``awaitable_attrs`` for loading unloaded attributes
+      from async code, for example ``await obj.awaitable_attrs.items``.
+    * ``__tablename__`` is generated automatically from the model class name
+      using snake_case: ``BlogPost`` becomes ``"blog_post"``. Set
+      ``__tablename__`` explicitly on a model to override the generated name.
+    * Python ``enum.Enum`` annotations use a non-native SQLAlchemy ``Enum``
+      backed by ``VARCHAR(64)``. Enum member names are stored as strings, so
+      databases such as PostgreSQL do not create native enum types that require
+      migrations when members change.
+
+    Views eager-load the attributes named by the response schema.
+    ``awaitable_attrs`` is primarily useful in code outside that path, such as
+    an ``after_commit`` hook or custom business method.
     """
 
     type_annotation_map = {
@@ -89,6 +98,34 @@ class DataclassBase(
 
 
 class IDBase(IDMixin, DataclassBase):
-    """Convenience base: DataclassBase + integer `id` primary key."""
+    """Dataclass base with an integer ``id`` primary key.
+
+    It inherits dataclass semantics, automatic snake_case table naming, and
+    ``awaitable_attrs`` from ``DataclassBase``.
+
+    This shorthand is convenient for typical Restly models:
+
+    .. code-block:: python
+
+       import fastapi_restly as fr
+       from sqlalchemy.orm import Mapped
+
+       class User(fr.IDBase):
+           name: Mapped[str]
+
+    It is equivalent to declaring the ``id`` column on ``DataclassBase``:
+
+    .. code-block:: python
+
+       import fastapi_restly as fr
+       from sqlalchemy.orm import Mapped, mapped_column
+
+       class User(fr.DataclassBase):
+           id: Mapped[int] = mapped_column(init=False, primary_key=True)
+           name: Mapped[str]
+
+    Both forms infer ``__tablename__ = "user"``, expose ``awaitable_attrs``,
+    and exclude ``id`` from the generated constructor.
+    """
 
     __abstract__ = True

@@ -113,6 +113,13 @@ html_favicon = "_static/favicon.svg"
 html_css_files = ["custom.css"]
 html_js_files = ["newsletter.js"]
 
+_MODEL_BASES_WITH_DYNAMIC_CONSTRUCTORS = {
+    "fastapi_restly.models.DataclassBase",
+    "fastapi_restly.models.IDBase",
+    "fastapi_restly.models.IDMixin",
+    "fastapi_restly.models.TimestampsMixin",
+}
+
 
 def _canonical_index_url(app, pagename):
     if pagename == "index":
@@ -162,7 +169,17 @@ def _canonicalize_sitemap_index(app, exception):
         tree.write(sitemap_path, xml_declaration=True, encoding="utf-8")
 
 
+def _hide_model_base_signatures(
+    _app, what, name, _obj, _options, _signature, _return_annotation
+):
+    """Hide constructor signatures that only become meaningful on mapped subclasses."""
+    if what == "class" and name in _MODEL_BASES_WITH_DYNAMIC_CONSTRUCTORS:
+        return None, None
+    return None
+
+
 def setup(app):
+    app.connect("autodoc-process-signature", _hide_model_base_signatures)
     app.connect("html-page-context", _canonicalize_index_page)
     app.connect("html-page-context", _noindex_snapshots)
     app.connect("build-finished", _canonicalize_sitemap_index, priority=900)

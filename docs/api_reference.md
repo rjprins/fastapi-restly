@@ -110,12 +110,13 @@ With the endpoint surface covered, the rest of this page catalogs the public sym
 
 ### Model Base Classes
 
-These base classes and mixins form the declarative foundation for SQLAlchemy models:
+These optional convenience bases and mixins reduce boilerplate for
+dataclass-oriented SQLAlchemy models:
 
 | Symbol | Description |
 |---|---|
 | {class}`fr.DataclassBase <fastapi_restly.models.DataclassBase>` | SQLAlchemy declarative base with dataclass semantics and auto snake_case table names. Mixes in SQLAlchemy's `AsyncAttrs`, so every model has `awaitable_attrs`. |
-| {class}`fr.IDBase <fastapi_restly.models.IDBase>` | Convenience alias combining `DataclassBase` with an auto-incrementing integer `id` primary key. |
+| {class}`fr.IDBase <fastapi_restly.models.IDBase>` | Convenience `DataclassBase` with an auto-incrementing integer `id` primary key. |
 | {class}`fr.TimestampsMixin <fastapi_restly.models.TimestampsMixin>` | Dataclass mixin adding `created_at` / `updated_at` to any `DataclassBase` subclass. |
 | {class}`fr.models.IDMixin <fastapi_restly.models.IDMixin>` | Dataclass mixin adding integer `id` to a custom `DataclassBase` subclass. |
 | `fastapi_restly.models.CASCADE_ALL_ASYNC` | Cascade string for use with `relationship(cascade=...)` in async SQLAlchemy models. Equivalent to `"save-update, merge, delete, expunge"`. SQLAlchemy's default `"all"` includes `"refresh-expire"` which is incompatible with async sessions. Import from `fastapi_restly.models` (not exposed at the top level). |
