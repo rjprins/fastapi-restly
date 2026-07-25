@@ -247,13 +247,15 @@ that asserts sensible default status codes and gives clear failure messages.
 ```python
 from fastapi_restly.testing import RestlyTestClient
 
-client = RestlyTestClient(app)
+# Enter it: the app's lifespan, which creates the tables above, runs on entry.
+with RestlyTestClient(app) as client:
+    post = client.post(
+        "/posts/", json={"title": "Hello", "content": "World", "published": False}
+    )
+    # Automatically asserts status 201
 
-post = client.post("/posts/", json={"title": "Hello", "content": "World", "published": False})
-# Automatically asserts status 201
-
-item = client.get(f"/posts/{post.json()['id']}")
-# Automatically asserts status 200
+    item = client.get(f"/posts/{post.json()['id']}")
+    # Automatically asserts status 200
 ```
 
 For test isolation, install the testing extra (`pip install "fastapi-restly[testing]"`);

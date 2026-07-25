@@ -77,3 +77,24 @@ class _FRGlobalsProxy:
 
 
 _fr_globals = _FRGlobalsProxy()
+
+
+# Depth of the test isolation currently installed. While this is non-zero the
+# session factories belong to a test, and re-pointing them at another database
+# (an application lifespan calling fr.configure() at startup, say) would send that
+# test's requests somewhere the fixtures never clean.
+_isolation_depth = 0
+
+
+def _enter_test_isolation() -> None:
+    global _isolation_depth
+    _isolation_depth += 1
+
+
+def _exit_test_isolation() -> None:
+    global _isolation_depth
+    _isolation_depth = max(0, _isolation_depth - 1)
+
+
+def _test_isolation_active() -> bool:
+    return _isolation_depth > 0

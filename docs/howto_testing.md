@@ -201,8 +201,14 @@ when you are testing without the fixtures:
 ```python
 from fastapi_restly.testing import RestlyTestClient
 
-client = RestlyTestClient(app)
+with RestlyTestClient(app) as client:
+    response = client.get("/users/")
 ```
+
+Enter it. Starlette runs an application's `lifespan` startup and shutdown only
+inside the context manager, so a client built and used outside one skips whatever
+`lifespan=` sets up. The `restly_client` fixture enters it for you, once per
+test.
 
 {class}`RestlyTestClient <fastapi_restly.testing.RestlyTestClient>` is intentionally sync-only. It still works for testing
 async FastAPI routes and {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` endpoints.

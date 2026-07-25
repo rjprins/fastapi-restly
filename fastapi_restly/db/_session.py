@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session as SA_Session
 
 from .._exception_handlers import register_default_exception_handlers
 from ..exc import RestlyConfigurationError, RestlyUncommittedChangesWarning
-from ._globals import _fr_globals
+from ._globals import _fr_globals, _test_isolation_active
 
 
 def _setup_async_database_connection(
@@ -164,6 +164,26 @@ def configure(
             async_engine=async_engine,
             async_make_session=async_make_session,
         )
+    database_arguments = (
+        database_url,
+        async_database_url,
+        engine,
+        async_engine,
+        make_session,
+        async_make_session,
+    )
+    if _test_isolation_active() and any(a is not None for a in database_arguments):
+        raise RestlyConfigurationError(
+            "fr.configure() was given a database while a test is running against "
+            "an isolated one. This usually means an application lifespan "
+            "configures Restly at startup, and the test client now runs that "
+            "startup: it would replace the session factory the fixtures installed, "
+            "so the rest of the test would read and write your application's "
+            "database instead of the test one. Configure the database once at "
+            "import, or guard the lifespan so it does not reconfigure Restly when "
+            "a suite already has."
+        )
+
     if database_url is not None or engine is not None or make_session is not None:
         _setup_database_connection(
             database_url=database_url, engine=engine, make_session=make_session

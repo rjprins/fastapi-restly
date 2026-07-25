@@ -31,6 +31,7 @@ from fastapi_restly._test_setup import (
     _current_setup,
     _reset_setup,
     _resolve_db_cleanup,
+    _run_alembic_upgrade,
     _safe_url,
     _tables_to_clean,
     _TestSetup,
@@ -1206,3 +1207,145 @@ def test_a_view_registered_after_the_client_still_gets_the_409_handler(tmp_path:
     )
     result = _run_pytest(tmp_path)
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+# ---------------------------------------------------------------------------
+# Ways a test can still reach the wrong database
+# ---------------------------------------------------------------------------
+
+
+def test_alembic_derives_the_url_from_an_engine(tmp_path: Path):
+    """configure_tests(engine=...) records no URL, and without one Alembic falls
+    through to alembic.ini, which points at the development database."""
+    captured = {}
+
+    def fake_upgrade(config, revision):
+        captured["url"] = config.get_main_option("sqlalchemy.url")
+
+    ini = tmp_path / "alembic.ini"
+    ini.write_text(
+        "[alembic]\nscript_location = alembic\nsqlalchemy.url = sqlite:///./DEV.db\n"
+    )
+    (tmp_path / "alembic").mkdir()
+
+    import alembic.command
+
+    with _isolated_config():
+        fr.configure(engine=create_engine(f"sqlite:///{tmp_path / 'test.db'}"))
+        original = alembic.command.upgrade
+        alembic.command.upgrade = fake_upgrade
+        try:
+            _run_alembic_upgrade(True, root=tmp_path)
+        finally:
+            alembic.command.upgrade = original
+
+    assert captured["url"] == f"sqlite:///{tmp_path / 'test.db'}"
+    assert "DEV.db" not in captured["url"]
+
+
+def test_alembic_refuses_when_no_url_can_be_derived(tmp_path: Path):
+    ini = tmp_path / "alembic.ini"
+    ini.write_text(
+        "[alembic]\nscript_location = alembic\nsqlalchemy.url = sqlite:///./DEV.db\n"
+    )
+    (tmp_path / "alembic").mkdir()
+    with _isolated_config():
+        with pytest.raises(RestlyConfigurationError, match="could not work out"):
+            _run_alembic_upgrade(True, root=tmp_path)
+
+
+def test_a_per_mapper_binds_factory_is_rejected():
+    """binds= rides along into the isolated factory and routes those models to
+    their own engine, outside the pinned connection, where writes really commit."""
+    engine = create_engine("sqlite://")
+    other = create_engine("sqlite://")
+    try:
+        with _isolated_config():
+
+            class Routed(fr.IDBase):
+                name: Mapped[str]
+
+            factory = sessionmaker(bind=engine, binds={Routed: other})
+            fr.configure(make_session=factory)
+            with pytest.raises(RestlyConfigurationError) as excinfo:
+                _fixtures._reject_per_mapper_binds(factory)
+        message = str(excinfo.value)
+        assert "Routed" in message
+        assert "truncate" in message
+    finally:
+        engine.dispose()
+        other.dispose()
+
+
+def test_a_connection_bound_factory_works_in_rollback_mode(tmp_path: Path):
+    """_shared_connection treated the bind as an Engine; a Connection raised
+    "No such event 'connect' for target Connection"."""
+    engine = create_engine(f"sqlite:///{tmp_path / 'bound.db'}")
+    try:
+        with engine.connect() as connection:
+            with _isolated_config():
+                fr.configure(make_session=sessionmaker(bind=connection))
+                pinned = next(_fixtures._shared_connection.__wrapped__())
+                assert pinned is not None
+                assert pinned.dialect.name == "sqlite"
+    finally:
+        engine.dispose()
+
+
+_RECONFIGURING_APP = """
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
+from sqlalchemy.orm import Mapped
+
+import fastapi_restly as fr
+
+
+class Note(fr.IDBase):
+    text: Mapped[str]
+
+
+class NoteSchema(fr.IDSchema):
+    text: str
+
+
+@asynccontextmanager
+async def lifespan(app):
+    # The hazard: startup re-points Restly at the development database, which the
+    # test client now runs because it enters the app's lifespan.
+    fr.configure(async_database_url="sqlite+aiosqlite:///./dev.db")
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
+
+
+@fr.include_view(app)
+class NoteView(fr.AsyncRestView):
+    prefix = "/notes"
+    model = Note
+    schema = NoteSchema
+"""
+
+
+def test_a_lifespan_cannot_repoint_restly_at_another_database(tmp_path: Path):
+    """It would replace the isolated factory, so the rest of the test would read
+    and write the application's database. Refuse rather than let it happen."""
+    _write_project(
+        tmp_path,
+        "import fastapi_restly as fr\nfrom myapp import app\n\n"
+        "fr.testing.configure_tests(\n"
+        "    app=app,\n"
+        '    async_database_url="sqlite+aiosqlite:///./test.db",\n'
+        "    create_all_from=fr.DataclassBase,\n"
+        ")\n",
+        "def test_a(restly_client):\n"
+        '    restly_client.post("/notes/", json={"text": "one"})\n',
+        app_module=_RECONFIGURING_APP,
+    )
+    result = _run_pytest(tmp_path)
+
+    assert result.returncode != 0
+    assert "while a test is running against an isolated one" in result.stdout
+    # And it was stopped before anything reached the application's database.
+    assert not (tmp_path / "dev.db").exists()

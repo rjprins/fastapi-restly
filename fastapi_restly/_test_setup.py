@@ -471,6 +471,27 @@ def _create_schema(setup: _TestSetup, root: Path | None = None) -> None:
         _run_alembic_upgrade(setup.alembic_upgrade, root)
 
 
+def _configured_url() -> str | None:
+    """The URL of the database the tests were pointed at, however it was given.
+
+    ``configure_tests(engine=...)`` and the sessionmaker forms record no URL, so
+    read it back off the bind. Prefer the sync leg: Alembic drives a sync engine,
+    and an async URL is one a stock ``env.py`` cannot open.
+    """
+    for recorded, factory in (
+        (_fr_globals.database_url, _fr_globals.make_session),
+        (_fr_globals.async_database_url, _fr_globals.async_make_session),
+    ):
+        if recorded is not None:
+            return recorded
+        if factory is None:
+            continue
+        engine = _resolve_engine(factory.kw.get("bind"))
+        if engine is not None and getattr(engine, "url", None) is not None:
+            return engine.url.render_as_string(hide_password=False)
+    return None
+
+
 def _run_alembic_upgrade(
     alembic_upgrade: bool | str | Path, root: Path | None = None
 ) -> None:
@@ -508,10 +529,17 @@ def _run_alembic_upgrade(
     # Point Alembic at the database configured for the tests. Without this the
     # upgrade runs against whatever env.py resolves on its own, typically the
     # development database, leaving the test database unmigrated.
-    url = _fr_globals.database_url or _fr_globals.async_database_url
-    if url is not None:
-        # Alembic stores this in a ConfigParser with interpolation on, where a
-        # bare % is a syntax error. Percent-encoded passwords are ordinary, and
-        # the resulting ValueError would echo the whole URL into the log.
-        config.set_main_option("sqlalchemy.url", url.replace("%", "%%"))
+    url = _configured_url()
+    if url is None:
+        raise RestlyConfigurationError(
+            "fr.testing.configure_tests(alembic_upgrade=...) could not work out "
+            "which database to migrate. It would otherwise fall through to the URL "
+            "in your alembic.ini, which is normally the development one, and "
+            "migrate that instead. Configure the tests with database_url= or "
+            "async_database_url=, or with an engine Restly can read a URL from."
+        )
+    # Alembic stores this in a ConfigParser with interpolation on, where a bare %
+    # is a syntax error. Percent-encoded passwords are ordinary, and the resulting
+    # ValueError would echo the whole URL into the log.
+    config.set_main_option("sqlalchemy.url", url.replace("%", "%%"))
     command.upgrade(config, "head")

@@ -4,7 +4,7 @@ import os
 import weakref
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import TYPE_CHECKING, AsyncIterator, Iterator
+from typing import TYPE_CHECKING, Any, AsyncIterator, Iterator
 
 import pytest
 from fastapi import FastAPI
@@ -24,8 +24,14 @@ from ._test_setup import (
     _create_schema,
     _current_setup,
     _resolve_db_cleanup,
+    _resolve_engine,
 )
-from .db._globals import _fr_globals, _get_restly_context
+from .db._globals import (
+    _enter_test_isolation,
+    _exit_test_isolation,
+    _fr_globals,
+    _get_restly_context,
+)
 from .exc import RestlyConfigurationError
 
 if TYPE_CHECKING:
@@ -162,6 +168,29 @@ def pytest_report_header(config: pytest.Config) -> str | None:
     return f"restly: db cleanup mode {mode!r}, test writes are committed and persist"
 
 
+def _reject_per_mapper_binds(factory: Any) -> None:
+    """Refuse a session factory whose ``binds=`` sends some models elsewhere.
+
+    The isolated factory copies the original's keyword arguments, so a per-mapper
+    ``binds`` would ride along and route those models to their own engine, outside
+    the pinned connection. Their writes commit for real and survive the rollback,
+    which is silent: the rest of the test looks isolated.
+    """
+    binds = factory.kw.get("binds")
+    if not binds:
+        return
+    mapped = ", ".join(sorted(getattr(key, "__name__", str(key)) for key in binds))
+    raise RestlyConfigurationError(
+        "The session factory passed to fr.configure() has per-mapper binds "
+        f"({mapped}), which the test fixtures cannot isolate: those models would "
+        "be routed to their own engine, outside the connection this test pins, "
+        "and their writes would be committed rather than rolled back. Configure "
+        "the tests with a single-bind sessionmaker, or use "
+        'fr.testing.configure_tests(db_cleanup="truncate"), which cleans the '
+        "tables instead of holding a transaction open."
+    )
+
+
 def _cleanup_mode() -> str:
     """The cleanup mode in force, or ``rollback`` when the suite never opted in.
 
@@ -192,7 +221,10 @@ def _shared_connection():
         yield None
         return
 
-    engine = _fr_globals.make_session.kw["bind"]
+    # The bind may be a Connection, as fr.configure(make_session=...) allows.
+    # Pin a connection of our own from the engine behind it; events and connect()
+    # are engine-level, and a caller's Connection carries its own transaction.
+    engine = _resolve_engine(_fr_globals.make_session.kw["bind"])
     _install_sqlite_savepoint_fix(engine)
     with engine.connect() as conn:
         trans = conn.begin()
@@ -274,7 +306,8 @@ else:
             pytest.skip("Database connection not set up")
 
         original = _fr_globals.async_make_session
-        async_engine = original.kw["bind"]
+        _reject_per_mapper_binds(original)
+        async_engine = _resolve_engine(original.kw["bind"])
 
         @asynccontextmanager
         async def _pinned_async_connection():
@@ -382,6 +415,7 @@ def restly_session(_shared_connection) -> Iterator[SA_Session]:
         pytest.skip("Database connection not set up")
 
     original = _fr_globals.make_session
+    _reject_per_mapper_binds(original)
     # A real factory bound to the pinned connection, in create_savepoint mode.
     # Every request (and this fixture) gets its own real session joining the outer
     # transaction via a savepoint -- no method patching, no MagicMock factory, no
@@ -443,6 +477,18 @@ def _restly_managed_isolation(request: pytest.FixtureRequest) -> Iterator[None]:
         return
 
     mode = _cleanup_mode()
+    _enter_test_isolation()
+    try:
+        yield from _managed_isolation(request, setup, mode)
+    finally:
+        _exit_test_isolation()
+
+
+def _managed_isolation(
+    request: pytest.FixtureRequest, setup: Any, mode: str
+) -> Iterator[None]:
+    """The body of the autouse fixture, split out so the isolation flag can wrap
+    it in a try/finally that survives an error in any mode."""
     if mode == ROLLBACK:
         # Both legs, not the first one found: each session fixture swaps only its
         # own factory, so activating one in a suite that configured both leaves
