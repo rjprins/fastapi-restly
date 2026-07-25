@@ -8,7 +8,6 @@ client (and with it httpx). Users reach it as ``fr.testing.configure_tests()``.
 from __future__ import annotations
 
 import asyncio
-import os
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -246,22 +245,20 @@ def configure_tests(
 
 
 def _resolve_db_cleanup(setup: _TestSetup, flag: str | None) -> str:
-    """Return the mode in force, honouring the flag over the environment over the
-    argument. Both overrides exist so a debugging run can switch mode without
-    touching the suite."""
-    for source, value in (
-        ("--restly-db-cleanup", flag),
-        (DB_CLEANUP_ENV_VAR, os.environ.get(DB_CLEANUP_ENV_VAR)),
-    ):
-        if not value:
-            continue
-        if value not in DB_CLEANUP_MODES:
-            raise RestlyConfigurationError(
-                f"{source} is {value!r}; expected one of "
-                f"{', '.join(repr(mode) for mode in DB_CLEANUP_MODES)}."
-            )
-        return value
-    return setup.db_cleanup
+    """Return the mode in force: the override if a run set one, else the argument.
+
+    The flag and the environment are read once, in ``pytest_configure``, and reach
+    here already resolved. Reading the environment again per test would let the
+    mode announced in the header and the mode enforced during the run disagree.
+    """
+    if not flag:
+        return setup.db_cleanup
+    if flag not in DB_CLEANUP_MODES:
+        raise RestlyConfigurationError(
+            f"{flag!r} is not a cleanup mode; expected one of "
+            f"{', '.join(repr(mode) for mode in DB_CLEANUP_MODES)}."
+        )
+    return flag
 
 
 #: The table list for the setup it was computed under. The schema is built once
@@ -429,8 +426,26 @@ def _reject_inherited_database() -> None:
     and ``create_all``/``alembic upgrade`` is DDL: it survives the per-test
     rollback.
     """
-    if _fr_globals.make_session is None and _fr_globals.async_make_session is None:
+    generator = _fr_globals.session_generator or _fr_globals.sync_session_generator
+    if (
+        _fr_globals.make_session is None
+        and _fr_globals.async_make_session is None
+        and generator is None
+    ):
         return  # No database anywhere: a suite that never touches one is fine.
+
+    if generator is not None and (
+        _fr_globals.make_session is None and _fr_globals.async_make_session is None
+    ):
+        raise RestlyConfigurationError(
+            "fr.testing.configure_tests() got no database argument, but your "
+            "application configured a session_generator, which is where its "
+            "requests get their database. The fixtures cannot isolate a generator "
+            "they know nothing about, so the tests would read and write whatever "
+            "it opens, normally the development database. Configure a sessionmaker "
+            "for the tests: pass database_url=, engine= or make_session= (or their "
+            "async forms)."
+        )
 
     configured = _fr_globals.database_url or _fr_globals.async_database_url
     named = f" ({_safe_url(configured)})" if configured else ""

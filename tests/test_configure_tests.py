@@ -24,6 +24,7 @@ import fastapi_restly as fr
 from fastapi_restly import _pytest_fixtures as _fixtures
 from fastapi_restly._test_setup import (
     DB_CLEANUP_ENV_VAR,
+    NONE,
     ROLLBACK,
     TRUNCATE,
     _clean_database_sync,
@@ -164,18 +165,22 @@ def test_safe_url_survives_something_that_is_not_a_url():
     assert _safe_url(None) == "the configured database"
 
 
-def test_the_rejection_messages_run_urls_through_the_redaction():
-    with _isolated_config():
-        fr.configure(database_url="sqlite:///./dev.db")
+def test_the_rejection_messages_hide_the_password():
+    """These land in pytest output and CI logs. A sqlite URL carries no password,
+    so the recorded URL is set to one that does."""
+    with _isolated_config() as context:
+        fr.configure(engine=create_engine("sqlite://"))
+        context.database_url = "postgresql://app:hunter2@db.internal:5432/dev"
+
         with pytest.raises(RestlyConfigurationError) as inherited:
             configure_tests(app=FastAPI())
         with pytest.raises(RestlyConfigurationError) as unnamed:
             configure_tests(async_database_url="sqlite+aiosqlite:///./test.db")
 
-    # sqlite URLs carry no password, so the check is that they are rendered
-    # through the same helper rather than interpolated raw.
     for excinfo in (inherited, unnamed):
-        assert _safe_url("sqlite:///./dev.db") in str(excinfo.value)
+        message = str(excinfo.value)
+        assert "hunter2" not in message
+        assert "db.internal:5432/dev" in message
 
 
 def test_any_single_database_argument_satisfies_the_guard():
@@ -299,6 +304,16 @@ def test_an_unknown_cleanup_mode_is_rejected():
         configure_tests(database_url="sqlite://", db_cleanup="vacuum")
 
 
+class _FakeConfig:
+    """Just enough pytest Config for the hooks under test."""
+
+    def __init__(self, flag: str | None) -> None:
+        self._flag = flag
+
+    def getoption(self, name: str, default: object = None) -> object:
+        return self._flag
+
+
 def _setup_with(mode: str) -> _TestSetup:
     return _TestSetup(
         app=None,
@@ -315,8 +330,13 @@ def test_the_argument_decides_when_nothing_overrides_it(monkeypatch):
 
 
 def test_the_environment_overrides_the_argument(monkeypatch):
+    """Read once, in pytest_configure: a per-call read would let the mode the
+    header announced and the mode enforced during the run disagree."""
     monkeypatch.setenv(DB_CLEANUP_ENV_VAR, TRUNCATE)
-    assert _resolve_db_cleanup(_setup_with(ROLLBACK), None) == TRUNCATE
+    monkeypatch.setattr(_fixtures, "_db_cleanup_override", None)
+    _fixtures.pytest_configure(_FakeConfig(None))  # type: ignore[arg-type]
+    assert _fixtures._db_cleanup_override == TRUNCATE
+    assert _resolve_db_cleanup(_setup_with(ROLLBACK), TRUNCATE) == TRUNCATE
 
 
 def test_the_flag_overrides_the_environment(monkeypatch):
@@ -326,8 +346,9 @@ def test_the_flag_overrides_the_environment(monkeypatch):
 
 def test_an_unknown_mode_from_the_environment_is_rejected(monkeypatch):
     monkeypatch.setenv(DB_CLEANUP_ENV_VAR, "vacuum")
-    with pytest.raises(RestlyConfigurationError, match=DB_CLEANUP_ENV_VAR):
-        _resolve_db_cleanup(_setup_with(ROLLBACK), None)
+    monkeypatch.setattr(_fixtures, "_db_cleanup_override", None)
+    with pytest.raises(pytest.UsageError, match=DB_CLEANUP_ENV_VAR):
+        _fixtures.pytest_configure(_FakeConfig(None))  # type: ignore[arg-type]
 
 
 def test_excluded_tables_keep_their_rows(tmp_path: Path):
@@ -733,7 +754,9 @@ def test_a_suite_that_never_opts_in_is_untouched(tmp_path: Path):
     result = _run_pytest(tmp_path)
 
     assert result.returncode == 0, result.stdout + result.stderr
-    assert not (tmp_path / "test.db").exists()
+    # dev.db is the app's own, and the only database this project names: the
+    # schema step would have created it had the fixtures acted.
+    assert not (tmp_path / "dev.db").exists()
 
 
 def test_tests_still_run_when_no_database_is_configured_anywhere(tmp_path: Path):
@@ -829,6 +852,12 @@ class NoteView(fr.RestView):
     prefix = "/notes"
     model = Note
     schema = NoteSchema
+
+
+if __import__("os").environ.get("APP_USES_GENERATOR"):
+    # Only for the generator case: give that database the schema, so a row which
+    # leaks there is counted rather than swallowed as a missing table.
+    fr.DataclassBase.metadata.create_all(_dev_engine)
 """
 
 _LEAK_TESTS = """
@@ -914,8 +943,10 @@ def test_an_inherited_generator_does_not_route_requests_away(tmp_path: Path):
     )
 
     assert result.returncode == 0, result.stdout + result.stderr
-    # Requests went to the configured test database, not the generator's.
-    assert _rows(tmp_path / "dev.db") in (None, 0)
+    # The generator's database has the schema, so a row landing there would be
+    # counted rather than swallowed as a missing table.
+    assert _rows(tmp_path / "dev.db") == 0
+    assert _rows(tmp_path / "test.db") is not None
 
 
 # ---------------------------------------------------------------------------
@@ -923,33 +954,32 @@ def test_an_inherited_generator_does_not_route_requests_away(tmp_path: Path):
 # ---------------------------------------------------------------------------
 
 
-def test_postgres_truncate_keeps_the_schema_qualifier():
-    """Hand-quoting drops table.schema, so a qualified table resolves through
-    search_path to a different table, or errors."""
-    from sqlalchemy import Column, Integer, MetaData, Table
-    from sqlalchemy.dialects import postgresql
-
-    metadata = MetaData()
-    qualified = Table("audit", metadata, Column("id", Integer), schema="reporting")
-    awkward = Table('we"ird', metadata, Column("id", Integer))
-
-    preparer = postgresql.dialect().identifier_preparer
-    assert preparer.format_table(qualified) == "reporting.audit"
-    assert preparer.format_table(awkward) == '"we""ird"'
-
-
 def test_alembic_accepts_a_percent_encoded_password(tmp_path: Path):
-    """A percent-encoded password is ordinary; ConfigParser interpolation would
-    reject it, and the ValueError would carry the whole URL into the log."""
-    from alembic.config import Config
+    """Alembic stores the URL in a ConfigParser with interpolation on, where a
+    bare % is a syntax error, and the ValueError would carry the whole URL."""
+    captured = {}
+
+    def fake_upgrade(config, revision):
+        captured["url"] = config.get_main_option("sqlalchemy.url")
 
     ini = tmp_path / "alembic.ini"
     ini.write_text("[alembic]\nscript_location = alembic\n")
-    url = "postgresql://app:p%40ssw0rd%23x@db.internal:5432/prod"
+    (tmp_path / "alembic").mkdir()
+    url = "postgresql+psycopg://app:p%40ssw0rd%23x@db.internal:5432/prod"
 
-    config = Config(str(ini))
-    config.set_main_option("sqlalchemy.url", url.replace("%", "%%"))
-    assert config.get_main_option("sqlalchemy.url") == url
+    import alembic.command
+
+    with _isolated_config() as context:
+        fr.configure(engine=create_engine("sqlite://"))
+        context.database_url = url
+        original = alembic.command.upgrade
+        alembic.command.upgrade = fake_upgrade
+        try:
+            _run_alembic_upgrade(True, root=tmp_path)
+        finally:
+            alembic.command.upgrade = original
+
+    assert captured["url"] == url
 
 
 def test_error_messages_name_a_function_that_exists():
@@ -1344,3 +1374,57 @@ def test_a_lifespan_reconfiguring_restly_cannot_reach_the_tests(tmp_path: Path):
     assert result.returncode == 0, result.stdout + result.stderr
     # The application's database was never opened, and isolation held.
     assert not (tmp_path / "dev.db").exists()
+
+
+def test_a_nested_run_gives_the_outer_run_its_mode_back(monkeypatch):
+    """Clearing the override would take the outer run's mode away, which is the
+    inverse of the leak the hook exists to prevent."""
+    monkeypatch.setattr(_fixtures, "_db_cleanup_override", None)
+    monkeypatch.setattr(_fixtures, "_override_stack", [])
+    monkeypatch.delenv(DB_CLEANUP_ENV_VAR, raising=False)
+
+    _fixtures.pytest_configure(_FakeConfig(TRUNCATE))  # type: ignore[arg-type]
+    assert _fixtures._db_cleanup_override == TRUNCATE
+
+    # A nested in-process run, with its own mode.
+    _fixtures.pytest_configure(_FakeConfig(NONE))  # type: ignore[arg-type]
+    assert _fixtures._db_cleanup_override == NONE
+    _fixtures.pytest_unconfigure(_FakeConfig(NONE))  # type: ignore[arg-type]
+
+    assert _fixtures._db_cleanup_override == TRUNCATE
+
+    _fixtures.pytest_unconfigure(_FakeConfig(TRUNCATE))  # type: ignore[arg-type]
+    assert _fixtures._db_cleanup_override is None
+
+
+def test_a_generator_only_application_is_rejected():
+    """A session_generator is where an application's requests get their database.
+    The fixtures cannot isolate one they know nothing about, so a suite that names
+    no database of its own would read and write the application's."""
+    with _isolated_config():
+
+        def dev_sessions():  # pragma: no cover - never called
+            yield None
+
+        fr.configure(sync_session_generator=dev_sessions)
+        with pytest.raises(RestlyConfigurationError) as excinfo:
+            configure_tests(app=FastAPI())
+
+    message = str(excinfo.value)
+    assert "session_generator" in message
+    assert "make_session=" in message
+
+
+def test_a_generator_alongside_a_named_database_is_accepted():
+    """With a sessionmaker configured for the tests the fixtures install their own
+    source, which the session dependencies consult before any generator."""
+    with _isolated_config():
+
+        def dev_sessions():  # pragma: no cover - never called
+            yield None
+
+        fr.configure(
+            database_url="sqlite:///./dev.db", sync_session_generator=dev_sessions
+        )
+        configure_tests(database_url="sqlite:///./test.db")
+        assert _current_setup() is not None

@@ -133,8 +133,14 @@ def pytest_addoption(parser: pytest.Parser) -> None:
 _db_cleanup_override: str | None = None
 
 
+#: Overrides of runs that started before this one, innermost last. A nested
+#: in-process run must give the outer run its mode back rather than clear it.
+_override_stack: list[str | None] = []
+
+
 def pytest_configure(config: pytest.Config) -> None:
     global _db_cleanup_override
+    _override_stack.append(_db_cleanup_override)
     chosen = config.getoption("restly_db_cleanup")
     if not isinstance(chosen, str):
         chosen = os.environ.get(DB_CLEANUP_ENV_VAR) or None
@@ -149,9 +155,10 @@ def pytest_configure(config: pytest.Config) -> None:
 
 
 def pytest_unconfigure(config: pytest.Config) -> None:
-    # A nested in-process run would otherwise leak its mode to the outer one.
+    # Restore rather than clear: a nested in-process run must neither leak its
+    # mode outward nor take the outer run's away.
     global _db_cleanup_override
-    _db_cleanup_override = None
+    _db_cleanup_override = _override_stack.pop() if _override_stack else None
 
 
 def pytest_report_header(config: pytest.Config) -> str | None:
