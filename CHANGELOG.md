@@ -16,6 +16,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   already-configured database, which is usually the development one. Suites that
   do not call it are unaffected.
 
+- `db_cleanup=` picks how each test gets a clean database: `"rollback"` (the
+  default), `"truncate"` (empties the tables before each test and lets writes
+  commit, so the last test's rows can be inspected afterwards), or `"none"`.
+  `--restly-db-cleanup` and `RESTLY_DB_CLEANUP` switch mode for a single run, and
+  `db_cleanup_exclude=` spares tables holding seeded reference data.
+
 - Restly's declarative base mixes in SQLAlchemy's `AsyncAttrs`, so every model
   has `awaitable_attrs`: `await obj.awaitable_attrs.items` reads an unloaded
   attribute from plain async code, where a bare `obj.items` raises

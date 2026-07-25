@@ -3,6 +3,9 @@ try:
         _restly_managed_isolation,  # noqa: F401 -- autouse; inert until fr.testing.configure()
         _restly_managed_schema,  # noqa: F401 -- autouse; inert until fr.testing.configure()
         _shared_connection,  # noqa: F401 -- re-exported so dependent fixtures resolve it
+        pytest_addoption,  # noqa: F401 -- pytest hook; must be found on the plugin module
+        pytest_configure,  # noqa: F401 -- pytest hook; must be found on the plugin module
+        pytest_report_header,  # noqa: F401 -- pytest hook; must be found on the plugin module
         restly_app,
         restly_async_session,
         restly_client,

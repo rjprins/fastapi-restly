@@ -13,7 +13,16 @@ from sqlalchemy.ext.asyncio import AsyncSession as SA_AsyncSession
 from sqlalchemy.orm import Session as SA_Session
 from sqlalchemy.orm import sessionmaker
 
-from ._test_setup import _create_schema, _current_setup
+from ._test_setup import (
+    DB_CLEANUP_MODES,
+    NONE,
+    ROLLBACK,
+    TRUNCATE,
+    _clean_database,
+    _create_schema,
+    _current_setup,
+    _resolve_db_cleanup,
+)
 from .db._globals import _fr_globals, _get_restly_context
 from .exc import RestlyConfigurationError
 
@@ -95,6 +104,58 @@ def _install_sqlite_savepoint_fix(engine: Engine | AsyncEngine) -> None:
         conn.exec_driver_sql("BEGIN")
 
 
+def pytest_addoption(parser: pytest.Parser) -> None:
+    """Register ``--restly-db-cleanup``, which outranks the argument and the
+    environment so a debugging run can switch mode without editing the suite."""
+    parser.addoption(
+        "--restly-db-cleanup",
+        dest="restly_db_cleanup",
+        choices=list(DB_CLEANUP_MODES),
+        default=None,
+        help=(
+            "How Restly gives each test a clean database. 'rollback' (the "
+            "default) rolls every test back and persists nothing; 'truncate' "
+            "empties the tables before each test and lets writes commit, so the "
+            "last test's rows survive the run and can be inspected; 'none' leaves "
+            "cleaning to the suite."
+        ),
+    )
+
+
+# The command-line mode, captured once. Kept here rather than read through each
+# fixture's ``request`` because it is a property of the run, not of a test.
+_cli_db_cleanup: str | None = None
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    global _cli_db_cleanup
+    chosen = config.getoption("restly_db_cleanup")
+    _cli_db_cleanup = chosen if isinstance(chosen, str) else None
+
+
+def pytest_report_header(config: pytest.Config) -> str | None:
+    """Announce a non-default cleanup mode, so a stale flag or environment
+    variable cannot quietly change what the suite does."""
+    mode = _cleanup_mode()
+    if mode == ROLLBACK:
+        return None
+    if mode == NONE:
+        return "restly: db cleanup mode 'none', nothing is cleaned between tests"
+    return f"restly: db cleanup mode {mode!r}, test writes are committed and persist"
+
+
+def _cleanup_mode() -> str:
+    """The cleanup mode in force, or ``rollback`` when the suite never opted in.
+
+    A suite that does not call ``configure_tests()`` still gets the rollback
+    behaviour the session fixtures have always had when it requests one.
+    """
+    setup = _current_setup()
+    if setup is None:
+        return ROLLBACK
+    return _resolve_db_cleanup(setup, _cli_db_cleanup)
+
+
 @pytest.fixture
 def _shared_connection():
     # One pinned connection shared by the sync and async fixtures, so a test that
@@ -103,6 +164,12 @@ def _shared_connection():
     # the outer transaction is never committed and rolls back at teardown, so no
     # test data is ever persisted. Async-only projects have no sync sessionmaker;
     # restly_async_session pins its own connection in that case.
+    if _cleanup_mode() != ROLLBACK:
+        # Only rollback mode pins a connection. The other modes let writes commit,
+        # so there is no outer transaction to hold open.
+        yield None
+        return
+
     if not _fr_globals.make_session:
         yield None
         return
@@ -156,6 +223,19 @@ else:
         ``fr.open_async_session()`` resolves the same factory, so it also yields an
         isolated session during a test.
         """
+        if _cleanup_mode() != ROLLBACK:
+            # The fixture follows the suite's cleanup mode. Rolling this session
+            # back regardless would undo writes the mode means to commit, and
+            # leave nothing behind to inspect.
+            if not _fr_globals.async_make_session:
+                pytest.skip("Database connection not set up")
+            session = _fr_globals.async_make_session()
+            try:
+                yield session
+            finally:
+                await session.close()
+            return
+
         if not _fr_globals.async_make_session:
             if _fr_globals.session_generator is not None:
                 raise RestlyConfigurationError(
@@ -248,6 +328,19 @@ def restly_session(_shared_connection) -> Iterator[SA_Session]:
     ``fr.open_session()`` resolves the same factory, so it also yields an isolated
     session during a test.
     """
+    if _cleanup_mode() != ROLLBACK:
+        # The fixture follows the suite's cleanup mode. Rolling this session back
+        # regardless would undo writes the mode means to commit, and leave nothing
+        # behind to inspect.
+        if not _fr_globals.make_session:
+            pytest.skip("Database connection not set up")
+        session = _fr_globals.make_session()
+        try:
+            yield session
+        finally:
+            session.close()
+        return
+
     if not _fr_globals.make_session:
         if _fr_globals.sync_session_generator is not None:
             raise RestlyConfigurationError(
@@ -320,8 +413,13 @@ def _restly_managed_isolation(request: pytest.FixtureRequest) -> Iterator[None]:
     skipping) when nothing is configured, so tests that never touch the database
     still run.
     """
-    if _current_setup() is not None:
-        if _fr_globals.async_make_session is not None:
+    setup = _current_setup()
+    if setup is not None:
+        if _cleanup_mode() == TRUNCATE:
+            # Before, not after: whatever the last test wrote is still there when
+            # the run ends, which is the point of choosing this mode.
+            _clean_database(setup)
+        elif _fr_globals.async_make_session is not None:
             request.getfixturevalue("restly_async_session")
         elif _fr_globals.make_session is not None:
             request.getfixturevalue("restly_session")

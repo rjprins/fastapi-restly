@@ -73,7 +73,9 @@ migrations with `alembic_upgrade=`.
 it finishes, so no test sees another's rows and the suite does not care what
 order it runs in. There is no teardown to write and no database to rebuild
 between tests, which is what keeps a suite fast as it grows. See
-[the isolation model](#isolation-model) for how that rollback works.
+[the isolation model](#isolation-model) for how that rollback works, and
+[cleaning up between tests](#cleaning-up-between-tests) for the two cases it
+cannot serve.
 
 **A client wired to your app.** `restly_client` sends real requests to the app
 you passed, and those requests roll back with everything else.
@@ -132,6 +134,57 @@ transaction that rolls back, so tables created inside one are discarded with it.
 
 See [Migrations with Alembic](deploying.md#migrations-with-alembic) for
 production migration setup.
+
+## Cleaning up between tests
+
+Every test starts from a clean database, and `db_cleanup` decides how. The
+default suits most suites; the other two exist for what it cannot serve.
+
+**`"rollback"`**, the default, wraps each test in a transaction and rolls it back
+at the end, through the savepoints [the isolation model](#isolation-model)
+describes. Nothing is ever committed, which is what makes it the fastest option,
+and it leaves reference data your migrations seeded untouched.
+
+**`"truncate"`** empties the tables before each test instead, and lets writes
+commit for real. It is slower and wants a database of its own, but the rows the
+last test wrote are still there when the run ends, which is what makes them
+inspectable.
+
+**`"none"`** cleans nothing and leaves that to you. Neither of the others fits a
+suite that drives a browser or another process, which cannot see uncommitted data
+and whose parallel workers would truncate each other, nor a database user without
+the rights to truncate.
+
+Switch mode for one run without editing the suite:
+
+```bash
+pytest --restly-db-cleanup=truncate
+RESTLY_DB_CLEANUP=truncate pytest
+```
+
+The flag beats the environment variable, which beats the argument. Any mode other
+than the default announces itself in pytest's header, so a flag left over from a
+debugging session cannot quietly change what a suite does. pytest prints that
+header at normal verbosity only, so `-q` hides it.
+
+### Reference data and truncation
+
+Truncation empties every table it finds, including the ones your migrations
+seeded with reference data, and nothing puts those rows back. Name them and they
+are left alone:
+
+```python
+fr.testing.configure_tests(
+    app=app,
+    database_url="postgresql+psycopg://localhost/myapp_test",
+    alembic_upgrade=True,
+    db_cleanup_exclude=["country", "role"],
+)
+```
+
+Excluded tables are shared by every test, so a write to one does carry over.
+Naming a table that does not exist raises, since a typo would otherwise empty the
+very table you meant to protect.
 
 ## RestlyTestClient
 
@@ -215,6 +268,10 @@ session from, and it raises rather than skip.
 
 `fr.open_session()` resolves the same factory `SessionDep` does, so it too
 yields an isolated session on the fixture's connection during a test.
+
+Under any [cleanup mode](#cleaning-up-between-tests) other than `rollback` this
+fixture yields a plain session on the configured database instead, since rolling
+it back would undo the writes those modes exist to commit.
 
 A committed write can be read back within the same test:
 
@@ -304,3 +361,37 @@ Explicit transaction blocks behave as in production: `with restly_session.begin(
 ...` and `async with restly_async_session.begin(): ...` commit on success and
 roll back on error, scoped to the fixture's outer transaction so nothing persists
 past the test.
+
+## Inspecting the database
+
+Opening `psql` while a test runs under the default mode finds nothing, and so
+does opening it afterwards. The rows live in an uncommitted transaction on a
+single connection, which no other process can read, and the rollback removes them
+when the test ends. Two ways to see them anyway.
+
+**From inside the test.** `pytest --pdb` stops at the failure while the
+transaction is still open, before any fixture tears down, and `restly_client`
+works from there:
+
+```
+(Pdb) restly_client.get("/users/").json()
+{'data': [{'id': 1, 'name': 'Jane'}], 'total_count': 1, ...}
+```
+
+Querying through your own API like this works whether the suite is sync or async,
+because the client is synchronous either way. Querying a session directly works
+only in a sync suite, with `restly_session.execute(...)`. In an async one
+`restly_async_session.execute(...)` hands back a coroutine that nothing awaits,
+and reaching for its `sync_session` raises `MissingGreenlet`.
+
+**With ordinary tools.** Run once in [truncate mode](#cleaning-up-between-tests)
+and the rows are committed, and still there when the run ends:
+
+```bash
+pytest --restly-db-cleanup=truncate -k test_the_broken_one
+psql myapp_test -c 'select * from "user"'
+```
+
+Cleaning happens before each test rather than after, which is what leaves the
+failing test's rows in place. Point the suite at a file or a server for this; an
+in-memory database is gone as soon as pytest exits.

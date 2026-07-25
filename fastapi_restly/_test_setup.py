@@ -1,13 +1,15 @@
-"""State behind :func:`fastapi_restly.testing.configure`.
+"""State behind :func:`fastapi_restly.testing.configure_tests`.
 
 Lives at the package root rather than in ``testing/`` so the pytest plugin can
 read it without importing ``testing/__init__.py``, which pulls in the HTTP test
-client (and with it httpx). Users reach it as ``fr.testing.configure()``.
+client (and with it httpx). Users reach it as ``fr.testing.configure_tests()``.
 """
 
 from __future__ import annotations
 
 import asyncio
+import os
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -22,14 +24,31 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker
     from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
+#: Roll each test back through a savepoint. Fastest, and nothing survives a test.
+ROLLBACK = "rollback"
+#: Empty the tables before each test. Writes commit, so the last test's rows stay.
+TRUNCATE = "truncate"
+#: Clean nothing; the suite owns it. The fallback when neither of the above fits.
+NONE = "none"
+DB_CLEANUP_MODES = (ROLLBACK, TRUNCATE, NONE)
+
+#: Overrides the ``db_cleanup=`` argument; ``--restly-db-cleanup`` overrides this.
+DB_CLEANUP_ENV_VAR = "RESTLY_DB_CLEANUP"
+
+#: Alembic's bookkeeping table is never test data, and emptying it would strand
+#: the database at no revision for the rest of the session.
+_NEVER_TRUNCATED = frozenset({"alembic_version"})
+
 
 @dataclass(frozen=True)
 class _TestSetup:
-    """What :func:`configure` recorded, read by the plugin's autouse fixtures."""
+    """What :func:`configure_tests` recorded, read by the plugin's autouse fixtures."""
 
     app: Any
     create_all_from: Any
     alembic_upgrade: bool | str | Path
+    db_cleanup: str
+    db_cleanup_exclude: tuple[str, ...]
 
 
 _setup: _TestSetup | None = None
@@ -61,6 +80,8 @@ def configure_tests(
     async_make_session: async_sessionmaker[Any] | None = None,
     create_all_from: type[DeclarativeBase] | MetaData | None = None,
     alembic_upgrade: bool | str | Path = False,
+    db_cleanup: str = ROLLBACK,
+    db_cleanup_exclude: Sequence[str] = (),
 ) -> None:
     """Configure a Restly test suite in one call, from ``conftest.py``.
 
@@ -90,8 +111,7 @@ def configure_tests(
        wraps your application without an override fixture.
     3. The schema is created once per session, before any test runs, from
        ``create_all_from`` or ``alembic_upgrade`` (see below).
-    4. Every test is wrapped in savepoint isolation, on whichever of the sync and
-       async legs is configured.
+    4. Every test gets a clean database, by the strategy ``db_cleanup`` names.
 
     Schema setup is optional and the two options are mutually exclusive:
 
@@ -109,8 +129,41 @@ def configure_tests(
     module calls :func:`fastapi_restly.configure` on import) and you pass no
     database argument, this raises rather than guess: that database is usually
     the development one, and the schema step would create tables in it.
+
+    ``db_cleanup`` chooses how each test gets a clean database:
+
+    * ``"rollback"`` (the default) wraps every test in a transaction that is
+      rolled back through a savepoint when the test ends. Nothing is ever
+      committed, which makes it the fastest option and the reason no other
+      process can see a test's data, not even after a failure.
+    * ``"truncate"`` empties the tables *before* each test instead, and lets
+      writes commit for real. It is slower, but the failing test's rows are still
+      in the database when the run ends, so you can inspect them with ordinary
+      tools. Tests still cannot see each other's data, and it needs a database of
+      its own: two suites truncating one database will fight.
+    * ``"none"`` cleans nothing and leaves it to you. Reach for it when neither of
+      the others fits: tests that drive a browser or a second process (nothing
+      uncommitted is visible to those, and truncation across parallel workers
+      collides), or a database user without the rights to truncate.
+
+    ``RESTLY_DB_CLEANUP`` overrides this argument, and ``--restly-db-cleanup``
+    overrides both, so a debugging run can switch mode without editing the suite.
+
+    ``db_cleanup_exclude`` names tables truncation must leave alone. Reference
+    data seeded by a migration is the usual reason: truncation would empty those
+    tables before the first test and nothing would put the rows back. Naming a
+    table that does not exist raises, so a typo cannot silently drop the
+    protection. Excluded tables are shared by every test, so writes to them do
+    leak between tests.
     """
     global _setup
+
+    if db_cleanup not in DB_CLEANUP_MODES:
+        raise RestlyConfigurationError(
+            f"fr.testing.configure_tests() got db_cleanup="
+            f"{db_cleanup!r}; expected one of "
+            f"{', '.join(repr(mode) for mode in DB_CLEANUP_MODES)}."
+        )
 
     if create_all_from is not None and alembic_upgrade:
         raise RestlyConfigurationError(
@@ -142,8 +195,127 @@ def configure_tests(
         _reject_inherited_database()
 
     _setup = _TestSetup(
-        app=app, create_all_from=create_all_from, alembic_upgrade=alembic_upgrade
+        app=app,
+        create_all_from=create_all_from,
+        alembic_upgrade=alembic_upgrade,
+        db_cleanup=db_cleanup,
+        db_cleanup_exclude=tuple(db_cleanup_exclude),
     )
+
+
+def _resolve_db_cleanup(setup: _TestSetup, flag: str | None) -> str:
+    """Return the mode in force, honouring the flag over the environment over the
+    argument. Both overrides exist so a debugging run can switch mode without
+    touching the suite."""
+    for source, value in (
+        ("--restly-db-cleanup", flag),
+        (DB_CLEANUP_ENV_VAR, os.environ.get(DB_CLEANUP_ENV_VAR)),
+    ):
+        if not value:
+            continue
+        if value not in DB_CLEANUP_MODES:
+            raise RestlyConfigurationError(
+                f"{source} is {value!r}; expected one of "
+                f"{', '.join(repr(mode) for mode in DB_CLEANUP_MODES)}."
+            )
+        return value
+    return setup.db_cleanup
+
+
+def _tables_to_clean(setup: _TestSetup, bind: Any) -> list[Any]:
+    """Return the tables truncation should empty, parents last.
+
+    ``create_all_from`` already names the metadata. Migrations do not, so the
+    database is reflected instead, which also picks up tables no model declares.
+    """
+    from sqlalchemy import MetaData
+
+    if setup.create_all_from is not None:
+        metadata = _session._resolve_metadata(setup.create_all_from)
+    else:
+        metadata = MetaData()
+        # views=False keeps views out of the list; emptying one is an error.
+        metadata.reflect(bind=bind, views=False)
+    known = {table.name for table in metadata.sorted_tables}
+    unknown = sorted(set(setup.db_cleanup_exclude) - known)
+    if unknown:
+        # A typo here would silently drop the protection and empty the very table
+        # the caller was trying to keep, so refuse instead.
+        raise RestlyConfigurationError(
+            "fr.testing.configure_tests(db_cleanup_exclude=...) names "
+            f"{', '.join(repr(name) for name in unknown)}, which "
+            f"{'is' if len(unknown) == 1 else 'are'} not in the database. Known "
+            f"tables: {', '.join(sorted(known))}."
+        )
+
+    spared = _NEVER_TRUNCATED | set(setup.db_cleanup_exclude)
+    # sorted_tables puts parents first, so deleting in reverse respects foreign
+    # keys on databases that enforce them without CASCADE.
+    return [
+        table for table in reversed(metadata.sorted_tables) if table.name not in spared
+    ]
+
+
+def _clean_tables(connection: Any, tables: list[Any]) -> None:
+    """Empty ``tables`` on ``connection``, by whatever the dialect supports."""
+    from sqlalchemy import text
+
+    if not tables:
+        return
+
+    if connection.dialect.name == "postgresql":
+        # One statement rather than a delete and a sequence reset per table, which
+        # matters when this runs before every test. Truncating the tables together
+        # satisfies the foreign keys among them, and RESTART IDENTITY makes ids
+        # repeatable. Deliberately not CASCADE: that would silently empty tables
+        # outside this list that reference these, so let PostgreSQL raise instead.
+        names = ", ".join(f'"{table.name}"' for table in tables)
+        connection.execute(text(f"TRUNCATE {names} RESTART IDENTITY"))
+        return
+
+    for table in tables:
+        connection.execute(table.delete())
+    if connection.dialect.name == "sqlite":
+        # SQLite keeps AUTOINCREMENT counters here; clearing it restarts ids.
+        has_sequence = connection.exec_driver_sql(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='sqlite_sequence'"
+        ).first()
+        if has_sequence:
+            connection.exec_driver_sql("DELETE FROM sqlite_sequence")
+
+
+def _clean_database(setup: _TestSetup) -> None:
+    """Empty every table before a test runs, for ``db_cleanup="truncate"``.
+
+    Runs before rather than after, so whatever the last test wrote is still in
+    the database when the run ends and can be inspected.
+    """
+    if _fr_globals.make_session is not None:
+        engine = _fr_globals.make_session.kw["bind"]
+        with engine.begin() as connection:
+            _clean_tables(connection, _tables_to_clean(setup, connection))
+        return
+
+    if _fr_globals.async_make_session is None:
+        raise RestlyConfigurationError(
+            'fr.testing.configure_tests(db_cleanup="truncate") needs a '
+            "configured database to empty."
+        )
+
+    async_engine = _fr_globals.async_make_session.kw["bind"]
+
+    async def clean() -> None:
+        async with async_engine.begin() as connection:
+            tables = await connection.run_sync(
+                lambda sync_connection: _tables_to_clean(setup, sync_connection)
+            )
+            await connection.run_sync(
+                lambda sync_conn: _clean_tables(sync_conn, tables)
+            )
+
+    # Safe from a sync fixture: pytest sets fixtures up outside the loop it runs
+    # the test coroutine in, so no loop is running here.
+    asyncio.run(clean())
 
 
 def _reject_inherited_database() -> None:

@@ -22,9 +22,14 @@ from sqlalchemy.orm import Mapped, sessionmaker
 import fastapi_restly as fr
 from fastapi_restly import _pytest_fixtures as _fixtures
 from fastapi_restly._test_setup import (
+    DB_CLEANUP_ENV_VAR,
+    ROLLBACK,
+    TRUNCATE,
+    _clean_database,
     _create_schema,
     _current_setup,
     _reset_setup,
+    _resolve_db_cleanup,
     _TestSetup,
     configure_tests,
 )
@@ -158,7 +163,11 @@ def test_create_all_from_builds_the_schema(tmp_path: Path):
 def test_create_all_from_without_a_database_raises():
     with _isolated_config():
         setup = _TestSetup(
-            app=None, create_all_from=fr.DataclassBase, alembic_upgrade=False
+            app=None,
+            create_all_from=fr.DataclassBase,
+            alembic_upgrade=False,
+            db_cleanup=ROLLBACK,
+            db_cleanup_exclude=(),
         )
         with pytest.raises(RestlyConfigurationError, match="needs a configured"):
             _create_schema(setup)
@@ -168,12 +177,24 @@ def test_neither_schema_option_does_nothing():
     with _isolated_config():
         # No database configured either: the no-op must not reach for one.
         _create_schema(
-            _TestSetup(app=None, create_all_from=None, alembic_upgrade=False)
+            _TestSetup(
+                app=None,
+                create_all_from=None,
+                alembic_upgrade=False,
+                db_cleanup=ROLLBACK,
+                db_cleanup_exclude=(),
+            )
         )
 
 
 def test_missing_alembic_config_names_the_path_it_looked_for(tmp_path: Path):
-    setup = _TestSetup(app=None, create_all_from=None, alembic_upgrade=True)
+    setup = _TestSetup(
+        app=None,
+        create_all_from=None,
+        alembic_upgrade=True,
+        db_cleanup=ROLLBACK,
+        db_cleanup_exclude=(),
+    )
     with pytest.raises(RestlyConfigurationError) as excinfo:
         _create_schema(setup, root=tmp_path)
     assert str(tmp_path / "alembic.ini") in str(excinfo.value)
@@ -183,13 +204,152 @@ def test_alembic_config_is_resolved_against_the_root_not_the_cwd(tmp_path: Path)
     """The path is anchored to the project, so the invocation directory cannot
     decide which config is found (the bug ``restly_project_root`` also had)."""
     (tmp_path / "alembic.ini").write_text("[alembic]\nscript_location = migrations\n")
-    setup = _TestSetup(app=None, create_all_from=None, alembic_upgrade=True)
+    setup = _TestSetup(
+        app=None,
+        create_all_from=None,
+        alembic_upgrade=True,
+        db_cleanup=ROLLBACK,
+        db_cleanup_exclude=(),
+    )
 
     # Resolution gets far enough to find the config and fail inside Alembic on the
     # missing script directory, rather than failing to locate alembic.ini at all.
     with pytest.raises(Exception) as excinfo:
         _create_schema(setup, root=tmp_path)
     assert not isinstance(excinfo.value, RestlyConfigurationError)
+
+
+# ---------------------------------------------------------------------------
+# Cleanup mode
+# ---------------------------------------------------------------------------
+
+
+def test_an_unknown_cleanup_mode_is_rejected():
+    with pytest.raises(RestlyConfigurationError, match="expected one of"):
+        configure_tests(database_url="sqlite://", db_cleanup="vacuum")
+
+
+def _setup_with(mode: str) -> _TestSetup:
+    return _TestSetup(
+        app=None,
+        create_all_from=None,
+        alembic_upgrade=False,
+        db_cleanup=mode,
+        db_cleanup_exclude=(),
+    )
+
+
+def test_the_argument_decides_when_nothing_overrides_it(monkeypatch):
+    monkeypatch.delenv(DB_CLEANUP_ENV_VAR, raising=False)
+    assert _resolve_db_cleanup(_setup_with(TRUNCATE), None) == TRUNCATE
+
+
+def test_the_environment_overrides_the_argument(monkeypatch):
+    monkeypatch.setenv(DB_CLEANUP_ENV_VAR, TRUNCATE)
+    assert _resolve_db_cleanup(_setup_with(ROLLBACK), None) == TRUNCATE
+
+
+def test_the_flag_overrides_the_environment(monkeypatch):
+    monkeypatch.setenv(DB_CLEANUP_ENV_VAR, TRUNCATE)
+    assert _resolve_db_cleanup(_setup_with(TRUNCATE), ROLLBACK) == ROLLBACK
+
+
+def test_an_unknown_mode_from_the_environment_is_rejected(monkeypatch):
+    monkeypatch.setenv(DB_CLEANUP_ENV_VAR, "vacuum")
+    with pytest.raises(RestlyConfigurationError, match=DB_CLEANUP_ENV_VAR):
+        _resolve_db_cleanup(_setup_with(ROLLBACK), None)
+
+
+def test_excluded_tables_keep_their_rows(tmp_path: Path):
+    """The reason exclusion exists: reference data a migration seeded would
+    otherwise be emptied before the first test, with nothing to put it back."""
+    database = tmp_path / "seeded.db"
+    with _isolated_config():
+
+        class Region(fr.IDBase):
+            name: Mapped[str]
+
+        class Widget(fr.IDBase):
+            name: Mapped[str]
+
+        configure_tests(
+            database_url=f"sqlite:///{database}",
+            create_all_from=fr.DataclassBase,
+            db_cleanup=TRUNCATE,
+            db_cleanup_exclude=["region"],
+        )
+        setup = _current_setup()
+        _create_schema(setup)  # type: ignore[arg-type]
+
+        engine = fr.db.get_engine()
+        with engine.begin() as connection:
+            connection.execute(text("INSERT INTO region (name) VALUES ('seeded')"))
+            connection.execute(text("INSERT INTO widget (name) VALUES ('test data')"))
+
+        _clean_database(setup)  # type: ignore[arg-type]
+
+        with engine.connect() as connection:
+            regions = connection.execute(text("SELECT count(*) FROM region")).scalar()
+            widgets = connection.execute(text("SELECT count(*) FROM widget")).scalar()
+    assert regions == 1  # spared
+    assert widgets == 0  # emptied
+
+
+def test_excluding_a_table_that_does_not_exist_raises(tmp_path: Path):
+    """A typo would silently drop the protection and empty the table it names."""
+    database = tmp_path / "typo.db"
+    with _isolated_config():
+
+        class Gizmo(fr.IDBase):
+            name: Mapped[str]
+
+        configure_tests(
+            database_url=f"sqlite:///{database}",
+            create_all_from=fr.DataclassBase,
+            db_cleanup=TRUNCATE,
+            db_cleanup_exclude=["gizmoo"],
+        )
+        setup = _current_setup()
+        _create_schema(setup)  # type: ignore[arg-type]
+
+        with pytest.raises(RestlyConfigurationError) as excinfo:
+            _clean_database(setup)  # type: ignore[arg-type]
+
+    message = str(excinfo.value)
+    assert "'gizmoo'" in message
+    assert "gizmo" in message  # the known tables, so the fix is obvious
+
+
+def test_alembic_bookkeeping_is_never_emptied(tmp_path: Path):
+    """Emptying alembic_version would leave the database at no revision."""
+    database = tmp_path / "cleanup.db"
+    with _isolated_config():
+
+        class Cog(fr.IDBase):
+            name: Mapped[str]
+
+        configure_tests(
+            database_url=f"sqlite:///{database}",
+            create_all_from=fr.DataclassBase,
+            db_cleanup=TRUNCATE,
+        )
+        setup = _current_setup()
+        _create_schema(setup)  # type: ignore[arg-type]
+
+        engine = fr.db.get_engine()
+        with engine.begin() as connection:
+            connection.execute(text("CREATE TABLE alembic_version (version_num TEXT)"))
+            connection.execute(text("INSERT INTO alembic_version VALUES ('abc123')"))
+            connection.execute(text("INSERT INTO cog (name) VALUES ('gone')"))
+
+        _clean_database(setup)  # type: ignore[arg-type]
+
+        with engine.connect() as connection:
+            assert connection.execute(text("SELECT count(*) FROM cog")).scalar() == 0
+            revision = connection.execute(
+                text("SELECT version_num FROM alembic_version")
+            ).scalar()
+    assert revision == "abc123"
 
 
 # ---------------------------------------------------------------------------
@@ -261,14 +421,14 @@ asyncio_default_fixture_loop_scope = "function"
 """
 
 
-def _run_pytest(project: Path) -> subprocess.CompletedProcess[str]:
+def _run_pytest(project: Path, quiet: bool = True) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [
             sys.executable,
             "-m",
             "pytest",
             str(project),
-            "-q",
+            *(["-q"] if quiet else []),
             "-p",
             "no:cacheprovider",
             "-c",
@@ -280,6 +440,137 @@ def _run_pytest(project: Path) -> subprocess.CompletedProcess[str]:
         text=True,
         cwd=project,
     )
+
+
+_TRUNCATE_CONFTEST = """
+import fastapi_restly as fr
+from myapp import app
+
+fr.testing.configure_tests(
+    app=app,
+    async_database_url="sqlite+aiosqlite:///./test.db",
+    create_all_from=fr.DataclassBase,
+    db_cleanup="truncate",
+)
+"""
+
+_TRUNCATE_TESTS = """
+SHARED = "shared@example.com"
+
+
+def test_a_writes(restly_client):
+    restly_client.post("/notes/", json={"text": SHARED})
+    assert restly_client.get("/notes/").json()["total_count"] == 1
+
+
+def test_b_starts_clean(restly_client):
+    # Only passes if the tables were emptied before this test ran.
+    assert restly_client.get("/notes/").json()["total_count"] == 0
+    # The unique text is free again, which a leftover row would prevent.
+    restly_client.post("/notes/", json={"text": SHARED})
+"""
+
+
+def test_truncate_mode_isolates_tests_and_leaves_the_last_one_behind(tmp_path: Path):
+    """The trade truncate exists for: slower and committed, but inspectable."""
+    _write_project(tmp_path, _TRUNCATE_CONFTEST, _TRUNCATE_TESTS)
+    result = _run_pytest(tmp_path)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "2 passed" in result.stdout
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'test.db'}")
+    try:
+        with engine.connect() as connection:
+            rows = connection.execute(text("select text from note")).scalars().all()
+    finally:
+        engine.dispose()
+    # Committed for real, and cleanup happens before a test rather than after, so
+    # the final test's row is still here to inspect.
+    assert rows == ["shared@example.com"]
+
+
+def test_the_flag_switches_a_rollback_suite_to_truncate(tmp_path: Path):
+    """A debugging run changes mode without the suite being edited."""
+    _write_project(tmp_path, _CONFTEST, _TRUNCATE_TESTS)  # conftest says rollback
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            str(tmp_path),
+            # Not -q: pytest only prints the report header at normal verbosity.
+            "-p",
+            "no:cacheprovider",
+            "--restly-db-cleanup=truncate",
+            "-c",
+            str(tmp_path / "pyproject.toml"),
+            "--rootdir",
+            str(tmp_path),
+        ],
+        capture_output=True,
+        text=True,
+        cwd=tmp_path,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    # The header announces the mode, so a stale flag cannot go unnoticed.
+    assert "db cleanup mode 'truncate'" in result.stdout
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'test.db'}")
+    try:
+        with engine.connect() as connection:
+            assert connection.execute(text("select count(*) from note")).scalar() == 1
+    finally:
+        engine.dispose()
+
+
+_NONE_CONFTEST = """
+import fastapi_restly as fr
+from myapp import app
+
+fr.testing.configure_tests(
+    app=app,
+    async_database_url="sqlite+aiosqlite:///./test.db",
+    create_all_from=fr.DataclassBase,
+    db_cleanup="none",
+)
+"""
+
+_ACCUMULATING_TESTS = """
+def test_a_writes(restly_client):
+    restly_client.post("/notes/", json={"text": "first"})
+    assert restly_client.get("/notes/").json()["total_count"] == 1
+
+
+def test_b_still_sees_it(restly_client):
+    # 'none' cleans nothing, so the previous test's row is still here.
+    assert restly_client.get("/notes/").json()["total_count"] == 1
+"""
+
+
+def test_none_mode_cleans_nothing_and_says_so(tmp_path: Path):
+    """The fallback for suites that can use neither of the other modes."""
+    _write_project(tmp_path, _NONE_CONFTEST, _ACCUMULATING_TESTS)
+    result = _run_pytest(tmp_path, quiet=False)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "nothing is cleaned between tests" in result.stdout
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'test.db'}")
+    try:
+        with engine.connect() as connection:
+            assert connection.execute(text("select count(*) from note")).scalar() == 1
+    finally:
+        engine.dispose()
+
+
+def test_rollback_mode_says_nothing_in_the_header(tmp_path: Path):
+    _write_project(tmp_path, _CONFTEST, _TESTS)
+    result = _run_pytest(tmp_path, quiet=False)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "db cleanup mode" not in result.stdout
 
 
 def _write_project(project: Path, conftest: str, tests: str) -> None:

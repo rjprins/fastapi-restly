@@ -78,6 +78,9 @@ fastapi_restly.objects:
   - snapshot
   - update_object
 fastapi_restly.pytest_fixtures:
+  - pytest_addoption
+  - pytest_configure
+  - pytest_report_header
   - restly_app
   - restly_async_session
   - restly_client
@@ -155,6 +158,9 @@ fastapi_restly.objects:
   - snapshot
   - update_object
 fastapi_restly.pytest_fixtures:
+  - pytest_addoption
+  - pytest_configure
+  - pytest_report_header
   - restly_app
   - restly_async_session
   - restly_client
