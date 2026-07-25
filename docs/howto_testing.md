@@ -43,18 +43,17 @@ That is the whole setup. Until you call
 nothing: its fixtures are there, but none of them act on a suite that has not
 asked for them.
 
-Async suites need an async pytest plugin such as `pytest-asyncio`. Configure it
-in `pyproject.toml`:
+The `testing` extra installs `pytest-asyncio`, which the async session fixture
+needs. Give it a loop scope in `pyproject.toml`, or it prints a deprecation
+warning on every run:
 
 ```toml
 [tool.pytest.ini_options]
-asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 ```
 
-Without that, or an equivalent `anyio` setup, async tests and fixtures fail to
-collect or produce confusing errors. Your tests themselves can stay synchronous
-even when your app is async.
+Your tests themselves stay synchronous, even when your application is async. See
+[writing async tests](#writing-async-tests) if you would rather they did not.
 
 ## What you get
 
@@ -225,6 +224,28 @@ Passing `assert_status_code=None` relaxes the check to "any status below
 400"; it does **not** skip the assertion. To inspect an error response
 yourself, pass the error code you expect.
 
+## Writing async tests
+
+You probably do not need them. `restly_client` is synchronous and drives async
+routes and `AsyncRestView` endpoints perfectly well, so a suite for an async
+application can be written entirely with `def` and usually should be. Async tests
+buy little here, and they cost you an event-loop setting, a class of confusing
+collection errors when it is wrong, and the ability to query the database from
+`pdb` (see [inspecting the database](#inspecting-the-database)).
+
+Write them when a test has to await something itself: `restly_async_session` to
+set up rows directly, or one of your own coroutines. Then put pytest-asyncio in
+auto mode:
+
+```toml
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+```
+
+Without that, or an equivalent `anyio` setup, async tests fail to collect or
+produce confusing errors. Sync tests keep working alongside them.
+
 ## Pytest fixture reference
 
 These are the fixtures the plugin registers, with their scope and exact
@@ -289,8 +310,8 @@ def test_user_created(restly_session):
 
 **Scope:** `function`
 
-The async version of `restly_session`; it requires the [async pytest
-setup](#setup). In async-only projects it needs only
+The async version of `restly_session`. Awaiting it in a test body means
+[writing an async test](#writing-async-tests). In async-only projects it needs only
 `fr.configure(async_database_url=...)`. It skips automatically if no async
 session source is configured at all. It handles a configured `session_generator`
 (and `fr.open_async_session()`) the same way `restly_session` handles
