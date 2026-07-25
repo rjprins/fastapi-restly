@@ -234,8 +234,10 @@ collection errors when it is wrong, and the ability to query the database from
 `pdb` (see [inspecting the database](#inspecting-the-database)).
 
 Write them when a test has to await something itself: `restly_async_session` to
-set up rows directly, or one of your own coroutines. Then put pytest-asyncio in
-auto mode:
+set up rows directly, or one of your own coroutines. Then put pytest-asyncio into
+[auto
+mode](https://pytest-asyncio.readthedocs.io/en/latest/concepts.html#test-discovery-modes),
+which collects `async def` tests without marking each one:
 
 ```toml
 [tool.pytest.ini_options]
@@ -243,8 +245,12 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 ```
 
-Without that, or an equivalent `anyio` setup, async tests fail to collect or
-produce confusing errors. Sync tests keep working alongside them.
+Without that, or an equivalent
+[anyio](https://anyio.readthedocs.io/en/stable/testing.html) setup, async tests
+fail to collect or produce confusing errors. Sync tests keep working alongside
+them. The [pytest-asyncio
+reference](https://pytest-asyncio.readthedocs.io/en/latest/reference/configuration.html)
+covers the rest of its settings.
 
 ## Pytest fixture reference
 
