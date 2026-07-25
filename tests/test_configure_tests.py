@@ -30,6 +30,7 @@ from fastapi_restly._test_setup import (
     _current_setup,
     _reset_setup,
     _resolve_db_cleanup,
+    _safe_url,
     _TestSetup,
     configure_tests,
 )
@@ -107,6 +108,71 @@ def test_a_suite_with_no_database_at_all_is_allowed():
     with _isolated_config():
         configure_tests(app=FastAPI())
         assert _current_setup() is not None
+
+
+def test_naming_only_the_async_leg_rejects_an_inherited_sync_leg():
+    """fr.configure() replaces only the leg it is given, so the unnamed one would
+    survive into the tests and serve every sync route from the app's database."""
+    with _isolated_config():
+        fr.configure(database_url="sqlite:///./dev.db")
+        with pytest.raises(RestlyConfigurationError) as excinfo:
+            configure_tests(async_database_url="sqlite+aiosqlite:///./test.db")
+
+    message = str(excinfo.value)
+    assert "sync" in message
+    assert "database_url=" in message
+
+
+def test_naming_only_the_sync_leg_rejects_an_inherited_async_leg():
+    with _isolated_config():
+        fr.configure(async_database_url="sqlite+aiosqlite:///./dev.db")
+        with pytest.raises(RestlyConfigurationError) as excinfo:
+            configure_tests(database_url="sqlite:///./test.db")
+
+    assert "async_database_url=" in str(excinfo.value)
+
+
+def test_naming_both_legs_is_accepted():
+    with _isolated_config():
+        fr.configure(database_url="sqlite:///./dev.db")
+        configure_tests(
+            database_url="sqlite:///./test.db",
+            async_database_url="sqlite+aiosqlite:///./test.db",
+        )
+        assert _current_setup() is not None
+
+
+def test_a_leg_configured_only_here_is_not_treated_as_inherited():
+    """Nothing was configured before, so naming one leg is complete on its own."""
+    with _isolated_config():
+        configure_tests(async_database_url="sqlite+aiosqlite:///./test.db")
+        assert _current_setup() is not None
+
+
+def test_urls_in_messages_hide_the_password():
+    """These messages land in pytest output and CI logs."""
+    rendered = _safe_url("postgresql://app:hunter2@db.internal:5432/dev")
+    assert "hunter2" not in rendered
+    assert "db.internal:5432/dev" in rendered
+
+
+def test_safe_url_survives_something_that_is_not_a_url():
+    assert _safe_url("not a url at all") == "the configured database"
+    assert _safe_url(None) == "the configured database"
+
+
+def test_the_rejection_messages_run_urls_through_the_redaction():
+    with _isolated_config():
+        fr.configure(database_url="sqlite:///./dev.db")
+        with pytest.raises(RestlyConfigurationError) as inherited:
+            configure_tests(app=FastAPI())
+        with pytest.raises(RestlyConfigurationError) as unnamed:
+            configure_tests(async_database_url="sqlite+aiosqlite:///./test.db")
+
+    # sqlite URLs carry no password, so the check is that they are rendered
+    # through the same helper rather than interpolated raw.
+    for excinfo in (inherited, unnamed):
+        assert _safe_url("sqlite:///./dev.db") in str(excinfo.value)
 
 
 def test_any_single_database_argument_satisfies_the_guard():
@@ -573,9 +639,11 @@ def test_rollback_mode_says_nothing_in_the_header(tmp_path: Path):
     assert "db cleanup mode" not in result.stdout
 
 
-def _write_project(project: Path, conftest: str, tests: str) -> None:
+def _write_project(
+    project: Path, conftest: str, tests: str, app_module: str = ""
+) -> None:
     (project / "pyproject.toml").write_text(textwrap.dedent(_PYPROJECT))
-    (project / "myapp.py").write_text(textwrap.dedent(_APP_MODULE))
+    (project / "myapp.py").write_text(textwrap.dedent(app_module or _APP_MODULE))
     (project / "conftest.py").write_text(textwrap.dedent(conftest))
     (project / "test_generated.py").write_text(textwrap.dedent(tests))
 
@@ -672,3 +740,136 @@ def test_inheriting_the_application_database_fails_the_run(tmp_path: Path):
     assert "no database argument" in result.stdout + result.stderr
     # It refused before creating anything in the application's database.
     assert not (tmp_path / "dev.db").exists()
+
+
+# ---------------------------------------------------------------------------
+# Which database the requests actually reach
+# ---------------------------------------------------------------------------
+
+_SYNC_APP_MODULE = """
+from collections.abc import Iterator
+
+from fastapi import FastAPI
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Mapped, Session, sessionmaker
+
+import fastapi_restly as fr
+
+_dev_engine = create_engine("sqlite:///./dev.db")
+_dev_sessions = sessionmaker(bind=_dev_engine, expire_on_commit=False)
+
+
+def dev_session_generator() -> Iterator[Session]:
+    with _dev_sessions() as session:
+        yield session
+
+
+CONFIGURE_KWARGS = {"database_url": "sqlite:///./dev.db"}
+if __import__("os").environ.get("APP_USES_GENERATOR"):
+    CONFIGURE_KWARGS["sync_session_generator"] = dev_session_generator
+
+fr.configure(**CONFIGURE_KWARGS)
+
+app = FastAPI()
+
+
+class Note(fr.IDBase):
+    text: Mapped[str]
+
+
+class NoteSchema(fr.IDSchema):
+    text: str
+
+
+@fr.include_view(app)
+class NoteView(fr.RestView):
+    prefix = "/notes"
+    model = Note
+    schema = NoteSchema
+"""
+
+_LEAK_TESTS = """
+def test_a_writes(restly_client):
+    restly_client.post("/notes/", json={"text": "one"})
+
+
+def test_b_starts_clean(restly_client):
+    assert restly_client.get("/notes/").json()["total_count"] == 0
+"""
+
+
+def _rows(database: Path) -> int | None:
+    if not database.exists():
+        return None
+    engine = create_engine(f"sqlite:///{database}")
+    try:
+        with engine.connect() as connection:
+            return connection.execute(text("select count(*) from note")).scalar()
+    except Exception:
+        return None
+    finally:
+        engine.dispose()
+
+
+def test_a_hybrid_suite_isolates_its_sync_routes_too(tmp_path: Path):
+    """Each session fixture swaps only its own factory, so a suite that configures
+    both legs must activate both or its sync routes commit for real."""
+    _write_project(
+        tmp_path,
+        "import fastapi_restly as fr\nfrom myapp import app\n\n"
+        "fr.testing.configure_tests(\n"
+        "    app=app,\n"
+        '    database_url="sqlite:///./test.db",\n'
+        '    async_database_url="sqlite+aiosqlite:///./test.db",\n'
+        "    create_all_from=fr.DataclassBase,\n"
+        ")\n",
+        _LEAK_TESTS,
+        app_module=_SYNC_APP_MODULE,
+    )
+    result = _run_pytest(tmp_path)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert _rows(tmp_path / "test.db") == 0
+    assert not (tmp_path / "dev.db").exists()
+
+
+def test_an_inherited_generator_does_not_route_requests_away(tmp_path: Path):
+    """The session dependency reads a generator before the factory, so an
+    application's generator would serve requests from its own database."""
+    _write_project(
+        tmp_path,
+        "import fastapi_restly as fr\nfrom myapp import app\n\n"
+        "fr.testing.configure_tests(\n"
+        "    app=app,\n"
+        '    database_url="sqlite:///./test.db",\n'
+        "    create_all_from=fr.DataclassBase,\n"
+        '    db_cleanup="truncate",\n'
+        ")\n",
+        _LEAK_TESTS,
+        app_module=_SYNC_APP_MODULE,
+    )
+    import os
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            str(tmp_path),
+            "-q",
+            "-p",
+            "no:cacheprovider",
+            "-c",
+            str(tmp_path / "pyproject.toml"),
+            "--rootdir",
+            str(tmp_path),
+        ],
+        capture_output=True,
+        text=True,
+        cwd=tmp_path,
+        env={**os.environ, "APP_USES_GENERATOR": "1", DB_CLEANUP_ENV_VAR: ""},
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    # Requests went to the configured test database, not the generator's.
+    assert _rows(tmp_path / "dev.db") in (None, 0)

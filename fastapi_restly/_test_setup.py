@@ -105,8 +105,10 @@ def configure_tests(
     Four things happen, in this order:
 
     1. The database arguments are forwarded to :func:`fastapi_restly.configure`,
-       replacing whatever your application module configured on import. They are
-       the same arguments under the same names.
+       under the same names. They replace only the legs they name, so if your
+       application configured a sync database and you name only the async one,
+       this raises: the leg you left out would still be your application's, and
+       every route resolving through it would read and write there.
     2. ``app`` becomes what the ``restly_app`` fixture returns, so ``restly_client``
        wraps your application without an override fixture.
     3. The schema is created once per session, before any test runs, from
@@ -173,15 +175,19 @@ def configure_tests(
             "alembic_upgrade=True to run your migrations, not both."
         )
 
-    database_arguments = (
-        database_url,
-        async_database_url,
-        engine,
-        async_engine,
-        make_session,
-        async_make_session,
+    # Which legs the application had before we touch anything: fr.configure()
+    # replaces only the leg it is given, so an unnamed one survives into the tests.
+    inherited_sync = _fr_globals.make_session is not None
+    inherited_async = _fr_globals.async_make_session is not None
+
+    names_sync = any(
+        argument is not None for argument in (database_url, engine, make_session)
     )
-    if any(argument is not None for argument in database_arguments):
+    names_async = any(
+        argument is not None
+        for argument in (async_database_url, async_engine, async_make_session)
+    )
+    if names_sync or names_async:
         _session.configure(
             app=app,
             database_url=database_url,
@@ -190,6 +196,12 @@ def configure_tests(
             async_engine=async_engine,
             make_session=make_session,
             async_make_session=async_make_session,
+        )
+        _reject_unnamed_legs(
+            names_sync=names_sync,
+            names_async=names_async,
+            inherited_sync=inherited_sync,
+            inherited_async=inherited_async,
         )
     else:
         _reject_inherited_database()
@@ -318,6 +330,49 @@ def _clean_database(setup: _TestSetup) -> None:
     asyncio.run(clean())
 
 
+def _safe_url(url: str | None) -> str:
+    """Render ``url`` without its password, for messages that reach CI logs."""
+    if not url:
+        return "the configured database"
+    try:
+        from sqlalchemy import make_url
+
+        return make_url(url).render_as_string(hide_password=True)
+    except Exception:
+        return "the configured database"
+
+
+def _reject_unnamed_legs(
+    *, names_sync: bool, names_async: bool, inherited_sync: bool, inherited_async: bool
+) -> None:
+    """Refuse a leg the application configured and this call did not name.
+
+    :func:`fastapi_restly.configure` replaces only the leg it is passed, so naming
+    just one here leaves the other pointing wherever the application left it,
+    usually the development database. Requests that resolve through the unnamed
+    leg would then read and write there, and truncation would empty it.
+    """
+    if inherited_sync and not names_sync:
+        leg, argument, url = "sync", "database_url=", _fr_globals.database_url
+    elif inherited_async and not names_async:
+        leg, argument, url = (
+            "async",
+            "async_database_url=",
+            _fr_globals.async_database_url,
+        )
+    else:
+        return
+
+    raise RestlyConfigurationError(
+        f"fr.testing.configure_tests() named the {'async' if leg == 'sync' else 'sync'} "
+        f"database but not the {leg} one, and your application already configured a "
+        f"{leg} database ({_safe_url(url)}). fr.configure() replaces only the leg it "
+        f"is given, so that one would survive into the tests: {leg} routes would read "
+        "and write there, and truncation would empty it. Pass "
+        f"{argument} as well, pointing at the same test database."
+    )
+
+
 def _reject_inherited_database() -> None:
     """Refuse to run the tests against a database nobody named here.
 
@@ -331,7 +386,7 @@ def _reject_inherited_database() -> None:
         return  # No database anywhere: a suite that never touches one is fine.
 
     configured = _fr_globals.database_url or _fr_globals.async_database_url
-    named = f" ({configured})" if configured else ""
+    named = f" ({_safe_url(configured)})" if configured else ""
     raise RestlyConfigurationError(
         f"fr.testing.configure_tests() got no database argument, but a database"
         f"{named} is already configured -- usually the development one, "

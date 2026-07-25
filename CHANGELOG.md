@@ -12,9 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `fr.testing.configure_tests()` sets up a test suite in one call from
   `conftest.py`: the app under test, the test database, an optional schema step
   (`create_all_from=Base` or `alembic_upgrade=True`), and isolation for every
-  test, `restly_client`-only tests included. It raises rather than inherit an
-  already-configured database, which is usually the development one. Suites that
-  do not call it are unaffected.
+  test, `restly_client`-only tests included. It raises rather than inherit a
+  database your application configured, which is usually the development one,
+  including the sync or async leg you did not name. Suites that do not call it
+  are unaffected.
 
 - `db_cleanup=` picks how each test gets a clean database: `"rollback"` (the
   default), `"truncate"` (empties the tables before each test and lets writes

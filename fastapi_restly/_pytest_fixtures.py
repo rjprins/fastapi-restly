@@ -406,24 +406,43 @@ def _restly_managed_schema(request: pytest.FixtureRequest) -> Iterator[None]:
 
 @pytest.fixture(autouse=True)
 def _restly_managed_isolation(request: pytest.FixtureRequest) -> Iterator[None]:
-    """Isolate every test when ``fr.testing.configure()`` was called.
+    """Give every test a clean database when ``configure_tests()`` was called.
 
-    Requests whichever session fixture matches the configured leg, so a suite gets
-    isolation without writing an autouse wrapper of its own. Inert (rather than
-    skipping) when nothing is configured, so tests that never touch the database
-    still run.
+    Inert (rather than skipping) when nothing is configured, so tests that never
+    touch the database still run.
     """
     setup = _current_setup()
-    if setup is not None:
-        if _cleanup_mode() == TRUNCATE:
+    if setup is None:
+        yield
+        return
+
+    mode = _cleanup_mode()
+    if mode == ROLLBACK:
+        # Both legs, not the first one found: each session fixture swaps only its
+        # own factory, so activating one in a suite that configured both leaves
+        # the other's routes committing for real.
+        if _fr_globals.make_session is not None:
+            request.getfixturevalue("restly_session")
+        if _fr_globals.async_make_session is not None:
+            request.getfixturevalue("restly_async_session")
+        yield
+        return
+
+    # The session dependencies read a configured generator before the factory, so
+    # an application's generator would route requests to its own database whatever
+    # this mode then cleans. Routing must not depend on the cleanup mode.
+    globals_obj = _get_restly_context()
+    generators = (globals_obj.session_generator, globals_obj.sync_session_generator)
+    globals_obj.session_generator = None
+    globals_obj.sync_session_generator = None
+    try:
+        if mode == TRUNCATE:
             # Before, not after: whatever the last test wrote is still there when
             # the run ends, which is the point of choosing this mode.
             _clean_database(setup)
-        elif _fr_globals.async_make_session is not None:
-            request.getfixturevalue("restly_async_session")
-        elif _fr_globals.make_session is not None:
-            request.getfixturevalue("restly_session")
-    yield
+        yield
+    finally:
+        globals_obj.session_generator, globals_obj.sync_session_generator = generators
 
 
 @pytest.fixture
