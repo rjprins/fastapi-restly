@@ -1257,14 +1257,11 @@ Configure it once during application startup:</p>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><a class="reference internal" href="api/testing.html#fastapi_restly.testing.RestlyTestClient" title="fastapi_restly.testing.RestlyTestClient"><code class="xref py py-class docutils literal notranslate"><span class="pre">fastapi_restly.testing.RestlyTestClient</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="api/testing.html#fastapi_restly.testing.configure_tests" title="fastapi_restly.testing.configure_tests"><code class="xref py py-func docutils literal notranslate"><span class="pre">fastapi_restly.testing.configure_tests(...)</span></code></a></p></td>
+<td><p>Configure a test suite in one call: the app under test, the test database, an optional schema step (<code class="docutils literal notranslate"><span class="pre">create_all_from=</span></code> or <code class="docutils literal notranslate"><span class="pre">alembic_upgrade=</span></code>), and isolation for every test. Raises rather than inherit an already-configured database.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/testing.html#fastapi_restly.testing.RestlyTestClient" title="fastapi_restly.testing.RestlyTestClient"><code class="xref py py-class docutils literal notranslate"><span class="pre">fastapi_restly.testing.RestlyTestClient</span></code></a></p></td>
 <td><p>Sync test client wrapper around FastAPI’s <code class="docutils literal notranslate"><span class="pre">TestClient</span></code> with default status-code assertions. It can test async FastAPI routes and <code class="docutils literal notranslate"><span class="pre">AsyncRestView</span></code> endpoints.</p></td>
-</tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="api/testing.html#fastapi_restly.testing.activate_savepoint_only_mode" title="fastapi_restly.testing.activate_savepoint_only_mode"><code class="xref py py-func docutils literal notranslate"><span class="pre">fastapi_restly.testing.activate_savepoint_only_mode(make_session)</span></code></a></p></td>
-<td><p>Wrap a session factory in savepoint-only mode so test data never commits to the database; intended for tests. Use it when building your own harness without the shipped fixtures (which implement the same isolation themselves).</p></td>
-</tr>
-<tr class="row-even"><td><p><a class="reference internal" href="api/testing.html#fastapi_restly.testing.deactivate_savepoint_only_mode" title="fastapi_restly.testing.deactivate_savepoint_only_mode"><code class="xref py py-func docutils literal notranslate"><span class="pre">fastapi_restly.testing.deactivate_savepoint_only_mode(make_session)</span></code></a></p></td>
-<td><p>Restore normal session behavior after testing.</p></td>
 </tr>
 </tbody>
 </table>
@@ -1281,7 +1278,7 @@ behavior is documented in <a class="reference internal" href="howto_testing.html
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">restly_app</span></code></p></td>
 <td><p>function</p></td>
-<td><p>Bare <code class="docutils literal notranslate"><span class="pre">FastAPI()</span></code>; override in <code class="docutils literal notranslate"><span class="pre">conftest.py</span></code> to return your app.</p></td>
+<td><p>The app passed to <code class="docutils literal notranslate"><span class="pre">configure_tests(app=...)</span></code>; a bare <code class="docutils literal notranslate"><span class="pre">FastAPI()</span></code> otherwise.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">restly_client</span></code></p></td>
 <td><p>function</p></td>

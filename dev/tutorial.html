@@ -772,8 +772,22 @@ that asserts sensible default status codes and gives clear failure messages.</p>
 </pre></div>
 </div>
 <p>For test isolation, install the testing extra (<code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">&quot;fastapi-restly[testing]&quot;</span></code>);
-pytest then auto-loads Restly’s fixtures. The <code class="docutils literal notranslate"><span class="pre">restly_client</span></code> fixture used below wraps
-each test in a database savepoint, so changes never persist between tests:</p>
+pytest then auto-loads Restly’s fixtures. Point the suite at a test database in
+<code class="docutils literal notranslate"><span class="pre">conftest.py</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># conftest.py</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">main</span><span class="w"> </span><span class="kn">import</span> <span class="n">app</span>
+
+<span class="n">fr</span><span class="o">.</span><span class="n">testing</span><span class="o">.</span><span class="n">configure_tests</span><span class="p">(</span>
+    <span class="n">app</span><span class="o">=</span><span class="n">app</span><span class="p">,</span>
+    <span class="n">async_database_url</span><span class="o">=</span><span class="s2">&quot;sqlite+aiosqlite:///./test.db&quot;</span><span class="p">,</span>
+    <span class="n">create_all_from</span><span class="o">=</span><span class="n">fr</span><span class="o">.</span><span class="n">IDBase</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>Tests then need nothing but the client, and everything they write is rolled back
+when they finish:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># test_posts.py</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">test_create_post</span><span class="p">(</span><span class="n">restly_client</span><span class="p">):</span>
     <span class="n">resp</span> <span class="o">=</span> <span class="n">restly_client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/posts/&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="s2">&quot;Hi&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="s2">&quot;...&quot;</span><span class="p">,</span> <span class="s2">&quot;published&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">})</span>
