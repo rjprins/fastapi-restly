@@ -14,8 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`base=Base` plus `create_all=True`, or `alembic_upgrade=True`), and isolation for every
   test, `restly_client`-only tests included. It raises rather than inherit a
   database your application configured, which is usually the development one,
-  including the sync or async leg you did not name. Suites that do not call it
-  are unaffected.
+  including the sync or async leg you did not name (a session generator counts
+  as a configured leg). The databases it names are final: one configured
+  afterwards, by a lifespan or a module imported during collection, never
+  reaches the tests, and a leg the suite did not name refuses to serve sessions
+  rather than adopt the late arrival. One call configures the process; a second
+  call raises. Suites that do not call it are unaffected.
 
 - `db_cleanup=` picks how each test gets a clean database: `"rollback"` (the
   default), `"truncate"` (empties the tables before each test and lets writes

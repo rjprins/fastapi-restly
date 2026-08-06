@@ -285,6 +285,7 @@ def test_alembic_config_is_resolved_against_the_root_not_the_cwd(tmp_path: Path)
         alembic_upgrade=True,
         db_cleanup=ROLLBACK,
         db_cleanup_exclude=(),
+        database_url="sqlite://",
     )
 
     # Resolution gets far enough to find the config and fail inside Alembic on the
@@ -969,13 +970,11 @@ def test_alembic_accepts_a_percent_encoded_password(tmp_path: Path):
 
     import alembic.command
 
-    with _isolated_config() as context:
-        fr.configure(engine=create_engine("sqlite://"))
-        context.database_url = url
+    with _isolated_config():
         original = alembic.command.upgrade
         alembic.command.upgrade = fake_upgrade
         try:
-            _run_alembic_upgrade(True, root=tmp_path)
+            _run_alembic_upgrade(True, root=tmp_path, url=url)
         finally:
             alembic.command.upgrade = original
 
@@ -1250,16 +1249,49 @@ def test_alembic_derives_the_url_from_an_engine(tmp_path: Path):
     import alembic.command
 
     with _isolated_config():
-        fr.configure(engine=create_engine(f"sqlite:///{tmp_path / 'test.db'}"))
+        configure_tests(
+            engine=create_engine(f"sqlite:///{tmp_path / 'test.db'}"),
+            alembic_upgrade=True,
+        )
         original = alembic.command.upgrade
         alembic.command.upgrade = fake_upgrade
         try:
-            _run_alembic_upgrade(True, root=tmp_path)
+            _create_schema(_current_setup(), root=tmp_path)  # type: ignore[arg-type]
         finally:
             alembic.command.upgrade = original
 
     assert captured["url"] == f"sqlite:///{tmp_path / 'test.db'}"
     assert "DEV.db" not in captured["url"]
+
+
+def test_alembic_migrates_the_recorded_database_not_the_live_one(tmp_path: Path):
+    """Alembic runs DDL, which survives everything, so a reconfiguration after
+    configure_tests() -- a lifespan, a module imported during collection -- must
+    not be able to point the upgrade at its own database."""
+    captured = {}
+
+    def fake_upgrade(config, revision):
+        captured["url"] = config.get_main_option("sqlalchemy.url")
+
+    ini = tmp_path / "alembic.ini"
+    ini.write_text("[alembic]\nscript_location = alembic\n")
+    (tmp_path / "alembic").mkdir()
+
+    import alembic.command
+
+    with _isolated_config():
+        configure_tests(
+            database_url=f"sqlite:///{tmp_path / 'test.db'}", alembic_upgrade=True
+        )
+        fr.configure(database_url=f"sqlite:///{tmp_path / 'dev.db'}")
+        original = alembic.command.upgrade
+        alembic.command.upgrade = fake_upgrade
+        try:
+            _create_schema(_current_setup(), root=tmp_path)  # type: ignore[arg-type]
+        finally:
+            alembic.command.upgrade = original
+
+    assert captured["url"] == f"sqlite:///{tmp_path / 'test.db'}"
 
 
 def test_alembic_refuses_when_no_url_can_be_derived(tmp_path: Path):
@@ -1270,7 +1302,7 @@ def test_alembic_refuses_when_no_url_can_be_derived(tmp_path: Path):
     (tmp_path / "alembic").mkdir()
     with _isolated_config():
         with pytest.raises(RestlyConfigurationError, match="could not work out"):
-            _run_alembic_upgrade(True, root=tmp_path)
+            _run_alembic_upgrade(True, root=tmp_path, url=None)
 
 
 def test_a_per_mapper_binds_factory_is_rejected():
@@ -1376,6 +1408,157 @@ def test_a_lifespan_reconfiguring_restly_cannot_reach_the_tests(tmp_path: Path):
     assert not (tmp_path / "dev.db").exists()
 
 
+def test_a_lifespan_reconfiguring_restly_cannot_move_truncate_mode(tmp_path: Path):
+    """Truncate mode routes and cleans from the recorded factories too: requests
+    keep committing to the test database and cleaning keeps emptying that same
+    database, no matter what startup configures. Rollback mode was hardened
+    against this first; the committing modes have to hold the same line."""
+    _write_project(
+        tmp_path,
+        "import fastapi_restly as fr\nfrom myapp import app\n\n"
+        "fr.testing.configure_tests(\n"
+        "    app=app,\n"
+        '    async_database_url="sqlite+aiosqlite:///./test.db",\n'
+        "    base=fr.DataclassBase,\n"
+        "    create_all=True,\n"
+        '    db_cleanup="truncate",\n'
+        ")\n",
+        "def test_a(restly_client):\n"
+        '    restly_client.post("/notes/", json={"text": "one"})\n'
+        '    assert restly_client.get("/notes/").json()["total_count"] == 1\n\n\n'
+        "def test_b_starts_clean(restly_client):\n"
+        '    assert restly_client.get("/notes/").json()["total_count"] == 0\n',
+        app_module=_RECONFIGURING_APP,
+    )
+    result = _run_pytest(tmp_path)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert not (tmp_path / "dev.db").exists()
+
+
+_LIFESPAN_ONLY_APP = """
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import Mapped
+
+import fastapi_restly as fr
+
+
+class Note(fr.IDBase):
+    text: Mapped[str]
+
+
+# The development database already exists, with data worth keeping.
+_dev = create_engine("sqlite:///./dev.db")
+fr.DataclassBase.metadata.create_all(_dev)
+with _dev.begin() as connection:
+    connection.execute(text("INSERT INTO note (text) VALUES ('precious')"))
+_dev.dispose()
+
+
+@asynccontextmanager
+async def lifespan(app):
+    # FastAPI's recommended init point: nothing is configured at import time,
+    # so configure_tests() has nothing to reject.
+    fr.configure(database_url="sqlite:///./dev.db")
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
+
+
+@app.get("/ping")
+def ping():
+    return {"ok": True}
+"""
+
+
+def test_truncate_never_cleans_a_database_configured_after_setup(tmp_path: Path):
+    """The worst shape: the suite named no database, the lifespan configures the
+    development one, and cleaning runs with a base to work from. Falling back to
+    the live globals here used to DELETE the development database's rows."""
+    _write_project(
+        tmp_path,
+        "import fastapi_restly as fr\nfrom myapp import app\n\n"
+        "fr.testing.configure_tests(\n"
+        "    app=app,\n"
+        "    base=fr.DataclassBase,\n"
+        '    db_cleanup="truncate",\n'
+        ")\n",
+        "def test_a(restly_client):\n"
+        '    assert restly_client.get("/ping").json() == {"ok": True}\n\n\n'
+        "def test_b(restly_client):\n"
+        '    assert restly_client.get("/ping").json() == {"ok": True}\n',
+        app_module=_LIFESPAN_ONLY_APP,
+    )
+    result = _run_pytest(tmp_path)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "2 passed" in result.stdout
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'dev.db'}")
+    try:
+        with engine.connect() as connection:
+            rows = connection.execute(text("select text from note")).scalars().all()
+    finally:
+        engine.dispose()
+    assert rows == ["precious"]
+
+
+_UNCONFIGURED_ASYNC_APP = """
+from fastapi import FastAPI
+from sqlalchemy.orm import Mapped
+
+import fastapi_restly as fr
+
+
+class Note(fr.IDBase):
+    text: Mapped[str]
+
+
+class NoteSchema(fr.IDSchema):
+    text: str
+
+
+app = FastAPI()
+
+
+@fr.include_view(app)
+class NoteView(fr.AsyncRestView):
+    prefix = "/notes"
+    model = Note
+    schema = NoteSchema
+"""
+
+
+def test_a_source_arriving_after_setup_trips_instead_of_serving(tmp_path: Path):
+    """The suite named only the sync database; a module imported during
+    collection configures an async one. The unnamed leg must refuse loudly, not
+    quietly serve requests from the late arrival's database."""
+    _write_project(
+        tmp_path,
+        "import fastapi_restly as fr\nfrom myapp import app\n\n"
+        "fr.testing.configure_tests(\n"
+        "    app=app,\n"
+        '    database_url="sqlite:///./test.db",\n'
+        "    base=fr.DataclassBase,\n"
+        "    create_all=True,\n"
+        ")\n",
+        "import fastapi_restly as fr\n\n"
+        'fr.configure(async_database_url="sqlite+aiosqlite:///./dev.db")\n\n\n'
+        "def test_an_async_route(restly_client):\n"
+        '    restly_client.get("/notes/")\n',
+        app_module=_UNCONFIGURED_ASYNC_APP,
+    )
+    result = _run_pytest(tmp_path)
+
+    assert result.returncode != 0
+    assert "named no async database" in result.stdout + result.stderr
+    assert not (tmp_path / "dev.db").exists()
+
+
 def test_a_nested_run_gives_the_outer_run_its_mode_back(monkeypatch):
     """Clearing the override would take the outer run's mode away, which is the
     inverse of the leak the hook exists to prevent."""
@@ -1428,3 +1611,44 @@ def test_a_generator_alongside_a_named_database_is_accepted():
         )
         configure_tests(database_url="sqlite:///./test.db")
         assert _current_setup() is not None
+
+
+def test_a_generator_on_the_unnamed_leg_is_rejected():
+    """A generator is a session source like a sessionmaker: naming only the async
+    database would leave every sync route on the generator's database."""
+    with _isolated_config():
+
+        def dev_sessions():  # pragma: no cover - never called
+            yield None
+
+        fr.configure(sync_session_generator=dev_sessions)
+        with pytest.raises(RestlyConfigurationError) as excinfo:
+            configure_tests(async_database_url="sqlite+aiosqlite:///./test.db")
+
+    message = str(excinfo.value)
+    assert "sync_session_generator" in message
+    assert "database_url=" in message
+
+
+def test_an_async_generator_on_the_unnamed_leg_is_rejected():
+    with _isolated_config():
+
+        async def dev_sessions():  # pragma: no cover - never called
+            yield None
+
+        fr.configure(session_generator=dev_sessions)
+        with pytest.raises(RestlyConfigurationError) as excinfo:
+            configure_tests(database_url="sqlite:///./test.db")
+
+    message = str(excinfo.value)
+    assert "a session_generator" in message
+    assert "async_database_url=" in message
+
+
+def test_a_second_call_in_one_process_is_rejected():
+    """The setup is a process-wide singleton: a silent second call would move
+    every already-collected test onto its app, database and cleanup mode."""
+    with _isolated_config():
+        configure_tests(database_url="sqlite://")
+        with pytest.raises(RestlyConfigurationError, match="already called"):
+            configure_tests(database_url="sqlite://")

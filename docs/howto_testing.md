@@ -69,8 +69,10 @@ Four things, which is about what any database-backed suite needs.
 
 **A test database of your own.** The URL you pass replaces whatever your
 application configured when it was imported, so the suite never writes to your
-development database. Pass no database and Restly raises rather than pick one
-for you.
+development database. The choice is final: a database your application
+configures later, in its lifespan or in a module imported during collection, is
+never used, and a leg the suite did not name refuses to serve sessions rather
+than adopt it. Pass no database and Restly raises rather than pick one for you.
 
 **A schema that is already there.** Tables are created once, before the first
 test, either from your models with `create_all=True` or by running your

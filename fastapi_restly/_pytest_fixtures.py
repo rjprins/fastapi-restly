@@ -4,7 +4,7 @@ import os
 import weakref
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, AsyncIterator, Iterator
+from typing import TYPE_CHECKING, Any, AsyncIterator, Iterator, cast
 
 import pytest
 from fastapi import FastAPI
@@ -15,6 +15,8 @@ from sqlalchemy.orm import Session as SA_Session
 from sqlalchemy.orm import sessionmaker
 
 from ._test_setup import (
+    _ASYNC_LEG_TRIPWIRE,
+    _SYNC_LEG_TRIPWIRE,
     DB_CLEANUP_ENV_VAR,
     DB_CLEANUP_MODES,
     NONE,
@@ -282,20 +284,21 @@ else:
         other modes this yields a plain session on the configured database, since
         rolling it back would undo writes those modes mean to commit.
         """
+        original = _source_factories()[1]
         if _cleanup_mode() != ROLLBACK:
             # The fixture follows the suite's cleanup mode. Rolling this session
             # back regardless would undo writes the mode means to commit, and
             # leave nothing behind to inspect.
-            if not _fr_globals.async_make_session:
+            if original is None:
                 pytest.skip("Database connection not set up")
-            session = _fr_globals.async_make_session()
+            session = original()
             try:
                 yield session
             finally:
                 await session.close()
             return
 
-        if not _fr_globals.async_make_session:
+        if original is None:
             if _fr_globals.session_generator is not None:
                 raise RestlyConfigurationError(
                     "restly_async_session cannot isolate a session built by "
@@ -304,13 +307,13 @@ else:
                     "so each request would get its own session, with no "
                     "isolation. Configure an async sessionmaker for the tests "
                     "as well: pass async_database_url=, async_engine= or "
-                    "async_make_session= to fr.configure(). The fixture then "
-                    "builds the isolated session from it and ignores the "
-                    "generator during each test."
+                    "async_make_session= to fr.configure(), or to "
+                    "fr.testing.configure_tests() if the suite uses it. The "
+                    "fixture then builds the isolated session from it and "
+                    "ignores the generator during each test."
                 )
             pytest.skip("Database connection not set up")
 
-        original = _source_factories()[1]
         _reject_per_mapper_binds(original)
         async_engine = _resolve_engine(original.kw["bind"])
 
@@ -384,20 +387,21 @@ def restly_session(_shared_connection) -> Iterator[SA_Session]:
     modes this yields a plain session on the configured database, since rolling it
     back would undo writes those modes mean to commit.
     """
+    original = _source_factories()[0]
     if _cleanup_mode() != ROLLBACK:
         # The fixture follows the suite's cleanup mode. Rolling this session back
         # regardless would undo writes the mode means to commit, and leave nothing
         # behind to inspect.
-        if not _fr_globals.make_session:
+        if original is None:
             pytest.skip("Database connection not set up")
-        session = _fr_globals.make_session()
+        session = original()
         try:
             yield session
         finally:
             session.close()
         return
 
-    if not _fr_globals.make_session:
+    if original is None:
         if _fr_globals.sync_session_generator is not None:
             raise RestlyConfigurationError(
                 "restly_session cannot isolate a session built by your "
@@ -405,13 +409,13 @@ def restly_session(_shared_connection) -> Iterator[SA_Session]:
                 "the session factory this fixture swaps, so each request "
                 "would get its own session, with no isolation. Configure a sync "
                 "sessionmaker for the tests as well: pass database_url=, "
-                "engine= or make_session= to fr.configure(). The fixture then "
-                "builds the isolated session from it and ignores the generator "
-                "during each test."
+                "engine= or make_session= to fr.configure(), or to "
+                "fr.testing.configure_tests() if the suite uses it. The "
+                "fixture then builds the isolated session from it and ignores "
+                "the generator during each test."
             )
         pytest.skip("Database connection not set up")
 
-    original = _source_factories()[0]
     _reject_per_mapper_binds(original)
     # A real factory bound to the pinned connection, in create_savepoint mode.
     # Every request (and this fixture) gets its own real session joining the outer
@@ -477,35 +481,51 @@ def _managed_isolation(
 ) -> Iterator[None]:
     """The body of the autouse fixture, split out so the isolation flag can wrap
     it in a try/finally that survives an error in any mode."""
-    if mode == ROLLBACK:
-        # Both legs, not the first one found: each session fixture swaps only its
-        # own factory, so activating one in a suite that configured both leaves
-        # the other's routes committing for real.
-        if _fr_globals.make_session is not None:
-            request.getfixturevalue("restly_session")
-        if _fr_globals.async_make_session is not None:
-            request.getfixturevalue("restly_async_session")
-        yield
-        return
-
-    # These modes pin nothing, but the test still owns routing: point the same
-    # override at the configured factories so an application's generator cannot
-    # serve requests from its own database.
+    # Everything routes from the recorded setup, never the live globals: the
+    # test override outranks every other session source, so a database the
+    # application configures after configure_tests() cannot reach a test. A leg
+    # the suite never named gets a tripwire that refuses on use, so a source
+    # arriving late on that leg cannot serve requests either.
+    recorded_sync, recorded_async = _source_factories()
     globals_obj = _get_restly_context()
-    globals_obj.test_make_session = _fr_globals.make_session
-    globals_obj.test_async_make_session = _fr_globals.async_make_session
+    if recorded_sync is None:
+        globals_obj.test_make_session = cast(Any, _SYNC_LEG_TRIPWIRE)
+    if recorded_async is None:
+        globals_obj.test_async_make_session = cast(Any, _ASYNC_LEG_TRIPWIRE)
     try:
-        if mode == TRUNCATE:
-            # Before, not after: whatever the last test wrote is still there when
-            # the run ends, which is the point of choosing this mode.
-            if not _clean_database_sync(setup):
-                # Async-only: cleaning must run on the loop the test uses, so it
-                # goes through a fixture rather than a loop of its own.
-                request.getfixturevalue("_restly_async_truncate")
+        if mode == ROLLBACK:
+            # Both legs, not the first one found: each session fixture swaps only
+            # its own factory, so activating one in a suite that configured both
+            # leaves the other's routes committing for real. The fixtures install
+            # (and clear) the named legs' overrides themselves.
+            if recorded_sync is not None:
+                request.getfixturevalue("restly_session")
+            if recorded_async is not None:
+                request.getfixturevalue("restly_async_session")
+        else:
+            # These modes pin nothing, but the test still owns routing: point the
+            # same override at the recorded factories so an application's
+            # generator cannot serve requests from its own database.
+            if recorded_sync is not None:
+                globals_obj.test_make_session = recorded_sync
+            if recorded_async is not None:
+                globals_obj.test_async_make_session = recorded_async
+            if mode == TRUNCATE:
+                # Before, not after: whatever the last test wrote is still there
+                # when the run ends, which is the point of choosing this mode.
+                if not _clean_database_sync(setup):
+                    # Async-only: cleaning must run on the loop the test uses, so
+                    # it goes through a fixture rather than a loop of its own.
+                    request.getfixturevalue("_restly_async_truncate")
         yield
     finally:
-        globals_obj.test_make_session = None
-        globals_obj.test_async_make_session = None
+        # Clear only what this function installed; in rollback mode the session
+        # fixtures own the named legs' overrides and clear them in their own
+        # teardown.
+        if mode != ROLLBACK or recorded_sync is None:
+            globals_obj.test_make_session = None
+        if mode != ROLLBACK or recorded_async is None:
+            globals_obj.test_async_make_session = None
 
 
 @pytest.fixture
