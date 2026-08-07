@@ -399,19 +399,28 @@ def test_the_environment_overrides_the_argument(monkeypatch):
     header announced and the mode enforced during the run disagree."""
     monkeypatch.setenv(DB_CLEANUP_ENV_VAR, TRUNCATE)
     monkeypatch.setattr(_fixtures, "_db_cleanup_override", None)
+    monkeypatch.setattr(_fixtures, "_override_stack", [])
     _fixtures.pytest_configure(_FakeConfig(None))  # type: ignore[arg-type]
     assert _fixtures._db_cleanup_override == TRUNCATE
     assert _resolve_db_cleanup(_setup_with(ROLLBACK), TRUNCATE) == TRUNCATE
 
 
 def test_the_flag_overrides_the_environment(monkeypatch):
+    """The precedence the docs promise has to go through pytest_configure, where
+    both sources are read; by the time _resolve_db_cleanup runs, the environment
+    is already out of the picture, so asserting on the resolver alone proves
+    nothing about it."""
     monkeypatch.setenv(DB_CLEANUP_ENV_VAR, TRUNCATE)
-    assert _resolve_db_cleanup(_setup_with(TRUNCATE), ROLLBACK) == ROLLBACK
+    monkeypatch.setattr(_fixtures, "_db_cleanup_override", None)
+    monkeypatch.setattr(_fixtures, "_override_stack", [])
+    _fixtures.pytest_configure(_FakeConfig(ROLLBACK))  # type: ignore[arg-type]
+    assert _fixtures._db_cleanup_override == ROLLBACK
 
 
 def test_an_unknown_mode_from_the_environment_is_rejected(monkeypatch):
     monkeypatch.setenv(DB_CLEANUP_ENV_VAR, "vacuum")
     monkeypatch.setattr(_fixtures, "_db_cleanup_override", None)
+    monkeypatch.setattr(_fixtures, "_override_stack", [])
     with pytest.raises(pytest.UsageError, match=DB_CLEANUP_ENV_VAR):
         _fixtures.pytest_configure(_FakeConfig(None))  # type: ignore[arg-type]
 
