@@ -15,7 +15,7 @@ nothing here depends on the configuration installed at import there.
 """
 
 import pytest
-from sqlalchemy import Column, Integer, MetaData, String, Table, text
+from sqlalchemy import Column, ForeignKey, Integer, MetaData, String, Table, text
 
 import fastapi_restly as fr
 from fastapi_restly._test_setup import (
@@ -60,6 +60,14 @@ parent = Table(
     metadata,
     Column("id", Integer, primary_key=True),
     Column("name", String),
+)
+# The declared parent-child pair that makes deletion order observable: with
+# enforced foreign keys, deleting parents first would fail on the reference.
+child = Table(
+    "cleanup_child",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("parent_id", Integer, ForeignKey("cleanup_parent.id")),
 )
 # Schema-qualified on purpose: rendering the name by hand drops the schema, so the
 # statement resolves through search_path to a different table, or errors.
@@ -149,6 +157,26 @@ def test_cleaning_does_not_reset_sequences(pg_context):
             text("INSERT INTO cleanup_widget (name) VALUES ('b') RETURNING id")
         ).scalar()
     assert following > 1
+
+
+def test_cleaning_deletes_children_before_parents(pg_context):
+    """The ordering pin the module docstring promises: a declared child row
+    references a declared parent row, so a parents-first delete would raise
+    here rather than clean."""
+    setup = pg_context()
+    _insert("cleanup_parent", "referenced")
+    with fr.db.get_engine().begin() as connection:
+        connection.execute(
+            text(
+                "INSERT INTO cleanup_child (parent_id) "
+                "SELECT id FROM cleanup_parent LIMIT 1"
+            )
+        )
+
+    _clean_database_sync(setup)
+
+    assert _count("cleanup_child") == 0
+    assert _count("cleanup_parent") == 0
 
 
 def test_cleaning_keeps_the_schema_qualifier(pg_context):

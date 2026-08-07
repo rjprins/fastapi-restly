@@ -1760,6 +1760,63 @@ def test_a_source_arriving_after_setup_trips_instead_of_serving(tmp_path: Path):
     assert not (tmp_path / "dev.db").exists()
 
 
+_UNCONFIGURED_SYNC_APP = """
+from fastapi import FastAPI
+from sqlalchemy.orm import Mapped
+
+import fastapi_restly as fr
+
+
+class Note(fr.IDBase):
+    text: Mapped[str]
+
+
+class NoteSchema(fr.IDSchema):
+    text: str
+
+
+app = FastAPI()
+
+
+@fr.include_view(app)
+class NoteView(fr.RestView):
+    prefix = "/notes"
+    model = Note
+    schema = NoteSchema
+"""
+
+
+def test_a_sync_source_arriving_after_setup_trips_instead_of_serving(tmp_path: Path):
+    """The mirror of the async tripwire test: the suite named only the async
+    database and a collection-time import configures a sync one. A sync route
+    and fr.db.get_engine() -- which reaches the tripwire through its factory
+    inspection, not a call -- must both refuse, not serve the late arrival."""
+    _write_project(
+        tmp_path,
+        "import fastapi_restly as fr\nfrom myapp import app\n\n"
+        "fr.testing.configure_tests(\n"
+        "    app=app,\n"
+        '    async_database_url="sqlite+aiosqlite:///./test.db",\n'
+        "    base=fr.DataclassBase,\n"
+        "    create_all=True,\n"
+        ")\n",
+        "import fastapi_restly as fr\n\n"
+        'fr.configure(database_url="sqlite:///./dev.db")\n\n\n'
+        "def test_a_sync_route(restly_client):\n"
+        '    restly_client.get("/notes/")\n\n\n'
+        "def test_get_engine():\n"
+        "    fr.db.get_engine()\n",
+        app_module=_UNCONFIGURED_SYNC_APP,
+    )
+    result = _run_pytest(tmp_path)
+
+    assert result.returncode != 0
+    combined = result.stdout + result.stderr
+    assert "named no sync database" in combined
+    assert "2 failed" in result.stdout
+    assert not (tmp_path / "dev.db").exists()
+
+
 def test_rollback_refuses_client_requests_over_a_loop_bound_driver(tmp_path: Path):
     """asyncpg binds connections to their creating loop; rollback's pinned
     connection would cross into the client's portal loop and fail mid-test with
