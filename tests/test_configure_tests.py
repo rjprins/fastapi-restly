@@ -585,6 +585,18 @@ def test_split_sync_and_async_databases_are_rejected(tmp_path: Path):
             )
 
 
+def test_a_memory_leg_paired_with_a_located_leg_is_rejected(tmp_path: Path):
+    """A private in-memory database is provably not the other leg's file or
+    server database; only a pair of in-memory legs is accepted, because
+    rollback mode makes those one database over the pinned connection."""
+    with _isolated_config():
+        with pytest.raises(RestlyConfigurationError, match="not the same database"):
+            configure_tests(
+                database_url="sqlite:///:memory:",
+                async_database_url=f"sqlite+aiosqlite:///{tmp_path / 'real.db'}",
+            )
+
+
 def test_equivalent_sqlite_spellings_are_one_database(tmp_path: Path):
     """The same file spelled two ways is one database, not a split."""
     with _isolated_config():
@@ -1789,7 +1801,10 @@ def test_a_sync_source_arriving_after_setup_trips_instead_of_serving(tmp_path: P
 
     assert result.returncode != 0
     combined = result.stdout + result.stderr
-    assert "named no sync database" in combined
+    # Once per refusal path: an AttributeError from a gutted tripwire would
+    # also fail the get_engine test, but not with the message.
+    assert combined.count("named no sync database") >= 2
+    assert "AttributeError" not in combined
     assert "2 failed" in result.stdout
     assert not (tmp_path / "dev.db").exists()
 
@@ -1868,6 +1883,47 @@ def test_a_session_scoped_fixture_reaches_the_suite_database(tmp_path: Path):
     assert _rows(tmp_path / "test.db") == 1
     # The late-configured database was never even connected to.
     assert not (tmp_path / "dev.db").exists()
+
+
+def test_a_foreign_sessionfinish_leaves_the_outer_routing_alone(monkeypatch):
+    """pluggy skips our pytest_collection_finish when an earlier hookimpl
+    raises, but pytest still calls pytest_sessionfinish; popping another run's
+    entry would silently uninstall the outer run's routing and tripwires for
+    the rest of its tests."""
+    sentinel_sync, sentinel_async = object(), object()
+    outer, inner = object(), object()
+    monkeypatch.setattr(_fixtures, "_routing_stack", [(outer, None, None)])
+    with RestlyContext() as context:
+        context.test_make_session = sentinel_sync  # type: ignore[assignment]
+        context.test_async_make_session = sentinel_async  # type: ignore[assignment]
+
+        _fixtures.pytest_sessionfinish(inner, 0)  # type: ignore[arg-type]
+        assert context.test_make_session is sentinel_sync
+        assert _fixtures._routing_stack == [(outer, None, None)]
+
+        _fixtures.pytest_sessionfinish(outer, 0)  # type: ignore[arg-type]
+        assert context.test_make_session is None
+        assert _fixtures._routing_stack == []
+
+
+def test_collection_finish_pushes_once_per_session(monkeypatch):
+    """A second perform_collect in one session must not double-push, or the
+    session's own finish would restore an entry it pushed itself and leave the
+    real prior state stranded on the stack."""
+    from types import SimpleNamespace
+
+    monkeypatch.setattr(_fixtures, "_routing_stack", [])
+    fake = SimpleNamespace(
+        config=SimpleNamespace(
+            option=SimpleNamespace(collectonly=False), rootpath=Path(".")
+        )
+    )
+    with RestlyContext():
+        _fixtures.pytest_collection_finish(fake)  # type: ignore[arg-type]
+        _fixtures.pytest_collection_finish(fake)  # type: ignore[arg-type]
+        assert len(_fixtures._routing_stack) == 1
+        _fixtures.pytest_sessionfinish(fake, 0)  # type: ignore[arg-type]
+        assert _fixtures._routing_stack == []
 
 
 def test_a_nested_run_gives_the_outer_run_its_mode_back(monkeypatch):

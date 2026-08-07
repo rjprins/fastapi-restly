@@ -603,8 +603,8 @@ def _reject_split_databases() -> None:
     The suite treats the two legs as one database: rollback mode serves async
     requests over the sync leg's pinned connection, and deletion cleans
     through one leg on the assumption the other sees it. Split legs would break
-    both, silently. In-memory SQLite records no comparable location and is not
-    checked.
+    both, silently. Two in-memory SQLite legs are the accepted exception; one
+    in-memory leg paired with a located database is a known split.
     """
     sync_engine = _resolve_engine(_fr_globals.make_session.kw.get("bind"))
     async_engine = _resolve_engine(_fr_globals.async_make_session.kw.get("bind"))
@@ -612,12 +612,21 @@ def _reject_split_databases() -> None:
     async_url = getattr(async_engine, "url", None)
     if sync_url is None or async_url is None:
         return
-    if _is_memory_sqlite(sync_url) or _is_memory_sqlite(async_url):
-        return
-    if sync_url.database is None or async_url.database is None:
+    memory_sync = _is_memory_sqlite(sync_url)
+    memory_async = _is_memory_sqlite(async_url)
+    if memory_sync and memory_async:
+        # Two in-memory legs record no location to compare, and rollback mode
+        # makes them one database anyway, serving async requests over the sync
+        # leg's pinned connection.
         return
 
-    if sync_url.get_backend_name() == "sqlite" and (
+    if memory_sync or memory_async:
+        # Exactly one in-memory leg needs no comparison: a private in-memory
+        # database is provably not the other leg's file or server database.
+        same = False
+    elif sync_url.database is None or async_url.database is None:
+        return
+    elif sync_url.get_backend_name() == "sqlite" and (
         async_url.get_backend_name() == "sqlite"
     ):
         # The same file spelled two ways ("./test.db" and "test.db") is one
@@ -664,8 +673,6 @@ def _create_schema(setup: _TestSetup, root: Path | None = None) -> None:
         elif async_make_session is not None:
 
             async def _create() -> None:
-                from sqlalchemy.pool import StaticPool
-
                 engine = _resolve_engine(async_make_session.kw["bind"])
                 try:
                     async with engine.begin() as connection:
@@ -674,11 +681,12 @@ def _create_schema(setup: _TestSetup, root: Path | None = None) -> None:
                     # The loop asyncio.run() opened dies with this call, and a
                     # connection kept in the pool would resurface on a test's
                     # own loop. Restly's URL-built engines hold nothing
-                    # (NullPool), but a user-supplied engine may pool. A
-                    # StaticPool engine is the exception either way: its one
-                    # connection IS the database for in-memory SQLite, so
-                    # disposing it would discard the schema just built.
-                    if not isinstance(engine.sync_engine.pool, StaticPool):
+                    # (NullPool), but a user-supplied engine may pool.
+                    # In-memory SQLite is the exception: its pool's one
+                    # connection IS the database, so disposing it would discard
+                    # the schema just built (and aiosqlite has no loop affinity
+                    # to guard against).
+                    if not _is_memory_sqlite(engine.url):
                         await engine.dispose()
 
             asyncio.run(_create())

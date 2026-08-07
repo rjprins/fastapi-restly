@@ -457,28 +457,38 @@ def restly_session(_shared_connection) -> Iterator[SA_Session]:
             session.close()
 
 
-#: What the test override slots held before routing was installed, innermost
-#: run last. A nested in-process run must give the outer run its routing back.
-_routing_stack: list[tuple[Any, Any]] = []
+#: What the test override slots held before each run installed its routing,
+#: tagged with the run's Session so a run that never pushed cannot pop another
+#: run's entry. Innermost run last.
+_routing_stack: list[tuple[Any, Any, Any]] = []
 
 
 def pytest_collection_finish(session: pytest.Session) -> None:
-    """Route every Restly session source through the recorded setup, run-wide.
+    """Route every Restly session source through the recorded setup, run-wide,
+    and build the schema.
 
     Installed after collection -- every ``conftest.py`` has been imported, so
     the recorded setup is final -- and before any fixture of any scope runs. A
     hook rather than a session-scoped autouse fixture, because pytest runs a
     suite's own autouse fixtures before a plugin's: a session-scoped seed
     fixture calling ``fr.open_session()`` must already be routed to the suite's
-    database, not to whatever an application module configured after the suite
-    was set up. The per-test fixtures layer rollback's pinned factories on top
-    and restore this layer afterwards.
+    database, and must find the schema there, whichever way the plugin was
+    registered. The per-test fixtures layer rollback's pinned factories on top
+    and restore this layer afterwards. pytest's rootdir anchors relative
+    Alembic paths, so the invocation directory does not decide which config is
+    found.
     """
+    if getattr(session.config.option, "collectonly", False):
+        return
+    if _routing_stack and _routing_stack[-1][0] is session:
+        # A second perform_collect in one session must not push twice.
+        return
     globals_obj = _get_restly_context()
     _routing_stack.append(
-        (globals_obj.test_make_session, globals_obj.test_async_make_session)
+        (session, globals_obj.test_make_session, globals_obj.test_async_make_session)
     )
-    if _current_setup() is None:
+    setup = _current_setup()
+    if setup is None:
         return
 
     recorded_sync, recorded_async = _source_factories()
@@ -490,33 +500,27 @@ def pytest_collection_finish(session: pytest.Session) -> None:
         if recorded_async is not None
         else cast(Any, _ASYNC_LEG_TRIPWIRE)
     )
+    try:
+        _create_schema(setup, root=Path(session.config.rootpath))
+    except RestlyConfigurationError as error:
+        # As a UsageError pytest prints the message and stops; anything else
+        # raised from a hook is reported as an INTERNALERROR with a pluggy
+        # traceback.
+        raise pytest.UsageError(str(error)) from error
 
 
 def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
     # Restore rather than clear, for the same reason as the mode override: a
     # nested in-process run must neither leak its routing outward nor take the
-    # outer run's away.
-    if not _routing_stack:
+    # outer run's away. A run that never pushed -- collection was skipped, or
+    # an earlier hookimpl raised before ours ran -- must not pop another run's
+    # entry either, so the top entry has to be this session's own.
+    if not _routing_stack or _routing_stack[-1][0] is not session:
         return
     globals_obj = _get_restly_context()
-    previous_sync, previous_async = _routing_stack.pop()
+    _, previous_sync, previous_async = _routing_stack.pop()
     globals_obj.test_make_session = previous_sync
     globals_obj.test_async_make_session = previous_async
-
-
-@pytest.fixture(scope="session", autouse=True)
-def _restly_managed_schema(request: pytest.FixtureRequest) -> Iterator[None]:
-    """Build the schema once per session when ``fr.testing.configure_tests()`` asked for it.
-
-    Session-scoped so it lands before the per-test isolation below: those fixtures
-    wrap each test in a transaction that rolls back, so a schema created inside a
-    test would be rolled back with it. pytest's rootdir anchors relative Alembic
-    paths, so the invocation directory does not decide which config is found.
-    """
-    setup = _current_setup()
-    if setup is not None:
-        _create_schema(setup, root=Path(request.config.rootpath))
-    yield
 
 
 @pytest.fixture(autouse=True)
