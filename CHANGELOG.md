@@ -38,7 +38,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   drivers like asyncpg fail. In-memory SQLite keeps its single-connection pool,
   in every spelling SQLAlchemy treats as in-memory. A supplied `async_engine=`
   aimed at a real async server should be built with `poolclass=NullPool` for
-  the same reason.
+  the same reason. The one shape no pool policy can save -- rollback mode's
+  pinned connection serving `restly_client` requests from asyncpg, whose
+  connections are bound to the loop that created them -- is refused up front
+  with the two ways out: name the sync database as well, or use `"delete"`.
 
 - Restly's declarative base mixes in SQLAlchemy's `AsyncAttrs`, so every model
   has `awaitable_attrs`: `await obj.awaitable_attrs.items` reads an unloaded

@@ -1760,6 +1760,42 @@ def test_a_source_arriving_after_setup_trips_instead_of_serving(tmp_path: Path):
     assert not (tmp_path / "dev.db").exists()
 
 
+def test_rollback_refuses_client_requests_over_a_loop_bound_driver(tmp_path: Path):
+    """asyncpg binds connections to their creating loop; rollback's pinned
+    connection would cross into the client's portal loop and fail mid-test with
+    "attached to a different loop". Refusing at the client names the two ways
+    out, while a suite that only uses the session fixture stays on one loop and
+    keeps working."""
+    _write_project(
+        tmp_path,
+        "import fastapi_restly as fr\nfrom myapp import app\n\n"
+        "fr.testing.configure_tests(\n"
+        "    app=app,\n"
+        '    async_database_url="sqlite+aiosqlite:///./test.db",\n'
+        "    base=fr.DataclassBase,\n"
+        "    create_all=True,\n"
+        ")\n\n"
+        "# Impersonate asyncpg's loop-bound behavior on the recorded engine.\n"
+        "from fastapi_restly._test_setup import _current_setup\n"
+        '_engine = _current_setup().async_make_session.kw["bind"]\n'
+        '_engine.sync_engine.dialect.driver = "asyncpg"\n',
+        "from myapp import Note\n\n\n"
+        "def test_client_is_refused(restly_client):\n"
+        '    restly_client.get("/notes/")\n\n\n'
+        "def test_session_fixture_alone_still_works(restly_async_session):\n"
+        '    restly_async_session.add(Note(text="one loop only"))\n'
+        "    restly_async_session.flush()\n",
+    )
+    result = _run_pytest(tmp_path)
+
+    assert result.returncode != 0
+    combined = result.stdout + result.stderr
+    assert "attached to a different loop" in combined
+    assert "database_url=" in combined
+    assert "1 passed" in result.stdout
+    assert "1 error" in result.stdout
+
+
 def test_a_session_scoped_fixture_reaches_the_suite_database(tmp_path: Path):
     """Routing is run-wide, not per-test: a session-scoped seed fixture calling
     fr.open_session() runs before any test's isolation window, and used to fall

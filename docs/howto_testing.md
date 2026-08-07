@@ -156,7 +156,10 @@ default suits most suites; the other two exist for what it cannot serve.
 **`"rollback"`**, the default, wraps each test in a transaction and rolls it back
 at the end, through the savepoints described [below](#savepoints-and-rollback).
 Nothing is ever committed, which is what makes it the fastest option, and it
-leaves reference data your migrations seeded untouched.
+leaves reference data your migrations seeded untouched. One combination is
+refused up front: with only the async database named and asyncpg as its driver,
+the pinned connection cannot serve `restly_client`'s own event loop. Name the
+sync database as well, or use `"delete"`.
 
 **`"delete"`** empties the tables before each test instead, and lets writes
 commit for real. It is slower and wants a database of its own, but the rows the

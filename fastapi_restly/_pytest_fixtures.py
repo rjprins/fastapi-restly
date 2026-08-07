@@ -577,6 +577,39 @@ def restly_app() -> FastAPI:
     return FastAPI()
 
 
+def _reject_loop_bound_pinning() -> None:
+    """Refuse the one combination rollback mode cannot serve: client requests
+    over a connection asyncpg bound to the test's loop.
+
+    asyncpg ties every connection to the event loop that created it. With only
+    the async leg named, rollback pins one asyncpg connection on the test's
+    loop, and ``restly_client``'s requests -- run on the client's own portal
+    thread -- would die mid-test with "attached to a different loop". A named
+    sync leg changes the picture: the pinned connection is then a sync one any
+    loop may use, so only the async-only shape is refused.
+    """
+    setup = _current_setup()
+    if setup is None or _cleanup_mode() != ROLLBACK:
+        return
+    if setup.make_session is not None or setup.async_make_session is None:
+        return
+    engine = _resolve_engine(setup.async_make_session.kw.get("bind"))
+    sync_engine = getattr(engine, "sync_engine", engine)
+    if getattr(getattr(sync_engine, "dialect", None), "driver", "") != "asyncpg":
+        return
+    raise RestlyConfigurationError(
+        'db_cleanup="rollback" pins one connection for the whole test, and '
+        "asyncpg binds every connection to the event loop that created it; "
+        "requests driven through restly_client run on the client's own loop "
+        'and would fail mid-test with "attached to a different loop". Name '
+        "the sync database as well (database_url= alongside "
+        "async_database_url=, pointing at the same database) -- the pinned "
+        "connection is then a sync one any loop may use -- or switch to "
+        'db_cleanup="delete", where every session opens its own connection '
+        "on the loop that runs it."
+    )
+
+
 @pytest.fixture
 def restly_client(restly_app) -> Iterator[RestlyTestClient]:
     """A test client for ``restly_app``, entered so the app's lifespan runs.
@@ -586,6 +619,7 @@ def restly_client(restly_app) -> Iterator[RestlyTestClient]:
     cache or registers a dependency never ran, and the failure surfaced far from
     here as a missing resource.
     """
+    _reject_loop_bound_pinning()
     try:
         from .testing._client import RestlyTestClient
     except ModuleNotFoundError as exc:
