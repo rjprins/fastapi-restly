@@ -1,4 +1,4 @@
-"""``db_cleanup="truncate"`` against a real PostgreSQL server.
+"""``db_cleanup="delete"`` against a real PostgreSQL server.
 
 Cleaning is a plain ``DELETE`` per table on every dialect, but only a real
 server holds it to its claims: enforced foreign keys make the child-first
@@ -19,7 +19,7 @@ from sqlalchemy import Column, Integer, MetaData, String, Table, text
 
 import fastapi_restly as fr
 from fastapi_restly._test_setup import (
-    TRUNCATE,
+    DELETE,
     _clean_database_sync,
     _create_schema,
     _current_setup,
@@ -74,7 +74,7 @@ tenant_item = Table(
 
 @pytest.fixture
 def pg_context():
-    """A Restly context configured for truncate against this module's tables."""
+    """A Restly context configured for delete mode against this module's tables."""
 
     def configure(**kwargs):
         configure_tests(
@@ -82,7 +82,7 @@ def pg_context():
             database_url=PG_URL.render_as_string(hide_password=False),
             base=metadata,
             create_all=True,
-            db_cleanup=TRUNCATE,
+            db_cleanup=DELETE,
             **kwargs,
         )
         setup = _current_setup()
@@ -151,7 +151,7 @@ def test_cleaning_does_not_reset_sequences(pg_context):
     assert following > 1
 
 
-def test_truncate_keeps_the_schema_qualifier(pg_context):
+def test_cleaning_keeps_the_schema_qualifier(pg_context):
     setup = pg_context()
     _insert(f"{SCHEMA}.item", "x")
     assert _count(f"{SCHEMA}.item") == 1
@@ -161,7 +161,7 @@ def test_truncate_keeps_the_schema_qualifier(pg_context):
     assert _count(f"{SCHEMA}.item") == 0
 
 
-def test_excluded_tables_survive_truncation(pg_context):
+def test_excluded_tables_survive_cleaning(pg_context):
     setup = pg_context(db_cleanup_exclude=["cleanup_reference"])
     _insert("cleanup_reference", "seed")
     _insert("cleanup_churn", "data")

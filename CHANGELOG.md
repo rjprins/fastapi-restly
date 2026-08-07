@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   call raises. Suites that do not call it are unaffected.
 
 - `db_cleanup=` picks how each test gets a clean database: `"rollback"` (the
-  default), `"truncate"` (empties the tables before each test and lets writes
+  default), `"delete"` (empties the tables before each test and lets writes
   commit, so the last test's rows can be inspected afterwards), or `"none"`.
   `--restly-db-cleanup` and `RESTLY_DB_CLEANUP` switch mode for a single run, and
   `db_cleanup_exclude=` spares tables holding seeded reference data.

@@ -26,10 +26,10 @@ if TYPE_CHECKING:
 #: Roll each test back through a savepoint. Fastest, and nothing survives a test.
 ROLLBACK = "rollback"
 #: Empty the tables before each test. Writes commit, so the last test's rows stay.
-TRUNCATE = "truncate"
+DELETE = "delete"
 #: Clean nothing; the suite owns it. The fallback when neither of the above fits.
 NONE = "none"
-DB_CLEANUP_MODES = (ROLLBACK, TRUNCATE, NONE)
+DB_CLEANUP_MODES = (ROLLBACK, DELETE, NONE)
 
 #: Overrides the ``db_cleanup=`` argument; ``--restly-db-cleanup`` overrides this.
 DB_CLEANUP_ENV_VAR = "RESTLY_DB_CLEANUP"
@@ -135,7 +135,7 @@ def configure_tests(
        ``create_all`` or ``alembic_upgrade`` (see below).
     4. Every test gets a clean database, by the strategy ``db_cleanup`` names.
 
-    ``base=`` names the models the suite works with. It is what truncation empties
+    ``base=`` names the models the suite works with. It is what delete mode empties
     between tests, and what ``create_all`` builds. Pass your declarative base, or
     its ``MetaData``.
 
@@ -170,12 +170,12 @@ def configure_tests(
       rolled back through a savepoint when the test ends. Nothing is ever
       committed, which makes it the fastest option and the reason no other
       process can see a test's data, not even after a failure.
-    * ``"truncate"`` empties the tables *before* each test instead, and lets
+    * ``"delete"`` empties the tables *before* each test instead, and lets
       writes commit for real. It is slower, but the last test's rows are still in
       the database when the run ends, so you can inspect them with ordinary
       tools; run with ``-k`` and the last test is the one you are looking at.
       Tests still cannot see each other's data, and it needs a database of its
-      own: two suites truncating one database will fight. An async database is
+      own: two suites deleting from one database will fight. An async database is
       best named by URL here; a supplied ``async_engine=`` should be built with
       ``poolclass=NullPool``, because test code hops event loops and a pooled
       async connection does not survive that on drivers like asyncpg.
@@ -187,8 +187,8 @@ def configure_tests(
     ``RESTLY_DB_CLEANUP`` overrides this argument, and ``--restly-db-cleanup``
     overrides both, so a debugging run can switch mode without editing the suite.
 
-    ``db_cleanup_exclude`` names tables truncation must leave alone. Reference
-    data seeded by a migration is the usual reason: truncation would empty those
+    ``db_cleanup_exclude`` names tables cleaning must leave alone. Reference
+    data seeded by a migration is the usual reason: cleaning would empty those
     tables before the first test and nothing would put the rows back. A table
     under a non-default schema is named with its qualifier, ``"tenant.item"``.
     Naming a table that does not exist raises, so a typo cannot silently drop
@@ -295,7 +295,7 @@ def _resolve_db_cleanup(setup: _TestSetup, flag: str | None) -> str:
 
 
 def _tables_to_clean(setup: _TestSetup) -> list[Any]:
-    """The tables truncation empties, children first.
+    """The tables delete mode empties, children first.
 
     Taken from the models the suite named, never from the database: reflecting a
     schema before every test costs a round trip per table on a real server, and
@@ -345,7 +345,7 @@ def _require_cleanable(setup: _TestSetup) -> list[Any] | None:
             or _fr_globals.sync_session_generator is not None
         ):
             raise RestlyConfigurationError(
-                'fr.testing.configure_tests(db_cleanup="truncate") builds its own '
+                'fr.testing.configure_tests(db_cleanup="delete") builds its own '
                 "connection to empty the tables, and a session_generator does not "
                 "give it one. Configure a sessionmaker for the tests as well: pass "
                 "database_url=, engine= or make_session= (or their async forms)."
@@ -354,7 +354,7 @@ def _require_cleanable(setup: _TestSetup) -> list[Any] | None:
         return None
     if setup.base is None:
         raise RestlyConfigurationError(
-            'fr.testing.configure_tests(db_cleanup="truncate") needs to know which '
+            'fr.testing.configure_tests(db_cleanup="delete") needs to know which '
             "tables to empty. Pass base=<your declarative base>, the same one your "
             "models are declared on."
         )
@@ -370,7 +370,7 @@ def _reject_binds_for_cleaning(factory: Any) -> None:
     """
     if factory.kw.get("binds"):
         raise RestlyConfigurationError(
-            'fr.testing.configure_tests(db_cleanup="truncate") empties the '
+            'fr.testing.configure_tests(db_cleanup="delete") empties the '
             "tables over the session factory's single bind, and this factory "
             "routes some models to their own engines with binds=. Their tables "
             "would silently keep their rows between tests. Configure the tests "
@@ -594,7 +594,7 @@ def _reject_split_databases() -> None:
     """Refuse sync and async legs that point at different databases.
 
     The suite treats the two legs as one database: rollback mode serves async
-    requests over the sync leg's pinned connection, and truncation cleans
+    requests over the sync leg's pinned connection, and deletion cleans
     through one leg on the assumption the other sees it. Split legs would break
     both, silently. In-memory SQLite records no comparable location and is not
     checked.
@@ -628,7 +628,7 @@ def _reject_split_databases() -> None:
         f"({_safe_url(sync_url.render_as_string())}) and an async database "
         f"({_safe_url(async_url.render_as_string())}) that are not the same "
         "database. The suite treats the two legs as one: rollback mode serves "
-        "async requests over the sync leg's connection, and truncation cleans "
+        "async requests over the sync leg's connection, and deletion cleans "
         "through one leg only. Point both at the same database, through its "
         "sync and async drivers."
     )

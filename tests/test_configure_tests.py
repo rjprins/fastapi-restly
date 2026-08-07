@@ -24,9 +24,9 @@ import fastapi_restly as fr
 from fastapi_restly import _pytest_fixtures as _fixtures
 from fastapi_restly._test_setup import (
     DB_CLEANUP_ENV_VAR,
+    DELETE,
     NONE,
     ROLLBACK,
-    TRUNCATE,
     _clean_database_sync,
     _create_schema,
     _current_setup,
@@ -391,18 +391,18 @@ def _setup_with(mode: str) -> _TestSetup:
 
 def test_the_argument_decides_when_nothing_overrides_it(monkeypatch):
     monkeypatch.delenv(DB_CLEANUP_ENV_VAR, raising=False)
-    assert _resolve_db_cleanup(_setup_with(TRUNCATE), None) == TRUNCATE
+    assert _resolve_db_cleanup(_setup_with(DELETE), None) == DELETE
 
 
 def test_the_environment_overrides_the_argument(monkeypatch):
     """Read once, in pytest_configure: a per-call read would let the mode the
     header announced and the mode enforced during the run disagree."""
-    monkeypatch.setenv(DB_CLEANUP_ENV_VAR, TRUNCATE)
+    monkeypatch.setenv(DB_CLEANUP_ENV_VAR, DELETE)
     monkeypatch.setattr(_fixtures, "_db_cleanup_override", None)
     monkeypatch.setattr(_fixtures, "_override_stack", [])
     _fixtures.pytest_configure(_FakeConfig(None))  # type: ignore[arg-type]
-    assert _fixtures._db_cleanup_override == TRUNCATE
-    assert _resolve_db_cleanup(_setup_with(ROLLBACK), TRUNCATE) == TRUNCATE
+    assert _fixtures._db_cleanup_override == DELETE
+    assert _resolve_db_cleanup(_setup_with(ROLLBACK), DELETE) == DELETE
 
 
 def test_the_flag_overrides_the_environment(monkeypatch):
@@ -410,7 +410,7 @@ def test_the_flag_overrides_the_environment(monkeypatch):
     both sources are read; by the time _resolve_db_cleanup runs, the environment
     is already out of the picture, so asserting on the resolver alone proves
     nothing about it."""
-    monkeypatch.setenv(DB_CLEANUP_ENV_VAR, TRUNCATE)
+    monkeypatch.setenv(DB_CLEANUP_ENV_VAR, DELETE)
     monkeypatch.setattr(_fixtures, "_db_cleanup_override", None)
     monkeypatch.setattr(_fixtures, "_override_stack", [])
     _fixtures.pytest_configure(_FakeConfig(ROLLBACK))  # type: ignore[arg-type]
@@ -441,7 +441,7 @@ def test_excluded_tables_keep_their_rows(tmp_path: Path):
             database_url=f"sqlite:///{database}",
             base=fr.DataclassBase,
             create_all=True,
-            db_cleanup=TRUNCATE,
+            db_cleanup=DELETE,
             db_cleanup_exclude=["region"],
         )
         setup = _current_setup()
@@ -473,7 +473,7 @@ def test_excluding_a_table_that_does_not_exist_raises(tmp_path: Path):
             database_url=f"sqlite:///{database}",
             base=fr.DataclassBase,
             create_all=True,
-            db_cleanup=TRUNCATE,
+            db_cleanup=DELETE,
             db_cleanup_exclude=["gizmoo"],
         )
         setup = _current_setup()
@@ -487,7 +487,7 @@ def test_excluding_a_table_that_does_not_exist_raises(tmp_path: Path):
     assert "gizmo" in message  # the known tables, so the fix is obvious
 
 
-def test_truncation_leaves_tables_the_base_does_not_declare(tmp_path: Path):
+def test_cleaning_leaves_tables_the_base_does_not_declare(tmp_path: Path):
     """Alembic's bookkeeping used to need an explicit exception, because the table
     list was reflected from the database. Taken from the models instead, a table
     nobody declared is not in the list at all and cannot be emptied."""
@@ -509,7 +509,7 @@ def test_truncation_leaves_tables_the_base_does_not_declare(tmp_path: Path):
             database_url=f"sqlite:///{database}",
             base=fr.DataclassBase,
             create_all=True,
-            db_cleanup=TRUNCATE,
+            db_cleanup=DELETE,
         )
         setup = _current_setup()
         _create_schema(setup)  # type: ignore[arg-type]
@@ -537,13 +537,13 @@ def test_exclusion_names_schema_qualified_tables_by_their_key():
     Table("item", metadata, Column("id", Integer, primary_key=True))
     Table("item", metadata, Column("id", Integer, primary_key=True), schema="tenant")
     setup = _TestSetup(
-        base=metadata, db_cleanup=TRUNCATE, db_cleanup_exclude=("tenant.item",)
+        base=metadata, db_cleanup=DELETE, db_cleanup_exclude=("tenant.item",)
     )
     assert [table.key for table in _tables_to_clean(setup)] == ["item"]
 
 
 def test_split_sync_and_async_databases_are_rejected(tmp_path: Path):
-    """Truncation cleans through one leg assuming the other sees it, and rollback
+    """Cleaning goes through one leg assuming the other sees it, and rollback
     mode serves async requests over the sync connection: two databases would
     break both, silently."""
     with _isolated_config():
@@ -564,12 +564,12 @@ def test_equivalent_sqlite_spellings_are_one_database(tmp_path: Path):
         assert _current_setup() is not None
 
 
-def test_truncation_needs_to_be_told_which_tables():
+def test_cleaning_needs_to_be_told_which_tables():
     """Without a base there is nothing to empty, and guessing is what reflection
     used to do."""
     with _isolated_config():
         fr.configure(database_url="sqlite://")
-        configure_tests(database_url="sqlite://", db_cleanup=TRUNCATE)
+        configure_tests(database_url="sqlite://", db_cleanup=DELETE)
         setup = _current_setup()
         with pytest.raises(RestlyConfigurationError, match="which tables to empty"):
             _clean_database_sync(setup)  # type: ignore[arg-type]
@@ -679,7 +679,7 @@ def _run_pytest(project: Path, quiet: bool = True) -> subprocess.CompletedProces
     )
 
 
-_TRUNCATE_CONFTEST = """
+_DELETE_CONFTEST = """
 import fastapi_restly as fr
 from myapp import app
 
@@ -688,11 +688,11 @@ fr.testing.configure_tests(
     async_database_url="sqlite+aiosqlite:///./test.db",
     base=fr.DataclassBase,
             create_all=True,
-    db_cleanup="truncate",
+    db_cleanup="delete",
 )
 """
 
-_TRUNCATE_TESTS = """
+_DELETE_TESTS = """
 SHARED = "shared@example.com"
 
 
@@ -709,9 +709,9 @@ def test_b_starts_clean(restly_client):
 """
 
 
-def test_truncate_mode_isolates_tests_and_leaves_the_last_one_behind(tmp_path: Path):
-    """The trade truncate exists for: slower and committed, but inspectable."""
-    _write_project(tmp_path, _TRUNCATE_CONFTEST, _TRUNCATE_TESTS)
+def test_delete_mode_isolates_tests_and_leaves_the_last_one_behind(tmp_path: Path):
+    """The trade delete mode exists for: slower and committed, but inspectable."""
+    _write_project(tmp_path, _DELETE_CONFTEST, _DELETE_TESTS)
     result = _run_pytest(tmp_path)
 
     assert result.returncode == 0, result.stdout + result.stderr
@@ -728,9 +728,9 @@ def test_truncate_mode_isolates_tests_and_leaves_the_last_one_behind(tmp_path: P
     assert rows == ["shared@example.com"]
 
 
-def test_the_flag_switches_a_rollback_suite_to_truncate(tmp_path: Path):
+def test_the_flag_switches_a_rollback_suite_to_delete(tmp_path: Path):
     """A debugging run changes mode without the suite being edited."""
-    _write_project(tmp_path, _CONFTEST, _TRUNCATE_TESTS)  # conftest says rollback
+    _write_project(tmp_path, _CONFTEST, _DELETE_TESTS)  # conftest says rollback
     result = subprocess.run(
         [
             sys.executable,
@@ -740,7 +740,7 @@ def test_the_flag_switches_a_rollback_suite_to_truncate(tmp_path: Path):
             # Not -q: pytest only prints the report header at normal verbosity.
             "-p",
             "no:cacheprovider",
-            "--restly-db-cleanup=truncate",
+            "--restly-db-cleanup=delete",
             "-c",
             str(tmp_path / "pyproject.toml"),
             "--rootdir",
@@ -754,7 +754,7 @@ def test_the_flag_switches_a_rollback_suite_to_truncate(tmp_path: Path):
 
     assert result.returncode == 0, result.stdout + result.stderr
     # The header announces the mode, so a stale flag cannot go unnoticed.
-    assert "db cleanup mode 'truncate'" in result.stdout
+    assert "db cleanup mode 'delete'" in result.stdout
 
     engine = create_engine(f"sqlite:///{tmp_path / 'test.db'}")
     try:
@@ -1027,7 +1027,7 @@ def test_an_inherited_generator_does_not_route_requests_away(tmp_path: Path):
         '    database_url="sqlite:///./test.db",\n'
         "    base=fr.DataclassBase,\n"
         "    create_all=True,\n"
-        '    db_cleanup="truncate",\n'
+        '    db_cleanup="delete",\n'
         ")\n",
         _LEAK_TESTS,
         app_module=_SYNC_APP_MODULE,
@@ -1117,7 +1117,7 @@ def test_a_sessionmaker_bound_to_a_connection_is_unwrapped(tmp_path: Path):
                     make_session=sessionmaker(bind=connection),
                     base=fr.DataclassBase,
                     create_all=True,
-                    db_cleanup=TRUNCATE,
+                    db_cleanup=DELETE,
                 )
                 setup = _current_setup()
                 _create_schema(setup)  # type: ignore[arg-type]
@@ -1161,7 +1161,7 @@ def test_a_misspelled_environment_mode_is_a_usage_error(tmp_path: Path):
     assert "expected one of" in combined
 
 
-def test_truncate_cleans_nothing_when_no_database_is_configured(tmp_path: Path):
+def test_delete_mode_cleans_nothing_when_no_database_is_configured(tmp_path: Path):
     """configure_tests(app=...) with no database is supported, so switching mode
     for one run must not turn every test into an error."""
     (tmp_path / "pyproject.toml").write_text(textwrap.dedent(_PYPROJECT))
@@ -1200,14 +1200,14 @@ def test_truncate_cleans_nothing_when_no_database_is_configured(tmp_path: Path):
         capture_output=True,
         text=True,
         cwd=tmp_path,
-        env=_clean_env(**{DB_CLEANUP_ENV_VAR: "truncate"}),
+        env=_clean_env(**{DB_CLEANUP_ENV_VAR: "delete"}),
     )
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert "1 passed" in result.stdout
 
 
-def test_truncate_says_what_a_generator_only_suite_is_missing():
+def test_delete_mode_says_what_a_generator_only_suite_is_missing():
     """It needs a connection of its own; a generator does not provide one."""
     with _isolated_config():
 
@@ -1219,7 +1219,7 @@ def test_truncate_says_what_a_generator_only_suite_is_missing():
             app=None,
             base=None,
             alembic_upgrade=False,
-            db_cleanup=TRUNCATE,
+            db_cleanup=DELETE,
             db_cleanup_exclude=(),
         )
         with pytest.raises(RestlyConfigurationError, match="session_generator"):
@@ -1238,7 +1238,7 @@ def test_the_exclusion_error_does_not_claim_to_have_checked_the_database(tmp_pat
             database_url=f"sqlite:///{database}",
             base=fr.DataclassBase,
             create_all=True,
-            db_cleanup=TRUNCATE,
+            db_cleanup=DELETE,
             db_cleanup_exclude=["nope"],
         )
         setup = _current_setup()
@@ -1432,15 +1432,15 @@ def test_a_per_mapper_binds_factory_is_rejected():
         message = str(excinfo.value)
         assert "Routed" in message
         assert "single-bind" in message
-        # Truncation cleans one bind, so it is no escape hatch for binds= and
+        # Delete mode cleans one bind, so it is no escape hatch for binds= and
         # must not be recommended as one.
-        assert "truncate" not in message
+        assert "db_cleanup" not in message
     finally:
         engine.dispose()
         other.dispose()
 
 
-def test_truncate_rejects_a_per_mapper_binds_factory():
+def test_delete_mode_rejects_a_per_mapper_binds_factory():
     """The escape hatch the rollback rejection used to recommend: cleaning opens
     one connection on the single bind, so routed models' tables would silently
     keep their rows between tests."""
@@ -1454,7 +1454,7 @@ def test_truncate_rejects_a_per_mapper_binds_factory():
 
             factory = sessionmaker(bind=engine, binds={RoutedElsewhere: other})
             configure_tests(
-                make_session=factory, base=fr.DataclassBase, db_cleanup=TRUNCATE
+                make_session=factory, base=fr.DataclassBase, db_cleanup=DELETE
             )
             with pytest.raises(RestlyConfigurationError, match="binds="):
                 _clean_database_sync(_current_setup())  # type: ignore[arg-type]
@@ -1543,8 +1543,8 @@ def test_a_lifespan_reconfiguring_restly_cannot_reach_the_tests(tmp_path: Path):
     assert not (tmp_path / "dev.db").exists()
 
 
-def test_a_lifespan_reconfiguring_restly_cannot_move_truncate_mode(tmp_path: Path):
-    """Truncate mode routes and cleans from the recorded factories too: requests
+def test_a_lifespan_reconfiguring_restly_cannot_move_delete_mode(tmp_path: Path):
+    """Delete mode routes and cleans from the recorded factories too: requests
     keep committing to the test database and cleaning keeps emptying that same
     database, no matter what startup configures. Rollback mode was hardened
     against this first; the committing modes have to hold the same line."""
@@ -1556,7 +1556,7 @@ def test_a_lifespan_reconfiguring_restly_cannot_move_truncate_mode(tmp_path: Pat
         '    async_database_url="sqlite+aiosqlite:///./test.db",\n'
         "    base=fr.DataclassBase,\n"
         "    create_all=True,\n"
-        '    db_cleanup="truncate",\n'
+        '    db_cleanup="delete",\n'
         ")\n",
         "def test_a(restly_client):\n"
         '    restly_client.post("/notes/", json={"text": "one"})\n'
@@ -1610,7 +1610,7 @@ def ping():
 """
 
 
-def test_truncate_never_cleans_a_database_configured_after_setup(tmp_path: Path):
+def test_delete_mode_never_cleans_a_database_configured_after_setup(tmp_path: Path):
     """The worst shape: the suite named no database, the lifespan configures the
     development one, and cleaning runs with a base to work from. Falling back to
     the live globals here used to DELETE the development database's rows."""
@@ -1620,7 +1620,7 @@ def test_truncate_never_cleans_a_database_configured_after_setup(tmp_path: Path)
         "fr.testing.configure_tests(\n"
         "    app=app,\n"
         "    base=fr.DataclassBase,\n"
-        '    db_cleanup="truncate",\n'
+        '    db_cleanup="delete",\n'
         ")\n",
         "def test_a(restly_client):\n"
         '    assert restly_client.get("/ping").json() == {"ok": True}\n\n\n'
@@ -1701,17 +1701,17 @@ def test_a_nested_run_gives_the_outer_run_its_mode_back(monkeypatch):
     monkeypatch.setattr(_fixtures, "_override_stack", [])
     monkeypatch.delenv(DB_CLEANUP_ENV_VAR, raising=False)
 
-    _fixtures.pytest_configure(_FakeConfig(TRUNCATE))  # type: ignore[arg-type]
-    assert _fixtures._db_cleanup_override == TRUNCATE
+    _fixtures.pytest_configure(_FakeConfig(DELETE))  # type: ignore[arg-type]
+    assert _fixtures._db_cleanup_override == DELETE
 
     # A nested in-process run, with its own mode.
     _fixtures.pytest_configure(_FakeConfig(NONE))  # type: ignore[arg-type]
     assert _fixtures._db_cleanup_override == NONE
     _fixtures.pytest_unconfigure(_FakeConfig(NONE))  # type: ignore[arg-type]
 
-    assert _fixtures._db_cleanup_override == TRUNCATE
+    assert _fixtures._db_cleanup_override == DELETE
 
-    _fixtures.pytest_unconfigure(_FakeConfig(TRUNCATE))  # type: ignore[arg-type]
+    _fixtures.pytest_unconfigure(_FakeConfig(DELETE))  # type: ignore[arg-type]
     assert _fixtures._db_cleanup_override is None
 
 

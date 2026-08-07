@@ -158,7 +158,7 @@ at the end, through the savepoints described [below](#savepoints-and-rollback).
 Nothing is ever committed, which is what makes it the fastest option, and it
 leaves reference data your migrations seeded untouched.
 
-**`"truncate"`** empties the tables before each test instead, and lets writes
+**`"delete"`** empties the tables before each test instead, and lets writes
 commit for real. It is slower and wants a database of its own, but the rows the
 last test wrote are still there when the run ends, which is what makes them
 inspectable.
@@ -171,8 +171,8 @@ each other.
 Switch mode for one run without editing the suite:
 
 ```bash
-pytest --restly-db-cleanup=truncate
-RESTLY_DB_CLEANUP=truncate pytest
+pytest --restly-db-cleanup=delete
+RESTLY_DB_CLEANUP=delete pytest
 ```
 
 The flag beats the environment variable, which beats the argument. Any mode other
@@ -180,9 +180,9 @@ than the default announces itself in pytest's header, so a flag left over from a
 debugging session cannot quietly change what a suite does. pytest prints that
 header at normal verbosity only, so `-q` hides it.
 
-### Reference data and truncation
+### Reference data and cleaning
 
-Truncation empties the tables `base=` declares, including the ones your
+Delete mode empties the tables `base=` declares, including the ones your
 migrations seeded with reference data, and nothing puts those rows back. Name
 them and they are left alone:
 
@@ -192,7 +192,7 @@ fr.testing.configure_tests(
     database_url="postgresql+psycopg://localhost/myapp_test",
     base=Base,
     alembic_upgrade=True,
-    db_cleanup="truncate",
+    db_cleanup="delete",
     db_cleanup_exclude=["country", "role"],
 )
 ```
@@ -421,11 +421,11 @@ only in a sync suite, with `restly_session.execute(...)`. In an async one
 `restly_async_session.execute(...)` hands back a coroutine that nothing awaits,
 and reaching for its `sync_session` raises `MissingGreenlet`.
 
-**With ordinary tools.** Run once in [truncate mode](#cleaning-up-between-tests)
+**With ordinary tools.** Run once in [delete mode](#cleaning-up-between-tests)
 and the rows are committed, and still there when the run ends:
 
 ```bash
-pytest --restly-db-cleanup=truncate -k test_the_broken_one
+pytest --restly-db-cleanup=delete -k test_the_broken_one
 psql myapp_test -c 'select * from "user"'
 ```
 

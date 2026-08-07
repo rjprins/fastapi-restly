@@ -19,9 +19,9 @@ from ._test_setup import (
     _SYNC_LEG_TRIPWIRE,
     DB_CLEANUP_ENV_VAR,
     DB_CLEANUP_MODES,
+    DELETE,
     NONE,
     ROLLBACK,
-    TRUNCATE,
     _clean_database_async,
     _clean_database_sync,
     _create_schema,
@@ -121,7 +121,7 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         default=None,
         help=(
             "How Restly gives each test a clean database. 'rollback' (the "
-            "default) rolls every test back and persists nothing; 'truncate' "
+            "default) rolls every test back and persists nothing; 'delete' "
             "empties the tables before each test and lets writes commit, so the "
             "last test's rows survive the run and can be inspected; 'none' leaves "
             "cleaning to the suite."
@@ -508,13 +508,13 @@ def _managed_isolation(
                 globals_obj.test_make_session = recorded_sync
             if recorded_async is not None:
                 globals_obj.test_async_make_session = recorded_async
-            if mode == TRUNCATE:
+            if mode == DELETE:
                 # Before, not after: whatever the last test wrote is still there
                 # when the run ends, which is the point of choosing this mode.
                 if not _clean_database_sync(setup):
                     # Async-only: cleaning must run on the loop the test uses, so
                     # it goes through a fixture rather than a loop of its own.
-                    request.getfixturevalue("_restly_async_truncate")
+                    request.getfixturevalue("_restly_async_delete")
         yield
     finally:
         # Clear only what this function installed; in rollback mode the session
@@ -569,17 +569,17 @@ def restly_client(restly_app) -> Iterator[RestlyTestClient]:
 if pytest_asyncio is None:
 
     @pytest.fixture
-    def _restly_async_truncate() -> None:  # pyright: ignore[reportRedeclaration]
+    def _restly_async_delete() -> None:  # pyright: ignore[reportRedeclaration]
         # Only reachable in an async suite, which needs the extra anyway.
         raise ModuleNotFoundError(_TESTING_EXTRA_MESSAGE, name="pytest_asyncio")
 
 else:
 
     @pytest_asyncio.fixture
-    async def _restly_async_truncate() -> AsyncIterator[None]:
+    async def _restly_async_delete() -> AsyncIterator[None]:
         """Empty the tables over the async leg, on the test's own event loop.
 
-        Requested by the autouse fixture only for an async-only suite in truncate
+        Requested by the autouse fixture only for an async-only suite in delete
         mode. Running it on a loop of its own would hand a pooled connection to a
         loop that closes before the test does, which is how asyncpg fails.
         """
