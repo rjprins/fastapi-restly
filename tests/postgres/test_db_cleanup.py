@@ -1,9 +1,11 @@
 """``db_cleanup="truncate"`` against a real PostgreSQL server.
 
-Truncation is the only dialect-specific SQL Restly emits: on SQLite it takes an
-entirely different branch (``DELETE FROM`` per table), so the single ``TRUNCATE``
-statement, its identifier rendering, the identity restart and the refusal to
-cascade are invisible to the rest of the suite.
+Cleaning is a plain ``DELETE`` per table on every dialect, but only a real
+server holds it to its claims: enforced foreign keys make the child-first
+ordering matter (and make orphaning a row an error rather than a shrug), a
+second schema puts the qualifier into the rendered statement, and sequences
+show deletion leaves identity alone. SQLite enforces none of that, so these
+pins live on the PostgreSQL leg.
 
 The tables live on a ``MetaData`` of this module's own rather than on
 ``fr.DataclassBase``. The declarative registry is shared with the sibling test
@@ -117,7 +119,7 @@ def _insert(table: str, name: str) -> None:
         connection.execute(text(f"INSERT INTO {table} (name) VALUES ('{name}')"))
 
 
-def test_truncate_empties_every_table_at_once(pg_context):
+def test_cleaning_empties_every_declared_table(pg_context):
     setup = pg_context()
     _insert("cleanup_widget", "a")
     _insert("cleanup_churn", "b")

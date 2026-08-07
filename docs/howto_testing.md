@@ -164,9 +164,9 @@ last test wrote are still there when the run ends, which is what makes them
 inspectable.
 
 **`"none"`** cleans nothing and leaves that to you. Neither of the others fits a
-suite that drives a browser or another process, which cannot see uncommitted data
-and whose parallel workers would truncate each other, nor a database user without
-the rights to truncate.
+suite that drives a browser or another process, which cannot see uncommitted
+data and whose parallel workers would clean the shared database out from under
+each other.
 
 Switch mode for one run without editing the suite:
 

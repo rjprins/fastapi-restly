@@ -178,10 +178,10 @@ def configure_tests(
       best named by URL here; a supplied ``async_engine=`` should be built with
       ``poolclass=NullPool``, because test code hops event loops and a pooled
       async connection does not survive that on drivers like asyncpg.
-    * ``"none"`` cleans nothing and leaves it to you. Reach for it when neither of
-      the others fits: tests that drive a browser or a second process (nothing
-      uncommitted is visible to those, and truncation across parallel workers
-      collides), or a database user without the rights to truncate.
+    * ``"none"`` cleans nothing and leaves it to you. Reach for it when neither
+      of the others fits: tests that drive a browser or a second process
+      (nothing uncommitted is visible to those), or parallel workers sharing one
+      database, whose cleaning would collide.
 
     ``RESTLY_DB_CLEANUP`` overrides this argument, and ``--restly-db-cleanup``
     overrides both, so a debugging run can switch mode without editing the suite.

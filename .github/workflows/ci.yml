@@ -97,8 +97,10 @@ jobs:
   postgres:
     # The rest of the suite runs on SQLite; this leg pins the dialect-divergent
     # surface (LIKE/ILIKE case folding, NULL ordering, duplicate-sort-key
-    # pagination) and the psycopg cross-session sharing on a real PostgreSQL
-    # server. tests/postgres/ skips itself unless RESTLY_TEST_DATABASE_URL is set.
+    # pagination), the psycopg cross-session sharing, and the db_cleanup
+    # machinery under enforced foreign keys and real schemas, all on a real
+    # PostgreSQL server. tests/postgres/ skips itself unless
+    # RESTLY_TEST_DATABASE_URL is set.
     runs-on: ubuntu-latest
     services:
       postgres:
