@@ -411,6 +411,19 @@ async def _clean_database_async(setup: _TestSetup) -> None:
         await connection.run_sync(lambda sync_conn: _delete_rows(sync_conn, tables))
 
 
+def _is_memory_sqlite(url: Any) -> bool:
+    """Whether ``url`` names an in-memory SQLite database, in any spelling
+    SQLAlchemy accepts: no database at all, ``:memory:``, or a ``file:`` URI
+    with ``mode=memory``."""
+    if url.get_backend_name() != "sqlite":
+        return False
+    return (
+        not url.database
+        or url.database == ":memory:"
+        or url.query.get("mode") == "memory"
+    )
+
+
 def _test_async_engine(async_database_url: str) -> Any:
     """The engine behind an async test database named by URL.
 
@@ -424,15 +437,12 @@ def _test_async_engine(async_database_url: str) -> Any:
     """
     from sqlalchemy import make_url
     from sqlalchemy.ext.asyncio import create_async_engine
+
+    if _is_memory_sqlite(make_url(async_database_url)):
+        return create_async_engine(async_database_url)
+
     from sqlalchemy.pool import NullPool
 
-    url = make_url(async_database_url)
-    in_memory_sqlite = url.get_backend_name() == "sqlite" and url.database in (
-        None,
-        ":memory:",
-    )
-    if in_memory_sqlite:
-        return create_async_engine(async_database_url)
     return create_async_engine(async_database_url, poolclass=NullPool)
 
 
@@ -605,6 +615,8 @@ def _reject_split_databases() -> None:
     async_url = getattr(async_engine, "url", None)
     if sync_url is None or async_url is None:
         return
+    if _is_memory_sqlite(sync_url) or _is_memory_sqlite(async_url):
+        return
     if sync_url.database is None or async_url.database is None:
         return
 
@@ -646,13 +658,16 @@ def _create_schema(setup: _TestSetup, root: Path | None = None) -> None:
         # must land in the same database the tests will read.
         make_session, async_make_session = _source_factories()
         metadata = _session._resolve_metadata(setup.base)
-        # Prefer the sync leg: it needs no event loop. Either leg creates the
-        # tables the other one sees, since both point at the same database.
+        # Prefer the sync leg: it needs no event loop. With both legs pointing
+        # at one database -- the split check enforces that for every database
+        # with a location -- either leg creates the tables the other one sees.
         if make_session is not None:
             metadata.create_all(_resolve_engine(make_session.kw["bind"]))
         elif async_make_session is not None:
 
             async def _create() -> None:
+                from sqlalchemy.pool import StaticPool
+
                 engine = _resolve_engine(async_make_session.kw["bind"])
                 try:
                     async with engine.begin() as connection:
@@ -661,8 +676,12 @@ def _create_schema(setup: _TestSetup, root: Path | None = None) -> None:
                     # The loop asyncio.run() opened dies with this call, and a
                     # connection kept in the pool would resurface on a test's
                     # own loop. Restly's URL-built engines hold nothing
-                    # (NullPool), but a user-supplied engine may pool.
-                    await engine.dispose()
+                    # (NullPool), but a user-supplied engine may pool. A
+                    # StaticPool engine is the exception either way: its one
+                    # connection IS the database for in-memory SQLite, so
+                    # disposing it would discard the schema just built.
+                    if not isinstance(engine.sync_engine.pool, StaticPool):
+                        await engine.dispose()
 
             asyncio.run(_create())
         else:

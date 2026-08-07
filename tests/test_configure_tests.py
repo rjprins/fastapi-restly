@@ -315,16 +315,47 @@ def test_an_async_url_gets_a_nullpool_engine():
         assert isinstance(setup.async_make_session.kw["bind"].pool, NullPool)
 
 
-def test_an_in_memory_async_url_keeps_its_default_pool():
-    """NullPool would close in-memory SQLite's only connection and discard the
-    database with it, and aiosqlite has no loop affinity to guard against."""
+@pytest.mark.parametrize(
+    "url",
+    [
+        "sqlite+aiosqlite://",
+        "sqlite+aiosqlite:///",
+        "sqlite+aiosqlite:///:memory:",
+        "sqlite+aiosqlite:///file:mem?mode=memory&cache=shared&uri=true",
+    ],
+)
+def test_an_in_memory_async_url_keeps_its_default_pool(url: str):
+    """Every spelling SQLAlchemy treats as in-memory. NullPool would close the
+    only connection and discard the database with it, and aiosqlite has no loop
+    affinity to guard against."""
     from sqlalchemy.pool import NullPool
 
     with _isolated_config():
-        configure_tests(async_database_url="sqlite+aiosqlite://")
+        configure_tests(async_database_url=url)
         setup = _current_setup()
         assert setup is not None
         assert not isinstance(setup.async_make_session.kw["bind"].pool, NullPool)
+
+
+def test_an_in_memory_async_suite_works_end_to_end(tmp_path: Path):
+    """The memory database must survive both the pool policy (no NullPool) and
+    the schema step (no disposing of StaticPool's only connection, which IS the
+    database)."""
+    _write_project(
+        tmp_path,
+        "import fastapi_restly as fr\nfrom myapp import app\n\n"
+        "fr.testing.configure_tests(\n"
+        "    app=app,\n"
+        '    async_database_url="sqlite+aiosqlite://",\n'
+        "    base=fr.DataclassBase,\n"
+        "    create_all=True,\n"
+        ")\n",
+        _TESTS,
+    )
+    result = _run_pytest(tmp_path)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "4 passed" in result.stdout
 
 
 def test_a_supplied_async_engine_keeps_its_pool():
