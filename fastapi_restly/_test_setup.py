@@ -188,10 +188,11 @@ def configure_tests(
 
     ``db_cleanup_exclude`` names tables truncation must leave alone. Reference
     data seeded by a migration is the usual reason: truncation would empty those
-    tables before the first test and nothing would put the rows back. Naming a
-    table that does not exist raises, so a typo cannot silently drop the
-    protection. Excluded tables are shared by every test, so writes to them do
-    leak between tests.
+    tables before the first test and nothing would put the rows back. A table
+    under a non-default schema is named with its qualifier, ``"tenant.item"``.
+    Naming a table that does not exist raises, so a typo cannot silently drop
+    the protection. Excluded tables are shared by every test, so writes to them
+    do leak between tests.
     """
     global _setup
 
@@ -252,6 +253,10 @@ def configure_tests(
             make_session=make_session,
             async_make_session=async_make_session,
         )
+        # After configure(), when the engines exist to compare. Raising here
+        # aborts the suite at conftest import, so nothing runs on the half-state.
+        if names_sync and names_async:
+            _reject_split_databases()
     else:
         _reject_inherited_database()
 
@@ -296,7 +301,9 @@ def _tables_to_clean(setup: _TestSetup) -> list[Any]:
     picks up tables that are not the suite's to empty.
     """
     metadata = _session._resolve_metadata(setup.base)
-    known = {table.name for table in metadata.sorted_tables}
+    # table.key carries the schema qualifier (``tenant.item``), so two same-named
+    # tables in different schemas stay individually excludable.
+    known = {table.key for table in metadata.sorted_tables}
     unknown = sorted(set(setup.db_cleanup_exclude) - known)
     if unknown:
         # A typo would silently drop the protection and empty the very table the
@@ -312,7 +319,7 @@ def _tables_to_clean(setup: _TestSetup) -> list[Any]:
     # sorted_tables puts parents first, so reversing respects foreign keys on the
     # databases that enforce them.
     return [
-        table for table in reversed(metadata.sorted_tables) if table.name not in spared
+        table for table in reversed(metadata.sorted_tables) if table.key not in spared
     ]
 
 
@@ -353,6 +360,23 @@ def _require_cleanable(setup: _TestSetup) -> list[Any] | None:
     return _tables_to_clean(setup)
 
 
+def _reject_binds_for_cleaning(factory: Any) -> None:
+    """Refuse to clean through a factory whose ``binds=`` routes models elsewhere.
+
+    Cleaning opens one connection on the factory's single bind. Models routed to
+    their own engines would keep their rows between tests (or a same-named empty
+    table on the main bind would be deleted instead), and nothing would say so.
+    """
+    if factory.kw.get("binds"):
+        raise RestlyConfigurationError(
+            'fr.testing.configure_tests(db_cleanup="truncate") empties the '
+            "tables over the session factory's single bind, and this factory "
+            "routes some models to their own engines with binds=. Their tables "
+            "would silently keep their rows between tests. Configure the tests "
+            "with a single-bind sessionmaker."
+        )
+
+
 def _clean_database_sync(setup: _TestSetup) -> bool:
     """Empty the tables over the sync leg. Returns False if there is no sync leg."""
     tables = _require_cleanable(setup)
@@ -361,6 +385,7 @@ def _clean_database_sync(setup: _TestSetup) -> bool:
     make_session, _ = _source_factories()
     if make_session is None:
         return False
+    _reject_binds_for_cleaning(make_session)
     engine = _resolve_engine(make_session.kw["bind"])
     with engine.begin() as connection:
         _delete_rows(connection, tables)
@@ -379,6 +404,7 @@ async def _clean_database_async(setup: _TestSetup) -> None:
     _, async_make_session = _source_factories()
     if async_make_session is None:
         return
+    _reject_binds_for_cleaning(async_make_session)
     engine = _resolve_engine(async_make_session.kw["bind"])
     async with engine.begin() as connection:
         await connection.run_sync(lambda sync_conn: _delete_rows(sync_conn, tables))
@@ -561,6 +587,50 @@ _SYNC_LEG_TRIPWIRE = _UnnamedLegTripwire(
 _ASYNC_LEG_TRIPWIRE = _UnnamedLegTripwire(
     "async", "async_database_url=, async_engine= or async_make_session="
 )
+
+
+def _reject_split_databases() -> None:
+    """Refuse sync and async legs that point at different databases.
+
+    The suite treats the two legs as one database: rollback mode serves async
+    requests over the sync leg's pinned connection, and truncation cleans
+    through one leg on the assumption the other sees it. Split legs would break
+    both, silently. In-memory SQLite records no comparable location and is not
+    checked.
+    """
+    sync_engine = _resolve_engine(_fr_globals.make_session.kw.get("bind"))
+    async_engine = _resolve_engine(_fr_globals.async_make_session.kw.get("bind"))
+    sync_url = getattr(sync_engine, "url", None)
+    async_url = getattr(async_engine, "url", None)
+    if sync_url is None or async_url is None:
+        return
+    if sync_url.database is None or async_url.database is None:
+        return
+
+    if sync_url.get_backend_name() == "sqlite" and (
+        async_url.get_backend_name() == "sqlite"
+    ):
+        # The same file spelled two ways ("./test.db" and "test.db") is one
+        # database; resolve before comparing.
+        same = Path(sync_url.database).resolve() == Path(async_url.database).resolve()
+    else:
+        same = (sync_url.host, sync_url.port, sync_url.database) == (
+            async_url.host,
+            async_url.port,
+            async_url.database,
+        )
+    if same:
+        return
+
+    raise RestlyConfigurationError(
+        "fr.testing.configure_tests() named a sync database "
+        f"({_safe_url(sync_url.render_as_string())}) and an async database "
+        f"({_safe_url(async_url.render_as_string())}) that are not the same "
+        "database. The suite treats the two legs as one: rollback mode serves "
+        "async requests over the sync leg's connection, and truncation cleans "
+        "through one leg only. Point both at the same database, through its "
+        "sync and async drivers."
+    )
 
 
 def _create_schema(setup: _TestSetup, root: Path | None = None) -> None:

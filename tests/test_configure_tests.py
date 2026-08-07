@@ -34,6 +34,7 @@ from fastapi_restly._test_setup import (
     _resolve_db_cleanup,
     _run_alembic_upgrade,
     _safe_url,
+    _tables_to_clean,
     _TestSetup,
     configure_tests,
 )
@@ -516,6 +517,42 @@ def test_truncation_leaves_tables_the_base_does_not_declare(tmp_path: Path):
                 text("SELECT version_num FROM alembic_version")
             ).scalar()
     assert revision == "abc123"
+
+
+def test_exclusion_names_schema_qualified_tables_by_their_key():
+    """Two same-named tables in different schemas must be excludable separately;
+    matching on the bare name would spare both or neither."""
+    from sqlalchemy import Column, Integer, MetaData, Table
+
+    metadata = MetaData()
+    Table("item", metadata, Column("id", Integer, primary_key=True))
+    Table("item", metadata, Column("id", Integer, primary_key=True), schema="tenant")
+    setup = _TestSetup(
+        base=metadata, db_cleanup=TRUNCATE, db_cleanup_exclude=("tenant.item",)
+    )
+    assert [table.key for table in _tables_to_clean(setup)] == ["item"]
+
+
+def test_split_sync_and_async_databases_are_rejected(tmp_path: Path):
+    """Truncation cleans through one leg assuming the other sees it, and rollback
+    mode serves async requests over the sync connection: two databases would
+    break both, silently."""
+    with _isolated_config():
+        with pytest.raises(RestlyConfigurationError, match="not the same database"):
+            configure_tests(
+                database_url=f"sqlite:///{tmp_path / 'sync.db'}",
+                async_database_url=f"sqlite+aiosqlite:///{tmp_path / 'async.db'}",
+            )
+
+
+def test_equivalent_sqlite_spellings_are_one_database(tmp_path: Path):
+    """The same file spelled two ways is one database, not a split."""
+    with _isolated_config():
+        configure_tests(
+            database_url=f"sqlite:///{tmp_path}/test.db",
+            async_database_url=f"sqlite+aiosqlite:///{tmp_path}/./test.db",
+        )
+        assert _current_setup() is not None
 
 
 def test_truncation_needs_to_be_told_which_tables():
@@ -1385,7 +1422,33 @@ def test_a_per_mapper_binds_factory_is_rejected():
                 _fixtures._reject_per_mapper_binds(factory)
         message = str(excinfo.value)
         assert "Routed" in message
-        assert "truncate" in message
+        assert "single-bind" in message
+        # Truncation cleans one bind, so it is no escape hatch for binds= and
+        # must not be recommended as one.
+        assert "truncate" not in message
+    finally:
+        engine.dispose()
+        other.dispose()
+
+
+def test_truncate_rejects_a_per_mapper_binds_factory():
+    """The escape hatch the rollback rejection used to recommend: cleaning opens
+    one connection on the single bind, so routed models' tables would silently
+    keep their rows between tests."""
+    engine = create_engine("sqlite://")
+    other = create_engine("sqlite://")
+    try:
+        with _isolated_config():
+
+            class RoutedElsewhere(fr.IDBase):
+                name: Mapped[str]
+
+            factory = sessionmaker(bind=engine, binds={RoutedElsewhere: other})
+            configure_tests(
+                make_session=factory, base=fr.DataclassBase, db_cleanup=TRUNCATE
+            )
+            with pytest.raises(RestlyConfigurationError, match="binds="):
+                _clean_database_sync(_current_setup())  # type: ignore[arg-type]
     finally:
         engine.dispose()
         other.dispose()
