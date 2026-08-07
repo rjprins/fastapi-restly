@@ -558,8 +558,9 @@ def restly_client(restly_app) -> Iterator[RestlyTestClient]:
             raise ModuleNotFoundError(_TESTING_EXTRA_MESSAGE, name=exc.name) from exc
         raise
 
-    # Bound before the block: Starlette's __enter__ returns the base TestClient,
-    # which would lose the subclass and its status-code assertions.
+    # Bound before the block: __enter__ returns self at runtime, but Starlette
+    # annotates it as the base TestClient, so `with ... as client` would type
+    # the fixture without the subclass's status-code assertions.
     client = RestlyTestClient(restly_app)
     with client:
         yield client

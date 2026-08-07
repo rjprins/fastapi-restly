@@ -71,7 +71,8 @@ def _source_factories() -> tuple[Any, Any]:
 
 
 def _current_setup() -> _TestSetup | None:
-    """Return the active test setup, or None when ``configure()`` was never called.
+    """Return the active test setup, or None when ``configure_tests()`` was
+    never called.
 
     The plugin's autouse fixtures are inert while this is None, so a project that
     does not opt in keeps the fixtures-on-request behaviour.

@@ -83,7 +83,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The `restly_client` fixture now runs your application's `lifespan`. Starlette
   only runs startup and shutdown inside the client's context manager, and the
   fixture handed back an unentered one, so whatever `lifespan=` set up never
-  happened. Registering a view after the client exists keeps working: Restly
+  happened. It now runs, once per test; a suite whose lifespan should not wrap
+  every test can override the `restly_client` fixture and construct the client
+  unentered. Registering a view after the client exists keeps working: Restly
   installs its `IntegrityError` handler on the middleware stack the application
   has already built, rather than discarding it.
 

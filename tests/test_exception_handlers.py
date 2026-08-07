@@ -304,3 +304,30 @@ def test_registering_after_the_app_ran_does_not_rebuild_the_middleware_stack():
         client.get("/ping")
         assert constructions == ["built"], "user middleware was constructed again"
         assert app.middleware_stack is not None, "the stack was discarded"
+
+
+def test_an_unwalkable_middleware_stack_warns_instead_of_staying_silent():
+    """The walk follows `.app` links; a middleware that stores its wrapped app
+    under another name ends it. The handler is then absent for late-registered
+    views, and silence would leave the resulting 500s unexplained."""
+    from fastapi_restly._exception_handlers import register_default_exception_handlers
+    from fastapi_restly.testing import RestlyTestClient
+
+    class Opaque:
+        def __init__(self, app):
+            self._app = app
+
+        async def __call__(self, scope, receive, send):
+            await self._app(scope, receive, send)
+
+    app = FastAPI()
+    app.add_middleware(Opaque)
+
+    @app.get("/ping")
+    def ping():
+        return {"ok": True}
+
+    with RestlyTestClient(app) as client:
+        client.get("/ping")
+        with pytest.warns(RuntimeWarning, match="ExceptionMiddleware"):
+            register_default_exception_handlers(app)

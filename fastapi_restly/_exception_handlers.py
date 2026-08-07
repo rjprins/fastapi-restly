@@ -221,5 +221,18 @@ def _register_on_built_stack(app: FastAPI) -> None:
             return
         node = getattr(node, "app", None)
 
+    import warnings
+
+    # A middleware that stores its wrapped app under another name ends the walk.
+    # Rare, but the alternative is unexplained 500s on late-registered views.
+    warnings.warn(
+        "Restly could not reach Starlette's ExceptionMiddleware on the built "
+        "middleware stack: a middleware in the chain does not expose its "
+        "wrapped app as `.app`. Views registered after the application first "
+        "ran will surface IntegrityError as a 500 rather than a 409.",
+        RuntimeWarning,
+        stacklevel=2,
+    )
+
 
 __all__ = ["integrity_error_handler", "register_default_exception_handlers"]
