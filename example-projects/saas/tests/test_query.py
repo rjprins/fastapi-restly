@@ -2,17 +2,6 @@
 
 import uuid
 
-import pytest
-from app.main import app
-
-from fastapi_restly.testing import RestlyTestClient
-
-
-@pytest.fixture
-def client() -> RestlyTestClient:
-    """Create a test client."""
-    return RestlyTestClient(app)
-
 
 def setup_test_data(client):
     """Create test data for query tests."""

@@ -20,10 +20,11 @@ if _checkout not in _frl.parents:
         f"This example's venv isn't synced to this tree — run `uv sync` here."
     )
 
-# Dog-food Restly's shipped testing fixtures (fznb.5): configure once against a
+# Dog-food Restly's shipped testing fixtures: configure once against a
 # file-backed SQLite database, create the schema once, and let
 # ``restly_async_session`` isolate every test with a savepoint. This is the
-# recipe documented in docs/howto_testing.md. ``app.main`` configures ``saas.db``
+# fixtures-on-request layer beneath ``fr.testing.configure_tests()``, kept in
+# use here so both setups stay exercised. ``app.main`` configures ``saas.db``
 # for real runs; the line below repoints the suite at a throwaway ``test.db``
 # (gitignored) that the savepoint fixture keeps clean between tests.
 fr.configure(async_database_url="sqlite+aiosqlite:///./test.db")

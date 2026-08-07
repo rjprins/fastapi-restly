@@ -14,17 +14,10 @@ from contextlib import asynccontextmanager
 
 import pytest
 from app.auth import verify_password
-from app.main import app
 from app.models import Country
 from sqlalchemy import select
 
 import fastapi_restly as fr
-from fastapi_restly.testing import RestlyTestClient
-
-
-@pytest.fixture
-def client() -> RestlyTestClient:
-    return RestlyTestClient(app)
 
 
 @pytest.fixture
