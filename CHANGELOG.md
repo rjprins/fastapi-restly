@@ -18,8 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   as a configured leg). The databases it names are final: one configured
   afterwards, by a lifespan or a module imported during collection, never
   reaches the tests, and a leg the suite did not name refuses to serve sessions
-  rather than adopt the late arrival. One call configures the process; a second
-  call raises. Suites that do not call it are unaffected.
+  rather than adopt the late arrival. Routing holds for the whole run, fixture
+  code of any scope included: a session-scoped seed fixture writes to the
+  suite's database too. One call configures the process; a second call raises.
+  Suites that do not call it are unaffected.
 
 - `db_cleanup=` picks how each test gets a clean database: `"rollback"` (the
   default), `"delete"` (empties the tables before each test and lets writes

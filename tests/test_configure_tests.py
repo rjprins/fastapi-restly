@@ -1694,6 +1694,46 @@ def test_a_source_arriving_after_setup_trips_instead_of_serving(tmp_path: Path):
     assert not (tmp_path / "dev.db").exists()
 
 
+def test_a_session_scoped_fixture_reaches_the_suite_database(tmp_path: Path):
+    """Routing is run-wide, not per-test: a session-scoped seed fixture calling
+    fr.open_session() runs before any test's isolation window, and used to fall
+    through to the live globals -- committing its rows into whatever database a
+    collection-time import had configured."""
+    _write_project(
+        tmp_path,
+        "import fastapi_restly as fr\n"
+        "import pytest\n"
+        "from myapp import app, Note\n\n"
+        "fr.testing.configure_tests(\n"
+        "    app=app,\n"
+        '    database_url="sqlite:///./test.db",\n'
+        "    base=fr.DataclassBase,\n"
+        "    create_all=True,\n"
+        '    db_cleanup="none",\n'
+        ")\n\n\n"
+        '@pytest.fixture(scope="session", autouse=True)\n'
+        "def seed():\n"
+        "    with fr.open_session() as session:\n"
+        '        session.add(Note(text="seeded"))\n'
+        "        session.commit()\n",
+        "import myapp_tasks  # noqa: F401 -- reconfigures Restly at collection time\n\n\n"
+        "def test_the_seed_landed_in_the_suite_database(restly_client):\n"
+        '    assert restly_client.get("/notes/").json()["total_count"] == 1\n',
+        app_module=_SYNC_APP_MODULE,
+    )
+    (tmp_path / "myapp_tasks.py").write_text(
+        "import fastapi_restly as fr\n\n"
+        "# A background-tasks module wiring its own database access on import.\n"
+        'fr.configure(database_url="sqlite:///./dev.db")\n'
+    )
+    result = _run_pytest(tmp_path)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert _rows(tmp_path / "test.db") == 1
+    # The late-configured database was never even connected to.
+    assert not (tmp_path / "dev.db").exists()
+
+
 def test_a_nested_run_gives_the_outer_run_its_mode_back(monkeypatch):
     """Clearing the override would take the outer run's mode away, which is the
     inverse of the leak the hook exists to prevent."""

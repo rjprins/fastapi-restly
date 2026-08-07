@@ -349,13 +349,20 @@ else:
                 },
             )
             globals_obj = _get_restly_context()
+            # Layered over the run-wide routing installed by
+            # _restly_managed_routing; restore it rather than clear the slot.
+            previous = globals_obj.test_async_make_session
             globals_obj.test_async_make_session = isolated_make_session
-            session = isolated_make_session()
+            session = None
             try:
+                session = isolated_make_session()
                 yield session
             finally:
-                globals_obj.test_async_make_session = None
-                await session.close()
+                # Restore before closing: a teardown-time close() failure must
+                # not leave the per-test factory in place of the run-wide one.
+                globals_obj.test_async_make_session = previous
+                if session is not None:
+                    await session.close()
 
 
 @pytest.fixture
@@ -433,15 +440,67 @@ def restly_session(_shared_connection) -> Iterator[SA_Session]:
     globals_obj = _get_restly_context()
     # One field, consulted first by every session source. Nothing the application
     # configures later can displace it, and no generator is read around it.
+    # Layered over the run-wide routing installed by _restly_managed_routing;
+    # restore it rather than clear the slot.
+    previous = globals_obj.test_make_session
     globals_obj.test_make_session = isolated_make_session
-    session = isolated_make_session()
+    session = None
     try:
+        session = isolated_make_session()
         yield session
     finally:
-        # Clear before closing: a teardown-time close() failure must not leak the
-        # override, which is bound to a connection about to be rolled back.
-        globals_obj.test_make_session = None
-        session.close()
+        # Restore before closing: a teardown-time close() failure must not
+        # leave the per-test factory in place of the run-wide one.
+        globals_obj.test_make_session = previous
+        if session is not None:
+            session.close()
+
+
+#: What the test override slots held before routing was installed, innermost
+#: run last. A nested in-process run must give the outer run its routing back.
+_routing_stack: list[tuple[Any, Any]] = []
+
+
+def pytest_collection_finish(session: pytest.Session) -> None:
+    """Route every Restly session source through the recorded setup, run-wide.
+
+    Installed after collection -- every ``conftest.py`` has been imported, so
+    the recorded setup is final -- and before any fixture of any scope runs. A
+    hook rather than a session-scoped autouse fixture, because pytest runs a
+    suite's own autouse fixtures before a plugin's: a session-scoped seed
+    fixture calling ``fr.open_session()`` must already be routed to the suite's
+    database, not to whatever an application module configured after the suite
+    was set up. The per-test fixtures layer rollback's pinned factories on top
+    and restore this layer afterwards.
+    """
+    globals_obj = _get_restly_context()
+    _routing_stack.append(
+        (globals_obj.test_make_session, globals_obj.test_async_make_session)
+    )
+    if _current_setup() is None:
+        return
+
+    recorded_sync, recorded_async = _source_factories()
+    globals_obj.test_make_session = (
+        recorded_sync if recorded_sync is not None else cast(Any, _SYNC_LEG_TRIPWIRE)
+    )
+    globals_obj.test_async_make_session = (
+        recorded_async
+        if recorded_async is not None
+        else cast(Any, _ASYNC_LEG_TRIPWIRE)
+    )
+
+
+def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
+    # Restore rather than clear, for the same reason as the mode override: a
+    # nested in-process run must neither leak its routing outward nor take the
+    # outer run's away.
+    if not _routing_stack:
+        return
+    globals_obj = _get_restly_context()
+    previous_sync, previous_async = _routing_stack.pop()
+    globals_obj.test_make_session = previous_sync
+    globals_obj.test_async_make_session = previous_async
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -477,53 +536,31 @@ def _restly_managed_isolation(request: pytest.FixtureRequest) -> Iterator[None]:
 def _managed_isolation(
     request: pytest.FixtureRequest, setup: Any, mode: str
 ) -> Iterator[None]:
-    """The body of the autouse fixture, split out so the isolation flag can wrap
-    it in a try/finally that survives an error in any mode."""
-    # Everything routes from the recorded setup, never the live globals: the
-    # test override outranks every other session source, so a database the
-    # application configures after configure_tests() cannot reach a test. A leg
-    # the suite never named gets a tripwire that refuses on use, so a source
-    # arriving late on that leg cannot serve requests either.
-    recorded_sync, recorded_async = _source_factories()
-    globals_obj = _get_restly_context()
-    if recorded_sync is None:
-        globals_obj.test_make_session = cast(Any, _SYNC_LEG_TRIPWIRE)
-    if recorded_async is None:
-        globals_obj.test_async_make_session = cast(Any, _ASYNC_LEG_TRIPWIRE)
-    try:
-        if mode == ROLLBACK:
-            # Both legs, not the first one found: each session fixture swaps only
-            # its own factory, so activating one in a suite that configured both
-            # leaves the other's routes committing for real. The fixtures install
-            # (and clear) the named legs' overrides themselves.
-            if recorded_sync is not None:
-                request.getfixturevalue("restly_session")
-            if recorded_async is not None:
-                request.getfixturevalue("restly_async_session")
-        else:
-            # These modes pin nothing, but the test still owns routing: point the
-            # same override at the recorded factories so an application's
-            # generator cannot serve requests from its own database.
-            if recorded_sync is not None:
-                globals_obj.test_make_session = recorded_sync
-            if recorded_async is not None:
-                globals_obj.test_async_make_session = recorded_async
-            if mode == DELETE:
-                # Before, not after: whatever the last test wrote is still there
-                # when the run ends, which is the point of choosing this mode.
-                if not _clean_database_sync(setup):
-                    # Async-only: cleaning must run on the loop the test uses, so
-                    # it goes through a fixture rather than a loop of its own.
-                    request.getfixturevalue("_restly_async_delete")
-        yield
-    finally:
-        # Clear only what this function installed; in rollback mode the session
-        # fixtures own the named legs' overrides and clear them in their own
-        # teardown.
-        if mode != ROLLBACK or recorded_sync is None:
-            globals_obj.test_make_session = None
-        if mode != ROLLBACK or recorded_async is None:
-            globals_obj.test_async_make_session = None
+    """The per-test half of managed isolation.
+
+    Routing is run-wide (``_restly_managed_routing`` holds the recorded
+    factories and the unnamed-leg tripwires in the test override for the whole
+    session); what remains per test is rollback's pinned factories, or delete
+    mode's cleaning.
+    """
+    if mode == ROLLBACK:
+        recorded_sync, recorded_async = _source_factories()
+        # Both legs, not the first one found: each session fixture swaps only
+        # its own factory, so activating one in a suite that configured both
+        # leaves the other's routes committing for real. The fixtures install
+        # their pinned factory and restore the run-wide layer themselves.
+        if recorded_sync is not None:
+            request.getfixturevalue("restly_session")
+        if recorded_async is not None:
+            request.getfixturevalue("restly_async_session")
+    elif mode == DELETE:
+        # Before, not after: whatever the last test wrote is still there when
+        # the run ends, which is the point of choosing this mode.
+        if not _clean_database_sync(setup):
+            # Async-only: cleaning must run on the loop the test uses, so it
+            # goes through a fixture rather than a loop of its own.
+            request.getfixturevalue("_restly_async_delete")
+    yield
 
 
 @pytest.fixture
