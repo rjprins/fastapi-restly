@@ -171,9 +171,13 @@ def configure_tests(
       process can see a test's data, not even after a failure.
     * ``"truncate"`` empties the tables *before* each test instead, and lets
       writes commit for real. It is slower, but the last test's rows are still in
-      the database when the run ends, so you can inspect them with ordinary tools;
-      run with ``-k`` and the last test is the one you are looking at. Tests still cannot see each other's data, and it needs a database of
-      its own: two suites truncating one database will fight.
+      the database when the run ends, so you can inspect them with ordinary
+      tools; run with ``-k`` and the last test is the one you are looking at.
+      Tests still cannot see each other's data, and it needs a database of its
+      own: two suites truncating one database will fight. An async database is
+      best named by URL here; a supplied ``async_engine=`` should be built with
+      ``poolclass=NullPool``, because test code hops event loops and a pooled
+      async connection does not survive that on drivers like asyncpg.
     * ``"none"`` cleans nothing and leaves it to you. Reach for it when neither of
       the others fits: tests that drive a browser or a second process (nothing
       uncommitted is visible to those, and truncation across parallel workers
@@ -231,6 +235,14 @@ def configure_tests(
     # it, so a rejected call leaves the globals exactly as it found them.
     if names_sync or names_async:
         _reject_unnamed_legs(names_sync=names_sync, names_async=names_async)
+        if (
+            async_database_url is not None
+            and async_engine is None
+            and async_make_session is None
+        ):
+            # Built here rather than left to fr.configure(): the test engine
+            # gets NullPool, which fr.configure() rightly does not impose.
+            async_engine = _test_async_engine(async_database_url)
         _session.configure(
             app=app,
             database_url=database_url,
@@ -370,6 +382,31 @@ async def _clean_database_async(setup: _TestSetup) -> None:
     engine = _resolve_engine(async_make_session.kw["bind"])
     async with engine.begin() as connection:
         await connection.run_sync(lambda sync_conn: _delete_rows(sync_conn, tables))
+
+
+def _test_async_engine(async_database_url: str) -> Any:
+    """The engine behind an async test database named by URL.
+
+    Built with ``NullPool``: every checkout is a fresh connection on the calling
+    loop, and every checkin really closes it. Async test code hops loops -- the
+    schema step's ``asyncio.run``, pytest-asyncio's per-function loop, the test
+    client's portal thread -- and a pooled connection created on one loop fails
+    on the next for drivers like asyncpg that bind their futures at connect
+    time. In-memory SQLite keeps its default pool: closing its only connection
+    would discard the database, and aiosqlite has no loop affinity anyway.
+    """
+    from sqlalchemy import make_url
+    from sqlalchemy.ext.asyncio import create_async_engine
+    from sqlalchemy.pool import NullPool
+
+    url = make_url(async_database_url)
+    in_memory_sqlite = url.get_backend_name() == "sqlite" and url.database in (
+        None,
+        ":memory:",
+    )
+    if in_memory_sqlite:
+        return create_async_engine(async_database_url)
+    return create_async_engine(async_database_url, poolclass=NullPool)
 
 
 def _resolve_engine(bind: Any) -> Any:
@@ -546,8 +583,15 @@ def _create_schema(setup: _TestSetup, root: Path | None = None) -> None:
 
             async def _create() -> None:
                 engine = _resolve_engine(async_make_session.kw["bind"])
-                async with engine.begin() as connection:
-                    await connection.run_sync(metadata.create_all)
+                try:
+                    async with engine.begin() as connection:
+                        await connection.run_sync(metadata.create_all)
+                finally:
+                    # The loop asyncio.run() opened dies with this call, and a
+                    # connection kept in the pool would resurface on a test's
+                    # own loop. Restly's URL-built engines hold nothing
+                    # (NullPool), but a user-supplied engine may pool.
+                    await engine.dispose()
 
             asyncio.run(_create())
         else:

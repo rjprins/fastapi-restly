@@ -296,6 +296,69 @@ def test_alembic_config_is_resolved_against_the_root_not_the_cwd(tmp_path: Path)
 
 
 # ---------------------------------------------------------------------------
+# Async engines and event loops
+# ---------------------------------------------------------------------------
+
+
+def test_an_async_url_gets_a_nullpool_engine():
+    """Async test code hops event loops: the schema step's asyncio.run, pytest-
+    asyncio's per-function loop, the test client's portal thread. A pooled
+    connection created on one loop fails on the next for drivers like asyncpg,
+    so the engine built from a test URL must hold nothing between checkouts."""
+    from sqlalchemy.pool import NullPool
+
+    with _isolated_config():
+        configure_tests(async_database_url="sqlite+aiosqlite:///./test.db")
+        setup = _current_setup()
+        assert setup is not None
+        assert isinstance(setup.async_make_session.kw["bind"].pool, NullPool)
+
+
+def test_an_in_memory_async_url_keeps_its_default_pool():
+    """NullPool would close in-memory SQLite's only connection and discard the
+    database with it, and aiosqlite has no loop affinity to guard against."""
+    from sqlalchemy.pool import NullPool
+
+    with _isolated_config():
+        configure_tests(async_database_url="sqlite+aiosqlite://")
+        setup = _current_setup()
+        assert setup is not None
+        assert not isinstance(setup.async_make_session.kw["bind"].pool, NullPool)
+
+
+def test_a_supplied_async_engine_keeps_its_pool():
+    """configure_tests() imposes NullPool only on the engines it builds itself;
+    a supplied engine's pooling is the caller's decision."""
+    from sqlalchemy.ext.asyncio import create_async_engine
+    from sqlalchemy.pool import NullPool
+
+    engine = create_async_engine("sqlite+aiosqlite:///./supplied.db")
+    with _isolated_config():
+        configure_tests(async_engine=engine)
+        setup = _current_setup()
+        assert setup is not None
+        assert setup.async_make_session.kw["bind"] is engine
+        assert not isinstance(engine.pool, NullPool)
+
+
+def test_create_all_disposes_the_connection_it_pooled(tmp_path: Path):
+    """asyncio.run()'s loop dies with the schema step; a connection left in a
+    user-supplied engine's pool would resurface on a test's own loop, which is
+    how asyncpg fails."""
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    engine = create_async_engine(f"sqlite+aiosqlite:///{tmp_path / 'made.db'}")
+    with _isolated_config():
+
+        class Doohickey(fr.IDBase):
+            name: Mapped[str]
+
+        configure_tests(async_engine=engine, base=fr.DataclassBase, create_all=True)
+        _create_schema(_current_setup())  # type: ignore[arg-type]
+        assert engine.pool.checkedin() == 0
+
+
+# ---------------------------------------------------------------------------
 # Cleanup mode
 # ---------------------------------------------------------------------------
 
