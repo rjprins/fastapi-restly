@@ -1580,12 +1580,16 @@ class NoteView(fr.AsyncRestView):
 """
 
 
-def test_a_lifespan_reconfiguring_restly_cannot_reach_the_tests(tmp_path: Path):
-    """An application lifespan that configures Restly at startup now runs, because
-    the client is entered. It used to replace the session factory the fixtures
-    installed. The test's session source is consulted first and is not something
-    fr.configure() writes, so the reconfiguration simply cannot reach the test.
-    """
+@pytest.mark.parametrize("db_cleanup", [None, "delete"])
+def test_a_lifespan_reconfiguring_restly_cannot_reach_the_tests(
+    tmp_path: Path, db_cleanup: str | None
+):
+    """An application lifespan that configures Restly at startup now runs,
+    because the client is entered. Requests and cleaning build from the
+    recorded factories in every mode -- the test's session source is consulted
+    first and is not something fr.configure() writes -- so the reconfiguration
+    simply cannot reach the test."""
+    mode_line = f'    db_cleanup="{db_cleanup}",\n' if db_cleanup else ""
     _write_project(
         tmp_path,
         "import fastapi_restly as fr\nfrom myapp import app\n\n"
@@ -1594,35 +1598,7 @@ def test_a_lifespan_reconfiguring_restly_cannot_reach_the_tests(tmp_path: Path):
         '    async_database_url="sqlite+aiosqlite:///./test.db",\n'
         "    base=fr.DataclassBase,\n"
         "    create_all=True,\n"
-        ")\n",
-        "def test_a(restly_client):\n"
-        '    restly_client.post("/notes/", json={"text": "one"})\n'
-        '    assert restly_client.get("/notes/").json()["total_count"] == 1\n\n\n'
-        "def test_b_is_still_isolated(restly_client):\n"
-        '    assert restly_client.get("/notes/").json()["total_count"] == 0\n',
-        app_module=_RECONFIGURING_APP,
-    )
-    result = _run_pytest(tmp_path)
-
-    assert result.returncode == 0, result.stdout + result.stderr
-    # The application's database was never opened, and isolation held.
-    assert not (tmp_path / "dev.db").exists()
-
-
-def test_a_lifespan_reconfiguring_restly_cannot_move_delete_mode(tmp_path: Path):
-    """Delete mode routes and cleans from the recorded factories too: requests
-    keep committing to the test database and cleaning keeps emptying that same
-    database, no matter what startup configures. Rollback mode was hardened
-    against this first; the committing modes have to hold the same line."""
-    _write_project(
-        tmp_path,
-        "import fastapi_restly as fr\nfrom myapp import app\n\n"
-        "fr.testing.configure_tests(\n"
-        "    app=app,\n"
-        '    async_database_url="sqlite+aiosqlite:///./test.db",\n'
-        "    base=fr.DataclassBase,\n"
-        "    create_all=True,\n"
-        '    db_cleanup="delete",\n'
+        f"{mode_line}"
         ")\n",
         "def test_a(restly_client):\n"
         '    restly_client.post("/notes/", json={"text": "one"})\n'
@@ -1634,6 +1610,7 @@ def test_a_lifespan_reconfiguring_restly_cannot_move_delete_mode(tmp_path: Path)
     result = _run_pytest(tmp_path)
 
     assert result.returncode == 0, result.stdout + result.stderr
+    # The application's database was never opened, and isolation held.
     assert not (tmp_path / "dev.db").exists()
 
 

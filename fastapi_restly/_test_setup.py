@@ -202,7 +202,9 @@ def configure_tests(
             "fr.testing.configure_tests() was already called in this process. "
             "One setup serves the whole run: a second call would silently move "
             "every test onto its app, database and cleanup mode. In a monorepo, "
-            "run each sub-project's suite as its own pytest invocation."
+            "run each sub-project's suite as its own pytest invocation; a "
+            "nested in-process run (pytester.runpytest) shares the setup too, "
+            "so use runpytest_subprocess there."
         )
 
     if db_cleanup not in DB_CLEANUP_MODES:
@@ -637,7 +639,8 @@ def _reject_split_databases() -> None:
         "database. The suite treats the two legs as one: rollback mode serves "
         "async requests over the sync leg's connection, and deletion cleans "
         "through one leg only. Point both at the same database, through its "
-        "sync and async drivers."
+        "sync and async drivers. The comparison is textual, so spell the "
+        "host, port and database identically on both legs."
     )
 
 
