@@ -1238,23 +1238,58 @@ def test_delete_mode_cleans_nothing_when_no_database_is_configured(tmp_path: Pat
     assert "1 passed" in result.stdout
 
 
-def test_delete_mode_says_what_a_generator_only_suite_is_missing():
-    """It needs a connection of its own; a generator does not provide one."""
-    with _isolated_config():
+def test_delete_mode_rejects_async_per_mapper_binds_too():
+    """Sync/async parity for the cleaning guard: an async-only suite's binds=
+    factory would half-clean just the same."""
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-        def generator():  # pragma: no cover - never called
-            yield None
+    other = create_async_engine("sqlite+aiosqlite://")
+    try:
+        with _isolated_config():
 
-        fr.configure(sync_session_generator=generator)
-        setup = _TestSetup(
-            app=None,
-            base=None,
-            alembic_upgrade=False,
-            db_cleanup=DELETE,
-            db_cleanup_exclude=(),
-        )
-        with pytest.raises(RestlyConfigurationError, match="session_generator"):
-            _clean_database_sync(setup)
+            class RoutedAsync(fr.IDBase):
+                name: Mapped[str]
+
+            engine = create_async_engine("sqlite+aiosqlite://")
+            factory = async_sessionmaker(
+                bind=engine, binds={RoutedAsync: other}, expire_on_commit=False
+            )
+            configure_tests(
+                async_make_session=factory, base=fr.DataclassBase, db_cleanup=DELETE
+            )
+            with pytest.raises(RestlyConfigurationError, match="binds="):
+                _clean_database_sync(_current_setup())  # type: ignore[arg-type]
+    finally:
+        other.sync_engine.dispose()
+
+
+def test_delete_mode_rejects_binds_on_the_leg_that_does_not_clean(tmp_path: Path):
+    """Cleaning runs through the sync leg, but a binds= factory on the async leg
+    would keep its routed models' rows just as silently; both recorded legs are
+    checked, not just the one that happens to clean."""
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+    database = tmp_path / "main.db"
+    other = create_async_engine("sqlite+aiosqlite://")
+    try:
+        with _isolated_config():
+
+            class RoutedHybrid(fr.IDBase):
+                name: Mapped[str]
+
+            engine = create_async_engine(f"sqlite+aiosqlite:///{database}")
+            configure_tests(
+                database_url=f"sqlite:///{database}",
+                async_make_session=async_sessionmaker(
+                    bind=engine, binds={RoutedHybrid: other}, expire_on_commit=False
+                ),
+                base=fr.DataclassBase,
+                db_cleanup=DELETE,
+            )
+            with pytest.raises(RestlyConfigurationError, match="binds="):
+                _clean_database_sync(_current_setup())  # type: ignore[arg-type]
+    finally:
+        other.sync_engine.dispose()
 
 
 def test_the_exclusion_error_does_not_claim_to_have_checked_the_database(tmp_path):

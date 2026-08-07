@@ -340,18 +340,15 @@ def _require_cleanable(setup: _TestSetup) -> list[Any] | None:
     """The tables to empty, or None when there is no database to empty them in."""
     make_session, async_make_session = _source_factories()
     if make_session is None and async_make_session is None:
-        if (
-            _fr_globals.session_generator is not None
-            or _fr_globals.sync_session_generator is not None
-        ):
-            raise RestlyConfigurationError(
-                'fr.testing.configure_tests(db_cleanup="delete") builds its own '
-                "connection to empty the tables, and a session_generator does not "
-                "give it one. Configure a sessionmaker for the tests as well: pass "
-                "database_url=, engine= or make_session= (or their async forms)."
-            )
-        # No database at all, which configure_tests() allows. Nothing to empty.
+        # No database recorded, which configure_tests() allows. Nothing to
+        # empty. (A generator-only application was rejected at configure time,
+        # and a source arriving later is tripwired, not cleaned.)
         return None
+    # Both legs, not just the one that happens to clean: a binds= factory on
+    # either would keep its routed models' rows between tests, silently.
+    for factory in (make_session, async_make_session):
+        if factory is not None:
+            _reject_binds_for_cleaning(factory)
     if setup.base is None:
         raise RestlyConfigurationError(
             'fr.testing.configure_tests(db_cleanup="delete") needs to know which '
@@ -386,7 +383,6 @@ def _clean_database_sync(setup: _TestSetup) -> bool:
     make_session, _ = _source_factories()
     if make_session is None:
         return False
-    _reject_binds_for_cleaning(make_session)
     engine = _resolve_engine(make_session.kw["bind"])
     with engine.begin() as connection:
         _delete_rows(connection, tables)
@@ -405,7 +401,6 @@ async def _clean_database_async(setup: _TestSetup) -> None:
     _, async_make_session = _source_factories()
     if async_make_session is None:
         return
-    _reject_binds_for_cleaning(async_make_session)
     engine = _resolve_engine(async_make_session.kw["bind"])
     async with engine.begin() as connection:
         await connection.run_sync(lambda sync_conn: _delete_rows(sync_conn, tables))

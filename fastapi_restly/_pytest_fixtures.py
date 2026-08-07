@@ -187,7 +187,8 @@ def _reject_per_mapper_binds(factory: Any) -> None:
         return
     mapped = ", ".join(sorted(getattr(key, "__name__", str(key)) for key in binds))
     raise RestlyConfigurationError(
-        "The session factory passed to fr.configure() has per-mapper binds "
+        "The session factory passed to fr.configure() (or "
+        "fr.testing.configure_tests()) has per-mapper binds "
         f"({mapped}), which the test fixtures cannot isolate: those models would "
         "be routed to their own engine, outside the connection this test pins, "
         "and their writes would be committed rather than rolled back. Configure "
