@@ -11,7 +11,7 @@ import asyncio
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, NoReturn
+from typing import TYPE_CHECKING, Any
 
 from .db import _session
 from .db._globals import _fr_globals
@@ -19,9 +19,8 @@ from .exc import RestlyConfigurationError
 
 if TYPE_CHECKING:
     from fastapi import FastAPI
-    from sqlalchemy import Engine, MetaData
-    from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker
-    from sqlalchemy.orm import DeclarativeBase, sessionmaker
+    from sqlalchemy import MetaData
+    from sqlalchemy.orm import DeclarativeBase
 
 #: Roll each test back through a savepoint. Fastest, and nothing survives a test.
 ROLLBACK = "rollback"
@@ -45,11 +44,13 @@ class _TestSetup:
     alembic_upgrade: bool | str | Path = False
     db_cleanup: str = ROLLBACK
     db_cleanup_exclude: tuple[str, ...] = ()
-    #: The session factories and URLs in force when the suite was configured.
-    #: Everything test-side builds from these rather than from the live globals,
-    #: so an application reconfiguring Restly later cannot move the tests.
+    #: The database configuration in force when the suite was configured.
+    #: Schema setup and isolation use these sources, while consistency checks
+    #: make an accidental later call to ``fr.configure(...)`` fail loudly.
     make_session: Any = None
     async_make_session: Any = None
+    session_generator: Any = None
+    sync_session_generator: Any = None
     database_url: str | None = None
     async_database_url: str | None = None
 
@@ -58,13 +59,7 @@ _setup: _TestSetup | None = None
 
 
 def _source_factories() -> tuple[Any, Any]:
-    """The factories the fixtures build from: the suite's recorded pair once
-    ``configure_tests()`` ran, otherwise whatever is configured now.
-
-    The recorded pair is authoritative even when a slot is empty: a suite that
-    named no database on a leg gets no database there, not whatever an
-    application module configured after the suite was set up.
-    """
+    """The factories isolation and schema setup build from."""
     if _setup is not None:
         return _setup.make_session, _setup.async_make_session
     return _fr_globals.make_session, _fr_globals.async_make_session
@@ -84,27 +79,22 @@ def _reset_setup() -> None:
     """Drop the recorded setup. For Restly's own tests, not for user suites."""
     global _setup
     _setup = None
+    _fr_globals.database_configuration_locked = False
 
 
 def configure_tests(
     *,
     app: FastAPI | None = None,
-    database_url: str | None = None,
-    async_database_url: str | None = None,
-    engine: Engine | None = None,
-    async_engine: AsyncEngine | None = None,
-    make_session: sessionmaker[Any] | None = None,
-    async_make_session: async_sessionmaker[Any] | None = None,
     base: type[DeclarativeBase] | MetaData | None = None,
     create_all: bool = False,
     alembic_upgrade: bool | str | Path = False,
     db_cleanup: str = ROLLBACK,
     db_cleanup_exclude: Sequence[str] = (),
 ) -> None:
-    """Configure a Restly test suite in one call, from ``conftest.py``.
+    """Add Restly's managed testing behaviour to an already-configured app.
 
-    The testing counterpart to :func:`fastapi_restly.configure`. Call it at
-    ``conftest.py`` import time::
+    Call it from ``conftest.py`` after the application has configured Restly for
+    its test database::
 
         import fastapi_restly as fr
         from myapp.main import app
@@ -112,28 +102,21 @@ def configure_tests(
 
         fr.testing.configure_tests(
             app=app,
-            async_database_url="sqlite+aiosqlite:///./test.db",
             base=Base,
             create_all=True,
         )
 
-    That is the whole setup. Every test then runs against ``app`` on the given
-    database and starts from a clean one, including tests that only drive
-    ``restly_client``. How that cleaning happens is ``db_cleanup`` below; by
-    default each test is rolled back and nothing is ever committed.
+    ``configure_tests()`` never chooses, creates or replaces a database engine.
+    The application owns that configuration through :func:`fastapi_restly.configure`;
+    this function records the session factories already in force. Point the
+    application at a disposable test database before importing it, or construct
+    it from explicit test settings. Database configuration performed afterwards
+    is rejected so schema setup, cleanup and requests cannot disagree.
 
-    Four things happen, in this order:
-
-    1. The database arguments are forwarded to :func:`fastapi_restly.configure`,
-       under the same names. They replace only the legs they name, so if your
-       application configured a sync database and you name only the async one,
-       this raises: the leg you left out would still be your application's, and
-       every route resolving through it would read and write there.
-    2. ``app`` becomes what the ``restly_app`` fixture returns, so ``restly_client``
-       wraps your application without an override fixture.
-    3. The schema is created once per session, before any test runs, from
-       ``create_all`` or ``alembic_upgrade`` (see below).
-    4. Every test gets a clean database, by the strategy ``db_cleanup`` names.
+    ``app`` becomes what the ``restly_app`` fixture returns. The schema is
+    optionally built once before tests start, and every test gets a clean
+    database by the strategy ``db_cleanup`` names. Client-only tests are covered
+    too.
 
     ``base=`` names the models the suite works with. It is what delete mode empties
     between tests, and what ``create_all`` builds. Pass your declarative base, or
@@ -146,23 +129,15 @@ def configure_tests(
       :func:`fastapi_restly.db.create_all` does.
     * ``alembic_upgrade=True`` runs ``alembic upgrade head`` through ``alembic.ini``
       next to your project root; pass a path to point at a different config.
-      Restly sets ``sqlalchemy.url`` on the config to the database configured
-      here, so a stock ``env.py`` that reads it migrates the test database rather
-      than your development one.
+      Restly reads the URL from the application's configured engine and sets
+      ``sqlalchemy.url`` on the config.
     * Passing neither leaves the schema to you, which is the right choice when
       your suite already builds it or your migrations are not Alembic.
 
-    Always name the database. If one is already configured (your application
-    module calls :func:`fastapi_restly.configure` on import) and you pass no
-    database argument, this raises rather than guess: that database is usually
-    the development one, and the schema step would create tables in it.
-
-    The databases named here are final. A database your application configures
-    afterwards -- in its lifespan, or in a module imported during collection --
-    is not used: requests, cleaning and the schema step all stay on the
-    recorded one, and a leg the suite never named refuses to serve sessions
-    rather than adopt what arrived later. One call configures the whole
-    process; a second call raises.
+    The application is responsible for selecting a database that tests may
+    modify. In particular, ``create_all=True`` and ``db_cleanup="delete"`` must
+    only be used against a disposable test database. One call configures the
+    whole pytest process; a second call raises.
 
     ``db_cleanup`` chooses how each test gets a clean database:
 
@@ -175,10 +150,10 @@ def configure_tests(
       the database when the run ends, so you can inspect them with ordinary
       tools; run with ``-k`` and the last test is the one you are looking at.
       Tests still cannot see each other's data, and it needs a database of its
-      own: two suites deleting from one database will fight. An async database is
-      best named by URL here; a supplied ``async_engine=`` should be built with
-      ``poolclass=NullPool``, because test code hops event loops and a pooled
-      async connection does not survive that on drivers like asyncpg.
+      own: two suites deleting from one database will fight. An async test
+      engine aimed at a real server should use ``poolclass=NullPool``, because
+      test code hops event loops and a pooled connection does not survive that
+      on drivers like asyncpg.
     * ``"none"`` cleans nothing and leaves it to you. Reach for it when neither
       of the others fits: tests that drive a browser or a second process
       (nothing uncommitted is visible to those), or parallel workers sharing one
@@ -228,68 +203,13 @@ def configure_tests(
             "declarative base> to know which tables to create."
         )
 
-    if db_cleanup == ROLLBACK:
-        if (
-            _fr_globals.sync_session_generator is not None
-            and _fr_globals.make_session is None
-        ):
-            raise RestlyConfigurationError(
-                'fr.testing.configure_tests(db_cleanup="rollback") cannot '
-                "isolate the configured sync_session_generator without a sync "
-                "sessionmaker. Configure the application with database_url=, "
-                "engine= or make_session= as well."
-            )
-        if (
-            _fr_globals.session_generator is not None
-            and _fr_globals.async_make_session is None
-        ):
-            raise RestlyConfigurationError(
-                'fr.testing.configure_tests(db_cleanup="rollback") cannot '
-                "isolate the configured session_generator without an async "
-                "sessionmaker. Configure the application with "
-                "async_database_url=, async_engine= or async_make_session= as "
-                "well."
-            )
+    if (
+        _fr_globals.make_session is not None
+        and _fr_globals.async_make_session is not None
+    ):
+        _reject_split_databases()
 
-    names_sync = any(
-        argument is not None for argument in (database_url, engine, make_session)
-    )
-    names_async = any(
-        argument is not None
-        for argument in (async_database_url, async_engine, async_make_session)
-    )
-    # Validate against the application's configuration before replacing any of
-    # it, so a rejected call leaves the globals exactly as it found them.
-    if names_sync or names_async:
-        _reject_unnamed_legs(names_sync=names_sync, names_async=names_async)
-        if (
-            async_database_url is not None
-            and async_engine is None
-            and async_make_session is None
-        ):
-            # Built here rather than left to fr.configure(): the test engine
-            # gets NullPool, which fr.configure() rightly does not impose.
-            async_engine = _test_async_engine(async_database_url)
-        _session.configure(
-            app=app,
-            database_url=database_url,
-            async_database_url=async_database_url,
-            engine=engine,
-            async_engine=async_engine,
-            make_session=make_session,
-            async_make_session=async_make_session,
-        )
-        # After configure(), when the engines exist to compare. Raising here
-        # aborts the suite at conftest import, so nothing runs on the half-state.
-        if names_sync and names_async:
-            _reject_split_databases()
-    # With no database arguments, use the application configuration already in
-    # force. This is the direction of the public API: configure_tests() records
-    # database state; it does not need to replace it.
-
-    # The guards above guarantee the live globals now hold only what this call
-    # named, so recording them records the suite's own configuration.
-    _setup = _TestSetup(
+    setup = _TestSetup(
         app=app,
         base=base,
         create_all=create_all,
@@ -298,9 +218,42 @@ def configure_tests(
         db_cleanup_exclude=tuple(db_cleanup_exclude),
         make_session=_fr_globals.make_session,
         async_make_session=_fr_globals.async_make_session,
+        session_generator=_fr_globals.session_generator,
+        sync_session_generator=_fr_globals.sync_session_generator,
         database_url=_fr_globals.database_url,
         async_database_url=_fr_globals.async_database_url,
     )
+    _setup = setup
+    _fr_globals.database_configuration_locked = True
+
+
+def _validate_database_sources(setup: _TestSetup, mode: str) -> None:
+    """Reject source combinations the selected isolation mode cannot manage."""
+    if mode == ROLLBACK:
+        if setup.sync_session_generator is not None and setup.make_session is None:
+            raise RestlyConfigurationError(
+                'fr.testing.configure_tests(db_cleanup="rollback") cannot '
+                "isolate the configured sync_session_generator without a sync "
+                "sessionmaker. Configure the application with database_url=, "
+                "engine= or make_session= as well."
+            )
+        if setup.session_generator is not None and setup.async_make_session is None:
+            raise RestlyConfigurationError(
+                'fr.testing.configure_tests(db_cleanup="rollback") cannot '
+                "isolate the configured session_generator without an async "
+                "sessionmaker. Configure the application with "
+                "async_database_url=, async_engine= or async_make_session= as "
+                "well."
+            )
+    elif mode == DELETE and (
+        setup.sync_session_generator is not None or setup.session_generator is not None
+    ):
+        raise RestlyConfigurationError(
+            'fr.testing.configure_tests(db_cleanup="delete") cannot verify that '
+            "a custom session generator uses the same database as the configured "
+            "sessionmaker it would clean. Use the sessionmaker as the application "
+            'session source, or choose db_cleanup="none".'
+        )
 
 
 def _resolve_db_cleanup(setup: _TestSetup, flag: str | None) -> str:
@@ -364,11 +317,11 @@ def _delete_rows(connection: Any, tables: list[Any]) -> None:
 
 def _require_cleanable(setup: _TestSetup) -> list[Any] | None:
     """The tables to empty, or None when there is no database to empty them in."""
+    _validate_database_sources(setup, DELETE)
     make_session, async_make_session = _source_factories()
     if make_session is None and async_make_session is None:
-        # No database recorded, which configure_tests() allows. Nothing to
-        # empty. (A generator-only application was rejected at configure time,
-        # and a source arriving later is tripwired, not cleaned.)
+        # No database configured, which configure_tests() allows. Nothing to
+        # empty.
         return None
     # Both legs, not just the one that happens to clean: a binds= factory on
     # either would keep its routed models' rows between tests, silently.
@@ -445,28 +398,6 @@ def _is_memory_sqlite(url: Any) -> bool:
     )
 
 
-def _test_async_engine(async_database_url: str) -> Any:
-    """The engine behind an async test database named by URL.
-
-    Built with ``NullPool``: every checkout is a fresh connection on the calling
-    loop, and every checkin really closes it. Async test code hops loops -- the
-    schema step's ``asyncio.run``, pytest-asyncio's per-function loop, the test
-    client's portal thread -- and a pooled connection created on one loop fails
-    on the next for drivers like asyncpg that bind their futures at connect
-    time. In-memory SQLite keeps its default pool: closing its only connection
-    would discard the database, and aiosqlite has no loop affinity anyway.
-    """
-    from sqlalchemy import make_url
-    from sqlalchemy.ext.asyncio import create_async_engine
-
-    if _is_memory_sqlite(make_url(async_database_url)):
-        return create_async_engine(async_database_url)
-
-    from sqlalchemy.pool import NullPool
-
-    return create_async_engine(async_database_url, poolclass=NullPool)
-
-
 def _resolve_engine(bind: Any) -> Any:
     """Return the engine behind ``bind``, which a caller may have set to a
     Connection just as ``fr.configure(make_session=...)`` allows.
@@ -480,145 +411,6 @@ def _resolve_engine(bind: Any) -> Any:
     if isinstance(bind, (Connection, AsyncConnection)):
         return bind.engine
     return bind
-
-
-def _safe_url(url: str | None) -> str:
-    """Render ``url`` without its password, for messages that reach CI logs."""
-    if not url:
-        return "the configured database"
-    try:
-        from sqlalchemy import make_url
-
-        return make_url(url).render_as_string(hide_password=True)
-    except Exception:
-        return "the configured database"
-
-
-def _reject_unnamed_legs(*, names_sync: bool, names_async: bool) -> None:
-    """Refuse a leg the application configured and this call did not name.
-
-    :func:`fastapi_restly.configure` replaces only the leg it is passed, so naming
-    just one here leaves the other pointing wherever the application left it,
-    usually the development database. Requests that resolve through the unnamed
-    leg would then read and write there. A generator is a session source like any
-    other: on a leg the suite named, the test override outranks it, but an
-    unnamed leg has nothing to outrank it with.
-    """
-    if not names_sync and (
-        _fr_globals.make_session is not None
-        or _fr_globals.sync_session_generator is not None
-    ):
-        leg, other, argument = "sync", "async", "database_url="
-        url = _fr_globals.database_url
-        generator_name = "sync_session_generator"
-        factory_missing = _fr_globals.make_session is None
-    elif not names_async and (
-        _fr_globals.async_make_session is not None
-        or _fr_globals.session_generator is not None
-    ):
-        leg, other, argument = "async", "sync", "async_database_url="
-        url = _fr_globals.async_database_url
-        generator_name = "session_generator"
-        factory_missing = _fr_globals.async_make_session is None
-    else:
-        return
-
-    source = (
-        f"a {generator_name}"
-        if factory_missing
-        else f"a {leg} database ({_safe_url(url)})"
-    )
-    raise RestlyConfigurationError(
-        f"fr.testing.configure_tests() named the {other} database but not the "
-        f"{leg} one, and your application already configured {source}. "
-        f"fr.configure() replaces only the leg it is given, so that one would "
-        f"survive into the tests: {leg} routes would read and write there. Pass "
-        f"{argument} as well, pointing at the same test database."
-    )
-
-
-def _reject_inherited_database() -> None:
-    """Refuse to run the tests against a database nobody named here.
-
-    Reached when ``configure_tests()`` got no database argument but one is already
-    configured, which normally means the application module configured it on
-    import. Silently inheriting it would point the schema step at that database,
-    and ``create_all``/``alembic upgrade`` is DDL: it survives the per-test
-    rollback.
-    """
-    generator = _fr_globals.session_generator or _fr_globals.sync_session_generator
-    if (
-        _fr_globals.make_session is None
-        and _fr_globals.async_make_session is None
-        and generator is None
-    ):
-        return  # No database anywhere: a suite that never touches one is fine.
-
-    if generator is not None and (
-        _fr_globals.make_session is None and _fr_globals.async_make_session is None
-    ):
-        raise RestlyConfigurationError(
-            "fr.testing.configure_tests() got no database argument, but your "
-            "application configured a session_generator, which is where its "
-            "requests get their database. The fixtures cannot isolate a generator "
-            "they know nothing about, so the tests would read and write whatever "
-            "it opens, normally the development database. Configure a sessionmaker "
-            "for the tests: pass database_url=, engine= or make_session= (or their "
-            "async forms)."
-        )
-
-    configured = _fr_globals.database_url or _fr_globals.async_database_url
-    named = f" ({_safe_url(configured)})" if configured else ""
-    raise RestlyConfigurationError(
-        f"fr.testing.configure_tests() got no database argument, but a database"
-        f"{named} is already configured -- usually the development one, "
-        "configured when your application module was imported. Restly will not "
-        "run the tests against it: creating the schema there would leave tables "
-        "behind, since DDL survives the per-test rollback. Pass the test "
-        "database explicitly, e.g. database_url= or async_database_url=. If the "
-        "configured database really is the test one, pass the same URL here."
-    )
-
-
-class _UnnamedLegTripwire:
-    """The test-session override for a leg the suite never named.
-
-    The session dependencies consult the test override before every other
-    source. Leaving the slot empty for an unnamed leg would let a source the
-    application configures after ``configure_tests()`` ran -- in its lifespan,
-    or in a module imported during collection -- serve a test's requests from
-    its own database. This fills the slot and refuses on use instead.
-    """
-
-    def __init__(self, leg: str, arguments: str) -> None:
-        self._leg = leg
-        self._arguments = arguments
-
-    def _refuse(self) -> NoReturn:
-        raise RestlyConfigurationError(
-            f"A test needed a {self._leg} database session, but "
-            f"fr.testing.configure_tests() named no {self._leg} database. A "
-            f"{self._leg} session source configured after the suite was set up "
-            "-- by your application's lifespan, or a module imported during "
-            "collection -- is deliberately not used: it is normally the "
-            f"development database. Pass {self._arguments} to "
-            "fr.testing.configure_tests()."
-        )
-
-    def __call__(self, *args: Any, **kwargs: Any) -> NoReturn:
-        self._refuse()
-
-    @property
-    def kw(self) -> NoReturn:
-        self._refuse()
-
-
-_SYNC_LEG_TRIPWIRE = _UnnamedLegTripwire(
-    "sync", "database_url=, engine= or make_session="
-)
-_ASYNC_LEG_TRIPWIRE = _UnnamedLegTripwire(
-    "async", "async_database_url=, async_engine= or async_make_session="
-)
 
 
 def _reject_split_databases() -> None:
@@ -666,10 +458,9 @@ def _reject_split_databases() -> None:
         return
 
     raise RestlyConfigurationError(
-        "fr.testing.configure_tests() named a sync database "
-        f"({_safe_url(sync_url.render_as_string())}) and an async database "
-        f"({_safe_url(async_url.render_as_string())}) that are not the same "
-        "database. The suite treats the two legs as one: rollback mode serves "
+        "The sync and async session factories configured through fr.configure() "
+        "are not the same database. The suite treats the two legs as "
+        "one: rollback mode serves "
         "async requests over the sync leg's connection, and deletion cleans "
         "through one leg only. Point both at the same database, through its "
         "sync and async drivers. The comparison is textual, so spell the "
@@ -717,8 +508,8 @@ def _create_schema(setup: _TestSetup, root: Path | None = None) -> None:
         else:
             raise RestlyConfigurationError(
                 "fr.testing.configure_tests(create_all=True) needs a configured "
-                "database. Pass database_url= or async_database_url= to "
-                "fr.testing.configure_tests()."
+                "application sessionmaker. Call "
+                "fr.configure() with the test database before configure_tests()."
             )
     elif setup.alembic_upgrade:
         _run_alembic_upgrade(setup.alembic_upgrade, root, url=_configured_url(setup))
@@ -729,8 +520,8 @@ def _configured_url(setup: _TestSetup) -> str | None:
 
     From the recorded setup, never the live globals: Alembic runs DDL, which
     survives everything, so a reconfiguration must not be able to point it at
-    another database. ``configure_tests(engine=...)`` and the sessionmaker forms
-    record no URL, so read it back off the bind. Prefer the sync leg: Alembic
+    another database. Engine and sessionmaker forms record no URL, so read it
+    back off the bind. Prefer the sync leg: Alembic
     drives a sync engine, and an async URL is one a stock ``env.py`` cannot open.
     """
     for recorded, factory in (
@@ -789,8 +580,9 @@ def _run_alembic_upgrade(
             "fr.testing.configure_tests(alembic_upgrade=...) could not work out "
             "which database to migrate. It would otherwise fall through to the URL "
             "in your alembic.ini, which is normally the development one, and "
-            "migrate that instead. Configure the tests with database_url= or "
-            "async_database_url=, or with an engine Restly can read a URL from."
+            "migrate that instead. Configure the application for its test "
+            "database before calling configure_tests(), using a URL or an "
+            "engine Restly can read a URL from."
         )
     # Alembic stores this in a ConfigParser with interpolation on, where a bare %
     # is a syntax error. Percent-encoded passwords are ordinary, and the resulting

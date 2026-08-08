@@ -10,18 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `fr.testing.configure_tests()` sets up a test suite in one call from
-  `conftest.py`: the app under test, the test database, an optional schema step
-  (`base=Base` plus `create_all=True`, or `alembic_upgrade=True`), and isolation for every
-  test, `restly_client`-only tests included. It raises rather than inherit a
-  database your application configured, which is usually the development one,
-  including the sync or async leg you did not name (a session generator counts
-  as a configured leg). The databases it names are final: one configured
-  afterwards, by a lifespan or a module imported during collection, never
-  reaches the tests, and a leg the suite did not name refuses to serve sessions
-  rather than adopt the late arrival. Routing holds for the whole run, fixture
-  code of any scope included: a session-scoped seed fixture writes to the
-  suite's database too. One call configures the process; a second call raises.
-  Suites that do not call it are unaffected.
+  `conftest.py`: the app under test, an optional schema step (`base=Base` plus
+  `create_all=True`, or `alembic_upgrade=True`), and isolation for every test,
+  `restly_client`-only tests included. Database selection stays in the
+  application: configure it for the test database first, then call
+  `configure_tests()`, which records the existing session sources rather than
+  accepting URLs, engines, or sessionmakers of its own. A database source that
+  changes afterwards, during collection or lifespan startup, raises rather than
+  letting schema setup, cleanup, and requests disagree. One call configures the
+  process; a second call raises. Suites that do not call it are unaffected.
 
 - `db_cleanup=` picks how each test gets a clean database: `"rollback"` (the
   default), `"delete"` (empties the tables before each test and lets writes
@@ -30,15 +27,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `db_cleanup_exclude=` spares tables holding seeded reference data; a table
   under a non-default schema is named by its qualified key, `"tenant.item"`.
   What cleaning cannot serve is refused rather than half-done: a per-mapper
-  `binds=` session factory, and sync/async legs naming two different databases.
+  `binds=` session factory, sync/async legs naming two different databases, or
+  delete mode with an opaque custom session generator.
 
-- The async engine `configure_tests()` builds from a URL uses `NullPool`, so no
-  pooled connection crosses the event loops test code hops between (the schema
-  step's own loop, each test's loop, the test client's portal thread) -- how
-  drivers like asyncpg fail. In-memory SQLite keeps its single-connection pool,
-  in every spelling SQLAlchemy treats as in-memory. A supplied `async_engine=`
-  aimed at a real async server should be built with `poolclass=NullPool` for
-  the same reason. The one shape no pool policy can save -- rollback mode's
+- An application test engine aimed at a real async server should use
+  `poolclass=NullPool`, so no pooled connection crosses the event loops test
+  code hops between (the schema step's own loop, each test's loop, the test
+  client's portal thread) -- how drivers like asyncpg fail. In-memory SQLite
+  should keep its single-connection pool. The one shape no pool policy can save
+  -- rollback mode's
   pinned connection serving `restly_client` requests from asyncpg, whose
   connections are bound to the loop that created them -- is refused up front
   with the two ways out: name the sync database as well, or use `"delete"`.

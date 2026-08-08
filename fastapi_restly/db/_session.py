@@ -92,6 +92,12 @@ def configure(
     (``database_url``, ``engine``, or ``make_session``) for sync support,
     or both if your application uses both.
 
+    A test suite that calls :func:`fastapi_restly.testing.configure_tests`
+    freezes these database sources for the rest of that pytest process. Select
+    the test settings and configure the application before enabling managed
+    testing; changing database sources afterwards would make schema setup,
+    cleanup, and requests disagree and therefore raises.
+
     Use ``session_generator`` / ``sync_session_generator`` (or ``engine`` /
     ``make_session``) to construct sessions your way -- a custom engine,
     isolation level, ``search_path``, logging, an existing ``sessionmaker``. A
@@ -133,7 +139,7 @@ def configure(
     pass ``app`` here, the handlers are registered the first time a view is
     mounted via :func:`fastapi_restly.include_view` instead.
     """
-    if not any(
+    configures_database = any(
         (
             async_database_url is not None,
             async_engine is not None,
@@ -143,6 +149,20 @@ def configure(
             make_session is not None,
             session_generator is not None,
             sync_session_generator is not None,
+        )
+    )
+    if configures_database and _fr_globals.database_configuration_locked:
+        raise RestlyConfigurationError(
+            "Restly's database configuration cannot be changed after "
+            "fr.testing.configure_tests() recorded it. Configure the application "
+            "for its test database before calling configure_tests(), and do not "
+            "reconfigure its database later during collection or application "
+            "lifespan startup."
+        )
+
+    if not any(
+        (
+            configures_database,
             warn_on_misuse is not None,
             warn_on_uncommitted is not None,
             app is not None and install_default_exception_handlers,

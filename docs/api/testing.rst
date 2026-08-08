@@ -1,8 +1,9 @@
 Testing API
 ===========
 
-``fastapi_restly.testing`` provides ``configure_tests()``, which sets a suite up
-in one call, and ``RestlyTestClient``, the status-asserting test client.
+``fastapi_restly.testing`` provides ``configure_tests()``, which adds schema and
+isolation behavior to an application already configured for its test database,
+and ``RestlyTestClient``, the status-asserting test client.
 
 Install the optional testing dependencies before importing this module::
 

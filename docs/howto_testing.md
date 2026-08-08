@@ -29,22 +29,48 @@ manually in `conftest.py`:
 pytest_plugins = ["fastapi_restly.pytest_fixtures"]
 ```
 
-Then configure the suite:
+The application still owns its database configuration. Make that configuration
+selectable, for example through an environment-backed setting:
+
+```python
+# myapp/main.py
+import os
+
+import fastapi_restly as fr
+
+fr.configure(
+    async_database_url=os.environ.get(
+        "DATABASE_URL", "sqlite+aiosqlite:///./app.db"
+    )
+)
+```
+
+Then select the test value before importing the application, and configure the
+suite from the application configuration already in force:
 
 ```python
 # conftest.py
+import os
+
+os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test.db"
+
 import fastapi_restly as fr
 
-from myapp.main import app
-from myapp.models import Base
+from myapp.main import app  # noqa: E402
+from myapp.models import Base  # noqa: E402
 
 fr.testing.configure_tests(
     app=app,
-    async_database_url="sqlite+aiosqlite:///./test.db",
     base=Base,
     create_all=True,
 )
 ```
+
+A `.env` file fits this pattern as long as explicit process environment values
+take precedence over file values. Avoid loading dotenv with an “override
+existing variables” option in application code; that makes the test unable to
+select its database before import. If import-time settings are awkward, pass an
+explicit test settings object to an app factory instead.
 
 That is the whole setup. Until you call
 {func}`configure_tests() <fastapi_restly.testing.configure_tests>` the plugin does
@@ -67,12 +93,13 @@ Your tests themselves stay synchronous, even when your application is async. See
 
 Four things, which is about what any database-backed suite needs.
 
-**A test database of your own.** The URL you pass replaces whatever your
-application configured when it was imported, so the suite never writes to your
-development database. The choice is final: a database your application
-configures later, in its lifespan or in a module imported during collection, is
-never used, and a leg the suite did not name refuses to serve sessions rather
-than adopt it. Pass no database and Restly raises rather than pick one for you.
+**One database configuration.** `configure_tests()` records the session sources
+your application already configured; it does not create or replace them. If the
+database configuration changes later, during collection or lifespan startup,
+the suite fails instead of letting schema setup, cleanup and requests disagree.
+Selecting a disposable test database remains the application's responsibility.
+An environment variable, an explicit test settings object, or an app factory are
+all good ways to do that.
 
 **A schema that is already there.** Tables are created once, before the first
 test, either from your models with `create_all=True` or by running your
@@ -126,7 +153,8 @@ older run keeps its stale tables, since creating a schema never drops one.
 **From your migrations**, with `alembic_upgrade=True`, which runs
 `alembic upgrade head` before the first test. Restly resolves `alembic.ini`
 relative to your project rather than to the directory you happened to run pytest
-from, and sets `sqlalchemy.url` on the config to the database configured here.
+from, and sets `sqlalchemy.url` on the config to the database configured by the
+application.
 A stock `env.py` that reads that URL therefore migrates your test database, not
 whatever it would otherwise resolve on its own. Pass a path if the config lives
 somewhere else:
@@ -134,7 +162,6 @@ somewhere else:
 ```python
 fr.testing.configure_tests(
     app=app,
-    database_url="postgresql+psycopg://localhost/myapp_test",
     base=Base,
     alembic_upgrade="backend/alembic.ini",
 )
@@ -157,9 +184,9 @@ default suits most suites; the other two exist for what it cannot serve.
 at the end, through the savepoints described [below](#savepoints-and-rollback).
 Nothing is ever committed, which is what makes it the fastest option, and it
 leaves reference data your migrations seeded untouched. One combination is
-refused up front: with only the async database named and asyncpg as its driver,
-the pinned connection cannot serve `restly_client`'s own event loop. Name the
-sync database as well, or use `"delete"`.
+refused up front: when the application has only an async sessionmaker using
+asyncpg, the pinned connection cannot serve `restly_client`'s own event loop.
+Configure a sync sessionmaker for the same database as well, or use `"delete"`.
 
 **`"delete"`** empties the tables before each test instead, and lets writes
 commit for real. It is slower and wants a database of its own, but the rows the
@@ -192,7 +219,6 @@ them and they are left alone:
 ```python
 fr.testing.configure_tests(
     app=app,
-    database_url="postgresql+psycopg://localhost/myapp_test",
     base=Base,
     alembic_upgrade=True,
     db_cleanup="delete",
@@ -311,12 +337,13 @@ that transaction through a savepoint (SQLAlchemy's `create_savepoint` mode), so
 the test. The fixture skips automatically if no sync session source is
 configured at all.
 
-A configured `sync_session_generator` is cleared for the duration of the test
-and restored afterwards, so the request builds its own session on the
-fixture's connection instead. What is lost is anything the generator body runs
-per session, a `SET search_path` for example. Configure a sync sessionmaker for
-the tests as well: with only a generator the fixture has nothing to build the
-session from, and it raises rather than skip.
+A configured `sync_session_generator` is bypassed during rollback isolation, so
+the request builds its own session on the fixture's connection instead. What is
+lost is anything the generator body runs per session, a `SET search_path` for
+example. Configure a sync sessionmaker as well: with only a generator the fixture
+has nothing to build the isolated session from, and setup raises. Delete mode
+rejects custom generators because it cannot prove that the generator and the
+sessionmaker use the same database; `db_cleanup="none"` leaves them untouched.
 
 `fr.open_session()` resolves the same factory `SessionDep` does, so it too
 yields a session on the fixture's connection during a test.

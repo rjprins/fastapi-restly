@@ -33,9 +33,9 @@ from fastapi_restly._test_setup import (
     _reset_setup,
     _resolve_db_cleanup,
     _run_alembic_upgrade,
-    _safe_url,
     _tables_to_clean,
     _TestSetup,
+    _validate_database_sources,
     configure_tests,
 )
 from fastapi_restly.db._globals import RestlyContext
@@ -78,12 +78,7 @@ def _isolated_config():
 
 def test_the_two_schema_options_are_mutually_exclusive():
     with pytest.raises(RestlyConfigurationError, match="not both"):
-        configure_tests(
-            database_url="sqlite://",
-            base=fr.DataclassBase,
-            create_all=True,
-            alembic_upgrade=True,
-        )
+        configure_tests(base=fr.DataclassBase, create_all=True, alembic_upgrade=True)
 
 
 def test_configure_tests_records_the_database_the_application_already_configured():
@@ -100,12 +95,22 @@ def test_configure_tests_records_the_database_the_application_already_configured
         assert context.make_session is configured_factory
 
 
-def test_passing_the_configured_url_explicitly_is_accepted():
-    """Opting in is spelled out by repeating the URL, not by a flag."""
+@pytest.mark.parametrize(
+    "argument",
+    [
+        "database_url",
+        "async_database_url",
+        "engine",
+        "async_engine",
+        "make_session",
+        "async_make_session",
+    ],
+)
+def test_configure_tests_does_not_accept_database_configuration(argument: str):
+    """Database construction belongs to fr.configure(), never to this helper."""
     with _isolated_config():
-        fr.configure(database_url="sqlite://")
-        configure_tests(database_url="sqlite://")
-        assert _current_setup() is not None
+        with pytest.raises(TypeError, match=argument):
+            configure_tests(**{argument: "unused"})  # type: ignore[arg-type]
 
 
 def test_a_suite_with_no_database_at_all_is_allowed():
@@ -114,78 +119,13 @@ def test_a_suite_with_no_database_at_all_is_allowed():
         assert _current_setup() is not None
 
 
-def test_naming_only_the_async_leg_rejects_an_inherited_sync_leg():
-    """fr.configure() replaces only the leg it is given, so the unnamed one would
-    survive into the tests and serve every sync route from the app's database."""
+def test_both_application_database_paths_are_recorded():
     with _isolated_config():
-        fr.configure(database_url="sqlite:///./dev.db")
-        with pytest.raises(RestlyConfigurationError) as excinfo:
-            configure_tests(async_database_url="sqlite+aiosqlite:///./test.db")
-
-    message = str(excinfo.value)
-    assert "sync" in message
-    assert "database_url=" in message
-
-
-def test_naming_only_the_sync_leg_rejects_an_inherited_async_leg():
-    with _isolated_config():
-        fr.configure(async_database_url="sqlite+aiosqlite:///./dev.db")
-        with pytest.raises(RestlyConfigurationError) as excinfo:
-            configure_tests(database_url="sqlite:///./test.db")
-
-    assert "async_database_url=" in str(excinfo.value)
-
-
-def test_naming_both_legs_is_accepted():
-    with _isolated_config():
-        fr.configure(database_url="sqlite:///./dev.db")
-        configure_tests(
+        fr.configure(
             database_url="sqlite:///./test.db",
             async_database_url="sqlite+aiosqlite:///./test.db",
         )
-        assert _current_setup() is not None
-
-
-def test_a_leg_configured_only_here_is_not_treated_as_inherited():
-    """Nothing was configured before, so naming one leg is complete on its own."""
-    with _isolated_config():
-        configure_tests(async_database_url="sqlite+aiosqlite:///./test.db")
-        assert _current_setup() is not None
-
-
-def test_urls_in_messages_hide_the_password():
-    """These messages land in pytest output and CI logs."""
-    rendered = _safe_url("postgresql://app:hunter2@db.internal:5432/dev")
-    assert "hunter2" not in rendered
-    assert "db.internal:5432/dev" in rendered
-
-
-def test_safe_url_survives_something_that_is_not_a_url():
-    assert _safe_url("not a url at all") == "the configured database"
-    assert _safe_url(None) == "the configured database"
-
-
-def test_the_rejection_messages_hide_the_password():
-    """These land in pytest output and CI logs. A sqlite URL carries no password,
-    so the recorded URL is set to one that does."""
-    with _isolated_config() as context:
-        fr.configure(engine=create_engine("sqlite://"))
-        context.database_url = "postgresql://app:hunter2@db.internal:5432/dev"
-
-        with pytest.raises(RestlyConfigurationError) as unnamed:
-            configure_tests(async_database_url="sqlite+aiosqlite:///./test.db")
-
-    message = str(unnamed.value)
-    assert "hunter2" not in message
-    assert "db.internal:5432/dev" in message
-
-
-def test_any_single_database_argument_satisfies_the_guard():
-    with _isolated_config():
-        fr.configure(database_url="sqlite:///./dev.db")
-        engine = create_engine("sqlite://")
-        # make_session= is a database argument too, not just the URL forms.
-        configure_tests(make_session=sessionmaker(bind=engine))
+        configure_tests()
         assert _current_setup() is not None
 
 
@@ -219,9 +159,8 @@ def test_create_all_builds_the_schema(tmp_path: Path):
         class Sprocket(fr.IDBase):
             name: Mapped[str]
 
-        configure_tests(
-            database_url=f"sqlite:///{database}", base=fr.DataclassBase, create_all=True
-        )
+        fr.configure(database_url=f"sqlite:///{database}")
+        configure_tests(base=fr.DataclassBase, create_all=True)
         _create_schema(_current_setup())  # type: ignore[arg-type]
 
     engine = create_engine(f"sqlite:///{database}")
@@ -293,56 +232,18 @@ def test_alembic_config_is_resolved_against_the_root_not_the_cwd(tmp_path: Path)
 
 
 # ---------------------------------------------------------------------------
-# Async engines and event loops
+# Async schema setup and event loops
 # ---------------------------------------------------------------------------
 
 
-def test_an_async_url_gets_a_nullpool_engine():
-    """Async test code hops event loops: the schema step's asyncio.run, pytest-
-    asyncio's per-function loop, the test client's portal thread. A pooled
-    connection created on one loop fails on the next for drivers like asyncpg,
-    so the engine built from a test URL must hold nothing between checkouts."""
-    from sqlalchemy.pool import NullPool
-
-    with _isolated_config():
-        configure_tests(async_database_url="sqlite+aiosqlite:///./test.db")
-        setup = _current_setup()
-        assert setup is not None
-        assert isinstance(setup.async_make_session.kw["bind"].pool, NullPool)
-
-
-@pytest.mark.parametrize(
-    "url",
-    [
-        "sqlite+aiosqlite://",
-        "sqlite+aiosqlite:///",
-        "sqlite+aiosqlite:///:memory:",
-        "sqlite+aiosqlite:///file:mem?mode=memory&cache=shared&uri=true",
-    ],
-)
-def test_an_in_memory_async_url_keeps_its_default_pool(url: str):
-    """Every spelling SQLAlchemy treats as in-memory. NullPool would close the
-    only connection and discard the database with it, and aiosqlite has no loop
-    affinity to guard against."""
-    from sqlalchemy.pool import NullPool
-
-    with _isolated_config():
-        configure_tests(async_database_url=url)
-        setup = _current_setup()
-        assert setup is not None
-        assert not isinstance(setup.async_make_session.kw["bind"].pool, NullPool)
-
-
 def test_an_in_memory_async_suite_works_end_to_end(tmp_path: Path):
-    """The memory database must survive both the pool policy (no NullPool) and
-    the schema step (no disposing of StaticPool's only connection, which IS the
-    database)."""
+    """Schema setup must not dispose an in-memory application's database."""
     _write_project(
         tmp_path,
         "import fastapi_restly as fr\nfrom myapp import app\n\n"
+        'fr.configure(async_database_url="sqlite+aiosqlite://")\n'
         "fr.testing.configure_tests(\n"
         "    app=app,\n"
-        '    async_database_url="sqlite+aiosqlite://",\n'
         "    base=fr.DataclassBase,\n"
         "    create_all=True,\n"
         ")\n",
@@ -352,21 +253,6 @@ def test_an_in_memory_async_suite_works_end_to_end(tmp_path: Path):
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert "4 passed" in result.stdout
-
-
-def test_a_supplied_async_engine_keeps_its_pool():
-    """configure_tests() imposes NullPool only on the engines it builds itself;
-    a supplied engine's pooling is the caller's decision."""
-    from sqlalchemy.ext.asyncio import create_async_engine
-    from sqlalchemy.pool import NullPool
-
-    engine = create_async_engine("sqlite+aiosqlite:///./supplied.db")
-    with _isolated_config():
-        configure_tests(async_engine=engine)
-        setup = _current_setup()
-        assert setup is not None
-        assert setup.async_make_session.kw["bind"] is engine
-        assert not isinstance(engine.pool, NullPool)
 
 
 def test_create_all_disposes_the_connection_it_pooled(tmp_path: Path):
@@ -381,7 +267,8 @@ def test_create_all_disposes_the_connection_it_pooled(tmp_path: Path):
         class Doohickey(fr.IDBase):
             name: Mapped[str]
 
-        configure_tests(async_engine=engine, base=fr.DataclassBase, create_all=True)
+        fr.configure(async_engine=engine)
+        configure_tests(base=fr.DataclassBase, create_all=True)
         _create_schema(_current_setup())  # type: ignore[arg-type]
         assert engine.pool.checkedin() == 0
 
@@ -393,7 +280,7 @@ def test_create_all_disposes_the_connection_it_pooled(tmp_path: Path):
 
 def test_an_unknown_cleanup_mode_is_rejected():
     with pytest.raises(RestlyConfigurationError, match="expected one of"):
-        configure_tests(database_url="sqlite://", db_cleanup="vacuum")
+        configure_tests(db_cleanup="vacuum")
 
 
 class _FakeConfig:
@@ -464,8 +351,8 @@ def test_excluded_tables_keep_their_rows(tmp_path: Path):
         class Widget(fr.IDBase):
             name: Mapped[str]
 
+        fr.configure(database_url=f"sqlite:///{database}")
         configure_tests(
-            database_url=f"sqlite:///{database}",
             base=fr.DataclassBase,
             create_all=True,
             db_cleanup=DELETE,
@@ -496,8 +383,8 @@ def test_excluding_a_table_that_does_not_exist_raises(tmp_path: Path):
         class Gizmo(fr.IDBase):
             name: Mapped[str]
 
+        fr.configure(database_url=f"sqlite:///{database}")
         configure_tests(
-            database_url=f"sqlite:///{database}",
             base=fr.DataclassBase,
             create_all=True,
             db_cleanup=DELETE,
@@ -532,12 +419,8 @@ def test_cleaning_leaves_tables_the_base_does_not_declare(tmp_path: Path):
         class Cog(fr.IDBase):
             name: Mapped[str]
 
-        configure_tests(
-            database_url=f"sqlite:///{database}",
-            base=fr.DataclassBase,
-            create_all=True,
-            db_cleanup=DELETE,
-        )
+        fr.configure(database_url=f"sqlite:///{database}")
+        configure_tests(base=fr.DataclassBase, create_all=True, db_cleanup=DELETE)
         setup = _current_setup()
         _create_schema(setup)  # type: ignore[arg-type]
 
@@ -574,11 +457,12 @@ def test_split_sync_and_async_databases_are_rejected(tmp_path: Path):
     mode serves async requests over the sync connection: two databases would
     break both, silently."""
     with _isolated_config():
+        fr.configure(
+            database_url=f"sqlite:///{tmp_path / 'sync.db'}",
+            async_database_url=f"sqlite+aiosqlite:///{tmp_path / 'async.db'}",
+        )
         with pytest.raises(RestlyConfigurationError, match="not the same database"):
-            configure_tests(
-                database_url=f"sqlite:///{tmp_path / 'sync.db'}",
-                async_database_url=f"sqlite+aiosqlite:///{tmp_path / 'async.db'}",
-            )
+            configure_tests()
 
 
 def test_a_memory_leg_paired_with_a_located_leg_is_rejected(tmp_path: Path):
@@ -586,20 +470,22 @@ def test_a_memory_leg_paired_with_a_located_leg_is_rejected(tmp_path: Path):
     server database; only a pair of in-memory legs is accepted, because
     rollback mode makes those one database over the pinned connection."""
     with _isolated_config():
+        fr.configure(
+            database_url="sqlite:///:memory:",
+            async_database_url=f"sqlite+aiosqlite:///{tmp_path / 'real.db'}",
+        )
         with pytest.raises(RestlyConfigurationError, match="not the same database"):
-            configure_tests(
-                database_url="sqlite:///:memory:",
-                async_database_url=f"sqlite+aiosqlite:///{tmp_path / 'real.db'}",
-            )
+            configure_tests()
 
 
 def test_equivalent_sqlite_spellings_are_one_database(tmp_path: Path):
     """The same file spelled two ways is one database, not a split."""
     with _isolated_config():
-        configure_tests(
+        fr.configure(
             database_url=f"sqlite:///{tmp_path}/test.db",
             async_database_url=f"sqlite+aiosqlite:///{tmp_path}/./test.db",
         )
+        configure_tests()
         assert _current_setup() is not None
 
 
@@ -608,7 +494,7 @@ def test_cleaning_needs_to_be_told_which_tables():
     used to do."""
     with _isolated_config():
         fr.configure(database_url="sqlite://")
-        configure_tests(database_url="sqlite://", db_cleanup=DELETE)
+        configure_tests(db_cleanup=DELETE)
         setup = _current_setup()
         with pytest.raises(RestlyConfigurationError, match="which tables to empty"):
             _clean_database_sync(setup)  # type: ignore[arg-type]
@@ -619,12 +505,18 @@ def test_cleaning_needs_to_be_told_which_tables():
 # ---------------------------------------------------------------------------
 
 _APP_MODULE = """
+import os
+
 from sqlalchemy.orm import Mapped, mapped_column
 from fastapi import FastAPI
 import fastapi_restly as fr
 
-# A real app module configures its own (development) database on import.
-fr.configure(async_database_url="sqlite+aiosqlite:///./dev.db")
+# The process environment selects the database before the application is imported.
+fr.configure(
+    async_database_url=os.environ.get(
+        "DATABASE_URL", "sqlite+aiosqlite:///./dev.db"
+    )
+)
 
 app = FastAPI()
 
@@ -645,14 +537,17 @@ class NoteView(fr.AsyncRestView):
 """
 
 _CONFTEST = """
+import os
+
+os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test.db"
+
 import fastapi_restly as fr
 from myapp import app
 
 fr.testing.configure_tests(
     app=app,
-    async_database_url="sqlite+aiosqlite:///./test.db",
     base=fr.DataclassBase,
-            create_all=True,
+    create_all=True,
 )
 """
 
@@ -719,14 +614,17 @@ def _run_pytest(project: Path, quiet: bool = True) -> subprocess.CompletedProces
 
 
 _DELETE_CONFTEST = """
+import os
+
+os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test.db"
+
 import fastapi_restly as fr
 from myapp import app
 
 fr.testing.configure_tests(
     app=app,
-    async_database_url="sqlite+aiosqlite:///./test.db",
     base=fr.DataclassBase,
-            create_all=True,
+    create_all=True,
     db_cleanup="delete",
 )
 """
@@ -804,14 +702,17 @@ def test_the_flag_switches_a_rollback_suite_to_delete(tmp_path: Path):
 
 
 _NONE_CONFTEST = """
+import os
+
+os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test.db"
+
 import fastapi_restly as fr
 from myapp import app
 
 fr.testing.configure_tests(
     app=app,
-    async_database_url="sqlite+aiosqlite:///./test.db",
     base=fr.DataclassBase,
-            create_all=True,
+    create_all=True,
     db_cleanup="none",
 )
 """
@@ -960,6 +861,8 @@ def test_the_application_database_is_the_test_database(tmp_path: Path):
 # ---------------------------------------------------------------------------
 
 _SYNC_APP_MODULE = """
+import os
+
 from collections.abc import Iterator
 
 from fastapi import FastAPI
@@ -968,7 +871,8 @@ from sqlalchemy.orm import Mapped, Session, sessionmaker
 
 import fastapi_restly as fr
 
-_dev_engine = create_engine("sqlite:///./dev.db")
+_database_url = os.environ.get("DATABASE_URL", "sqlite:///./dev.db")
+_dev_engine = create_engine(_database_url)
 _dev_sessions = sessionmaker(bind=_dev_engine, expire_on_commit=False)
 
 
@@ -977,7 +881,7 @@ def dev_session_generator() -> Iterator[Session]:
         yield session
 
 
-CONFIGURE_KWARGS = {"database_url": "sqlite:///./dev.db"}
+CONFIGURE_KWARGS = {"make_session": _dev_sessions}
 if __import__("os").environ.get("APP_USES_GENERATOR"):
     CONFIGURE_KWARGS["sync_session_generator"] = dev_session_generator
 
@@ -1035,11 +939,12 @@ def test_a_hybrid_suite_isolates_its_sync_routes_too(tmp_path: Path):
     both legs must activate both or its sync routes commit for real."""
     _write_project(
         tmp_path,
+        "import os\n\n"
+        'os.environ["DATABASE_URL"] = "sqlite:///./test.db"\n\n'
         "import fastapi_restly as fr\nfrom myapp import app\n\n"
+        'fr.configure(async_database_url="sqlite+aiosqlite:///./test.db")\n'
         "fr.testing.configure_tests(\n"
         "    app=app,\n"
-        '    database_url="sqlite:///./test.db",\n'
-        '    async_database_url="sqlite+aiosqlite:///./test.db",\n'
         "    base=fr.DataclassBase,\n"
         "    create_all=True,\n"
         ")\n",
@@ -1053,15 +958,15 @@ def test_a_hybrid_suite_isolates_its_sync_routes_too(tmp_path: Path):
     assert not (tmp_path / "dev.db").exists()
 
 
-def test_an_inherited_generator_does_not_route_requests_away(tmp_path: Path):
-    """The session dependency reads a generator before the factory, so an
-    application's generator would serve requests from its own database."""
+def test_delete_mode_rejects_a_custom_session_generator(tmp_path: Path):
+    """The helper cannot prove which database an opaque generator will use."""
     _write_project(
         tmp_path,
+        "import os\n\n"
+        'os.environ["DATABASE_URL"] = "sqlite:///./test.db"\n\n'
         "import fastapi_restly as fr\nfrom myapp import app\n\n"
         "fr.testing.configure_tests(\n"
         "    app=app,\n"
-        '    database_url="sqlite:///./test.db",\n'
         "    base=fr.DataclassBase,\n"
         "    create_all=True,\n"
         '    db_cleanup="delete",\n'
@@ -1089,11 +994,8 @@ def test_an_inherited_generator_does_not_route_requests_away(tmp_path: Path):
         env=_clean_env(APP_USES_GENERATOR="1"),
     )
 
-    assert result.returncode == 0, result.stdout + result.stderr
-    # The generator's database has the schema, so a row landing there would be
-    # counted rather than swallowed as a missing table.
-    assert _rows(tmp_path / "dev.db") == 0
-    assert _rows(tmp_path / "test.db") is not None
+    assert result.returncode != 0
+    assert "custom session generator" in result.stdout + result.stderr
 
 
 # ---------------------------------------------------------------------------
@@ -1150,11 +1052,9 @@ def test_a_sessionmaker_bound_to_a_connection_is_unwrapped(tmp_path: Path):
                 class Bolt(fr.IDBase):
                     name: Mapped[str]
 
+                fr.configure(make_session=sessionmaker(bind=connection))
                 configure_tests(
-                    make_session=sessionmaker(bind=connection),
-                    base=fr.DataclassBase,
-                    create_all=True,
-                    db_cleanup=DELETE,
+                    base=fr.DataclassBase, create_all=True, db_cleanup=DELETE
                 )
                 setup = _current_setup()
                 _create_schema(setup)  # type: ignore[arg-type]
@@ -1260,9 +1160,8 @@ def test_delete_mode_rejects_async_per_mapper_binds_too():
             factory = async_sessionmaker(
                 bind=engine, binds={RoutedAsync: other}, expire_on_commit=False
             )
-            configure_tests(
-                async_make_session=factory, base=fr.DataclassBase, db_cleanup=DELETE
-            )
+            fr.configure(async_make_session=factory)
+            configure_tests(base=fr.DataclassBase, db_cleanup=DELETE)
             with pytest.raises(RestlyConfigurationError, match="binds="):
                 _clean_database_sync(_current_setup())  # type: ignore[arg-type]
     finally:
@@ -1284,14 +1183,13 @@ def test_delete_mode_rejects_binds_on_the_leg_that_does_not_clean(tmp_path: Path
                 name: Mapped[str]
 
             engine = create_async_engine(f"sqlite+aiosqlite:///{database}")
-            configure_tests(
+            fr.configure(
                 database_url=f"sqlite:///{database}",
                 async_make_session=async_sessionmaker(
                     bind=engine, binds={RoutedHybrid: other}, expire_on_commit=False
                 ),
-                base=fr.DataclassBase,
-                db_cleanup=DELETE,
             )
+            configure_tests(base=fr.DataclassBase, db_cleanup=DELETE)
             with pytest.raises(RestlyConfigurationError, match="binds="):
                 _clean_database_sync(_current_setup())  # type: ignore[arg-type]
     finally:
@@ -1306,8 +1204,8 @@ def test_the_exclusion_error_does_not_claim_to_have_checked_the_database(tmp_pat
         class Cam(fr.IDBase):
             name: Mapped[str]
 
+        fr.configure(database_url=f"sqlite:///{database}")
         configure_tests(
-            database_url=f"sqlite:///{database}",
             base=fr.DataclassBase,
             create_all=True,
             db_cleanup=DELETE,
@@ -1379,11 +1277,13 @@ def test_a_view_registered_after_the_client_still_gets_the_409_handler(tmp_path:
     """
     _write_project(
         tmp_path,
+        "import os\n"
         "import pytest\n"
         "from fastapi import FastAPI\n"
         "import fastapi_restly as fr\n\n"
+        'os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test.db"\n'
+        "from myapp import Note, NoteSchema  # noqa: F401, E402\n\n"
         "fr.testing.configure_tests(\n"
-        '    async_database_url="sqlite+aiosqlite:///./test.db",\n'
         "    base=fr.DataclassBase,\n"
         "    create_all=True,\n"
         ")\n\n\n"
@@ -1414,8 +1314,7 @@ def test_a_view_registered_after_the_client_still_gets_the_409_handler(tmp_path:
 
 
 def test_alembic_derives_the_url_from_an_engine(tmp_path: Path):
-    """configure_tests(engine=...) records no URL, and without one Alembic falls
-    through to alembic.ini, which points at the development database."""
+    """An application may configure an engine instead of retaining its URL."""
     captured = {}
 
     def fake_upgrade(config, revision):
@@ -1430,10 +1329,8 @@ def test_alembic_derives_the_url_from_an_engine(tmp_path: Path):
     import alembic.command
 
     with _isolated_config():
-        configure_tests(
-            engine=create_engine(f"sqlite:///{tmp_path / 'test.db'}"),
-            alembic_upgrade=True,
-        )
+        fr.configure(engine=create_engine(f"sqlite:///{tmp_path / 'test.db'}"))
+        configure_tests(alembic_upgrade=True)
         original = alembic.command.upgrade
         alembic.command.upgrade = fake_upgrade
         try:
@@ -1445,34 +1342,13 @@ def test_alembic_derives_the_url_from_an_engine(tmp_path: Path):
     assert "DEV.db" not in captured["url"]
 
 
-def test_alembic_migrates_the_recorded_database_not_the_live_one(tmp_path: Path):
-    """Alembic runs DDL, which survives everything, so a reconfiguration after
-    configure_tests() -- a lifespan, a module imported during collection -- must
-    not be able to point the upgrade at its own database."""
-    captured = {}
-
-    def fake_upgrade(config, revision):
-        captured["url"] = config.get_main_option("sqlalchemy.url")
-
-    ini = tmp_path / "alembic.ini"
-    ini.write_text("[alembic]\nscript_location = alembic\n")
-    (tmp_path / "alembic").mkdir()
-
-    import alembic.command
-
+def test_database_reconfiguration_after_setup_is_rejected(tmp_path: Path):
+    """Schema setup, cleanup and requests must never observe different sources."""
     with _isolated_config():
-        configure_tests(
-            database_url=f"sqlite:///{tmp_path / 'test.db'}", alembic_upgrade=True
-        )
-        fr.configure(database_url=f"sqlite:///{tmp_path / 'dev.db'}")
-        original = alembic.command.upgrade
-        alembic.command.upgrade = fake_upgrade
-        try:
-            _create_schema(_current_setup(), root=tmp_path)  # type: ignore[arg-type]
-        finally:
-            alembic.command.upgrade = original
-
-    assert captured["url"] == f"sqlite:///{tmp_path / 'test.db'}"
+        fr.configure(database_url=f"sqlite:///{tmp_path / 'test.db'}")
+        configure_tests()
+        with pytest.raises(RestlyConfigurationError, match="cannot be changed"):
+            fr.configure(database_url=f"sqlite:///{tmp_path / 'dev.db'}")
 
 
 def test_alembic_refuses_when_no_url_can_be_derived(tmp_path: Path):
@@ -1525,9 +1401,8 @@ def test_delete_mode_rejects_a_per_mapper_binds_factory():
                 name: Mapped[str]
 
             factory = sessionmaker(bind=engine, binds={RoutedElsewhere: other})
-            configure_tests(
-                make_session=factory, base=fr.DataclassBase, db_cleanup=DELETE
-            )
+            fr.configure(make_session=factory)
+            configure_tests(base=fr.DataclassBase, db_cleanup=DELETE)
             with pytest.raises(RestlyConfigurationError, match="binds="):
                 _clean_database_sync(_current_setup())  # type: ignore[arg-type]
     finally:
@@ -1587,21 +1462,18 @@ class NoteView(fr.AsyncRestView):
 
 
 @pytest.mark.parametrize("db_cleanup", [None, "delete"])
-def test_a_lifespan_reconfiguring_restly_cannot_reach_the_tests(
+def test_a_lifespan_cannot_reconfigure_restlys_database(
     tmp_path: Path, db_cleanup: str | None
 ):
-    """An application lifespan that configures Restly at startup now runs,
-    because the client is entered. Requests and cleaning build from the
-    recorded factories in every mode -- the test's session source is consulted
-    first and is not something fr.configure() writes -- so the reconfiguration
-    simply cannot reach the test."""
+    """The app must select its test database before configure_tests(), not during
+    lifespan startup after schema setup and isolation have already begun."""
     mode_line = f'    db_cleanup="{db_cleanup}",\n' if db_cleanup else ""
     _write_project(
         tmp_path,
         "import fastapi_restly as fr\nfrom myapp import app\n\n"
+        'fr.configure(async_database_url="sqlite+aiosqlite:///./test.db")\n'
         "fr.testing.configure_tests(\n"
         "    app=app,\n"
-        '    async_database_url="sqlite+aiosqlite:///./test.db",\n'
         "    base=fr.DataclassBase,\n"
         "    create_all=True,\n"
         f"{mode_line}"
@@ -1615,8 +1487,8 @@ def test_a_lifespan_reconfiguring_restly_cannot_reach_the_tests(
     )
     result = _run_pytest(tmp_path)
 
-    assert result.returncode == 0, result.stdout + result.stderr
-    # The application's database was never opened, and isolation held.
+    assert result.returncode != 0
+    assert "cannot be changed" in result.stdout + result.stderr
     assert not (tmp_path / "dev.db").exists()
 
 
@@ -1644,8 +1516,8 @@ _dev.dispose()
 
 @asynccontextmanager
 async def lifespan(app):
-    # FastAPI's recommended init point: nothing is configured at import time,
-    # so configure_tests() has nothing to reject.
+    # Too late for managed test setup: configure_tests() has already recorded
+    # that this application has no database.
     fr.configure(database_url="sqlite:///./dev.db")
     yield
 
@@ -1659,10 +1531,8 @@ def ping():
 """
 
 
-def test_delete_mode_never_cleans_a_database_configured_after_setup(tmp_path: Path):
-    """The worst shape: the suite named no database, the lifespan configures the
-    development one, and cleaning runs with a base to work from. Falling back to
-    the live globals here used to DELETE the development database's rows."""
+def test_delete_mode_rejects_a_database_configured_after_setup(tmp_path: Path):
+    """A late source is rejected before delete mode can clean the wrong database."""
     _write_project(
         tmp_path,
         "import fastapi_restly as fr\nfrom myapp import app\n\n"
@@ -1679,8 +1549,8 @@ def test_delete_mode_never_cleans_a_database_configured_after_setup(tmp_path: Pa
     )
     result = _run_pytest(tmp_path)
 
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert "2 passed" in result.stdout
+    assert result.returncode != 0
+    assert "cannot be changed" in result.stdout + result.stderr
 
     engine = create_engine(f"sqlite:///{tmp_path / 'dev.db'}")
     try:
@@ -1717,16 +1587,14 @@ class NoteView(fr.AsyncRestView):
 """
 
 
-def test_a_source_arriving_after_setup_trips_instead_of_serving(tmp_path: Path):
-    """The suite named only the sync database; a module imported during
-    collection configures an async one. The unnamed leg must refuse loudly, not
-    quietly serve requests from the late arrival's database."""
+def test_a_source_arriving_during_collection_is_rejected(tmp_path: Path):
+    """Every database source must exist before configure_tests() records it."""
     _write_project(
         tmp_path,
         "import fastapi_restly as fr\nfrom myapp import app\n\n"
+        'fr.configure(database_url="sqlite:///./test.db")\n'
         "fr.testing.configure_tests(\n"
         "    app=app,\n"
-        '    database_url="sqlite:///./test.db",\n'
         "    base=fr.DataclassBase,\n"
         "    create_all=True,\n"
         ")\n",
@@ -1739,7 +1607,7 @@ def test_a_source_arriving_after_setup_trips_instead_of_serving(tmp_path: Path):
     result = _run_pytest(tmp_path)
 
     assert result.returncode != 0
-    assert "named no async database" in result.stdout + result.stderr
+    assert "cannot be changed" in result.stdout + result.stderr
     assert not (tmp_path / "dev.db").exists()
 
 
@@ -1769,17 +1637,14 @@ class NoteView(fr.RestView):
 """
 
 
-def test_a_sync_source_arriving_after_setup_trips_instead_of_serving(tmp_path: Path):
-    """The mirror of the async tripwire test: the suite named only the async
-    database and a collection-time import configures a sync one. A sync route
-    and fr.db.get_engine() -- which reaches the tripwire through its factory
-    inspection, not a call -- must both refuse, not serve the late arrival."""
+def test_a_sync_source_arriving_during_collection_is_rejected(tmp_path: Path):
+    """The consistency check applies equally to the sync configuration."""
     _write_project(
         tmp_path,
         "import fastapi_restly as fr\nfrom myapp import app\n\n"
+        'fr.configure(async_database_url="sqlite+aiosqlite:///./test.db")\n'
         "fr.testing.configure_tests(\n"
         "    app=app,\n"
-        '    async_database_url="sqlite+aiosqlite:///./test.db",\n'
         "    base=fr.DataclassBase,\n"
         "    create_all=True,\n"
         ")\n",
@@ -1795,11 +1660,7 @@ def test_a_sync_source_arriving_after_setup_trips_instead_of_serving(tmp_path: P
 
     assert result.returncode != 0
     combined = result.stdout + result.stderr
-    # Once per refusal path: an AttributeError from a gutted tripwire would
-    # also fail the get_engine test, but not with the message.
-    assert combined.count("named no sync database") >= 2
-    assert "AttributeError" not in combined
-    assert "2 failed" in result.stdout
+    assert "cannot be changed" in combined
     assert not (tmp_path / "dev.db").exists()
 
 
@@ -1812,9 +1673,9 @@ def test_rollback_refuses_client_requests_over_a_loop_bound_driver(tmp_path: Pat
     _write_project(
         tmp_path,
         "import fastapi_restly as fr\nfrom myapp import app\n\n"
+        'fr.configure(async_database_url="sqlite+aiosqlite:///./test.db")\n'
         "fr.testing.configure_tests(\n"
         "    app=app,\n"
-        '    async_database_url="sqlite+aiosqlite:///./test.db",\n'
         "    base=fr.DataclassBase,\n"
         "    create_all=True,\n"
         ")\n\n"
@@ -1839,19 +1700,17 @@ def test_rollback_refuses_client_requests_over_a_loop_bound_driver(tmp_path: Pat
     assert "1 error" in result.stdout
 
 
-def test_a_session_scoped_fixture_reaches_the_suite_database(tmp_path: Path):
-    """Routing is run-wide, not per-test: a session-scoped seed fixture calling
-    fr.open_session() runs before any test's isolation window, and used to fall
-    through to the live globals -- committing its rows into whatever database a
-    collection-time import had configured."""
+def test_collection_time_reconfiguration_fails_before_session_fixtures(tmp_path: Path):
+    """The framework no longer installs a hidden run-wide routing layer."""
     _write_project(
         tmp_path,
+        "import os\n"
         "import fastapi_restly as fr\n"
-        "import pytest\n"
+        "import pytest\n\n"
+        'os.environ["DATABASE_URL"] = "sqlite:///./test.db"\n\n'
         "from myapp import app, Note\n\n"
         "fr.testing.configure_tests(\n"
         "    app=app,\n"
-        '    database_url="sqlite:///./test.db",\n'
         "    base=fr.DataclassBase,\n"
         "    create_all=True,\n"
         '    db_cleanup="none",\n'
@@ -1862,8 +1721,8 @@ def test_a_session_scoped_fixture_reaches_the_suite_database(tmp_path: Path):
         '        session.add(Note(text="seeded"))\n'
         "        session.commit()\n",
         "import myapp_tasks  # noqa: F401 -- reconfigures Restly at collection time\n\n\n"
-        "def test_the_seed_landed_in_the_suite_database(restly_client):\n"
-        '    assert restly_client.get("/notes/").json()["total_count"] == 1\n',
+        "def test_never_starts(restly_client):\n"
+        '    assert restly_client.get("/notes/").status_code == 200\n',
         app_module=_SYNC_APP_MODULE,
     )
     (tmp_path / "myapp_tasks.py").write_text(
@@ -1873,51 +1732,9 @@ def test_a_session_scoped_fixture_reaches_the_suite_database(tmp_path: Path):
     )
     result = _run_pytest(tmp_path)
 
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert _rows(tmp_path / "test.db") == 1
-    # The late-configured database was never even connected to.
+    assert result.returncode != 0
+    assert "cannot be changed" in result.stdout + result.stderr
     assert not (tmp_path / "dev.db").exists()
-
-
-def test_a_foreign_sessionfinish_leaves_the_outer_routing_alone(monkeypatch):
-    """pluggy skips our pytest_collection_finish when an earlier hookimpl
-    raises, but pytest still calls pytest_sessionfinish; popping another run's
-    entry would silently uninstall the outer run's routing and tripwires for
-    the rest of its tests."""
-    sentinel_sync, sentinel_async = object(), object()
-    outer, inner = object(), object()
-    monkeypatch.setattr(_fixtures, "_routing_stack", [(outer, None, None)])
-    with RestlyContext() as context:
-        context.test_make_session = sentinel_sync  # type: ignore[assignment]
-        context.test_async_make_session = sentinel_async  # type: ignore[assignment]
-
-        _fixtures.pytest_sessionfinish(inner, 0)  # type: ignore[arg-type]
-        assert context.test_make_session is sentinel_sync
-        assert _fixtures._routing_stack == [(outer, None, None)]
-
-        _fixtures.pytest_sessionfinish(outer, 0)  # type: ignore[arg-type]
-        assert context.test_make_session is None
-        assert _fixtures._routing_stack == []
-
-
-def test_collection_finish_pushes_once_per_session(monkeypatch):
-    """A second perform_collect in one session must not double-push, or the
-    session's own finish would restore an entry it pushed itself and leave the
-    real prior state stranded on the stack."""
-    from types import SimpleNamespace
-
-    monkeypatch.setattr(_fixtures, "_routing_stack", [])
-    fake = SimpleNamespace(
-        config=SimpleNamespace(
-            option=SimpleNamespace(collectonly=False), rootpath=Path(".")
-        )
-    )
-    with RestlyContext():
-        _fixtures.pytest_collection_finish(fake)  # type: ignore[arg-type]
-        _fixtures.pytest_collection_finish(fake)  # type: ignore[arg-type]
-        assert len(_fixtures._routing_stack) == 1
-        _fixtures.pytest_sessionfinish(fake, 0)  # type: ignore[arg-type]
-        assert _fixtures._routing_stack == []
 
 
 def test_a_nested_run_gives_the_outer_run_its_mode_back(monkeypatch):
@@ -1951,65 +1768,59 @@ def test_a_generator_only_application_is_rejected():
             yield None
 
         fr.configure(sync_session_generator=dev_sessions)
+        configure_tests(app=FastAPI())
         with pytest.raises(RestlyConfigurationError) as excinfo:
-            configure_tests(app=FastAPI())
+            _validate_database_sources(_current_setup(), ROLLBACK)  # type: ignore[arg-type]
 
     message = str(excinfo.value)
     assert "session_generator" in message
     assert "sessionmaker" in message
 
 
-def test_a_generator_alongside_a_named_database_is_accepted():
-    """With a sessionmaker configured for the tests the fixtures install their own
-    source, which the session dependencies consult before any generator."""
+def test_rollback_accepts_a_generator_alongside_a_configured_factory():
+    """Rollback's per-test factory override takes precedence over the generator."""
     with _isolated_config():
 
         def dev_sessions():  # pragma: no cover - never called
             yield None
 
-        fr.configure(
-            database_url="sqlite:///./dev.db", sync_session_generator=dev_sessions
-        )
-        configure_tests(database_url="sqlite:///./test.db")
+        fr.configure(database_url="sqlite://", sync_session_generator=dev_sessions)
+        configure_tests()
         assert _current_setup() is not None
 
 
-def test_a_generator_on_the_unnamed_leg_is_rejected():
-    """A generator is a session source like a sessionmaker: naming only the async
-    database would leave every sync route on the generator's database."""
+def test_delete_rejects_a_generator_even_with_a_factory():
     with _isolated_config():
 
         def dev_sessions():  # pragma: no cover - never called
             yield None
 
-        fr.configure(sync_session_generator=dev_sessions)
+        fr.configure(database_url="sqlite://", sync_session_generator=dev_sessions)
+        configure_tests(db_cleanup=DELETE)
         with pytest.raises(RestlyConfigurationError) as excinfo:
-            configure_tests(async_database_url="sqlite+aiosqlite:///./test.db")
+            _validate_database_sources(_current_setup(), DELETE)  # type: ignore[arg-type]
 
     message = str(excinfo.value)
-    assert "sync_session_generator" in message
-    assert "database_url=" in message
+    assert "custom session generator" in message
+    assert "none" in message
 
 
-def test_an_async_generator_on_the_unnamed_leg_is_rejected():
+def test_none_accepts_a_generator_without_a_factory():
     with _isolated_config():
 
         async def dev_sessions():  # pragma: no cover - never called
             yield None
 
         fr.configure(session_generator=dev_sessions)
-        with pytest.raises(RestlyConfigurationError) as excinfo:
-            configure_tests(database_url="sqlite:///./test.db")
-
-    message = str(excinfo.value)
-    assert "session_generator" in message
-    assert "async_database_url=" in message
+        configure_tests(db_cleanup=NONE)
+        assert _current_setup() is not None
 
 
 def test_a_second_call_in_one_process_is_rejected():
     """The setup is a process-wide singleton: a silent second call would move
     every already-collected test onto its app, database and cleanup mode."""
     with _isolated_config():
-        configure_tests(database_url="sqlite://")
+        fr.configure(database_url="sqlite://")
+        configure_tests()
         with pytest.raises(RestlyConfigurationError, match="already called"):
-            configure_tests(database_url="sqlite://")
+            configure_tests()

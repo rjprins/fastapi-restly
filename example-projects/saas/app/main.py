@@ -12,6 +12,7 @@ This example is a complete showcase of FastAPI-Restly customization patterns:
 - List-params filtering, sorting, and pagination on every CRUD view
 """
 
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -29,8 +30,11 @@ from .views import (
     UserView,
 )
 
-# Set up database connection
-fr.configure(async_database_url="sqlite+aiosqlite:///saas.db")
+# Set up the application database. Tests select another value before importing
+# this module; normal runs keep the local example database.
+fr.configure(
+    async_database_url=os.environ.get("DATABASE_URL", "sqlite+aiosqlite:///saas.db")
+)
 
 
 @asynccontextmanager

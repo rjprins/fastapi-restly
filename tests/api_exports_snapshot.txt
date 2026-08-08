@@ -82,7 +82,6 @@ fastapi_restly.pytest_fixtures:
   - pytest_collection_finish
   - pytest_configure
   - pytest_report_header
-  - pytest_sessionfinish
   - pytest_unconfigure
   - restly_app
   - restly_async_session
@@ -165,7 +164,6 @@ fastapi_restly.pytest_fixtures:
   - pytest_collection_finish
   - pytest_configure
   - pytest_report_header
-  - pytest_sessionfinish
   - pytest_unconfigure
   - restly_app
   - restly_async_session

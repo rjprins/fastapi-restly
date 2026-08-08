@@ -14,6 +14,7 @@ class RestlyContext:
     __slots__ = (
         "async_database_url",
         "async_make_session",
+        "database_configuration_locked",
         "test_async_make_session",
         "test_make_session",
         "database_url",
@@ -26,6 +27,7 @@ class RestlyContext:
 
     async_database_url: str | None
     async_make_session: async_sessionmaker[Any] | None
+    database_configuration_locked: bool
     #: Set by the test fixtures for the duration of a test. The session
     #: dependencies consult it before anything else, so nothing an application
     #: configures afterwards can route a test's requests elsewhere.
@@ -41,6 +43,7 @@ class RestlyContext:
     def __init__(self) -> None:
         self.async_database_url = None
         self.async_make_session = None
+        self.database_configuration_locked = False
         self.test_make_session = None
         self.test_async_make_session = None
         self.database_url = None

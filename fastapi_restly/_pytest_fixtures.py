@@ -4,7 +4,7 @@ import os
 import weakref
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, AsyncIterator, Iterator, cast
+from typing import TYPE_CHECKING, Any, AsyncIterator, Iterator
 
 import pytest
 from fastapi import FastAPI
@@ -15,8 +15,6 @@ from sqlalchemy.orm import Session as SA_Session
 from sqlalchemy.orm import sessionmaker
 
 from ._test_setup import (
-    _ASYNC_LEG_TRIPWIRE,
-    _SYNC_LEG_TRIPWIRE,
     DB_CLEANUP_ENV_VAR,
     DB_CLEANUP_MODES,
     DELETE,
@@ -29,6 +27,7 @@ from ._test_setup import (
     _resolve_db_cleanup,
     _resolve_engine,
     _source_factories,
+    _validate_database_sources,
 )
 from .db._globals import _fr_globals, _get_restly_context
 from .exc import RestlyConfigurationError
@@ -187,8 +186,7 @@ def _reject_per_mapper_binds(factory: Any) -> None:
         return
     mapped = ", ".join(sorted(getattr(key, "__name__", str(key)) for key in binds))
     raise RestlyConfigurationError(
-        "The session factory passed to fr.configure() (or "
-        "fr.testing.configure_tests()) has per-mapper binds "
+        "The session factory passed to fr.configure() has per-mapper binds "
         f"({mapped}), which the test fixtures cannot isolate: those models would "
         "be routed to their own engine, outside the connection this test pins, "
         "and their writes would be committed rather than rolled back. Configure "
@@ -306,10 +304,9 @@ else:
                     "so each request would get its own session, with no "
                     "isolation. Configure an async sessionmaker for the tests "
                     "as well: pass async_database_url=, async_engine= or "
-                    "async_make_session= to fr.configure(), or to "
-                    "fr.testing.configure_tests() if the suite uses it. The "
-                    "fixture then builds the isolated session from it and "
-                    "ignores the generator during each test."
+                    "async_make_session= to fr.configure(). The fixture then "
+                    "builds the isolated session from it and ignores the "
+                    "generator during each test."
                 )
             pytest.skip("Database connection not set up")
 
@@ -350,8 +347,6 @@ else:
                 },
             )
             globals_obj = _get_restly_context()
-            # Layered over the run-wide routing installed by
-            # _restly_managed_routing; restore it rather than clear the slot.
             previous = globals_obj.test_async_make_session
             globals_obj.test_async_make_session = isolated_make_session
             session = None
@@ -360,7 +355,7 @@ else:
                 yield session
             finally:
                 # Restore before closing: a teardown-time close() failure must
-                # not leave the per-test factory in place of the run-wide one.
+                # not leave the per-test factory installed.
                 globals_obj.test_async_make_session = previous
                 if session is not None:
                     await session.close()
@@ -415,10 +410,9 @@ def restly_session(_shared_connection) -> Iterator[SA_Session]:
                 "the session factory this fixture swaps, so each request "
                 "would get its own session, with no isolation. Configure a sync "
                 "sessionmaker for the tests as well: pass database_url=, "
-                "engine= or make_session= to fr.configure(), or to "
-                "fr.testing.configure_tests() if the suite uses it. The "
-                "fixture then builds the isolated session from it and ignores "
-                "the generator during each test."
+                "engine= or make_session= to fr.configure(). The fixture then "
+                "builds the isolated session from it and ignores the generator "
+                "during each test."
             )
         pytest.skip("Database connection not set up")
 
@@ -439,10 +433,8 @@ def restly_session(_shared_connection) -> Iterator[SA_Session]:
     )
 
     globals_obj = _get_restly_context()
-    # One field, consulted first by every session source. Nothing the application
-    # configures later can displace it, and no generator is read around it.
-    # Layered over the run-wide routing installed by _restly_managed_routing;
-    # restore it rather than clear the slot.
+    # One field, consulted first by every session source for this test, so no
+    # generator is read around the pinned factory.
     previous = globals_obj.test_make_session
     globals_obj.test_make_session = isolated_make_session
     session = None
@@ -450,77 +442,29 @@ def restly_session(_shared_connection) -> Iterator[SA_Session]:
         session = isolated_make_session()
         yield session
     finally:
-        # Restore before closing: a teardown-time close() failure must not
-        # leave the per-test factory in place of the run-wide one.
+        # Restore before closing: a teardown-time close() failure must not leave
+        # the per-test factory installed.
         globals_obj.test_make_session = previous
         if session is not None:
             session.close()
 
 
-#: What the test override slots held before each run installed its routing,
-#: tagged with the run's Session so a run that never pushed cannot pop another
-#: run's entry. Innermost run last.
-_routing_stack: list[tuple[Any, Any, Any]] = []
-
-
 def pytest_collection_finish(session: pytest.Session) -> None:
-    """Route every Restly session source through the recorded setup, run-wide,
-    and build the schema.
-
-    Installed after collection -- every ``conftest.py`` has been imported, so
-    the recorded setup is final -- and before any fixture of any scope runs. A
-    hook rather than a session-scoped autouse fixture, because pytest runs a
-    suite's own autouse fixtures before a plugin's: a session-scoped seed
-    fixture calling ``fr.open_session()`` must already be routed to the suite's
-    database, and must find the schema there, whichever way the plugin was
-    registered. The per-test fixtures layer rollback's pinned factories on top
-    and restore this layer afterwards. pytest's rootdir anchors relative
-    Alembic paths, so the invocation directory does not decide which config is
-    found.
-    """
+    """Verify the recorded application configuration and build its test schema."""
     if getattr(session.config.option, "collectonly", False):
         return
-    if _routing_stack and _routing_stack[-1][0] is session:
-        # A second perform_collect in one session must not push twice.
-        return
-    globals_obj = _get_restly_context()
-    _routing_stack.append(
-        (session, globals_obj.test_make_session, globals_obj.test_async_make_session)
-    )
     setup = _current_setup()
     if setup is None:
         return
 
-    recorded_sync, recorded_async = _source_factories()
-    globals_obj.test_make_session = (
-        recorded_sync if recorded_sync is not None else cast(Any, _SYNC_LEG_TRIPWIRE)
-    )
-    globals_obj.test_async_make_session = (
-        recorded_async
-        if recorded_async is not None
-        else cast(Any, _ASYNC_LEG_TRIPWIRE)
-    )
     try:
+        _validate_database_sources(setup, _cleanup_mode())
         _create_schema(setup, root=Path(session.config.rootpath))
     except RestlyConfigurationError as error:
         # As a UsageError pytest prints the message and stops; anything else
         # raised from a hook is reported as an INTERNALERROR with a pluggy
         # traceback.
         raise pytest.UsageError(str(error)) from error
-
-
-def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
-    # Restore rather than clear, for the same reason as the mode override: a
-    # nested in-process run must neither leak its routing outward nor take the
-    # outer run's away. A run that never pushed -- collection was skipped, or
-    # an earlier hookimpl raised before ours ran -- must not pop another run's
-    # entry either, so the top entry has to be this session's own.
-    if not _routing_stack or _routing_stack[-1][0] is not session:
-        return
-    globals_obj = _get_restly_context()
-    _, previous_sync, previous_async = _routing_stack.pop()
-    globals_obj.test_make_session = previous_sync
-    globals_obj.test_async_make_session = previous_async
 
 
 @pytest.fixture(autouse=True)
@@ -535,25 +479,20 @@ def _restly_managed_isolation(request: pytest.FixtureRequest) -> Iterator[None]:
         yield
         return
 
-    yield from _managed_isolation(request, setup, _cleanup_mode())
+    mode = _cleanup_mode()
+    _validate_database_sources(setup, mode)
+    yield from _managed_isolation(request, setup, mode)
 
 
 def _managed_isolation(
     request: pytest.FixtureRequest, setup: Any, mode: str
 ) -> Iterator[None]:
-    """The per-test half of managed isolation.
-
-    Routing is run-wide (``_restly_managed_routing`` holds the recorded
-    factories and the unnamed-leg tripwires in the test override for the whole
-    session); what remains per test is rollback's pinned factories, or delete
-    mode's cleaning.
-    """
+    """Install rollback's pinned factories or run delete-mode cleaning."""
     if mode == ROLLBACK:
         recorded_sync, recorded_async = _source_factories()
         # Both legs, not the first one found: each session fixture swaps only
         # its own factory, so activating one in a suite that configured both
-        # leaves the other's routes committing for real. The fixtures install
-        # their pinned factory and restore the run-wide layer themselves.
+        # leaves the other's routes committing for real.
         if recorded_sync is not None:
             request.getfixturevalue("restly_session")
         if recorded_async is not None:
@@ -606,8 +545,9 @@ def _reject_loop_bound_pinning() -> None:
         "asyncpg binds every connection to the event loop that created it; "
         "requests driven through restly_client run on the client's own loop "
         'and would fail mid-test with "attached to a different loop". Name '
-        "the sync database as well (database_url= alongside "
-        "async_database_url=, pointing at the same database) -- the pinned "
+        "the application with the sync database as well (database_url= "
+        "alongside async_database_url= in fr.configure(), pointing at the same "
+        "database) -- the pinned "
         "connection is then a sync one any loop may use -- or switch to "
         'db_cleanup="delete", where every session opens its own connection '
         "on the loop that runs it."

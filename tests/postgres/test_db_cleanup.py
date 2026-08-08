@@ -85,14 +85,9 @@ def pg_context():
     """A Restly context configured for delete mode against this module's tables."""
 
     def configure(**kwargs):
-        configure_tests(
-            # str(URL) masks the password; the driver needs the real one.
-            database_url=PG_URL.render_as_string(hide_password=False),
-            base=metadata,
-            create_all=True,
-            db_cleanup=DELETE,
-            **kwargs,
-        )
+        # str(URL) masks the password; the driver needs the real one.
+        fr.configure(database_url=PG_URL.render_as_string(hide_password=False))
+        configure_tests(base=metadata, create_all=True, db_cleanup=DELETE, **kwargs)
         setup = _current_setup()
         assert setup is not None
         with fr.db.get_engine().begin() as connection:

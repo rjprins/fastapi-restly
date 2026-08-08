@@ -17,13 +17,19 @@ models declared against
 primary key:
 
 ```python
+import os
+
 import fastapi_restly as fr
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 
-fr.configure(async_database_url="sqlite+aiosqlite:///blog.db")
+fr.configure(
+    async_database_url=os.environ.get(
+        "DATABASE_URL", "sqlite+aiosqlite:///blog.db"
+    )
+)
 
 
 class Post(fr.IDBase):
@@ -264,13 +270,16 @@ pytest then auto-loads Restly's fixtures. Point the suite at a test database in
 
 ```python
 # conftest.py
+import os
+
+os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test.db"
+
 import fastapi_restly as fr
 
-from main import app
+from main import app  # noqa: E402
 
 fr.testing.configure_tests(
     app=app,
-    async_database_url="sqlite+aiosqlite:///./test.db",
     base=fr.IDBase,
     create_all=True,
 )
@@ -303,6 +312,7 @@ Here is everything this page built as one runnable `main.py`, including the
 read-only and write-only columns added along the way:
 
 ```python
+import os
 from contextlib import asynccontextmanager
 
 import fastapi_restly as fr
@@ -310,7 +320,11 @@ from fastapi import FastAPI
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 
-fr.configure(async_database_url="sqlite+aiosqlite:///blog.db")
+fr.configure(
+    async_database_url=os.environ.get(
+        "DATABASE_URL", "sqlite+aiosqlite:///blog.db"
+    )
+)
 
 
 class Post(fr.IDBase):

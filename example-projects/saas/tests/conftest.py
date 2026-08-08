@@ -1,14 +1,22 @@
-import asyncio
+import os
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from pathlib import Path
 
 import pytest
-from app.main import app
-from app.views._base import get_current_org_id, get_current_user_id
 
-import fastapi_restly as fr
-from fastapi_restly.testing import RestlyTestClient
+# Select and clear the disposable database before importing the application,
+# because app.main owns the call to fr.configure().
+_test_database = Path(__file__).resolve().parents[1] / "test.db"
+for leftover in _test_database.parent.glob(f"{_test_database.name}*"):
+    leftover.unlink()
+os.environ["DATABASE_URL"] = f"sqlite+aiosqlite:///{_test_database}"
+
+from app.main import app  # noqa: E402
+from app.views._base import get_current_org_id, get_current_user_id  # noqa: E402
+
+import fastapi_restly as fr  # noqa: E402
+from fastapi_restly.testing import RestlyTestClient  # noqa: E402
 
 # The framework under test must live in this checkout, else a leaked VIRTUAL_ENV
 # (e.g. the main framework .venv) silently validates the wrong source in a worktree.
@@ -20,44 +28,14 @@ if _checkout not in _frl.parents:
         f"This example's venv isn't synced to this tree — run `uv sync` here."
     )
 
-# Dog-food Restly's shipped testing fixtures: configure once against a
-# file-backed SQLite database, create the schema once, and let
-# ``restly_async_session`` isolate every test with a savepoint. This is the
-# fixtures-on-request layer beneath ``fr.testing.configure_tests()``, kept in
-# use here so both setups stay exercised. ``app.main`` configures ``saas.db``
-# for real runs; the line below repoints the suite at a throwaway ``test.db``
-# (gitignored) that the savepoint fixture keeps clean between tests.
-fr.configure(async_database_url="sqlite+aiosqlite:///./test.db")
-
-
-@pytest.fixture(scope="session", autouse=True)
-def _create_schema():
-    """Create the schema once for the whole session; tests roll back their data.
-
-    Start from a clean database file so a leftover ``test.db`` (an interrupted
-    run, or an older schema) cannot seed rows or stale tables that would sit
-    below the per-test transaction and never roll back.
-    """
-    for leftover in Path().glob("test.db*"):
-        leftover.unlink()
-    asyncio.run(fr.db.async_create_all(fr.DataclassBase))
-
-
-@pytest.fixture
-def restly_app():
-    """The app ``restly_client`` wraps."""
-    return app
+# Dog-food the one-call setup against the database app.main already configured.
+fr.testing.configure_tests(app=app, base=fr.DataclassBase, create_all=True)
 
 
 @pytest.fixture
 def client(restly_client) -> RestlyTestClient:
     """The suite's existing name for the isolated Restly test client."""
     return restly_client
-
-
-@pytest.fixture(autouse=True)
-async def _isolate_every_test(restly_async_session):
-    """Give every test savepoint isolation, client requests included."""
 
 
 @pytest.fixture(autouse=True)
