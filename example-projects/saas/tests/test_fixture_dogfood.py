@@ -1,10 +1,10 @@
-"""fznb.5: prove the shipped ``restly_async_session`` fixture actually isolates
-each test and shares one connection.
+"""Prove the shipped savepoint isolation actually isolates each test and
+shares one connection.
 
-``conftest.py`` wires an autouse ``_isolate_every_test(restly_async_session)``, so
-the whole suite now runs on Restly's own testing story instead of a fresh
-database per test. These tests fail loudly if either property regresses, which is
-what makes the dog-fooding meaningful.
+``conftest.py`` calls ``fr.testing.configure_tests()``, which arms Restly's
+managed per-test isolation for the whole suite, so it runs on Restly's own
+testing story instead of a fresh database per test. These tests fail loudly if
+either property regresses, which is what makes the dog-fooding meaningful.
 """
 
 # Two tests create an organization with the SAME unique slug. Both succeed only

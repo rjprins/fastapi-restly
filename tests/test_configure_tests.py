@@ -1796,7 +1796,9 @@ def test_rollback_accepts_a_generator_alongside_a_configured_factory():
 
         fr.configure(database_url="sqlite://", sync_session_generator=dev_sessions)
         configure_tests()
-        assert _current_setup() is not None
+        # Through the validator the run actually calls: configure_tests() alone
+        # validates nothing, so asserting on it accepts everything.
+        _validate_database_sources(_current_setup(), ROLLBACK)  # type: ignore[arg-type]
 
 
 def test_delete_rejects_a_generator_even_with_a_factory():
@@ -1823,7 +1825,9 @@ def test_none_accepts_a_generator_without_a_factory():
 
         fr.configure(session_generator=dev_sessions)
         configure_tests(db_cleanup=NONE)
-        assert _current_setup() is not None
+        # Through the validator the run actually calls: configure_tests() alone
+        # validates nothing, so asserting on it accepts everything.
+        _validate_database_sources(_current_setup(), NONE)  # type: ignore[arg-type]
 
 
 def test_a_pooled_asyncpg_engine_is_rejected_outside_both_leg_rollback():
@@ -1875,6 +1879,40 @@ def test_a_pooled_asyncpg_engine_is_accepted_under_both_leg_rollback():
         )
         configure_tests()
         _validate_database_sources(_current_setup(), ROLLBACK)  # type: ignore[arg-type]
+
+
+def test_a_session_scoped_seed_fixture_reaches_the_suite_database(tmp_path: Path):
+    """The plain seed shape under application-owned configuration: the app's
+    configured database is the suite database, and a session-scoped fixture's
+    fr.open_session() write lands there, visible to the tests. This is the
+    guarantee that outlives the removed run-wide routing layer."""
+    _write_project(
+        tmp_path,
+        "import os\n\n"
+        'os.environ["DATABASE_URL"] = "sqlite:///./test.db"\n\n'
+        "import fastapi_restly as fr\n"
+        "import pytest\n"
+        "from myapp import app, Note\n\n"
+        "fr.testing.configure_tests(\n"
+        "    app=app,\n"
+        "    base=fr.DataclassBase,\n"
+        "    create_all=True,\n"
+        '    db_cleanup="none",\n'
+        ")\n\n\n"
+        '@pytest.fixture(scope="session", autouse=True)\n'
+        "def seed():\n"
+        "    with fr.open_session() as session:\n"
+        '        session.add(Note(text="seeded"))\n'
+        "        session.commit()\n",
+        "def test_the_seed_is_visible(restly_client):\n"
+        '    assert restly_client.get("/notes/").json()["total_count"] == 1\n',
+        app_module=_SYNC_APP_MODULE,
+    )
+    result = _run_pytest(tmp_path)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert _rows(tmp_path / "test.db") == 1
+    assert not (tmp_path / "dev.db").exists()
 
 
 def test_a_second_call_in_one_process_is_rejected():
