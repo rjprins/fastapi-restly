@@ -72,6 +72,13 @@ existing variables” option in application code; that makes the test unable to
 select its database before import. If import-time settings are awkward, pass an
 explicit test settings object to an app factory instead.
 
+With a real async server, the test engine should not pool. Drivers like
+asyncpg bind every connection to the event loop that created it, and test code
+hops loops, so a held pooled connection fails on its next checkout. Select an
+unpooled engine the same way you select the URL:
+`fr.configure(async_engine=create_async_engine(url, poolclass=NullPool))`.
+Restly refuses a pooled asyncpg engine up front rather than fail mid-suite.
+
 That is the whole setup. Until you call
 {func}`configure_tests() <fastapi_restly.testing.configure_tests>` the plugin does
 nothing: its fixtures are there, but none of them act on a suite that has not

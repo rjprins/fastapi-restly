@@ -544,13 +544,14 @@ def _reject_loop_bound_pinning() -> None:
         'db_cleanup="rollback" pins one connection for the whole test, and '
         "asyncpg binds every connection to the event loop that created it; "
         "requests driven through restly_client run on the client's own loop "
-        'and would fail mid-test with "attached to a different loop". Name '
-        "the application with the sync database as well (database_url= "
-        "alongside async_database_url= in fr.configure(), pointing at the same "
-        "database) -- the pinned "
-        "connection is then a sync one any loop may use -- or switch to "
-        'db_cleanup="delete", where every session opens its own connection '
-        "on the loop that runs it."
+        'and would fail mid-test with "attached to a different loop". '
+        "Configure the application with the sync database as well "
+        "(database_url= alongside async_database_url=, pointing at the same "
+        "database): the pinned connection is then a sync one any loop may "
+        'use. Or switch to db_cleanup="delete" with an engine that does not '
+        "pool (fr.configure(async_engine=create_async_engine(url, "
+        "poolclass=NullPool))), so every session opens a fresh connection on "
+        "the loop that runs it."
     )
 
 

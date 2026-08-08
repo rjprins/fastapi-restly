@@ -1672,8 +1672,18 @@ def test_rollback_refuses_client_requests_over_a_loop_bound_driver(tmp_path: Pat
     keeps working."""
     _write_project(
         tmp_path,
-        "import fastapi_restly as fr\nfrom myapp import app\n\n"
-        'fr.configure(async_database_url="sqlite+aiosqlite:///./test.db")\n'
+        "import fastapi_restly as fr\n"
+        "from sqlalchemy.ext.asyncio import create_async_engine\n"
+        "from sqlalchemy.pool import NullPool\n"
+        "from myapp import app\n\n"
+        "# NullPool as the docs advise for real async servers; the pinning\n"
+        "# refusal is about the held per-test connection, which no pool policy\n"
+        "# can save.\n"
+        "fr.configure(\n"
+        "    async_engine=create_async_engine(\n"
+        '        "sqlite+aiosqlite:///./test.db", poolclass=NullPool\n'
+        "    )\n"
+        ")\n"
         "fr.testing.configure_tests(\n"
         "    app=app,\n"
         "    base=fr.DataclassBase,\n"
@@ -1814,6 +1824,57 @@ def test_none_accepts_a_generator_without_a_factory():
         fr.configure(session_generator=dev_sessions)
         configure_tests(db_cleanup=NONE)
         assert _current_setup() is not None
+
+
+def test_a_pooled_asyncpg_engine_is_rejected_outside_both_leg_rollback():
+    """asyncpg connections are bound to their creating loop, and a holding pool
+    hands them across loops. Delete and none modes, and async-only rollback,
+    all reuse pooled connections, so the refusal names the NullPool fix."""
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+    with _isolated_config():
+        engine = create_async_engine("sqlite+aiosqlite:///./test.db")
+        engine.sync_engine.dialect.driver = "asyncpg"
+        fr.configure(
+            async_make_session=async_sessionmaker(bind=engine, expire_on_commit=False)
+        )
+        configure_tests(db_cleanup=DELETE)
+        setup = _current_setup()
+        for mode in (DELETE, NONE, ROLLBACK):
+            with pytest.raises(RestlyConfigurationError, match="poolclass=NullPool"):
+                _validate_database_sources(setup, mode)  # type: ignore[arg-type]
+
+
+def test_an_unpooled_asyncpg_engine_is_accepted():
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+    from sqlalchemy.pool import NullPool
+
+    with _isolated_config():
+        engine = create_async_engine(
+            "sqlite+aiosqlite:///./test.db", poolclass=NullPool
+        )
+        engine.sync_engine.dialect.driver = "asyncpg"
+        fr.configure(
+            async_make_session=async_sessionmaker(bind=engine, expire_on_commit=False)
+        )
+        configure_tests(db_cleanup=DELETE)
+        _validate_database_sources(_current_setup(), DELETE)  # type: ignore[arg-type]
+
+
+def test_a_pooled_asyncpg_engine_is_accepted_under_both_leg_rollback():
+    """With a sync leg, rollback never draws from the async pool: the async
+    engine only fronts the pinned sync connection."""
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+    with _isolated_config():
+        engine = create_async_engine("sqlite+aiosqlite:///./test.db")
+        engine.sync_engine.dialect.driver = "asyncpg"
+        fr.configure(
+            database_url="sqlite:///./test.db",
+            async_make_session=async_sessionmaker(bind=engine, expire_on_commit=False),
+        )
+        configure_tests()
+        _validate_database_sources(_current_setup(), ROLLBACK)  # type: ignore[arg-type]
 
 
 def test_a_second_call_in_one_process_is_rejected():

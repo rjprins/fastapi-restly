@@ -33,12 +33,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - An application test engine aimed at a real async server should use
   `poolclass=NullPool`, so no pooled connection crosses the event loops test
   code hops between (the schema step's own loop, each test's loop, the test
-  client's portal thread) -- how drivers like asyncpg fail. In-memory SQLite
-  should keep its single-connection pool. The one shape no pool policy can save
-  -- rollback mode's
-  pinned connection serving `restly_client` requests from asyncpg, whose
-  connections are bound to the loop that created them -- is refused up front
-  with the two ways out: name the sync database as well, or use `"delete"`.
+  client's portal thread) -- how drivers like asyncpg fail. Restly refuses a
+  pooled asyncpg engine up front, with the one-line fix in the message, rather
+  than fail mid-suite; in-memory SQLite keeps its single-connection pool. The
+  one shape no pool policy can save -- rollback mode's pinned connection
+  serving `restly_client` requests from asyncpg, whose connections are bound
+  to the loop that created them -- is refused up front with the two ways out:
+  configure the sync database as well, or use `"delete"` with an unpooled
+  engine.
 
 - Restly's declarative base mixes in SQLAlchemy's `AsyncAttrs`, so every model
   has `awaitable_attrs`: `await obj.awaitable_attrs.items` reads an unloaded
