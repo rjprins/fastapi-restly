@@ -86,19 +86,18 @@ def test_the_two_schema_options_are_mutually_exclusive():
         )
 
 
-def test_inheriting_a_configured_database_is_rejected():
-    # The shape that bites: the application module configured a database on
-    # import and the suite named none of its own.
-    with _isolated_config():
-        fr.configure(async_database_url="sqlite+aiosqlite:///./dev.db")
-        with pytest.raises(RestlyConfigurationError) as excinfo:
-            configure_tests(app=FastAPI())
+def test_configure_tests_records_the_database_the_application_already_configured():
+    """The application owns database setup; the test helper only records it."""
+    with _isolated_config() as context:
+        fr.configure(database_url="sqlite://")
+        configured_factory = context.make_session
 
-    message = str(excinfo.value)
-    # The message must name the database it refused, so the reader can tell at a
-    # glance whether it was the development one.
-    assert "sqlite+aiosqlite:///./dev.db" in message
-    assert "no database argument" in message
+        configure_tests(app=FastAPI())
+
+        setup = _current_setup()
+        assert setup is not None
+        assert setup.make_session is configured_factory
+        assert context.make_session is configured_factory
 
 
 def test_passing_the_configured_url_explicitly_is_accepted():
@@ -173,15 +172,12 @@ def test_the_rejection_messages_hide_the_password():
         fr.configure(engine=create_engine("sqlite://"))
         context.database_url = "postgresql://app:hunter2@db.internal:5432/dev"
 
-        with pytest.raises(RestlyConfigurationError) as inherited:
-            configure_tests(app=FastAPI())
         with pytest.raises(RestlyConfigurationError) as unnamed:
             configure_tests(async_database_url="sqlite+aiosqlite:///./test.db")
 
-    for excinfo in (inherited, unnamed):
-        message = str(excinfo.value)
-        assert "hunter2" not in message
-        assert "db.internal:5432/dev" in message
+    message = str(unnamed.value)
+    assert "hunter2" not in message
+    assert "db.internal:5432/dev" in message
 
 
 def test_any_single_database_argument_satisfies_the_guard():
@@ -945,8 +941,8 @@ def test_tests_still_run_when_no_database_is_configured_anywhere(tmp_path: Path)
     assert "skipped" not in result.stdout
 
 
-def test_inheriting_the_application_database_fails_the_run(tmp_path: Path):
-    """The guard must fire in a real session, not just in a unit test."""
+def test_the_application_database_is_the_test_database(tmp_path: Path):
+    """The suite uses the database its application configured."""
     _write_project(
         tmp_path,
         "import fastapi_restly as fr\nfrom myapp import app\n\n"
@@ -955,10 +951,8 @@ def test_inheriting_the_application_database_fails_the_run(tmp_path: Path):
     )
     result = _run_pytest(tmp_path)
 
-    assert result.returncode != 0
-    assert "no database argument" in result.stdout + result.stderr
-    # It refused before creating anything in the application's database.
-    assert not (tmp_path / "dev.db").exists()
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "1 passed" in result.stdout
 
 
 # ---------------------------------------------------------------------------
@@ -1950,7 +1944,7 @@ def test_a_nested_run_gives_the_outer_run_its_mode_back(monkeypatch):
 def test_a_generator_only_application_is_rejected():
     """A session_generator is where an application's requests get their database.
     The fixtures cannot isolate one they know nothing about, so a suite that names
-    no database of its own would read and write the application's."""
+    no matching factory cannot use rollback isolation."""
     with _isolated_config():
 
         def dev_sessions():  # pragma: no cover - never called
@@ -1962,7 +1956,7 @@ def test_a_generator_only_application_is_rejected():
 
     message = str(excinfo.value)
     assert "session_generator" in message
-    assert "make_session=" in message
+    assert "sessionmaker" in message
 
 
 def test_a_generator_alongside_a_named_database_is_accepted():
@@ -2008,7 +2002,7 @@ def test_an_async_generator_on_the_unnamed_leg_is_rejected():
             configure_tests(database_url="sqlite:///./test.db")
 
     message = str(excinfo.value)
-    assert "a session_generator" in message
+    assert "session_generator" in message
     assert "async_database_url=" in message
 
 

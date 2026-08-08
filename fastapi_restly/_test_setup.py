@@ -228,6 +228,29 @@ def configure_tests(
             "declarative base> to know which tables to create."
         )
 
+    if db_cleanup == ROLLBACK:
+        if (
+            _fr_globals.sync_session_generator is not None
+            and _fr_globals.make_session is None
+        ):
+            raise RestlyConfigurationError(
+                'fr.testing.configure_tests(db_cleanup="rollback") cannot '
+                "isolate the configured sync_session_generator without a sync "
+                "sessionmaker. Configure the application with database_url=, "
+                "engine= or make_session= as well."
+            )
+        if (
+            _fr_globals.session_generator is not None
+            and _fr_globals.async_make_session is None
+        ):
+            raise RestlyConfigurationError(
+                'fr.testing.configure_tests(db_cleanup="rollback") cannot '
+                "isolate the configured session_generator without an async "
+                "sessionmaker. Configure the application with "
+                "async_database_url=, async_engine= or async_make_session= as "
+                "well."
+            )
+
     names_sync = any(
         argument is not None for argument in (database_url, engine, make_session)
     )
@@ -260,8 +283,9 @@ def configure_tests(
         # aborts the suite at conftest import, so nothing runs on the half-state.
         if names_sync and names_async:
             _reject_split_databases()
-    else:
-        _reject_inherited_database()
+    # With no database arguments, use the application configuration already in
+    # force. This is the direction of the public API: configure_tests() records
+    # database state; it does not need to replace it.
 
     # The guards above guarantee the live globals now hold only what this call
     # named, so recording them records the suite's own configuration.
@@ -274,8 +298,8 @@ def configure_tests(
         db_cleanup_exclude=tuple(db_cleanup_exclude),
         make_session=_fr_globals.make_session,
         async_make_session=_fr_globals.async_make_session,
-        database_url=_fr_globals.database_url if names_sync else None,
-        async_database_url=_fr_globals.async_database_url if names_async else None,
+        database_url=_fr_globals.database_url,
+        async_database_url=_fr_globals.async_database_url,
     )
 
 
