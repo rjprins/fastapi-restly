@@ -337,12 +337,12 @@ the configured database.
 
 **Scope:** `function`
 
-A SQLAlchemy `Session` on a pinned connection whose outer transaction is never
-committed. Each request during the test builds its own real session that joins
-that transaction through a savepoint (SQLAlchemy's `create_savepoint` mode), so
-`commit()` and `rollback()` behave as in production while nothing persists past
-the test. The fixture skips automatically if no sync session source is
-configured at all.
+Under the default rollback mode, a SQLAlchemy `Session` on a pinned connection
+whose outer transaction is never committed. Each request during the test builds
+its own real session that joins that transaction through a savepoint
+(SQLAlchemy's `create_savepoint` mode), so `commit()` and `rollback()` behave
+as in production while nothing persists past the test. The fixture skips
+automatically if no sync session source is configured at all.
 
 A configured `sync_session_generator` is bypassed during rollback isolation, so
 the request builds its own session on the fixture's connection instead. What is

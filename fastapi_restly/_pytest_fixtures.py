@@ -254,17 +254,23 @@ else:
         _shared_connection,
     ) -> AsyncIterator[SA_AsyncSession]:
         """
-        Pytest fixture providing an isolated async database session.
+        Pytest fixture providing the suite's async database session.
 
-        The async equivalent of :func:`restly_session`. Each request during the
-        test builds its own real ``AsyncSession`` that joins a never-committed
-        outer transaction through a SAVEPOINT (SQLAlchemy's ``create_savepoint``
-        mode), so a request's ``commit()`` and ``rollback()`` behave as in
-        production. The outer transaction rolls back at teardown, leaving the
-        database clean
-        for the next test -- nothing is ever persisted. When a sync sessionmaker is
-        also configured, this fixture shares the sync fixture's pinned connection,
-        so a test that uses both sees one database.
+        The async equivalent of :func:`restly_session`, and like it, what it
+        yields follows the suite's ``db_cleanup`` mode: under the default
+        ``"rollback"`` it is the savepoint-isolated session described below;
+        under ``"delete"`` and ``"none"`` it is a plain session on the
+        configured database, since rolling it back would undo writes those
+        modes mean to commit.
+
+        Under rollback, each request during the test builds its own real
+        ``AsyncSession`` that joins a never-committed outer transaction through
+        a SAVEPOINT (SQLAlchemy's ``create_savepoint`` mode), so a request's
+        ``commit()`` and ``rollback()`` behave as in production. The outer
+        transaction rolls back at teardown, leaving the database clean for the
+        next test -- nothing is ever persisted. When a sync sessionmaker is
+        also configured, this fixture shares the sync fixture's pinned
+        connection, so a test that uses both sees one database.
 
         As with the sync fixture there is no shared identity map: this fixture and
         the request are separate sessions on one connection, so a write made
@@ -276,10 +282,6 @@ else:
 
         ``fr.open_async_session()`` resolves the same factory, so it also yields an
         isolated session during a test.
-
-        All of that describes the default ``db_cleanup="rollback"``. Under the
-        other modes this yields a plain session on the configured database, since
-        rolling it back would undo writes those modes mean to commit.
         """
         original = _source_factories()[1]
         if _cleanup_mode() != ROLLBACK:
@@ -364,14 +366,20 @@ else:
 @pytest.fixture
 def restly_session(_shared_connection) -> Iterator[SA_Session]:
     """
-    Pytest fixture providing an isolated database session.
+    Pytest fixture providing the suite's database session.
 
-    The session joins a never-committed outer transaction through a SAVEPOINT
-    (SQLAlchemy's ``create_savepoint`` mode). Every request during the test builds
-    its own real session on the same pinned connection, so a request's
-    ``commit()`` and ``rollback()`` behave as in production, and the outer
-    transaction rolls back at teardown, leaving the database clean for the next
-    test -- nothing is ever persisted.
+    What it yields follows the suite's ``db_cleanup`` mode: under the default
+    ``"rollback"`` it is the savepoint-isolated session described below; under
+    ``"delete"`` and ``"none"`` it is a plain session on the configured
+    database, since rolling it back would undo writes those modes mean to
+    commit.
+
+    Under rollback, the session joins a never-committed outer transaction
+    through a SAVEPOINT (SQLAlchemy's ``create_savepoint`` mode). Every request
+    during the test builds its own real session on the same pinned connection,
+    so a request's ``commit()`` and ``rollback()`` behave as in production, and
+    the outer transaction rolls back at teardown, leaving the database clean
+    for the next test -- nothing is ever persisted.
 
     Unlike production, this fixture and the request are separate sessions on one
     connection, so a write made directly on this session becomes visible to a
@@ -383,10 +391,6 @@ def restly_session(_shared_connection) -> Iterator[SA_Session]:
 
     ``fr.open_session()`` resolves the same factory, so it also yields an isolated
     session during a test.
-
-    All of that describes the default ``db_cleanup="rollback"``. Under the other
-    modes this yields a plain session on the configured database, since rolling it
-    back would undo writes those modes mean to commit.
     """
     original = _source_factories()[0]
     if _cleanup_mode() != ROLLBACK:
