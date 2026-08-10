@@ -393,6 +393,7 @@ def _is_memory_sqlite(url: Any) -> bool:
     return (
         not url.database
         or url.database == ":memory:"
+        or url.database == "file::memory:"
         or url.query.get("mode") == "memory"
     )
 

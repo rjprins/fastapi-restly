@@ -1,7 +1,9 @@
 try:
     from fastapi_restly._pytest_fixtures import (
-        _restly_async_delete,  # noqa: F401 -- requested by the autouse fixture
+        _restly_async_preclean,  # noqa: F401 -- requested by the autouse fixture
+        _restly_async_scope,  # noqa: F401 -- requested by the autouse fixture
         _restly_managed_isolation,  # noqa: F401 -- autouse; inert until fr.testing.configure_tests()
+        _restly_sync_scope,  # noqa: F401 -- requested by the autouse fixture
         _shared_connection,  # noqa: F401 -- re-exported so dependent fixtures resolve it
         pytest_addoption,  # noqa: F401 -- pytest hook; must be found on the plugin module
         pytest_collection_finish,  # noqa: F401 -- pytest hook; must be found on the plugin module

@@ -1,10 +1,10 @@
 """Regression: RestlyUncommittedChangesWarning must not
 false-positive under the savepoint test fixtures.
 
-The fixtures patch ``commit`` to ``flush(); begin_nested()`` (a savepoint, never
-a real commit), so ``after_commit`` -- which the detector relies on to clear its
-"flushed but uncommitted" flag -- never fires, and every write false-warned. The
-fix makes the patched commit clear the flag itself (mimicking after_commit).
+The fixtures use real SQLAlchemy sessions joined to an outer transaction with
+``create_savepoint``. A session commit must still fire ``after_commit`` and
+clear the detector's "flushed but uncommitted" flag even though the outer test
+transaction never commits.
 
 These drive the savepoint fixtures directly (the ``.__wrapped__`` pattern, like
 test_testing_fixtures_coverage.py) and assert both halves of the contract:
@@ -57,12 +57,14 @@ def test_savepoint_sync_commit_does_not_false_warn():
         with RestlyContext():
             _fr_globals.make_session = make_session
             with engine.connect() as conn:
-                gen = _fixtures.restly_session.__wrapped__(conn)
+                scope = _fixtures._restly_sync_scope.__wrapped__(conn)
+                isolated_make_session = next(scope)
+                gen = _fixtures.restly_session.__wrapped__(isolated_make_session)
                 try:
-                    session = next(gen)  # savepoint session; patched commit active
+                    session = next(gen)
                     _arm_uncommitted_warning(session)
 
-                    # Writes and commits -> the patched commit clears the flag.
+                    # Writes and commits clear the flag through after_commit.
                     session.add(_Row(name="committed"))
                     session.flush()
                     session.commit()
@@ -73,7 +75,8 @@ def test_savepoint_sync_commit_does_not_false_warn():
                     session.flush()
                     assert _warn_count(lambda: _warn_if_uncommitted(session)) >= 1
                 finally:
-                    gen.close()  # restore the patched-commit/sessionmaker patches
+                    gen.close()
+                    scope.close()
     finally:
         engine.dispose()
 
@@ -89,7 +92,9 @@ async def test_savepoint_async_commit_does_not_false_warn():
             await conn.run_sync(_Base.metadata.create_all)
         with RestlyContext():
             _fr_globals.async_make_session = make_session
-            agen = _fixtures.restly_async_session.__wrapped__(None)
+            scope = _fixtures._restly_async_scope.__wrapped__(None)
+            isolated_make_session = await scope.__anext__()
+            agen = _fixtures.restly_async_session.__wrapped__(isolated_make_session)
             try:
                 session = await agen.__anext__()  # savepoint session; patch active
                 _arm_uncommitted_warning(session)
@@ -104,5 +109,6 @@ async def test_savepoint_async_commit_does_not_false_warn():
                 assert _warn_count(lambda: _warn_if_uncommitted(session)) >= 1
             finally:
                 await agen.aclose()
+                await scope.aclose()
     finally:
         await async_engine.dispose()

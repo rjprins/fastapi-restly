@@ -16,7 +16,7 @@ from app.main import app  # noqa: E402
 from app.views._base import get_current_org_id, get_current_user_id  # noqa: E402
 
 import fastapi_restly as fr  # noqa: E402
-from fastapi_restly.testing import RestlyTestClient  # noqa: E402
+from fastapi_restly.testing import AsyncRestlyTestClient, RestlyTestClient  # noqa: E402
 
 # The framework under test must live in this checkout, else a leaked VIRTUAL_ENV
 # (e.g. the main framework .venv) silently validates the wrong source in a worktree.
@@ -36,6 +36,20 @@ fr.testing.configure_tests(app=app, base=fr.DataclassBase, create_all=True)
 def client(restly_client) -> RestlyTestClient:
     """The suite's existing name for the isolated Restly test client."""
     return restly_client
+
+
+@pytest.fixture
+def async_client(restly_async_client) -> AsyncRestlyTestClient:
+    """The async client for tests that also inspect the async database."""
+    return restly_async_client
+
+
+@pytest.fixture
+async def async_org_id(async_client: AsyncRestlyTestClient) -> int:
+    response = await async_client.post(
+        "/organizations/", json={"name": "Pattern Org", "slug": "pattern-org"}
+    )
+    return response.json()["id"]
 
 
 @pytest.fixture(autouse=True)

@@ -192,3 +192,18 @@ async def test_async_restly_test_client_matches_sync_status_assertions():
 
         with pytest.raises(AssertionError, match="to return 404, got 200"):
             await client.get("/test", assert_status_code=404)
+
+
+@pytest.mark.asyncio
+async def test_async_client_follows_redirects_like_the_sync_client():
+    app = FastAPI()
+
+    @app.get("/items/")
+    async def items():
+        return {"items": []}
+
+    async with AsyncRestlyTestClient(app) as client:
+        response = await client.get("/items")
+
+    assert response.status_code == 200
+    assert response.json() == {"items": []}

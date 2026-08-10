@@ -52,7 +52,9 @@ def test_get_engine_and_create_all_work_inside_the_sync_fixture():
             _fr_globals.make_session = make_session
             shared_gen = _fixtures._shared_connection.__wrapped__()
             conn = next(shared_gen)
-            gen = _fixtures.restly_session.__wrapped__(conn)
+            scope = _fixtures._restly_sync_scope.__wrapped__(conn)
+            isolated_make_session = next(scope)
+            gen = _fixtures.restly_session.__wrapped__(isolated_make_session)
             session = next(gen)
             try:
                 assert fr.db.get_engine() is engine
@@ -64,6 +66,7 @@ def test_get_engine_and_create_all_work_inside_the_sync_fixture():
                 assert found.first() is not None
             finally:
                 gen.close()
+                scope.close()
                 shared_gen.close()
     finally:
         engine.dispose()
@@ -79,7 +82,9 @@ def test_sync_request_write_is_visible_to_a_later_request():
             _fr_globals.make_session = make_session
             shared_gen = _fixtures._shared_connection.__wrapped__()
             conn = next(shared_gen)
-            gen = _fixtures.restly_session.__wrapped__(conn)
+            scope = _fixtures._restly_sync_scope.__wrapped__(conn)
+            isolated_make_session = next(scope)
+            gen = _fixtures.restly_session.__wrapped__(isolated_make_session)
             next(gen)
             try:
                 _Base.metadata.create_all(conn)
@@ -101,6 +106,7 @@ def test_sync_request_write_is_visible_to_a_later_request():
                 next(req2, None)
             finally:
                 gen.close()
+                scope.close()
                 shared_gen.close()
     finally:
         engine.dispose()
@@ -118,7 +124,9 @@ def test_sync_request_rollback_discards_only_its_own_work():
             _fr_globals.make_session = make_session
             shared_gen = _fixtures._shared_connection.__wrapped__()
             conn = next(shared_gen)
-            gen = _fixtures.restly_session.__wrapped__(conn)
+            scope = _fixtures._restly_sync_scope.__wrapped__(conn)
+            isolated_make_session = next(scope)
+            gen = _fixtures.restly_session.__wrapped__(isolated_make_session)
             next(gen)
             try:
                 _Base.metadata.create_all(conn)
@@ -144,6 +152,7 @@ def test_sync_request_rollback_discards_only_its_own_work():
                 next(req3, None)
             finally:
                 gen.close()
+                scope.close()
                 shared_gen.close()
     finally:
         engine.dispose()
@@ -158,7 +167,9 @@ async def test_get_async_engine_and_async_create_all_work_inside_the_async_fixtu
     try:
         with RestlyContext():
             _fr_globals.async_make_session = make_session
-            agen = _fixtures.restly_async_session.__wrapped__(None)
+            scope = _fixtures._restly_async_scope.__wrapped__(None)
+            isolated_make_session = await scope.__anext__()
+            agen = _fixtures.restly_async_session.__wrapped__(isolated_make_session)
             session = await agen.__anext__()
             try:
                 assert fr.db.get_async_engine() is async_engine
@@ -172,6 +183,7 @@ async def test_get_async_engine_and_async_create_all_work_inside_the_async_fixtu
                 assert found.first() is not None
             finally:
                 await agen.aclose()
+                await scope.aclose()
     finally:
         await async_engine.dispose()
 
@@ -185,7 +197,9 @@ async def test_async_request_write_is_visible_to_a_later_request():
     try:
         with RestlyContext():
             _fr_globals.async_make_session = make_session
-            agen = _fixtures.restly_async_session.__wrapped__(None)
+            scope = _fixtures._restly_async_scope.__wrapped__(None)
+            isolated_make_session = await scope.__anext__()
+            agen = _fixtures.restly_async_session.__wrapped__(isolated_make_session)
             await agen.__anext__()
             try:
                 await fr.db.async_create_all(_Base)
@@ -204,6 +218,7 @@ async def test_async_request_write_is_visible_to_a_later_request():
                 await anext(req2, None)
             finally:
                 await agen.aclose()
+                await scope.aclose()
     finally:
         await async_engine.dispose()
 
@@ -217,7 +232,9 @@ async def test_async_request_rollback_discards_only_its_own_work():
     try:
         with RestlyContext():
             _fr_globals.async_make_session = make_session
-            agen = _fixtures.restly_async_session.__wrapped__(None)
+            scope = _fixtures._restly_async_scope.__wrapped__(None)
+            isolated_make_session = await scope.__anext__()
+            agen = _fixtures.restly_async_session.__wrapped__(isolated_make_session)
             await agen.__anext__()
             try:
                 await fr.db.async_create_all(_Base)
@@ -243,5 +260,6 @@ async def test_async_request_rollback_discards_only_its_own_work():
                 await anext(req3, None)
             finally:
                 await agen.aclose()
+                await scope.aclose()
     finally:
         await async_engine.dispose()

@@ -122,9 +122,9 @@ That is the whole setup. Until you call
 nothing: its fixtures are there, but none of them act on a suite that has not
 asked for them.
 
-The `testing` extra installs `pytest-asyncio`, which the async session fixture
-needs. Give it a loop scope in `pyproject.toml`, or it prints a deprecation
-warning on every run:
+The `testing` extra installs `pytest-asyncio`, which the managed async database
+scope needs. Give it a loop scope in `pyproject.toml`, or it prints a
+deprecation warning on every run:
 
 ```toml
 [tool.pytest.ini_options]
@@ -182,7 +182,10 @@ def test_create_and_fetch_user(restly_client):
 
 The user this test creates is gone by the time the next test runs. To work
 against the database directly instead of through the API, ask for a session
-fixture; see [the fixture reference](#pytest-fixture-reference).
+fixture, or use `fr.open_session()` / `fr.open_async_session()` directly in a
+unit test. Database isolation belongs to the test, not to the client fixture,
+so either form receives the same cleanup; see [the fixture
+reference](#pytest-fixture-reference).
 
 ## Test databases and migrations
 
@@ -232,9 +235,13 @@ default suits most suites; the other two exist for what it cannot serve.
 at the end, through the savepoints described [below](#savepoints-and-rollback).
 Nothing is ever committed, which is what makes it the fastest option, and it
 leaves reference data your migrations seeded untouched. In an async-only app,
-`restly_client` opens the transaction on its own portal loop. If a test also
-needs `restly_async_session`, use `restly_async_client` so the request and the
-direct session instead share pytest's loop and one transaction.
+`restly_client` opens the transaction on its own portal loop. If a test or one
+of its fixtures also needs direct async database access, use
+`restly_async_client` so the request and direct work instead share pytest's loop
+and one transaction. Restly refuses the split-loop shape before it can commit
+outside the managed transaction. For loop-bound pooled drivers such as asyncpg,
+the same restriction applies in `"delete"` and `"none"` modes even though
+those modes do not open an outer transaction.
 
 **`"delete"`** empties the tables before each test instead, and lets writes
 commit for real. It is slower and wants a database of its own, but the rows the
@@ -336,8 +343,9 @@ buy little here, and they cost you an event-loop setting, a class of confusing
 collection errors when it is wrong, and the ability to query the database from
 `pdb` (see [inspecting the database](#inspecting-the-database)).
 
-Write them when a test has to await something itself: `restly_async_session` to
-set up rows directly, or one of your own coroutines. Use
+Write them when a test has to await something itself: `restly_async_session` or
+`fr.open_async_session()` to set up rows directly, or one of your own
+coroutines. Use
 `restly_async_client` for HTTP in the same test. In an async-only rollback suite,
 combining `restly_client` and `restly_async_session` is rejected because those
 fixtures live on different event loops and could not share the pinned
@@ -393,9 +401,9 @@ in a suite that never called `configure_tests()` and requests no session
 fixture, **nothing rolls them back**: a client-only test commits real rows to
 the configured database.
 
-For an async-only application under rollback, the fixture opens its transaction
-inside the client's portal loop. This is why a normally pooled asyncpg engine
-works even though the test function itself is synchronous.
+For an async-only application under rollback, the internal database scope opens
+its transaction inside the client's portal loop. This is why a normally pooled
+asyncpg engine works even though the test function itself is synchronous.
 
 ### `restly_async_client`
 
@@ -419,7 +427,7 @@ as in production while nothing persists past the test. The fixture skips
 automatically if no sync session source is configured at all.
 
 A configured `sync_session_generator` is bypassed during rollback isolation, so
-the request builds its own session on the fixture's connection instead. What is
+the request builds its own session on the test scope's connection instead. What is
 lost is anything the generator body runs per session, a `SET search_path` for
 example. Configure a sync sessionmaker as well: with only a generator the fixture
 has nothing to build the isolated session from, and setup raises. Delete mode
@@ -427,7 +435,9 @@ rejects custom generators because it cannot prove that the generator and the
 sessionmaker use the same database; `db_cleanup="none"` leaves them untouched.
 
 `fr.open_session()` resolves the same factory `SessionDep` does, so it too
-yields a session on the fixture's connection during a test.
+yields a session on the test's pinned connection even when `restly_session` is
+not requested. This makes database-only unit tests a first-class use case; the
+public fixture is only a convenient ready-made `Session`.
 
 Under any [cleanup mode](#cleaning-up-between-tests) other than `rollback` this
 fixture yields a plain session on the configured database instead, since rolling
@@ -460,6 +470,10 @@ configured.
 Pair it with `restly_async_client`, not `restly_client`, in an async-only
 rollback test. This keeps every use of the pinned connection on pytest's event
 loop.
+
+As on the sync side, `fr.open_async_session()` is isolated even when this public
+fixture is not requested. Use that form when a unit test naturally owns several
+short-lived sessions or when application service code already opens its own.
 
 Usage mirrors `restly_session`, with `await`:
 
@@ -496,10 +510,12 @@ its own sub-project's root.
 The default mode follows SQLAlchemy's own recipe for test suites, [joining a
 session into an external
 transaction](https://docs.sqlalchemy.org/en/20/orm/session_transaction.html#session-external-transaction).
-The fixture opens one connection, begins a transaction on it, and points Restly's
-session factory at that connection in `create_savepoint` mode. Every session
-built during the test, including the ones requests build, joins that transaction
-through a savepoint.
+The plugin's internal test scope opens one connection, begins a transaction on
+it, and points Restly's session factory at that connection in
+`create_savepoint` mode. Every session built during the test, including direct
+sessions and the ones requests build, joins that transaction through a
+savepoint. Public client and session fixtures consume this scope; none of them
+owns it.
 
 A `commit()` therefore releases a savepoint rather than reaching the database,
 and a `rollback()` discards only that session's own work, so both behave the way

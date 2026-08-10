@@ -55,6 +55,68 @@ async def test_async_session_without_sync_sessionmaker(restly_async_session):
     result.assert_outcomes(passed=1)
 
 
+def test_async_scope_disposes_after_session_and_client_teardown(
+    pytester: pytest.Pytester,
+):
+    pytester.makefile(
+        ".toml",
+        pyproject="""
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+""",
+    )
+    pytester.makeconftest(
+        """
+import pytest
+from fastapi import FastAPI
+from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
+import fastapi_restly as fr
+
+events = []
+engine = create_async_engine("sqlite+aiosqlite:///./test.db")
+original_dispose = AsyncEngine.dispose
+
+async def observed_dispose(self, *args, **kwargs):
+    if self is engine:
+        events.append("dispose")
+    await original_dispose(self, *args, **kwargs)
+
+AsyncEngine.dispose = observed_dispose
+fr.configure(async_engine=engine)
+fr.testing.configure_tests(app=FastAPI())
+
+def pytest_unconfigure(config):
+    AsyncEngine.dispose = original_dispose
+
+@pytest.fixture
+def observed_session(restly_async_session):
+    original_close = restly_async_session.close
+
+    async def observed_close():
+        events.append("session close")
+        await original_close()
+
+    restly_async_session.close = observed_close
+    return restly_async_session
+"""
+    )
+    pytester.makepyfile(
+        """
+from conftest import events
+
+async def test_uses_both_consumers(restly_async_client, observed_session):
+    assert events == []
+
+def test_scope_was_the_last_database_owner_to_finish():
+    assert events == ["session close", "dispose"]
+"""
+    )
+
+    result = pytester.runpytest_subprocess("-q")
+    result.assert_outcomes(passed=2)
+
+
 def test_public_plugin_uses_prefixed_fixture_names(pytester: pytest.Pytester):
     pytester.makefile(
         ".toml",

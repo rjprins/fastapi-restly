@@ -95,6 +95,8 @@ jobs:
         run: make test-framework test-typing test-examples
 
   postgres:
+    # Intentionally one supported Python version: the main matrix covers
+    # interpreter compatibility, while this job covers dialect-specific behavior.
     # The rest of the suite runs on SQLite; this leg pins the dialect-divergent
     # surface (LIKE/ILIKE case folding, NULL ordering, duplicate-sort-key
     # pagination), the psycopg cross-session sharing, and the db_cleanup

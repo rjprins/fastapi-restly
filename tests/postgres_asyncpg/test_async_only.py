@@ -91,6 +91,13 @@ def drop_test_table() -> Iterator[None]:
     asyncio.run(drop())
 
 
+@pytest.mark.asyncio
+async def test_direct_database_access_without_a_public_fixture():
+    """The internal scope owns even fixture-less unit-of-work access."""
+    async with fr.open_async_session() as session:
+        await session.execute(text("select 1"))
+
+
 def test_sync_client_uses_asyncpg_and_commits_inside_the_test(restly_client):
     response = restly_client.post("/notes")
 

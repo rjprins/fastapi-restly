@@ -18,8 +18,8 @@ async def open_async_session() -> AsyncGenerator[SA_AsyncSession]:
     uncommitted-changes check is not armed here -- off-HTTP code owns its commit,
     exactly as a custom write route does.)
 
-    Under the ``restly_async_session`` test fixture the generator is cleared, so
-    this yields the fixture's isolated session like every other session source.
+    In a managed test this yields a session from the test's isolated factory,
+    even when no public session or client fixture is requested.
 
     Example::
 
@@ -53,8 +53,8 @@ def open_session() -> Generator[SA_Session]:
     uncommitted-changes check is not armed here -- off-HTTP code owns its commit,
     exactly as a custom write route does.)
 
-    Under the ``restly_session`` test fixture the generator is cleared, so this
-    yields the fixture's isolated session like every other session source.
+    In a managed test this yields a session from the test's isolated factory,
+    even when no public session or client fixture is requested.
 
     Example::
 

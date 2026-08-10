@@ -201,6 +201,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "alembic", specifier = ">=1.15.2" },
+    { name = "asgi-lifespan", marker = "extra == 'testing'", specifier = ">=2.1.0" },
     { name = "fastapi", specifier = ">=0.115.0" },
     { name = "fastapi", extras = ["standard"], marker = "extra == 'standard'", specifier = ">=0.115.0" },
     { name = "httpx", marker = "extra == 'testing'", specifier = ">=0.27.0" },
@@ -217,6 +218,7 @@ provides-extras = ["standard", "testing"]
 dev = [
     { name = "ablog", specifier = ">=0.11.12" },
     { name = "aiosqlite", specifier = ">=0.21.0" },
+    { name = "asgi-lifespan", specifier = ">=2.1.0" },
     { name = "httpx", specifier = ">=0.27.0" },
     { name = "httpx2", specifier = ">=2.0.0" },
     { name = "ipython", specifier = ">=8.36.0" },

@@ -12,8 +12,12 @@ import pytest
 from sqlalchemy import make_url
 
 _RAW_URL = os.environ.get("RESTLY_TEST_DATABASE_URL", "")
-
 if _RAW_URL.startswith("postgresql"):
+    if os.environ.get("RESTLY_DB_CLEANUP") is not None:
+        raise pytest.UsageError(
+            "tests/postgres_asyncpg uses RESTLY_ASYNCPG_CLEANUP for its explicit "
+            "mode legs; unset RESTLY_DB_CLEANUP before running this subtree."
+        )
     ASYNCPG_URL = make_url(_RAW_URL).set(drivername="postgresql+asyncpg")
 else:
     ASYNCPG_URL = None

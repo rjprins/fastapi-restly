@@ -51,7 +51,9 @@ def test_unrelated_sync_session_is_not_hijacked_by_restly_session():
         with RestlyContext():
             _fr_globals.make_session = make_session
             with fixture_engine.connect() as conn:
-                gen = _fixtures.restly_session.__wrapped__(conn)
+                scope = _fixtures._restly_sync_scope.__wrapped__(conn)
+                isolated_make_session = next(scope)
+                gen = _fixtures.restly_session.__wrapped__(isolated_make_session)
                 fixture_session = next(gen)
                 try:
                     # An unrelated session commits for real.
@@ -82,6 +84,7 @@ def test_unrelated_sync_session_is_not_hijacked_by_restly_session():
                     assert found.first() is not None
                 finally:
                     gen.close()
+                    scope.close()
     finally:
         fixture_engine.dispose()
         other_engine.dispose()
@@ -101,7 +104,9 @@ async def test_unrelated_async_session_is_not_hijacked_by_restly_async_session()
             await conn.run_sync(_Base.metadata.create_all)
         with RestlyContext():
             _fr_globals.async_make_session = make_session
-            agen = _fixtures.restly_async_session.__wrapped__(None)
+            scope = _fixtures._restly_async_scope.__wrapped__(None)
+            isolated_make_session = await scope.__anext__()
+            agen = _fixtures.restly_async_session.__wrapped__(isolated_make_session)
             fixture_session = await agen.__anext__()
             try:
                 # An unrelated async session commits for real.
@@ -131,6 +136,7 @@ async def test_unrelated_async_session_is_not_hijacked_by_restly_async_session()
                 assert found.first() is not None
             finally:
                 await agen.aclose()
+                await scope.aclose()
     finally:
         await fixture_engine.dispose()
         await other_engine.dispose()

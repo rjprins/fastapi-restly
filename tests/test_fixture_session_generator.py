@@ -6,10 +6,10 @@ factory the fixtures swap. A project that configured one got no isolation: the
 request built its own real session from the generator, outside the fixture's
 transaction, so its write escaped the rollback.
 
-The fixtures now clear the generator for the duration of a test and restore it
-afterwards, so the request is built from the fixture's isolated factory on the
-shared connection. Without a sessionmaker to build from, the fixture raises
-instead of skipping with a misleading "Database connection not set up".
+The internal test scope now installs an isolated factory with higher precedence
+than the generator, so requests use the shared connection without mutating the
+application's generator. Without a sessionmaker to build from, the public
+fixture raises instead of skipping with a misleading configuration error.
 """
 
 from __future__ import annotations
@@ -66,7 +66,9 @@ def test_sync_fixture_isolates_a_generator_configured_project():
             _fr_globals.make_session = make_session
             _fr_globals.sync_session_generator = project_get_db
             with engine.connect() as conn:
-                gen = _fixtures.restly_session.__wrapped__(conn)
+                scope = _fixtures._restly_sync_scope.__wrapped__(conn)
+                isolated_make_session = next(scope)
+                gen = _fixtures.restly_session.__wrapped__(isolated_make_session)
                 try:
                     session = next(gen)
 
@@ -90,6 +92,7 @@ def test_sync_fixture_isolates_a_generator_configured_project():
                     assert fetched.first() is not None
                 finally:
                     gen.close()
+                    scope.close()
 
             # The fixture restores the generator after the test.
             assert _fr_globals.sync_session_generator is project_get_db
@@ -148,7 +151,9 @@ async def test_async_fixture_isolates_a_generator_configured_project():
         with RestlyContext():
             _fr_globals.async_make_session = make_session
             _fr_globals.session_generator = project_get_db
-            agen = _fixtures.restly_async_session.__wrapped__(None)
+            scope = _fixtures._restly_async_scope.__wrapped__(None)
+            isolated_make_session = await scope.__anext__()
+            agen = _fixtures.restly_async_session.__wrapped__(isolated_make_session)
             try:
                 session = await agen.__anext__()
 
@@ -170,6 +175,7 @@ async def test_async_fixture_isolates_a_generator_configured_project():
                 assert fetched.first() is not None
             finally:
                 await agen.aclose()
+                await scope.aclose()
 
             # The fixture restores the generator after the test.
             assert _fr_globals.session_generator is project_get_db
@@ -221,7 +227,9 @@ def test_open_session_yields_an_isolated_session_with_a_generator_configured():
             _fr_globals.make_session = make_session
             _fr_globals.sync_session_generator = project_get_db
             with engine.connect() as conn:
-                gen = _fixtures.restly_session.__wrapped__(conn)
+                scope = _fixtures._restly_sync_scope.__wrapped__(conn)
+                isolated_make_session = next(scope)
+                gen = _fixtures.restly_session.__wrapped__(isolated_make_session)
                 try:
                     session = next(gen)
                     with fr.open_session() as opened:
@@ -231,6 +239,7 @@ def test_open_session_yields_an_isolated_session_with_a_generator_configured():
                         assert opened.get_bind() is session.get_bind()
                 finally:
                     gen.close()
+                    scope.close()
     finally:
         engine.dispose()
 
@@ -250,7 +259,9 @@ async def test_open_async_session_yields_an_isolated_session_with_a_generator_co
         with RestlyContext():
             _fr_globals.async_make_session = make_session
             _fr_globals.session_generator = project_get_db
-            agen = _fixtures.restly_async_session.__wrapped__(None)
+            scope = _fixtures._restly_async_scope.__wrapped__(None)
+            isolated_make_session = await scope.__anext__()
+            agen = _fixtures.restly_async_session.__wrapped__(isolated_make_session)
             try:
                 session = await agen.__anext__()
                 async with fr.open_async_session() as opened:
@@ -260,6 +271,7 @@ async def test_open_async_session_yields_an_isolated_session_with_a_generator_co
                     assert opened.get_bind() is session.get_bind()
             finally:
                 await agen.aclose()
+                await scope.aclose()
     finally:
         await async_engine.dispose()
 

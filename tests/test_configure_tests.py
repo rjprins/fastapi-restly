@@ -665,6 +665,29 @@ def test_delete_mode_isolates_tests_and_leaves_the_last_one_behind(tmp_path: Pat
     assert rows == ["shared@example.com"]
 
 
+def test_delete_mode_cleans_before_user_fixtures_seed_the_test(tmp_path: Path):
+    _write_project(
+        tmp_path,
+        _DELETE_CONFTEST,
+        "import asyncio\n"
+        "import pytest\n"
+        "import fastapi_restly as fr\n"
+        "from myapp import Note\n\n\n"
+        "@pytest.fixture\n"
+        "def seeded_note():\n"
+        "    async def seed():\n"
+        "        async with fr.open_async_session() as session:\n"
+        '            session.add(Note(text="seeded for this test"))\n'
+        "            await session.commit()\n"
+        "    asyncio.run(seed())\n\n\n"
+        "def test_seed_survives_until_the_client_runs(seeded_note, restly_client):\n"
+        '    assert restly_client.get("/notes/").json()["total_count"] == 1\n',
+    )
+    result = _run_pytest(tmp_path)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
 def test_the_flag_switches_a_rollback_suite_to_delete(tmp_path: Path):
     """A debugging run changes mode without the suite being edited."""
     _write_project(tmp_path, _CONFTEST, _DELETE_TESTS)  # conftest says rollback
@@ -1684,9 +1707,9 @@ def test_async_only_rollback_rejects_sync_client_with_async_session(tmp_path: Pa
         "from myapp import Note\n\n\n"
         "def test_split_loops_are_refused(restly_client, restly_async_session):\n"
         '    restly_client.get("/notes/")\n\n\n'
-        "def test_session_fixture_alone_still_works(restly_async_session):\n"
+        "async def test_session_fixture_alone_still_works(restly_async_session):\n"
         '    restly_async_session.add(Note(text="one loop only"))\n'
-        "    restly_async_session.flush()\n",
+        "    await restly_async_session.flush()\n",
     )
     result = _run_pytest(tmp_path)
 
@@ -1696,6 +1719,112 @@ def test_async_only_rollback_rejects_sync_client_with_async_session(tmp_path: Pa
     assert "restly_async_client" in combined
     assert "1 passed" in result.stdout
     assert "1 error" in result.stdout
+
+
+@pytest.mark.parametrize("cleanup_mode", [DELETE, NONE])
+def test_loop_bound_driver_rejects_split_client_in_committing_modes(
+    tmp_path: Path, cleanup_mode: str
+):
+    """Changing cleanup policy cannot make cross-loop pooled access safe."""
+    _write_project(
+        tmp_path,
+        "import os\n"
+        'os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test.db"\n\n'
+        "import fastapi_restly as fr\n"
+        "from myapp import app\n\n"
+        "# Exercise the loop-bound-driver policy without requiring asyncpg in\n"
+        "# the framework's SQLite unit-test environment.\n"
+        'fr.db.get_async_engine().dialect.name = "postgresql"\n'
+        'fr.db.get_async_engine().dialect.driver = "asyncpg"\n'
+        "fr.testing.configure_tests(\n"
+        "    app=app,\n"
+        "    base=fr.DataclassBase,\n"
+        "    create_all=True,\n"
+        f'    db_cleanup="{cleanup_mode}",\n'
+        ")\n",
+        "def test_split_loops_are_refused(\n"
+        "    restly_client, restly_async_session\n"
+        "):\n"
+        '    restly_client.get("/notes/")\n',
+    )
+    result = _run_pytest(tmp_path)
+
+    assert result.returncode != 0
+    combined = result.stdout + result.stderr
+    assert "cannot combine restly_client with restly_async_session" in combined
+    assert "restly_async_client" in combined
+
+
+def test_async_only_rollback_rejects_database_setup_before_sync_client(tmp_path: Path):
+    """A fixture must not commit outside the portal-owned transaction."""
+    _write_project(
+        tmp_path,
+        "import fastapi_restly as fr\n"
+        "from sqlalchemy.ext.asyncio import create_async_engine\n"
+        "from myapp import app\n\n"
+        "fr.configure(\n"
+        "    async_engine=create_async_engine(\n"
+        '        "sqlite+aiosqlite:///./test.db"\n'
+        "    )\n"
+        ")\n"
+        "fr.testing.configure_tests(\n"
+        "    app=app,\n"
+        "    base=fr.DataclassBase,\n"
+        "    create_all=True,\n"
+        ")\n",
+        "import asyncio\n"
+        "import pytest\n"
+        "import fastapi_restly as fr\n"
+        "from myapp import Note\n\n\n"
+        "@pytest.fixture\n"
+        "def seeded_note():\n"
+        "    async def seed():\n"
+        "        async with fr.open_async_session() as session:\n"
+        '            session.add(Note(text="outside portal"))\n'
+        "            await session.commit()\n"
+        "    asyncio.run(seed())\n\n\n"
+        "def test_split_loop_setup_is_refused(seeded_note, restly_client):\n"
+        '    restly_client.get("/notes/")\n',
+    )
+    result = _run_pytest(tmp_path)
+
+    assert result.returncode != 0
+    combined = result.stdout + result.stderr
+    assert "cannot open an async database session" in combined
+    assert "restly_async_client" in combined
+
+
+def test_async_database_scope_does_not_require_the_public_session_fixture(
+    tmp_path: Path,
+):
+    """Unit tests can use open_async_session() without constructing a client."""
+    _write_project(
+        tmp_path,
+        _CONFTEST,
+        "import pytest\n"
+        "from sqlalchemy import func, select\n"
+        "import fastapi_restly as fr\n"
+        "from myapp import Note\n\n\n"
+        "@pytest.fixture\n"
+        "def restly_async_session():\n"
+        '    raise AssertionError("the isolation scope must not consume this fixture")\n\n\n'
+        "@pytest.mark.asyncio\n"
+        "async def test_direct_database_unit_of_work():\n"
+        "    async with fr.open_async_session() as session:\n"
+        '        session.add(Note(text="unit test"))\n'
+        "        await session.commit()\n"
+        "        count = await session.scalar(select(func.count()).select_from(Note))\n"
+        "        assert count == 1\n\n\n"
+        "@pytest.mark.asyncio\n"
+        "async def test_next_unit_of_work_starts_clean():\n"
+        "    async with fr.open_async_session() as session:\n"
+        "        count = await session.scalar(select(func.count()).select_from(Note))\n"
+        "        assert count == 0\n",
+    )
+    result = _run_pytest(tmp_path)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "2 passed" in result.stdout
 
 
 def test_collection_time_reconfiguration_fails_before_session_fixtures(tmp_path: Path):
