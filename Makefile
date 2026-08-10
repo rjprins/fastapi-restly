@@ -1,4 +1,4 @@
-.PHONY: test test-framework test-typing test-postgres test-examples test-all clean install-dev lint pre-commit-install pre-commit-run docs docs-serve blog blog-serve build-pages
+.PHONY: test test-framework test-typing test-postgres test-postgres-asyncpg test-examples test-all clean install-dev lint pre-commit-install pre-commit-run docs docs-serve blog blog-serve build-pages
 
 # Default target
 all: test-all
@@ -50,11 +50,19 @@ test-postgres:
 	@echo "=== Testing PostgreSQL dialect leg ==="
 	scripts/with_postgres.sh uv run --with "psycopg[binary]" pytest tests/postgres/ -v
 
+# Exercise the production-shaped async-only PostgreSQL setup with its normal
+# pool. Each mode gets a fresh pytest process and therefore fresh event loops.
+test-postgres-asyncpg:
+	@echo "=== Testing async-only PostgreSQL engine lifecycle ==="
+	scripts/with_postgres.sh uv run --with asyncpg pytest tests/postgres_asyncpg/ -v
+	RESTLY_ASYNCPG_CLEANUP=delete scripts/with_postgres.sh uv run --with asyncpg pytest tests/postgres_asyncpg/ -v
+	RESTLY_ASYNCPG_CLEANUP=none scripts/with_postgres.sh uv run --with asyncpg pytest tests/postgres_asyncpg/ -v
+
 # Test all examples
 test-examples: test-shop test-blog test-saas
 
 # Test everything
-test-all: test-framework test-typing test-postgres test-examples
+test-all: test-framework test-typing test-postgres test-postgres-asyncpg test-examples
 	@echo "=== All Tests Complete ==="
 
 # Quick test (just framework)
@@ -118,6 +126,7 @@ help:
 	@echo "  test-blog       - Test the blog example"
 	@echo "  test-saas       - Test the SaaS example"
 	@echo "  test-postgres   - Test the PostgreSQL dialect leg (starts a container if needed)"
+	@echo "  test-postgres-asyncpg - Test pooled async-only PostgreSQL fixtures in every cleanup mode"
 	@echo "  test-examples   - Test all examples"
 	@echo "  test-all        - Test framework, dialect leg, and all examples"
 	@echo "  test            - Quick test (just framework)"

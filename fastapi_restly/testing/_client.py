@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import json
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 try:
     from fastapi.testclient import TestClient
@@ -31,10 +33,10 @@ else:
 URLTypes = httpx.URL | str
 
 
-class RestlyTestClient(TestClient):
-    """Custom TestClient that automatically checks response codes and provides clear error messages."""
-
-    def assert_status(self, response: httpx.Response, expected_code: int | None = None):
+class _StatusAssertions:
+    def assert_status(
+        self, response: httpx.Response, expected_code: int | None = None
+    ) -> None:
         """Check if the response status code matches the expected code."""
         __tracebackhide__ = True
 
@@ -70,8 +72,40 @@ class RestlyTestClient(TestClient):
             f"{content_str}"
         )
 
+
+class RestlyTestClient(_StatusAssertions, TestClient):
+    """Synchronous test client with Restly's response status assertions."""
+
+    def __init__(
+        self, app: Any, *args: Any, _transport_app: Any | None = None, **kwargs: Any
+    ) -> None:
+        """Build a client while optionally exposing a different public app.
+
+        Managed database isolation wraps the ASGI lifespan internally, but
+        callers have always used ``client.app`` as the original ``FastAPI``
+        instance (including to register a view after constructing the client).
+        ``_transport_app`` lets the fixture keep that contract while Starlette's
+        transport and lifespan run the internal wrapper.
+        """
+        self._restly_public_app = app
+        self._restly_transport_app = app if _transport_app is None else _transport_app
+        super().__init__(self._restly_transport_app, *args, **kwargs)
+        self.app = self._restly_public_app
+
+    def __enter__(self) -> RestlyTestClient:
+        # Starlette's lifespan coroutine reads ``self.app`` when __enter__ starts
+        # it. Temporarily expose the transport wrapper, then restore the public
+        # FastAPI app after startup has completed. The request transport already
+        # captured the wrapper in TestClient.__init__.
+        self.app = self._restly_transport_app
+        try:
+            super().__enter__()
+        finally:
+            self.app = self._restly_public_app
+        return self
+
     def get(
-        self, url: URLTypes, *, assert_status_code: int | None = 200, **kwargs
+        self, url: URLTypes, *, assert_status_code: int | None = 200, **kwargs: Any
     ) -> httpx.Response:
         """Make a GET request. Asserts the response status code matches `assert_status_code` (default: 200).
         Pass `assert_status_code=None` to accept any status below 400 instead;
@@ -82,7 +116,7 @@ class RestlyTestClient(TestClient):
         return response
 
     def post(
-        self, url: URLTypes, *, assert_status_code: int | None = 201, **kwargs
+        self, url: URLTypes, *, assert_status_code: int | None = 201, **kwargs: Any
     ) -> httpx.Response:
         """Make a POST request. Asserts the response status code matches `assert_status_code` (default: 201).
         Pass `assert_status_code=None` to accept any status below 400 instead;
@@ -93,7 +127,7 @@ class RestlyTestClient(TestClient):
         return response
 
     def put(
-        self, url: URLTypes, *, assert_status_code: int | None = 200, **kwargs
+        self, url: URLTypes, *, assert_status_code: int | None = 200, **kwargs: Any
     ) -> httpx.Response:
         """Make a PUT request. Asserts the response status code matches `assert_status_code` (default: 200).
         Pass `assert_status_code=None` to accept any status below 400 instead;
@@ -104,7 +138,7 @@ class RestlyTestClient(TestClient):
         return response
 
     def patch(
-        self, url: URLTypes, *, assert_status_code: int | None = 200, **kwargs
+        self, url: URLTypes, *, assert_status_code: int | None = 200, **kwargs: Any
     ) -> httpx.Response:
         """Make a PATCH request. Asserts the response status code matches `assert_status_code` (default: 200).
         Pass `assert_status_code=None` to accept any status below 400 instead;
@@ -115,12 +149,70 @@ class RestlyTestClient(TestClient):
         return response
 
     def delete(
-        self, url: URLTypes, *, assert_status_code: int | None = 204, **kwargs
+        self, url: URLTypes, *, assert_status_code: int | None = 204, **kwargs: Any
     ) -> httpx.Response:
         """Make a DELETE request. Asserts the response status code matches `assert_status_code` (default: 204).
         Pass `assert_status_code=None` to accept any status below 400 instead;
         it does not skip the check."""
         __tracebackhide__ = True
         response = super().delete(url, **kwargs)
+        self.assert_status(response, assert_status_code)
+        return response
+
+
+class AsyncRestlyTestClient(_StatusAssertions, httpx.AsyncClient):
+    """Async test client with the same response assertions as the sync client."""
+
+    def __init__(
+        self, app: Any, *args: Any, _transport_app: Any | None = None, **kwargs: Any
+    ) -> None:
+        self.app = app
+        transport_app = app if _transport_app is None else _transport_app
+        kwargs.setdefault("transport", httpx.ASGITransport(app=transport_app))
+        kwargs.setdefault("base_url", "http://testserver")
+        super().__init__(*args, **kwargs)
+
+    async def get(
+        self, url: URLTypes, *, assert_status_code: int | None = 200, **kwargs: Any
+    ) -> httpx.Response:
+        """Make a GET request and assert status 200 by default."""
+        __tracebackhide__ = True
+        response = await super().get(url, **kwargs)
+        self.assert_status(response, assert_status_code)
+        return response
+
+    async def post(
+        self, url: URLTypes, *, assert_status_code: int | None = 201, **kwargs: Any
+    ) -> httpx.Response:
+        """Make a POST request and assert status 201 by default."""
+        __tracebackhide__ = True
+        response = await super().post(url, **kwargs)
+        self.assert_status(response, assert_status_code)
+        return response
+
+    async def put(
+        self, url: URLTypes, *, assert_status_code: int | None = 200, **kwargs: Any
+    ) -> httpx.Response:
+        """Make a PUT request and assert status 200 by default."""
+        __tracebackhide__ = True
+        response = await super().put(url, **kwargs)
+        self.assert_status(response, assert_status_code)
+        return response
+
+    async def patch(
+        self, url: URLTypes, *, assert_status_code: int | None = 200, **kwargs: Any
+    ) -> httpx.Response:
+        """Make a PATCH request and assert status 200 by default."""
+        __tracebackhide__ = True
+        response = await super().patch(url, **kwargs)
+        self.assert_status(response, assert_status_code)
+        return response
+
+    async def delete(
+        self, url: URLTypes, *, assert_status_code: int | None = 204, **kwargs: Any
+    ) -> httpx.Response:
+        """Make a DELETE request and assert status 204 by default."""
+        __tracebackhide__ = True
+        response = await super().delete(url, **kwargs)
         self.assert_status(response, assert_status_code)
         return response

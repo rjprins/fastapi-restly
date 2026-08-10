@@ -4,7 +4,7 @@ import pytest
 from fastapi import FastAPI, status
 from fastapi.testclient import TestClient
 
-from fastapi_restly.testing import RestlyTestClient
+from fastapi_restly.testing import AsyncRestlyTestClient, RestlyTestClient
 
 
 def test_restly_test_client_basic_functionality():
@@ -157,3 +157,38 @@ def test_assert_status_code_none_still_rejects_an_error_status():
         assert client.get("/fine", assert_status_code=None).status_code == 200
         with pytest.raises(AssertionError):
             client.get("/gone", assert_status_code=None)
+
+
+@pytest.mark.asyncio
+async def test_async_restly_test_client_matches_sync_status_assertions():
+    app = FastAPI()
+
+    @app.get("/test")
+    async def test_get():
+        return {"method": "get"}
+
+    @app.post("/test", status_code=201)
+    async def test_post():
+        return {"method": "post"}
+
+    @app.put("/test")
+    async def test_put():
+        return {"method": "put"}
+
+    @app.patch("/test")
+    async def test_patch():
+        return {"method": "patch"}
+
+    @app.delete("/test", status_code=204)
+    async def test_delete():
+        return None
+
+    async with AsyncRestlyTestClient(app) as client:
+        assert (await client.get("/test")).json() == {"method": "get"}
+        assert (await client.post("/test")).json() == {"method": "post"}
+        assert (await client.put("/test")).json() == {"method": "put"}
+        assert (await client.patch("/test")).json() == {"method": "patch"}
+        assert (await client.delete("/test")).status_code == 204
+
+        with pytest.raises(AssertionError, match="to return 404, got 200"):
+            await client.get("/test", assert_status_code=404)

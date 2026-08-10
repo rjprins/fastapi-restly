@@ -1664,37 +1664,25 @@ def test_a_sync_source_arriving_during_collection_is_rejected(tmp_path: Path):
     assert not (tmp_path / "dev.db").exists()
 
 
-def test_rollback_refuses_client_requests_over_a_loop_bound_driver(tmp_path: Path):
-    """asyncpg binds connections to their creating loop; rollback's pinned
-    connection would cross into the client's portal loop and fail mid-test with
-    "attached to a different loop". Refusing at the client names the two ways
-    out, while a suite that only uses the session fixture stays on one loop and
-    keeps working."""
+def test_async_only_rollback_rejects_sync_client_with_async_session(tmp_path: Path):
+    """Direct async access and requests must share one event loop."""
     _write_project(
         tmp_path,
         "import fastapi_restly as fr\n"
         "from sqlalchemy.ext.asyncio import create_async_engine\n"
-        "from sqlalchemy.pool import NullPool\n"
         "from myapp import app\n\n"
-        "# NullPool as the docs advise for real async servers; the pinning\n"
-        "# refusal is about the held per-test connection, which no pool policy\n"
-        "# can save.\n"
         "fr.configure(\n"
         "    async_engine=create_async_engine(\n"
-        '        "sqlite+aiosqlite:///./test.db", poolclass=NullPool\n'
+        '        "sqlite+aiosqlite:///./test.db"\n'
         "    )\n"
         ")\n"
         "fr.testing.configure_tests(\n"
         "    app=app,\n"
         "    base=fr.DataclassBase,\n"
         "    create_all=True,\n"
-        ")\n\n"
-        "# Impersonate asyncpg's loop-bound behavior on the recorded engine.\n"
-        "from fastapi_restly._test_setup import _current_setup\n"
-        '_engine = _current_setup().async_make_session.kw["bind"]\n'
-        '_engine.sync_engine.dialect.driver = "asyncpg"\n',
+        ")\n",
         "from myapp import Note\n\n\n"
-        "def test_client_is_refused(restly_client):\n"
+        "def test_split_loops_are_refused(restly_client, restly_async_session):\n"
         '    restly_client.get("/notes/")\n\n\n'
         "def test_session_fixture_alone_still_works(restly_async_session):\n"
         '    restly_async_session.add(Note(text="one loop only"))\n'
@@ -1704,8 +1692,8 @@ def test_rollback_refuses_client_requests_over_a_loop_bound_driver(tmp_path: Pat
 
     assert result.returncode != 0
     combined = result.stdout + result.stderr
-    assert "attached to a different loop" in combined
-    assert "database_url=" in combined
+    assert "cannot combine restly_client with restly_async_session" in combined
+    assert "restly_async_client" in combined
     assert "1 passed" in result.stdout
     assert "1 error" in result.stdout
 
@@ -1830,10 +1818,8 @@ def test_none_accepts_a_generator_without_a_factory():
         _validate_database_sources(_current_setup(), NONE)  # type: ignore[arg-type]
 
 
-def test_a_pooled_asyncpg_engine_is_rejected_outside_both_leg_rollback():
-    """asyncpg connections are bound to their creating loop, and a holding pool
-    hands them across loops. Delete and none modes, and async-only rollback,
-    all reuse pooled connections, so the refusal names the NullPool fix."""
+def test_a_pooled_asyncpg_engine_is_accepted_in_every_cleanup_mode():
+    """The fixtures now dispose the pool at each event-loop boundary."""
     from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
     with _isolated_config():
@@ -1845,24 +1831,7 @@ def test_a_pooled_asyncpg_engine_is_rejected_outside_both_leg_rollback():
         configure_tests(db_cleanup=DELETE)
         setup = _current_setup()
         for mode in (DELETE, NONE, ROLLBACK):
-            with pytest.raises(RestlyConfigurationError, match="poolclass=NullPool"):
-                _validate_database_sources(setup, mode)  # type: ignore[arg-type]
-
-
-def test_an_unpooled_asyncpg_engine_is_accepted():
-    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-    from sqlalchemy.pool import NullPool
-
-    with _isolated_config():
-        engine = create_async_engine(
-            "sqlite+aiosqlite:///./test.db", poolclass=NullPool
-        )
-        engine.sync_engine.dialect.driver = "asyncpg"
-        fr.configure(
-            async_make_session=async_sessionmaker(bind=engine, expire_on_commit=False)
-        )
-        configure_tests(db_cleanup=DELETE)
-        _validate_database_sources(_current_setup(), DELETE)  # type: ignore[arg-type]
+            _validate_database_sources(setup, mode)  # type: ignore[arg-type]
 
 
 def test_a_pooled_asyncpg_engine_is_accepted_under_both_leg_rollback():

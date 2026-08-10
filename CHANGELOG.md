@@ -9,145 +9,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `fr.testing.configure_tests()` sets up a test suite in one call from
-  `conftest.py`: the app under test, an optional schema step (`base=Base` plus
-  `create_all=True`, or `alembic_upgrade=True`), and isolation for every test,
-  `restly_client`-only tests included. Database selection stays in the
-  application: configure it for the test database first, then call
-  `configure_tests()`, which records the existing session sources rather than
-  accepting URLs, engines, or sessionmakers of its own. A database source that
-  changes afterwards, during collection or lifespan startup, raises rather than
-  letting schema setup, cleanup, and requests disagree. One call configures the
-  process; a second call raises. Suites that do not call it are unaffected.
-
-- `db_cleanup=` picks how each test gets a clean database: `"rollback"` (the
-  default), `"delete"` (empties the tables before each test and lets writes
-  commit, so the last test's rows can be inspected afterwards), or `"none"`.
-  `--restly-db-cleanup` and `RESTLY_DB_CLEANUP` switch mode for a single run, and
-  `db_cleanup_exclude=` spares tables holding seeded reference data; a table
-  under a non-default schema is named by its qualified key, `"tenant.item"`.
-  What cleaning cannot serve is refused rather than half-done: a per-mapper
-  `binds=` session factory, sync/async legs naming two different databases, or
-  delete mode with an opaque custom session generator.
-
-- An application test engine aimed at a real async server should use
-  `poolclass=NullPool`, so no pooled connection crosses the event loops test
-  code hops between (the schema step's own loop, each test's loop, the test
-  client's portal thread) -- how drivers like asyncpg fail. Restly refuses a
-  pooled asyncpg engine up front, with the one-line fix in the message, rather
-  than fail mid-suite; in-memory SQLite keeps its single-connection pool. The
-  one shape no pool policy can save -- rollback mode's pinned connection
-  serving `restly_client` requests from asyncpg, whose connections are bound
-  to the loop that created them -- is refused up front with the two ways out:
-  configure the sync database as well, or use `"delete"` with an unpooled
-  engine.
-
-- Restly's declarative base mixes in SQLAlchemy's `AsyncAttrs`, so every model
-  has `awaitable_attrs`: `await obj.awaitable_attrs.items` reads an unloaded
-  attribute from plain async code, where a bare `obj.items` raises
-  `MissingGreenlet`. Views eager-load what the response schema names, so this is
-  for the code that runs outside that set — an `after_commit` hook, a custom
-  business method.
-
-- `get_relationship_loader_options()` is now a documented override point: it
-  returns the `selectinload(...)` options derived from the response schema,
-  applied on reads and on the write-response reload. Override it to eager-load
-  relationships the schema does not name on both read and write paths. New
-  how-to, "Relationship Loading and Async", collects the loading model and the
-  `MissingGreenlet` fixes.
-
-- A PostgreSQL CI leg now exercises the dialect-divergent surface SQLite hides:
-  case-sensitive `contains` vs case-folding `icontains` (including non-ASCII),
-  default `NULL` ordering, duplicate-sort-key pagination, real constraint
-  violations classified into clean 409 details, and the psycopg cross-session
-  fixture sharing.
-
-- The list envelope models `fastapi_restly.views.Envelope` and
-  `fastapi_restly.views.PaginatedEnvelope` (generic over the response schema) are
-  public, for annotating or subclassing a custom list response. Like
-  `BaseRestView`, they live in the `views` submodule, not the top-level namespace.
+- `fr.testing.configure_tests()` for schema setup and per-test database isolation.
+- `db_cleanup=` modes (`rollback`, `delete`, and `none`) with run-time overrides.
+- Pooled asyncpg support for async-only test suites; no sync database leg or `NullPool` required.
+- `AsyncRestlyTestClient` and the `restly_async_client` fixture.
+- SQLAlchemy `AsyncAttrs` support through `awaitable_attrs` on Restly models.
+- `get_relationship_loader_options()` as an eager-loading override.
+- PostgreSQL CI coverage for dialect-specific behavior and database fixtures.
+- Public `Envelope` and `PaginatedEnvelope` response models.
 
 ### Changed
 
-- List endpoints now paginate by default and return a `data` envelope. `GET /things`
-  responds with `{"data": [...], "total_count", "page", "page_size", "total_pages"}`,
-  capped at `default_page_size` (50) instead of returning the whole table. Set
-  `paginated = False` on a view for an unpaginated `{"data": [...]}` response — no
-  metadata, and no `page`/`page_size` query parameters. Single-object responses are
-  unchanged (bare object). A paginated view's `default_page_size` must be an int in
-  `[1, max_page_size]`; `None` (the old "no cap" idiom) or an out-of-range value now
-  raises at registration. Set `paginated = False` to return every row uncapped.
-  This replaces the opt-in `include_pagination_metadata`
-  flag (which defaulted to an unbounded bare array) and renames the envelope keys
-  (`items` → `data`, `total` → `total_count`). `include_pagination_metadata` and
-  `to_paginated_listing_response()` are removed; `to_listing_response()` overrides
-  the list body, and a non-envelope shape (a bare array) needs `get_many_endpoint`
-  replaced with a matching `response_model`.
-
-- The session fixtures (`restly_session` / `restly_async_session`) now isolate
-  each test with SQLAlchemy's `create_savepoint` mode instead of patching
-  `Session` / `AsyncSession`. `commit()` / `rollback()` behave as in production,
-  and there is no shared identity map: a value added directly to the fixture
-  session reaches a request only after a `flush()` or `commit()`.
-
-- A session fixture with a generator but no matching sessionmaker now raises
-  instead of skipping.
+- List endpoints now return a paginated `data` envelope by default; set `paginated = False` to return all rows.
+- Session fixtures now use SQLAlchemy savepoints for production-like transaction behavior.
+- Session fixtures now raise when a custom generator has no matching sessionmaker.
 
 ### Fixed
 
-- The `restly_client` fixture now runs your application's `lifespan`. Starlette
-  only runs startup and shutdown inside the client's context manager, and the
-  fixture handed back an unentered one, so whatever `lifespan=` set up never
-  happened. It now runs, once per test; a suite whose lifespan should not wrap
-  every test can override the `restly_client` fixture and construct the client
-  unentered. Registering a view after the client exists keeps working: Restly
-  installs its `IntegrityError` handler on the middleware stack the application
-  has already built, rather than discarding it.
-
-- Postgres 409 detail messages degraded to a generic fallback on psycopg 3. The
-  `IntegrityError` classifier read `pgcode` (psycopg 2's attribute), but
-  psycopg 3 — the driver Restly's PostgreSQL stack uses — exposes the SQLSTATE as
-  `sqlstate`, so every constraint violation fell through to the raw driver text
-  instead of a clean message like `Unique constraint violated: <constraint>`. It
-  now reads `sqlstate` first, falling back to `pgcode`.
-
-- A response schema embedding a relationship-backed field (`owner: OwnerRead`,
-  `author: fr.IDRef[Author]`, or a list of either) worked on reads but 500'd on
-  create and update with `MissingGreenlet` — for a row that had already
-  committed. Reads eager-load those relationships from the response schema;
-  writes flushed and refreshed with no loader options, and the refresh is what
-  leaves a relationship unloaded, so the serializer hit a lazy load in the
-  endpoint coroutine where SQLAlchemy's asyncio layer has no greenlet to suspend
-  into. `save_object` now applies the same options reads do.
-
-  The reload is skipped when everything the response schema names is already
-  loaded, so a write whose response needs no relationship data costs no extra
-  statement. It runs without `populate_existing`, so a relationship the caller
-  had already populated keeps its value rather than being overwritten by a fresh
-  read.
-
-  Sync views never raised, but paid the same loads implicitly, one query at a
-  time, during serialization. They now eager-load identically.
-
-- The session fixtures isolate projects configured with a `session_generator` /
-  `sync_session_generator` instead of dropping the request's write.
-
-- `restly_project_root` now anchors to the requesting test file instead of the
-  current working directory, so it returns the same root regardless of where
-  pytest was invoked, and in a monorepo resolves each test to its own
-  sub-project's root.
-
-- `restly_async_session` no longer errors when a sync sessionmaker is also
-  configured; it shares the sync fixture's connection.
-
-- `fr.db.get_engine()` / `create_all()` and their async forms work inside the
-  fixtures instead of silently no-opping.
+- `restly_client` now runs application lifespan events and supports late view registration.
+- PostgreSQL constraint errors now produce clean details with psycopg 3.
+- Write responses now eager-load schema relationships, avoiding `MissingGreenlet` errors and sync N+1 queries.
+- Session fixtures now isolate applications that use custom session generators.
+- `restly_project_root` now resolves from the requesting test file, including in monorepos.
+- `restly_async_session` now shares the sync fixture's connection when both are configured.
+- Engine and schema helpers now work inside session fixtures.
 
 ### Removed
 
-- `fr.testing.activate_savepoint_only_mode()` and its `deactivate_` counterpart.
-  They isolate per session, not per test, so chained requests never shared a
-  view. Use the session fixtures, or `fr.testing.configure_tests()`.
+- `activate_savepoint_only_mode()` and `deactivate_savepoint_only_mode()`; use the session fixtures instead.
 
 ## [0.8.0] - 2026-07-22
 

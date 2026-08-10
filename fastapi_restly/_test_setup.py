@@ -150,10 +150,9 @@ def configure_tests(
       the database when the run ends, so you can inspect them with ordinary
       tools; run with ``-k`` and the last test is the one you are looking at.
       Tests still cannot see each other's data, and it needs a database of its
-      own: two suites deleting from one database will fight. An async test
-      engine aimed at a real server should use ``poolclass=NullPool``, because
-      test code hops event loops and a pooled connection does not survive that
-      on drivers like asyncpg; a pooled asyncpg engine is refused up front.
+      own: two suites deleting from one database will fight. A normally pooled
+      async engine is supported: Restly disposes its checked-in connections at
+      the event-loop boundaries the test fixtures create.
     * ``"none"`` cleans nothing and leaves it to you. Reach for it when neither
       of the others fits: tests that drive a browser or a second process
       (nothing uncommitted is visible to those), or parallel workers sharing one
@@ -254,43 +253,6 @@ def _validate_database_sources(setup: _TestSetup, mode: str) -> None:
             "sessionmaker it would clean. Use the sessionmaker as the application "
             'session source, or choose db_cleanup="none".'
         )
-    _reject_loop_bound_pooling(setup, mode)
-
-
-def _reject_loop_bound_pooling(setup: _TestSetup, mode: str) -> None:
-    """Refuse a pooled asyncpg engine where tests would reuse its connections
-    across event loops.
-
-    asyncpg binds every connection to the event loop that created it, and test
-    code hops loops: each test runs on a loop of its own, and the client
-    serves requests from a thread of its own. A pooled connection checked in
-    on one loop fails on its next checkout with "attached to a different
-    loop". Rollback mode with a sync leg is exempt: the async engine only
-    fronts the pinned sync connection there, and its pool is never drawn from.
-    """
-    if setup.async_make_session is None:
-        return
-    if mode == ROLLBACK and setup.make_session is not None:
-        return
-    engine = _resolve_engine(setup.async_make_session.kw.get("bind"))
-    sync_engine = getattr(engine, "sync_engine", engine)
-    if getattr(getattr(sync_engine, "dialect", None), "driver", "") != "asyncpg":
-        return
-
-    from sqlalchemy.pool import NullPool
-
-    if isinstance(getattr(sync_engine, "pool", None), NullPool):
-        return
-    raise RestlyConfigurationError(
-        "The application's async engine uses asyncpg with a pool that holds "
-        "connections between uses. asyncpg binds every connection to the "
-        "event loop that created it, and test code hops loops (each test runs "
-        "on its own, and the test client serves requests from a thread of its "
-        "own), so a held connection fails on its next checkout with "
-        '"attached to a different loop". Build the test engine without '
-        "pooling: fr.configure(async_engine=create_async_engine(url, "
-        "poolclass=NullPool)) in the application's test settings."
-    )
 
 
 def _resolve_db_cleanup(setup: _TestSetup, flag: str | None) -> str:

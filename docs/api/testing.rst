@@ -3,7 +3,8 @@ Testing API
 
 ``fastapi_restly.testing`` provides ``configure_tests()``, which adds schema and
 isolation behavior to an application already configured for its test database,
-and ``RestlyTestClient``, the status-asserting test client.
+and the synchronous and asynchronous status-asserting test clients,
+``RestlyTestClient`` and ``AsyncRestlyTestClient``.
 
 Install the optional testing dependencies before importing this module::
 
@@ -16,8 +17,8 @@ your ``conftest.py``::
     pytest_plugins = ["fastapi_restly.pytest_fixtures"]
 
 This imports the namespaced fixtures (``restly_app``, ``restly_client``,
-``restly_session``, ``restly_async_session``, etc.) into your test session
-without needing to import them individually.
+``restly_async_client``, ``restly_session``, ``restly_async_session``, etc.)
+into your test session without needing to import them individually.
 
 .. automodule:: fastapi_restly.testing
    :members:

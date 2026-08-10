@@ -19,7 +19,7 @@ import fastapi_restly._pytest_fixtures as _fixtures
 import fastapi_restly.pytest_fixtures as exported_fixtures
 import fastapi_restly.testing as testing
 from fastapi_restly.db._globals import RestlyContext
-from fastapi_restly.testing._client import RestlyTestClient
+from fastapi_restly.testing._client import AsyncRestlyTestClient, RestlyTestClient
 
 
 class FixtureTestBase(DeclarativeBase):
@@ -348,23 +348,38 @@ def test_fixture_exports_and_client_helpers():
     assert isinstance(app, FastAPI)
 
     # The fixture yields an entered client now, so drive the generator.
-    clients = _fixtures.restly_client.__wrapped__(app)
+    clients = _fixtures.restly_client.__wrapped__(app, None)
     client = next(clients)
     assert isinstance(client, RestlyTestClient)
     clients.close()
 
     assert exported_fixtures.restly_app is _fixtures.restly_app
+    assert exported_fixtures.restly_async_client is _fixtures.restly_async_client
     assert exported_fixtures.restly_session is _fixtures.restly_session
     assert "restly_app" in exported_fixtures.__all__
+    assert "restly_async_client" in exported_fixtures.__all__
     assert "restly_session" in exported_fixtures.__all__
     assert "app" not in exported_fixtures.__all__
     assert "client" not in exported_fixtures.__all__
     assert "session" not in exported_fixtures.__all__
     assert "autouse_alembic_upgrade" not in exported_fixtures.__all__
     assert "autouse_savepoint_only_mode_sessions" not in exported_fixtures.__all__
-    assert testing.__all__ == ["RestlyTestClient", "configure_tests"]
+    assert testing.__all__ == [
+        "AsyncRestlyTestClient",
+        "RestlyTestClient",
+        "configure_tests",
+    ]
     assert not hasattr(testing, "app")
     assert not hasattr(testing, "session")
+
+
+@pytest.mark.asyncio
+async def test_async_client_fixture_works_without_database_configuration(
+    restly_async_client,
+):
+    assert isinstance(restly_async_client, AsyncRestlyTestClient)
+    response = await restly_async_client.get("/", assert_status_code=404)
+    assert response.status_code == 404
 
 
 def _run_with_blocked_imports(
@@ -427,7 +442,7 @@ def test_restly_client_reports_missing_optional_dependencies():
     result = _run_with_blocked_imports(
         """
 from fastapi_restly.pytest_fixtures import restly_app, restly_client
-next(restly_client.__wrapped__(restly_app.__wrapped__()))
+next(restly_client.__wrapped__(restly_app.__wrapped__(), None))
 """,
         "httpx",
         "httpx2",
@@ -471,6 +486,26 @@ from fastapi_restly.pytest_fixtures import restly_async_session
 restly_async_session.__wrapped__(None)
 """,
         "pytest_asyncio",
+    )
+
+    assert result.returncode != 0
+    assert 'pip install "fastapi-restly[testing]"' in result.stderr
+
+
+def test_restly_async_client_reports_missing_lifespan_dependency():
+    result = _run_with_blocked_imports(
+        """
+import asyncio
+from fastapi import FastAPI
+from fastapi_restly.pytest_fixtures import restly_async_client
+
+async def exercise_fixture():
+    client = restly_async_client.__wrapped__(FastAPI())
+    await client.__anext__()
+
+asyncio.run(exercise_fixture())
+""",
+        "asgi_lifespan",
     )
 
     assert result.returncode != 0

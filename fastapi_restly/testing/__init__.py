@@ -1,7 +1,7 @@
 try:
     from fastapi_restly._test_setup import configure_tests
 
-    from ._client import RestlyTestClient
+    from ._client import AsyncRestlyTestClient, RestlyTestClient
 except ModuleNotFoundError as exc:  # pragma: no cover -- exercised via
     # subprocess in test_testing_fixtures_coverage.py (httpx/httpx2 blocked).
     # Newer Starlette's testclient requires httpx2 and raises with name="httpx2";
@@ -14,4 +14,4 @@ except ModuleNotFoundError as exc:  # pragma: no cover -- exercised via
         ) from exc
     raise
 
-__all__ = ["RestlyTestClient", "configure_tests"]
+__all__ = ["AsyncRestlyTestClient", "RestlyTestClient", "configure_tests"]

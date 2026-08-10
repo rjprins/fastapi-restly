@@ -92,7 +92,7 @@ jobs:
         run: make install-dev
 
       - name: Run framework and example tests
-        run: make test-all
+        run: make test-framework test-typing test-examples
 
   postgres:
     # The rest of the suite runs on SQLite; this leg pins the dialect-divergent
@@ -154,6 +154,43 @@ jobs:
           pytest tests/postgres/ -q
           -W "default::ResourceWarning"
           -W "default::pytest.PytestUnraisableExceptionWarning"
+
+      # Each invocation is a separate pytest process, hence a new set of event
+      # loops over the same normally pooled asyncpg engine configuration.
+      - name: Run async-only PostgreSQL rollback tests
+        env:
+          RESTLY_TEST_DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/restly_test
+        run: >-
+          uv run
+          --isolated
+          --no-dev
+          --extra testing
+          --with asyncpg
+          pytest tests/postgres_asyncpg/ -q
+
+      - name: Run async-only PostgreSQL delete tests
+        env:
+          RESTLY_TEST_DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/restly_test
+          RESTLY_ASYNCPG_CLEANUP: delete
+        run: >-
+          uv run
+          --isolated
+          --no-dev
+          --extra testing
+          --with asyncpg
+          pytest tests/postgres_asyncpg/ -q
+
+      - name: Run async-only PostgreSQL unmanaged-cleanup tests
+        env:
+          RESTLY_TEST_DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/restly_test
+          RESTLY_ASYNCPG_CLEANUP: none
+        run: >-
+          uv run
+          --isolated
+          --no-dev
+          --extra testing
+          --with asyncpg
+          pytest tests/postgres_asyncpg/ -q
 
   min-versions:
     runs-on: ubuntu-latest

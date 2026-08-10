@@ -24,6 +24,7 @@ from ._test_setup import (
     _clean_database_sync,
     _create_schema,
     _current_setup,
+    _is_memory_sqlite,
     _resolve_db_cleanup,
     _resolve_engine,
     _source_factories,
@@ -33,7 +34,7 @@ from .db._globals import _fr_globals, _get_restly_context
 from .exc import RestlyConfigurationError
 
 if TYPE_CHECKING:
-    from .testing._client import RestlyTestClient
+    from .testing._client import AsyncRestlyTestClient, RestlyTestClient
 
 try:
     import pytest_asyncio
@@ -46,6 +47,18 @@ _TESTING_EXTRA_MESSAGE = (
     "fastapi_restly.pytest_fixtures requires optional testing dependencies. "
     'Install them with: pip install "fastapi-restly[testing]"'
 )
+
+
+async def _dispose_async_test_engine(engine: AsyncEngine) -> None:
+    """Empty a test engine's pool before its current event loop goes away.
+
+    SQLAlchemy requires a pooled ``AsyncEngine`` to be disposed before it is
+    reused on another loop.  Restly creates those loop boundaries, so it also
+    closes the checked-in connections it used.  In-memory SQLite is the one
+    exception: its single connection is the database itself.
+    """
+    if not _is_memory_sqlite(engine.url):
+        await engine.dispose()
 
 
 def _find_project_root(start: Path) -> Path:
@@ -247,7 +260,61 @@ if pytest_asyncio is None:
         # Pyright cannot model mutually exclusive module-level branches.
         raise ModuleNotFoundError(_TESTING_EXTRA_MESSAGE, name="pytest_asyncio")
 
+    @pytest.fixture
+    def restly_async_client() -> None:  # pyright: ignore[reportRedeclaration]
+        raise ModuleNotFoundError(_TESTING_EXTRA_MESSAGE, name="pytest_asyncio")
+
 else:
+
+    @asynccontextmanager
+    async def _async_rollback_factory(
+        shared_connection=None,
+    ) -> AsyncIterator[async_sessionmaker[SA_AsyncSession]]:
+        """Install one savepoint factory on the caller's event loop."""
+        original = _source_factories()[1]
+        if original is None:
+            raise RestlyConfigurationError(
+                "Async rollback isolation needs an async sessionmaker configured "
+                "through fr.configure()."
+            )
+
+        _reject_per_mapper_binds(original)
+        async_engine = _resolve_engine(original.kw["bind"])
+
+        @asynccontextmanager
+        async def pinned_connection() -> AsyncIterator[AsyncConnection]:
+            if shared_connection is not None:
+                yield AsyncConnection(async_engine, sync_connection=shared_connection)
+                return
+
+            _install_sqlite_savepoint_fix(async_engine)
+            try:
+                async with async_engine.connect() as connection:
+                    transaction = await connection.begin()
+                    try:
+                        yield connection
+                    finally:
+                        if transaction.is_active:
+                            await transaction.rollback()
+            finally:
+                await _dispose_async_test_engine(async_engine)
+
+        async with pinned_connection() as async_connection:
+            isolated_make_session = async_sessionmaker(
+                class_=original.class_,
+                **{
+                    **original.kw,
+                    "bind": async_connection,
+                    "join_transaction_mode": "create_savepoint",
+                },
+            )
+            globals_obj = _get_restly_context()
+            previous = globals_obj.test_async_make_session
+            globals_obj.test_async_make_session = isolated_make_session
+            try:
+                yield isolated_make_session
+            finally:
+                globals_obj.test_async_make_session = previous
 
     @pytest_asyncio.fixture
     async def restly_async_session(
@@ -290,11 +357,15 @@ else:
             # leave nothing behind to inspect.
             if original is None:
                 pytest.skip("Database connection not set up")
+            async_engine = _resolve_engine(original.kw["bind"])
             session = original()
             try:
                 yield session
             finally:
-                await session.close()
+                try:
+                    await session.close()
+                finally:
+                    await _dispose_async_test_engine(async_engine)
             return
 
         if original is None:
@@ -312,55 +383,81 @@ else:
                 )
             pytest.skip("Database connection not set up")
 
-        _reject_per_mapper_binds(original)
-        async_engine = _resolve_engine(original.kw["bind"])
-
-        @asynccontextmanager
-        async def _pinned_async_connection():
-            if _shared_connection is not None:
-                # Share the sync fixture's pinned connection and its already-open
-                # outer transaction. An AsyncConnection wrapping a live sync
-                # connection is already started, so entering it would re-run
-                # start() and raise; use it directly and let _shared_connection
-                # own the teardown.
-                yield AsyncConnection(async_engine, sync_connection=_shared_connection)
-                return
-
-            _install_sqlite_savepoint_fix(async_engine)
-            async with async_engine.connect() as conn:
-                # Begin the outer transaction the request sessions join via
-                # savepoint; the connection close rolls it back at teardown.
-                await conn.begin()
-                yield conn
-
-        async with _pinned_async_connection() as async_conn:
-            # A real factory bound to the pinned connection, in create_savepoint
-            # mode. Every request (and this fixture) gets its own real session
-            # joining the outer transaction via a savepoint -- no method patching,
-            # no MagicMock factory, no session shared across requests. (A per-mapper
-            # ``binds=`` in the original factory rides along and would escape
-            # isolation; unsupported until someone actually needs it.)
-            isolated_make_session = async_sessionmaker(
-                class_=original.class_,
-                **{
-                    **original.kw,
-                    "bind": async_conn,
-                    "join_transaction_mode": "create_savepoint",
-                },
-            )
-            globals_obj = _get_restly_context()
-            previous = globals_obj.test_async_make_session
-            globals_obj.test_async_make_session = isolated_make_session
+        async with _async_rollback_factory(_shared_connection) as isolated_make_session:
             session = None
             try:
                 session = isolated_make_session()
                 yield session
             finally:
-                # Restore before closing: a teardown-time close() failure must
-                # not leave the per-test factory installed.
-                globals_obj.test_async_make_session = previous
                 if session is not None:
                     await session.close()
+
+    @pytest_asyncio.fixture
+    async def restly_async_client(restly_app) -> AsyncIterator[AsyncRestlyTestClient]:
+        """An async HTTP client that runs the application's lifespan.
+
+        It uses pytest's event loop, so when ``restly_async_session`` is also
+        requested, direct database access and HTTP share one loop and, under
+        rollback, one transaction. It remains useful without a database
+        configuration.
+        """
+        try:
+            from asgi_lifespan import LifespanManager
+        except ModuleNotFoundError as exc:
+            if exc.name == "asgi_lifespan":
+                raise ModuleNotFoundError(
+                    _TESTING_EXTRA_MESSAGE, name=exc.name
+                ) from exc
+            raise
+
+        try:
+            from .testing._client import AsyncRestlyTestClient
+        except ModuleNotFoundError as exc:
+            if exc.name in {"httpx", "httpx2"}:
+                raise ModuleNotFoundError(
+                    _TESTING_EXTRA_MESSAGE, name=exc.name
+                ) from exc
+            raise
+
+        try:
+            async with LifespanManager(restly_app) as manager:
+                client = AsyncRestlyTestClient(restly_app, _transport_app=manager.app)
+                async with client:
+                    yield client
+        finally:
+            original = _source_factories()[1]
+            if original is not None:
+                await _dispose_async_test_engine(_resolve_engine(original.kw["bind"]))
+
+
+class _AsyncEngineLifespanApp:
+    """Own async database resources on TestClient's ASGI portal loop."""
+
+    def __init__(self, app: FastAPI, *, rollback: bool) -> None:
+        self.app = app
+        self.rollback = rollback
+
+    async def __call__(self, scope, receive, send) -> None:
+        if scope["type"] != "lifespan":
+            await self.app(scope, receive, send)
+            return
+
+        if self.rollback:
+            if pytest_asyncio is None:  # pragma: no cover - testing extra guard
+                raise ModuleNotFoundError(_TESTING_EXTRA_MESSAGE, name="pytest_asyncio")
+            async with _async_rollback_factory():
+                await self.app(scope, receive, send)
+            return
+
+        original = _source_factories()[1]
+        if original is None:  # pragma: no cover - chosen only with an async leg
+            await self.app(scope, receive, send)
+            return
+        async_engine = _resolve_engine(original.kw["bind"])
+        try:
+            await self.app(scope, receive, send)
+        finally:
+            await _dispose_async_test_engine(async_engine)
 
 
 @pytest.fixture
@@ -494,12 +591,17 @@ def _managed_isolation(
     """Install rollback's pinned factories or run delete-mode cleaning."""
     if mode == ROLLBACK:
         recorded_sync, recorded_async = _source_factories()
+        client_owns_async = (
+            recorded_sync is None
+            and recorded_async is not None
+            and "restly_client" in request.fixturenames
+        )
         # Both legs, not the first one found: each session fixture swaps only
         # its own factory, so activating one in a suite that configured both
         # leaves the other's routes committing for real.
         if recorded_sync is not None:
             request.getfixturevalue("restly_session")
-        if recorded_async is not None:
+        if recorded_async is not None and not client_owns_async:
             request.getfixturevalue("restly_async_session")
     elif mode == DELETE:
         # Before, not after: whatever the last test wrote is still there when
@@ -524,43 +626,38 @@ def restly_app() -> FastAPI:
     return FastAPI()
 
 
-def _reject_loop_bound_pinning() -> None:
-    """Refuse the one combination rollback mode cannot serve: client requests
-    over a connection asyncpg bound to the test's loop.
-
-    asyncpg ties every connection to the event loop that created it. With only
-    the async leg named, rollback pins one asyncpg connection on the test's
-    loop, and ``restly_client``'s requests -- run on the client's own portal
-    thread -- would die mid-test with "attached to a different loop". A named
-    sync leg changes the picture: the pinned connection is then a sync one any
-    loop may use, so only the async-only shape is refused.
-    """
+def _client_async_engine_policy() -> str | None:
+    """Return the async-engine lifecycle the synchronous client must own."""
     setup = _current_setup()
-    if setup is None or _cleanup_mode() != ROLLBACK:
-        return
-    if setup.make_session is not None or setup.async_make_session is None:
-        return
-    engine = _resolve_engine(setup.async_make_session.kw.get("bind"))
-    sync_engine = getattr(engine, "sync_engine", engine)
-    if getattr(getattr(sync_engine, "dialect", None), "driver", "") != "asyncpg":
+    if setup is None or setup.async_make_session is None:
+        return None
+    if _cleanup_mode() == ROLLBACK:
+        if setup.make_session is None:
+            return ROLLBACK
+        return None
+    return _cleanup_mode()
+
+
+def _reject_split_async_usage(request: pytest.FixtureRequest) -> None:
+    """Keep one asyncpg connection on one loop for the whole rollback test."""
+    conflicts = {"restly_async_client", "restly_async_session"}.intersection(
+        request.fixturenames
+    )
+    if not conflicts:
         return
     raise RestlyConfigurationError(
-        'db_cleanup="rollback" pins one connection for the whole test, and '
-        "asyncpg binds every connection to the event loop that created it; "
-        "requests driven through restly_client run on the client's own loop "
-        'and would fail mid-test with "attached to a different loop". '
-        "Configure the application with the sync database as well "
-        "(database_url= alongside async_database_url=, pointing at the same "
-        "database): the pinned connection is then a sync one any loop may "
-        'use. Or switch to db_cleanup="delete" with an engine that does not '
-        "pool (fr.configure(async_engine=create_async_engine(url, "
-        "poolclass=NullPool))), so every session opens a fresh connection on "
-        "the loop that runs it."
+        "An async-only rollback test cannot combine restly_client with "
+        f"{', '.join(sorted(conflicts))}: the synchronous client runs the "
+        "application on its own event loop, while the async fixtures run on "
+        "pytest's event loop. Use restly_async_client for HTTP when a test needs "
+        "async fixtures."
     )
 
 
 @pytest.fixture
-def restly_client(restly_app) -> Iterator[RestlyTestClient]:
+def restly_client(
+    restly_app, request: pytest.FixtureRequest
+) -> Iterator[RestlyTestClient]:
     """A test client for ``restly_app``, entered so the app's lifespan runs.
 
     Starlette's client only runs startup and shutdown inside its context manager.
@@ -568,7 +665,6 @@ def restly_client(restly_app) -> Iterator[RestlyTestClient]:
     cache or registers a dependency never ran, and the failure surfaced far from
     here as a missing resource.
     """
-    _reject_loop_bound_pinning()
     try:
         from .testing._client import RestlyTestClient
     except ModuleNotFoundError as exc:
@@ -582,7 +678,15 @@ def restly_client(restly_app) -> Iterator[RestlyTestClient]:
     # Bound before the block: __enter__ returns self at runtime, but Starlette
     # annotates it as the base TestClient, so `with ... as client` would type
     # the fixture without the subclass's status-code assertions.
-    client = RestlyTestClient(restly_app)
+    transport_app = None
+    async_engine_policy = _client_async_engine_policy()
+    if async_engine_policy == ROLLBACK:
+        _reject_split_async_usage(request)
+    if async_engine_policy is not None:
+        transport_app = _AsyncEngineLifespanApp(
+            restly_app, rollback=async_engine_policy == ROLLBACK
+        )
+    client = RestlyTestClient(restly_app, _transport_app=transport_app)
     with client:
         yield client
 
@@ -606,5 +710,12 @@ else:
         """
         setup = _current_setup()
         if setup is not None:
-            await _clean_database_async(setup)
+            original = _source_factories()[1]
+            try:
+                await _clean_database_async(setup)
+            finally:
+                if original is not None:
+                    await _dispose_async_test_engine(
+                        _resolve_engine(original.kw["bind"])
+                    )
         yield

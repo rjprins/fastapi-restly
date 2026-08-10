@@ -9,6 +9,7 @@ try:
         pytest_report_header,  # noqa: F401 -- pytest hook; must be found on the plugin module
         pytest_unconfigure,  # noqa: F401 -- pytest hook; must be found on the plugin module
         restly_app,
+        restly_async_client,
         restly_async_session,
         restly_client,
         restly_project_root,
@@ -25,6 +26,7 @@ except ModuleNotFoundError as exc:  # pragma: no cover -- exercised via
 
 __all__ = [
     "restly_app",
+    "restly_async_client",
     "restly_async_session",
     "restly_client",
     "restly_project_root",

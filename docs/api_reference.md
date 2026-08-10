@@ -310,8 +310,9 @@ The testing utilities provide a status-asserting client and savepoint-based isol
 
 | Symbol | Description |
 |---|---|
-| {func}`fastapi_restly.testing.configure_tests(...) <fastapi_restly.testing.configure_tests>` | Add managed testing to an application that has already been configured for its test database. Accepts the app, models (`base=`), an optional schema step (`create_all=` or `alembic_upgrade=`), and cleanup policy; database URLs, engines, or sessionmakers. `db_cleanup=` picks `"rollback"`, `"delete"`, or `"none"`; `db_cleanup_exclude=` spares seeded tables. A later database reconfiguration raises. |
+| {func}`fastapi_restly.testing.configure_tests(...) <fastapi_restly.testing.configure_tests>` | Add managed testing to an application that has already been configured for its test database. Accepts the app, models (`base=`), an optional schema step (`create_all=` or `alembic_upgrade=`), and cleanup policy—not database URLs, engines, or sessionmakers. `db_cleanup=` picks `"rollback"`, `"delete"`, or `"none"`; `db_cleanup_exclude=` spares seeded tables. A later database reconfiguration raises. |
 | {class}`fastapi_restly.testing.RestlyTestClient` | Sync test client wrapper around FastAPI's `TestClient` with default status-code assertions. It can test async FastAPI routes and `AsyncRestView` endpoints. |
+| {class}`fastapi_restly.testing.AsyncRestlyTestClient` | Async HTTPX client with the same default status-code assertions. The `restly_async_client` fixture runs the application lifespan around it. |
 
 The pytest fixtures below are auto-loaded by the `testing` extra; their full
 behavior is documented in [Testing](howto_testing.md#pytest-fixture-reference):
@@ -320,6 +321,7 @@ behavior is documented in [Testing](howto_testing.md#pytest-fixture-reference):
 |---|---|---|
 | `restly_app` | function | The app passed to `configure_tests(app=...)`; a bare `FastAPI()` otherwise. |
 | `restly_client` | function | `RestlyTestClient` wrapping `restly_app`, entered so the app's `lifespan` runs. |
+| `restly_async_client` | function | `AsyncRestlyTestClient` on the same event loop as `restly_async_session` and, in rollback mode, the same transaction; the app's `lifespan` runs. |
 | `restly_session` | function | The suite's `Session`, following `db_cleanup`: savepoint-isolated under the default rollback mode, a plain committing session under `"delete"`/`"none"`. Needs a sync sessionmaker; skips if nothing is configured, raises if only a `sync_session_generator` is. |
 | `restly_async_session` | function | The async equivalent, following `db_cleanup` the same way. Needs an async sessionmaker; skips if nothing is configured, raises if only a `session_generator` is. |
 | `restly_project_root` | function | `Path` of the nearest ancestor of the requesting test file with a `pyproject.toml`. |
