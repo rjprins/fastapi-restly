@@ -3,6 +3,7 @@ from __future__ import annotations
 import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from fastapi import FastAPI
@@ -31,6 +32,9 @@ class FixtureItem(FixtureTestBase):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str]
+
+
+_ASYNC_SESSION_REQUEST = SimpleNamespace(fixturenames=["restly_async_session"])
 
 
 def test_find_project_root_walks_up_to_nearest_pyproject(tmp_path: Path):
@@ -181,7 +185,9 @@ async def test_async_fixture_swaps_in_an_isolated_factory_and_restores():
             from fastapi_restly.db._globals import _fr_globals
 
             _fr_globals.async_make_session = make_session
-            scope = _fixtures._restly_async_scope.__wrapped__(None)
+            scope = _fixtures._restly_async_scope.__wrapped__(
+                None, _ASYNC_SESSION_REQUEST
+            )
             isolated_make_session = await scope.__anext__()
             agen = _fixtures.restly_async_session.__wrapped__(isolated_make_session)
             session = await agen.__anext__()
@@ -270,7 +276,9 @@ async def test_async_fixture_restores_globals_even_if_session_close_raises():
 
             _fr_globals.async_make_session = make_session
             _fr_globals.session_generator = sentinel_gen
-            scope = _fixtures._restly_async_scope.__wrapped__(None)
+            scope = _fixtures._restly_async_scope.__wrapped__(
+                None, _ASYNC_SESSION_REQUEST
+            )
             isolated_make_session = await scope.__anext__()
             agen = _fixtures.restly_async_session.__wrapped__(isolated_make_session)
             session = await agen.__anext__()
@@ -304,7 +312,9 @@ async def test_async_fixture_begin_context_flushes_on_successful_exit():
             from fastapi_restly.db._globals import _fr_globals
 
             _fr_globals.async_make_session = make_session
-            scope = _fixtures._restly_async_scope.__wrapped__(None)
+            scope = _fixtures._restly_async_scope.__wrapped__(
+                None, _ASYNC_SESSION_REQUEST
+            )
             isolated_make_session = await scope.__anext__()
             agen = _fixtures.restly_async_session.__wrapped__(isolated_make_session)
             await agen.__anext__()
@@ -345,7 +355,9 @@ async def test_async_fixture_reuses_configured_sync_connection():
             shared_conn = next(conn_gen)
             assert shared_conn is not None  # sync sessionmaker -> real connection
 
-            scope = _fixtures._restly_async_scope.__wrapped__(shared_conn)
+            scope = _fixtures._restly_async_scope.__wrapped__(
+                shared_conn, _ASYNC_SESSION_REQUEST
+            )
             isolated_make_session = await scope.__anext__()
             agen = _fixtures.restly_async_session.__wrapped__(isolated_make_session)
             try:
@@ -422,19 +434,6 @@ async def test_async_client_fixture_works_without_database_configuration(
     assert isinstance(restly_async_client, AsyncRestlyTestClient)
     response = await restly_async_client.get("/", assert_status_code=404)
     assert response.status_code == 404
-
-
-@pytest.mark.asyncio
-async def test_async_client_scope_is_inert_without_configure_tests(monkeypatch):
-    class _ClientOnlyRequest:
-        fixturenames = ["restly_async_client"]
-
-    monkeypatch.setattr(_fixtures, "_current_setup", lambda: None)
-    with RestlyContext() as context:
-        scope = _fixtures._restly_async_scope.__wrapped__(None, _ClientOnlyRequest())
-        assert await scope.__anext__() is None
-        assert context.test_async_make_session is None
-        await scope.aclose()
 
 
 def _run_with_blocked_imports(

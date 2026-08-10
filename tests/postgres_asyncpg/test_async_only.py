@@ -26,6 +26,7 @@ from sqlalchemy.orm import Mapped
 from sqlalchemy.pool import NullPool
 
 import fastapi_restly as fr
+from fastapi_restly.exc import RestlyConfigurationError
 
 from .conftest import ASYNCPG_URL
 
@@ -96,6 +97,27 @@ async def test_direct_database_access_without_a_public_fixture():
     """The internal scope owns even fixture-less unit-of-work access."""
     async with fr.open_async_session() as session:
         await session.execute(text("select 1"))
+
+
+@pytest.fixture
+def blocked_direct_access() -> RestlyConfigurationError:
+    """Try fixture-side DB access while the test's sync client owns the loop."""
+
+    async def access() -> None:
+        async with fr.open_async_session() as session:
+            await session.execute(text("select 1"))
+
+    with pytest.raises(
+        RestlyConfigurationError, match="cannot open an async database session"
+    ) as excinfo:
+        asyncio.run(access())
+    return excinfo.value
+
+
+def test_sync_client_blocks_fixture_side_async_access(
+    blocked_direct_access: RestlyConfigurationError, restly_client
+):
+    assert "restly_async_client" in str(blocked_direct_access)
 
 
 def test_sync_client_uses_asyncpg_and_commits_inside_the_test(restly_client):

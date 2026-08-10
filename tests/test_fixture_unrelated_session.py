@@ -14,6 +14,8 @@ savepoint treatment; every other session behaves normally.
 
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import pytest
 from sqlalchemy import create_engine, select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
@@ -32,6 +34,9 @@ class _Row(_Base):
     __tablename__ = "unrelated_session_row"
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str]
+
+
+_ASYNC_SESSION_REQUEST = SimpleNamespace(fixturenames=["restly_async_session"])
 
 
 def test_unrelated_sync_session_is_not_hijacked_by_restly_session():
@@ -104,7 +109,9 @@ async def test_unrelated_async_session_is_not_hijacked_by_restly_async_session()
             await conn.run_sync(_Base.metadata.create_all)
         with RestlyContext():
             _fr_globals.async_make_session = make_session
-            scope = _fixtures._restly_async_scope.__wrapped__(None)
+            scope = _fixtures._restly_async_scope.__wrapped__(
+                None, _ASYNC_SESSION_REQUEST
+            )
             isolated_make_session = await scope.__anext__()
             agen = _fixtures.restly_async_session.__wrapped__(isolated_make_session)
             fixture_session = await agen.__anext__()

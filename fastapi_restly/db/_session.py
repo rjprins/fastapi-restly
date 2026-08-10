@@ -212,9 +212,10 @@ def get_async_engine() -> AsyncEngine:
         raise RestlyConfigurationError(
             "Call fr.configure() before using get_async_engine()."
         )
-    bind = _active_async_make_session().kw["bind"]
-    # Under restly_async_session the factory is bound to a pinned AsyncConnection;
-    # resolve its engine so this keeps returning the real AsyncEngine.
+    # This is a read-only lookup of application configuration. Test overrides may
+    # be bound to a pinned connection or deliberately refuse session creation;
+    # neither changes the engine that configure() registered.
+    bind = _fr_globals.async_make_session.kw["bind"]
     if isinstance(bind, AsyncConnection):
         return bind.engine
     return bind

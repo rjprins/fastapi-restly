@@ -17,6 +17,8 @@ where the test can see them, instead of silently no-opping on a MagicMock.
 
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import pytest
 from sqlalchemy import create_engine, select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
@@ -37,6 +39,9 @@ class _Row(_Base):
     __tablename__ = "create_savepoint_row"
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str]
+
+
+_ASYNC_SESSION_REQUEST = SimpleNamespace(fixturenames=["restly_async_session"])
 
 
 def test_get_engine_and_create_all_work_inside_the_sync_fixture():
@@ -167,7 +172,9 @@ async def test_get_async_engine_and_async_create_all_work_inside_the_async_fixtu
     try:
         with RestlyContext():
             _fr_globals.async_make_session = make_session
-            scope = _fixtures._restly_async_scope.__wrapped__(None)
+            scope = _fixtures._restly_async_scope.__wrapped__(
+                None, _ASYNC_SESSION_REQUEST
+            )
             isolated_make_session = await scope.__anext__()
             agen = _fixtures.restly_async_session.__wrapped__(isolated_make_session)
             session = await agen.__anext__()
@@ -197,7 +204,9 @@ async def test_async_request_write_is_visible_to_a_later_request():
     try:
         with RestlyContext():
             _fr_globals.async_make_session = make_session
-            scope = _fixtures._restly_async_scope.__wrapped__(None)
+            scope = _fixtures._restly_async_scope.__wrapped__(
+                None, _ASYNC_SESSION_REQUEST
+            )
             isolated_make_session = await scope.__anext__()
             agen = _fixtures.restly_async_session.__wrapped__(isolated_make_session)
             await agen.__anext__()
@@ -232,7 +241,9 @@ async def test_async_request_rollback_discards_only_its_own_work():
     try:
         with RestlyContext():
             _fr_globals.async_make_session = make_session
-            scope = _fixtures._restly_async_scope.__wrapped__(None)
+            scope = _fixtures._restly_async_scope.__wrapped__(
+                None, _ASYNC_SESSION_REQUEST
+            )
             isolated_make_session = await scope.__anext__()
             agen = _fixtures.restly_async_session.__wrapped__(isolated_make_session)
             await agen.__anext__()

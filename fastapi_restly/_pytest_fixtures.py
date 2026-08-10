@@ -462,19 +462,25 @@ else:
 
     @pytest_asyncio.fixture
     async def _restly_async_scope(
-        _shared_connection, request: pytest.FixtureRequest | None = None
+        _shared_connection, request: pytest.FixtureRequest
     ) -> AsyncIterator[async_sessionmaker[SA_AsyncSession] | None]:
         """Own async database state on pytest's event loop."""
         if (
             _current_setup() is None
-            and request is not None
             and "restly_async_session" not in request.fixturenames
         ):
             # Merely requesting the HTTP client must not dispose or replace an
             # application's live engine before the suite opts into management.
             yield None
             return
-        async with _async_test_scope(_shared_connection) as make_session:
+        # The managed autouse fixture precleans async-only delete suites before
+        # user fixtures whenever the sync client owns the application's loop.
+        # A public async consumer may still request this scope later; it must not
+        # erase rows those user fixtures seeded in the meantime.
+        clean_database = "restly_client" not in request.fixturenames
+        async with _async_test_scope(
+            _shared_connection, clean_database=clean_database
+        ) as make_session:
             yield make_session
 
     @pytest_asyncio.fixture
@@ -513,7 +519,10 @@ else:
         """
         make_session = _restly_async_scope
         if make_session is None:
-            if _fr_globals.session_generator is not None:
+            if (
+                _cleanup_mode() == ROLLBACK
+                and _fr_globals.session_generator is not None
+            ):
                 raise RestlyConfigurationError(
                     "restly_async_session cannot isolate a session built by "
                     "your session_generator: AsyncSessionDep reads the "
@@ -623,7 +632,10 @@ def restly_session(_restly_sync_scope) -> Iterator[SA_Session]:
     """
     make_session = _restly_sync_scope
     if make_session is None:
-        if _fr_globals.sync_session_generator is not None:
+        if (
+            _cleanup_mode() == ROLLBACK
+            and _fr_globals.sync_session_generator is not None
+        ):
             raise RestlyConfigurationError(
                 "restly_session cannot isolate a session built by your "
                 "sync_session_generator: SessionDep reads the generator before "

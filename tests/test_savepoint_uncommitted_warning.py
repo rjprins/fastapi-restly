@@ -17,6 +17,7 @@ test_testing_fixtures_coverage.py) and assert both halves of the contract:
 from __future__ import annotations
 
 import warnings
+from types import SimpleNamespace
 
 import pytest
 from sqlalchemy import create_engine
@@ -38,6 +39,9 @@ class _Row(_Base):
     __tablename__ = "uncommitted_warning_row"
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str]
+
+
+_ASYNC_SESSION_REQUEST = SimpleNamespace(fixturenames=["restly_async_session"])
 
 
 def _warn_count(check) -> int:
@@ -92,7 +96,9 @@ async def test_savepoint_async_commit_does_not_false_warn():
             await conn.run_sync(_Base.metadata.create_all)
         with RestlyContext():
             _fr_globals.async_make_session = make_session
-            scope = _fixtures._restly_async_scope.__wrapped__(None)
+            scope = _fixtures._restly_async_scope.__wrapped__(
+                None, _ASYNC_SESSION_REQUEST
+            )
             isolated_make_session = await scope.__anext__()
             agen = _fixtures.restly_async_session.__wrapped__(isolated_make_session)
             try:

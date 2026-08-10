@@ -23,7 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - List endpoints now return a paginated `data` envelope by default; set `paginated = False` to return all rows.
 - Managed test scopes now isolate clients, sessions, and direct database access with SQLAlchemy savepoints.
 - Split-loop async database access now fails with guidance to use `restly_async_client`.
-- Session fixtures now raise when a custom generator has no matching sessionmaker.
+- Generator-only session fixtures now raise under rollback.
 
 ### Fixed
 

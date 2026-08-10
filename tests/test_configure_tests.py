@@ -680,7 +680,9 @@ def test_delete_mode_cleans_before_user_fixtures_seed_the_test(tmp_path: Path):
         '            session.add(Note(text="seeded for this test"))\n'
         "            await session.commit()\n"
         "    asyncio.run(seed())\n\n\n"
-        "def test_seed_survives_until_the_client_runs(seeded_note, restly_client):\n"
+        "def test_seed_survives_until_the_client_runs(\n"
+        "    seeded_note, restly_async_session, restly_client\n"
+        "):\n"
         '    assert restly_client.get("/notes/").json()["total_count"] == 1\n',
     )
     result = _run_pytest(tmp_path)
@@ -830,6 +832,54 @@ def test_a_suite_that_never_opts_in_is_untouched(tmp_path: Path):
     # dev.db is the app's own, and the only database this project names: the
     # schema step would have created it had the fixtures acted.
     assert not (tmp_path / "dev.db").exists()
+
+
+def test_async_client_does_not_isolate_an_unmanaged_suite(tmp_path: Path):
+    """A client fixture alone must not opt an application into DB management."""
+    _write_project(
+        tmp_path,
+        "import asyncio\n"
+        "import pytest\n"
+        "import fastapi_restly as fr\n"
+        "from myapp import app\n\n"
+        "asyncio.run(fr.db.async_create_all(fr.DataclassBase))\n\n\n"
+        "@pytest.fixture\n"
+        "def restly_app():\n"
+        "    return app\n",
+        "from sqlalchemy import func, select\n"
+        "import fastapi_restly as fr\n"
+        "from myapp import Note\n\n\n"
+        "async def test_commit_while_using_the_client(restly_async_client):\n"
+        "    async with fr.open_async_session() as session:\n"
+        '        session.add(Note(text="must persist"))\n'
+        "        await session.commit()\n\n\n"
+        "async def test_unmanaged_commit_persisted():\n"
+        "    try:\n"
+        "        async with fr.open_async_session() as session:\n"
+        "            count = await session.scalar(\n"
+        "                select(func.count()).select_from(Note)\n"
+        "            )\n"
+        "        assert count == 1\n"
+        "    finally:\n"
+        "        await fr.db.get_async_engine().dispose()\n",
+    )
+    result = _run_pytest(tmp_path)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "2 passed" in result.stdout
+
+
+def test_sync_client_allows_read_only_async_engine_lookup(tmp_path: Path):
+    _write_project(
+        tmp_path,
+        _CONFTEST,
+        "import fastapi_restly as fr\n\n\n"
+        "def test_engine_lookup_does_not_open_a_session(restly_client):\n"
+        '    assert fr.db.get_async_engine().dialect.name == "sqlite"\n',
+    )
+    result = _run_pytest(tmp_path)
+
+    assert result.returncode == 0, result.stdout + result.stderr
 
 
 def test_tests_still_run_when_no_database_is_configured_anywhere(tmp_path: Path):

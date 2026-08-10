@@ -430,9 +430,10 @@ A configured `sync_session_generator` is bypassed during rollback isolation, so
 the request builds its own session on the test scope's connection instead. What is
 lost is anything the generator body runs per session, a `SET search_path` for
 example. Configure a sync sessionmaker as well: with only a generator the fixture
-has nothing to build the isolated session from, and setup raises. Delete mode
-rejects custom generators because it cannot prove that the generator and the
-sessionmaker use the same database; `db_cleanup="none"` leaves them untouched.
+has nothing to build the isolated session from, and rollback setup raises. Delete
+mode rejects custom generators because it cannot prove that the generator and the
+sessionmaker use the same database; `db_cleanup="none"` leaves them untouched and
+the public session fixture skips because there is no sessionmaker to build from.
 
 `fr.open_session()` resolves the same factory `SessionDep` does, so it too
 yields a session on the test's pinned connection even when `restly_session` is
@@ -464,8 +465,8 @@ The async version of `restly_session`. Awaiting it in a test body means
 `fr.configure(async_database_url=...)`. It skips automatically if no async
 session source is configured at all. It handles a configured `session_generator`
 (and `fr.open_async_session()`) the same way `restly_session` handles
-`sync_session_generator`, including the raise when no async sessionmaker is
-configured.
+`sync_session_generator`: generator-only rollback setup raises, while none mode
+leaves the generator untouched and the public fixture skips.
 
 Pair it with `restly_async_client`, not `restly_client`, in an async-only
 rollback test. This keeps every use of the pinned connection on pytest's event
