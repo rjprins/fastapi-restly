@@ -322,8 +322,8 @@ behavior is documented in [Testing](howto_testing.md#pytest-fixture-reference):
 | `restly_app` | function | The app passed to `configure_tests(app=...)`; a bare `FastAPI()` otherwise. |
 | `restly_client` | function | `RestlyTestClient` wrapping `restly_app`, entered so the app's `lifespan` runs. |
 | `restly_async_client` | function | `AsyncRestlyTestClient` on the same event loop as `restly_async_session` and, in rollback mode, the same transaction; the app's `lifespan` runs. |
-| `restly_session` | function | The suite's `Session`, following `db_cleanup`: savepoint-isolated under the default rollback mode, a plain committing session under `"delete"`/`"none"`. Needs a sync sessionmaker; a generator-only configuration raises under rollback and skips under none. |
-| `restly_async_session` | function | The async equivalent, following `db_cleanup` the same way. Needs an async sessionmaker; a generator-only configuration raises under rollback and skips under none. |
+| `restly_session` | function | The suite's `Session`, following `db_cleanup`: savepoint-isolated under the default rollback mode, a plain committing session under `"delete"`/`"none"`. Needs a sync sessionmaker. A custom `sync_session_generator` is bypassed under rollback (which raises if the sessionmaker is absent), rejected under delete, and left untouched under none (the fixture skips if the sessionmaker is absent). |
+| `restly_async_session` | function | The async equivalent, following `db_cleanup` the same way. Needs an async sessionmaker; `session_generator` follows the same rollback/delete/none rules. |
 | `restly_project_root` | function | `Path` of the nearest ancestor of the requesting test file with a `pyproject.toml`. |
 
 ### Default Exception Handling

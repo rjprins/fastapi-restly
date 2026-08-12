@@ -130,7 +130,9 @@ def configure_tests(
     * ``alembic_upgrade=True`` runs ``alembic upgrade head`` through ``alembic.ini``
       next to your project root; pass a path to point at a different config.
       Restly reads the URL from the application's configured engine and sets
-      ``sqlalchemy.url`` on the config.
+      ``sqlalchemy.url`` on the config. It preserves that URL's driver, so an
+      async-only application needs an Alembic ``env.py`` created from the async
+      template, or otherwise adapted to run migrations with an async DBAPI.
     * Passing neither leaves the schema to you, which is the right choice when
       your suite already builds it or your migrations are not Alembic.
 
@@ -202,12 +204,6 @@ def configure_tests(
             "declarative base> to know which tables to create."
         )
 
-    if (
-        _fr_globals.make_session is not None
-        and _fr_globals.async_make_session is not None
-    ):
-        _reject_split_databases()
-
     setup = _TestSetup(
         app=app,
         base=base,
@@ -222,12 +218,17 @@ def configure_tests(
         database_url=_fr_globals.database_url,
         async_database_url=_fr_globals.async_database_url,
     )
+    _reject_split_databases(setup, db_cleanup)
     _setup = setup
     _fr_globals.database_configuration_locked = True
 
 
 def _validate_database_sources(setup: _TestSetup, mode: str) -> None:
     """Reject source combinations the selected isolation mode cannot manage."""
+    # The CLI or environment may have changed the effective mode since
+    # configure_tests() recorded the setup. In particular, two private in-memory
+    # SQLite engines are only unified by rollback mode's pinned sync connection.
+    _reject_split_databases(setup, mode)
     if mode == ROLLBACK:
         if setup.sync_session_generator is not None and setup.make_session is None:
             raise RestlyConfigurationError(
@@ -413,17 +414,21 @@ def _resolve_engine(bind: Any) -> Any:
     return bind
 
 
-def _reject_split_databases() -> None:
+def _reject_split_databases(setup: _TestSetup, mode: str) -> None:
     """Refuse sync and async legs that point at different databases.
 
     The suite treats the two legs as one database: rollback mode serves async
-    requests over the sync leg's pinned connection, and deletion cleans
-    through one leg on the assumption the other sees it. Split legs would break
-    both, silently. Two in-memory SQLite legs are the accepted exception; one
-    in-memory leg paired with a located database is a known split.
+    requests over the sync leg's pinned connection, schema setup runs once, and
+    deletion cleans through one leg on the assumption the other sees it. Split
+    legs would break those guarantees silently. Two in-memory SQLite legs are
+    therefore only an exception in rollback mode, where the pinned connection
+    actually bridges them.
     """
-    sync_engine = _resolve_engine(_fr_globals.make_session.kw.get("bind"))
-    async_engine = _resolve_engine(_fr_globals.async_make_session.kw.get("bind"))
+    if setup.make_session is None or setup.async_make_session is None:
+        return
+
+    sync_engine = _resolve_engine(setup.make_session.kw.get("bind"))
+    async_engine = _resolve_engine(setup.async_make_session.kw.get("bind"))
     sync_url = getattr(sync_engine, "url", None)
     async_url = getattr(async_engine, "url", None)
     if sync_url is None or async_url is None:
@@ -431,20 +436,29 @@ def _reject_split_databases() -> None:
     memory_sync = _is_memory_sqlite(sync_url)
     memory_async = _is_memory_sqlite(async_url)
     if memory_sync and memory_async:
-        # Two in-memory legs record no location to compare, and rollback mode
-        # makes them one database anyway, serving async requests over the sync
-        # leg's pinned connection.
-        return
+        if mode == ROLLBACK:
+            # Two in-memory legs record no location to compare, but rollback
+            # makes them one database by serving async requests over the sync
+            # leg's pinned connection.
+            return
+        raise RestlyConfigurationError(
+            "The sync and async session factories configured through "
+            "fr.configure() use two separate in-memory SQLite databases. "
+            f"db_cleanup={mode!r} leaves those engines separate, so schema setup "
+            "and application requests could see different databases. Use "
+            'db_cleanup="rollback", or point both legs at the same located test '
+            "database through its sync and async drivers."
+        )
 
     if memory_sync or memory_async:
         # Exactly one in-memory leg needs no comparison: a private in-memory
         # database is provably not the other leg's file or server database.
         same = False
+    elif sync_url.get_backend_name() != async_url.get_backend_name():
+        same = False
     elif sync_url.database is None or async_url.database is None:
         return
-    elif sync_url.get_backend_name() == "sqlite" and (
-        async_url.get_backend_name() == "sqlite"
-    ):
+    elif sync_url.get_backend_name() == "sqlite":
         # The same file spelled two ways ("./test.db" and "test.db") is one
         # database; resolve before comparing.
         same = Path(sync_url.database).resolve() == Path(async_url.database).resolve()
@@ -463,8 +477,8 @@ def _reject_split_databases() -> None:
         "one: rollback mode serves "
         "async requests over the sync leg's connection, and deletion cleans "
         "through one leg only. Point both at the same database, through its "
-        "sync and async drivers. The comparison is textual, so spell the "
-        "host, port and database identically on both legs."
+        "sync and async drivers. The backend, host, port and database must "
+        "match; the sync and async driver names may differ."
     )
 
 

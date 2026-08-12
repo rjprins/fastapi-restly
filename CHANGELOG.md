@@ -10,8 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `fr.testing.configure_tests()` for schema setup and per-test database isolation.
-- `db_cleanup=` modes (`rollback`, `delete`, and `none`) with run-time overrides.
-- Pooled asyncpg support for async-only test suites; no sync database leg or `NullPool` required.
+- `db_cleanup=` modes (`rollback`, `delete`, and `none`) with per-run
+  `--restly-db-cleanup` and `RESTLY_DB_CLEANUP` overrides.
+- Pooled asyncpg support for applications configured with only an async
+  database; no synchronous database configuration or test-only `NullPool`
+  engine is required.
 - `AsyncRestlyTestClient` and the `restly_async_client` fixture.
 - SQLAlchemy `AsyncAttrs` support through `awaitable_attrs` on Restly models.
 - `get_relationship_loader_options()` as an eager-loading override.
@@ -20,24 +23,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- List endpoints now return a paginated `data` envelope by default; set `paginated = False` to return all rows.
-- Managed test scopes now isolate clients, sessions, and direct database access with SQLAlchemy savepoints.
-- Split-loop async database access now fails with guidance to use `restly_async_client`.
-- Generator-only session fixtures now raise under rollback.
+- List endpoints now paginate by default. `GET /things` changes from an
+  unbounded bare array to
+  `{"data": [...], "total_count": ..., "page": ..., "page_size": ..., "total_pages": ...}`,
+  capped at `default_page_size` (50). Existing paginated responses must rename
+  `items` to `data` and `total` to `total_count`.
+  `include_pagination_metadata` and `to_paginated_listing_response()` are
+  removed: set `paginated = False` for an unpaginated `{"data": [...]}`
+  response with no pagination query parameters, override
+  `to_listing_response()` to customize that envelope, or replace
+  `get_many_endpoint` with a matching `response_model` if the API must keep
+  returning a bare array. `default_page_size` must now be an integer from 1
+  through `max_page_size`; the old `None` value is replaced by
+  `paginated = False`. Single-object responses are unchanged.
+
+- After `configure_tests()`, rollback isolation now applies to every test that
+  uses the configured database, including client-only tests and code that calls
+  `fr.open_session()` or `fr.open_async_session()` without requesting a public
+  session fixture. Sessions join one test transaction through SQLAlchemy
+  savepoints, so `commit()` and `rollback()` behave as in production. A value
+  added through a session fixture becomes visible to a request after `flush()`
+  or `commit()`; the sessions do not share an identity map.
+
+- Under rollback cleanup, an application configured with only an async database
+  can no longer combine the synchronous `restly_client` with
+  `restly_async_session` or other direct async database access. That would use
+  one transaction from two event loops, so Restly raises a configuration error
+  before database work begins and directs the test to `restly_async_client`.
+  Under `"delete"` and `"none"`, the same check applies to drivers such as
+  asyncpg that bind pooled connections to one event loop.
+
+- Under rollback cleanup, requesting `restly_session` or
+  `restly_async_session` with only a custom session generator now raises instead
+  of skipping. Configure the corresponding database URL, engine, or
+  sessionmaker as well so Restly can build the isolated session.
 
 ### Fixed
 
-- `restly_client` now runs application lifespan events and supports late view registration.
+- `restly_client` now runs application lifespan startup and shutdown once per
+  test. Registering a view through `restly_client.app` after the fixture has
+  constructed the client also keeps working, including Restly's integrity-error
+  handling.
 - PostgreSQL constraint errors now produce clean details with psycopg 3.
 - Write responses now eager-load schema relationships, avoiding `MissingGreenlet` errors and sync N+1 queries.
-- Session fixtures now isolate applications that use custom session generators.
+- Rollback isolation now routes applications that configure a custom session
+  generator alongside a matching sessionmaker through the isolated factory,
+  instead of letting request writes escape the test transaction.
 - `restly_project_root` now resolves from the requesting test file, including in monorepos.
-- `restly_async_session` now shares the sync fixture's connection when both are configured.
+- `restly_async_session` no longer errors when a synchronous sessionmaker is
+  also configured. Under rollback cleanup, it uses the same pinned connection
+  as `restly_session`, so committed writes are visible between them within a
+  test.
 - Engine and schema helpers now work inside session fixtures.
 
 ### Removed
 
-- `activate_savepoint_only_mode()` and `deactivate_savepoint_only_mode()`; use the session fixtures instead.
+- `activate_savepoint_only_mode()` and `deactivate_savepoint_only_mode()` are
+  removed. They isolated each session separately rather than the whole test, so
+  a write from one request was not reliably visible to the next. Call
+  `fr.testing.configure_tests()` once in `conftest.py` instead; it gives the
+  client, session fixtures, and directly opened sessions one transaction for
+  the whole test.
 
 ## [0.8.0] - 2026-07-22
 

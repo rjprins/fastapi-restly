@@ -14,10 +14,12 @@ import subprocess
 import sys
 import textwrap
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from fastapi import FastAPI
 from sqlalchemy import create_engine, inspect, text
+from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Mapped, sessionmaker
 
 import fastapi_restly as fr
@@ -260,6 +262,7 @@ def test_create_all_disposes_the_connection_it_pooled(tmp_path: Path):
     user-supplied engine's pool would resurface on a test's own loop, which is
     how asyncpg fails."""
     from sqlalchemy.ext.asyncio import create_async_engine
+    from sqlalchemy.pool import NullPool
 
     engine = create_async_engine(f"sqlite+aiosqlite:///{tmp_path / 'made.db'}")
     with _isolated_config():
@@ -270,7 +273,8 @@ def test_create_all_disposes_the_connection_it_pooled(tmp_path: Path):
         fr.configure(async_engine=engine)
         configure_tests(base=fr.DataclassBase, create_all=True)
         _create_schema(_current_setup())  # type: ignore[arg-type]
-        assert engine.pool.checkedin() == 0
+        # SQLAlchemy 2.0.22 uses NullPool here, which retains no connections.
+        assert isinstance(engine.pool, NullPool) or engine.pool.checkedin() == 0
 
 
 # ---------------------------------------------------------------------------
@@ -464,6 +468,18 @@ def test_split_sync_and_async_databases_are_rejected(tmp_path: Path):
         with pytest.raises(RestlyConfigurationError, match="not the same database"):
             configure_tests()
 
+    # A matching host/port/database tuple is still split when the backends
+    # differ. Drivers may differ, but their backend names must agree.
+    with _isolated_config() as context:
+        context.make_session = SimpleNamespace(
+            kw={"bind": SimpleNamespace(url=make_url("sqlite:///shared"))}
+        )
+        context.async_make_session = SimpleNamespace(
+            kw={"bind": SimpleNamespace(url=make_url("postgresql+asyncpg:///shared"))}
+        )
+        with pytest.raises(RestlyConfigurationError, match="not the same database"):
+            configure_tests()
+
 
 def test_a_memory_leg_paired_with_a_located_leg_is_rejected(tmp_path: Path):
     """A private in-memory database is provably not the other leg's file or
@@ -476,6 +492,30 @@ def test_a_memory_leg_paired_with_a_located_leg_is_rejected(tmp_path: Path):
         )
         with pytest.raises(RestlyConfigurationError, match="not the same database"):
             configure_tests()
+
+    # Two private memory engines are only unified when rollback serves async
+    # work over the sync leg's pinned connection.
+    for mode in (DELETE, NONE):
+        with _isolated_config():
+            fr.configure(
+                database_url="sqlite:///:memory:",
+                async_database_url="sqlite+aiosqlite:///:memory:",
+            )
+            with pytest.raises(RestlyConfigurationError, match="in-memory"):
+                configure_tests(db_cleanup=mode)
+
+    # CLI/environment overrides are resolved after configure_tests(), so the
+    # collection-time validator must recheck the effective mode.
+    with _isolated_config():
+        fr.configure(
+            database_url="sqlite:///:memory:",
+            async_database_url="sqlite+aiosqlite:///:memory:",
+        )
+        configure_tests()
+        setup = _current_setup()
+        for mode in (DELETE, NONE):
+            with pytest.raises(RestlyConfigurationError, match="in-memory"):
+                _validate_database_sources(setup, mode)  # type: ignore[arg-type]
 
 
 def test_equivalent_sqlite_spellings_are_one_database(tmp_path: Path):

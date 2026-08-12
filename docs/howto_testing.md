@@ -72,17 +72,33 @@ existing variables” option in application code; that makes the test unable to
 select its database before import. If import-time settings are awkward, pass an
 explicit test settings object to an app factory instead.
 
-An ordinary pooled async engine is supported. Drivers such as asyncpg bind a
-connection to the event loop that created it, while schema setup, pytest, and
-the synchronous test client use different loops. Restly owns those boundaries:
-it opens rollback transactions on the loop that will use them and disposes the
-engine's checked-in connections before that loop ends. You do not need a
-test-only `NullPool` engine.
+The `testing` extra installs `pytest-asyncio`. Set its default fixture loop scope
+in `pyproject.toml`, or pytest-asyncio prints a deprecation warning on every run:
+
+```toml
+[tool.pytest.ini_options]
+asyncio_default_fixture_loop_scope = "function"
+```
+
+That completes the setup for a managed suite. Calling
+{func}`configure_tests() <fastapi_restly.testing.configure_tests>` opts every
+test into schema setup and the selected database cleanup. Without that call,
+the client fixtures still run but do not start database isolation. For backward
+compatibility, explicitly requesting `restly_session` still installs rollback
+isolation for that whole test, including requests through `restly_client`;
+`restly_async_session` does the same for requests through
+`restly_async_client`. A client-only test without `configure_tests()` commits
+normally.
+
+Your tests can stay synchronous, even when your application and its only
+database driver are async. See [writing async tests](#writing-async-tests) when
+a test also needs direct async database access.
 
 ### Async-only PostgreSQL
 
-The production-shaped setup is also the simplest one. Let the application own
-one normally pooled engine and dispose it when the application shuts down:
+An application configured only with async PostgreSQL can keep its ordinary
+pooled engine in tests; you do not need a test-only `NullPool` engine. Let the
+application own the engine and dispose it when the application shuts down:
 
 ```python
 # myapp/main.py
@@ -113,27 +129,8 @@ app = FastAPI(lifespan=lifespan)
 Use a production URL such as `postgresql+asyncpg://...` in deployment and set
 the same setting to a disposable PostgreSQL database before importing the app
 in `conftest.py`. Then call `configure_tests()` as shown above. Restly neither
-rebuilds the engine nor changes its pool; the testing fixtures only manage the
-connections they use across their own event-loop boundaries. Disposing in both
-the application lifespan and the test harness is safe and keeps ownership clear.
-
-That is the whole setup. Until you call
-{func}`configure_tests() <fastapi_restly.testing.configure_tests>` the plugin does
-nothing: its fixtures are there, but none of them act on a suite that has not
-asked for them.
-
-The `testing` extra installs `pytest-asyncio`, which the managed async database
-scope needs. Give it a loop scope in `pyproject.toml`, or it prints a
-deprecation warning on every run:
-
-```toml
-[tool.pytest.ini_options]
-asyncio_default_fixture_loop_scope = "function"
-```
-
-Your tests can stay synchronous, even when your application and its only
-database driver are async. See [writing async tests](#writing-async-tests) when
-a test also needs direct async database access.
+rebuilds the engine nor changes its pool. Disposing it in the application
+lifespan remains the right production and test setup.
 
 ## What you get
 
@@ -151,18 +148,18 @@ all good ways to do that.
 test, either from your models with `create_all=True` or by running your
 migrations with `alembic_upgrade=True`.
 
-**A clean database in every test.** Everything a test writes is rolled back when
-it finishes, so no test sees another's rows and the suite does not care what
-order it runs in. There is no teardown to write and no database to rebuild
-between tests, which is what keeps a suite fast as it grows. See
-[savepoints and rollback](#savepoints-and-rollback) for how that works, and
-[cleaning up between tests](#cleaning-up-between-tests) for the two cases it
-cannot serve.
+**A cleanup policy for every test.** With the default cleanup, everything a test
+writes is rolled back when it finishes, so no test sees another's rows and the
+suite does not care what order it runs in. There is no teardown to write and no
+database to rebuild between tests, which is what keeps a suite fast as it
+grows. See [savepoints and rollback](#savepoints-and-rollback) for how that
+works, and [cleaning up between tests](#cleaning-up-between-tests) for the two
+cases it cannot serve.
 
 **Clients wired to your app.** `restly_client` sends requests from ordinary
 `def` tests. `restly_async_client` sends them from `async def` tests on the same
 event loop as `restly_async_session`. Both run the app's lifespan and roll their
-requests back with everything else.
+requests back with everything else under the default cleanup.
 
 ## A first test
 
@@ -180,12 +177,12 @@ def test_create_and_fetch_user(restly_client):
     assert data["name"] == "Jane"
 ```
 
-The user this test creates is gone by the time the next test runs. To work
-against the database directly instead of through the API, ask for a session
-fixture, or use `fr.open_session()` / `fr.open_async_session()` directly in a
-unit test. Database isolation belongs to the test, not to the client fixture,
-so either form receives the same cleanup; see [the fixture
-reference](#pytest-fixture-reference).
+With the default cleanup, the user this test creates is gone by the time the
+next test runs. To work against the database directly instead of through the
+API, ask for a session fixture, or use `fr.open_session()` /
+`fr.open_async_session()` directly in a unit test. Database isolation belongs
+to the test, not to the client fixture, so either form receives the same
+cleanup; see [the fixture reference](#pytest-fixture-reference).
 
 ## Test databases and migrations
 
@@ -205,10 +202,20 @@ older run keeps its stale tables, since creating a schema never drops one.
 `alembic upgrade head` before the first test. Restly resolves `alembic.ini`
 relative to your project rather than to the directory you happened to run pytest
 from, and sets `sqlalchemy.url` on the config to the database configured by the
-application.
-A stock `env.py` that reads that URL therefore migrates your test database, not
-whatever it would otherwise resolve on its own. Pass a path if the config lives
-somewhere else:
+application. An `env.py` that reads that setting therefore migrates your test
+database, not whatever it would otherwise resolve on its own.
+
+If the application configures only an async URL such as
+`postgresql+asyncpg://...` or `sqlite+aiosqlite://...`, its Alembic `env.py`
+must be able to open that async URL. Create the environment with Alembic's async
+template (`alembic init -t async ...`) or adapt an existing `env.py` using
+Alembic's
+[asyncio recipe](https://alembic.sqlalchemy.org/en/latest/cookbook.html#using-asyncio-with-alembic).
+The standard synchronous template cannot open it. When the application
+configures both synchronous and async database URLs, Restly passes the
+synchronous URL to Alembic.
+
+Pass a path if the config lives somewhere else:
 
 ```python
 fr.testing.configure_tests(
@@ -220,28 +227,23 @@ fr.testing.configure_tests(
 
 **Yourself**, by passing neither. Restly then leaves the schema alone, which is
 what you want when your suite already builds it or your migrations are not
-Alembic. Build it once per session rather than per test: each test runs inside a
-transaction that rolls back, so tables created inside one are discarded with it.
+Alembic. Build it once per session rather than per test. Under the default
+rollback mode, a table created inside a test belongs to that test's transaction
+and is discarded with it.
 
 See [Migrations with Alembic](deploying.md#migrations-with-alembic) for
 production migration setup.
 
 ## Cleaning up between tests
 
-Every test starts from a clean database, and `db_cleanup` decides how. The
-default suits most suites; the other two exist for what it cannot serve.
+The `db_cleanup=` argument to `configure_tests()` decides what Restly does with
+the database around each test. The default suits most suites; the other two
+exist for cases it cannot serve.
 
 **`"rollback"`**, the default, wraps each test in a transaction and rolls it back
 at the end, through the savepoints described [below](#savepoints-and-rollback).
 Nothing is ever committed, which is what makes it the fastest option, and it
-leaves reference data your migrations seeded untouched. In an async-only app,
-`restly_client` opens the transaction on its own portal loop. If a test or one
-of its fixtures also needs direct async database access, use
-`restly_async_client` so the request and direct work instead share pytest's loop
-and one transaction. Restly refuses the split-loop shape before it can commit
-outside the managed transaction. For loop-bound pooled drivers such as asyncpg,
-the same restriction applies in `"delete"` and `"none"` modes even though
-those modes do not open an outer transaction.
+leaves reference data your migrations seeded untouched.
 
 **`"delete"`** empties the tables before each test instead, and lets writes
 commit for real. It is slower and wants a database of its own, but the rows the
@@ -252,6 +254,16 @@ inspectable.
 suite that drives a browser or another process, which cannot see uncommitted
 data and whose parallel workers would clean the shared database out from under
 each other.
+
+In an application configured with only an async database, use `restly_client`
+when a test only sends HTTP requests and `restly_async_client` when it also needs
+direct async database access. The synchronous client runs the application on a
+different event loop from async test fixtures. Under rollback, requesting it
+together with `restly_async_session` stops during fixture setup with a
+`RestlyConfigurationError` that directs you to `restly_async_client`; opening a
+session through `fr.open_async_session()` fails with the same guidance when the
+session is opened. Drivers that bind pooled connections to one event loop, such
+as asyncpg, require the same separation under `"delete"` and `"none"`.
 
 Switch mode for one run without editing the suite:
 
@@ -287,8 +299,9 @@ very table you meant to protect.
 
 ## Test clients
 
-The `restly_client` fixture wraps this client for you; construct it directly
-when you are testing without the fixtures:
+{class}`RestlyTestClient <fastapi_restly.testing.RestlyTestClient>` is the
+synchronous client behind the `restly_client` fixture. The fixture constructs
+and enters it for you; use it directly when testing without the fixtures:
 
 ```python
 from fastapi_restly.testing import RestlyTestClient
@@ -302,9 +315,8 @@ inside the context manager, so a client built and used outside one skips whateve
 `lifespan=` sets up. The `restly_client` fixture enters it for you, once per
 test.
 
-{class}`RestlyTestClient <fastapi_restly.testing.RestlyTestClient>` is
-synchronous, but it still tests async FastAPI routes and
-{class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` endpoints.
+Although it is synchronous, `RestlyTestClient` still tests async FastAPI routes
+and {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` endpoints.
 {class}`AsyncRestlyTestClient <fastapi_restly.testing.AsyncRestlyTestClient>`
 provides the same request methods and assertions for async tests; the
 `restly_async_client` fixture constructs it and runs the app lifespan for you.
@@ -331,8 +343,16 @@ def test_not_found(restly_client):
 ```
 
 Passing `assert_status_code=None` relaxes the check to "any status below
-400"; it does **not** skip the assertion. To inspect an error response
-yourself, pass the error code you expect.
+400"; it does **not** skip the assertion. Pass the error code you expect when
+you know it. To make a request with no Restly status assertion at all, use the
+generic `request()` method:
+
+```python
+response = restly_client.request("GET", "/users/999")
+```
+
+The async client offers the same escape hatch with `await
+restly_async_client.request(...)`.
 
 ## Writing async tests
 
@@ -345,11 +365,12 @@ collection errors when it is wrong, and the ability to query the database from
 
 Write them when a test has to await something itself: `restly_async_session` or
 `fr.open_async_session()` to set up rows directly, or one of your own
-coroutines. Use
-`restly_async_client` for HTTP in the same test. In an async-only rollback suite,
-combining `restly_client` and `restly_async_session` is rejected because those
-fixtures live on different event loops and could not share the pinned
-connection.
+coroutines. Use `restly_async_client` for HTTP in the same test. In an
+async-only rollback suite, combining `restly_client` and
+`restly_async_session` stops during fixture setup with a
+`RestlyConfigurationError`: the synchronous client and async fixture use
+different event loops and cannot share one test transaction. The error tells
+you to use `restly_async_client`.
 
 ```python
 async def test_direct_setup_and_request(restly_async_client, restly_async_session):
@@ -396,14 +417,16 @@ a bare `FastAPI()`, and every request answers 404; override this fixture in your
 **Scope:** `function`
 
 A [`RestlyTestClient`](#test-clients) wrapping the `restly_app` fixture.
-Requests made through it are rolled back with the rest of the test. On its own,
-in a suite that never called `configure_tests()` and requests no session
-fixture, **nothing rolls them back**: a client-only test commits real rows to
-the configured database.
+In a configured suite, requests follow its [cleanup mode](#cleaning-up-between-tests):
+the default rolls them back with the rest of the test, while `"delete"` and
+`"none"` let them commit. On its own, in a suite that never called
+`configure_tests()` and requests no session fixture, **nothing rolls them
+back**: a client-only test commits real rows to the configured database.
 
-For an async-only application under rollback, the internal database scope opens
-its transaction inside the client's portal loop. This is why a normally pooled
-asyncpg engine works even though the test function itself is synchronous.
+For an async-only application under rollback, Restly opens the transaction on
+the same event loop the synchronous client uses to run the application. This is
+why a normally pooled asyncpg engine works even though the test function itself
+is synchronous.
 
 ### `restly_async_client`
 
@@ -426,19 +449,21 @@ its own real session that joins that transaction through a savepoint
 as in production while nothing persists past the test. The fixture skips
 automatically if no sync session source is configured at all.
 
-A configured `sync_session_generator` is bypassed during rollback isolation, so
-the request builds its own session on the test scope's connection instead. What is
-lost is anything the generator body runs per session, a `SET search_path` for
-example. Configure a sync sessionmaker as well: with only a generator the fixture
-has nothing to build the isolated session from, and rollback setup raises. Delete
-mode rejects custom generators because it cannot prove that the generator and the
-sessionmaker use the same database; `db_cleanup="none"` leaves them untouched and
-the public session fixture skips because there is no sessionmaker to build from.
+In a suite that called `configure_tests()`, a custom
+`sync_session_generator` follows these rules. The same table applies to the
+async `session_generator` and async sessionmaker.
 
-`fr.open_session()` resolves the same factory `SessionDep` does, so it too
-yields a session on the test's pinned connection even when `restly_session` is
-not requested. This makes database-only unit tests a first-class use case; the
-public fixture is only a convenient ready-made `Session`.
+| Cleanup mode | Generator behavior |
+|---|---|
+| `"rollback"` | Restly bypasses the generator and builds isolated sessions from the matching sessionmaker. If only the generator is configured, pytest stops before running tests with a configuration error that names the missing sessionmaker. Code in the generator body, such as `SET search_path`, does not run. |
+| `"delete"` | If either custom generator is configured, pytest stops before running tests with a configuration error, even when a matching sessionmaker exists. Restly cannot verify that the generator writes to the database it would clean. Use the sessionmaker as the application session source, or choose `"none"`. |
+| `"none"` | Restly leaves the generator untouched. The public session fixture uses the matching sessionmaker when one exists; with only a generator it skips because there is no sessionmaker from which to construct the fixture session. |
+
+Under rollback, `fr.open_session()` resolves the same factory `SessionDep` does,
+so it too yields a session on the test's pinned connection even when
+`restly_session` is not requested. This makes database-only unit tests a
+first-class use case; the public fixture is only a convenient ready-made
+`Session`.
 
 Under any [cleanup mode](#cleaning-up-between-tests) other than `rollback` this
 fixture yields a plain session on the configured database instead, since rolling
@@ -464,17 +489,17 @@ The async version of `restly_session`. Awaiting it in a test body means
 [writing an async test](#writing-async-tests). In async-only projects it needs only
 `fr.configure(async_database_url=...)`. It skips automatically if no async
 session source is configured at all. It handles a configured `session_generator`
-(and `fr.open_async_session()`) the same way `restly_session` handles
-`sync_session_generator`: generator-only rollback setup raises, while none mode
-leaves the generator untouched and the public fixture skips.
+(and `fr.open_async_session()`) according to the generator table above, using
+the async sessionmaker where the sync fixture uses the synchronous one.
 
 Pair it with `restly_async_client`, not `restly_client`, in an async-only
 rollback test. This keeps every use of the pinned connection on pytest's event
 loop.
 
-As on the sync side, `fr.open_async_session()` is isolated even when this public
-fixture is not requested. Use that form when a unit test naturally owns several
-short-lived sessions or when application service code already opens its own.
+Under rollback, as on the sync side, `fr.open_async_session()` is isolated even
+when this public fixture is not requested. Use that form when a unit test
+naturally owns several short-lived sessions or when application service code
+already opens its own.
 
 Usage mirrors `restly_session`, with `await`:
 
@@ -488,12 +513,14 @@ async def test_user_created(restly_async_session):
     assert result.name == "Bob"
 ```
 
-> **Note:** When both a sync and an async session source are configured,
-> `restly_async_session` reuses the connection `restly_session` opens, so the
-> two fixtures share one transaction and a write committed through either is
-> visible to the other within the same test. The async session runs over that
-> sync connection, so point both at the same database; the async driver itself
-> is not exercised in this mode.
+> **Note (rollback only):** When both synchronous and async session sources are
+> configured, Restly runs the async fixture over the test's pinned synchronous
+> connection. The two fixtures therefore share one transaction, and a write
+> committed through either is visible to the other within the test. The async
+> driver itself is not exercised. Under `"delete"` and `"none"`, each fixture
+> uses its configured sessionmaker independently; there is no shared connection
+> or outer transaction, and writes cross between them only after a real commit,
+> subject to the database's ordinary isolation rules.
 
 ### `restly_project_root`
 
