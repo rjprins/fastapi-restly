@@ -74,6 +74,11 @@ A few details are worth noting:
   an explicit `__tablename__`, and an explicit primary-key column.
 - If you prefer dataclass-oriented SQLAlchemy models, FastAPI-Restly also provides
   {class}`fr.DataclassBase <fastapi_restly.models.DataclassBase>` and {class}`fr.IDBase <fastapi_restly.models.IDBase>` convenience bases.
+  On those bases, `Mapped[datetime]` represents a UTC instant and maps to
+  `DateTime(timezone=True)`. PostgreSQL enforces that through its column type,
+  while SQLite returns naive datetime values. Declare
+  `mapped_column(DateTime())` explicitly only for a field that intentionally
+  stores a timezone-free wall-clock value.
 - {class}`RestView <fastapi_restly.views.RestView>` and {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` expect a single primary-key column; for
   composite-key tables, see
   [the view hierarchy](class_based_views.md#the-view-hierarchy).
@@ -108,8 +113,8 @@ not for production. Then open `http://127.0.0.1:8000/docs` or
 
 Registering `UserView` with `prefix = "/users"` generated five endpoints:
 
-- `GET /users/`
-- `POST /users/`
+- `GET /users`
+- `POST /users`
 - `GET /users/{id}`
 - `PATCH /users/{id}`
 - `DELETE /users/{id}`
@@ -117,7 +122,7 @@ Registering `UserView` with `prefix = "/users"` generated five endpoints:
 These endpoints work as soon as the server starts. A `POST` creates a row:
 
 ```text
-POST /users/
+POST /users
 {"name": "Jane", "email": "jane@example.com"}
 ```
 
@@ -131,7 +136,7 @@ The response is `201 Created` with the stored record:
 }
 ```
 
-The database assigned the `id`, and `GET /users/` now returns that row in the
+The database assigned the `id`, and `GET /users` now returns that row in the
 default `data` envelope:
 
 ```json
@@ -147,7 +152,7 @@ default `data` envelope:
 Update semantics are `PATCH` (partial update); see
 [Generated REST Endpoints](api_reference.md#generated-rest-endpoints) for the
 full contract. Filter lists with query parameters, for example
-`GET /users/?name=Jane`. See [Filter, Sort, and Paginate Lists](howto_query_modifiers.md).
+`GET /users?name=Jane`. See [Filter, Sort, and Paginate Lists](howto_query_modifiers.md).
 
 ## Add an explicit schema (optional)
 
@@ -186,7 +191,7 @@ from fastapi.testclient import TestClient
 from main import app
 
 with TestClient(app) as client:
-    res = client.post("/users/", json={"name": "Jane", "email": "jane@example.com"})
+    res = client.post("/users", json={"name": "Jane", "email": "jane@example.com"})
     assert res.status_code == 201
 ```
 

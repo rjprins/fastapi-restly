@@ -1,6 +1,6 @@
 """Tests for the list-params query layer (filtering, sorting, pagination)."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import patch
 
 import pydantic
@@ -560,9 +560,9 @@ class TestParseValue:
         assert result is True
 
     def test_parse_value_datetime(self):
-        """Test parsing datetime values."""
+        """Parsing preserves a timezone-less datetime until its column is known."""
         result = _parse_value(WidgetSchema, "created_at", "2024-01-01T00:00:00")
-        assert isinstance(result, datetime)
+        assert result == datetime(2024, 1, 1)
 
     def test_parse_value_invalid_field(self):
         """Test parsing with invalid field."""
@@ -606,6 +606,22 @@ class TestMakeWhereClause:
         assert "name != 'John'" in _render_sql(
             sqlalchemy.select(WidgetModel).where(clause)
         )
+
+    def test_datetime_value_matches_column_timezone_semantics(self):
+        class AwareRecord(fr.IDBase):
+            occurred_at: Mapped[datetime]
+
+        parser = lambda value: _parse_value(WidgetSchema, "created_at", value)
+
+        aware_clause = _make_where_clause(
+            AwareRecord.occurred_at, "2024-01-01T00:00:00", "eq", parser
+        )
+        naive_clause = _make_where_clause(
+            WidgetModel.created_at, "2024-01-01T00:00:00", "eq", parser
+        )
+
+        assert aware_clause.right.value == datetime(2024, 1, 1, tzinfo=timezone.utc)
+        assert naive_clause.right.value == datetime(2024, 1, 1)
 
     def test_make_where_clause_contains(self):
         """contains operator should compile to LIKE with wildcards."""

@@ -61,8 +61,8 @@ class UserView(fr.AsyncRestView):
 That view exposes these routes, with schemas generated from the model:
 
 ```text
-GET    /users/       # list users: filter, sort, paginate via URL params
-POST   /users/       # create a user
+GET    /users       # list users: filter, sort, paginate via URL params
+POST   /users       # create a user
 GET    /users/{id}   # read one user
 PATCH  /users/{id}   # partially update one user
 DELETE /users/{id}   # delete one user

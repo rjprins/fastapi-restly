@@ -50,11 +50,18 @@ app already has an engine, pass that one instead; see
 ## Migrations with Alembic
 
 In production, never call `metadata.create_all()`; use Alembic instead.
-Initialise it once in your project root:
+For the recommended `postgresql+asyncpg` setup, initialise Alembic with its
+async template once in your project root:
 
 ```bash
-alembic init alembic
+alembic init -t async alembic
 ```
+
+The generic template created by `alembic init alembic` builds a synchronous
+engine and cannot open an async URL. Use it only when Alembic receives a
+separate synchronous database URL. Alembic's
+[asyncio recipe](https://alembic.sqlalchemy.org/en/latest/cookbook.html#using-asyncio-with-alembic)
+shows the same template and how to adapt an existing environment.
 
 Point `alembic/env.py` at the metadata of whichever declarative base your
 models inherit from (typically {class}`fr.DataclassBase <fastapi_restly.models.DataclassBase>`):
@@ -66,6 +73,27 @@ import myapp.models  # noqa: F401 (import side-effect: registers model classes)
 
 target_metadata = fr.DataclassBase.metadata
 ```
+
+Restly's declarative bases map plain `Mapped[datetime]` columns to
+`DateTime(timezone=True)`. On PostgreSQL, upgrading an existing naive timestamp
+column requires an explicit interpretation of the stored values. If they
+represent UTC, use a reviewed migration such as:
+
+```python
+import sqlalchemy as sa
+from alembic import op
+
+op.alter_column(
+    "event",
+    "occurred_at",
+    type_=sa.DateTime(timezone=True),
+    postgresql_using="occurred_at AT TIME ZONE 'UTC'",
+)
+```
+
+A bare type change can reinterpret values in the server's local timezone. Use
+`mapped_column(DateTime())` on the model only when the column intentionally
+stores a timezone-free wall-clock value.
 
 Run migrations as part of your release or startup pipeline:
 
@@ -147,4 +175,5 @@ event loop within a worker. Do not use `--reload` in production.
 - [Use Restly in an Existing Project](howto_existing_project.md): wiring
   Restly into an app that already has an engine, sessions, and models.
 - [Examples](examples.md): the production-shaped SaaS example to compare
-  against.
+  against. It includes PostgreSQL Compose services, validated settings, an
+  application-owned async engine, migrations, and migration-backed tests.

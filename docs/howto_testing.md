@@ -169,7 +169,7 @@ A test needs nothing but the client:
 # test_users.py
 def test_create_and_fetch_user(restly_client):
     response = restly_client.post(  # asserts 201 automatically
-        "/users/", json={"name": "Jane", "email": "jane@example.com"}
+        "/users", json={"name": "Jane", "email": "jane@example.com"}
     )
     user_id = response.json()["id"]
 
@@ -308,7 +308,7 @@ and enters it for you; use it directly when testing without the fixtures:
 from fastapi_restly.testing import RestlyTestClient
 
 with RestlyTestClient(app) as client:
-    response = client.get("/users/")
+    response = client.get("/users")
 ```
 
 Enter it. Starlette runs an application's `lifespan` startup and shutdown only
@@ -378,7 +378,7 @@ async def test_direct_setup_and_request(restly_async_client, restly_async_sessio
     restly_async_session.add(User(name="Alice"))
     await restly_async_session.commit()
 
-    response = await restly_async_client.get("/users/")
+    response = await restly_async_client.get("/users")
     assert response.json()["total_count"] == 1
 ```
 
@@ -571,7 +571,7 @@ transaction is still open, before any fixture tears down, and `restly_client`
 works from there:
 
 ```
-(Pdb) restly_client.get("/users/").json()
+(Pdb) restly_client.get("/users").json()
 {'data': [{'id': 1, 'name': 'Jane'}], 'total_count': 1, ...}
 ```
 

@@ -3,7 +3,7 @@ import re
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import Enum, func
+from sqlalchemy import DateTime, Enum, func
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import (
     DeclarativeBase,
@@ -33,10 +33,13 @@ class TimestampsMixin(MappedAsDataclass, kw_only=True):
     """
 
     created_at: Mapped[datetime] = mapped_column(
-        default_factory=utc_now, server_default=func.now()
+        DateTime(timezone=True), default_factory=utc_now, server_default=func.now()
     )
     updated_at: Mapped[datetime] = mapped_column(
-        default_factory=utc_now, onupdate=utc_now, server_default=func.now()
+        DateTime(timezone=True),
+        default_factory=utc_now,
+        onupdate=utc_now,
+        server_default=func.now(),
     )
 
 
@@ -81,10 +84,14 @@ class DataclassBase(
     """
 
     type_annotation_map = {
+        # Datetimes represent UTC instants by default. PostgreSQL enforces this
+        # with TIMESTAMP WITH TIME ZONE. Use mapped_column(DateTime()) to opt a
+        # specific column into naive wall-clock semantics.
+        datetime: DateTime(timezone=True),
         # native_enum=False so enums are persisted as strings in the
         # database, not as Postgres TYPE objects. This prevents
         # requiring database migrations for every enum change.
-        enum.Enum: Enum(enum.Enum, native_enum=False, length=64)
+        enum.Enum: Enum(enum.Enum, native_enum=False, length=64),
     }
 
 

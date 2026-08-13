@@ -29,8 +29,8 @@ class TaskView(fr.AsyncRestView):
 Clients then scope the list through the query string:
 
 ```text
-GET /tasks/?project_id=17        # all tasks of one project
-GET /tasks/?project_id__in=1,2   # tasks of several projects
+GET /tasks?project_id=17        # all tasks of one project
+GET /tasks?project_id__in=1,2   # tasks of several projects
 ```
 
 When the nested URL is part of your API contract, add a custom route on the

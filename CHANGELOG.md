@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- A production-shaped SaaS example with separate PostgreSQL development and
+  test services, Pydantic settings, an application-owned asyncpg engine, async
+  Alembic migrations, migration-seeded fixtures, and migration-backed tests.
+
+### Changed
+
+- Custom `RestView` collection routes declared at `"/"` now use the no-slash
+  path as their OpenAPI form and keep the trailing-slash path as a hidden
+  compatibility alias, matching generated list and create routes.
+- Plain `Mapped[datetime]` annotations now map to
+  `DateTime(timezone=True)` by default, so PostgreSQL enforces UTC-instant
+  semantics with `timestamptz`. `TimestampsMixin` uses the same timezone-aware
+  mapping. On PostgreSQL, timestamps in API responses now include the UTC
+  offset, for example `+00:00`, instead of serializing as naive values.
+
+  Existing PostgreSQL databases must migrate every affected
+  `timestamp without time zone` column, including columns declared with a plain
+  `Mapped[datetime]`. If existing naive values represent UTC, use an explicit
+  conversion such as:
+
+  ```sql
+  ALTER TABLE example
+    ALTER COLUMN created_at TYPE timestamptz
+    USING created_at AT TIME ZONE 'UTC';
+  ```
+
+  A bare type alteration can reinterpret stored values in the server's local
+  timezone and shift them. Review generated Alembic migrations before applying
+  them. To retain naive wall-clock semantics for a specific column, opt out
+  explicitly with `mapped_column(DateTime())`.
+
+### Fixed
+
+- Datetime query filters without an explicit offset are interpreted as UTC for
+  timezone-aware columns, preventing host-local timezone shifts with asyncpg.
+  Filters for columns explicitly declared with `DateTime()` remain naive.
+- New or migrated PostgreSQL schemas now accept the UTC-aware values produced
+  by `TimestampsMixin` when using asyncpg. SQLite does not preserve timezone
+  information and continues to return naive datetime values.
+
 ## [0.9.0] - 2026-08-13
 
 ### Added

@@ -7,7 +7,7 @@ class TestOrganizationCRUD:
     def test_create_organization(self, client):
         """Test creating an organization."""
         response = client.post(
-            "/organizations/", json={"name": "Acme Corp", "slug": "acme-corp"}
+            "/organizations", json={"name": "Acme Corp", "slug": "acme-corp"}
         )
         org = response.json()
 
@@ -20,7 +20,7 @@ class TestOrganizationCRUD:
         """Test getting an organization by ID."""
         # Create first
         response = client.post(
-            "/organizations/", json={"name": "Test Org", "slug": "test-org"}
+            "/organizations", json={"name": "Test Org", "slug": "test-org"}
         )
         org_id = response.json()["id"]
 
@@ -34,11 +34,11 @@ class TestOrganizationCRUD:
     def test_list_organizations(self, client):
         """Test listing organizations."""
         # Create multiple
-        client.post("/organizations/", json={"name": "Org 1", "slug": "org-1"})
-        client.post("/organizations/", json={"name": "Org 2", "slug": "org-2"})
+        client.post("/organizations", json={"name": "Org 1", "slug": "org-1"})
+        client.post("/organizations", json={"name": "Org 2", "slug": "org-2"})
 
         # List
-        response = client.get("/organizations/")
+        response = client.get("/organizations")
         orgs = response.json()["data"]
 
         assert len(orgs) >= 2
@@ -47,7 +47,7 @@ class TestOrganizationCRUD:
         """Test updating an organization."""
         # Create
         response = client.post(
-            "/organizations/", json={"name": "Old Name", "slug": "old-slug"}
+            "/organizations", json={"name": "Old Name", "slug": "old-slug"}
         )
         org_id = response.json()["id"]
 
@@ -62,7 +62,7 @@ class TestOrganizationCRUD:
         """Test deleting an organization."""
         # Create
         response = client.post(
-            "/organizations/", json={"name": "To Delete", "slug": "to-delete"}
+            "/organizations", json={"name": "To Delete", "slug": "to-delete"}
         )
         org_id = response.json()["id"]
 

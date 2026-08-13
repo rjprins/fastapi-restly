@@ -4,11 +4,13 @@ version = "0.1.0"
 description = "Multi-tenant SaaS example for FastAPI-Restly"
 requires-python = ">=3.10"
 dependencies = [
+    "alembic>=1.15.2",
+    "asyncpg>=0.30.0",
     "fastapi>=0.115.12",
     "fastapi-restly",
+    "pydantic-settings>=2.9.1",
     "uvicorn[standard]>=0.32.1",
     "sqlalchemy[asyncio]>=2.0.41",
-    "aiosqlite>=0.21.0",
     "python-multipart>=0.0.20",
 ]
 

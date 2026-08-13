@@ -10,7 +10,7 @@ def setup_test_data(client):
 
     # Create org
     response = client.post(
-        "/organizations/",
+        "/organizations",
         json={"name": f"Query Test Org {unique}", "slug": f"query-test-org-{unique}"},
     )
     org_id = response.json()["id"]
@@ -21,7 +21,7 @@ def setup_test_data(client):
         [("Alice", "admin"), ("Bob", "member"), ("Charlie", "member")]
     ):
         response = client.post(
-            "/users/",
+            "/users",
             json={
                 "email": f"{name.lower()}-{unique}@example.com",
                 "name": name,
@@ -33,7 +33,7 @@ def setup_test_data(client):
 
     # Create project
     response = client.post(
-        "/projects/", json={"name": "Query Project", "organization_id": org_id}
+        "/projects", json={"name": "Query Project", "organization_id": org_id}
     )
     project_id = response.json()["id"]
 
@@ -47,7 +47,7 @@ def setup_test_data(client):
         ("Task E", "in_progress", 1, 0),
     ]:
         response = client.post(
-            "/tasks/",
+            "/tasks",
             json={
                 "title": title,
                 "status": status,
@@ -71,7 +71,7 @@ class TestFiltering:
         setup_test_data(client)
 
         # Filter for todo tasks
-        response = client.get("/tasks/?status=todo")
+        response = client.get("/tasks?status=todo")
         tasks = response.json()["data"]
 
         assert all(t["status"] == "todo" for t in tasks)
@@ -82,7 +82,7 @@ class TestFiltering:
         setup_test_data(client)
 
         # Filter for critical priority
-        response = client.get("/tasks/?priority=1")
+        response = client.get("/tasks?priority=1")
         tasks = response.json()["data"]
 
         assert all(t["priority"] == 1 for t in tasks)
@@ -93,7 +93,7 @@ class TestFiltering:
         setup_test_data(client)
 
         # Filter for admins
-        response = client.get("/users/?role=admin")
+        response = client.get("/users?role=admin")
         users = response.json()["data"]
 
         assert all(u["role"] == "admin" for u in users)
@@ -107,7 +107,7 @@ class TestSorting:
         """Test sorting tasks by priority ascending."""
         setup_test_data(client)
 
-        response = client.get("/tasks/?sort=priority")
+        response = client.get("/tasks?sort=priority")
         tasks = response.json()["data"]
 
         priorities = [t["priority"] for t in tasks]
@@ -117,7 +117,7 @@ class TestSorting:
         """Test sorting tasks by priority descending."""
         setup_test_data(client)
 
-        response = client.get("/tasks/?sort=-priority")
+        response = client.get("/tasks?sort=-priority")
         tasks = response.json()["data"]
 
         priorities = [t["priority"] for t in tasks]
@@ -127,7 +127,7 @@ class TestSorting:
         """Test sorting users by name."""
         setup_test_data(client)
 
-        response = client.get("/users/?sort=name")
+        response = client.get("/users?sort=name")
         users = response.json()["data"]
 
         names = [u["name"] for u in users]
@@ -141,7 +141,7 @@ class TestPagination:
         """``page_size`` limits the number of results."""
         setup_test_data(client)
 
-        response = client.get("/tasks/?page_size=2")
+        response = client.get("/tasks?page_size=2")
         tasks = response.json()["data"]
 
         assert len(tasks) == 2
@@ -150,9 +150,9 @@ class TestPagination:
         """``page_size`` + ``page`` gives offset-based pagination."""
         setup_test_data(client)
 
-        response = client.get("/tasks/?sort=title&page_size=2")
+        response = client.get("/tasks?sort=title&page_size=2")
         first_page = response.json()["data"]
-        response = client.get("/tasks/?sort=title&page_size=2&page=2")
+        response = client.get("/tasks?sort=title&page_size=2&page=2")
         second_page = response.json()["data"]
 
         assert len(first_page) == 2
@@ -167,7 +167,7 @@ class TestCombinedQueries:
         """Test filtering and sorting together."""
         setup_test_data(client)
 
-        response = client.get("/tasks/?status=todo&sort=-priority")
+        response = client.get("/tasks?status=todo&sort=-priority")
         tasks = response.json()["data"]
 
         # All should be todo
@@ -180,7 +180,7 @@ class TestCombinedQueries:
         """Test filter, sort, and pagination together."""
         setup_test_data(client)
 
-        response = client.get("/tasks/?status=in_progress&sort=title&page_size=1")
+        response = client.get("/tasks?status=in_progress&sort=title&page_size=1")
         tasks = response.json()["data"]
 
         assert len(tasks) == 1
@@ -193,21 +193,21 @@ class TestLabelFiltering:
     def _setup_labels(self, client):
         unique = str(uuid.uuid4())[:8]
         response = client.post(
-            "/organizations/",
+            "/organizations",
             json={"name": f"Label Org {unique}", "slug": f"label-org-{unique}"},
         )
         org_id = response.json()["id"]
 
         client.post(
-            "/labels/",
+            "/labels",
             json={"name": "urgent", "color": "#ff0000", "organization_id": org_id},
         )
         client.post(
-            "/labels/",
+            "/labels",
             json={"name": "feature", "color": "#00ff00", "organization_id": org_id},
         )
         client.post(
-            "/labels/",
+            "/labels",
             json={"name": "bug", "color": "#0000ff", "organization_id": org_id},
         )
         return org_id
@@ -216,7 +216,7 @@ class TestLabelFiltering:
         """Filter: ?name=urgent returns only labels named 'urgent'."""
         self._setup_labels(client)
 
-        response = client.get("/labels/?name=urgent")
+        response = client.get("/labels?name=urgent")
         labels = response.json()["data"]
 
         assert all(lb["name"] == "urgent" for lb in labels)
@@ -226,7 +226,7 @@ class TestLabelFiltering:
         """Sort: ?sort=name returns labels sorted alphabetically."""
         self._setup_labels(client)
 
-        response = client.get("/labels/?sort=name")
+        response = client.get("/labels?sort=name")
         labels = response.json()["data"]
 
         names = [lb["name"] for lb in labels]
@@ -236,7 +236,7 @@ class TestLabelFiltering:
         """Pagination: ?page=1&page_size=2 returns at most 2 items."""
         self._setup_labels(client)
 
-        response = client.get("/labels/?page_size=2&page=1")
+        response = client.get("/labels?page_size=2&page=1")
         labels = response.json()["data"]
 
         assert len(labels) <= 2
@@ -244,25 +244,25 @@ class TestLabelFiltering:
     def test_filter_composes_with_tenant_scope(self, client, auth_context):
         """LabelView's filters compose with TenantScopedMixin."""
         org1 = client.post(
-            "/organizations/",
+            "/organizations",
             json={"name": "Scoped Labels 1", "slug": "scoped-labels-1"},
         ).json()
         org2 = client.post(
-            "/organizations/",
+            "/organizations",
             json={"name": "Scoped Labels 2", "slug": "scoped-labels-2"},
         ).json()
 
         label1 = client.post(
-            "/labels/",
+            "/labels",
             json={"name": "shared", "color": "#ff0000", "organization_id": org1["id"]},
         ).json()
         label2 = client.post(
-            "/labels/",
+            "/labels",
             json={"name": "shared", "color": "#00ff00", "organization_id": org2["id"]},
         ).json()
 
         with auth_context(org_id=org1["id"]):
-            response = client.get("/labels/?name=shared")
+            response = client.get("/labels?name=shared")
             labels = response.json()["data"]
 
         assert [label["id"] for label in labels] == [label1["id"]]
@@ -276,17 +276,17 @@ class TestPaginationEnvelope:
         """Project list response wraps rows in the default pagination envelope."""
         unique = str(uuid.uuid4())[:8]
         response = client.post(
-            "/organizations/",
+            "/organizations",
             json={"name": f"Pag Org {unique}", "slug": f"pag-org-{unique}"},
         )
         org_id = response.json()["id"]
 
         for i in range(3):
             client.post(
-                "/projects/", json={"name": f"Project {i}", "organization_id": org_id}
+                "/projects", json={"name": f"Project {i}", "organization_id": org_id}
             )
 
-        response = client.get("/projects/")
+        response = client.get("/projects")
         data = response.json()
 
         # Views paginate by default, so the response is the pagination envelope.

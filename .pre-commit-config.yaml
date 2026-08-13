@@ -4,9 +4,9 @@ repos:
     hooks:
       - id: check-yaml
       - id: end-of-file-fixer
-        files: ^(.*\.(md|py|toml|yaml|yml)$|Makefile)$
+        files: (^|/)(Makefile|README)$|.*\.(md|py|toml|yaml|yml|mako)$|.*\.env\.example$
       - id: trailing-whitespace
-        files: ^(.*\.(md|py|toml|yaml|yml)$|Makefile)$
+        files: (^|/)(Makefile|README)$|.*\.(md|py|toml|yaml|yml|mako)$|.*\.env\.example$
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.11.10

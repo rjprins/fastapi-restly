@@ -8,13 +8,13 @@ class TestUserCRUD:
         """Test creating a user."""
         # Create org first
         response = client.post(
-            "/organizations/", json={"name": "User Test Org", "slug": "user-test-org"}
+            "/organizations", json={"name": "User Test Org", "slug": "user-test-org"}
         )
         org_id = response.json()["id"]
 
         # Create user
         response = client.post(
-            "/users/",
+            "/users",
             json={
                 "email": "john@example.com",
                 "name": "John Doe",
@@ -31,13 +31,13 @@ class TestUserCRUD:
         """Test creating a user with a specific role."""
         # Create org
         response = client.post(
-            "/organizations/", json={"name": "Role Test Org", "slug": "role-test-org"}
+            "/organizations", json={"name": "Role Test Org", "slug": "role-test-org"}
         )
         org_id = response.json()["id"]
 
         # Create admin user
         response = client.post(
-            "/users/",
+            "/users",
             json={
                 "email": "admin@example.com",
                 "name": "Admin User",
@@ -57,12 +57,12 @@ class TestMeEndpoints:
         """Test GET /users/me returns current user."""
         # Create org and user
         response = client.post(
-            "/organizations/", json={"name": "Me Test Org", "slug": "me-test-org"}
+            "/organizations", json={"name": "Me Test Org", "slug": "me-test-org"}
         )
         org_id = response.json()["id"]
 
         response = client.post(
-            "/users/",
+            "/users",
             json={
                 "email": "current@example.com",
                 "name": "Current User",
@@ -83,12 +83,12 @@ class TestMeEndpoints:
         """Test PATCH /users/me updates current user's profile."""
         # Create org and user
         response = client.post(
-            "/organizations/", json={"name": "Me Update Org", "slug": "me-update-org"}
+            "/organizations", json={"name": "Me Update Org", "slug": "me-update-org"}
         )
         org_id = response.json()["id"]
 
         response = client.post(
-            "/users/",
+            "/users",
             json={
                 "email": "update-me@example.com",
                 "name": "Before Update",

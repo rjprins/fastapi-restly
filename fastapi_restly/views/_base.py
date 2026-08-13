@@ -1724,7 +1724,7 @@ def _add_api_route(
     endpoint: Callable,
     route_kwargs: dict[str, Any],
 ) -> None:
-    if _should_add_collection_route_alias(view_cls, path, endpoint):
+    if _should_add_collection_route_alias(view_cls, path):
         api_router.add_api_route("", endpoint, **route_kwargs)
         hidden_alias_kwargs = {**route_kwargs, "include_in_schema": False}
         api_router.add_api_route("/", endpoint, **hidden_alias_kwargs)
@@ -1733,14 +1733,8 @@ def _add_api_route(
     api_router.add_api_route(path, endpoint, **route_kwargs)
 
 
-def _should_add_collection_route_alias(
-    view_cls: type[View], path: str, endpoint: Callable
-) -> bool:
-    if not issubclass(view_cls, BaseRestView):
-        return False
-    if path != "/":
-        return False
-    return endpoint.__name__.endswith(("get_many_endpoint", "create_endpoint"))
+def _should_add_collection_route_alias(view_cls: type[View], path: str) -> bool:
+    return issubclass(view_cls, BaseRestView) and path == "/"
 
 
 def _annotate_self(view_cls: type[View], endpoint: Callable) -> None:
