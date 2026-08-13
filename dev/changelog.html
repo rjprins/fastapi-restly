@@ -547,104 +547,84 @@ and this project adheres to <a class="reference external" href="https://semver.o
 <section id="added">
 <h3>Added<a class="headerlink" href="#added" title="Link to this heading">#</a></h3>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">fr.testing.configure_tests()</span></code> sets up a test suite in one call from
-<code class="docutils literal notranslate"><span class="pre">conftest.py</span></code>: the app under test, the test database, an optional schema step
-(<code class="docutils literal notranslate"><span class="pre">create_all_from=Base</span></code> or <code class="docutils literal notranslate"><span class="pre">alembic_upgrade=True</span></code>), and isolation for every
-test, <code class="docutils literal notranslate"><span class="pre">restly_client</span></code>-only tests included. It raises rather than inherit an
-already-configured database, which is usually the development one. Suites that
-do not call it are unaffected.</p></li>
-<li><p>Restly’s declarative base mixes in SQLAlchemy’s <code class="docutils literal notranslate"><span class="pre">AsyncAttrs</span></code>, so every model
-has <code class="docutils literal notranslate"><span class="pre">awaitable_attrs</span></code>: <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">obj.awaitable_attrs.items</span></code> reads an unloaded
-attribute from plain async code, where a bare <code class="docutils literal notranslate"><span class="pre">obj.items</span></code> raises
-<code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code>. Views eager-load what the response schema names, so this is
-for the code that runs outside that set — an <code class="docutils literal notranslate"><span class="pre">after_commit</span></code> hook, a custom
-business method.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">get_relationship_loader_options()</span></code> is now a documented override point: it
-returns the <code class="docutils literal notranslate"><span class="pre">selectinload(...)</span></code> options derived from the response schema,
-applied on reads and on the write-response reload. Override it to eager-load
-relationships the schema does not name on both read and write paths. New
-how-to, “Relationship Loading and Async”, collects the loading model and the
-<code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code> fixes.</p></li>
-<li><p>A PostgreSQL CI leg now exercises the dialect-divergent surface SQLite hides:
-case-sensitive <code class="docutils literal notranslate"><span class="pre">contains</span></code> vs case-folding <code class="docutils literal notranslate"><span class="pre">icontains</span></code> (including non-ASCII),
-default <code class="docutils literal notranslate"><span class="pre">NULL</span></code> ordering, duplicate-sort-key pagination, real constraint
-violations classified into clean 409 details, and the psycopg cross-session
-fixture sharing.</p></li>
-<li><p>The list envelope models <code class="docutils literal notranslate"><span class="pre">fastapi_restly.views.Envelope</span></code> and
-<code class="docutils literal notranslate"><span class="pre">fastapi_restly.views.PaginatedEnvelope</span></code> (generic over the response schema) are
-public, for annotating or subclassing a custom list response. Like
-<code class="docutils literal notranslate"><span class="pre">BaseRestView</span></code>, they live in the <code class="docutils literal notranslate"><span class="pre">views</span></code> submodule, not the top-level namespace.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">fr.testing.configure_tests()</span></code> for schema setup and per-test database isolation.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">db_cleanup=</span></code> modes (<code class="docutils literal notranslate"><span class="pre">rollback</span></code>, <code class="docutils literal notranslate"><span class="pre">delete</span></code>, and <code class="docutils literal notranslate"><span class="pre">none</span></code>) with per-run
+<code class="docutils literal notranslate"><span class="pre">--restly-db-cleanup</span></code> and <code class="docutils literal notranslate"><span class="pre">RESTLY_DB_CLEANUP</span></code> overrides.</p></li>
+<li><p>Pooled asyncpg support for applications configured with only an async
+database; no synchronous database configuration or test-only <code class="docutils literal notranslate"><span class="pre">NullPool</span></code>
+engine is required.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">AsyncRestlyTestClient</span></code> and the <code class="docutils literal notranslate"><span class="pre">restly_async_client</span></code> fixture.</p></li>
+<li><p>SQLAlchemy <code class="docutils literal notranslate"><span class="pre">AsyncAttrs</span></code> support through <code class="docutils literal notranslate"><span class="pre">awaitable_attrs</span></code> on Restly models.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">get_relationship_loader_options()</span></code> as an eager-loading override.</p></li>
+<li><p>PostgreSQL CI coverage for dialect-specific behavior and database fixtures.</p></li>
+<li><p>Public <code class="docutils literal notranslate"><span class="pre">Envelope</span></code> and <code class="docutils literal notranslate"><span class="pre">PaginatedEnvelope</span></code> response models.</p></li>
 </ul>
 </section>
 <section id="changed">
 <h3>Changed<a class="headerlink" href="#changed" title="Link to this heading">#</a></h3>
 <ul class="simple">
-<li><p>List endpoints now paginate by default and return a <code class="docutils literal notranslate"><span class="pre">data</span></code> envelope. <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/things</span></code>
-responds with <code class="docutils literal notranslate"><span class="pre">{&quot;data&quot;:</span> <span class="pre">[...],</span> <span class="pre">&quot;total_count&quot;,</span> <span class="pre">&quot;page&quot;,</span> <span class="pre">&quot;page_size&quot;,</span> <span class="pre">&quot;total_pages&quot;}</span></code>,
-capped at <code class="docutils literal notranslate"><span class="pre">default_page_size</span></code> (50) instead of returning the whole table. Set
-<code class="docutils literal notranslate"><span class="pre">paginated</span> <span class="pre">=</span> <span class="pre">False</span></code> on a view for an unpaginated <code class="docutils literal notranslate"><span class="pre">{&quot;data&quot;:</span> <span class="pre">[...]}</span></code> response — no
-metadata, and no <code class="docutils literal notranslate"><span class="pre">page</span></code>/<code class="docutils literal notranslate"><span class="pre">page_size</span></code> query parameters. Single-object responses are
-unchanged (bare object). A paginated view’s <code class="docutils literal notranslate"><span class="pre">default_page_size</span></code> must be an int in
-<code class="docutils literal notranslate"><span class="pre">[1,</span> <span class="pre">max_page_size]</span></code>; <code class="docutils literal notranslate"><span class="pre">None</span></code> (the old “no cap” idiom) or an out-of-range value now
-raises at registration. Set <code class="docutils literal notranslate"><span class="pre">paginated</span> <span class="pre">=</span> <span class="pre">False</span></code> to return every row uncapped.
-This replaces the opt-in <code class="docutils literal notranslate"><span class="pre">include_pagination_metadata</span></code>
-flag (which defaulted to an unbounded bare array) and renames the envelope keys
-(<code class="docutils literal notranslate"><span class="pre">items</span></code> → <code class="docutils literal notranslate"><span class="pre">data</span></code>, <code class="docutils literal notranslate"><span class="pre">total</span></code> → <code class="docutils literal notranslate"><span class="pre">total_count</span></code>). <code class="docutils literal notranslate"><span class="pre">include_pagination_metadata</span></code> and
-<code class="docutils literal notranslate"><span class="pre">to_paginated_listing_response()</span></code> are removed; <code class="docutils literal notranslate"><span class="pre">to_listing_response()</span></code> overrides
-the list body, and a non-envelope shape (a bare array) needs <code class="docutils literal notranslate"><span class="pre">get_many_endpoint</span></code>
-replaced with a matching <code class="docutils literal notranslate"><span class="pre">response_model</span></code>.</p></li>
-<li><p>The session fixtures (<code class="docutils literal notranslate"><span class="pre">restly_session</span></code> / <code class="docutils literal notranslate"><span class="pre">restly_async_session</span></code>) now isolate
-each test with SQLAlchemy’s <code class="docutils literal notranslate"><span class="pre">create_savepoint</span></code> mode instead of patching
-<code class="docutils literal notranslate"><span class="pre">Session</span></code> / <code class="docutils literal notranslate"><span class="pre">AsyncSession</span></code>. <code class="docutils literal notranslate"><span class="pre">commit()</span></code> / <code class="docutils literal notranslate"><span class="pre">rollback()</span></code> behave as in production,
-and there is no shared identity map: a value added directly to the fixture
-session reaches a request only after a <code class="docutils literal notranslate"><span class="pre">flush()</span></code> or <code class="docutils literal notranslate"><span class="pre">commit()</span></code>.</p></li>
-<li><p>A session fixture with a generator but no matching sessionmaker now raises
-instead of skipping.</p></li>
+<li><p>List endpoints now paginate by default. <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/things</span></code> changes from an
+unbounded bare array to
+<code class="docutils literal notranslate"><span class="pre">{&quot;data&quot;:</span> <span class="pre">[...],</span> <span class="pre">&quot;total_count&quot;:</span> <span class="pre">...,</span> <span class="pre">&quot;page&quot;:</span> <span class="pre">...,</span> <span class="pre">&quot;page_size&quot;:</span> <span class="pre">...,</span> <span class="pre">&quot;total_pages&quot;:</span> <span class="pre">...}</span></code>,
+capped at <code class="docutils literal notranslate"><span class="pre">default_page_size</span></code> (50). Existing paginated responses must rename
+<code class="docutils literal notranslate"><span class="pre">items</span></code> to <code class="docutils literal notranslate"><span class="pre">data</span></code> and <code class="docutils literal notranslate"><span class="pre">total</span></code> to <code class="docutils literal notranslate"><span class="pre">total_count</span></code>.
+<code class="docutils literal notranslate"><span class="pre">include_pagination_metadata</span></code> and <code class="docutils literal notranslate"><span class="pre">to_paginated_listing_response()</span></code> are
+removed: set <code class="docutils literal notranslate"><span class="pre">paginated</span> <span class="pre">=</span> <span class="pre">False</span></code> for an unpaginated <code class="docutils literal notranslate"><span class="pre">{&quot;data&quot;:</span> <span class="pre">[...]}</span></code>
+response with no pagination query parameters, override
+<code class="docutils literal notranslate"><span class="pre">to_listing_response()</span></code> to customize that envelope, or replace
+<code class="docutils literal notranslate"><span class="pre">get_many_endpoint</span></code> with a matching <code class="docutils literal notranslate"><span class="pre">response_model</span></code> if the API must keep
+returning a bare array. <code class="docutils literal notranslate"><span class="pre">default_page_size</span></code> must now be an integer from 1
+through <code class="docutils literal notranslate"><span class="pre">max_page_size</span></code>; the old <code class="docutils literal notranslate"><span class="pre">None</span></code> value is replaced by
+<code class="docutils literal notranslate"><span class="pre">paginated</span> <span class="pre">=</span> <span class="pre">False</span></code>. Single-object responses are unchanged.</p></li>
+<li><p>After <code class="docutils literal notranslate"><span class="pre">configure_tests()</span></code>, rollback isolation now applies to every test that
+uses the configured database, including client-only tests and code that calls
+<code class="docutils literal notranslate"><span class="pre">fr.open_session()</span></code> or <code class="docutils literal notranslate"><span class="pre">fr.open_async_session()</span></code> without requesting a public
+session fixture. Sessions join one test transaction through SQLAlchemy
+savepoints, so <code class="docutils literal notranslate"><span class="pre">commit()</span></code> and <code class="docutils literal notranslate"><span class="pre">rollback()</span></code> behave as in production. A value
+added through a session fixture becomes visible to a request after <code class="docutils literal notranslate"><span class="pre">flush()</span></code>
+or <code class="docutils literal notranslate"><span class="pre">commit()</span></code>; the sessions do not share an identity map.</p></li>
+<li><p>Under rollback cleanup, an application configured with only an async database
+can no longer combine the synchronous <code class="docutils literal notranslate"><span class="pre">restly_client</span></code> with
+<code class="docutils literal notranslate"><span class="pre">restly_async_session</span></code> or other direct async database access. That would use
+one transaction from two event loops, so Restly raises a configuration error
+before database work begins and directs the test to <code class="docutils literal notranslate"><span class="pre">restly_async_client</span></code>.
+Under <code class="docutils literal notranslate"><span class="pre">&quot;delete&quot;</span></code> and <code class="docutils literal notranslate"><span class="pre">&quot;none&quot;</span></code>, the same check applies to drivers such as
+asyncpg that bind pooled connections to one event loop.</p></li>
+<li><p>Under rollback cleanup, requesting <code class="docutils literal notranslate"><span class="pre">restly_session</span></code> or
+<code class="docutils literal notranslate"><span class="pre">restly_async_session</span></code> with only a custom session generator now raises instead
+of skipping. Configure the corresponding database URL, engine, or
+sessionmaker as well so Restly can build the isolated session.</p></li>
 </ul>
 </section>
 <section id="fixed">
 <h3>Fixed<a class="headerlink" href="#fixed" title="Link to this heading">#</a></h3>
-<ul>
-<li><p>Postgres 409 detail messages degraded to a generic fallback on psycopg 3. The
-<code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code> classifier read <code class="docutils literal notranslate"><span class="pre">pgcode</span></code> (psycopg 2’s attribute), but
-psycopg 3 — the driver Restly’s PostgreSQL stack uses — exposes the SQLSTATE as
-<code class="docutils literal notranslate"><span class="pre">sqlstate</span></code>, so every constraint violation fell through to the raw driver text
-instead of a clean message like <code class="docutils literal notranslate"><span class="pre">Unique</span> <span class="pre">constraint</span> <span class="pre">violated:</span> <span class="pre">&lt;constraint&gt;</span></code>. It
-now reads <code class="docutils literal notranslate"><span class="pre">sqlstate</span></code> first, falling back to <code class="docutils literal notranslate"><span class="pre">pgcode</span></code>.</p></li>
-<li><p>A response schema embedding a relationship-backed field (<code class="docutils literal notranslate"><span class="pre">owner:</span> <span class="pre">OwnerRead</span></code>,
-<code class="docutils literal notranslate"><span class="pre">author:</span> <span class="pre">fr.IDRef[Author]</span></code>, or a list of either) worked on reads but 500’d on
-create and update with <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code> — for a row that had already
-committed. Reads eager-load those relationships from the response schema;
-writes flushed and refreshed with no loader options, and the refresh is what
-leaves a relationship unloaded, so the serializer hit a lazy load in the
-endpoint coroutine where SQLAlchemy’s asyncio layer has no greenlet to suspend
-into. <code class="docutils literal notranslate"><span class="pre">save_object</span></code> now applies the same options reads do.</p>
-<p>The reload is skipped when everything the response schema names is already
-loaded, so a write whose response needs no relationship data costs no extra
-statement. It runs without <code class="docutils literal notranslate"><span class="pre">populate_existing</span></code>, so a relationship the caller
-had already populated keeps its value rather than being overwritten by a fresh
-read.</p>
-<p>Sync views never raised, but paid the same loads implicitly, one query at a
-time, during serialization. They now eager-load identically.</p>
-</li>
-<li><p>The session fixtures isolate projects configured with a <code class="docutils literal notranslate"><span class="pre">session_generator</span></code> /
-<code class="docutils literal notranslate"><span class="pre">sync_session_generator</span></code> instead of dropping the request’s write.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">restly_project_root</span></code> now anchors to the requesting test file instead of the
-current working directory, so it returns the same root regardless of where
-pytest was invoked, and in a monorepo resolves each test to its own
-sub-project’s root.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">restly_async_session</span></code> no longer errors when a sync sessionmaker is also
-configured; it shares the sync fixture’s connection.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">fr.db.get_engine()</span></code> / <code class="docutils literal notranslate"><span class="pre">create_all()</span></code> and their async forms work inside the
-fixtures instead of silently no-opping.</p></li>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">restly_client</span></code> now runs application lifespan startup and shutdown once per
+test. A view registered through <code class="docutils literal notranslate"><span class="pre">restly_client.app</span></code> after the fixture has
+constructed the client also keeps working, including Restly’s integrity-error
+handling.</p></li>
+<li><p>PostgreSQL constraint errors now produce clean details with psycopg 3.</p></li>
+<li><p>Write responses now eager-load schema relationships, avoiding <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code> errors and sync N+1 queries.</p></li>
+<li><p>Rollback isolation now routes applications that configure a custom session
+generator alongside a matching sessionmaker through the isolated factory,
+instead of letting request writes escape the test transaction.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">restly_project_root</span></code> now resolves from the requesting test file, including in monorepos.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">restly_async_session</span></code> no longer errors when a synchronous sessionmaker is
+also configured. Under rollback cleanup, it uses the same pinned connection
+as <code class="docutils literal notranslate"><span class="pre">restly_session</span></code>, so committed writes are visible between them within a
+test.</p></li>
+<li><p>Engine and schema helpers now work inside session fixtures.</p></li>
 </ul>
 </section>
 <section id="removed">
 <h3>Removed<a class="headerlink" href="#removed" title="Link to this heading">#</a></h3>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">fr.testing.activate_savepoint_only_mode()</span></code> and its <code class="docutils literal notranslate"><span class="pre">deactivate_</span></code> counterpart.
-They isolate per session, not per test, so chained requests never shared a
-view. Use the session fixtures, or <code class="docutils literal notranslate"><span class="pre">fr.testing.configure_tests()</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">activate_savepoint_only_mode()</span></code> and <code class="docutils literal notranslate"><span class="pre">deactivate_savepoint_only_mode()</span></code> are
+removed. They isolated each session separately rather than the whole test, so
+a write from one request was not reliably visible to the next. Call
+<code class="docutils literal notranslate"><span class="pre">fr.testing.configure_tests()</span></code> once in <code class="docutils literal notranslate"><span class="pre">conftest.py</span></code> instead; it gives the
+client, session fixtures, and directly opened sessions one transaction for
+the whole test.</p></li>
 </ul>
 </section>
 </section>
