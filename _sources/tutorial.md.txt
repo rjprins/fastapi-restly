@@ -17,13 +17,19 @@ models declared against
 primary key:
 
 ```python
+import os
+
 import fastapi_restly as fr
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 
-fr.configure(async_database_url="sqlite+aiosqlite:///blog.db")
+fr.configure(
+    async_database_url=os.environ.get(
+        "DATABASE_URL", "sqlite+aiosqlite:///blog.db"
+    )
+)
 
 
 class Post(fr.IDBase):
@@ -247,18 +253,40 @@ that asserts sensible default status codes and gives clear failure messages.
 ```python
 from fastapi_restly.testing import RestlyTestClient
 
-client = RestlyTestClient(app)
+# Enter it: the app's lifespan, which creates the tables above, runs on entry.
+with RestlyTestClient(app) as client:
+    post = client.post(
+        "/posts/", json={"title": "Hello", "content": "World", "published": False}
+    )
+    # Automatically asserts status 201
 
-post = client.post("/posts/", json={"title": "Hello", "content": "World", "published": False})
-# Automatically asserts status 201
-
-item = client.get(f"/posts/{post.json()['id']}")
-# Automatically asserts status 200
+    item = client.get(f"/posts/{post.json()['id']}")
+    # Automatically asserts status 200
 ```
 
 For test isolation, install the testing extra (`pip install "fastapi-restly[testing]"`);
-pytest then auto-loads Restly's fixtures. The `restly_client` fixture used below wraps
-each test in a database savepoint, so changes never persist between tests:
+pytest then auto-loads Restly's fixtures. Point the suite at a test database in
+`conftest.py`:
+
+```python
+# conftest.py
+import os
+
+os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test.db"
+
+import fastapi_restly as fr
+
+from main import app  # noqa: E402
+
+fr.testing.configure_tests(
+    app=app,
+    base=fr.IDBase,
+    create_all=True,
+)
+```
+
+Tests then need nothing but the client, and everything they write is rolled back
+when they finish:
 
 ```python
 # test_posts.py
@@ -284,6 +312,7 @@ Here is everything this page built as one runnable `main.py`, including the
 read-only and write-only columns added along the way:
 
 ```python
+import os
 from contextlib import asynccontextmanager
 
 import fastapi_restly as fr
@@ -291,7 +320,11 @@ from fastapi import FastAPI
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 
-fr.configure(async_database_url="sqlite+aiosqlite:///blog.db")
+fr.configure(
+    async_database_url=os.environ.get(
+        "DATABASE_URL", "sqlite+aiosqlite:///blog.db"
+    )
+)
 
 
 class Post(fr.IDBase):

@@ -2,19 +2,19 @@
 <!DOCTYPE html>
 
 
-<html lang="en" data-content_root="./" >
+<html lang="en" data-content_root="./" data-theme="auto">
 
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Technical Details &#8212; FastAPI-Restly 0.8.0 documentation</title>
+    <title>Technical Details &#8212; FastAPI-Restly 0.9.0 documentation</title>
   
   
   
   <script data-cfasync="false">
-    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
-    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "auto";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "auto";
   </script>
   <!--
     this give us a css class that will be invisible only if js is disabled
@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=5f490481" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=6821e04d" />
   
   <!-- So that users can add custom icons -->
   <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=486e5634"></script>
+    <script src="_static/documentation_options.js?v=39bb1c6d"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -57,6 +57,7 @@
         </script>
     <script src="_static/newsletter.js?v=e342eb53"></script>
     <link rel="canonical" href="https://www.fastapi-restly.org/technical_details.html" />
+    <link rel="icon" href="_static/favicon.svg"/>
     <link rel="author" title="About these documents" href="about.html" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -65,8 +66,12 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.8" />
+  <meta name="docsearch:version" content="0.9" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700&amp;display=swap"
+      rel="stylesheet" />
 <!-- GoatCounter: cookieless, privacy-friendly analytics (ignores localhost) -->
 <script data-goatcounter="https://fastapi-restly.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
@@ -74,7 +79,7 @@
   </head>
   
   
-  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="auto">
 
   
   
@@ -136,8 +141,8 @@
       
     
     
-    <img src="_static/restly-cat.png" class="logo__image only-light" alt=""/>
-    <img src="_static/restly-cat.png" class="logo__image only-dark pst-js-only" alt=""/>
+    <img src="_static/fr-monogram.svg" class="logo__image only-light" alt=""/>
+    <img src="_static/fr-monogram-dark.svg" class="logo__image only-dark pst-js-only" alt=""/>
   
   
     <p class="title logo__title">FastAPI-Restly</p>
@@ -734,9 +739,10 @@ Composite primary keys are outside the generated CRUD route contract; use
 <code class="docutils literal notranslate"><span class="pre">&quot;delete&quot;</span></code> are also accepted. Routes listed here have their
 <code class="docutils literal notranslate"><span class="pre">_api_route_args</span></code> marker removed during <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.before_include_view" title="fastapi_restly.views.BaseRestView.before_include_view"><code class="xref py py-meth docutils literal notranslate"><span class="pre">before_include_view()</span></code></a> so FastAPI
 never registers them.</p></li>
-<li><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.include_pagination_metadata" title="fastapi_restly.views.BaseRestView.include_pagination_metadata"><code class="xref py py-attr docutils literal notranslate"><span class="pre">include_pagination_metadata</span></code></a>, if <code class="docutils literal notranslate"><span class="pre">True</span></code>, makes the <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many_endpoint" title="fastapi_restly.views.RestView.get_many_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many_endpoint</span></code></a> route
-return a <a class="reference internal" href="howto_response_schema.html#list-metadata-and-total-count"><span class="std std-ref">paginated envelope</span></a>
-with <code class="docutils literal notranslate"><span class="pre">items</span></code>, <code class="docutils literal notranslate"><span class="pre">total</span></code>, <code class="docutils literal notranslate"><span class="pre">page</span></code>, <code class="docutils literal notranslate"><span class="pre">page_size</span></code>, and <code class="docutils literal notranslate"><span class="pre">total_pages</span></code>.</p></li>
+<li><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.paginated" title="fastapi_restly.views.BaseRestView.paginated"><code class="xref py py-attr docutils literal notranslate"><span class="pre">paginated</span></code></a> (default <code class="docutils literal notranslate"><span class="pre">True</span></code>) makes the <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many_endpoint" title="fastapi_restly.views.RestView.get_many_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many_endpoint</span></code></a> route
+return a <a class="reference internal" href="howto_response_schema.html#the-list-envelope"><span class="std std-ref">paginated <code class="docutils literal notranslate"><span class="pre">data</span></code> envelope</span></a>
+with <code class="docutils literal notranslate"><span class="pre">total_count</span></code>, <code class="docutils literal notranslate"><span class="pre">page</span></code>, <code class="docutils literal notranslate"><span class="pre">page_size</span></code>, and <code class="docutils literal notranslate"><span class="pre">total_pages</span></code>. Set it to <code class="docutils literal notranslate"><span class="pre">False</span></code>
+to return every row in a plain <code class="docutils literal notranslate"><span class="pre">data</span></code> envelope.</p></li>
 </ul>
 </section>
 <section id="include-view">
@@ -775,10 +781,29 @@ override decision table live in
 <section id="nested-response-schemas-vs-write-payloads">
 <h3>Nested Response Schemas vs Write Payloads<a class="headerlink" href="#nested-response-schemas-vs-write-payloads" title="Link to this heading">#</a></h3>
 <p>Nested schemas serve two different roles in Restly today:</p>
-<ul class="simple">
+<ul>
 <li><p><strong>Response serialization</strong> is supported. The CRUD views recursively build
 <code class="docutils literal notranslate"><span class="pre">selectinload(...)</span></code> options for nested relationship fields in the response
-schema, so related objects can be serialized efficiently and with aliases.</p></li>
+schema, so related objects can be serialized efficiently and with aliases.
+Reads apply those options in <code class="docutils literal notranslate"><span class="pre">get_one</span></code> / <code class="docutils literal notranslate"><span class="pre">get_many</span></code>; writes apply the same
+ones in <code class="docutils literal notranslate"><span class="pre">save_object</span></code>, because the refresh that follows a flush leaves
+relationships unloaded. Without that, serializing a create or update response
+would reach them one lazy query at a time, which on an async session raises
+<code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code> rather than merely costing queries. The reload is skipped
+when everything the schema names is already loaded, and it runs without
+<code class="docutils literal notranslate"><span class="pre">populate_existing</span></code>, so a relationship the caller has already populated keeps
+its value.</p>
+<p>Loader options follow relationships the schema <em>names</em>. Code that reaches
+past that set – an <code class="docutils literal notranslate"><span class="pre">after_commit</span></code> hook, a custom business method, a
+<code class="docutils literal notranslate"><span class="pre">&#64;property</span></code> walking a relationship nothing else loads – runs in plain async
+context, where a bare attribute access raises <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code>. Restly’s
+declarative base mixes in SQLAlchemy’s <code class="docutils literal notranslate"><span class="pre">AsyncAttrs</span></code> for exactly that case, so
+those reads can be spelled <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">obj.awaitable_attrs.items</span></code>. The
+task-focused guide to all of this, including extending the loaded set and
+resolving <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code>, is
+<a class="reference internal" href="howto_relationship_loading.html"><span class="std std-doc">Relationship Loading and Async</span></a>; this section
+covers the mechanism behind it.</p>
+</li>
 <li><p><strong>Create/update payloads</strong> are not supported in the general case. The default
 <code class="docutils literal notranslate"><span class="pre">make_new_object()</span></code> / <code class="docutils literal notranslate"><span class="pre">update_object()</span></code> flow expects payload keys to map
 directly to model attributes, with <code class="docutils literal notranslate"><span class="pre">*_id:</span> <span class="pre">fr.MustExist[int,</span> <span class="pre">Model]</span></code>
@@ -805,7 +830,7 @@ describes the supported reference-field patterns.</p>
 <a class="reference internal" href="howto_query_modifiers.html"><span class="std std-doc">Filter, Sort, and Paginate Lists</span></a>.</p>
 <p>During <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.before_include_view" title="fastapi_restly.views.BaseRestView.before_include_view"><code class="xref py py-meth docutils literal notranslate"><span class="pre">before_include_view()</span></code></a>, the framework freezes a single class-level
 attribute, <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.listing_param_schema" title="fastapi_restly.views.BaseRestView.listing_param_schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">cls.listing_param_schema</span></code></a>: the query-parameter Pydantic schema generated
-by <a class="reference internal" href="api/query.html#fastapi_restly.query.create_list_params_schema" title="fastapi_restly.query.create_list_params_schema"><code class="xref py py-func docutils literal notranslate"><span class="pre">create_list_params_schema(cls.schema,</span> <span class="pre">cls.model,</span> <span class="pre">default_page_size=...,</span> <span class="pre">max_page_size=...)</span></code></a>. The schema covers pagination, sorting, and one filter
+by <a class="reference internal" href="api/query.html#fastapi_restly.query.create_list_params_schema" title="fastapi_restly.query.create_list_params_schema"><code class="xref py py-func docutils literal notranslate"><span class="pre">create_list_params_schema(cls.schema,</span> <span class="pre">cls.model,</span> <span class="pre">default_page_size=...,</span> <span class="pre">max_page_size=...,</span> <span class="pre">paginated=...)</span></code></a>. The schema covers pagination, sorting, and one filter
 parameter per response-schema field that maps to a filterable column on the
 model, with optional operator suffixes. It is generated once per registration
 and never re-derived.</p>
@@ -855,12 +880,13 @@ sets a few SQLAlchemy session options intentionally:</p>
 </table>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">expire_on_commit=False</span></code> is used for both sync and async sessions so ORM
-objects remain readable after a route commits. FastAPI response serialization
-and Restly’s response-schema conversion read attributes from ORM objects after
-the write path has flushed and refreshed them. If commit expired those
-attributes, serialization could trigger implicit database reads. In async code
-that can fail outside an awaited SQLAlchemy call; in sync code it makes response
-rendering unexpectedly database-dependent.</p>
+objects remain readable after a route commits. Restly’s write handlers commit
+inside the request, and the response-schema conversion reads attributes from the
+committed object afterwards (as does an <code class="docutils literal notranslate"><span class="pre">after_commit</span></code> hook that inspects it).
+With <code class="docutils literal notranslate"><span class="pre">expire_on_commit=True</span></code> the commit expires those attributes, so each such
+read becomes an implicit database read: in async code it raises
+<code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code>, because the serializer – and any such hook – runs in plain
+async context; in sync code it quietly makes response rendering database-dependent.</p>
 <p>The autoflush setting is intentionally different. Async sessions disable
 autoflush because autoflush can turn a read operation into an implicit write and
 database I/O must happen at explicit awaited SQLAlchemy boundaries. Restly’s

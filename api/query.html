@@ -2,19 +2,19 @@
 <!DOCTYPE html>
 
 
-<html lang="en" data-content_root="../" >
+<html lang="en" data-content_root="../" data-theme="auto">
 
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Query API &#8212; FastAPI-Restly 0.8.0 documentation</title>
+    <title>Query API &#8212; FastAPI-Restly 0.9.0 documentation</title>
   
   
   
   <script data-cfasync="false">
-    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
-    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "auto";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "auto";
   </script>
   <!--
     this give us a css class that will be invisible only if js is disabled
@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=5f490481" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=6821e04d" />
   
   <!-- So that users can add custom icons -->
   <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=486e5634"></script>
+    <script src="../_static/documentation_options.js?v=39bb1c6d"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -57,6 +57,7 @@
         </script>
     <script src="../_static/newsletter.js?v=e342eb53"></script>
     <link rel="canonical" href="https://www.fastapi-restly.org/api/query.html" />
+    <link rel="icon" href="../_static/favicon.svg"/>
     <link rel="author" title="About these documents" href="../about.html" />
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
@@ -65,8 +66,12 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.8" />
+  <meta name="docsearch:version" content="0.9" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700&amp;display=swap"
+      rel="stylesheet" />
 <!-- GoatCounter: cookieless, privacy-friendly analytics (ignores localhost) -->
 <script data-goatcounter="https://fastapi-restly.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
@@ -74,7 +79,7 @@
   </head>
   
   
-  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="auto">
 
   
   
@@ -136,8 +141,8 @@
       
     
     
-    <img src="../_static/restly-cat.png" class="logo__image only-light" alt=""/>
-    <img src="../_static/restly-cat.png" class="logo__image only-dark pst-js-only" alt=""/>
+    <img src="../_static/fr-monogram.svg" class="logo__image only-light" alt=""/>
+    <img src="../_static/fr-monogram-dark.svg" class="logo__image only-dark pst-js-only" alt=""/>
   
   
     <p class="title logo__title">FastAPI-Restly</p>
@@ -568,7 +573,7 @@ needed to apply the SQL clauses.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="fastapi_restly.query.create_list_params_schema">
-<span class="sig-prename descclassname"><span class="pre">fastapi_restly.query.</span></span><span class="sig-name descname"><span class="pre">create_list_params_schema</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">schema_cls</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://pydantic.dev/docs/validation/latest/api/pydantic/base_model/#pydantic.BaseModel" title="(in Pydantic v0.0.0)"><span class="pre">BaseModel</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/mapping_api.html#sqlalchemy.orm.DeclarativeBase" title="(in SQLAlchemy v2.0)"><span class="pre">DeclarativeBase</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_page_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_page_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1000</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://pydantic.dev/docs/validation/latest/api/pydantic/base_model/#pydantic.BaseModel" title="(in Pydantic v0.0.0)"><span class="pre">BaseModel</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#fastapi_restly.query.create_list_params_schema" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">fastapi_restly.query.</span></span><span class="sig-name descname"><span class="pre">create_list_params_schema</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">schema_cls</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://pydantic.dev/docs/validation/latest/api/pydantic/base_model/#pydantic.BaseModel" title="(in Pydantic v0.0.0)"><span class="pre">BaseModel</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/mapping_api.html#sqlalchemy.orm.DeclarativeBase" title="(in SQLAlchemy v2.0)"><span class="pre">DeclarativeBase</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_page_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">50</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_page_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">paginated</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://pydantic.dev/docs/validation/latest/api/pydantic/base_model/#pydantic.BaseModel" title="(in Pydantic v0.0.0)"><span class="pre">BaseModel</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#fastapi_restly.query.create_list_params_schema" title="Link to this definition">#</a></dt>
 <dd><p>Create a Pydantic model that describes and validates URL query parameters
 for list endpoints.</p>
 <p>The generated model accepts pagination (<code class="docutils literal notranslate"><span class="pre">page</span></code>, <code class="docutils literal notranslate"><span class="pre">page_size</span></code>), sorting
@@ -582,9 +587,12 @@ advertises filters for fields that are not filterable at all. Fields whose
 type is a collection (<code class="docutils literal notranslate"><span class="pre">dict</span></code>/<code class="docutils literal notranslate"><span class="pre">list</span></code>, e.g. <code class="docutils literal notranslate"><span class="pre">JSON</span></code> or <code class="docutils literal notranslate"><span class="pre">ARRAY</span></code> columns)
 generate only <code class="docutils literal notranslate"><span class="pre">__isnull</span></code>: a query-string value cannot coerce into them,
 so every other operator would fail at request time.</p>
-<p><code class="docutils literal notranslate"><span class="pre">page</span></code> and <code class="docutils literal notranslate"><span class="pre">page_size</span></code> are validated by Pydantic with bounds
-(<code class="docutils literal notranslate"><span class="pre">page</span> <span class="pre">&gt;=</span> <span class="pre">1</span></code>, <code class="docutils literal notranslate"><span class="pre">1</span> <span class="pre">&lt;=</span> <span class="pre">page_size</span> <span class="pre">&lt;=</span> <span class="pre">max_page_size</span></code>); out-of-range values
-produce a standard 422 response from FastAPI.</p>
+<p>When <code class="docutils literal notranslate"><span class="pre">paginated</span></code> is true (the default), <code class="docutils literal notranslate"><span class="pre">page</span></code> and <code class="docutils literal notranslate"><span class="pre">page_size</span></code> are
+added and validated by Pydantic with bounds (<code class="docutils literal notranslate"><span class="pre">page</span> <span class="pre">&gt;=</span> <span class="pre">1</span></code>,
+<code class="docutils literal notranslate"><span class="pre">1</span> <span class="pre">&lt;=</span> <span class="pre">page_size</span> <span class="pre">&lt;=</span> <span class="pre">max_page_size</span></code>); out-of-range values produce a standard
+422 response from FastAPI. When it is false, no pagination parameters are
+emitted at all – the endpoint returns every matching row – while sorting
+and filtering stay available.</p>
 <dl class="simple">
 <dt>Args:</dt><dd><dl class="simple">
 <dt>schema_cls: The response schema whose fields drive the available</dt><dd><p>filter parameters.</p>
@@ -592,10 +600,11 @@ produce a standard 422 response from FastAPI.</p>
 <dt>model: The SQLAlchemy model the list endpoint queries. Used to verify</dt><dd><p>each field resolves to a filterable column; non-column fields are
 omitted from the generated params.</p>
 </dd>
-<dt>default_page_size: Default value for the <code class="docutils literal notranslate"><span class="pre">page_size</span></code> parameter.</dt><dd><p><code class="docutils literal notranslate"><span class="pre">None</span></code> (the default) means “no implicit page size” — omitting
-<code class="docutils literal notranslate"><span class="pre">page_size</span></code> returns every matching row and <code class="docutils literal notranslate"><span class="pre">page</span></code> is ignored.</p>
+<dt>default_page_size: Default value for the <code class="docutils literal notranslate"><span class="pre">page_size</span></code> parameter when</dt><dd><p>the client omits it. Only used when <code class="docutils literal notranslate"><span class="pre">paginated</span></code> is true.</p>
 </dd>
 <dt>max_page_size: Upper bound (inclusive) for the <code class="docutils literal notranslate"><span class="pre">page_size</span></code></dt><dd><p>parameter. Defaults to <code class="xref py py-data docutils literal notranslate"><span class="pre">MAX_PAGE_SIZE</span></code>.</p>
+</dd>
+<dt>paginated: Whether to emit <code class="docutils literal notranslate"><span class="pre">page</span></code>/<code class="docutils literal notranslate"><span class="pre">page_size</span></code> parameters. False for</dt><dd><p>an unpaginated view, which returns the full result set.</p>
 </dd>
 </dl>
 </dd>

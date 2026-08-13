@@ -213,6 +213,8 @@ request context through `self`:
 
 For reusable soft-delete that also hides rows on read, see `SoftDeleteMixin` in [Compose Views with Mixins](howto_compose_views_with_mixins.md).
 
+(eager-load-extra-relationships)=
+
 ### `get_one`: eager-load extra relationships
 
 The default {meth}`get_one <fastapi_restly.views.RestView.get_one>` loads through {meth}`build_query <fastapi_restly.views.RestView.build_query>` and schema-derived loader options. If one endpoint needs extra eager loading, keep `build_query` in the query so visibility still applies:
@@ -231,6 +233,11 @@ from sqlalchemy.orm import selectinload
             raise fr.exc.NotFound(f"User {id!r} not found")
         return obj
 ```
+
+Overriding `get_one` this way applies the extra load to reads only. To
+eager-load a relationship on the create/update response as well, override
+{meth}`get_relationship_loader_options <fastapi_restly.views.BaseRestView.get_relationship_loader_options>`
+instead; see [Relationship Loading and Async](howto_relationship_loading.md).
 
 ### `get_many`: decorate results after the query
 
@@ -278,7 +285,7 @@ class DocumentView(fr.AsyncRestView):
         return super().build_query().where(Document.owner_id == user_id)
 ```
 
-Calling `super().build_query()` and chaining `.where(...)` composes with base-class and mixin filters. Put joins, eager-loading `.options(...)`, and other read-wide `Select` changes here.
+Calling `super().build_query()` and chaining `.where(...)` composes with base-class and mixin filters. Put joins, eager-loading `.options(...)`, and other read-wide `Select` changes here. Eager loads added here cover reads only; for a relationship that must also appear on create/update responses, use {meth}`get_relationship_loader_options <fastapi_restly.views.BaseRestView.get_relationship_loader_options>` (see [Relationship Loading and Async](howto_relationship_loading.md)).
 
 `get_one` stays auth-free even though it 404s on hidden rows: visibility comes from the query. Custom routes that call `get_one(id)` get the same scope.
 

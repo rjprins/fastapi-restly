@@ -171,9 +171,10 @@ runtime behaviour:
   `"delete"` are also accepted. Routes listed here have their
   `_api_route_args` marker removed during {meth}`before_include_view() <fastapi_restly.views.BaseRestView.before_include_view>` so FastAPI
   never registers them.
-- {attr}`include_pagination_metadata <fastapi_restly.views.BaseRestView.include_pagination_metadata>`, if `True`, makes the {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>` route
-  return a [paginated envelope](howto_response_schema.md#list-metadata-and-total-count)
-  with `items`, `total`, `page`, `page_size`, and `total_pages`.
+- {attr}`paginated <fastapi_restly.views.BaseRestView.paginated>` (default `True`) makes the {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>` route
+  return a [paginated `data` envelope](howto_response_schema.md#the-list-envelope)
+  with `total_count`, `page`, `page_size`, and `total_pages`. Set it to `False`
+  to return every row in a plain `data` envelope.
 
 ### include_view()
 
@@ -220,6 +221,25 @@ Nested schemas serve two different roles in Restly today:
 - **Response serialization** is supported. The CRUD views recursively build
   `selectinload(...)` options for nested relationship fields in the response
   schema, so related objects can be serialized efficiently and with aliases.
+  Reads apply those options in `get_one` / `get_many`; writes apply the same
+  ones in `save_object`, because the refresh that follows a flush leaves
+  relationships unloaded. Without that, serializing a create or update response
+  would reach them one lazy query at a time, which on an async session raises
+  `MissingGreenlet` rather than merely costing queries. The reload is skipped
+  when everything the schema names is already loaded, and it runs without
+  `populate_existing`, so a relationship the caller has already populated keeps
+  its value.
+
+  Loader options follow relationships the schema *names*. Code that reaches
+  past that set -- an `after_commit` hook, a custom business method, a
+  `@property` walking a relationship nothing else loads -- runs in plain async
+  context, where a bare attribute access raises `MissingGreenlet`. Restly's
+  declarative base mixes in SQLAlchemy's `AsyncAttrs` for exactly that case, so
+  those reads can be spelled `await obj.awaitable_attrs.items`. The
+  task-focused guide to all of this, including extending the loaded set and
+  resolving `MissingGreenlet`, is
+  [Relationship Loading and Async](howto_relationship_loading.md); this section
+  covers the mechanism behind it.
 - **Create/update payloads** are not supported in the general case. The default
   `make_new_object()` / `update_object()` flow expects payload keys to map
   directly to model attributes, with `*_id: fr.MustExist[int, Model]`
@@ -247,7 +267,7 @@ List endpoints accept URL query parameters of the form
 
 During {meth}`before_include_view() <fastapi_restly.views.BaseRestView.before_include_view>`, the framework freezes a single class-level
 attribute, {attr}`cls.listing_param_schema <fastapi_restly.views.BaseRestView.listing_param_schema>`: the query-parameter Pydantic schema generated
-by {func}`create_list_params_schema(cls.schema, cls.model, default_page_size=..., max_page_size=...) <fastapi_restly.query.create_list_params_schema>`. The schema covers pagination, sorting, and one filter
+by {func}`create_list_params_schema(cls.schema, cls.model, default_page_size=..., max_page_size=..., paginated=...) <fastapi_restly.query.create_list_params_schema>`. The schema covers pagination, sorting, and one filter
 parameter per response-schema field that maps to a filterable column on the
 model, with optional operator suffixes. It is generated once per registration
 and never re-derived.
@@ -288,12 +308,13 @@ sets a few SQLAlchemy session options intentionally:
 | Sync `sessionmaker` | SQLAlchemy default (`True`) | `False` |
 
 `expire_on_commit=False` is used for both sync and async sessions so ORM
-objects remain readable after a route commits. FastAPI response serialization
-and Restly's response-schema conversion read attributes from ORM objects after
-the write path has flushed and refreshed them. If commit expired those
-attributes, serialization could trigger implicit database reads. In async code
-that can fail outside an awaited SQLAlchemy call; in sync code it makes response
-rendering unexpectedly database-dependent.
+objects remain readable after a route commits. Restly's write handlers commit
+inside the request, and the response-schema conversion reads attributes from the
+committed object afterwards (as does an `after_commit` hook that inspects it).
+With `expire_on_commit=True` the commit expires those attributes, so each such
+read becomes an implicit database read: in async code it raises
+`MissingGreenlet`, because the serializer -- and any such hook -- runs in plain
+async context; in sync code it quietly makes response rendering database-dependent.
 
 The autoflush setting is intentionally different. Async sessions disable
 autoflush because autoflush can turn a read operation into an implicit write and

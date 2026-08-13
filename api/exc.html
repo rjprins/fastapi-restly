@@ -2,19 +2,19 @@
 <!DOCTYPE html>
 
 
-<html lang="en" data-content_root="../" >
+<html lang="en" data-content_root="../" data-theme="auto">
 
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Exceptions API &#8212; FastAPI-Restly 0.8.0 documentation</title>
+    <title>Exceptions API &#8212; FastAPI-Restly 0.9.0 documentation</title>
   
   
   
   <script data-cfasync="false">
-    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
-    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "auto";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "auto";
   </script>
   <!--
     this give us a css class that will be invisible only if js is disabled
@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=5f490481" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=6821e04d" />
   
   <!-- So that users can add custom icons -->
   <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=486e5634"></script>
+    <script src="../_static/documentation_options.js?v=39bb1c6d"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -57,6 +57,7 @@
         </script>
     <script src="../_static/newsletter.js?v=e342eb53"></script>
     <link rel="canonical" href="https://www.fastapi-restly.org/api/exc.html" />
+    <link rel="icon" href="../_static/favicon.svg"/>
     <link rel="author" title="About these documents" href="../about.html" />
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
@@ -65,8 +66,12 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.8" />
+  <meta name="docsearch:version" content="0.9" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700&amp;display=swap"
+      rel="stylesheet" />
 <!-- GoatCounter: cookieless, privacy-friendly analytics (ignores localhost) -->
 <script data-goatcounter="https://fastapi-restly.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
@@ -74,7 +79,7 @@
   </head>
   
   
-  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="auto">
 
   
   
@@ -136,8 +141,8 @@
       
     
     
-    <img src="../_static/restly-cat.png" class="logo__image only-light" alt=""/>
-    <img src="../_static/restly-cat.png" class="logo__image only-dark pst-js-only" alt=""/>
+    <img src="../_static/fr-monogram.svg" class="logo__image only-light" alt=""/>
+    <img src="../_static/fr-monogram-dark.svg" class="logo__image only-dark pst-js-only" alt=""/>
   
   
     <p class="title logo__title">FastAPI-Restly</p>
@@ -541,7 +546,7 @@ errors that subclass <code class="docutils literal notranslate"><span class="pre
 raised when the framework is misused before/at setup.</p></li>
 <li><p>Request-time HTTP errors (<a class="reference internal" href="#fastapi_restly.exc.NotFound" title="fastapi_restly.exc.NotFound"><code class="xref py py-class docutils literal notranslate"><span class="pre">NotFound</span></code></a> / <a class="reference internal" href="#fastapi_restly.exc.Forbidden" title="fastapi_restly.exc.Forbidden"><code class="xref py py-class docutils literal notranslate"><span class="pre">Forbidden</span></code></a> /
 <a class="reference internal" href="#fastapi_restly.exc.Conflict" title="fastapi_restly.exc.Conflict"><code class="xref py py-class docutils literal notranslate"><span class="pre">Conflict</span></code></a> / <a class="reference internal" href="#fastapi_restly.exc.BadQueryParam" title="fastapi_restly.exc.BadQueryParam"><code class="xref py py-class docutils literal notranslate"><span class="pre">BadQueryParam</span></code></a>) raised while handling a request.
-These subclass <a class="reference external" href="https://fastapi.tiangolo.com/reference/exceptions/#fastapi.HTTPException" title="(in FastAPI vNone)"><code class="xref py py-class docutils literal notranslate"><span class="pre">fastapi.HTTPException</span></code></a>, so the default responses are
+These subclass <a class="reference external" href="https://fastapi.tiangolo.com/reference/exceptions/#fastapi.HTTPException" title="(in FastAPI v0.0.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">fastapi.HTTPException</span></code></a>, so the default responses are
 identical to raising <code class="docutils literal notranslate"><span class="pre">HTTPException</span></code> directly – but a user can
 <code class="docutils literal notranslate"><span class="pre">app.add_exception_handler(fr.exc.NotFound,</span> <span class="pre">...)</span></code> to reshape Restly’s errors
 distinctly (e.g. into RFC 7807 problem+json).</p></li>
@@ -631,7 +636,7 @@ distinctly (e.g. into RFC 7807 problem+json).</p></li>
 <dl class="py exception">
 <dt class="sig sig-object py" id="fastapi_restly.exc.RestlyHTTPError">
 <em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.exc.</span></span><span class="sig-name descname"><span class="pre">RestlyHTTPError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">detail</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><span class="pre">object</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><span class="pre">object</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fastapi_restly.exc.RestlyHTTPError" title="Link to this definition">#</a></dt>
-<dd><p>Bases: <a class="reference external" href="https://fastapi.tiangolo.com/reference/exceptions/#fastapi.HTTPException" title="(in FastAPI vNone)"><code class="xref py py-class docutils literal notranslate"><span class="pre">HTTPException</span></code></a></p>
+<dd><p>Bases: <a class="reference external" href="https://fastapi.tiangolo.com/reference/exceptions/#fastapi.HTTPException" title="(in FastAPI v0.0.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">HTTPException</span></code></a></p>
 <p>Base for Restly’s request-time HTTP errors. Subclasses set a status.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.exc.RestlyHTTPError.default_detail">

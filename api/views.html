@@ -2,19 +2,19 @@
 <!DOCTYPE html>
 
 
-<html lang="en" data-content_root="../" >
+<html lang="en" data-content_root="../" data-theme="auto">
 
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Views API &#8212; FastAPI-Restly 0.8.0 documentation</title>
+    <title>Views API &#8212; FastAPI-Restly 0.9.0 documentation</title>
   
   
   
   <script data-cfasync="false">
-    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
-    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "auto";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "auto";
   </script>
   <!--
     this give us a css class that will be invisible only if js is disabled
@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=5f490481" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=6821e04d" />
   
   <!-- So that users can add custom icons -->
   <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=486e5634"></script>
+    <script src="../_static/documentation_options.js?v=39bb1c6d"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -57,6 +57,7 @@
         </script>
     <script src="../_static/newsletter.js?v=e342eb53"></script>
     <link rel="canonical" href="https://www.fastapi-restly.org/api/views.html" />
+    <link rel="icon" href="../_static/favicon.svg"/>
     <link rel="author" title="About these documents" href="../about.html" />
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
@@ -65,8 +66,12 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.8" />
+  <meta name="docsearch:version" content="0.9" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700&amp;display=swap"
+      rel="stylesheet" />
 <!-- GoatCounter: cookieless, privacy-friendly analytics (ignores localhost) -->
 <script data-goatcounter="https://fastapi-restly.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
@@ -74,7 +79,7 @@
   </head>
   
   
-  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="auto">
 
   
   
@@ -136,8 +141,8 @@
       
     
     
-    <img src="../_static/restly-cat.png" class="logo__image only-light" alt=""/>
-    <img src="../_static/restly-cat.png" class="logo__image only-dark pst-js-only" alt=""/>
+    <img src="../_static/fr-monogram.svg" class="logo__image only-light" alt=""/>
+    <img src="../_static/fr-monogram-dark.svg" class="logo__image only-dark pst-js-only" alt=""/>
   
   
     <p class="title logo__title">FastAPI-Restly</p>
@@ -847,9 +852,8 @@ are added to FastAPI.</p>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.views.BaseRestView.default_page_size">
-<span class="sig-name descname"><span class="pre">default_page_size</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.14)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#fastapi_restly.views.BaseRestView.default_page_size" title="Link to this definition">#</a></dt>
-<dd><p>Default <code class="docutils literal notranslate"><span class="pre">page_size</span></code> for list endpoints. <code class="docutils literal notranslate"><span class="pre">None</span></code> means “no implicit
-cap” (the framework default). Override per-view.</p>
+<span class="sig-name descname"><span class="pre">default_page_size</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.14)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">50</span></em><a class="headerlink" href="#fastapi_restly.views.BaseRestView.default_page_size" title="Link to this definition">#</a></dt>
+<dd><p>Default <code class="docutils literal notranslate"><span class="pre">page_size</span></code> when the client omits it (paginated views only).</p>
 </dd></dl>
 
 <dl class="py attribute">
@@ -869,18 +873,20 @@ this, the strict unknown-key guard rejects the request with 422.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="fastapi_restly.views.BaseRestView.get_relationship_loader_options">
 <span class="sig-name descname"><span class="pre">get_relationship_loader_options</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#fastapi_restly.views.BaseRestView.get_relationship_loader_options" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
+<dd><p>Loader options for the relationships the response schema names.</p>
+<p>Returns recursive <code class="docutils literal notranslate"><span class="pre">selectinload(...)</span></code> options derived from
+<code class="docutils literal notranslate"><span class="pre">self.schema</span></code>, applied on reads (<code class="docutils literal notranslate"><span class="pre">get_one</span></code> / <code class="docutils literal notranslate"><span class="pre">get_many</span></code>) and on
+the post-write reload in <code class="docutils literal notranslate"><span class="pre">save_object</span></code>. Override to eager-load
+relationships the schema does not name on both paths; append to
+<code class="docutils literal notranslate"><span class="pre">super().get_relationship_loader_options()</span></code> to keep the schema-derived
+loads. See the “Relationship Loading and Async” how-to.</p>
+</dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.views.BaseRestView.id_type">
 <span class="sig-name descname"><span class="pre">id_type</span></span><a class="headerlink" href="#fastapi_restly.views.BaseRestView.id_type" title="Link to this definition">#</a></dt>
 <dd><p>alias of <a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a></p>
 </dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="fastapi_restly.views.BaseRestView.include_pagination_metadata">
-<span class="sig-name descname"><span class="pre">include_pagination_metadata</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.14)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></em><a class="headerlink" href="#fastapi_restly.views.BaseRestView.include_pagination_metadata" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.views.BaseRestView.listing_param_schema">
@@ -899,13 +905,20 @@ this, the strict unknown-key guard rejects the request with 422.</p>
 <dd></dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="fastapi_restly.views.BaseRestView.pagination_response_schema">
-<span class="sig-name descname"><span class="pre">pagination_response_schema</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.14)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://pydantic.dev/docs/validation/latest/api/pydantic/base_model/#pydantic.BaseModel" title="(in Pydantic v0.0.0)"><span class="pre">BaseModel</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#fastapi_restly.views.BaseRestView.pagination_response_schema" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
+<dt class="sig sig-object py" id="fastapi_restly.views.BaseRestView.paginated">
+<span class="sig-name descname"><span class="pre">paginated</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.14)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">True</span></em><a class="headerlink" href="#fastapi_restly.views.BaseRestView.paginated" title="Link to this definition">#</a></dt>
+<dd><p>Whether list endpoints paginate. <code class="docutils literal notranslate"><span class="pre">True</span></code> (the default) wraps the list in
+a <a class="reference internal" href="#fastapi_restly.views.PaginatedEnvelope" title="fastapi_restly.views.PaginatedEnvelope"><code class="xref py py-class docutils literal notranslate"><span class="pre">PaginatedEnvelope</span></code></a> (<code class="docutils literal notranslate"><span class="pre">data</span></code> plus <code class="docutils literal notranslate"><span class="pre">total_count</span></code> / <code class="docutils literal notranslate"><span class="pre">page</span></code> /
+<code class="docutils literal notranslate"><span class="pre">page_size</span></code> / <code class="docutils literal notranslate"><span class="pre">total_pages</span></code>), emits <code class="docutils literal notranslate"><span class="pre">page</span></code> / <code class="docutils literal notranslate"><span class="pre">page_size</span></code> query
+parameters, and runs the count query. <code class="docutils literal notranslate"><span class="pre">False</span></code> returns every matching row
+in a plain <a class="reference internal" href="#fastapi_restly.views.Envelope" title="fastapi_restly.views.Envelope"><code class="xref py py-class docutils literal notranslate"><span class="pre">Envelope</span></code></a> (<code class="docutils literal notranslate"><span class="pre">data</span></code> only) with no count. For a bare
+array or another non-envelope shape, replace <code class="docutils literal notranslate"><span class="pre">get_many_endpoint</span></code> with a
+matching <code class="docutils literal notranslate"><span class="pre">response_model</span></code> (see <a class="reference internal" href="#fastapi_restly.views.AsyncReactAdminView" title="fastapi_restly.views.AsyncReactAdminView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncReactAdminView</span></code></a>).</p>
+</dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.views.BaseRestView.request">
-<span class="sig-name descname"><span class="pre">request</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://fastapi.tiangolo.com/reference/request/#fastapi.Request" title="(in FastAPI vNone)"><span class="pre">Request</span></a></em><a class="headerlink" href="#fastapi_restly.views.BaseRestView.request" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">request</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://fastapi.tiangolo.com/reference/request/#fastapi.Request" title="(in FastAPI v0.0.0)"><span class="pre">Request</span></a></em><a class="headerlink" href="#fastapi_restly.views.BaseRestView.request" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
@@ -940,12 +953,15 @@ prior state); the default delegates to <code class="xref py py-func docutils lit
 <dl class="py method">
 <dt class="sig sig-object py" id="fastapi_restly.views.BaseRestView.to_listing_response">
 <span class="sig-name descname"><span class="pre">to_listing_response</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query_params</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">listing_result</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#fastapi_restly.views.ListingResult" title="fastapi_restly.views._base.ListingResult"><span class="pre">ListingResult</span></a><span class="p"><span class="pre">[</span></span><span class="pre">ModelT</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></span><a class="headerlink" href="#fastapi_restly.views.BaseRestView.to_listing_response" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="fastapi_restly.views.BaseRestView.to_paginated_listing_response">
-<span class="sig-name descname"><span class="pre">to_paginated_listing_response</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query_params</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">listing_result</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#fastapi_restly.views.ListingResult" title="fastapi_restly.views._base.ListingResult"><span class="pre">ListingResult</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#fastapi_restly.views.BaseRestView.to_paginated_listing_response" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
+<dd><p>Serialize a <a class="reference internal" href="#fastapi_restly.views.ListingResult" title="fastapi_restly.views.ListingResult"><code class="xref py py-class docutils literal notranslate"><span class="pre">ListingResult</span></code></a> into the list response body.</p>
+<p>The default shape is the <code class="docutils literal notranslate"><span class="pre">{&quot;data&quot;:</span> <span class="pre">[...]}</span></code> envelope – with pagination
+metadata (<code class="docutils literal notranslate"><span class="pre">total_count</span></code> / <code class="docutils literal notranslate"><span class="pre">page</span></code> / <code class="docutils literal notranslate"><span class="pre">page_size</span></code> / <code class="docutils literal notranslate"><span class="pre">total_pages</span></code>)
+when <a class="reference internal" href="#fastapi_restly.views.BaseRestView.paginated" title="fastapi_restly.views.BaseRestView.paginated"><code class="xref py py-attr docutils literal notranslate"><span class="pre">paginated</span></code></a> is true. This builds the body only; the route’s
+<code class="docutils literal notranslate"><span class="pre">response_model</span></code> is fixed from <a class="reference internal" href="#fastapi_restly.views.BaseRestView.paginated" title="fastapi_restly.views.BaseRestView.paginated"><code class="xref py py-attr docutils literal notranslate"><span class="pre">paginated</span></code></a> separately. For a bare
+array or a <code class="docutils literal notranslate"><span class="pre">Content-Range</span></code> header, replace <code class="docutils literal notranslate"><span class="pre">get_many_endpoint</span></code> with a
+matching <code class="docutils literal notranslate"><span class="pre">response_model</span></code> (as <a class="reference internal" href="#fastapi_restly.views.AsyncReactAdminView" title="fastapi_restly.views.AsyncReactAdminView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncReactAdminView</span></code></a> does), not by
+overriding this method alone, which would fail response validation.</p>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="fastapi_restly.views.BaseRestView.to_response">
@@ -971,10 +987,32 @@ backed by a <code class="docutils literal notranslate"><span class="pre">passwor
 </dd></dl>
 
 <dl class="py class">
+<dt class="sig sig-object py" id="fastapi_restly.views.Envelope">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.views.</span></span><span class="sig-name descname"><span class="pre">Envelope</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Sequence" title="(in Python v3.14)"><span class="pre">Sequence</span></a><span class="p"><span class="pre">[</span></span><span class="pre">DataT</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fastapi_restly.views.Envelope" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://pydantic.dev/docs/validation/latest/api/pydantic/base_model/#pydantic.BaseModel" title="(in Pydantic v0.0.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseModel</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Generic" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Generic</span></code></a>[<code class="xref py py-obj docutils literal notranslate"><span class="pre">DataT</span></code>]</p>
+<p>List response wrapper – <code class="docutils literal notranslate"><span class="pre">{&quot;data&quot;:</span> <span class="pre">[...]}</span></code>.</p>
+<p>The response shape for an unpaginated view. A paginated view uses
+<a class="reference internal" href="#fastapi_restly.views.PaginatedEnvelope" title="fastapi_restly.views.PaginatedEnvelope"><code class="xref py py-class docutils literal notranslate"><span class="pre">PaginatedEnvelope</span></code></a>, which adds the pagination metadata.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="fastapi_restly.views.Envelope.data">
+<span class="sig-name descname"><span class="pre">data</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Sequence" title="(in Python v3.14)"><span class="pre">Sequence</span></a><span class="p"><span class="pre">[</span></span><span class="pre">DataT</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#fastapi_restly.views.Envelope.data" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="fastapi_restly.views.Envelope.model_config">
+<span class="sig-name descname"><span class="pre">model_config</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ClassVar</span><span class="p"><span class="pre">[</span></span><span class="pre">ConfigDict</span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{}</span></em><a class="headerlink" href="#fastapi_restly.views.Envelope.model_config" title="Link to this definition">#</a></dt>
+<dd><p>Configuration for the model, should be a dictionary conforming to [<cite>ConfigDict</cite>][pydantic.config.ConfigDict].</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
 <dt class="sig sig-object py" id="fastapi_restly.views.ListingResult">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.views.</span></span><span class="sig-name descname"><span class="pre">ListingResult</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">objects</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Sequence" title="(in Python v3.14)"><span class="pre">Sequence</span></a><span class="p"><span class="pre">[</span></span><span class="pre">ModelT</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">total_count</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">query_params</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fastapi_restly.views.ListingResult" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.views.</span></span><span class="sig-name descname"><span class="pre">ListingResult</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">objects</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Sequence" title="(in Python v3.14)"><span class="pre">Sequence</span></a><span class="p"><span class="pre">[</span></span><span class="pre">ModelT</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">total_count</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">query_params</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fastapi_restly.views.ListingResult" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Generic" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Generic</span></code></a>[<code class="xref py py-obj docutils literal notranslate"><span class="pre">ModelT</span></code>]</p>
 <p>Result returned by <code class="docutils literal notranslate"><span class="pre">get_many</span></code> before HTTP response formatting.</p>
+<p><code class="docutils literal notranslate"><span class="pre">total_count</span></code> is <code class="docutils literal notranslate"><span class="pre">None</span></code> for an unpaginated listing, which does not run
+the count query.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.views.ListingResult.objects">
 <span class="sig-name descname"><span class="pre">objects</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Sequence" title="(in Python v3.14)"><span class="pre">Sequence</span></a><span class="p"><span class="pre">[</span></span><span class="pre">ModelT</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#fastapi_restly.views.ListingResult.objects" title="Link to this definition">#</a></dt>
@@ -987,7 +1025,40 @@ backed by a <code class="docutils literal notranslate"><span class="pre">passwor
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.views.ListingResult.total_count">
-<span class="sig-name descname"><span class="pre">total_count</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#fastapi_restly.views.ListingResult.total_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">total_count</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#fastapi_restly.views.ListingResult.total_count" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="fastapi_restly.views.PaginatedEnvelope">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.views.</span></span><span class="sig-name descname"><span class="pre">PaginatedEnvelope</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Sequence" title="(in Python v3.14)"><span class="pre">Sequence</span></a><span class="p"><span class="pre">[</span></span><span class="pre">DataT</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">total_count</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">page</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">page_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">total_pages</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fastapi_restly.views.PaginatedEnvelope" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#fastapi_restly.views.Envelope" title="fastapi_restly.views._base.Envelope"><code class="xref py py-class docutils literal notranslate"><span class="pre">Envelope</span></code></a></p>
+<p>Paginated list response – <code class="docutils literal notranslate"><span class="pre">data</span></code> plus pagination metadata.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="fastapi_restly.views.PaginatedEnvelope.model_config">
+<span class="sig-name descname"><span class="pre">model_config</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ClassVar</span><span class="p"><span class="pre">[</span></span><span class="pre">ConfigDict</span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{}</span></em><a class="headerlink" href="#fastapi_restly.views.PaginatedEnvelope.model_config" title="Link to this definition">#</a></dt>
+<dd><p>Configuration for the model, should be a dictionary conforming to [<cite>ConfigDict</cite>][pydantic.config.ConfigDict].</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="fastapi_restly.views.PaginatedEnvelope.page">
+<span class="sig-name descname"><span class="pre">page</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#fastapi_restly.views.PaginatedEnvelope.page" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="fastapi_restly.views.PaginatedEnvelope.page_size">
+<span class="sig-name descname"><span class="pre">page_size</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#fastapi_restly.views.PaginatedEnvelope.page_size" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="fastapi_restly.views.PaginatedEnvelope.total_count">
+<span class="sig-name descname"><span class="pre">total_count</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#fastapi_restly.views.PaginatedEnvelope.total_count" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="fastapi_restly.views.PaginatedEnvelope.total_pages">
+<span class="sig-name descname"><span class="pre">total_pages</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#fastapi_restly.views.PaginatedEnvelope.total_pages" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
@@ -1319,7 +1390,7 @@ grouped non-CRUD endpoints (auth flows, custom RPC routes, etc.).</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="fastapi_restly.views.include_view">
-<span class="sig-prename descclassname"><span class="pre">fastapi_restly.views.</span></span><span class="sig-name descname"><span class="pre">include_view</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parent_router</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://fastapi.tiangolo.com/reference/apirouter/#fastapi.APIRouter" title="(in FastAPI vNone)"><span class="pre">APIRouter</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://fastapi.tiangolo.com/reference/fastapi/#fastapi.FastAPI" title="(in FastAPI vNone)"><span class="pre">FastAPI</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">view_cls</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">V</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">V</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.14)"><span class="pre">Callable</span></a><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">V</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">V</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#fastapi_restly.views.include_view" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">fastapi_restly.views.</span></span><span class="sig-name descname"><span class="pre">include_view</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parent_router</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://fastapi.tiangolo.com/reference/apirouter/#fastapi.APIRouter" title="(in FastAPI v0.0.0)"><span class="pre">APIRouter</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://fastapi.tiangolo.com/reference/fastapi/#fastapi.FastAPI" title="(in FastAPI v0.0.0)"><span class="pre">FastAPI</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">view_cls</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">V</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">V</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.14)"><span class="pre">Callable</span></a><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">V</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">V</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#fastapi_restly.views.include_view" title="Link to this definition">#</a></dt>
 <dd><p>Add a View class’s routes to a FastAPI app or APIRouter.</p>
 <p>Prefer the direct call form from your app/router composition layer:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">MyView</span><span class="p">)</span>
@@ -1482,11 +1553,10 @@ and collects the task-shaped override recipes.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.extra_query_params"><code class="docutils literal notranslate"><span class="pre">BaseRestView.extra_query_params</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.get_relationship_loader_options"><code class="docutils literal notranslate"><span class="pre">BaseRestView.get_relationship_loader_options()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.id_type"><code class="docutils literal notranslate"><span class="pre">BaseRestView.id_type</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.include_pagination_metadata"><code class="docutils literal notranslate"><span class="pre">BaseRestView.include_pagination_metadata</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.listing_param_schema"><code class="docutils literal notranslate"><span class="pre">BaseRestView.listing_param_schema</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.max_page_size"><code class="docutils literal notranslate"><span class="pre">BaseRestView.max_page_size</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.model"><code class="docutils literal notranslate"><span class="pre">BaseRestView.model</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.pagination_response_schema"><code class="docutils literal notranslate"><span class="pre">BaseRestView.pagination_response_schema</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.paginated"><code class="docutils literal notranslate"><span class="pre">BaseRestView.paginated</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.request"><code class="docutils literal notranslate"><span class="pre">BaseRestView.request</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.responses"><code class="docutils literal notranslate"><span class="pre">BaseRestView.responses</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.schema"><code class="docutils literal notranslate"><span class="pre">BaseRestView.schema</span></code></a></li>
@@ -1494,15 +1564,27 @@ and collects the task-shaped override recipes.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.schema_update"><code class="docutils literal notranslate"><span class="pre">BaseRestView.schema_update</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.snapshot"><code class="docutils literal notranslate"><span class="pre">BaseRestView.snapshot()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.to_listing_response"><code class="docutils literal notranslate"><span class="pre">BaseRestView.to_listing_response()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.to_paginated_listing_response"><code class="docutils literal notranslate"><span class="pre">BaseRestView.to_paginated_listing_response()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.to_response"><code class="docutils literal notranslate"><span class="pre">BaseRestView.to_response()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.to_response_schema"><code class="docutils literal notranslate"><span class="pre">BaseRestView.to_response_schema()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.Envelope"><code class="docutils literal notranslate"><span class="pre">Envelope</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.Envelope.data"><code class="docutils literal notranslate"><span class="pre">Envelope.data</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.Envelope.model_config"><code class="docutils literal notranslate"><span class="pre">Envelope.model_config</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.ListingResult"><code class="docutils literal notranslate"><span class="pre">ListingResult</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.ListingResult.objects"><code class="docutils literal notranslate"><span class="pre">ListingResult.objects</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.ListingResult.query_params"><code class="docutils literal notranslate"><span class="pre">ListingResult.query_params</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.ListingResult.total_count"><code class="docutils literal notranslate"><span class="pre">ListingResult.total_count</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.PaginatedEnvelope"><code class="docutils literal notranslate"><span class="pre">PaginatedEnvelope</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.PaginatedEnvelope.model_config"><code class="docutils literal notranslate"><span class="pre">PaginatedEnvelope.model_config</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.PaginatedEnvelope.page"><code class="docutils literal notranslate"><span class="pre">PaginatedEnvelope.page</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.PaginatedEnvelope.page_size"><code class="docutils literal notranslate"><span class="pre">PaginatedEnvelope.page_size</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.PaginatedEnvelope.total_count"><code class="docutils literal notranslate"><span class="pre">PaginatedEnvelope.total_count</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.PaginatedEnvelope.total_pages"><code class="docutils literal notranslate"><span class="pre">PaginatedEnvelope.total_pages</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.ReactAdminView"><code class="docutils literal notranslate"><span class="pre">ReactAdminView</span></code></a><ul class="visible nav section-nav flex-column">

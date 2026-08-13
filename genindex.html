@@ -2,18 +2,18 @@
 <!DOCTYPE html>
 
 
-<html lang="en" data-content_root="./" >
+<html lang="en" data-content_root="./" data-theme="auto">
 
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Index &#8212; FastAPI-Restly 0.8.0 documentation</title>
+    <title>Index &#8212; FastAPI-Restly 0.9.0 documentation</title>
   
   
   
   <script data-cfasync="false">
-    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
-    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "auto";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "auto";
   </script>
   <!--
     this give us a css class that will be invisible only if js is disabled
@@ -32,7 +32,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=5f490481" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=6821e04d" />
   
   <!-- So that users can add custom icons -->
   <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=486e5634"></script>
+    <script src="_static/documentation_options.js?v=39bb1c6d"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -56,14 +56,19 @@
         </script>
     <script src="_static/newsletter.js?v=e342eb53"></script>
     <link rel="canonical" href="https://www.fastapi-restly.org/genindex.html" />
+    <link rel="icon" href="_static/favicon.svg"/>
     <link rel="author" title="About these documents" href="about.html" />
     <link rel="index" title="Index" href="#" />
     <link rel="search" title="Search" href="search.html" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.8" />
+  <meta name="docsearch:version" content="0.9" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700&amp;display=swap"
+      rel="stylesheet" />
 <!-- GoatCounter: cookieless, privacy-friendly analytics (ignores localhost) -->
 <script data-goatcounter="https://fastapi-restly.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
@@ -71,7 +76,7 @@
   </head>
   
   
-  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="auto">
 
   
   
@@ -133,8 +138,8 @@
       
     
     
-    <img src="_static/restly-cat.png" class="logo__image only-light" alt=""/>
-    <img src="_static/restly-cat.png" class="logo__image only-dark pst-js-only" alt=""/>
+    <img src="_static/fr-monogram.svg" class="logo__image only-light" alt=""/>
+    <img src="_static/fr-monogram-dark.svg" class="logo__image only-dark pst-js-only" alt=""/>
   
   
     <p class="title logo__title">FastAPI-Restly</p>
@@ -504,12 +509,6 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/views.html#fastapi_restly.views.Action">Action (class in fastapi_restly.views)</a>
 </li>
-      <li><a href="api/db.html#fastapi_restly.db.activate_savepoint_only_mode">activate_savepoint_only_mode() (in module fastapi_restly.db)</a>
-
-      <ul>
-        <li><a href="api/testing.html#fastapi_restly.testing.activate_savepoint_only_mode">(in module fastapi_restly.testing)</a>
-</li>
-      </ul></li>
       <li><a href="api/views.html#fastapi_restly.views.AsyncRestView.after_commit">after_commit() (fastapi_restly.views.AsyncRestView method)</a>
 
       <ul>
@@ -524,14 +523,12 @@
         <li><a href="api/views.html#fastapi_restly.views.RestView.apply_query_params">(fastapi_restly.views.RestView method)</a>
 </li>
       </ul></li>
-      <li><a href="api/testing.html#fastapi_restly.testing.RestlyTestClient.assert_status">assert_status() (fastapi_restly.testing.RestlyTestClient method)</a>
-</li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/db.html#fastapi_restly.db.async_create_all">async_create_all() (in module fastapi_restly.db)</a>
 </li>
       <li><a href="api/objects.html#fastapi_restly.objects.async_delete_object">async_delete_object() (in module fastapi_restly.objects)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/objects.html#fastapi_restly.objects.async_make_new_object">async_make_new_object() (in module fastapi_restly.objects)</a>
 </li>
       <li><a href="api/views.html#fastapi_restly.views.async_run_write_action">async_run_write_action() (in module fastapi_restly.views)</a>
@@ -541,6 +538,8 @@
       <li><a href="api/objects.html#fastapi_restly.objects.async_update_object">async_update_object() (in module fastapi_restly.objects)</a>
 </li>
       <li><a href="api/views.html#fastapi_restly.views.AsyncReactAdminView">AsyncReactAdminView (class in fastapi_restly.views)</a>
+</li>
+      <li><a href="api/testing.html#fastapi_restly.testing.AsyncRestlyTestClient">AsyncRestlyTestClient (class in fastapi_restly.testing)</a>
 </li>
       <li><a href="api/views.html#fastapi_restly.views.AsyncRestView">AsyncRestView (class in fastapi_restly.views)</a>
 </li>
@@ -590,6 +589,8 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/db.html#fastapi_restly.db.configure">configure() (in module fastapi_restly.db)</a>
 </li>
+      <li><a href="api/testing.html#fastapi_restly.testing.configure_tests">configure_tests() (in module fastapi_restly.testing)</a>
+</li>
       <li><a href="api/exc.html#fastapi_restly.exc.Conflict">Conflict</a>
 </li>
       <li><a href="api/views.html#fastapi_restly.views.AsyncRestView.count">count() (fastapi_restly.views.AsyncRestView method)</a>
@@ -636,14 +637,10 @@
 <h2 id="D">D</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/views.html#fastapi_restly.views.Envelope.data">data (fastapi_restly.views.Envelope attribute)</a>
+</li>
       <li><a href="api/models.html#fastapi_restly.models.DataclassBase">DataclassBase (class in fastapi_restly.models)</a>
 </li>
-      <li><a href="api/db.html#fastapi_restly.db.deactivate_savepoint_only_mode">deactivate_savepoint_only_mode() (in module fastapi_restly.db)</a>
-
-      <ul>
-        <li><a href="api/testing.html#fastapi_restly.testing.deactivate_savepoint_only_mode">(in module fastapi_restly.testing)</a>
-</li>
-      </ul></li>
       <li><a href="api/exc.html#fastapi_restly.exc.BadQueryParam.default_detail">default_detail (fastapi_restly.exc.BadQueryParam attribute)</a>
 
       <ul>
@@ -658,17 +655,19 @@
       </ul></li>
       <li><a href="api/views.html#fastapi_restly.views.BaseRestView.default_page_size">default_page_size (fastapi_restly.views.BaseRestView attribute)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/views.html#fastapi_restly.views.Action.DELETE">DELETE (fastapi_restly.views.Action attribute)</a>
 
       <ul>
         <li><a href="api/views.html#fastapi_restly.views.ViewRoute.DELETE">(fastapi_restly.views.ViewRoute attribute)</a>
 </li>
       </ul></li>
-      <li><a href="api/testing.html#fastapi_restly.testing.RestlyTestClient.delete">delete() (fastapi_restly.testing.RestlyTestClient method)</a>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/testing.html#fastapi_restly.testing.AsyncRestlyTestClient.delete">delete() (fastapi_restly.testing.AsyncRestlyTestClient method)</a>
 
       <ul>
+        <li><a href="api/testing.html#fastapi_restly.testing.RestlyTestClient.delete">(fastapi_restly.testing.RestlyTestClient method)</a>
+</li>
         <li><a href="api/views.html#fastapi_restly.views.AsyncRestView.delete">(fastapi_restly.views.AsyncRestView method)</a>
 </li>
         <li><a href="api/views.html#fastapi_restly.views.RestView.delete">(fastapi_restly.views.RestView method)</a>
@@ -693,6 +692,8 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/views.html#fastapi_restly.views.ResponseShape.EMPTY">EMPTY (fastapi_restly.views.ResponseShape attribute)</a>
+</li>
+      <li><a href="api/views.html#fastapi_restly.views.Envelope">Envelope (class in fastapi_restly.views)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
@@ -772,9 +773,11 @@
 <h2 id="G">G</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/testing.html#fastapi_restly.testing.RestlyTestClient.get">get() (fastapi_restly.testing.RestlyTestClient method)</a>
+      <li><a href="api/testing.html#fastapi_restly.testing.AsyncRestlyTestClient.get">get() (fastapi_restly.testing.AsyncRestlyTestClient method)</a>
 
       <ul>
+        <li><a href="api/testing.html#fastapi_restly.testing.RestlyTestClient.get">(fastapi_restly.testing.RestlyTestClient method)</a>
+</li>
         <li><a href="api/views.html#fastapi_restly.views.get">(in module fastapi_restly.views)</a>
 </li>
       </ul></li>
@@ -890,8 +893,6 @@
 </li>
       <li><a href="api/schemas.html#fastapi_restly.schemas.IDSchema">IDSchema (class in fastapi_restly.schemas)</a>
 </li>
-      <li><a href="api/views.html#fastapi_restly.views.BaseRestView.include_pagination_metadata">include_pagination_metadata (fastapi_restly.views.BaseRestView attribute)</a>
-</li>
       <li><a href="api/views.html#fastapi_restly.views.include_view">include_view() (in module fastapi_restly.views)</a>
 </li>
   </ul></td>
@@ -929,7 +930,13 @@
 </li>
         <li><a href="api/schemas.html#fastapi_restly.schemas.TimestampsSchemaMixin.model_config">(fastapi_restly.schemas.TimestampsSchemaMixin attribute)</a>
 </li>
+        <li><a href="api/views.html#fastapi_restly.views.Envelope.model_config">(fastapi_restly.views.Envelope attribute)</a>
+</li>
+        <li><a href="api/views.html#fastapi_restly.views.PaginatedEnvelope.model_config">(fastapi_restly.views.PaginatedEnvelope attribute)</a>
+</li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li>
     module
 
@@ -951,8 +958,6 @@
         <li><a href="api/views.html#module-fastapi_restly.views">fastapi_restly.views</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/schemas.html#fastapi_restly.schemas.MustExist">MustExist (class in fastapi_restly.schemas)</a>
 </li>
   </ul></td>
@@ -983,17 +988,27 @@
 <h2 id="P">P</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/views.html#fastapi_restly.views.BaseRestView.pagination_response_schema">pagination_response_schema (fastapi_restly.views.BaseRestView attribute)</a>
+      <li><a href="api/views.html#fastapi_restly.views.PaginatedEnvelope.page">page (fastapi_restly.views.PaginatedEnvelope attribute)</a>
 </li>
-      <li><a href="api/testing.html#fastapi_restly.testing.RestlyTestClient.patch">patch() (fastapi_restly.testing.RestlyTestClient method)</a>
+      <li><a href="api/views.html#fastapi_restly.views.PaginatedEnvelope.page_size">page_size (fastapi_restly.views.PaginatedEnvelope attribute)</a>
+</li>
+      <li><a href="api/views.html#fastapi_restly.views.BaseRestView.paginated">paginated (fastapi_restly.views.BaseRestView attribute)</a>
+</li>
+      <li><a href="api/views.html#fastapi_restly.views.PaginatedEnvelope">PaginatedEnvelope (class in fastapi_restly.views)</a>
+</li>
+      <li><a href="api/testing.html#fastapi_restly.testing.AsyncRestlyTestClient.patch">patch() (fastapi_restly.testing.AsyncRestlyTestClient method)</a>
 
       <ul>
+        <li><a href="api/testing.html#fastapi_restly.testing.RestlyTestClient.patch">(fastapi_restly.testing.RestlyTestClient method)</a>
+</li>
         <li><a href="api/views.html#fastapi_restly.views.patch">(in module fastapi_restly.views)</a>
 </li>
       </ul></li>
-      <li><a href="api/testing.html#fastapi_restly.testing.RestlyTestClient.post">post() (fastapi_restly.testing.RestlyTestClient method)</a>
+      <li><a href="api/testing.html#fastapi_restly.testing.AsyncRestlyTestClient.post">post() (fastapi_restly.testing.AsyncRestlyTestClient method)</a>
 
       <ul>
+        <li><a href="api/testing.html#fastapi_restly.testing.RestlyTestClient.post">(fastapi_restly.testing.RestlyTestClient method)</a>
+</li>
         <li><a href="api/views.html#fastapi_restly.views.post">(in module fastapi_restly.views)</a>
 </li>
       </ul></li>
@@ -1001,9 +1016,11 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/views.html#fastapi_restly.views.View.prefix">prefix (fastapi_restly.views.View attribute)</a>
 </li>
-      <li><a href="api/testing.html#fastapi_restly.testing.RestlyTestClient.put">put() (fastapi_restly.testing.RestlyTestClient method)</a>
+      <li><a href="api/testing.html#fastapi_restly.testing.AsyncRestlyTestClient.put">put() (fastapi_restly.testing.AsyncRestlyTestClient method)</a>
 
       <ul>
+        <li><a href="api/testing.html#fastapi_restly.testing.RestlyTestClient.put">(fastapi_restly.testing.RestlyTestClient method)</a>
+</li>
         <li><a href="api/views.html#fastapi_restly.views.AsyncReactAdminView.put">(fastapi_restly.views.AsyncReactAdminView method)</a>
 </li>
         <li><a href="api/views.html#fastapi_restly.views.ReactAdminView.put">(fastapi_restly.views.ReactAdminView method)</a>
@@ -1115,15 +1132,19 @@
 </li>
       <li><a href="api/views.html#fastapi_restly.views.BaseRestView.to_listing_response">to_listing_response() (fastapi_restly.views.BaseRestView method)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/views.html#fastapi_restly.views.BaseRestView.to_paginated_listing_response">to_paginated_listing_response() (fastapi_restly.views.BaseRestView method)</a>
-</li>
       <li><a href="api/views.html#fastapi_restly.views.BaseRestView.to_response">to_response() (fastapi_restly.views.BaseRestView method)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/views.html#fastapi_restly.views.BaseRestView.to_response_schema">to_response_schema() (fastapi_restly.views.BaseRestView method)</a>
 </li>
       <li><a href="api/views.html#fastapi_restly.views.ListingResult.total_count">total_count (fastapi_restly.views.ListingResult attribute)</a>
+
+      <ul>
+        <li><a href="api/views.html#fastapi_restly.views.PaginatedEnvelope.total_count">(fastapi_restly.views.PaginatedEnvelope attribute)</a>
+</li>
+      </ul></li>
+      <li><a href="api/views.html#fastapi_restly.views.PaginatedEnvelope.total_pages">total_pages (fastapi_restly.views.PaginatedEnvelope attribute)</a>
 </li>
       <li><a href="api/models.html#fastapi_restly.models.DataclassBase.type_annotation_map">type_annotation_map (fastapi_restly.models.DataclassBase attribute)</a>
 </li>

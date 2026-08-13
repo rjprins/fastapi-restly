@@ -52,6 +52,14 @@ Wrap successful responses in `{data}` envelopes and add list metadata such as
 total counts, while keeping Restly's handlers and serialization.
 :::
 
+:::{grid-item-card} Relationship Loading and Async
+:link: howto_relationship_loading
+:link-type: doc
+
+Load nested relationships for responses on reads and writes, extend the loaded
+set, and resolve `MissingGreenlet` on async sessions.
+:::
+
 :::{grid-item-card} Filter, Sort, and Paginate Lists
 :link: howto_query_modifiers
 :link-type: doc
@@ -169,6 +177,7 @@ howto_existing_project
 howto_custom_schema
 howto_relationship_idschema
 howto_response_schema
+howto_relationship_loading
 howto_query_modifiers
 howto_error_responses
 patterns

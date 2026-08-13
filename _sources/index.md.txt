@@ -1,14 +1,4 @@
-# FastAPI-Restly
-
-[![CI](https://github.com/rjprins/fastapi-restly/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/rjprins/fastapi-restly/actions/workflows/ci.yml)
-[![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue)](https://github.com/rjprins/fastapi-restly/blob/main/pyproject.toml)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/rjprins/fastapi-restly/blob/main/LICENSE)
-[![Coverage](https://www.fastapi-restly.org/coverage/badge.svg)](https://www.fastapi-restly.org/coverage/)
-
-:::{image} _static/restly-cat.png
-:width: 160px
-:align: center
-:::
+# ![](_static/fr-monogram.svg) FastAPI-Restly
 
 FastAPI-Restly (`fr`) is a REST framework for FastAPI, backed by SQLAlchemy 2.0
 and Pydantic v2. Views are real Python classes: share behavior with inheritance

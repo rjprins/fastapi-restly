@@ -446,6 +446,8 @@ fetch and is the standard policy seam.
 
 ## See also
 
+- [Relationship Loading and Async](howto_relationship_loading.md): how these
+  relationship fields load for responses, and `MissingGreenlet` fixes on async.
 - [Tutorial](tutorial.md): reference fields in the blog build, in context.
 - [Custom Schemas and Field Types](howto_custom_schema.md): the schema bases
   and field markers these compose with.
