@@ -132,7 +132,7 @@ hooks, `data.author_id` is the plain integer.
 ## List filtering
 
 The FK field is filterable on the list endpoint by its own public name, as in
-`GET /articles/?author_id=1`. The suffixed operators `author_id__in`,
+`GET /articles?author_id=1`. The suffixed operators `author_id__in`,
 `author_id__ne`, and `author_id__isnull` are available as well, and because a
 `MustExist[int, ...]` id is a plain integer, so is the range family
 `author_id__gte` / `__lte` / `__gt` / `__lt`. See

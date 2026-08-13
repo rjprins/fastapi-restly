@@ -1,6 +1,6 @@
 # Filter, Sort, and Paginate Lists
 
-List endpoints (`GET /{prefix}/`) support filtering, sorting, and
+List endpoints (`GET /{prefix}`) support filtering, sorting, and
 pagination through URL query parameters out of the box. Filter parameters
 are derived from the response schema; sort and pagination use a fixed set
 of names.
@@ -27,7 +27,7 @@ Filter parameters compare a schema field against a value taken from the
 URL. Plain equality uses the bare field name:
 
 ```text
-GET /users/?name=John
+GET /users?name=John
 ```
 
 Operator suffixes on the field name select other comparisons:
@@ -61,7 +61,7 @@ other operators would fail on every request.
 Comma-separated values in a plain equality filter are OR-combined:
 
 ```text
-GET /users/?status=active,pending
+GET /users?status=active,pending
 ```
 
 This produces `WHERE status = 'active' OR status = 'pending'`, which is
@@ -69,7 +69,7 @@ equivalent to SQL `IN`. Use `__in` when you want that same SQL `IN`
 meaning to be explicit in the URL:
 
 ```text
-GET /users/?status__in=active,pending
+GET /users?status__in=active,pending
 ```
 
 ### Comma logic on `__ne` (NOT IN)
@@ -78,7 +78,7 @@ Comma-separated values in `__ne` are AND-combined, meaning the row must
 differ from every listed value:
 
 ```text
-GET /users/?status__ne=archived,deleted
+GET /users?status__ne=archived,deleted
 ```
 
 This produces `WHERE status != 'archived' AND status != 'deleted'`, which
@@ -91,8 +91,8 @@ parameter: each predicate becomes its own `LIKE` / `ILIKE` clause and the
 clauses are AND-combined:
 
 ```text
-GET /users/?name__contains=john&name__contains=doe
-GET /users/?name__icontains=john&name__icontains=doe
+GET /users?name__contains=john&name__contains=doe
+GET /users?name__icontains=john&name__icontains=doe
 ```
 
 `__contains` produces `WHERE name LIKE '%john%' AND name LIKE '%doe%'`;
@@ -112,7 +112,7 @@ Literal `%`, `_`, and `\` characters are escaped before SQL `LIKE` /
 Repeat the parameter to add AND conditions:
 
 ```text
-GET /users/?created_at__gte=2024-01-01&created_at__lt=2025-01-01
+GET /users?created_at__gte=2024-01-01&created_at__lt=2025-01-01
 ```
 
 This produces
@@ -124,7 +124,7 @@ Use the `sort` parameter with comma-separated field names, prefixing a
 name with `-` for descending order:
 
 ```text
-GET /users/?sort=-created_at,name
+GET /users?sort=-created_at,name
 ```
 
 Dotted relation paths sort exactly as they filter:
@@ -140,7 +140,7 @@ column return results in an unspecified order.
 Pagination is controlled by the `page` and `page_size` parameters:
 
 ```text
-GET /users/?page=2&page_size=50
+GET /users?page=2&page_size=50
 ```
 
 `page` is 1-based. `page_size` must be `>= 1` and `<= max_page_size`
@@ -201,8 +201,8 @@ class UserRead(BaseModel):
 Only the alias is accepted on the URL surface:
 
 ```text
-GET /users/?userName=Alice        # supported
-GET /users/?user_name=Alice       # rejected; the Python name is not exposed
+GET /users?userName=Alice        # supported
+GET /users?user_name=Alice       # rejected, the Python name is not exposed
 ```
 
 If you want a different URL key, change the alias.
@@ -212,8 +212,8 @@ If you want a different URL key, change the alias.
 Filtering on a related model's field uses dot notation:
 
 ```text
-GET /orders/?user.name=Alice
-GET /orders/?user.name__contains=ali
+GET /orders?user.name=Alice
+GET /orders?user.name__contains=ali
 ```
 
 The relation must be defined on both the SQLAlchemy model (as a
@@ -242,8 +242,8 @@ class ArticleRead(BaseModel):
 Requests must then use the aliased segments:
 
 ```text
-GET /articles/?writer.authorName=Alice    # supported (aliased segments)
-GET /articles/?author.name=Alice          # rejected; use public aliases
+GET /articles?writer.authorName=Alice    # supported (aliased segments)
+GET /articles?author.name=Alice          # rejected, use public aliases
 ```
 
 ## Foreign-key filtering
@@ -253,12 +253,12 @@ A scalar foreign key declared with
 filterable by its own public name, the same name the wire format uses:
 
 ```text
-GET /comments/?post_id=1
-GET /comments/?post_id=1,2          # OR (SQL IN)
-GET /comments/?post_id__in=1,2
-GET /comments/?post_id__ne=1
-GET /comments/?post_id__gte=10      # range operators apply to int ids
-GET /comments/?post_id__isnull=true
+GET /comments?post_id=1
+GET /comments?post_id=1,2          # OR (SQL IN)
+GET /comments?post_id__in=1,2
+GET /comments?post_id__ne=1
+GET /comments?post_id__gte=10      # range operators apply to int ids
+GET /comments?post_id__isnull=true
 ```
 
 A `MustExist[pk, ...]` id filters exactly like its plain scalar `pk`
@@ -277,14 +277,14 @@ compares the two reference styles.
 The requests below summarize the grammar in one place:
 
 ```text
-GET /users/?name=John
-GET /users/?status=active,pending
-GET /users/?age__gte=18&age__lt=65
-GET /users/?deleted_at__isnull=true
-GET /users/?email__icontains=example
-GET /users/?name__contains=john doe
-GET /users/?sort=-id
-GET /users/?page=2&page_size=50
+GET /users?name=John
+GET /users?status=active,pending
+GET /users?age__gte=18&age__lt=65
+GET /users?deleted_at__isnull=true
+GET /users?email__icontains=example
+GET /users?name__contains=john doe
+GET /users?sort=-id
+GET /users?page=2&page_size=50
 ```
 
 ## Overriding query logic per view

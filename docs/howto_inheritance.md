@@ -34,7 +34,7 @@ class OrderView(AuditBase):
     schema = OrderRead
 ```
 
-`audit_log.record` now runs for both `/users/` and `/orders/`. Register only concrete subclasses, not the base. Because {meth}`create <fastapi_restly.views.RestView.create>` is commit-free, the handler persists the same object the base method recorded.
+`audit_log.record` now runs for both `/users` and `/orders`. Register only concrete subclasses, not the base. Because {meth}`create <fastapi_restly.views.RestView.create>` is commit-free, the handler persists the same object the base method recorded.
 
 ## Call super() to layer overrides
 
@@ -121,7 +121,7 @@ class OrderView(ProtectedBase):
     schema = OrderRead
 ```
 
-Every route on `/users/` and `/orders/` now requires authentication.
+Every route on `/users` and `/orders` now requires authentication.
 
 (prefix-concatenation)=
 
@@ -196,7 +196,7 @@ class ProductView(ReadOnlyBase):
     schema = ProductRead
 ```
 
-`ProductView` only exposes `GET /products/` and `GET /products/{id}`.
+`ProductView` only exposes `GET /products` and `GET /products/{id}`.
 
 ## Implement soft-delete once
 

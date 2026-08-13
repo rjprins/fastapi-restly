@@ -95,8 +95,8 @@ class UserView(fr.AsyncRestView):
 That view exposes these HTTP routes:
 
 ```http
-GET    /users/       # list users, with filtering, sorting, and pagination
-POST   /users/       # create a user
+GET    /users       # list users, with filtering, sorting, and pagination
+POST   /users       # create a user
 GET    /users/{id}   # read one user
 PATCH  /users/{id}   # partially update one user
 DELETE /users/{id}   # delete one user
@@ -215,9 +215,9 @@ Use **auto-schema** for prototypes and internal tools. Use an **explicit schema*
 List endpoints expose a stable URL parameter dialect generated from the response schema:
 
 ```bash
-GET /users/?name=John&created_at__gte=2024-01-01
-GET /users/?email__icontains=example
-GET /users/?sort=-created_at&page=2&page_size=10
+GET /users?name=John&created_at__gte=2024-01-01
+GET /users?email__icontains=example
+GET /users?sort=-created_at&page=2&page_size=10
 ```
 
 Parameter keys use the **response schema's public names**, including dotted
@@ -364,7 +364,7 @@ Configure Restly for your test database in `conftest.py`.
 # test_users.py
 def test_create_and_fetch_user(restly_client):
     # Raises AssertionError if status != 201
-    response = restly_client.post("/users/", json={"name": "John", "email": "john@example.com"})
+    response = restly_client.post("/users", json={"name": "John", "email": "john@example.com"})
     user_id = response.json()["id"]
 
     # Raises AssertionError if status != 200

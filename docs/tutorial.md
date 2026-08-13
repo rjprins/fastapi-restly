@@ -92,7 +92,7 @@ wire format is the raw id:
 1
 ```
 
-So a `POST /comments/` request body looks like:
+So a `POST /comments` request body looks like:
 
 ```json
 {
@@ -174,8 +174,8 @@ For each view, FastAPI-Restly generates five endpoints. With `prefix = "/posts"`
 
 | Method   | Path          | Action         |
 |----------|---------------|----------------|
-| `GET`    | `/posts/`     | List all posts |
-| `POST`   | `/posts/`     | Create a post  |
+| `GET`    | `/posts`     | List all posts |
+| `POST`   | `/posts`     | Create a post  |
 | `GET`    | `/posts/{id}` | Get one post   |
 | `PATCH`  | `/posts/{id}` | Update a post  |
 | `DELETE` | `/posts/{id}` | Delete a post  |
@@ -237,9 +237,9 @@ through URL query parameters. Filters use direct field names with optional
 operator suffixes:
 
 ```text
-GET /posts/?published=true&sort=-id&page=1&page_size=10
-GET /posts/?title__icontains=hello
-GET /posts/?created_at__gte=2024-01-01&created_at__lt=2025-01-01
+GET /posts?published=true&sort=-id&page=1&page_size=10
+GET /posts?title__icontains=hello
+GET /posts?created_at__gte=2024-01-01&created_at__lt=2025-01-01
 ```
 
 See [Filter, Sort, and Paginate Lists](howto_query_modifiers.md)
@@ -256,7 +256,7 @@ from fastapi_restly.testing import RestlyTestClient
 # Enter it: the app's lifespan, which creates the tables above, runs on entry.
 with RestlyTestClient(app) as client:
     post = client.post(
-        "/posts/", json={"title": "Hello", "content": "World", "published": False}
+        "/posts", json={"title": "Hello", "content": "World", "published": False}
     )
     # Automatically asserts status 201
 
@@ -291,7 +291,7 @@ when they finish:
 ```python
 # test_posts.py
 def test_create_post(restly_client):
-    resp = restly_client.post("/posts/", json={"title": "Hi", "content": "...", "published": False})
+    resp = restly_client.post("/posts", json={"title": "Hi", "content": "...", "published": False})
     assert resp.json()["title"] == "Hi"
     # Database changes are rolled back automatically after this test
 ```
