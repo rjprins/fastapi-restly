@@ -8,7 +8,8 @@ from sqlalchemy import make_url
 
 # Select the dedicated test service before importing the application, because
 # app.database creates the application-owned engine at import time. CI can point
-# the suite at its PostgreSQL service through SAAS_TEST_DATABASE_URL.
+# the suite at its PostgreSQL service through SAAS_TEST_DATABASE_URL or
+# RESTLY_TEST_DATABASE_URL.
 _raw_test_url = os.environ.get(
     "SAAS_TEST_DATABASE_URL",
     os.environ.get(
@@ -16,7 +17,10 @@ _raw_test_url = os.environ.get(
         "postgresql+asyncpg://postgres:postgres@localhost:5433/saas_test",
     ),
 )
-_test_url = make_url(_raw_test_url).set(drivername="postgresql+asyncpg")
+_test_url = make_url(_raw_test_url)
+if _test_url.get_backend_name() != "postgresql":
+    raise pytest.UsageError("The SaaS test suite requires a PostgreSQL database URL")
+_test_url = _test_url.set(drivername="postgresql+asyncpg")
 os.environ["DATABASE_URL"] = _test_url.render_as_string(hide_password=False)
 
 from app.main import app  # noqa: E402
@@ -36,7 +40,12 @@ if _checkout not in _frl.parents:
     )
 
 # Dog-food the migration-backed setup against the database app.main configured.
-fr.testing.configure_tests(app=app, base=fr.DataclassBase, alembic_upgrade=True)
+fr.testing.configure_tests(
+    app=app,
+    base=fr.DataclassBase,
+    alembic_upgrade=True,
+    db_cleanup_exclude=("country",),
+)
 
 
 @pytest.fixture

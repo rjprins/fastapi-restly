@@ -30,6 +30,25 @@ def test_settings_reject_non_asyncpg_database_urls(database_url: str) -> None:
         Settings(database_url=database_url, _env_file=None)
 
 
+def test_settings_require_database_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+
+    with pytest.raises(ValidationError, match="Field required"):
+        Settings(_env_file=None)
+
+
+def test_settings_hide_database_password_in_validation_errors() -> None:
+    password = "S3cretPW"
+
+    with pytest.raises(ValidationError) as excinfo:
+        Settings(
+            database_url=f"postgresql://user:{password}@localhost:5432/saas",
+            _env_file=None,
+        )
+
+    assert password not in str(excinfo.value)
+
+
 @pytest.mark.parametrize(
     ("field", "value"), [("db_pool_size", 0), ("db_max_overflow", -1)]
 )

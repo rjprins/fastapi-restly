@@ -7,11 +7,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     """Application settings loaded from environment variables or ``.env``."""
 
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
-
-    database_url: PostgresDsn = PostgresDsn(
-        "postgresql+asyncpg://postgres:postgres@localhost:5432/saas"
+    model_config = SettingsConfigDict(
+        env_file=".env", extra="ignore", hide_input_in_errors=True
     )
+
+    database_url: PostgresDsn
     db_pool_size: int = Field(default=5, gt=0)
     db_max_overflow: int = Field(default=10, ge=0)
 

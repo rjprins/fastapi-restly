@@ -11,8 +11,9 @@ service needs.
 
 - **Separate PostgreSQL databases.** Compose runs a persistent development
   database on port 5432 and an ephemeral test database on port 5433.
-- **Validated settings.** `app/settings.py` loads `DATABASE_URL` and pool sizes
-  with Pydantic settings, including explicit asyncpg and range validation.
+- **Validated settings.** `app/settings.py` requires `DATABASE_URL` and loads
+  pool sizes with Pydantic settings, including explicit asyncpg and range
+  validation.
 - **Application-owned engine.** `app/database.py` creates the async engine,
   Restly receives that engine, and the FastAPI lifespan disposes its pool.
 - **Migration-owned schema.** The app never calls `async_create_all()`.
