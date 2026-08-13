@@ -15,8 +15,10 @@ a failure.
 
 import asyncio
 import os
+import time
 from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 
 import pytest
 from fastapi import FastAPI
@@ -38,10 +40,14 @@ fr.configure(async_engine=engine)
 CLEANUP = os.environ.get("RESTLY_ASYNCPG_CLEANUP", "rollback")
 
 
-class AsyncpgNote(fr.IDBase):
+class AsyncpgNote(fr.TimestampsMixin, fr.IDBase):
     __tablename__ = "restly_asyncpg_note"
 
     text: Mapped[str]
+
+
+class AsyncpgNoteSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
+    text: str
 
 
 LIFESPAN_EVENTS: list[str] = []
@@ -73,6 +79,13 @@ async def create_note(session: fr.AsyncSessionDep) -> dict[str, object]:
 async def count_notes(session: fr.AsyncSessionDep) -> dict[str, int]:
     count = await session.scalar(select(func.count()).select_from(AsyncpgNote))
     return {"count": count or 0}
+
+
+@fr.include_view(app)
+class AsyncpgNoteView(fr.AsyncRestView):
+    prefix = "/filtered-notes"
+    model = AsyncpgNote
+    schema = AsyncpgNoteSchema
 
 
 fr.testing.configure_tests(
@@ -153,3 +166,38 @@ async def test_async_client_reuses_the_engine_on_a_fresh_loop(restly_async_clien
 
     expected = 2 if CLEANUP == "none" else 0
     assert response.json() == {"count": expected}
+
+
+@pytest.mark.asyncio
+async def test_naive_datetime_filter_is_utc_with_asyncpg(
+    restly_async_client, restly_async_session: AsyncSession
+):
+    """A timezone-less API value must not depend on the process timezone."""
+    instant = datetime(2024, 6, 15, 12, tzinfo=timezone.utc)
+    restly_async_session.add(
+        AsyncpgNote(text="known UTC instant", created_at=instant, updated_at=instant)
+    )
+    await restly_async_session.commit()
+
+    original_tz = os.environ.get("TZ")
+    os.environ["TZ"] = "America/New_York"
+    time.tzset()
+    try:
+        response = await restly_async_client.get(
+            "/filtered-notes",
+            params={
+                "created_at__gte": "2024-06-15T12:00:00",
+                "created_at__lte": "2024-06-15T12:00:00",
+            },
+        )
+    finally:
+        if original_tz is None:
+            os.environ.pop("TZ", None)
+        else:
+            os.environ["TZ"] = original_tz
+        time.tzset()
+
+    assert response.status_code == 200
+    assert [item["text"] for item in response.json()["data"]] == ["known UTC instant"]
+    serialized = response.json()["data"][0]["created_at"]
+    assert datetime.fromisoformat(serialized.replace("Z", "+00:00")).tzinfo is not None

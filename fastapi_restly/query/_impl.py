@@ -665,6 +665,8 @@ def _parse_value(schema_cls: SchemaType, column_name: str, value: str) -> Any:
         # is its scalar id, not the reference wrapper (which cannot bind).
         if isinstance(result, IDSchema):
             return result.id
+        if isinstance(result, _dt.datetime) and result.utcoffset() is None:
+            return result.replace(tzinfo=_dt.timezone.utc)
         return result
     except Exception:
         raise BadQueryParam(f"Invalid attribute in URL query: {column_name}")

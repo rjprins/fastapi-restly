@@ -1,6 +1,6 @@
 """Tests for the list-params query layer (filtering, sorting, pagination)."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import patch
 
 import pydantic
@@ -560,9 +560,9 @@ class TestParseValue:
         assert result is True
 
     def test_parse_value_datetime(self):
-        """Test parsing datetime values."""
+        """Naive datetime filters use UTC, independent of the host timezone."""
         result = _parse_value(WidgetSchema, "created_at", "2024-01-01T00:00:00")
-        assert isinstance(result, datetime)
+        assert result == datetime(2024, 1, 1, tzinfo=timezone.utc)
 
     def test_parse_value_invalid_field(self):
         """Test parsing with invalid field."""

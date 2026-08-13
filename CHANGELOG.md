@@ -38,6 +38,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Datetime query filters without an explicit offset are interpreted as UTC
+  before binding, preventing host-local timezone shifts with asyncpg.
 - New or migrated PostgreSQL schemas now accept the UTC-aware values produced
   by `TimestampsMixin` when using asyncpg. SQLite does not preserve timezone
   information and continues to return naive datetime values.
