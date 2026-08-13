@@ -277,13 +277,24 @@ def _blocked_async_test_access() -> Iterator[None]:
 
 
 @pytest.fixture
-def _shared_connection():
+def _shared_connection(request: pytest.FixtureRequest):
     # One pinned connection shared by the sync and async fixtures, so a test that
     # uses both sees a single database. Each request during the test joins this
     # connection's outer transaction through a SAVEPOINT (create_savepoint mode);
     # the outer transaction is never committed and rolls back at teardown, so no
     # test data is ever persisted. Async-only projects have no sync sessionmaker;
     # the async test scope pins its own connection in that case.
+    if _current_setup() is None and not {
+        "restly_session",
+        "restly_async_session",
+    } & set(request.fixturenames):
+        # In an unmanaged suite only an explicit session fixture opts the test
+        # in. A client fixture alone must leave the application's live engine
+        # untouched: no pinned connection, no event listeners. This runs before
+        # the scope fixtures that depend on it, so it guards itself.
+        yield None
+        return
+
     if _cleanup_mode() != ROLLBACK:
         # Only rollback mode pins a connection. The other modes let writes commit,
         # so there is no outer transaction to hold open.
@@ -308,6 +319,29 @@ def _shared_connection():
             trans.rollback()
 
 
+@contextmanager
+def _isolated_sync_factory(
+    original: sessionmaker[SA_Session], connection: Any
+) -> Iterator[sessionmaker[SA_Session]]:
+    """Install a factory whose sessions join ``connection``'s transaction
+    through a SAVEPOINT, and restore the original on exit."""
+    isolated_make_session = sessionmaker(
+        class_=original.class_,
+        **{
+            **original.kw,
+            "bind": connection,
+            "join_transaction_mode": "create_savepoint",
+        },
+    )
+    context = _get_restly_context()
+    previous = context.test_make_session
+    context.test_make_session = isolated_make_session
+    try:
+        yield isolated_make_session
+    finally:
+        context.test_make_session = previous
+
+
 @pytest.fixture
 def _restly_sync_scope(_shared_connection):
     """Own sync cleanup and the per-test factory; create no public session."""
@@ -326,21 +360,24 @@ def _restly_sync_scope(_shared_connection):
         return
 
     _reject_per_mapper_binds(original)
-    isolated_make_session = sessionmaker(
-        class_=original.class_,
-        **{
-            **original.kw,
-            "bind": _shared_connection,
-            "join_transaction_mode": "create_savepoint",
-        },
-    )
-    context = _get_restly_context()
-    previous = context.test_make_session
-    context.test_make_session = isolated_make_session
-    try:
-        yield isolated_make_session
-    finally:
-        context.test_make_session = previous
+    if _shared_connection is not None:
+        with _isolated_sync_factory(original, _shared_connection) as factory:
+            yield factory
+        return
+
+    # request.getfixturevalue("restly_session") leaves the fixture out of
+    # request.fixturenames, so in an unmanaged suite _shared_connection has
+    # punted. This scope only runs because a session fixture asked for it,
+    # which is the opt-in; pin the connection here instead.
+    engine = _resolve_engine(original.kw["bind"])
+    _install_sqlite_savepoint_fix(engine)
+    with engine.connect() as connection:
+        transaction = connection.begin()
+        try:
+            with _isolated_sync_factory(original, connection) as factory:
+                yield factory
+        finally:
+            transaction.rollback()
 
 
 if pytest_asyncio is None:

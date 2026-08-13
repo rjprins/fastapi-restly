@@ -1076,6 +1076,168 @@ def test_async_client_does_not_isolate_an_unmanaged_suite(tmp_path: Path):
     assert "2 passed" in result.stdout
 
 
+_UNMANAGED_SYNC_APP = """
+from fastapi import FastAPI
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.pool import StaticPool
+import fastapi_restly as fr
+
+# An application-owned sync engine; the suite never calls configure_tests().
+# StaticPool serves every session from one connection, so a leaked pinned
+# transaction collides with the first request instead of idling unseen.
+fr.configure(
+    engine=create_engine(
+        "sqlite://",
+        poolclass=StaticPool,
+        connect_args={"check_same_thread": False},
+    ),
+    async_database_url="sqlite+aiosqlite://",
+)
+
+app = FastAPI()
+
+
+class Note(fr.IDBase):
+    text: Mapped[str] = mapped_column(unique=True)
+
+
+class NoteSchema(fr.IDSchema):
+    text: str
+
+
+@fr.include_view(app)
+class NoteView(fr.RestView):
+    prefix = "/notes"
+    model = Note
+    schema = NoteSchema
+"""
+
+_UNMANAGED_SYNC_CONFTEST = """
+import pytest
+
+import fastapi_restly as fr
+from myapp import app
+
+fr.DataclassBase.metadata.create_all(fr.db.get_engine())
+
+
+@pytest.fixture
+def restly_app():
+    return app
+"""
+
+
+def test_async_client_leaves_an_unmanaged_sync_engine_untouched(tmp_path: Path):
+    """A client fixture alone must not pin a connection of the application's
+    live sync engine or install event listeners on it. It used to do both
+    through the scope's _shared_connection dependency, which ran before the
+    scope's own inert guard could decide anything."""
+    _write_project(
+        tmp_path,
+        _UNMANAGED_SYNC_CONFTEST,
+        "import fastapi_restly as fr\n"
+        "from sqlalchemy import func, select\n"
+        "from myapp import Note\n\n\n"
+        "async def test_the_client_commits_normally(restly_async_client):\n"
+        "    response = await restly_async_client.post(\n"
+        '        "/notes/", json={"text": "kept"}\n'
+        "    )\n"
+        '    assert response.json()["text"] == "kept"\n\n\n'
+        "async def test_the_write_persisted():\n"
+        "    with fr.open_session() as session:\n"
+        "        count = session.scalar(select(func.count()).select_from(Note))\n"
+        "    assert count == 1\n",
+        _UNMANAGED_SYNC_APP,
+    )
+    result = _run_pytest(tmp_path)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "2 passed" in result.stdout
+
+
+def test_requesting_restly_session_still_isolates_an_unmanaged_suite(tmp_path: Path):
+    """The documented opt-in: without configure_tests(), an explicit
+    restly_session still installs rollback isolation for the whole test,
+    including requests through restly_client."""
+    _write_project(
+        tmp_path,
+        _UNMANAGED_SYNC_CONFTEST,
+        "from myapp import Note\n\n\n"
+        "def test_a_session_write_reaches_the_client(restly_session, restly_client):\n"
+        '    restly_session.add(Note(text="seeded"))\n'
+        "    restly_session.commit()\n"
+        '    assert restly_client.get("/notes/").json()["total_count"] == 1\n\n\n'
+        "def test_the_seed_rolled_back(restly_session):\n"
+        "    from sqlalchemy import func, select\n\n"
+        "    count = restly_session.scalar(select(func.count()).select_from(Note))\n"
+        "    assert count == 0\n",
+        _UNMANAGED_SYNC_APP,
+    )
+    result = _run_pytest(tmp_path)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "2 passed" in result.stdout
+
+
+def test_requesting_restly_async_session_still_isolates_an_unmanaged_sync_leg(
+    tmp_path: Path,
+):
+    """The async opt-in over a configured sync leg: restly_async_session still
+    pins the shared sync connection and rolls the test back."""
+    _write_project(
+        tmp_path,
+        _UNMANAGED_SYNC_CONFTEST,
+        "from sqlalchemy import func, select\n"
+        "from myapp import Note\n\n\n"
+        "async def test_a_commit_stays_in_the_test(restly_async_session):\n"
+        '    restly_async_session.add(Note(text="mine"))\n'
+        "    await restly_async_session.commit()\n"
+        "    count = await restly_async_session.scalar(\n"
+        "        select(func.count()).select_from(Note)\n"
+        "    )\n"
+        "    assert count == 1\n\n\n"
+        "async def test_the_commit_rolled_back(restly_async_session):\n"
+        "    count = await restly_async_session.scalar(\n"
+        "        select(func.count()).select_from(Note)\n"
+        "    )\n"
+        "    assert count == 0\n",
+        _UNMANAGED_SYNC_APP,
+    )
+    result = _run_pytest(tmp_path)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "2 passed" in result.stdout
+
+
+def test_a_dynamically_requested_session_still_isolates_an_unmanaged_suite(
+    tmp_path: Path,
+):
+    """request.getfixturevalue("restly_session") never appears in
+    request.fixturenames, so the sync scope pins the connection itself rather
+    than relying on _shared_connection's closure test."""
+    _write_project(
+        tmp_path,
+        _UNMANAGED_SYNC_CONFTEST,
+        "from sqlalchemy import func, select\n"
+        "from myapp import Note\n\n\n"
+        "def test_a_dynamic_session_write_reaches_the_client(request):\n"
+        '    session = request.getfixturevalue("restly_session")\n'
+        '    client = request.getfixturevalue("restly_client")\n'
+        '    session.add(Note(text="dynamic"))\n'
+        "    session.commit()\n"
+        '    assert client.get("/notes/").json()["total_count"] == 1\n\n\n'
+        "def test_the_dynamic_write_rolled_back(restly_session):\n"
+        "    count = restly_session.scalar(select(func.count()).select_from(Note))\n"
+        "    assert count == 0\n",
+        _UNMANAGED_SYNC_APP,
+    )
+    result = _run_pytest(tmp_path)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "2 passed" in result.stdout
+
+
 def test_sync_client_allows_read_only_async_engine_lookup(tmp_path: Path):
     _write_project(
         tmp_path,
@@ -1698,7 +1860,11 @@ def test_a_connection_bound_factory_works_in_rollback_mode(tmp_path: Path):
         with engine.connect() as connection:
             with _isolated_config():
                 fr.configure(make_session=sessionmaker(bind=connection))
-                pinned = next(_fixtures._shared_connection.__wrapped__())
+                pinned = next(
+                    _fixtures._shared_connection.__wrapped__(
+                        SimpleNamespace(fixturenames=["restly_session"])
+                    )
+                )
                 assert pinned is not None
                 assert pinned.dialect.name == "sqlite"
     finally:

@@ -35,6 +35,7 @@ class FixtureItem(FixtureTestBase):
 
 
 _ASYNC_SESSION_REQUEST = SimpleNamespace(fixturenames=["restly_async_session"])
+_SYNC_SESSION_REQUEST = SimpleNamespace(fixturenames=["restly_session"])
 
 
 def test_find_project_root_walks_up_to_nearest_pyproject(tmp_path: Path):
@@ -74,7 +75,7 @@ def test_restly_project_root_fixture_anchors_to_test_file(restly_project_root):
 
 def test_shared_connection_yields_none_or_real_connection():
     with RestlyContext():
-        gen = _fixtures._shared_connection.__wrapped__()
+        gen = _fixtures._shared_connection.__wrapped__(_SYNC_SESSION_REQUEST)
         assert next(gen) is None
         with pytest.raises(StopIteration):
             next(gen)
@@ -90,7 +91,7 @@ def test_shared_connection_yields_none_or_real_connection():
 
             _fr_globals.make_session = make_session
 
-            gen = _fixtures._shared_connection.__wrapped__()
+            gen = _fixtures._shared_connection.__wrapped__(_SYNC_SESSION_REQUEST)
             conn = next(gen)
             assert conn.engine is engine
             gen.close()
@@ -351,7 +352,7 @@ async def test_async_fixture_reuses_configured_sync_connection():
             _fr_globals.make_session = make_session
             _fr_globals.async_make_session = async_make_session
 
-            conn_gen = _fixtures._shared_connection.__wrapped__()
+            conn_gen = _fixtures._shared_connection.__wrapped__(_ASYNC_SESSION_REQUEST)
             shared_conn = next(conn_gen)
             assert shared_conn is not None  # sync sessionmaker -> real connection
 

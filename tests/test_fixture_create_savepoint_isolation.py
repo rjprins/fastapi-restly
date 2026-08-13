@@ -42,6 +42,7 @@ class _Row(_Base):
 
 
 _ASYNC_SESSION_REQUEST = SimpleNamespace(fixturenames=["restly_async_session"])
+_SYNC_SESSION_REQUEST = SimpleNamespace(fixturenames=["restly_session"])
 
 
 def test_get_engine_and_create_all_work_inside_the_sync_fixture():
@@ -55,7 +56,7 @@ def test_get_engine_and_create_all_work_inside_the_sync_fixture():
     try:
         with RestlyContext():
             _fr_globals.make_session = make_session
-            shared_gen = _fixtures._shared_connection.__wrapped__()
+            shared_gen = _fixtures._shared_connection.__wrapped__(_SYNC_SESSION_REQUEST)
             conn = next(shared_gen)
             scope = _fixtures._restly_sync_scope.__wrapped__(conn)
             isolated_make_session = next(scope)
@@ -85,7 +86,7 @@ def test_sync_request_write_is_visible_to_a_later_request():
     try:
         with RestlyContext():
             _fr_globals.make_session = make_session
-            shared_gen = _fixtures._shared_connection.__wrapped__()
+            shared_gen = _fixtures._shared_connection.__wrapped__(_SYNC_SESSION_REQUEST)
             conn = next(shared_gen)
             scope = _fixtures._restly_sync_scope.__wrapped__(conn)
             isolated_make_session = next(scope)
@@ -127,7 +128,7 @@ def test_sync_request_rollback_discards_only_its_own_work():
     try:
         with RestlyContext():
             _fr_globals.make_session = make_session
-            shared_gen = _fixtures._shared_connection.__wrapped__()
+            shared_gen = _fixtures._shared_connection.__wrapped__(_SYNC_SESSION_REQUEST)
             conn = next(shared_gen)
             scope = _fixtures._restly_sync_scope.__wrapped__(conn)
             isolated_make_session = next(scope)
