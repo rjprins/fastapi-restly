@@ -1,0 +1,1010 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="./" data-theme="auto">
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, follow">
+
+    <title>fr. logo prototypes &#8212; FastAPI-Restly 0.9.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "auto";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "auto";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=6821e04d" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="_static/documentation_options.js?v=39bb1c6d"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=f281be69"></script>
+    <script src="_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'logo_prototypes';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://www.fastapi-restly.org/switcher.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '0.9';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            false;
+        </script>
+    <script src="_static/newsletter.js?v=e342eb53"></script>
+    <link rel="canonical" href="https://www.fastapi-restly.org/0.9/logo_prototypes.html" />
+    <link rel="icon" href="_static/favicon.svg"/>
+    <link rel="author" title="About these documents" href="about.html" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.9" />
+<meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700&amp;display=swap"
+      rel="stylesheet" />
+<!-- GoatCounter: cookieless, privacy-friendly analytics (ignores localhost) -->
+<script data-goatcounter="https://fastapi-restly.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="auto">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="_static/fr-monogram.svg" class="logo__image only-light" alt=""/>
+    <img src="_static/fr-monogram-dark.svg" class="logo__image only-dark pst-js-only" alt=""/>
+  
+  
+    <p class="title logo__title">FastAPI-Restly</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="getting_started.html">
+    Getting Started
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="tutorial_overview.html">
+    Tutorial
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="class_based_views.html">
+    Views
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="customize.html">
+    Customize
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="user_guide.html">
+    How-To
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="api_reference.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="about.html">
+    About
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="getting_started.html">
+    Getting Started
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="tutorial_overview.html">
+    Tutorial
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="class_based_views.html">
+    Views
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="customize.html">
+    Customize
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="user_guide.html">
+    How-To
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="api_reference.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="about.html">
+    About
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis"><code class="docutils literal notranslate"><span class="pre">fr.</span></code> logo prototypes</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="fr-logo-prototypes">
+<h1><code class="docutils literal notranslate"><span class="pre">fr.</span></code> logo prototypes<a class="headerlink" href="#fr-logo-prototypes" title="Link to this heading">#</a></h1>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This is the temporary review archive. It is intentionally absent from the documentation navigation; the selected 85 px version now powers the live documentation branding.</p>
+</div>
+<p>Direction 01 and Archivo are selected for the FastAPI-Restly lockup at an 85 px title against the 88 px icon. The controls below retain the nearby comparisons.</p>
+<style>
+  @import url("https://fonts.googleapis.com/css2?family=Archivo:wght@700&family=IBM+Plex+Sans:wght@600&family=Manrope:wght@700&display=swap");
+
+  .wordmark-study {
+    display: grid;
+    gap: 0;
+    margin: 1.5rem 0 3rem;
+    border-bottom: 1px solid var(--pst-color-border);
+  }
+
+  .wordmark-option {
+    padding: 1.5rem 0;
+    border-top: 1px solid var(--pst-color-border);
+  }
+
+  .wordmark-option__label {
+    margin: 0 0 1rem;
+    color: var(--pst-color-text-muted);
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .wordmark-option__lockup {
+    display: flex;
+    align-items: center;
+    gap: clamp(0.75rem, 2vw, 1.25rem);
+    min-width: 0;
+    color: var(--pst-color-text-base);
+  }
+
+  .wordmark-option__lockup img {
+    width: clamp(3.75rem, 10vw, 5.5rem);
+    height: auto;
+    flex: none;
+  }
+
+  .wordmark-option__name {
+    font-size: clamp(1.75rem, 5vw, 3.25rem);
+    line-height: 1;
+    letter-spacing: -0.045em;
+    white-space: nowrap;
+  }
+
+  .wordmark-option__nav {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    margin: 1.25rem 0 0;
+    color: var(--pst-color-text-base);
+  }
+
+  .wordmark-option__nav img {
+    width: 2rem;
+    height: 2rem;
+  }
+
+  .wordmark-option__nav span {
+    font-size: 1.125rem;
+    line-height: 1;
+    letter-spacing: -0.025em;
+  }
+
+  .wordmark-manrope {
+    font-family: "Manrope", sans-serif;
+    font-weight: 700;
+  }
+
+  .wordmark-archivo {
+    font-family: "Archivo", sans-serif;
+    font-weight: 700;
+  }
+
+  .wordmark-option--selected {
+    --archivo-title-size: 85px;
+    --archivo-title-fluid-size: 5.902778vw;
+    --archivo-title-min-size: 28.011px;
+    --archivo-nav-title-size: 30.909px;
+  }
+
+  .wordmark-option--selected .wordmark-option__lockup {
+    gap: clamp(6.591px, 1.388889vw, 20px);
+  }
+
+  .wordmark-option--selected .wordmark-option__lockup img {
+    width: clamp(29px, 6.111111vw, 88px);
+  }
+
+  .wordmark-option--selected .wordmark-option__name {
+    font-size: clamp(
+      var(--archivo-title-min-size),
+      var(--archivo-title-fluid-size),
+      var(--archivo-title-size)
+    );
+  }
+
+  .wordmark-option--selected .wordmark-option__nav {
+    gap: 7.273px;
+    font-size: var(--archivo-nav-title-size);
+  }
+
+  .wordmark-option--selected .wordmark-option__nav img {
+    width: 32px;
+    height: 32px;
+  }
+
+  .wordmark-option--selected .wordmark-option__nav span {
+    font-size: 1em;
+  }
+
+  .wordmark-option--selected .wordmark-option__label {
+    color: var(--pst-color-primary);
+  }
+
+  .wordmark-size-control {
+    display: grid;
+    grid-template-columns: auto minmax(12rem, 1fr) auto;
+    gap: 0.75rem 1rem;
+    align-items: center;
+    padding: 1rem;
+    border: 1px solid var(--pst-color-border);
+    background: var(--pst-color-surface);
+  }
+
+  .wordmark-size-control label {
+    margin: 0;
+    font-weight: 700;
+  }
+
+  .wordmark-size-control input {
+    width: 100%;
+    accent-color: var(--pst-color-primary);
+  }
+
+  .wordmark-size-control output {
+    min-width: 12rem;
+    color: var(--pst-color-text-muted);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+
+  .wordmark-size-control p {
+    grid-column: 1 / -1;
+    margin: 0;
+    color: var(--pst-color-text-muted);
+    font-size: 0.875rem;
+  }
+
+  .wordmark-size-presets {
+    display: flex;
+    grid-column: 1 / -1;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  .wordmark-size-presets button {
+    padding: 0.35rem 0.7rem;
+    border: 1px solid var(--pst-color-border);
+    border-radius: 0.2rem;
+    background: var(--pst-color-surface);
+    color: var(--pst-color-text-base);
+    font: inherit;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+  }
+
+  .wordmark-size-presets button:hover {
+    border-color: var(--pst-color-primary);
+  }
+
+  .wordmark-size-presets button[aria-pressed="true"] {
+    border-color: var(--pst-color-primary);
+    color: var(--pst-color-primary);
+    font-weight: 700;
+  }
+
+  .wordmark-size-presets button:focus-visible {
+    outline: 2px solid var(--pst-color-primary);
+    outline-offset: 2px;
+  }
+
+  .wordmark-plex {
+    font-family: "IBM Plex Sans", sans-serif;
+    font-weight: 600;
+  }
+
+  .logo-scale-test {
+    display: flex;
+    align-items: end;
+    gap: 2rem;
+    margin-top: 1rem;
+  }
+
+  .logo-scale-test figure {
+    display: grid;
+    gap: 0.5rem;
+    justify-items: center;
+    margin: 0;
+  }
+
+  .logo-scale-test figcaption {
+    color: var(--pst-color-text-muted);
+    font-size: 0.75rem;
+  }
+
+  @media (max-width: 30rem) {
+    .wordmark-option__name {
+      font-size: 1.5rem;
+    }
+
+    .wordmark-size-control {
+      grid-template-columns: 1fr auto;
+    }
+
+    .wordmark-size-control input {
+      grid-column: 1 / -1;
+      grid-row: 2;
+    }
+
+    .wordmark-size-control output {
+      min-width: auto;
+    }
+  }
+</style>
+<section id="selected-wordmark-and-alternatives">
+<h2>Selected wordmark and alternatives<a class="headerlink" href="#selected-wordmark-and-alternatives" title="Link to this heading">#</a></h2>
+<p>The 88 px icon stays fixed while you tune the Archivo title beside it. Once chosen, that title/icon ratio scales as a unit.</p>
+<div class="wordmark-size-control">
+  <label for="archivo-wordmark-size">Title size against 88 px icon</label>
+  <input id="archivo-wordmark-size" type="range" min="44" max="110" step="1" value="85">
+  <output id="archivo-wordmark-size-output" for="archivo-wordmark-size" aria-live="polite">85 px title · 88 px icon</output>
+  <div class="wordmark-size-presets" role="group" aria-label="Title size presets">
+    <button type="button" data-title-size="85" aria-pressed="true">85 px</button>
+    <button type="button" data-title-size="90" aria-pressed="false">90 px</button>
+    <button type="button" data-title-size="95" aria-pressed="false">95 px</button>
+  </div>
+  <p>Choose the ratio at design scale. The display and navigation previews then preserve exactly the same proportions.</p>
+</div>
+<div class="wordmark-study">
+  <section class="wordmark-option wordmark-option--selected">
+    <p class="wordmark-option__label">Selected — Archivo 700 · 85 px title / 88 px icon</p>
+    <div class="wordmark-option__lockup wordmark-archivo">
+      <img src="_images/01-editorial.svg" alt="">
+      <span class="wordmark-option__name">FastAPI-Restly</span>
+    </div>
+    <div class="wordmark-option__nav wordmark-archivo" aria-label="Selected Archivo lockup at documentation navigation size">
+      <img src="_images/01-editorial.svg" alt="">
+      <span>FastAPI-Restly</span>
+    </div>
+  </section>
+  <section class="wordmark-option">
+    <p class="wordmark-option__label">Alternative — Manrope 700</p>
+    <div class="wordmark-option__lockup wordmark-manrope">
+      <img src="_images/01-editorial.svg" alt="">
+      <span class="wordmark-option__name">FastAPI-Restly</span>
+    </div>
+    <div class="wordmark-option__nav wordmark-manrope" aria-label="Manrope lockup at documentation navigation size">
+      <img src="_images/01-editorial.svg" alt="">
+      <span>FastAPI-Restly</span>
+    </div>
+  </section>
+  <section class="wordmark-option">
+    <p class="wordmark-option__label">Alternative — IBM Plex Sans 600</p>
+    <div class="wordmark-option__lockup wordmark-plex">
+      <img src="_images/01-editorial.svg" alt="">
+      <span class="wordmark-option__name">FastAPI-Restly</span>
+    </div>
+    <div class="wordmark-option__nav wordmark-plex" aria-label="IBM Plex Sans lockup at documentation navigation size">
+      <img src="_images/01-editorial.svg" alt="">
+      <span>FastAPI-Restly</span>
+    </div>
+  </section>
+</div>
+<script>
+  (() => {
+    const slider = document.querySelector("#archivo-wordmark-size");
+    const output = document.querySelector("#archivo-wordmark-size-output");
+    const selected = document.querySelector(".wordmark-option--selected");
+    const selectedLabel = selected?.querySelector(".wordmark-option__label");
+    const presets = document.querySelectorAll("[data-title-size]");
+
+    if (!slider || !output || !selected) {
+      return;
+    }
+
+    const iconSize = 88;
+    const navigationIconSize = 32;
+    const minimumIconSize = 29;
+    const designViewport = 1440;
+
+    const updateWordmarkSize = () => {
+      const titleSize = Number(slider.value);
+      const navigationTitleSize = titleSize * navigationIconSize / iconSize;
+      const fluidTitleSize = titleSize / (designViewport / 100);
+      const minimumTitleSize = titleSize * minimumIconSize / iconSize;
+
+      selected.style.setProperty("--archivo-title-size", `${titleSize}px`);
+      selected.style.setProperty("--archivo-title-fluid-size", `${fluidTitleSize}vw`);
+      selected.style.setProperty("--archivo-title-min-size", `${minimumTitleSize}px`);
+      selected.style.setProperty("--archivo-nav-title-size", `${navigationTitleSize}px`);
+      output.textContent = `${titleSize} px title · ${iconSize} px icon`;
+      slider.setAttribute(
+        "aria-valuetext",
+        `${titleSize} pixel title against an ${iconSize} pixel icon`,
+      );
+
+      if (selectedLabel) {
+        selectedLabel.textContent =
+          `Selected — Archivo 700 · ${titleSize} px title / ${iconSize} px icon`;
+      }
+
+      presets.forEach((preset) => {
+        preset.setAttribute(
+          "aria-pressed",
+          String(Number(preset.dataset.titleSize) === titleSize),
+        );
+      });
+    };
+
+    presets.forEach((preset) => {
+      preset.addEventListener("click", () => {
+        slider.value = preset.dataset.titleSize;
+        updateWordmarkSize();
+      });
+    });
+
+    slider.addEventListener("input", updateWordmarkSize);
+    updateWordmarkSize();
+  })();
+</script>
+</section>
+<section id="selected-icon-editorial-sans">
+<h2>Selected icon — Editorial sans<a class="headerlink" href="#selected-icon-editorial-sans" title="Link to this heading">#</a></h2>
+<div class="sd-container-fluid sd-sphinx-override sd-mb-4 docutils">
+<div class="sd-row sd-row-cols-1 sd-row-cols-xs-1 sd-row-cols-sm-2 sd-row-cols-md-2 sd-row-cols-lg-2 sd-g-3 sd-g-xs-3 sd-g-sm-3 sd-g-md-3 sd-g-lg-3 docutils">
+<div class="sd-col sd-d-flex-column docutils">
+<a class="reference internal image-reference" href="_images/01-editorial.svg"><img alt="Editorial fr. monogram" class="align-center" src="_images/01-editorial.svg" style="width: 280px;" />
+</a>
+</div>
+<div class="sd-col sd-d-flex-column docutils">
+<p>An unboxed, heavy lowercase mark. The open letterforms feel established and direct; the teal period carries the only brand colour.</p>
+<p><a class="reference download internal" download="" href="_downloads/c40b1149f57abc7f377b98edc7c77e71/01-editorial.svg"><code class="xref download docutils literal notranslate"><span class="pre">Open</span> <span class="pre">the</span> <span class="pre">standalone</span> <span class="pre">SVG</span></code></a></p>
+<p class="rubric" id="scale-test">Scale test</p>
+<div class="logo-scale-test" aria-label="Editorial mark at several sizes">
+  <figure><img src="_images/01-editorial.svg" alt="" width="64" height="64"><figcaption>64 px</figcaption></figure>
+  <figure><img src="_images/01-editorial.svg" alt="" width="32" height="32"><figcaption>32 px</figcaption></figure>
+  <figure><img src="_images/01-editorial.svg" alt="" width="16" height="16"><figcaption>16 px</figcaption></figure>
+</div>
+</div>
+</div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="previous-direction-code-tile">
+<h2>Previous direction — Code tile<a class="headerlink" href="#previous-direction-code-tile" title="Link to this heading">#</a></h2>
+<div class="sd-container-fluid sd-sphinx-override sd-mb-4 docutils">
+<div class="sd-row sd-row-cols-1 sd-row-cols-xs-1 sd-row-cols-sm-2 sd-row-cols-md-2 sd-row-cols-lg-2 sd-g-3 sd-g-xs-3 sd-g-sm-3 sd-g-md-3 sd-g-lg-3 docutils">
+<div class="sd-col sd-d-flex-column docutils">
+<a class="reference internal image-reference" href="_images/02-code-tile.svg"><img alt="Code tile fr. monogram" class="align-center" src="_images/02-code-tile.svg" style="width: 280px;" />
+</a>
+</div>
+<div class="sd-col sd-d-flex-column docutils">
+<p>A monospaced lettermark held inside a compact charcoal tile. It is the most immediately useful favicon and package avatar, with a slightly stronger developer-tool character.</p>
+<p><a class="reference download internal" download="" href="_downloads/08fe5fa5347df53fffd13e0232d708eb/02-code-tile.svg"><code class="xref download docutils literal notranslate"><span class="pre">Open</span> <span class="pre">the</span> <span class="pre">standalone</span> <span class="pre">SVG</span></code></a></p>
+<p class="rubric" id="id1">Scale test</p>
+<div class="logo-scale-test" aria-label="Code tile mark at several sizes">
+  <figure><img src="_images/02-code-tile.svg" alt="" width="64" height="64"><figcaption>64 px</figcaption></figure>
+  <figure><img src="_images/02-code-tile.svg" alt="" width="32" height="32"><figcaption>32 px</figcaption></figure>
+  <figure><img src="_images/02-code-tile.svg" alt="" width="16" height="16"><figcaption>16 px</figcaption></figure>
+</div>
+</div>
+</div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="previous-direction-constructed-ligature">
+<h2>Previous direction — Constructed ligature<a class="headerlink" href="#previous-direction-constructed-ligature" title="Link to this heading">#</a></h2>
+<div class="sd-container-fluid sd-sphinx-override sd-mb-4 docutils">
+<div class="sd-row sd-row-cols-1 sd-row-cols-xs-1 sd-row-cols-sm-2 sd-row-cols-md-2 sd-row-cols-lg-2 sd-g-3 sd-g-xs-3 sd-g-sm-3 sd-g-md-3 sd-g-lg-3 docutils">
+<div class="sd-col sd-d-flex-column docutils">
+<a class="reference internal image-reference" href="_images/03-constructed.svg"><img alt="Constructed fr. monogram" class="align-center" src="_images/03-constructed.svg" style="width: 280px;" />
+</a>
+</div>
+<div class="sd-col sd-d-flex-column docutils">
+<p>A custom geometric mark that joins the crossbar of the <em>f</em> to the stem of the <em>r</em>. It is the most ownable direction, but also the furthest from familiar typography.</p>
+<p><a class="reference download internal" download="" href="_downloads/9a780e44daa348a668fa265824d61ffe/03-constructed.svg"><code class="xref download docutils literal notranslate"><span class="pre">Open</span> <span class="pre">the</span> <span class="pre">standalone</span> <span class="pre">SVG</span></code></a></p>
+<p class="rubric" id="id2">Scale test</p>
+<div class="logo-scale-test" aria-label="Constructed mark at several sizes">
+  <figure><img src="_images/03-constructed.svg" alt="" width="64" height="64"><figcaption>64 px</figcaption></figure>
+  <figure><img src="_images/03-constructed.svg" alt="" width="32" height="32"><figcaption>32 px</figcaption></figure>
+  <figure><img src="_images/03-constructed.svg" alt="" width="16" height="16"><figcaption>16 px</figcaption></figure>
+</div>
+</div>
+</div>
+</div>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#selected-wordmark-and-alternatives">Selected wordmark and alternatives</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#selected-icon-editorial-sans">Selected icon — Editorial sans</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#previous-direction-code-tile">Previous direction — Code tile</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#previous-direction-constructed-ligature">Previous direction — Constructed ligature</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+<p class="sidebar-newsletter">
+  <a href="newsletter.html">Subscribe to newsletter</a>
+</p></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, Rutger Prins.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

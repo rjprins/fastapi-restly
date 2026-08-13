@@ -1,0 +1,1217 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="./" data-theme="auto">
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, follow">
+
+    <title>Test APIs with RestlyTestClient and Fixtures &#8212; FastAPI-Restly 0.9.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "auto";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "auto";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=6821e04d" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="_static/documentation_options.js?v=39bb1c6d"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=f281be69"></script>
+    <script src="_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'howto_testing';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://www.fastapi-restly.org/switcher.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '0.9';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            false;
+        </script>
+    <script src="_static/newsletter.js?v=e342eb53"></script>
+    <link rel="canonical" href="https://www.fastapi-restly.org/0.9/howto_testing.html" />
+    <link rel="icon" href="_static/favicon.svg"/>
+    <link rel="author" title="About these documents" href="about.html" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Deploying" href="deploying.html" />
+    <link rel="prev" title="Customize the OpenAPI Schema" href="howto_openapi.html" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.9" />
+<meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700&amp;display=swap"
+      rel="stylesheet" />
+<!-- GoatCounter: cookieless, privacy-friendly analytics (ignores localhost) -->
+<script data-goatcounter="https://fastapi-restly.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="auto">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="_static/fr-monogram.svg" class="logo__image only-light" alt=""/>
+    <img src="_static/fr-monogram-dark.svg" class="logo__image only-dark pst-js-only" alt=""/>
+  
+  
+    <p class="title logo__title">FastAPI-Restly</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="getting_started.html">
+    Getting Started
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="tutorial_overview.html">
+    Tutorial
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="class_based_views.html">
+    Views
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="customize.html">
+    Customize
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="user_guide.html">
+    How-To
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="api_reference.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="about.html">
+    About
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="getting_started.html">
+    Getting Started
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="tutorial_overview.html">
+    Tutorial
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="class_based_views.html">
+    Views
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="customize.html">
+    Customize
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="user_guide.html">
+    How-To
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="api_reference.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="about.html">
+    About
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="howto_existing_project.html">Use Restly in an Existing Project</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_custom_schema.html">Custom Schemas and Field Types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys and Relationships</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_response_schema.html">Response Envelopes and List Metadata</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_relationship_loading.html">Relationship Loading and Async</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_query_modifiers.html">Filter, Sort, and Paginate Lists</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_error_responses.html">Shape Error Responses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_inheritance.html">Share Behaviour with Base Views</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_compose_views_with_mixins.html">Compose Views with Mixins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_typing.html">Use Type Annotations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_react_admin.html">React Admin Integration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_openapi.html">Customize the OpenAPI Schema</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Test APIs with RestlyTestClient and Fixtures</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deploying.html">Deploying</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="user_guide.html" class="nav-link">How-To Guides</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Test APIs with RestlyTestClient and Fixtures</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="test-apis-with-restlytestclient-and-fixtures">
+<h1>Test APIs with RestlyTestClient and Fixtures<a class="headerlink" href="#test-apis-with-restlytestclient-and-fixtures" title="Link to this heading">#</a></h1>
+<p>FastAPI-Restly ships a test client with sensible status-code assertions and a
+small pytest plugin that gives every test a clean database. You configure the
+suite once, and then write tests that only talk to your API.</p>
+<section id="setup">
+<h2>Setup<a class="headerlink" href="#setup" title="Link to this heading">#</a></h2>
+<p>Install the testing extra:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;fastapi-restly[testing]&quot;</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">testing</span></code> extra is independent of <code class="docutils literal notranslate"><span class="pre">standard</span></code>, which is runtime-only. Neither
+carries a database driver, since Restly does not choose one for you, so install
+the driver your test database needs as well. The examples below use SQLite
+through <code class="docutils literal notranslate"><span class="pre">aiosqlite</span></code>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>aiosqlite
+</pre></div>
+</div>
+<p>The extra registers a <code class="docutils literal notranslate"><span class="pre">pytest11</span></code> entry point, so pytest auto-loads the Restly
+fixtures. If your project disables plugin autoloading, register the plugin
+manually in <code class="docutils literal notranslate"><span class="pre">conftest.py</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">pytest_plugins</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;fastapi_restly.pytest_fixtures&quot;</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>The application still owns its database configuration. Make that configuration
+selectable, for example through an environment-backed setting:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># myapp/main.py</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
+
+<span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span>
+    <span class="n">async_database_url</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+        <span class="s2">&quot;DATABASE_URL&quot;</span><span class="p">,</span> <span class="s2">&quot;sqlite+aiosqlite:///./app.db&quot;</span>
+    <span class="p">)</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>Then select the test value before importing the application, and configure the
+suite from the application configuration already in force:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># conftest.py</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+
+<span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;DATABASE_URL&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;sqlite+aiosqlite:///./test.db&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">myapp.main</span><span class="w"> </span><span class="kn">import</span> <span class="n">app</span>  <span class="c1"># noqa: E402</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">myapp.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Base</span>  <span class="c1"># noqa: E402</span>
+
+<span class="n">fr</span><span class="o">.</span><span class="n">testing</span><span class="o">.</span><span class="n">configure_tests</span><span class="p">(</span>
+    <span class="n">app</span><span class="o">=</span><span class="n">app</span><span class="p">,</span>
+    <span class="n">base</span><span class="o">=</span><span class="n">Base</span><span class="p">,</span>
+    <span class="n">create_all</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>A <code class="docutils literal notranslate"><span class="pre">.env</span></code> file fits this pattern as long as explicit process environment values
+take precedence over file values. Avoid loading dotenv with an “override
+existing variables” option in application code; that makes the test unable to
+select its database before import. If import-time settings are awkward, pass an
+explicit test settings object to an app factory instead.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">testing</span></code> extra installs <code class="docutils literal notranslate"><span class="pre">pytest-asyncio</span></code>. Set its default fixture loop scope
+in <code class="docutils literal notranslate"><span class="pre">pyproject.toml</span></code>, or pytest-asyncio prints a deprecation warning on every run:</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[tool.pytest.ini_options]</span>
+<span class="n">asyncio_default_fixture_loop_scope</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;function&quot;</span>
+</pre></div>
+</div>
+<p>That completes the setup for a managed suite.
+<a class="reference internal" href="api/testing.html#fastapi_restly.testing.configure_tests" title="fastapi_restly.testing.configure_tests"><code class="xref py py-func docutils literal notranslate"><span class="pre">configure_tests()</span></code></a> opts every
+test into schema setup and the selected database cleanup. Without that call,
+the client fixtures still run but do not start database isolation. For backward
+compatibility, a test that explicitly requests <code class="docutils literal notranslate"><span class="pre">restly_session</span></code> still runs
+under rollback isolation, including its requests through <code class="docutils literal notranslate"><span class="pre">restly_client</span></code>.
+<code class="docutils literal notranslate"><span class="pre">restly_async_session</span></code> does the same for requests through
+<code class="docutils literal notranslate"><span class="pre">restly_async_client</span></code>. A client-only test without <code class="docutils literal notranslate"><span class="pre">configure_tests()</span></code> commits
+normally.</p>
+<p>Your tests can stay synchronous, even when your application and its only
+database driver are async. See <a class="reference internal" href="#writing-async-tests">writing async tests</a> when
+a test also needs direct async database access.</p>
+<section id="async-only-postgresql">
+<h3>Async-only PostgreSQL<a class="headerlink" href="#async-only-postgresql" title="Link to this heading">#</a></h3>
+<p>An application configured only with async PostgreSQL can keep its ordinary
+pooled engine in tests; you do not need a test-only <code class="docutils literal notranslate"><span class="pre">NullPool</span></code> engine. Let the
+application own the engine and dispose it when the application shuts down:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># myapp/main.py</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">contextlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">asynccontextmanager</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">FastAPI</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.ext.asyncio</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_async_engine</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
+
+<span class="n">engine</span> <span class="o">=</span> <span class="n">create_async_engine</span><span class="p">(</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;DATABASE_URL&quot;</span><span class="p">],</span>
+    <span class="n">pool_pre_ping</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">async_engine</span><span class="o">=</span><span class="n">engine</span><span class="p">)</span>
+
+
+<span class="nd">@asynccontextmanager</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">lifespan</span><span class="p">(</span><span class="n">app</span><span class="p">:</span> <span class="n">FastAPI</span><span class="p">):</span>
+    <span class="k">yield</span>
+    <span class="k">await</span> <span class="n">engine</span><span class="o">.</span><span class="n">dispose</span><span class="p">()</span>
+
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">FastAPI</span><span class="p">(</span><span class="n">lifespan</span><span class="o">=</span><span class="n">lifespan</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Use a production URL such as <code class="docutils literal notranslate"><span class="pre">postgresql+asyncpg://...</span></code> in deployment and set
+the same setting to a disposable PostgreSQL database before importing the app
+in <code class="docutils literal notranslate"><span class="pre">conftest.py</span></code>. Then call <code class="docutils literal notranslate"><span class="pre">configure_tests()</span></code> as shown above. Restly neither
+rebuilds the engine nor changes its pool. The application lifespan still owns
+the dispose call, in production and in tests alike.</p>
+</section>
+</section>
+<section id="what-you-get">
+<h2>What you get<a class="headerlink" href="#what-you-get" title="Link to this heading">#</a></h2>
+<p>Four things, which is about what any database-backed suite needs.</p>
+<p><strong>One database configuration.</strong> <code class="docutils literal notranslate"><span class="pre">configure_tests()</span></code> records the session sources
+your application already configured; it does not create or replace them. If the
+database configuration changes later, during collection or lifespan startup,
+the suite fails instead of letting schema setup, cleanup and requests disagree.
+Selecting a disposable test database remains the application’s responsibility.
+An environment variable, an explicit test settings object, or an app factory are
+all good ways to do that.</p>
+<p><strong>A schema that is already there.</strong> Tables are created once, before the first
+test, either from your models with <code class="docutils literal notranslate"><span class="pre">create_all=True</span></code> or by running your
+migrations with <code class="docutils literal notranslate"><span class="pre">alembic_upgrade=True</span></code>.</p>
+<p><strong>A cleanup policy for every test.</strong> With the default cleanup, everything a test
+writes is rolled back when it finishes, so no test sees another’s rows and the
+suite does not care what order it runs in. There is no teardown to write and no
+database to rebuild between tests, which is what keeps a suite fast as it
+grows. See <a class="reference internal" href="#savepoints-and-rollback">savepoints and rollback</a> for how that
+works, and <a class="reference internal" href="#cleaning-up-between-tests">cleaning up between tests</a> for the two
+cases it cannot serve.</p>
+<p><strong>Clients wired to your app.</strong> <code class="docutils literal notranslate"><span class="pre">restly_client</span></code> sends requests from ordinary
+<code class="docutils literal notranslate"><span class="pre">def</span></code> tests. <code class="docutils literal notranslate"><span class="pre">restly_async_client</span></code> sends them from <code class="docutils literal notranslate"><span class="pre">async</span> <span class="pre">def</span></code> tests on the same
+event loop as <code class="docutils literal notranslate"><span class="pre">restly_async_session</span></code>. Both run the app’s lifespan and roll their
+requests back with everything else under the default cleanup.</p>
+</section>
+<section id="a-first-test">
+<h2>A first test<a class="headerlink" href="#a-first-test" title="Link to this heading">#</a></h2>
+<p>A test needs nothing but the client:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># test_users.py</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">test_create_and_fetch_user</span><span class="p">(</span><span class="n">restly_client</span><span class="p">):</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="n">restly_client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>  <span class="c1"># asserts 201 automatically</span>
+        <span class="s2">&quot;/users/&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Jane&quot;</span><span class="p">,</span> <span class="s2">&quot;email&quot;</span><span class="p">:</span> <span class="s2">&quot;jane@example.com&quot;</span><span class="p">}</span>
+    <span class="p">)</span>
+    <span class="n">user_id</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;id&quot;</span><span class="p">]</span>
+
+    <span class="n">data</span> <span class="o">=</span> <span class="n">restly_client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;/users/</span><span class="si">{</span><span class="n">user_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>  <span class="c1"># asserts 200</span>
+    <span class="k">assert</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;Jane&quot;</span>
+</pre></div>
+</div>
+<p>With the default cleanup, the user this test creates is gone by the time the
+next test runs. To work against the database directly instead of through the
+API, ask for a session fixture, or use <code class="docutils literal notranslate"><span class="pre">fr.open_session()</span></code> /
+<code class="docutils literal notranslate"><span class="pre">fr.open_async_session()</span></code> directly in a unit test. Database isolation belongs
+to the test, not to the client fixture, so either form receives the same
+cleanup; see <a class="reference internal" href="#pytest-fixture-reference">the fixture reference</a>.</p>
+</section>
+<section id="test-databases-and-migrations">
+<h2>Test databases and migrations<a class="headerlink" href="#test-databases-and-migrations" title="Link to this heading">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">base=Base</span></code> names your models. It is what <code class="docutils literal notranslate"><span class="pre">configure_tests()</span></code> cleans between
+tests, and what it builds the schema from if you ask it to. Pass your declarative
+base, or its <code class="docutils literal notranslate"><span class="pre">MetaData</span></code>.</p>
+<p>Who builds the schema is a separate choice, and there are three answers.</p>
+<p><strong>From your models</strong>, with <code class="docutils literal notranslate"><span class="pre">create_all=True</span></code>, which builds the tables the
+way <a class="reference internal" href="api/db.html#fastapi_restly.db.create_all" title="fastapi_restly.db.create_all"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.db.create_all()</span></code></a> does. This is the
+quickest route, and the right one when migrations are not part of what you are
+testing. Point it at a database you are willing to lose: a leftover file from an
+older run keeps its stale tables, since creating a schema never drops one.</p>
+<p><strong>From your migrations</strong>, with <code class="docutils literal notranslate"><span class="pre">alembic_upgrade=True</span></code>, which runs
+<code class="docutils literal notranslate"><span class="pre">alembic</span> <span class="pre">upgrade</span> <span class="pre">head</span></code> before the first test. Restly resolves <code class="docutils literal notranslate"><span class="pre">alembic.ini</span></code>
+relative to your project rather than to the directory you happened to run pytest
+from, and sets <code class="docutils literal notranslate"><span class="pre">sqlalchemy.url</span></code> on the config to the database configured by the
+application. An <code class="docutils literal notranslate"><span class="pre">env.py</span></code> that reads that setting therefore migrates your test
+database, not whatever it would otherwise resolve on its own.</p>
+<p>If the application configures only an async URL such as
+<code class="docutils literal notranslate"><span class="pre">postgresql+asyncpg://...</span></code> or <code class="docutils literal notranslate"><span class="pre">sqlite+aiosqlite://...</span></code>, its Alembic <code class="docutils literal notranslate"><span class="pre">env.py</span></code>
+must be able to open that async URL. Create the environment with Alembic’s async
+template (<code class="docutils literal notranslate"><span class="pre">alembic</span> <span class="pre">init</span> <span class="pre">-t</span> <span class="pre">async</span> <span class="pre">...</span></code>) or adapt an existing <code class="docutils literal notranslate"><span class="pre">env.py</span></code> using
+Alembic’s
+<a class="reference external" href="https://alembic.sqlalchemy.org/en/latest/cookbook.html#using-asyncio-with-alembic">asyncio recipe</a>.
+The standard synchronous template cannot open it. When the application
+configures both synchronous and async database URLs, Restly passes the
+synchronous URL to Alembic.</p>
+<p>Pass a path if the config lives somewhere else:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">fr</span><span class="o">.</span><span class="n">testing</span><span class="o">.</span><span class="n">configure_tests</span><span class="p">(</span>
+    <span class="n">app</span><span class="o">=</span><span class="n">app</span><span class="p">,</span>
+    <span class="n">base</span><span class="o">=</span><span class="n">Base</span><span class="p">,</span>
+    <span class="n">alembic_upgrade</span><span class="o">=</span><span class="s2">&quot;backend/alembic.ini&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Yourself</strong>, by passing neither. Restly then leaves the schema alone, which is
+what you want when your suite already builds it or your migrations are not
+Alembic. Build it once per session rather than per test. Under the default
+rollback mode, a table created inside a test belongs to that test’s transaction
+and is discarded with it.</p>
+<p>See <a class="reference internal" href="deploying.html#migrations-with-alembic"><span class="std std-ref">Migrations with Alembic</span></a> for
+production migration setup.</p>
+</section>
+<section id="cleaning-up-between-tests">
+<h2>Cleaning up between tests<a class="headerlink" href="#cleaning-up-between-tests" title="Link to this heading">#</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">db_cleanup=</span></code> argument to <code class="docutils literal notranslate"><span class="pre">configure_tests()</span></code> decides what Restly does with
+the database around each test. The default suits most suites; the other two
+exist for cases it cannot serve.</p>
+<p><strong><code class="docutils literal notranslate"><span class="pre">&quot;rollback&quot;</span></code></strong>, the default, wraps each test in a transaction and rolls it back
+at the end, through the savepoints described <a class="reference internal" href="#savepoints-and-rollback">below</a>.
+Nothing is ever committed, which is what makes it the fastest option, and it
+leaves reference data your migrations seeded untouched.</p>
+<p><strong><code class="docutils literal notranslate"><span class="pre">&quot;delete&quot;</span></code></strong> empties the tables before each test instead, and lets writes
+commit for real. It is slower and wants a database of its own, but the rows the
+last test wrote are still there when the run ends, which is what makes them
+inspectable.</p>
+<p><strong><code class="docutils literal notranslate"><span class="pre">&quot;none&quot;</span></code></strong> cleans nothing and leaves that to you. Neither of the others fits a
+suite that drives a browser or another process, which cannot see uncommitted
+data and whose parallel workers would clean the shared database out from under
+each other.</p>
+<p>In an application configured with only an async database, use <code class="docutils literal notranslate"><span class="pre">restly_client</span></code>
+when a test only sends HTTP requests and <code class="docutils literal notranslate"><span class="pre">restly_async_client</span></code> when it also needs
+direct async database access. The synchronous client runs the application on a
+different event loop from async test fixtures. Under rollback, a test that
+requests it together with <code class="docutils literal notranslate"><span class="pre">restly_async_session</span></code> stops during fixture setup
+with a <code class="docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code>. The error directs you to
+<code class="docutils literal notranslate"><span class="pre">restly_async_client</span></code>, and <code class="docutils literal notranslate"><span class="pre">fr.open_async_session()</span></code> fails with the same
+guidance at the moment it opens the session. Drivers that bind pooled
+connections to one event loop, such
+as asyncpg, require the same separation under <code class="docutils literal notranslate"><span class="pre">&quot;delete&quot;</span></code> and <code class="docutils literal notranslate"><span class="pre">&quot;none&quot;</span></code>.</p>
+<p>Switch mode for one run without editing the suite:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pytest<span class="w"> </span>--restly-db-cleanup<span class="o">=</span>delete
+<span class="nv">RESTLY_DB_CLEANUP</span><span class="o">=</span>delete<span class="w"> </span>pytest
+</pre></div>
+</div>
+<p>The flag beats the environment variable, which beats the argument. Any mode other
+than the default announces itself in pytest’s header, so a flag left over from a
+debugging session cannot quietly change what a suite does. pytest prints that
+header at normal verbosity only, so <code class="docutils literal notranslate"><span class="pre">-q</span></code> hides it.</p>
+<section id="reference-data-and-cleaning">
+<h3>Reference data and cleaning<a class="headerlink" href="#reference-data-and-cleaning" title="Link to this heading">#</a></h3>
+<p>Delete mode empties the tables <code class="docutils literal notranslate"><span class="pre">base=</span></code> declares, including the ones your
+migrations seeded with reference data, and nothing puts those rows back. Name
+them and they are left alone:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">fr</span><span class="o">.</span><span class="n">testing</span><span class="o">.</span><span class="n">configure_tests</span><span class="p">(</span>
+    <span class="n">app</span><span class="o">=</span><span class="n">app</span><span class="p">,</span>
+    <span class="n">base</span><span class="o">=</span><span class="n">Base</span><span class="p">,</span>
+    <span class="n">alembic_upgrade</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">db_cleanup</span><span class="o">=</span><span class="s2">&quot;delete&quot;</span><span class="p">,</span>
+    <span class="n">db_cleanup_exclude</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;country&quot;</span><span class="p">,</span> <span class="s2">&quot;role&quot;</span><span class="p">],</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>Excluded tables are shared by every test, so a write to one does carry over.
+Naming a table that does not exist raises, since a typo would otherwise empty the
+very table you meant to protect.</p>
+</section>
+</section>
+<section id="test-clients">
+<h2>Test clients<a class="headerlink" href="#test-clients" title="Link to this heading">#</a></h2>
+<p><a class="reference internal" href="api/testing.html#fastapi_restly.testing.RestlyTestClient" title="fastapi_restly.testing.RestlyTestClient"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyTestClient</span></code></a> is the
+synchronous client behind the <code class="docutils literal notranslate"><span class="pre">restly_client</span></code> fixture. The fixture constructs
+and enters it for you; use it directly when testing without the fixtures:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi_restly.testing</span><span class="w"> </span><span class="kn">import</span> <span class="n">RestlyTestClient</span>
+
+<span class="k">with</span> <span class="n">RestlyTestClient</span><span class="p">(</span><span class="n">app</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/users/&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Enter it. Starlette runs an application’s <code class="docutils literal notranslate"><span class="pre">lifespan</span></code> startup and shutdown only
+inside the context manager, so a client built and used outside one skips whatever
+<code class="docutils literal notranslate"><span class="pre">lifespan=</span></code> sets up. The <code class="docutils literal notranslate"><span class="pre">restly_client</span></code> fixture enters it for you, once per
+test.</p>
+<p>Although it is synchronous, <code class="docutils literal notranslate"><span class="pre">RestlyTestClient</span></code> still tests async FastAPI routes
+and <a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a> endpoints.
+<a class="reference internal" href="api/testing.html#fastapi_restly.testing.AsyncRestlyTestClient" title="fastapi_restly.testing.AsyncRestlyTestClient"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestlyTestClient</span></code></a>
+provides the same request methods and assertions for async tests; the
+<code class="docutils literal notranslate"><span class="pre">restly_async_client</span></code> fixture constructs it and runs the app lifespan for you.</p>
+<p>Both clients assert a default status code for each request and, on mismatch,
+raise an <code class="docutils literal notranslate"><span class="pre">AssertionError</span></code> that includes the response body:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Method</p></th>
+<th class="head"><p>Default expected status</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">get</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">200</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">post</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">201</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">put</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">200</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">patch</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">200</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">delete</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">204</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">AsyncRestView</span></code> and <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a> do not generate <code class="docutils literal notranslate"><span class="pre">PUT</span></code> routes; the client’s
+<code class="docutils literal notranslate"><span class="pre">put</span></code> exists for <a class="reference internal" href="howto_react_admin.html"><span class="std std-doc">React Admin views</span></a> and custom routes.</p>
+<p>Override the expectation when testing error paths:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">test_not_found</span><span class="p">(</span><span class="n">restly_client</span><span class="p">):</span>
+    <span class="n">restly_client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/users/999&quot;</span><span class="p">,</span> <span class="n">assert_status_code</span><span class="o">=</span><span class="mi">404</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Passing <code class="docutils literal notranslate"><span class="pre">assert_status_code=None</span></code> relaxes the check to “any status below
+400”; it does <strong>not</strong> skip the assertion. Pass the error code you expect when
+you know it. To make a request with no Restly status assertion at all, use the
+generic <code class="docutils literal notranslate"><span class="pre">request()</span></code> method:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">response</span> <span class="o">=</span> <span class="n">restly_client</span><span class="o">.</span><span class="n">request</span><span class="p">(</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="s2">&quot;/users/999&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The async client offers the same escape hatch with <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">restly_async_client.request(...)</span></code>.</p>
+</section>
+<section id="writing-async-tests">
+<h2>Writing async tests<a class="headerlink" href="#writing-async-tests" title="Link to this heading">#</a></h2>
+<p>You probably do not need them. <code class="docutils literal notranslate"><span class="pre">restly_client</span></code> is synchronous and drives async
+routes and <code class="docutils literal notranslate"><span class="pre">AsyncRestView</span></code> endpoints perfectly well, so a suite for an async
+application can be written entirely with <code class="docutils literal notranslate"><span class="pre">def</span></code> and usually should be. Async tests
+buy little here, and they cost you an event-loop setting, a class of confusing
+collection errors when it is wrong, and the ability to query the database from
+<code class="docutils literal notranslate"><span class="pre">pdb</span></code> (see <a class="reference internal" href="#inspecting-the-database">inspecting the database</a>).</p>
+<p>Write them when a test has to await something itself: <code class="docutils literal notranslate"><span class="pre">restly_async_session</span></code> or
+<code class="docutils literal notranslate"><span class="pre">fr.open_async_session()</span></code> to set up rows directly, or one of your own
+coroutines. Use <code class="docutils literal notranslate"><span class="pre">restly_async_client</span></code> for HTTP in the same test. In an
+async-only rollback suite, a test that combines <code class="docutils literal notranslate"><span class="pre">restly_client</span></code> and
+<code class="docutils literal notranslate"><span class="pre">restly_async_session</span></code> stops during fixture setup with a
+<code class="docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code>: the synchronous client and the async fixture use
+different event loops and cannot share one test transaction. The error tells
+you to use <code class="docutils literal notranslate"><span class="pre">restly_async_client</span></code>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">test_direct_setup_and_request</span><span class="p">(</span><span class="n">restly_async_client</span><span class="p">,</span> <span class="n">restly_async_session</span><span class="p">):</span>
+    <span class="n">restly_async_session</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">User</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;Alice&quot;</span><span class="p">))</span>
+    <span class="k">await</span> <span class="n">restly_async_session</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+
+    <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">restly_async_client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/users/&quot;</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;total_count&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span>
+</pre></div>
+</div>
+<p>Put pytest-asyncio into
+<a class="reference external" href="https://pytest-asyncio.readthedocs.io/en/latest/concepts.html#test-discovery-modes">auto
+mode</a>,
+which collects <code class="docutils literal notranslate"><span class="pre">async</span> <span class="pre">def</span></code> tests without marking each one:</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[tool.pytest.ini_options]</span>
+<span class="n">asyncio_mode</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;auto&quot;</span>
+<span class="n">asyncio_default_fixture_loop_scope</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;function&quot;</span>
+</pre></div>
+</div>
+<p>Without that, or an equivalent
+<a class="reference external" href="https://anyio.readthedocs.io/en/stable/testing.html">anyio</a> setup, async tests
+fail to collect or produce confusing errors. Sync tests keep working alongside
+them. The <a class="reference external" href="https://pytest-asyncio.readthedocs.io/en/latest/reference/configuration.html">pytest-asyncio
+reference</a>
+covers the rest of its settings.</p>
+</section>
+<section id="pytest-fixture-reference">
+<h2>Pytest fixture reference<a class="headerlink" href="#pytest-fixture-reference" title="Link to this heading">#</a></h2>
+<p>These are the fixtures the plugin registers, with their scope and exact
+behavior.</p>
+<section id="restly-app">
+<h3><code class="docutils literal notranslate"><span class="pre">restly_app</span></code><a class="headerlink" href="#restly-app" title="Link to this heading">#</a></h3>
+<p><strong>Scope:</strong> <code class="docutils literal notranslate"><span class="pre">function</span></code></p>
+<p>Returns the app you passed to <code class="docutils literal notranslate"><span class="pre">configure_tests(app=...)</span></code>. Without one it returns
+a bare <code class="docutils literal notranslate"><span class="pre">FastAPI()</span></code>, and every request answers 404; override this fixture in your
+<code class="docutils literal notranslate"><span class="pre">conftest.py</span></code> if you would rather supply the app that way.</p>
+</section>
+<section id="restly-client">
+<h3><code class="docutils literal notranslate"><span class="pre">restly_client</span></code><a class="headerlink" href="#restly-client" title="Link to this heading">#</a></h3>
+<p><strong>Scope:</strong> <code class="docutils literal notranslate"><span class="pre">function</span></code></p>
+<p>A <a class="reference internal" href="#test-clients"><code class="docutils literal notranslate"><span class="pre">RestlyTestClient</span></code></a> wrapping the <code class="docutils literal notranslate"><span class="pre">restly_app</span></code> fixture.
+In a configured suite, requests follow its <a class="reference internal" href="#cleaning-up-between-tests">cleanup mode</a>:
+the default rolls them back with the rest of the test, while <code class="docutils literal notranslate"><span class="pre">&quot;delete&quot;</span></code> and
+<code class="docutils literal notranslate"><span class="pre">&quot;none&quot;</span></code> let them commit. On its own, in a suite that never called
+<code class="docutils literal notranslate"><span class="pre">configure_tests()</span></code> and requests no session fixture, <strong>nothing rolls them
+back</strong>: a client-only test commits real rows to the configured database.</p>
+<p>For an async-only application under rollback, Restly opens the transaction on
+the same event loop the synchronous client uses to run the application. This is
+why a normally pooled asyncpg engine works even though the test function itself
+is synchronous.</p>
+</section>
+<section id="restly-async-client">
+<h3><code class="docutils literal notranslate"><span class="pre">restly_async_client</span></code><a class="headerlink" href="#restly-async-client" title="Link to this heading">#</a></h3>
+<p><strong>Scope:</strong> <code class="docutils literal notranslate"><span class="pre">function</span></code></p>
+<p>An <a class="reference internal" href="#test-clients"><code class="docutils literal notranslate"><span class="pre">AsyncRestlyTestClient</span></code></a> wrapping <code class="docutils literal notranslate"><span class="pre">restly_app</span></code>, with the same
+default status assertions as <code class="docutils literal notranslate"><span class="pre">restly_client</span></code>. It runs the application’s lifespan
+and shares the event loop used by <code class="docutils literal notranslate"><span class="pre">restly_async_session</span></code> (and, under rollback,
+the same transaction). Use it whenever a test needs both HTTP and direct async
+database access.</p>
+</section>
+<section id="restly-session">
+<h3><code class="docutils literal notranslate"><span class="pre">restly_session</span></code><a class="headerlink" href="#restly-session" title="Link to this heading">#</a></h3>
+<p><strong>Scope:</strong> <code class="docutils literal notranslate"><span class="pre">function</span></code></p>
+<p>Under the default rollback mode, a SQLAlchemy <code class="docutils literal notranslate"><span class="pre">Session</span></code> on a pinned connection
+whose outer transaction is never committed. Each request during the test builds
+its own real session that joins that transaction through a savepoint
+(SQLAlchemy’s <code class="docutils literal notranslate"><span class="pre">create_savepoint</span></code> mode), so <code class="docutils literal notranslate"><span class="pre">commit()</span></code> and <code class="docutils literal notranslate"><span class="pre">rollback()</span></code> behave
+as in production while nothing persists past the test. The fixture skips
+automatically if no sync session source is configured at all.</p>
+<p>In a suite that called <code class="docutils literal notranslate"><span class="pre">configure_tests()</span></code>, a custom
+<code class="docutils literal notranslate"><span class="pre">sync_session_generator</span></code> follows these rules. The same table applies to the
+async <code class="docutils literal notranslate"><span class="pre">session_generator</span></code> and async sessionmaker.</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Cleanup mode</p></th>
+<th class="head"><p>Generator behavior</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">&quot;rollback&quot;</span></code></p></td>
+<td><p>Restly bypasses the generator and builds isolated sessions from the matching sessionmaker. If only the generator is configured, pytest stops before running tests with a configuration error that names the missing sessionmaker. Code in the generator body, such as <code class="docutils literal notranslate"><span class="pre">SET</span> <span class="pre">search_path</span></code>, does not run.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">&quot;delete&quot;</span></code></p></td>
+<td><p>If either custom generator is configured, pytest stops before running tests with a configuration error, even when a matching sessionmaker exists. Restly cannot verify that the generator writes to the database it would clean. Use the sessionmaker as the application session source, or choose <code class="docutils literal notranslate"><span class="pre">&quot;none&quot;</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">&quot;none&quot;</span></code></p></td>
+<td><p>Restly leaves the generator untouched. The public session fixture uses the matching sessionmaker when one exists; with only a generator it skips because there is no sessionmaker from which to construct the fixture session.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Under rollback, <code class="docutils literal notranslate"><span class="pre">fr.open_session()</span></code> resolves the same factory <code class="docutils literal notranslate"><span class="pre">SessionDep</span></code> does,
+so it too yields a session on the test’s pinned connection even when
+<code class="docutils literal notranslate"><span class="pre">restly_session</span></code> is not requested. This makes database-only unit tests a
+first-class use case; the public fixture is only a convenient ready-made
+<code class="docutils literal notranslate"><span class="pre">Session</span></code>.</p>
+<p>Under any <a class="reference internal" href="#cleaning-up-between-tests">cleanup mode</a> other than <code class="docutils literal notranslate"><span class="pre">rollback</span></code> this
+fixture yields a plain session on the configured database instead, since rolling
+it back would undo the writes those modes exist to commit.</p>
+<p>A committed write can be read back within the same test:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">test_user_created</span><span class="p">(</span><span class="n">restly_session</span><span class="p">):</span>
+    <span class="n">user</span> <span class="o">=</span> <span class="n">User</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;Alice&quot;</span><span class="p">)</span>
+    <span class="n">restly_session</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">user</span><span class="p">)</span>
+    <span class="n">restly_session</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+
+    <span class="n">result</span> <span class="o">=</span> <span class="n">restly_session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">User</span><span class="p">,</span> <span class="n">user</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">result</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;Alice&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="restly-async-session">
+<h3><code class="docutils literal notranslate"><span class="pre">restly_async_session</span></code><a class="headerlink" href="#restly-async-session" title="Link to this heading">#</a></h3>
+<p><strong>Scope:</strong> <code class="docutils literal notranslate"><span class="pre">function</span></code></p>
+<p>The async version of <code class="docutils literal notranslate"><span class="pre">restly_session</span></code>. Awaiting it in a test body means
+<a class="reference internal" href="#writing-async-tests">writing an async test</a>. In async-only projects it needs only
+<code class="docutils literal notranslate"><span class="pre">fr.configure(async_database_url=...)</span></code>. It skips automatically if no async
+session source is configured at all. It handles a configured <code class="docutils literal notranslate"><span class="pre">session_generator</span></code>
+(and <code class="docutils literal notranslate"><span class="pre">fr.open_async_session()</span></code>) according to the generator table above, using
+the async sessionmaker where the sync fixture uses the synchronous one.</p>
+<p>Pair it with <code class="docutils literal notranslate"><span class="pre">restly_async_client</span></code>, not <code class="docutils literal notranslate"><span class="pre">restly_client</span></code>, in an async-only
+rollback test. This keeps every use of the pinned connection on pytest’s event
+loop.</p>
+<p>Under rollback, as on the sync side, <code class="docutils literal notranslate"><span class="pre">fr.open_async_session()</span></code> is isolated even
+when this public fixture is not requested. Use that form when a unit test
+naturally owns several short-lived sessions or when application service code
+already opens its own.</p>
+<p>Usage mirrors <code class="docutils literal notranslate"><span class="pre">restly_session</span></code>, with <code class="docutils literal notranslate"><span class="pre">await</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">test_user_created</span><span class="p">(</span><span class="n">restly_async_session</span><span class="p">):</span>
+    <span class="n">user</span> <span class="o">=</span> <span class="n">User</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;Bob&quot;</span><span class="p">)</span>
+    <span class="n">restly_async_session</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">user</span><span class="p">)</span>
+    <span class="k">await</span> <span class="n">restly_async_session</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+
+    <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">restly_async_session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">User</span><span class="p">,</span> <span class="n">user</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">result</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;Bob&quot;</span>
+</pre></div>
+</div>
+<blockquote>
+<div><p><strong>Note (rollback only):</strong> When both synchronous and async session sources are
+configured, Restly runs the async fixture over the test’s pinned synchronous
+connection. The two fixtures therefore share one transaction, and a write
+committed through either is visible to the other within the test. The async
+driver itself is not exercised. Under <code class="docutils literal notranslate"><span class="pre">&quot;delete&quot;</span></code> and <code class="docutils literal notranslate"><span class="pre">&quot;none&quot;</span></code>, each fixture
+uses its configured sessionmaker independently; there is no shared connection
+or outer transaction, and writes cross between them only after a real commit,
+subject to the database’s ordinary isolation rules.</p>
+</div></blockquote>
+</section>
+<section id="restly-project-root">
+<h3><code class="docutils literal notranslate"><span class="pre">restly_project_root</span></code><a class="headerlink" href="#restly-project-root" title="Link to this heading">#</a></h3>
+<p><strong>Scope:</strong> <code class="docutils literal notranslate"><span class="pre">function</span></code></p>
+<p>Walks up from the requesting test file until it finds a <code class="docutils literal notranslate"><span class="pre">pyproject.toml</span></code> and
+returns that directory as a <code class="docutils literal notranslate"><span class="pre">Path</span></code>. This is a convenience for locating project
+files (migration configs, test data) from tests. Because discovery is anchored
+to the test file rather than the working directory, it returns the same root
+regardless of where pytest was invoked, and in a monorepo each test resolves to
+its own sub-project’s root.</p>
+</section>
+</section>
+<section id="savepoints-and-rollback">
+<h2>Savepoints and rollback<a class="headerlink" href="#savepoints-and-rollback" title="Link to this heading">#</a></h2>
+<p>The default mode follows SQLAlchemy’s own recipe for test suites, <a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/session_transaction.html#session-external-transaction">joining a
+session into an external
+transaction</a>.
+The plugin’s internal test scope opens one connection, begins a transaction on
+it, and points Restly’s session factory at that connection in
+<code class="docutils literal notranslate"><span class="pre">create_savepoint</span></code> mode. Every session built during the test, including direct
+sessions and the ones requests build, joins that transaction through a
+savepoint. Public client and session fixtures consume this scope; none of them
+owns it.</p>
+<p>A <code class="docutils literal notranslate"><span class="pre">commit()</span></code> therefore releases a savepoint rather than reaching the database,
+and a <code class="docutils literal notranslate"><span class="pre">rollback()</span></code> discards only that session’s own work, so both behave the way
+they do in production. The outer transaction is never committed: closing the
+connection at the end of the test undoes everything at once.</p>
+<p>That is also what makes it fast. Cleanup is one rollback on a connection that is
+already open, so it costs the same whether a test wrote one row or a thousand,
+and it does not slow down as your schema grows.</p>
+<p>Explicit transaction blocks behave as in production too: <code class="docutils literal notranslate"><span class="pre">with</span> <span class="pre">restly_session.begin():</span> <span class="pre">...</span></code> and its async form commit on success and roll back
+on error, scoped to the outer transaction so nothing survives the test.</p>
+</section>
+<section id="inspecting-the-database">
+<h2>Inspecting the database<a class="headerlink" href="#inspecting-the-database" title="Link to this heading">#</a></h2>
+<p>Opening <code class="docutils literal notranslate"><span class="pre">psql</span></code> while a test runs under the default mode finds nothing, and so
+does opening it afterwards. The rows live in an uncommitted transaction on a
+single connection, which no other process can read, and the rollback removes them
+when the test ends. Two ways to see them anyway.</p>
+<p><strong>From inside the test.</strong> <code class="docutils literal notranslate"><span class="pre">pytest</span> <span class="pre">--pdb</span></code> stops at the failure while the
+transaction is still open, before any fixture tears down, and <code class="docutils literal notranslate"><span class="pre">restly_client</span></code>
+works from there:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="n">Pdb</span><span class="p">)</span> <span class="n">restly_client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/users/&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+<span class="p">{</span><span class="s1">&#39;data&#39;</span><span class="p">:</span> <span class="p">[{</span><span class="s1">&#39;id&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="s1">&#39;Jane&#39;</span><span class="p">}],</span> <span class="s1">&#39;total_count&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="o">...</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>Querying through your own API like this works whether the suite is sync or async,
+because the client is synchronous either way. Querying a session directly works
+only in a sync suite, with <code class="docutils literal notranslate"><span class="pre">restly_session.execute(...)</span></code>. In an async one
+<code class="docutils literal notranslate"><span class="pre">restly_async_session.execute(...)</span></code> hands back a coroutine that nothing awaits,
+and reaching for its <code class="docutils literal notranslate"><span class="pre">sync_session</span></code> raises <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code>.</p>
+<p><strong>With ordinary tools.</strong> Run once in <a class="reference internal" href="#cleaning-up-between-tests">delete mode</a>
+and the rows are committed, and still there when the run ends:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pytest<span class="w"> </span>--restly-db-cleanup<span class="o">=</span>delete<span class="w"> </span>-k<span class="w"> </span>test_the_broken_one
+psql<span class="w"> </span>myapp_test<span class="w"> </span>-c<span class="w"> </span><span class="s1">&#39;select * from &quot;user&quot;&#39;</span>
+</pre></div>
+</div>
+<p>Cleaning happens before each test rather than after, which is what leaves the
+failing test’s rows in place. Point the suite at a file or a server for this; an
+in-memory database is gone as soon as pytest exits.</p>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="howto_openapi.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Customize the OpenAPI Schema</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="deploying.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Deploying</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#setup">Setup</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#async-only-postgresql">Async-only PostgreSQL</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#what-you-get">What you get</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#a-first-test">A first test</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#test-databases-and-migrations">Test databases and migrations</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#cleaning-up-between-tests">Cleaning up between tests</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#reference-data-and-cleaning">Reference data and cleaning</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#test-clients">Test clients</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#writing-async-tests">Writing async tests</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#pytest-fixture-reference">Pytest fixture reference</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#restly-app"><code class="docutils literal notranslate"><span class="pre">restly_app</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#restly-client"><code class="docutils literal notranslate"><span class="pre">restly_client</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#restly-async-client"><code class="docutils literal notranslate"><span class="pre">restly_async_client</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#restly-session"><code class="docutils literal notranslate"><span class="pre">restly_session</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#restly-async-session"><code class="docutils literal notranslate"><span class="pre">restly_async_session</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#restly-project-root"><code class="docutils literal notranslate"><span class="pre">restly_project_root</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#savepoints-and-rollback">Savepoints and rollback</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#inspecting-the-database">Inspecting the database</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+<p class="sidebar-newsletter">
+  <a href="newsletter.html">Subscribe to newsletter</a>
+</p></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, Rutger Prins.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>
