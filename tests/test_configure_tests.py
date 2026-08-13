@@ -535,6 +535,37 @@ def test_a_database_less_leg_is_judged_by_its_location():
             _reset_setup()
 
 
+def test_an_omitted_port_matches_the_backend_default():
+    """host and host:5432 are one PostgreSQL location, with or without a
+    database name; two explicit but different ports stay a split."""
+    accepted_pairs = [
+        (
+            "postgresql://u:pw@host/app_test",
+            "postgresql+asyncpg://u:pw@host:5432/app_test",
+        ),
+        ("postgresql://u:pw@host", "postgresql+asyncpg://u:pw@host:5432"),
+        (
+            "mysql+pymysql://u:pw@host/app_test",
+            "mysql+aiomysql://u:pw@host:3306/app_test",
+        ),
+    ]
+    for sync_spec, async_spec in accepted_pairs:
+        with _isolated_config() as context:
+            context.make_session, context.async_make_session = _location_pair(
+                sync_spec, async_spec
+            )
+            configure_tests()
+            _reset_setup()
+
+    with _isolated_config() as context:
+        context.make_session, context.async_make_session = _location_pair(
+            "postgresql://u:pw@host/app_test",
+            "postgresql+asyncpg://u:pw@host:5433/app_test",
+        )
+        with pytest.raises(RestlyConfigurationError, match="not the same database"):
+            configure_tests()
+
+
 def test_a_memory_leg_paired_with_a_located_leg_is_rejected(tmp_path: Path):
     """A private in-memory database is provably not the other leg's file or
     server database; only a pair of in-memory legs is accepted, because

@@ -403,6 +403,24 @@ def _is_memory_sqlite(url: Any) -> bool:
     )
 
 
+#: Default ports by backend, so an omitted port and an explicit default compare
+#: as one location. An unknown backend falls back to the raw comparison.
+_DEFAULT_PORTS = {
+    "postgresql": 5432,
+    "mysql": 3306,
+    "mariadb": 3306,
+    "mssql": 1433,
+    "oracle": 1521,
+}
+
+
+def _comparable_port(url: Any) -> Any:
+    """The port to compare: an omitted port means the backend's default."""
+    if url.port is not None:
+        return url.port
+    return _DEFAULT_PORTS.get(url.get_backend_name())
+
+
 def _resolve_engine(bind: Any) -> Any:
     """Return the engine behind ``bind``, which a caller may have set to a
     Connection just as ``fr.configure(make_session=...)`` allows.
@@ -465,9 +483,9 @@ def _reject_split_databases(setup: _TestSetup, mode: str) -> None:
         # slash, gets one from the server (PostgreSQL defaults it to the user
         # name), so the names cannot be compared. The locations can, and the
         # user name counts because it decides the defaulted database.
-        if (sync_url.host, sync_url.port, sync_url.username) != (
+        if (sync_url.host, _comparable_port(sync_url), sync_url.username) != (
             async_url.host,
-            async_url.port,
+            _comparable_port(async_url),
             async_url.username,
         ):
             raise RestlyConfigurationError(
@@ -484,9 +502,9 @@ def _reject_split_databases(setup: _TestSetup, mode: str) -> None:
         # database; resolve before comparing.
         same = Path(sync_url.database).resolve() == Path(async_url.database).resolve()
     else:
-        same = (sync_url.host, sync_url.port, sync_url.database) == (
+        same = (sync_url.host, _comparable_port(sync_url), sync_url.database) == (
             async_url.host,
-            async_url.port,
+            _comparable_port(async_url),
             async_url.database,
         )
     if same:
