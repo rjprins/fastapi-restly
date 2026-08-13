@@ -632,7 +632,7 @@ def _build_clause(
     if not values:
         return None
     if op == "in":
-        return column.in_([parser(v) for v in values])
+        return column.in_([_parse_filter_value(column, v, parser) for v in values])
     clauses = [_make_where_clause(column, v, op, parser) for v in values]
     if len(clauses) == 1:
         return clauses[0]
@@ -665,8 +665,6 @@ def _parse_value(schema_cls: SchemaType, column_name: str, value: str) -> Any:
         # is its scalar id, not the reference wrapper (which cannot bind).
         if isinstance(result, IDSchema):
             return result.id
-        if isinstance(result, _dt.datetime) and result.utcoffset() is None:
-            return result.replace(tzinfo=_dt.timezone.utc)
         return result
     except Exception:
         raise BadQueryParam(f"Invalid attribute in URL query: {column_name}")
@@ -687,20 +685,35 @@ def _make_where_clause(
     op: str,
     parser: Callable[[str], Any],
 ) -> ColumnElement[Any]:
-    if op == "gte":
-        return column >= parser(filter_value)
-    if op == "lte":
-        return column <= parser(filter_value)
-    if op == "gt":
-        return column > parser(filter_value)
-    if op == "lt":
-        return column < parser(filter_value)
-    if op == "ne":
-        return column != parser(filter_value)
     if op == "contains":
         return column.like(f"%{_escape_like_value(filter_value)}%", escape="\\")
     if op == "icontains":
         return column.ilike(f"%{_escape_like_value(filter_value)}%", escape="\\")
+
+    value = _parse_filter_value(column, filter_value, parser)
+    if op == "gte":
+        return column >= value
+    if op == "lte":
+        return column <= value
+    if op == "gt":
+        return column > value
+    if op == "lt":
+        return column < value
+    if op == "ne":
+        return column != value
     if op == "eq":
-        return column == parser(filter_value)
+        return column == value
     raise BadQueryParam(f"Unsupported filter operator: {op!r}")
+
+
+def _parse_filter_value(
+    column: InstrumentedAttribute[Any], raw_value: str, parser: Callable[[str], Any]
+) -> Any:
+    value = parser(raw_value)
+    if (
+        isinstance(value, _dt.datetime)
+        and value.utcoffset() is None
+        and getattr(column.type, "timezone", False)
+    ):
+        return value.replace(tzinfo=_dt.timezone.utc)
+    return value

@@ -22,9 +22,9 @@ from datetime import datetime, timezone
 
 import pytest
 from fastapi import FastAPI
-from sqlalchemy import func, select, text
+from sqlalchemy import DateTime, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.pool import NullPool
 
 import fastapi_restly as fr
@@ -44,10 +44,12 @@ class AsyncpgNote(fr.TimestampsMixin, fr.IDBase):
     __tablename__ = "restly_asyncpg_note"
 
     text: Mapped[str]
+    local_time: Mapped[datetime | None] = mapped_column(DateTime(), default=None)
 
 
 class AsyncpgNoteSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
     text: str
+    local_time: datetime | None = None
 
 
 LIFESPAN_EVENTS: list[str] = []
@@ -201,3 +203,25 @@ async def test_naive_datetime_filter_is_utc_with_asyncpg(
     assert [item["text"] for item in response.json()["data"]] == ["known UTC instant"]
     serialized = response.json()["data"][0]["created_at"]
     assert datetime.fromisoformat(serialized.replace("Z", "+00:00")).tzinfo is not None
+
+
+@pytest.mark.asyncio
+async def test_explicitly_naive_datetime_filter_stays_naive_with_asyncpg(
+    restly_async_client, restly_async_session: AsyncSession
+):
+    """An explicit DateTime() opt-out keeps wall-clock filter semantics."""
+    wall_time = datetime(2024, 7, 1, 9, 30)
+    restly_async_session.add(AsyncpgNote(text="known wall time", local_time=wall_time))
+    await restly_async_session.commit()
+
+    response = await restly_async_client.get(
+        "/filtered-notes",
+        params={
+            "local_time__gte": "2024-07-01T09:30:00",
+            "local_time__lte": "2024-07-01T09:30:00",
+        },
+    )
+
+    assert response.status_code == 200
+    assert [item["text"] for item in response.json()["data"]] == ["known wall time"]
+    assert response.json()["data"][0]["local_time"] == "2024-07-01T09:30:00"
