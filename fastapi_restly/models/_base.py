@@ -3,7 +3,7 @@ import re
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import Enum, func
+from sqlalchemy import DateTime, Enum, func
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import (
     DeclarativeBase,
@@ -33,10 +33,13 @@ class TimestampsMixin(MappedAsDataclass, kw_only=True):
     """
 
     created_at: Mapped[datetime] = mapped_column(
-        default_factory=utc_now, server_default=func.now()
+        DateTime(timezone=True), default_factory=utc_now, server_default=func.now()
     )
     updated_at: Mapped[datetime] = mapped_column(
-        default_factory=utc_now, onupdate=utc_now, server_default=func.now()
+        DateTime(timezone=True),
+        default_factory=utc_now,
+        onupdate=utc_now,
+        server_default=func.now(),
     )
 
 

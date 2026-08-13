@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Custom `RestView` collection routes declared at `"/"` now use the no-slash
+  path as their OpenAPI form and keep the trailing-slash path as a hidden
+  compatibility alias, matching generated list and create routes.
+- `TimestampsMixin` now maps its UTC-aware values to timezone-aware SQLAlchemy
+  columns. On PostgreSQL, timestamps in API responses now include the UTC
+  offset, for example `+00:00`, instead of serializing as naive values.
+
+  Existing PostgreSQL databases must migrate each affected `timestamp without
+  time zone` column. If existing naive values represent UTC, use an explicit
+  conversion such as:
+
+  ```sql
+  ALTER TABLE example
+    ALTER COLUMN created_at TYPE timestamptz
+    USING created_at AT TIME ZONE 'UTC';
+  ```
+
+  A bare type alteration can reinterpret stored values in the server's local
+  timezone and shift them. Review generated Alembic migrations before applying
+  them.
+
+### Fixed
+
+- New or migrated PostgreSQL schemas now accept the UTC-aware values produced
+  by `TimestampsMixin` when using asyncpg. SQLite does not preserve timezone
+  information and continues to return naive datetime values.
+
 ## [0.9.0] - 2026-08-13
 
 ### Added

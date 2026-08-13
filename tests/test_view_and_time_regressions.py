@@ -87,6 +87,14 @@ def test_utc_now_is_timezone_aware_utc():
     assert now.tzinfo is timezone.utc
 
 
+def test_timestamp_mixin_maps_timezone_aware_columns():
+    class TimestampedRecord(fr.TimestampsMixin, fr.IDBase):
+        pass
+
+    assert TimestampedRecord.__table__.c.created_at.type.timezone is True
+    assert TimestampedRecord.__table__.c.updated_at.type.timezone is True
+
+
 @pytest.mark.parametrize(
     ("decorator", "method", "default_status_code"),
     [

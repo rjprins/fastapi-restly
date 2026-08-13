@@ -11,6 +11,7 @@ from collections.abc import Iterator
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from pydantic import BaseModel
 from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
@@ -49,6 +50,15 @@ def sync_client(sync_db) -> Iterator[TestClient]:
         name: str
         price: float
 
+    class CustomCollection(fr.IDBase):
+        name: Mapped[str]
+
+    class CustomCollectionSchema(fr.IDSchema):
+        name: str
+
+    class CustomCollectionCreate(BaseModel):
+        name: str
+
     app = FastAPI()
 
     @fr.include_view(app)
@@ -56,6 +66,19 @@ def sync_client(sync_db) -> Iterator[TestClient]:
         prefix = "/gadgets"
         model = Gadget
         schema = GadgetSchema
+
+    @fr.include_view(app)
+    class CustomCollectionView(fr.RestView):
+        prefix = "/custom-collection"
+        model = CustomCollection
+        schema = CustomCollectionSchema
+        exclude_routes = [fr.ViewRoute.CREATE]
+
+        @fr.post("/", response_model=CustomCollectionSchema)
+        def create_with_custom_contract(
+            self, schema_obj: CustomCollectionCreate
+        ) -> CustomCollection:
+            return self.handle_create(schema_obj)
 
     fr.DataclassBase.metadata.create_all(engine)
     yield TestClient(app)
@@ -75,6 +98,15 @@ def async_client() -> Iterator[TestClient]:
         name: str
         price: float
 
+    class CustomCollectionA(fr.IDBase):
+        name: Mapped[str]
+
+    class CustomCollectionASchema(fr.IDSchema):
+        name: str
+
+    class CustomCollectionACreate(BaseModel):
+        name: str
+
     app = FastAPI()
 
     @fr.include_view(app)
@@ -82,6 +114,19 @@ def async_client() -> Iterator[TestClient]:
         prefix = "/gadgets"
         model = GadgetA
         schema = GadgetASchema
+
+    @fr.include_view(app)
+    class CustomCollectionView(fr.AsyncRestView):
+        prefix = "/custom-collection"
+        model = CustomCollectionA
+        schema = CustomCollectionASchema
+        exclude_routes = [fr.ViewRoute.CREATE]
+
+        @fr.post("/", response_model=CustomCollectionASchema)
+        async def create_with_custom_contract(
+            self, schema_obj: CustomCollectionACreate
+        ) -> CustomCollectionA:
+            return await self.handle_create(schema_obj)
 
     # Create tables on the async engine.
     import asyncio
@@ -172,6 +217,22 @@ def test_collection_openapi_uses_no_slash_canonical_path(view_client: TestClient
     assert "/gadgets" in paths
     assert "/gadgets/" not in paths
     assert {"get", "post"} <= set(paths["/gadgets"])
+
+
+@pytest.mark.parametrize("view_client", ["sync", "async"], indirect=True)
+def test_custom_collection_route_uses_canonical_path_and_hidden_alias(
+    view_client: TestClient,
+):
+    assert (
+        view_client.post("/custom-collection", json={"name": "Canonical"}).status_code
+        == 201
+    )
+    assert (
+        view_client.post("/custom-collection/", json={"name": "Alias"}).status_code
+        == 201
+    )
+    assert "/custom-collection" in view_client.app.openapi()["paths"]
+    assert "/custom-collection/" not in view_client.app.openapi()["paths"]
 
 
 @pytest.mark.parametrize("view_client", ["sync", "async"], indirect=True)
