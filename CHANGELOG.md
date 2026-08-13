@@ -61,7 +61,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - `restly_client` now runs application lifespan startup and shutdown once per
-  test. Registering a view through `restly_client.app` after the fixture has
+  test. A view registered through `restly_client.app` after the fixture has
   constructed the client also keeps working, including Restly's integrity-error
   handling.
 - PostgreSQL constraint errors now produce clean details with psycopg 3.

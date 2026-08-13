@@ -80,12 +80,12 @@ in `pyproject.toml`, or pytest-asyncio prints a deprecation warning on every run
 asyncio_default_fixture_loop_scope = "function"
 ```
 
-That completes the setup for a managed suite. Calling
+That completes the setup for a managed suite.
 {func}`configure_tests() <fastapi_restly.testing.configure_tests>` opts every
 test into schema setup and the selected database cleanup. Without that call,
 the client fixtures still run but do not start database isolation. For backward
-compatibility, explicitly requesting `restly_session` still installs rollback
-isolation for that whole test, including requests through `restly_client`;
+compatibility, a test that explicitly requests `restly_session` still runs
+under rollback isolation, including its requests through `restly_client`.
 `restly_async_session` does the same for requests through
 `restly_async_client`. A client-only test without `configure_tests()` commits
 normally.
@@ -129,8 +129,8 @@ app = FastAPI(lifespan=lifespan)
 Use a production URL such as `postgresql+asyncpg://...` in deployment and set
 the same setting to a disposable PostgreSQL database before importing the app
 in `conftest.py`. Then call `configure_tests()` as shown above. Restly neither
-rebuilds the engine nor changes its pool. Disposing it in the application
-lifespan remains the right production and test setup.
+rebuilds the engine nor changes its pool. The application lifespan still owns
+the dispose call, in production and in tests alike.
 
 ## What you get
 
@@ -258,11 +258,12 @@ each other.
 In an application configured with only an async database, use `restly_client`
 when a test only sends HTTP requests and `restly_async_client` when it also needs
 direct async database access. The synchronous client runs the application on a
-different event loop from async test fixtures. Under rollback, requesting it
-together with `restly_async_session` stops during fixture setup with a
-`RestlyConfigurationError` that directs you to `restly_async_client`; opening a
-session through `fr.open_async_session()` fails with the same guidance when the
-session is opened. Drivers that bind pooled connections to one event loop, such
+different event loop from async test fixtures. Under rollback, a test that
+requests it together with `restly_async_session` stops during fixture setup
+with a `RestlyConfigurationError`. The error directs you to
+`restly_async_client`, and `fr.open_async_session()` fails with the same
+guidance at the moment it opens the session. Drivers that bind pooled
+connections to one event loop, such
 as asyncpg, require the same separation under `"delete"` and `"none"`.
 
 Switch mode for one run without editing the suite:
@@ -366,9 +367,9 @@ collection errors when it is wrong, and the ability to query the database from
 Write them when a test has to await something itself: `restly_async_session` or
 `fr.open_async_session()` to set up rows directly, or one of your own
 coroutines. Use `restly_async_client` for HTTP in the same test. In an
-async-only rollback suite, combining `restly_client` and
+async-only rollback suite, a test that combines `restly_client` and
 `restly_async_session` stops during fixture setup with a
-`RestlyConfigurationError`: the synchronous client and async fixture use
+`RestlyConfigurationError`: the synchronous client and the async fixture use
 different event loops and cannot share one test transaction. The error tells
 you to use `restly_async_client`.
 
