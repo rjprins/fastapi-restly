@@ -118,6 +118,19 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+      saas-postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: saas_test
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d saas_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -194,10 +207,65 @@ jobs:
           --with asyncpg
           pytest tests/postgres_asyncpg/ -q
 
-      - name: Run migration-backed SaaS example tests
+      - name: Validate SaaS migrations
         env:
-          RESTLY_TEST_DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/restly_test
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5433/saas_test
+        run: |
+          uv --directory example-projects/saas run alembic upgrade head
+          uv --directory example-projects/saas run alembic check
+          uv --directory example-projects/saas run alembic downgrade base
+          uv --directory example-projects/saas run alembic upgrade head
+
+      - name: Run migration-backed SaaS rollback tests
+        env:
+          RESTLY_TEST_DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5433/saas_test
         run: uv --directory example-projects/saas run pytest tests/ -q
+
+      - name: Run migration-backed SaaS delete tests
+        env:
+          RESTLY_TEST_DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5433/saas_test
+          RESTLY_DB_CLEANUP: delete
+        run: uv --directory example-projects/saas run pytest tests/ -q
+
+  saas-python-floor:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: saas_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d saas_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.10"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v8.1.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: example-projects/saas/uv.lock
+
+      - name: Run the SaaS example on its Python floor
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/saas_test
+          RESTLY_TEST_DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/saas_test
+        run: |
+          uv --directory example-projects/saas run alembic upgrade head
+          uv --directory example-projects/saas run alembic check
+          uv --directory example-projects/saas run pytest tests/ -q
 
   min-versions:
     runs-on: ubuntu-latest
