@@ -17,7 +17,7 @@ hooks need to support cleanly). The worker is out of scope.
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import JSON, DateTime, orm
+from sqlalchemy import JSON, orm
 
 import fastapi_restly as fr
 
@@ -29,6 +29,4 @@ class OutboxEvent(fr.TimestampsMixin, fr.IDBase):
     aggregate_type: orm.Mapped[str]
     aggregate_id: orm.Mapped[int]
     payload: orm.Mapped[dict[str, Any]] = orm.mapped_column(JSON, default_factory=dict)
-    delivered_at: orm.Mapped[datetime | None] = orm.mapped_column(
-        DateTime(timezone=True), default=None
-    )
+    delivered_at: orm.Mapped[datetime | None] = orm.mapped_column(default=None)

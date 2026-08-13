@@ -15,7 +15,7 @@ The flow needs two flush points with mutation in between.
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, orm
+from sqlalchemy import ForeignKey, orm
 
 import fastapi_restly as fr
 
@@ -28,9 +28,7 @@ class Upload(fr.TimestampsMixin, fr.IDBase):
     uploaded_by_id: orm.Mapped[int | None] = orm.mapped_column(
         ForeignKey("user.id"), default=None
     )
-    completed_at: orm.Mapped[datetime | None] = orm.mapped_column(
-        DateTime(timezone=True), default=None
-    )
+    completed_at: orm.Mapped[datetime | None] = orm.mapped_column(default=None)
     line_count: orm.Mapped[int] = orm.mapped_column(default=0)
 
     lines: orm.Mapped[list["UploadLine"]] = orm.relationship(
