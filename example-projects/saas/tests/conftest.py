@@ -11,7 +11,10 @@ from sqlalchemy import make_url
 # the suite at its PostgreSQL service through SAAS_TEST_DATABASE_URL.
 _raw_test_url = os.environ.get(
     "SAAS_TEST_DATABASE_URL",
-    "postgresql+asyncpg://postgres:postgres@localhost:5433/saas_test",
+    os.environ.get(
+        "RESTLY_TEST_DATABASE_URL",
+        "postgresql+asyncpg://postgres:postgres@localhost:5433/saas_test",
+    ),
 )
 _test_url = make_url(_raw_test_url).set(drivername="postgresql+asyncpg")
 os.environ["DATABASE_URL"] = _test_url.render_as_string(hide_password=False)

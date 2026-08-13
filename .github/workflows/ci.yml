@@ -92,7 +92,7 @@ jobs:
         run: make install-dev
 
       - name: Run framework and example tests
-        run: make test-framework test-typing test-examples
+        run: make test-framework test-typing test-shop test-blog
 
   postgres:
     # Intentionally one supported Python version: the main matrix covers
@@ -193,6 +193,11 @@ jobs:
           --extra testing
           --with asyncpg
           pytest tests/postgres_asyncpg/ -q
+
+      - name: Run migration-backed SaaS example tests
+        env:
+          RESTLY_TEST_DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/restly_test
+        run: uv --directory example-projects/saas run pytest tests/ -q
 
   min-versions:
     runs-on: ubuntu-latest

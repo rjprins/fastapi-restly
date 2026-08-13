@@ -42,7 +42,7 @@ test-blog:
 # Test saas example
 test-saas:
 	@echo "=== Testing SaaS Example ==="
-	cd example-projects/saas && uv run pytest tests/ -v
+	scripts/with_postgres.sh uv --directory example-projects/saas run pytest tests/ -v
 
 # Test the PostgreSQL dialect leg. Runs against RESTLY_TEST_DATABASE_URL when
 # set, otherwise against a throwaway container on the image CI uses.
