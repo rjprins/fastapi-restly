@@ -481,6 +481,60 @@ def test_split_sync_and_async_databases_are_rejected(tmp_path: Path):
             configure_tests()
 
 
+def _location_pair(
+    sync_spec: str, async_spec: str
+) -> tuple[SimpleNamespace, SimpleNamespace]:
+    return (
+        SimpleNamespace(kw={"bind": SimpleNamespace(url=make_url(sync_spec))}),
+        SimpleNamespace(kw={"bind": SimpleNamespace(url=make_url(async_spec))}),
+    )
+
+
+def test_a_database_less_leg_is_judged_by_its_location():
+    """A URL that omits the database still names host, port and user, and a
+    mismatch in any of them proves a split. The user name counts because the
+    server defaults the database from it, so each leg would land in its own."""
+    split_pairs = [
+        # A named database on one leg, none on the other, on different hosts.
+        ("postgresql://u:pw@hosta/app_test", "postgresql+asyncpg://u:pw@hostb"),
+        # Neither leg names a database; the hosts differ.
+        ("postgresql://u:pw@hosta", "postgresql+asyncpg://u:pw@hostb"),
+        # Same host, different ports.
+        ("postgresql://u:pw@host:5432", "postgresql+asyncpg://u:pw@host:5433"),
+        # Same location, different users: each defaults to its own database.
+        ("postgresql://alice:pw@host", "postgresql+asyncpg://bob:pw@host"),
+        # A trailing slash is the same omission; drivers send no database
+        # for either spelling.
+        ("postgresql://alice:pw@host/", "postgresql+asyncpg://bob:pw@host/"),
+    ]
+    for sync_spec, async_spec in split_pairs:
+        with _isolated_config() as context:
+            context.make_session, context.async_make_session = _location_pair(
+                sync_spec, async_spec
+            )
+            with pytest.raises(
+                RestlyConfigurationError, match="host, port or user name"
+            ):
+                configure_tests()
+
+    # A matching location leaves the database names unknowable, so the pair
+    # is accepted; a differing password does not make two databases.
+    accepted_pairs = [
+        ("postgresql://u:pw@host", "postgresql+asyncpg://u:pw@host"),
+        ("postgresql://u:pw@host/app_test", "postgresql+asyncpg://u:pw@host"),
+        ("postgresql://u:one@host", "postgresql+asyncpg://u:two@host"),
+        ("postgresql://u:pw@host/app_test", "postgresql+asyncpg://u:pw@host/"),
+    ]
+    for sync_spec, async_spec in accepted_pairs:
+        with _isolated_config() as context:
+            context.make_session, context.async_make_session = _location_pair(
+                sync_spec, async_spec
+            )
+            configure_tests()
+            # One setup per process; forget it so the next pair records its own.
+            _reset_setup()
+
+
 def test_a_memory_leg_paired_with_a_located_leg_is_rejected(tmp_path: Path):
     """A private in-memory database is provably not the other leg's file or
     server database; only a pair of in-memory legs is accepted, because

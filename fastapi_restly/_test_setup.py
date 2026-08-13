@@ -460,7 +460,24 @@ def _reject_split_databases(setup: _TestSetup, mode: str) -> None:
         same = False
     elif sync_url.get_backend_name() != async_url.get_backend_name():
         same = False
-    elif sync_url.database is None or async_url.database is None:
+    elif not sync_url.database or not async_url.database:
+        # A leg that omits the database name, with or without a trailing
+        # slash, gets one from the server (PostgreSQL defaults it to the user
+        # name), so the names cannot be compared. The locations can, and the
+        # user name counts because it decides the defaulted database.
+        if (sync_url.host, sync_url.port, sync_url.username) != (
+            async_url.host,
+            async_url.port,
+            async_url.username,
+        ):
+            raise RestlyConfigurationError(
+                "The sync and async session factories configured through "
+                "fr.configure() are not the same database. A leg that omits "
+                "the database name gets one from the server, and the legs "
+                "differ in host, port or user name, so they cannot be assumed "
+                "to meet. Name the database on both legs, or match their "
+                "locations."
+            )
         return
     elif sync_url.get_backend_name() == "sqlite":
         # The same file spelled two ways ("./test.db" and "test.db") is one
