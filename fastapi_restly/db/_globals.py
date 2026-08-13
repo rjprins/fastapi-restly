@@ -67,25 +67,6 @@ class RestlyContext:
         _restly_context_ctx.reset(token)
 
 
-#: Fields configure() snapshots onto a per-app context: the application's
-#: session sources and warn flags. Never the test overrides or the lock.
-_APP_SCOPED_FIELDS = (
-    "async_database_url",
-    "async_make_session",
-    "database_url",
-    "make_session",
-    "session_generator",
-    "sync_session_generator",
-    "warn_on_misuse",
-    "warn_on_uncommitted",
-)
-
-
-def _copy_app_scoped_config(source: "RestlyContext", target: "RestlyContext") -> None:
-    for name in _APP_SCOPED_FIELDS:
-        setattr(target, name, getattr(source, name))
-
-
 _default_context = RestlyContext()
 _restly_context_ctx: ContextVar[RestlyContext | None] = ContextVar(
     "fastapi_restly_context", default=None
