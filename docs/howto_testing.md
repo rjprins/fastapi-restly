@@ -30,23 +30,79 @@ pytest_plugins = ["fastapi_restly.pytest_fixtures"]
 ```
 
 The application still owns its database configuration. Make that configuration
-selectable, for example through an environment-backed setting:
+selectable by building the application in a factory: a `create_app()` function
+that receives its settings, configures Restly, and returns the app. Configuring
+inside the factory keeps database setup out of module import, so a test can
+build the application it wants instead of racing to change the environment
+first:
 
 ```python
 # myapp/main.py
 import os
 
 import fastapi_restly as fr
+from fastapi import FastAPI
 
-fr.configure(
-    async_database_url=os.environ.get(
-        "DATABASE_URL", "sqlite+aiosqlite:///./app.db"
+from .views import UserView
+
+
+def create_app(database_url: str | None = None) -> FastAPI:
+    fr.configure(
+        async_database_url=database_url
+        or os.environ.get("DATABASE_URL", "sqlite+aiosqlite:///./app.db")
     )
+    app = FastAPI()
+    fr.include_view(app, UserView)
+    return app
+```
+
+Run it with `uvicorn --factory myapp.main:create_app`. A factory whose
+settings can be built without the environment, as the SQLite fallback above
+allows, may also keep a module-level `app = create_app()` for a plain
+`uvicorn myapp.main:app`. The test suite then builds the application it tests,
+naming the test database explicitly, and hands the result to
+`configure_tests()`:
+
+```python
+# conftest.py
+import fastapi_restly as fr
+from myapp.main import create_app
+from myapp.models import Base
+
+app = create_app("sqlite+aiosqlite:///./test.db")
+
+fr.testing.configure_tests(
+    app=app,
+    base=Base,
+    create_all=True,
 )
 ```
 
-Then select the test value before importing the application, and configure the
-suite from the application configuration already in force:
+Restly's configuration is process-wide and the last `configure()` call wins,
+which is what makes this work: the factory call in `conftest.py` re-points the
+process at the test database before `configure_tests()` freezes it. That holds
+even when importing `myapp.main` already built a module-level default app,
+since the conftest's factory call runs after the import and before the freeze.
+The default app goes unused in tests, and its engine never opens a connection.
+A factory that *requires* its settings, like the PostgreSQL one below, must
+not build an app at import time: keep it on the `--factory` form, or importing
+it in `conftest.py` would again require the environment variable to be set
+before the import, which is exactly the requirement the factory form lifts
+from tests.
+
+The apps a factory builds are therefore not independent. Each call re-points
+the one process-wide configuration, so only the most recently built app should
+serve requests. An app built earlier would read the newer database while still
+owning its original engine. In this suite that is the conftest's app, and the
+module-level default never serves a request. For the same reason the common
+per-test factory fixture (`@pytest.fixture` returning `create_app(...)`) does
+not fit a managed suite: once `configure_tests()` has recorded the
+configuration, every later factory call that configures the database raises
+`RestlyConfigurationError`. Build the app once in `conftest.py`.
+
+An application that instead calls `fr.configure()` at module import time can
+still be tested: select the value before importing it, and note the import
+order that the factory form avoids:
 
 ```python
 # conftest.py
@@ -59,18 +115,19 @@ import fastapi_restly as fr
 from myapp.main import app  # noqa: E402
 from myapp.models import Base  # noqa: E402
 
-fr.testing.configure_tests(
-    app=app,
-    base=Base,
-    create_all=True,
-)
+fr.testing.configure_tests(app=app, base=Base, create_all=True)
 ```
 
-A `.env` file fits this pattern as long as explicit process environment values
-take precedence over file values. Avoid loading dotenv with an “override
-existing variables” option in application code; that makes the test unable to
-select its database before import. If import-time settings are awkward, pass an
-explicit test settings object to an app factory instead.
+A `.env` file is convenient in development. Keep it out of the suite's way.
+When the conftest builds the app through the factory, pass explicit settings
+and disable the settings class's env file (with pydantic-settings:
+`Settings(database_url=..., _env_file=None)`). Explicitly passed values
+already outrank the file, but values the test leaves unset, such as pool
+sizes, would still come from a developer's local `.env`, and the suite would
+behave differently locally than in CI. Under the env-before-import fallback,
+explicit process environment values must take precedence over file values, so
+avoid dotenv's “override existing variables” option. It would override the
+database the test selected.
 
 The `testing` extra installs `pytest-asyncio`. Set its default fixture loop scope
 in `pyproject.toml`, or pytest-asyncio prints a deprecation warning on every run:
@@ -97,40 +154,16 @@ a test also needs direct async database access.
 ### Async-only PostgreSQL
 
 An application configured only with async PostgreSQL can keep its ordinary
-pooled engine in tests; you do not need a test-only `NullPool` engine. Let the
-application own the engine and dispose it when the application shuts down:
+pooled engine in tests. You do not need a test-only `NullPool` engine. Build
+the app with [the production template's factory](#production-main-template),
+whose lifespan owns the engine: it creates the engine from its settings and
+hands it to Restly with `fr.configure(app, async_engine=engine)`.
 
-```python
-# myapp/main.py
-import os
-from contextlib import asynccontextmanager
-
-from fastapi import FastAPI
-from sqlalchemy.ext.asyncio import create_async_engine
-
-import fastapi_restly as fr
-
-engine = create_async_engine(
-    os.environ["DATABASE_URL"],
-    pool_pre_ping=True,
-)
-fr.configure(async_engine=engine)
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    yield
-    await engine.dispose()
-
-
-app = FastAPI(lifespan=lifespan)
-```
-
-Use a production URL such as `postgresql+asyncpg://...` in deployment and set
-the same setting to a disposable PostgreSQL database before importing the app
-in `conftest.py`. Then call `configure_tests()` as shown above. Restly neither
-rebuilds the engine nor changes its pool. The application lifespan still owns
-the dispose call, in production and in tests alike.
+Use a production URL such as `postgresql+asyncpg://...` in deployment, and in
+`conftest.py` pass a disposable PostgreSQL database to the factory. Then call
+`configure_tests()` as shown above. Restly neither rebuilds the engine nor
+changes its pool. The engine belongs to the app the factory built, and that
+app's lifespan owns the dispose call, in production and in tests alike.
 
 ## What you get
 
@@ -141,8 +174,8 @@ your application already configured; it does not create or replace them. If the
 database configuration changes later, during collection or lifespan startup,
 the suite fails instead of letting schema setup, cleanup and requests disagree.
 Selecting a disposable test database remains the application's responsibility.
-An environment variable, an explicit test settings object, or an app factory are
-all good ways to do that.
+An app factory receiving the test database explicitly is the recommended way to
+do that. An environment variable selected before import also works.
 
 **A schema that is already there.** Tables are created once, before the first
 test, either from your models with `create_all=True` or by running your

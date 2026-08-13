@@ -698,13 +698,17 @@ asyncio_default_fixture_loop_scope = "function"
 
 
 def _clean_env(**overrides: str) -> dict[str, str]:
-    """The ambient environment without the variable this feature reads.
+    """The ambient environment without the variables these features read.
 
-    The docs tell developers to export it, so a suite testing the default mode
-    has to say so rather than inherit whatever the shell happens to hold.
+    The docs tell developers to export them, so a suite testing the default
+    modes has to say so rather than inherit whatever the shell happens to
+    hold. DATABASE_URL in particular would otherwise reach the generated
+    projects' ``fr.configure()`` fallbacks and re-point them at an arbitrary
+    ambient database.
     """
     environment = {**os.environ}
     environment.pop(DB_CLEANUP_ENV_VAR, None)
+    environment.pop("DATABASE_URL", None)
     environment.update(overrides)
     return environment
 
@@ -1031,6 +1035,75 @@ def test_a_configured_suite_is_isolated_end_to_end(tmp_path: Path):
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert "4 passed" in result.stdout
+
+
+_FACTORY_APP_MODULE = """
+import os
+
+from sqlalchemy.orm import Mapped, mapped_column
+from fastapi import FastAPI
+import fastapi_restly as fr
+
+
+class Note(fr.IDBase):
+    text: Mapped[str] = mapped_column(unique=True)
+
+
+class NoteSchema(fr.IDSchema):
+    text: str
+
+
+class NoteView(fr.AsyncRestView):
+    prefix = "/notes"
+    model = Note
+    schema = NoteSchema
+
+
+def create_app(database_url: str | None = None) -> FastAPI:
+    fr.configure(
+        async_database_url=database_url
+        or os.environ.get("DATABASE_URL", "sqlite+aiosqlite:///./dev.db")
+    )
+    app = FastAPI()
+    fr.include_view(app, NoteView)
+    return app
+
+
+# The documented module-level default for plain `uvicorn myapp:app`. The test
+# suite's own factory call re-points the database after this import runs.
+app = create_app()
+"""
+
+_FACTORY_CONFTEST = """
+import fastapi_restly as fr
+from myapp import create_app
+
+app = create_app("sqlite+aiosqlite:///./test.db")
+
+fr.testing.configure_tests(
+    app=app,
+    base=fr.DataclassBase,
+    create_all=True,
+)
+"""
+
+
+def test_a_factory_configured_suite_is_isolated_end_to_end(tmp_path: Path):
+    """The documented app-factory pattern requires no environment mutation.
+    The import may build the module-level default app first, because the
+    conftest's factory call re-points the process configuration afterwards,
+    before configure_tests() freezes it. Configuration stays process-wide, so
+    only the most recently built app may serve requests, and the default app
+    never serves any here."""
+    _write_project(tmp_path, _FACTORY_CONFTEST, _TESTS, app_module=_FACTORY_APP_MODULE)
+    result = _run_pytest(tmp_path)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "4 passed" in result.stdout
+    # The suite ran on the test database; the development default was
+    # configured first but never connected, so its file never appeared.
+    assert (tmp_path / "test.db").exists()
+    assert not (tmp_path / "dev.db").exists()
 
 
 def test_the_configured_suite_leaves_the_application_database_alone(tmp_path: Path):

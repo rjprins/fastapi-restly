@@ -4,30 +4,13 @@ from contextlib import contextmanager
 from pathlib import Path
 
 import pytest
+from app.main import create_app
+from app.settings import Settings
+from app.views._base import get_current_org_id, get_current_user_id
 from sqlalchemy import make_url
 
-# Select the dedicated test service before importing the application, because
-# app.database creates the application-owned engine at import time. CI can point
-# the suite at its PostgreSQL service through SAAS_TEST_DATABASE_URL or
-# RESTLY_TEST_DATABASE_URL.
-_raw_test_url = os.environ.get(
-    "SAAS_TEST_DATABASE_URL",
-    os.environ.get(
-        "RESTLY_TEST_DATABASE_URL",
-        "postgresql+asyncpg://postgres:postgres@localhost:5433/saas_test",
-    ),
-)
-_test_url = make_url(_raw_test_url)
-if _test_url.get_backend_name() != "postgresql":
-    raise pytest.UsageError("The SaaS test suite requires a PostgreSQL database URL")
-_test_url = _test_url.set(drivername="postgresql+asyncpg")
-os.environ["DATABASE_URL"] = _test_url.render_as_string(hide_password=False)
-
-from app.main import app  # noqa: E402
-from app.views._base import get_current_org_id, get_current_user_id  # noqa: E402
-
-import fastapi_restly as fr  # noqa: E402
-from fastapi_restly.testing import AsyncRestlyTestClient, RestlyTestClient  # noqa: E402
+import fastapi_restly as fr
+from fastapi_restly.testing import AsyncRestlyTestClient, RestlyTestClient
 
 # The framework under test must live in this checkout, else a leaked VIRTUAL_ENV
 # (e.g. the main framework .venv) silently validates the wrong source in a worktree.
@@ -39,7 +22,31 @@ if _checkout not in _frl.parents:
         f"This example's venv isn't synced to this tree — run `uv sync` here."
     )
 
-# Dog-food the migration-backed setup against the database app.main configured.
+# Select the dedicated test service. The application is built by a factory, so
+# the suite passes the test database explicitly instead of mutating the process
+# environment before an import. CI can point the suite at its PostgreSQL
+# service through SAAS_TEST_DATABASE_URL or RESTLY_TEST_DATABASE_URL.
+_raw_test_url = os.environ.get(
+    "SAAS_TEST_DATABASE_URL",
+    os.environ.get(
+        "RESTLY_TEST_DATABASE_URL",
+        "postgresql+asyncpg://postgres:postgres@localhost:5433/saas_test",
+    ),
+)
+_test_url = make_url(_raw_test_url)
+if _test_url.get_backend_name() != "postgresql":
+    raise pytest.UsageError("The SaaS test suite requires a PostgreSQL database URL")
+_test_url = _test_url.set(drivername="postgresql+asyncpg")
+
+# Disable the local .env so omitted settings such as pool sizes do not vary
+# between local and CI runs.
+app = create_app(
+    Settings(
+        database_url=_test_url.render_as_string(hide_password=False), _env_file=None
+    )
+)
+
+# Dog-food the migration-backed setup against the database the factory received.
 fr.testing.configure_tests(
     app=app,
     base=fr.DataclassBase,

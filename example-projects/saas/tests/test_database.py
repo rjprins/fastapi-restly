@@ -1,8 +1,8 @@
 """Application-owned database engine contract."""
 
-from app import database, main
+import fastapi_restly as fr
 
 
-def test_database_module_owns_the_asyncpg_engine() -> None:
-    assert main.engine is database.engine
-    assert database.engine.url.drivername == "postgresql+asyncpg"
+def test_the_factory_configured_the_asyncpg_engine() -> None:
+    """The engine Restly serves requests with is the factory's asyncpg engine."""
+    assert fr.db.get_async_engine().url.drivername == "postgresql+asyncpg"

@@ -14,8 +14,13 @@ service needs.
 - **Validated settings.** `app/settings.py` requires `DATABASE_URL` and loads
   pool sizes with Pydantic settings, including explicit asyncpg and range
   validation.
-- **Application-owned engine.** `app/database.py` creates the async engine,
-  Restly receives that engine, and the FastAPI lifespan disposes its pool.
+- **Application factory.** `app/main.py` exposes `create_app(settings)`.
+  Settings reading, engine construction, and Restly configuration run only
+  when the factory is called. The test suite calls the same factory with its
+  own database.
+- **Application-owned engine.** `app/database.py` builds the async engine from
+  settings, Restly receives that engine, and the FastAPI lifespan disposes its
+  pool.
 - **Migration-owned schema.** The app never calls `async_create_all()`.
   `alembic/` contains an async environment and the initial schema migration.
 - **Migration-backed fixtures.** Restly runs `alembic upgrade head` against the
@@ -40,9 +45,9 @@ saas/
 │   ├── env.py               # Async Alembic environment
 │   └── versions/            # Initial schema and lookup seed data
 ├── app/
-│   ├── database.py          # Application-owned async engine
+│   ├── database.py          # Application-owned async engine builder
 │   ├── settings.py          # Validated Pydantic settings
-│   ├── main.py              # FastAPI app, Restly wiring, lifespan
+│   ├── main.py              # create_app() factory: Restly wiring, lifespan
 │   ├── models/              # SQLAlchemy models
 │   ├── schemas/             # Explicit Pydantic API schemas
 │   └── views/               # AsyncRestView subclasses and custom routes
@@ -64,7 +69,7 @@ uv sync
 cp .env.example .env
 docker compose up -d --wait db
 uv run alembic upgrade head
-uv run uvicorn app.main:app --reload
+uv run uvicorn --factory app.main:create_app --reload
 ```
 
 The API is available at <http://127.0.0.1:8000> and the interactive OpenAPI
@@ -115,8 +120,10 @@ docker compose up -d --wait test-db
 uv run pytest
 ```
 
-`tests/conftest.py` selects `saas_test` on port 5433, then calls
-`fr.testing.configure_tests(..., alembic_upgrade=True)`. Restly applies the same
+`tests/conftest.py` builds the application under test with
+`create_app(Settings(database_url=...))`, selecting `saas_test` on port 5433,
+then calls `fr.testing.configure_tests(..., alembic_upgrade=True)`. No
+environment variable has to change before an import. Restly applies the same
 migrations used in deployment and wraps each test in rollback isolation. Rows
 seeded by migrations remain available to every test.
 

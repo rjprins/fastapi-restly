@@ -272,7 +272,10 @@ with RestlyTestClient(app) as client:
 
 For test isolation, install the testing extra (`pip install "fastapi-restly[testing]"`);
 pytest then auto-loads Restly's fixtures. Point the suite at a test database in
-`conftest.py`:
+`conftest.py`. Setting the environment variable before the import works because
+this tutorial's single file configures Restly when it is imported. An
+application built by a factory receives its test database explicitly instead,
+as shown in [Test APIs with RestlyTestClient and Fixtures](howto_testing.md):
 
 ```python
 # conftest.py

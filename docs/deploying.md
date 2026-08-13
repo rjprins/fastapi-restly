@@ -19,27 +19,12 @@ class Settings(BaseSettings):
     database_url: str
     db_pool_size: int = 5
     db_max_overflow: int = 10
-
-
-settings = Settings()  # reads DATABASE_URL etc. from the environment
 ```
 
-Pass those values into {func}`fr.configure() <fastapi_restly.db.configure>` via an explicit engine so you can
-set pool options:
-
-```python
-import fastapi_restly as fr
-from sqlalchemy.ext.asyncio import create_async_engine
-
-engine = create_async_engine(
-    settings.database_url,
-    pool_size=settings.db_pool_size,
-    max_overflow=settings.db_max_overflow,
-    pool_pre_ping=True,
-)
-
-fr.configure(async_engine=engine)
-```
+Instantiating `Settings()` reads `DATABASE_URL` and the pool fields from the
+environment. The production template below does that inside `create_app()` and
+passes the values into {func}`fr.configure() <fastapi_restly.db.configure>`
+through an explicit engine, which is what lets you set pool options.
 
 `pool_pre_ping=True` is recommended in production: it issues a lightweight
 liveness check before handing out a pooled connection, which prevents
@@ -101,15 +86,18 @@ Run migrations as part of your release or startup pipeline:
 alembic upgrade head
 ```
 
-If you want tests to exercise the same migration path, add a project-local
-fixture that runs `alembic upgrade head` before the suite. Restly's pytest
-plugin does not run migrations automatically. See
+To have tests exercise the same migration path, pass `alembic_upgrade=True` to
+{func}`fr.testing.configure_tests() <fastapi_restly.testing.configure_tests>`.
+Restly then runs `alembic upgrade head` against the test database before the
+first test. See
 [Test databases and migrations](howto_testing.md#test-databases-and-migrations).
+
+(production-main-template)=
 
 ## A production `main.py` template
 
 With settings and migrations in place, the pieces combine into one small
-application module:
+application factory:
 
 ```python
 from contextlib import asynccontextmanager
@@ -118,39 +106,45 @@ import fastapi_restly as fr
 from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from .settings import settings
+from .settings import Settings
 from .views import UserView
 
 
-engine = create_async_engine(
-    settings.database_url,
-    pool_size=settings.db_pool_size,
-    max_overflow=settings.db_max_overflow,
-    pool_pre_ping=True,
-)
+def create_app(settings: Settings | None = None) -> FastAPI:
+    settings = settings or Settings()
+    engine = create_async_engine(
+        settings.database_url,
+        pool_size=settings.db_pool_size,
+        max_overflow=settings.db_max_overflow,
+        pool_pre_ping=True,
+    )
 
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI):
+        try:
+            yield
+        finally:
+            await engine.dispose()
 
-@asynccontextmanager
-async def lifespan(_app: FastAPI):
-    yield
-    await engine.dispose()
-
-
-app = FastAPI(lifespan=lifespan)
-fr.configure(app, async_engine=engine)
-fr.include_view(app, UserView)
+    app = FastAPI(lifespan=lifespan)
+    fr.configure(app, async_engine=engine)
+    fr.include_view(app, UserView)
+    return app
 ```
 
 Note three details in this template:
 
+- The factory keeps configuration out of module import: settings are read and
+  the engine is built when `create_app()` runs, so a test suite can call the
+  same factory with its own settings. See
+  [Test APIs with RestlyTestClient and Fixtures](howto_testing.md).
 - {func}`fr.configure(app, ...) <fastapi_restly.db.configure>` installs the default exception handlers
   (currently the translator that turns `IntegrityError` into a 409 response;
   see [Database conflicts](howto_error_responses.md#database-conflicts-integrityerror-to-409)).
   Pass `install_default_exception_handlers=False` to opt out.
-- `engine.dispose()` in `lifespan` cleans up the connection pool on
-  shutdown so workers exit promptly.
-- Register views during startup with {func}`fr.include_view(app, ViewClass) <fastapi_restly.views.include_view>`; avoid
-  import-time side effects in larger apps.
+- The engine belongs to the app the factory built: `engine.dispose()` in
+  `lifespan` cleans up the connection pool on shutdown so workers exit
+  promptly.
 
 ## Running the app
 
@@ -160,11 +154,22 @@ Use any production ASGI runner. The most common options are
 See [FastAPI's deployment docs](https://fastapi.tiangolo.com/deployment/)
 for the full picture, including TLS, reverse proxies, and Docker.
 
-A minimal invocation looks like this:
+A minimal invocation runs the factory directly:
 
 ```bash
-uvicorn myapp.main:app --host 0.0.0.0 --port 8000 --workers 4
+uvicorn "myapp.main:create_app" --factory --host 0.0.0.0 --port 8000 --workers 4
 ```
+
+A module-level `app = create_app()` at the bottom of `main.py` restores the
+plain `uvicorn myapp.main:app` form if your platform expects an application
+object. With this template's required settings that makes importing the module
+require `DATABASE_URL`, in every context including a test suite's
+`conftest.py`, so prefer the `--factory` form. Either way, build the
+application once per process. Restly's session configuration is process-wide,
+so a later factory call re-points it for every earlier app as well. The
+earlier app keeps its routes, lifespan, and original engine, but its requests
+read the newly configured database, which is why only the most recently built
+app should serve requests.
 
 Sync {class}`RestView <fastapi_restly.views.RestView>` endpoints run on FastAPI's threadpool, so worker count
 still has the usual effect; async {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` endpoints share the

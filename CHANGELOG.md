@@ -15,6 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The documentation now recommends building applications with a `create_app()`
+  factory: the test suite selects its database by calling the factory with
+  explicit settings instead of mutating `DATABASE_URL` before importing the
+  application, which stays documented as the fallback. The SaaS example
+  follows the pattern. Run it with `uvicorn --factory app.main:create_app`.
 - Custom `RestView` collection routes declared at `"/"` now use the no-slash
   path as their OpenAPI form and keep the trailing-slash path as a hidden
   compatibility alias, matching generated list and create routes.

@@ -10,6 +10,10 @@ This example is a complete showcase of FastAPI-Restly customization patterns:
 - Custom create/update schemas with validation
 - Custom endpoints alongside auto-generated CRUD
 - List-params filtering, sorting, and pagination on every CRUD view
+
+The application is built by a factory. Database setup runs only when
+``create_app()`` is called, so the test suite can build the app against its
+own database. Run it with ``uvicorn --factory app.main:create_app``.
 """
 
 from contextlib import asynccontextmanager
@@ -18,7 +22,8 @@ from fastapi import FastAPI
 
 import fastapi_restly as fr
 
-from .database import engine
+from .database import create_engine_from
+from .settings import Settings
 from .views import (
     CountryView,
     LabelView,
@@ -31,39 +36,41 @@ from .views import (
 )
 
 
-@asynccontextmanager
-async def lifespan(_app: FastAPI):
-    """Dispose the application-owned pool when the process shuts down."""
-    try:
-        yield
-    finally:
-        await engine.dispose()
+def create_app(settings: Settings | None = None) -> FastAPI:
+    """Build the SaaS application from validated settings."""
+    settings = settings or Settings()  # type: ignore[call-arg]
+    engine = create_engine_from(settings)
 
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI):
+        """Dispose the application-owned pool when the process shuts down."""
+        try:
+            yield
+        finally:
+            await engine.dispose()
 
-# Create FastAPI app
-app = FastAPI(
-    title="SaaS Example API",
-    description="Multi-tenant project management API built with FastAPI-Restly",
-    version="0.1.0",
-    lifespan=lifespan,
-)
+    app = FastAPI(
+        title="SaaS Example API",
+        description="Multi-tenant project management API built with FastAPI-Restly",
+        version="0.1.0",
+        lifespan=lifespan,
+    )
 
-# Give Restly the application's engine. Alembic owns all schema changes.
-fr.configure(app, async_engine=engine)
+    # Give Restly the application's engine. Alembic owns all schema changes.
+    fr.configure(app, async_engine=engine)
 
-# Register views
-fr.include_view(app, OrganizationView)
-fr.include_view(app, UserView)
-fr.include_view(app, ProjectView)
-fr.include_view(app, TaskView)
-fr.include_view(app, LabelView)
-fr.include_view(app, TaskLabelView)
-fr.include_view(app, UploadView)
-fr.include_view(app, CountryView)
+    fr.include_view(app, OrganizationView)
+    fr.include_view(app, UserView)
+    fr.include_view(app, ProjectView)
+    fr.include_view(app, TaskView)
+    fr.include_view(app, LabelView)
+    fr.include_view(app, TaskLabelView)
+    fr.include_view(app, UploadView)
+    fr.include_view(app, CountryView)
 
+    @app.get("/health")
+    async def health_check():
+        """Health check endpoint."""
+        return {"status": "ok"}
 
-# Health check endpoint
-@app.get("/health")
-async def health_check():
-    """Health check endpoint."""
-    return {"status": "ok"}
+    return app
