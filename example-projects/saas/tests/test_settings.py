@@ -36,9 +36,7 @@ def test_settings_reject_non_asyncpg_database_urls(database_url: str) -> None:
 def test_settings_reject_invalid_pool_bounds(field: str, value: int) -> None:
     with pytest.raises(ValidationError):
         Settings(
-            database_url=(
-                "postgresql+asyncpg://postgres:postgres@localhost:5432/saas"
-            ),
+            database_url=("postgresql+asyncpg://postgres:postgres@localhost:5432/saas"),
             _env_file=None,
             **{field: value},
         )

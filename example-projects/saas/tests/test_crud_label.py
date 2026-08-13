@@ -8,13 +8,13 @@ class TestLabelCRUD:
         """Test creating a label."""
         # Create org
         response = client.post(
-            "/organizations/", json={"name": "Label Test Org", "slug": "label-test-org"}
+            "/organizations", json={"name": "Label Test Org", "slug": "label-test-org"}
         )
         org_id = response.json()["id"]
 
         # Create label
         response = client.post(
-            "/labels/",
+            "/labels",
             json={"name": "urgent", "color": "#ff0000", "organization_id": org_id},
         )
         label = response.json()
@@ -26,13 +26,13 @@ class TestLabelCRUD:
         """Test adding a label to a task via TaskLabel."""
         # Create org, project, task, and label
         response = client.post(
-            "/organizations/",
+            "/organizations",
             json={"name": "TaskLabel Test Org", "slug": "tasklabel-test-org"},
         )
         org_id = response.json()["id"]
 
         response = client.post(
-            "/users/",
+            "/users",
             json={
                 "email": "labeler@example.com",
                 "name": "Labeler",
@@ -42,17 +42,17 @@ class TestLabelCRUD:
         user_id = response.json()["id"]
 
         response = client.post(
-            "/projects/", json={"name": "Label Project", "organization_id": org_id}
+            "/projects", json={"name": "Label Project", "organization_id": org_id}
         )
         project_id = response.json()["id"]
 
         response = client.post(
-            "/tasks/", json={"title": "Labeled Task", "project_id": project_id}
+            "/tasks", json={"title": "Labeled Task", "project_id": project_id}
         )
         task_id = response.json()["id"]
 
         response = client.post(
-            "/labels/",
+            "/labels",
             json={"name": "bug", "color": "#ff0000", "organization_id": org_id},
         )
         label_id = response.json()["id"]
@@ -61,7 +61,7 @@ class TestLabelCRUD:
         # still validates the referenced rows exist and resolves them to FK
         # values automatically.
         response = client.post(
-            "/task-labels/",
+            "/task-labels",
             json={"task_id": task_id, "label_id": label_id, "added_by_id": user_id},
         )
         task_label = response.json()

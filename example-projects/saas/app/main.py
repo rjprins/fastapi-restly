@@ -12,13 +12,13 @@ This example is a complete showcase of FastAPI-Restly customization patterns:
 - List-params filtering, sorting, and pagination on every CRUD view
 """
 
-import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
 import fastapi_restly as fr
 
+from .database import engine
 from .views import (
     CountryView,
     LabelView,
@@ -30,18 +30,14 @@ from .views import (
     UserView,
 )
 
-# Set up the application database. Tests select another value before importing
-# this module; normal runs keep the local example database.
-fr.configure(
-    async_database_url=os.environ.get("DATABASE_URL", "sqlite+aiosqlite:///saas.db")
-)
-
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    """Create database tables on startup."""
-    await fr.db.async_create_all(fr.DataclassBase)
-    yield
+    """Dispose the application-owned pool when the process shuts down."""
+    try:
+        yield
+    finally:
+        await engine.dispose()
 
 
 # Create FastAPI app
@@ -51,6 +47,9 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+
+# Give Restly the application's engine. Alembic owns all schema changes.
+fr.configure(app, async_engine=engine)
 
 # Register views
 fr.include_view(app, OrganizationView)

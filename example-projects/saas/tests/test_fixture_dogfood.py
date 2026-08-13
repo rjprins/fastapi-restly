@@ -15,11 +15,11 @@ _SHARED_SLUG = "dogfood-isolation-org"
 
 
 def test_isolation_first_claim_of_a_slug(client):
-    client.post("/organizations/", json={"name": "First", "slug": _SHARED_SLUG})
+    client.post("/organizations", json={"name": "First", "slug": _SHARED_SLUG})
 
 
 def test_isolation_slug_is_free_again_in_the_next_test(client):
-    client.post("/organizations/", json={"name": "Second", "slug": _SHARED_SLUG})
+    client.post("/organizations", json={"name": "Second", "slug": _SHARED_SLUG})
 
 
 def test_write_is_visible_to_a_later_request(client):
@@ -27,7 +27,7 @@ def test_write_is_visible_to_a_later_request(client):
     # GET is a separate request and session that must still see the row. Without
     # a shared connection the GET would 404 and fail the default 200 assertion.
     created = client.post(
-        "/organizations/", json={"name": "Visible", "slug": "dogfood-visibility-org"}
+        "/organizations", json={"name": "Visible", "slug": "dogfood-visibility-org"}
     )
     org_id = created.json()["id"]
     fetched = client.get(f"/organizations/{org_id}")

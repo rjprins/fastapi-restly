@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- A production-shaped SaaS example with separate PostgreSQL development and
+  test services, Pydantic settings, an application-owned asyncpg engine, async
+  Alembic migrations, migration-seeded fixtures, and migration-backed tests.
+
 ### Changed
 
 - Custom `RestView` collection routes declared at `"/"` now use the no-slash

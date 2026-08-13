@@ -3,7 +3,7 @@
 from datetime import datetime
 from enum import Enum
 
-from sqlalchemy import ForeignKey, orm
+from sqlalchemy import DateTime, ForeignKey, orm
 
 import fastapi_restly as fr
 
@@ -44,7 +44,9 @@ class User(fr.TimestampsMixin, fr.IDBase):
     # Soft-delete + audit columns picked up by the SoftDeleteMixin and
     # AuditStampedMixin on UserView. Filling them is the mixin's job —
     # neither this model nor the view body needs to know.
-    deleted_at: orm.Mapped[datetime | None] = orm.mapped_column(default=None)
+    deleted_at: orm.Mapped[datetime | None] = orm.mapped_column(
+        DateTime(timezone=True), default=None
+    )
     created_by_id: orm.Mapped[int | None] = orm.mapped_column(
         ForeignKey("user.id"), default=None
     )

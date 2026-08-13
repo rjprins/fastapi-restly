@@ -3,7 +3,7 @@
 from datetime import datetime
 from enum import Enum
 
-from sqlalchemy import ForeignKey, orm
+from sqlalchemy import DateTime, ForeignKey, orm
 
 import fastapi_restly as fr
 
@@ -33,7 +33,9 @@ class Project(fr.TimestampsMixin, fr.IDBase):
     slug: orm.Mapped[str] = orm.mapped_column(default="")
     description: orm.Mapped[str] = orm.mapped_column(default="")
     status: orm.Mapped[ProjectStatus] = orm.mapped_column(default=ProjectStatus.ACTIVE)
-    deleted_at: orm.Mapped[datetime | None] = orm.mapped_column(default=None)
+    deleted_at: orm.Mapped[datetime | None] = orm.mapped_column(
+        DateTime(timezone=True), default=None
+    )
 
     # Denormalized roll-up — kept in sync by TaskView (see use-case in matrix).
     total_story_points: orm.Mapped[int] = orm.mapped_column(default=0)
