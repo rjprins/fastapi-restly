@@ -74,6 +74,11 @@ A few details are worth noting:
   an explicit `__tablename__`, and an explicit primary-key column.
 - If you prefer dataclass-oriented SQLAlchemy models, FastAPI-Restly also provides
   {class}`fr.DataclassBase <fastapi_restly.models.DataclassBase>` and {class}`fr.IDBase <fastapi_restly.models.IDBase>` convenience bases.
+  On those bases, `Mapped[datetime]` represents a UTC instant and maps to
+  `DateTime(timezone=True)`. PostgreSQL enforces that through its column type,
+  while SQLite returns naive datetime values. Declare
+  `mapped_column(DateTime())` explicitly only for a field that intentionally
+  stores a timezone-free wall-clock value.
 - {class}`RestView <fastapi_restly.views.RestView>` and {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` expect a single primary-key column; for
   composite-key tables, see
   [the view hierarchy](class_based_views.md#the-view-hierarchy).

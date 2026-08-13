@@ -74,6 +74,27 @@ import myapp.models  # noqa: F401 (import side-effect: registers model classes)
 target_metadata = fr.DataclassBase.metadata
 ```
 
+Restly's declarative bases map plain `Mapped[datetime]` columns to
+`DateTime(timezone=True)`. On PostgreSQL, upgrading an existing naive timestamp
+column requires an explicit interpretation of the stored values. If they
+represent UTC, use a reviewed migration such as:
+
+```python
+import sqlalchemy as sa
+from alembic import op
+
+op.alter_column(
+    "event",
+    "occurred_at",
+    type_=sa.DateTime(timezone=True),
+    postgresql_using="occurred_at AT TIME ZONE 'UTC'",
+)
+```
+
+A bare type change can reinterpret values in the server's local timezone. Use
+`mapped_column(DateTime())` on the model only when the column intentionally
+stores a timezone-free wall-clock value.
+
 Run migrations as part of your release or startup pipeline:
 
 ```bash

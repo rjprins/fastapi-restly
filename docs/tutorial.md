@@ -59,6 +59,12 @@ Post(title="Hello", content="World", published=False)  # correct
 
 The `id` column is excluded from `__init__` automatically, so you do not pass it.
 
+`IDBase` also maps a plain `Mapped[datetime]` column to
+`DateTime(timezone=True)`. Treat these values as UTC instants. PostgreSQL
+enforces the timezone-aware column type, while SQLite returns naive datetime
+values. For an intentional timezone-free wall-clock field, opt out per column
+with `mapped_column(DateTime())`.
+
 ## Schemas
 
 With the models in place, we can define the Pydantic schemas that shape the

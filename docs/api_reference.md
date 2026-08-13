@@ -127,6 +127,12 @@ These base classes and mixins form the declarative foundation for SQLAlchemy mod
 
 FastAPI-Restly also works with ordinary SQLAlchemy models that inherit from your own `DeclarativeBase`. Use `fr.IDBase` for Restly's dataclass convenience base; bring your own base for standard constructor semantics or existing model layers.
 
+On `DataclassBase` and `IDBase`, a plain `Mapped[datetime]` represents a UTC
+instant and maps to `DateTime(timezone=True)`. PostgreSQL enforces that through
+its `timestamptz` column type. SQLite does not preserve timezone metadata and
+returns naive datetime values. Use `mapped_column(DateTime())` to opt a specific
+wall-clock field out of timezone-aware storage.
+
 `RestView` and `AsyncRestView` assume one scalar resource identifier at `/{id}`. The column can have another name when you provide explicit schemas and `id_type`, but the generated CRUD routes, `IDSchema`, `IDRef`, React Admin, and OpenAPI identity shape all remain scalar-id contracts. For composite keys, use `fr.View` and explicit routes such as `@fr.get("/{tenant_id}/{slug}")`.
 
 ### Schema Classes and Utilities

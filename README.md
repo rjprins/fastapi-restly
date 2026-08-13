@@ -107,6 +107,9 @@ Restly generates the Pydantic schemas automatically.
 The Quickstart uses plain SQLAlchemy on purpose — Restly doesn't hide it. In
 real projects you'll usually inherit `fr.IDBase` for models and `fr.IDSchema`
 for schemas, which supply the `id` for you; both appear in the examples below.
+On Restly's model bases, a plain `Mapped[datetime]` represents a UTC instant
+and maps to `DateTime(timezone=True)`. PostgreSQL enforces that through its
+column type, while SQLite returns naive datetime values.
 
 ### Not just CRUD
 
