@@ -218,7 +218,11 @@ def configure_tests(
         database_url=_fr_globals.database_url,
         async_database_url=_fr_globals.async_database_url,
     )
-    _reject_split_databases(setup, db_cleanup)
+    # Judged at rollback, the permissive mode: the flag or the environment can
+    # still override db_cleanup=, and the collection-time recheck in
+    # _validate_database_sources() judges again at the mode that actually runs.
+    # Raising on the argument here would refuse a run the override makes legal.
+    _reject_split_databases(setup, ROLLBACK)
     _setup = setup
     _fr_globals.database_configuration_locked = True
 

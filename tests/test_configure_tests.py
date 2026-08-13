@@ -494,28 +494,21 @@ def test_a_memory_leg_paired_with_a_located_leg_is_rejected(tmp_path: Path):
             configure_tests()
 
     # Two private memory engines are only unified when rollback serves async
-    # work over the sync leg's pinned connection.
+    # work over the sync leg's pinned connection. configure_tests() itself
+    # accepts them in every mode, because the flag or the environment can still
+    # switch the run to rollback; the collection-time validator judges the mode
+    # that actually runs, whether it came from the argument or an override.
     for mode in (DELETE, NONE):
         with _isolated_config():
             fr.configure(
                 database_url="sqlite:///:memory:",
                 async_database_url="sqlite+aiosqlite:///:memory:",
             )
+            configure_tests(db_cleanup=mode)
             with pytest.raises(RestlyConfigurationError, match="in-memory"):
-                configure_tests(db_cleanup=mode)
-
-    # CLI/environment overrides are resolved after configure_tests(), so the
-    # collection-time validator must recheck the effective mode.
-    with _isolated_config():
-        fr.configure(
-            database_url="sqlite:///:memory:",
-            async_database_url="sqlite+aiosqlite:///:memory:",
-        )
-        configure_tests()
-        setup = _current_setup()
-        for mode in (DELETE, NONE):
-            with pytest.raises(RestlyConfigurationError, match="in-memory"):
-                _validate_database_sources(setup, mode)  # type: ignore[arg-type]
+                _validate_database_sources(_current_setup(), mode)  # type: ignore[arg-type]
+            # One setup per process; forget it so the next mode can record its own.
+            _reset_setup()
 
 
 def test_equivalent_sqlite_spellings_are_one_database(tmp_path: Path):
@@ -631,7 +624,12 @@ def _clean_env(**overrides: str) -> dict[str, str]:
     return environment
 
 
-def _run_pytest(project: Path, quiet: bool = True) -> subprocess.CompletedProcess[str]:
+def _run_pytest(
+    project: Path,
+    quiet: bool = True,
+    extra_args: tuple[str, ...] = (),
+    env: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [
             sys.executable,
@@ -641,6 +639,7 @@ def _run_pytest(project: Path, quiet: bool = True) -> subprocess.CompletedProces
             *(["-q"] if quiet else []),
             "-p",
             "no:cacheprovider",
+            *extra_args,
             "-c",
             str(project / "pyproject.toml"),
             "--rootdir",
@@ -649,7 +648,7 @@ def _run_pytest(project: Path, quiet: bool = True) -> subprocess.CompletedProces
         capture_output=True,
         text=True,
         cwd=project,
-        env=_clean_env(),
+        env=env if env is not None else _clean_env(),
     )
 
 
@@ -764,6 +763,120 @@ def test_the_flag_switches_a_rollback_suite_to_delete(tmp_path: Path):
             assert connection.execute(text("select count(*) from note")).scalar() == 1
     finally:
         engine.dispose()
+
+
+_TWO_MEMORY_APP = """
+from sqlalchemy.orm import Mapped, mapped_column
+from fastapi import FastAPI
+import fastapi_restly as fr
+
+# Two private in-memory legs: legal under rollback, split under delete/none.
+fr.configure(
+    database_url="sqlite://",
+    async_database_url="sqlite+aiosqlite://",
+)
+
+app = FastAPI()
+
+
+class Note(fr.IDBase):
+    text: Mapped[str] = mapped_column(unique=True)
+
+
+class NoteSchema(fr.IDSchema):
+    text: str
+
+
+@fr.include_view(app)
+class NoteView(fr.AsyncRestView):
+    prefix = "/notes"
+    model = Note
+    schema = NoteSchema
+"""
+
+_TWO_MEMORY_DELETE_CONFTEST = """
+import fastapi_restly as fr
+from myapp import app
+
+fr.testing.configure_tests(
+    app=app,
+    base=fr.DataclassBase,
+    create_all=True,
+    db_cleanup="delete",
+)
+"""
+
+_TWO_MEMORY_ROLLBACK_CONFTEST = """
+import fastapi_restly as fr
+from myapp import app
+
+fr.testing.configure_tests(
+    app=app,
+    base=fr.DataclassBase,
+    create_all=True,
+)
+"""
+
+_TWO_MEMORY_TESTS = """
+async def test_rollback_bridges_the_two_memory_legs(restly_async_client):
+    created = await restly_async_client.post("/notes/", json={"text": "bridged"})
+    listed = await restly_async_client.get("/notes/")
+    assert [row["id"] for row in listed.json()["data"]] == [created.json()["id"]]
+"""
+
+
+def test_the_override_rescues_a_two_memory_suite_configured_delete(tmp_path: Path):
+    """configure_tests() must not judge the two-memory pairing at the argument
+    mode: the flag and the environment are resolved after conftest import, and
+    either can switch the run to rollback, where the pairing is legal."""
+    _write_project(
+        tmp_path, _TWO_MEMORY_DELETE_CONFTEST, _TWO_MEMORY_TESTS, _TWO_MEMORY_APP
+    )
+
+    flag_run = _run_pytest(tmp_path, extra_args=("--restly-db-cleanup=rollback",))
+    assert flag_run.returncode == 0, flag_run.stdout + flag_run.stderr
+    # "1 passed", not just exit 0: a skipped async test would also exit 0.
+    assert "1 passed" in flag_run.stdout
+
+    env_run = _run_pytest(tmp_path, env=_clean_env(**{DB_CLEANUP_ENV_VAR: "rollback"}))
+    assert env_run.returncode == 0, env_run.stdout + env_run.stderr
+    assert "1 passed" in env_run.stdout
+
+
+def test_a_two_memory_suite_configured_delete_is_refused_at_collection(tmp_path: Path):
+    """Without an override the argument mode runs, and the refusal surfaces as
+    pytest's clean usage error, not a conftest import failure."""
+    _write_project(
+        tmp_path, _TWO_MEMORY_DELETE_CONFTEST, _TWO_MEMORY_TESTS, _TWO_MEMORY_APP
+    )
+    result = _run_pytest(tmp_path)
+
+    output = result.stdout + result.stderr
+    assert result.returncode != 0
+    assert "two separate in-memory SQLite databases" in output
+    assert "ImportError" not in output
+    assert "INTERNALERROR" not in output
+    assert "no tests ran" in output
+
+
+def test_the_environment_refuses_a_two_memory_rollback_suite_switched_to_delete(
+    tmp_path: Path,
+):
+    """The recheck judges the effective mode, not the recorded argument."""
+    _write_project(
+        tmp_path, _TWO_MEMORY_ROLLBACK_CONFTEST, _TWO_MEMORY_TESTS, _TWO_MEMORY_APP
+    )
+
+    accepted = _run_pytest(tmp_path)
+    assert accepted.returncode == 0, accepted.stdout + accepted.stderr
+    assert "1 passed" in accepted.stdout
+
+    refused = _run_pytest(tmp_path, env=_clean_env(**{DB_CLEANUP_ENV_VAR: "delete"}))
+    output = refused.stdout + refused.stderr
+    assert refused.returncode != 0
+    assert "two separate in-memory SQLite databases" in output
+    assert "INTERNALERROR" not in output
+    assert "no tests ran" in output
 
 
 _NONE_CONFTEST = """
