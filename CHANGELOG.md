@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- App-scoped configuration: `fr.configure(app, ...)` now also stores the
+  configured session sources and warn flags on the app, and requests resolve
+  the app's own configuration first. Two apps in one process no longer
+  overwrite each other; the process-wide configuration remains the default
+  for scripts, `fr.open_session()`, and apps configured without `app`.
+
+### Changed
+
+- An app configured via `fr.configure(app, ...)` keeps serving requests from
+  that configuration even if a later app-less `fr.configure(...)` re-points
+  the process-wide default. Reconfigure such an app by passing it to
+  `fr.configure(app, ...)` again.
+
 ## [0.9.0] - 2026-08-13
 
 ### Added
