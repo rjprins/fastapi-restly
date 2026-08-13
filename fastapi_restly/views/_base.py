@@ -1733,9 +1733,7 @@ def _add_api_route(
     api_router.add_api_route(path, endpoint, **route_kwargs)
 
 
-def _should_add_collection_route_alias(
-    view_cls: type[View], path: str
-) -> bool:
+def _should_add_collection_route_alias(view_cls: type[View], path: str) -> bool:
     return issubclass(view_cls, BaseRestView) and path == "/"
 
 

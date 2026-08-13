@@ -67,8 +67,7 @@ class TestReportingEndpoints:
         org_id = response.json()["id"]
 
         response = client.post(
-            "/projects",
-            json={"name": "Empty Stats Project", "organization_id": org_id},
+            "/projects", json={"name": "Empty Stats Project", "organization_id": org_id}
         )
         project_id = response.json()["id"]
 
@@ -93,8 +92,7 @@ class TestConditionalValidation:
         org_id = response.json()["id"]
 
         response = client.post(
-            "/projects",
-            json={"name": "Conditional Project", "organization_id": org_id},
+            "/projects", json={"name": "Conditional Project", "organization_id": org_id}
         )
         project_id = response.json()["id"]
 
@@ -185,8 +183,7 @@ class TestConditionalValidation:
         org_id = response.json()["id"]
 
         response = client.post(
-            "/projects",
-            json={"name": "Task No Sev Project", "organization_id": org_id},
+            "/projects", json={"name": "Task No Sev Project", "organization_id": org_id}
         )
         project_id = response.json()["id"]
 
@@ -407,8 +404,7 @@ class TestDifferentSchemasPerOperation:
         """Test that schema_update ignores slug changes (not in schema)."""
         # Create org
         response = client.post(
-            "/organizations",
-            json={"name": "Slug Update Test", "slug": "original-slug"},
+            "/organizations", json={"name": "Slug Update Test", "slug": "original-slug"}
         )
         org_id = response.json()["id"]
 

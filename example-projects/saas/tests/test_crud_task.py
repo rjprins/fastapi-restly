@@ -168,8 +168,7 @@ class TestTaskCRUD:
         org_id = response.json()["id"]
 
         response = client.post(
-            "/projects",
-            json={"name": "Get Subtask Project", "organization_id": org_id},
+            "/projects", json={"name": "Get Subtask Project", "organization_id": org_id}
         )
         project_id = response.json()["id"]
 
@@ -273,8 +272,7 @@ class TestPolymorphicTasks:
         org_id = response.json()["id"]
 
         response = client.post(
-            "/projects",
-            json={"name": "Type Filter Project", "organization_id": org_id},
+            "/projects", json={"name": "Type Filter Project", "organization_id": org_id}
         )
         project_id = response.json()["id"]
 
@@ -353,8 +351,7 @@ class TestBulkOperations:
         org_id = response.json()["id"]
 
         response = client.post(
-            "/projects",
-            json={"name": "Bulk Delete Project", "organization_id": org_id},
+            "/projects", json={"name": "Bulk Delete Project", "organization_id": org_id}
         )
         project_id = response.json()["id"]
 
