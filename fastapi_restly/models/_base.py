@@ -84,10 +84,14 @@ class DataclassBase(
     """
 
     type_annotation_map = {
+        # Datetimes represent UTC instants by default. PostgreSQL enforces this
+        # with TIMESTAMP WITH TIME ZONE. Use mapped_column(DateTime()) to opt a
+        # specific column into naive wall-clock semantics.
+        datetime: DateTime(timezone=True),
         # native_enum=False so enums are persisted as strings in the
         # database, not as Postgres TYPE objects. This prevents
         # requiring database migrations for every enum change.
-        enum.Enum: Enum(enum.Enum, native_enum=False, length=64)
+        enum.Enum: Enum(enum.Enum, native_enum=False, length=64),
     }
 
 

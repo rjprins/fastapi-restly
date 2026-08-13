@@ -1,11 +1,12 @@
 """Regression tests for view/query and timestamp behavior."""
 
-from datetime import timezone
+from datetime import datetime, timezone
 from types import SimpleNamespace
 
 import pytest
 from pydantic import BaseModel
-from sqlalchemy.orm import Mapped
+from sqlalchemy import DateTime
+from sqlalchemy.orm import Mapped, mapped_column
 
 import fastapi_restly as fr
 from fastapi_restly.models._base import utc_now
@@ -93,6 +94,17 @@ def test_timestamp_mixin_maps_timezone_aware_columns():
 
     assert TimestampedRecord.__table__.c.created_at.type.timezone is True
     assert TimestampedRecord.__table__.c.updated_at.type.timezone is True
+
+
+def test_datetime_annotations_are_timezone_aware_by_default_with_naive_opt_out():
+    class DefaultTimestampRecord(fr.IDBase):
+        occurred_at: Mapped[datetime]
+
+    class NaiveTimestampRecord(fr.IDBase):
+        occurred_at: Mapped[datetime] = mapped_column(DateTime())
+
+    assert DefaultTimestampRecord.__table__.c.occurred_at.type.timezone is True
+    assert NaiveTimestampRecord.__table__.c.occurred_at.type.timezone is False
 
 
 @pytest.mark.parametrize(
