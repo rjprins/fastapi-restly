@@ -4,7 +4,6 @@ from inspect import signature
 from typing import Annotated, Any, cast
 
 from fastapi import Depends, FastAPI
-from fastapi.requests import HTTPConnection
 from sqlalchemy import Connection, Engine, MetaData, create_engine, event
 from sqlalchemy.ext.asyncio import (
     AsyncConnection,
@@ -18,13 +17,7 @@ from sqlalchemy.orm import Session as SA_Session
 
 from .._exception_handlers import register_default_exception_handlers
 from ..exc import RestlyConfigurationError, RestlyUncommittedChangesWarning
-from ._globals import (
-    RestlyContext,
-    _copy_app_scoped_config,
-    _fr_globals,
-    _get_restly_context,
-    _restly_context_ctx,
-)
+from ._globals import _fr_globals
 
 
 def _setup_async_database_connection(
@@ -199,53 +192,8 @@ def configure(
         _fr_globals.session_generator = session_generator
     if sync_session_generator is not None:
         _fr_globals.sync_session_generator = sync_session_generator
-    if app is not None and (
-        configures_database
-        or warn_on_misuse is not None
-        or warn_on_uncommitted is not None
-    ):
-        # Snapshot the effective sources and warn flags onto the app, so
-        # requests to this app keep resolving them even if the process
-        # default is later re-pointed (a second app, a second factory call).
-        # Same sessionmaker objects; nothing is rebuilt.
-        app_context = getattr(app.state, "_fr_context", None)
-        if app_context is None:
-            app_context = RestlyContext()
-            app.state._fr_context = app_context
-        _copy_app_scoped_config(_get_restly_context(), app_context)
     if app is not None and install_default_exception_handlers:
         register_default_exception_handlers(app)
-
-
-def _resolve_source_context(
-    conn: HTTPConnection | None, *, sync: bool
-) -> RestlyContext:
-    """The context whose session sources this request should use.
-
-    A test override on the current context always wins; the fixtures install
-    it there. An app configured via ``configure(app, ...)`` supplies its own
-    sources, but only when no context has been entered explicitly: an entered
-    context is a deliberately more specific scope (framework tests, the
-    pooled-async test wrapper) and must stay authoritative. Everything else
-    resolves the current context, as before app-scoping existed.
-    """
-    current = _get_restly_context()
-    if sync:
-        if current.test_make_session is not None:
-            return current
-    elif current.test_async_make_session is not None:
-        return current
-    if conn is not None and _restly_context_ctx.get() is None:
-        # conn.app would KeyError under a bare ASGI harness; go via the scope.
-        state = getattr(conn.scope.get("app"), "state", None)
-        app_context = getattr(state, "_fr_context", None)
-        if app_context is not None:
-            if sync:
-                if app_context.sync_session_generator or app_context.make_session:
-                    return app_context
-            elif app_context.session_generator or app_context.async_make_session:
-                return app_context
-    return current
 
 
 def _active_make_session():
@@ -340,12 +288,12 @@ async def async_create_all(base_or_metadata: type[DeclarativeBase] | MetaData) -
             await conn.run_sync(metadata.create_all)
 
 
-def _should_warn_uncommitted(context: RestlyContext | None = None) -> bool:
+def _should_warn_uncommitted() -> bool:
     """The uncommitted-changes check applies whenever ``warn_on_uncommitted`` is
     on. Restly owns the commit, so changes still pending when a request ends are
     the tell of a custom write route that never committed.
     """
-    return (context or _get_restly_context()).warn_on_uncommitted
+    return _fr_globals.warn_on_uncommitted
 
 
 def _mark_uncommitted(session: SA_Session, flush_context: Any = None) -> None:
@@ -356,14 +304,12 @@ def _clear_uncommitted(session: SA_Session, *args: Any) -> None:
     session.info.pop("_fr_uncommitted", None)
 
 
-def _arm_uncommitted_warning(
-    session: SA_AsyncSession | SA_Session, context: RestlyContext | None = None
-) -> None:
+def _arm_uncommitted_warning(session: SA_AsyncSession | SA_Session) -> None:
     """Register flush/commit/rollback listeners so an uncommitted flush at the
     end of a request can be detected. Async sessions delegate to a sync
     ``Session``; that is where ORM events fire (and whose ``info`` is shared).
     """
-    if not _should_warn_uncommitted(context):
+    if not _should_warn_uncommitted():
         return
     target = getattr(session, "sync_session", session)
     try:
@@ -376,15 +322,13 @@ def _arm_uncommitted_warning(
         pass
 
 
-def _warn_if_uncommitted(
-    session: SA_AsyncSession | SA_Session, context: RestlyContext | None = None
-) -> None:
+def _warn_if_uncommitted(session: SA_AsyncSession | SA_Session) -> None:
     """Warn if the request is ending with changes that were flushed but never
     committed (the ``_fr_uncommitted`` flag), or added but never flushed
     (``new``/``dirty``/``deleted``) -- all about to be rolled back. Called only
     on the success path; an endpoint that raised never reaches this point.
     """
-    if not _should_warn_uncommitted(context):
+    if not _should_warn_uncommitted():
         return
     target = getattr(session, "sync_session", session)
     try:
@@ -412,24 +356,21 @@ def _warn_if_uncommitted(
         )
 
 
-async def _async_generate_session(
-    conn: HTTPConnection = None,  # type: ignore[assignment]
-) -> AsyncIterator[SA_AsyncSession]:
+async def _async_generate_session() -> AsyncIterator[SA_AsyncSession]:
     """FastAPI dependency for async database session."""
-    ctx = _resolve_source_context(conn, sync=False)
-    if ctx.test_async_make_session is not None:
-        async with ctx.test_async_make_session() as session:
-            _arm_uncommitted_warning(session, ctx)
+    if _fr_globals.test_async_make_session is not None:
+        async with _fr_globals.test_async_make_session() as session:
+            _arm_uncommitted_warning(session)
             yield session
-            _warn_if_uncommitted(session, ctx)
+            _warn_if_uncommitted(session)
         return
-    if ctx.session_generator is not None:
-        async for session in ctx.session_generator():
-            _arm_uncommitted_warning(session, ctx)
+    if _fr_globals.session_generator is not None:
+        async for session in _fr_globals.session_generator():
+            _arm_uncommitted_warning(session)
             yield session
-            _warn_if_uncommitted(session, ctx)
+            _warn_if_uncommitted(session)
         return
-    if ctx.async_make_session is None:
+    if _fr_globals.async_make_session is None:
         raise RestlyConfigurationError(
             "Call fr.configure() before using AsyncSessionDep."
         )
@@ -440,10 +381,10 @@ async def _async_generate_session(
     # dependency only manages the session lifecycle: the context manager rolls
     # back and closes on the way out, and any change a custom route flushed but
     # never committed is discarded (and warned about).
-    async with ctx.async_make_session() as session:
-        _arm_uncommitted_warning(session, ctx)
+    async with _fr_globals.async_make_session() as session:
+        _arm_uncommitted_warning(session)
         yield session
-        _warn_if_uncommitted(session, ctx)
+        _warn_if_uncommitted(session)
 
 
 def _session_dependency(dependency: Callable[..., Any]) -> Any:
@@ -458,32 +399,29 @@ AsyncSessionDep = Annotated[
 ]
 
 
-def _generate_session(
-    conn: HTTPConnection = None,  # type: ignore[assignment]
-) -> Iterator[SA_Session]:
+def _generate_session() -> Iterator[SA_Session]:
     """FastAPI dependency for sync database session."""
     # A test's session source wins over everything, including a generator and
     # anything reconfigured after the test started.
-    ctx = _resolve_source_context(conn, sync=True)
-    if ctx.test_make_session is not None:
-        with ctx.test_make_session() as session:
-            _arm_uncommitted_warning(session, ctx)
+    if _fr_globals.test_make_session is not None:
+        with _fr_globals.test_make_session() as session:
+            _arm_uncommitted_warning(session)
             yield session
-            _warn_if_uncommitted(session, ctx)
+            _warn_if_uncommitted(session)
         return
-    if ctx.sync_session_generator is not None:
-        for session in ctx.sync_session_generator():
-            _arm_uncommitted_warning(session, ctx)
+    if _fr_globals.sync_session_generator is not None:
+        for session in _fr_globals.sync_session_generator():
+            _arm_uncommitted_warning(session)
             yield session
-            _warn_if_uncommitted(session, ctx)
+            _warn_if_uncommitted(session)
         return
-    if ctx.make_session is None:
+    if _fr_globals.make_session is None:
         raise RestlyConfigurationError("Call fr.configure() before using SessionDep.")
 
-    with ctx.make_session() as session:
-        _arm_uncommitted_warning(session, ctx)
+    with _fr_globals.make_session() as session:
+        _arm_uncommitted_warning(session)
         yield session
-        _warn_if_uncommitted(session, ctx)
+        _warn_if_uncommitted(session)
 
 
 SessionDep = Annotated[SA_Session, _session_dependency(_generate_session)]
