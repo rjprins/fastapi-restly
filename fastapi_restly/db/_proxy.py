@@ -12,14 +12,11 @@ from ._globals import _fr_globals
 async def open_async_session() -> AsyncGenerator[SA_AsyncSession]:
     """Open an async database session for use outside of request context.
 
-    Resolves the process-wide configuration: a custom ``session_generator``
-    passed to :func:`fastapi_restly.configure` if one is configured, otherwise
-    the built-in async session factory. It does not resolve app-scoped
-    configuration -- in a process serving several configured apps it answers
-    from the last ``configure()`` call, where ``AsyncSessionDep`` answers from
-    the app the request reached. (The request-only uncommitted-changes check is
-    not armed here -- off-HTTP code owns its commit, exactly as a custom write
-    route does.)
+    Resolves the same source as ``AsyncSessionDep``: a custom
+    ``session_generator`` passed to :func:`fastapi_restly.configure` if one is
+    configured, otherwise the built-in async session factory. (The request-only
+    uncommitted-changes check is not armed here -- off-HTTP code owns its commit,
+    exactly as a custom write route does.)
 
     In a managed test this yields a session from the test's isolated factory,
     even when no public session or client fixture is requested.
@@ -50,14 +47,11 @@ async def open_async_session() -> AsyncGenerator[SA_AsyncSession]:
 def open_session() -> Generator[SA_Session]:
     """Open a sync database session for use outside of request context.
 
-    Resolves the process-wide configuration: a custom ``sync_session_generator``
-    passed to :func:`fastapi_restly.configure` if one is configured, otherwise
-    the built-in sync session factory. It does not resolve app-scoped
-    configuration -- in a process serving several configured apps it answers
-    from the last ``configure()`` call, where ``SessionDep`` answers from the
-    app the request reached. (The request-only uncommitted-changes check is not
-    armed here -- off-HTTP code owns its commit, exactly as a custom write
-    route does.)
+    Resolves the same source as ``SessionDep``: a custom
+    ``sync_session_generator`` passed to :func:`fastapi_restly.configure` if one
+    is configured, otherwise the built-in sync session factory. (The request-only
+    uncommitted-changes check is not armed here -- off-HTTP code owns its commit,
+    exactly as a custom write route does.)
 
     In a managed test this yields a session from the test's isolated factory,
     even when no public session or client fixture is requested.

@@ -20,34 +20,11 @@ from .._exception_handlers import register_default_exception_handlers
 from ..exc import RestlyConfigurationError, RestlyUncommittedChangesWarning
 from ._globals import (
     RestlyContext,
+    _copy_app_scoped_config,
     _fr_globals,
     _get_restly_context,
     _restly_context_ctx,
 )
-
-#: Request-scope key carrying the nearest configured app's RestlyContext.
-_SCOPE_KEY = "fastapi_restly.context"
-
-
-class _AppContextScopeMiddleware:
-    """Stamp the owning app's context into every request scope.
-
-    Starlette re-stamps ``scope["app"]`` with the innermost app on the way into
-    a mounted sub-application, so ``app.state`` alone cannot answer "which
-    configured app does this request belong to". The stamp can: every
-    configured app writes it on the way in, innermost last, so a request is
-    served by the nearest enclosing configured app and an unconfigured mounted
-    sub-app inherits its parent's configuration.
-    """
-
-    def __init__(self, app: Any, *, context: RestlyContext) -> None:
-        self.app = app
-        self._context = context
-
-    async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
-        if scope["type"] in ("http", "websocket"):
-            scope[_SCOPE_KEY] = self._context
-        await self.app(scope, receive, send)
 
 
 def _setup_async_database_connection(
@@ -149,10 +126,9 @@ def configure(
     source, built-in or custom. A route that intentionally leaves a flush
     uncommitted (a validate-then-rollback dry run) should suppress the warning
     for just that request with ``session.info["_fr_suppress_uncommitted"] =
-    True``. ``warn_on_uncommitted=False`` turns the check off for the
-    configuration being written -- process-wide, or just for ``app`` when one
-    is passed; that is rarely the right response to the warning -- prefer
-    fixing the missing commit or the per-route suppression.
+    True``. ``warn_on_uncommitted=False`` turns the check off globally; that is
+    rarely the right response to the warning -- prefer fixing the missing
+    commit or the per-route suppression.
 
     Pass ``warn_on_misuse=True`` to enable opt-in registration-time misuse
     warnings (:class:`RestlyMisuseWarning`): when a view class is registered
@@ -169,22 +145,6 @@ def configure(
     ``install_default_exception_handlers=False`` to opt out. If you do not
     pass ``app`` here, the handlers are registered the first time a view is
     mounted via :func:`fastapi_restly.include_view` instead.
-
-    Passing ``app`` together with any other setting also **scopes that
-    setting to the app**: the app keeps its own copy of exactly what each
-    ``configure(app, ...)`` call set, its requests are served from that copy,
-    and a later ``configure(...)`` without ``app`` does not re-point it. Two
-    apps in one process can therefore hold different databases. An app that
-    carries its own session sources never borrows a source kind it was not
-    configured with; a request needing the missing kind raises this error
-    instead of reading another app's database. Requests to a mounted
-    sub-application resolve the nearest enclosing configured app, so mount
-    targets need no configuration of their own unless they should differ.
-    App-scoped configuration is carried by a middleware, so ``configure(app,
-    ...)`` must run before the app handles its first request. Configuration
-    without ``app`` remains process-wide and keeps serving everything else:
-    apps never passed to ``configure()``, scripts, and the ``fr.db`` helpers
-    (which also accept ``app=`` where the distinction matters).
     """
     configures_database = any(
         (
@@ -217,13 +177,10 @@ def configure(
     ):
         raise TypeError("fr.configure() requires at least one setup argument.")
 
-    # Warn flags passed together with ``app`` are app-scoped (merged into the
-    # app context below); without ``app`` they set the process-wide flags.
-    if app is None:
-        if warn_on_misuse is not None:
-            _fr_globals.warn_on_misuse = warn_on_misuse
-        if warn_on_uncommitted is not None:
-            _fr_globals.warn_on_uncommitted = warn_on_uncommitted
+    if warn_on_misuse is not None:
+        _fr_globals.warn_on_misuse = warn_on_misuse
+    if warn_on_uncommitted is not None:
+        _fr_globals.warn_on_uncommitted = warn_on_uncommitted
     if (
         async_database_url is not None
         or async_engine is not None
@@ -247,167 +204,80 @@ def configure(
         or warn_on_misuse is not None
         or warn_on_uncommitted is not None
     ):
-        _configure_app_context(
-            app,
-            configured_async=async_database_url is not None
-            or async_engine is not None
-            or async_make_session is not None,
-            configured_sync=database_url is not None
-            or engine is not None
-            or make_session is not None,
-            session_generator=session_generator,
-            sync_session_generator=sync_session_generator,
-            warn_on_misuse=warn_on_misuse,
-            warn_on_uncommitted=warn_on_uncommitted,
-        )
+        # Snapshot the effective sources and warn flags onto the app, so
+        # requests to this app keep resolving them even if the process
+        # default is later re-pointed (a second app, a second factory call).
+        # Same sessionmaker objects; nothing is rebuilt.
+        app_context = getattr(app.state, "_fr_context", None)
+        if app_context is None:
+            app_context = RestlyContext()
+            app.state._fr_context = app_context
+        _copy_app_scoped_config(_get_restly_context(), app_context)
     if app is not None and install_default_exception_handlers:
         register_default_exception_handlers(app)
 
 
-def _configure_app_context(
-    app: FastAPI,
-    *,
-    configured_async: bool,
-    configured_sync: bool,
-    session_generator: Callable[[], AsyncIterator[SA_AsyncSession]] | None,
-    sync_session_generator: Callable[[], Iterator[SA_Session]] | None,
-    warn_on_misuse: bool | None,
-    warn_on_uncommitted: bool | None,
-) -> None:
-    """Merge exactly what this configure() call set onto the app's own context.
-
-    Only this call's arguments travel; sources the process context happens to
-    hold for other apps are never inherited. The warn flags are seeded from
-    the current context when the app context is first created, and follow
-    explicit per-app settings from then on. The current context was just
-    written by configure(), so reading the freshly configured fields back from
-    it reuses the exact factory objects; nothing is rebuilt.
-    """
-    current = _get_restly_context()
-    app_context = getattr(app.state, "_fr_context", None)
-    if app_context is None:
-        if app.middleware_stack is not None:
-            raise RestlyConfigurationError(
-                "fr.configure(app, ...) must run before the application "
-                "handles its first request: app-scoped configuration is "
-                "carried by a middleware, and the app has already built its "
-                "middleware stack."
-            )
-        app_context = RestlyContext()
-        app_context.warn_on_misuse = current.warn_on_misuse
-        app_context.warn_on_uncommitted = current.warn_on_uncommitted
-        app.add_middleware(_AppContextScopeMiddleware, context=app_context)
-        app.state._fr_context = app_context
-    if configured_async:
-        app_context.async_database_url = current.async_database_url
-        app_context.async_make_session = current.async_make_session
-    if configured_sync:
-        app_context.database_url = current.database_url
-        app_context.make_session = current.make_session
-    if session_generator is not None:
-        app_context.session_generator = session_generator
-    if sync_session_generator is not None:
-        app_context.sync_session_generator = sync_session_generator
-    if warn_on_misuse is not None:
-        app_context.warn_on_misuse = warn_on_misuse
-    if warn_on_uncommitted is not None:
-        app_context.warn_on_uncommitted = warn_on_uncommitted
-
-
-def _resolve_contexts(
+def _resolve_source_context(
     conn: HTTPConnection | None, *, sync: bool
-) -> tuple[RestlyContext, RestlyContext]:
-    """The ``(sources, flags)`` contexts a request should use.
+) -> RestlyContext:
+    """The context whose session sources this request should use.
 
     A test override on the current context always wins; the fixtures install
-    it there. So does an explicitly entered ``RestlyContext``: it is a
-    deliberately more specific scope (framework tests, the pooled-async test
-    wrapper) and stays authoritative. Otherwise a request that reached a
-    configured app resolves that app's context: its warn flags always, and its
-    session sources whenever it carries any. Serving a session kind the app
-    was never configured for raises instead of borrowing whatever the process
-    default currently holds, which in a multi-app process is another app's
-    database. Everything else resolves the current context, as before
-    app-scoping existed.
+    it there. An app configured via ``configure(app, ...)`` supplies its own
+    sources, but only when no context has been entered explicitly: an entered
+    context is a deliberately more specific scope (framework tests, the
+    pooled-async test wrapper) and must stay authoritative. Everything else
+    resolves the current context, as before app-scoping existed.
     """
     current = _get_restly_context()
     if sync:
         if current.test_make_session is not None:
-            return current, current
+            return current
     elif current.test_async_make_session is not None:
-        return current, current
-    if conn is None or _restly_context_ctx.get() is not None:
-        return current, current
-    app_context = conn.scope.get(_SCOPE_KEY)
-    if app_context is None:
-        return current, current
-    has_sync_source = (
-        app_context.sync_session_generator is not None
-        or app_context.make_session is not None
-    )
-    has_async_source = (
-        app_context.session_generator is not None
-        or app_context.async_make_session is not None
-    )
-    if not has_sync_source and not has_async_source:
-        # A flags-only app context (e.g. configure(app, warn_on_misuse=True))
-        # scopes the flags but leaves the sources to the process default.
-        return current, app_context
-    if sync and not has_sync_source:
-        raise RestlyConfigurationError(
-            "This app was configured through fr.configure(app, ...) without a "
-            "synchronous session source, so SessionDep does not borrow one "
-            "from the process-wide configuration. Pass database_url, engine, "
-            "make_session, or sync_session_generator to fr.configure(app, ...)."
-        )
-    if not sync and not has_async_source:
-        raise RestlyConfigurationError(
-            "This app was configured through fr.configure(app, ...) without an "
-            "async session source, so AsyncSessionDep does not borrow one "
-            "from the process-wide configuration. Pass async_database_url, "
-            "async_engine, async_make_session, or session_generator to "
-            "fr.configure(app, ...)."
-        )
-    return app_context, app_context
+        return current
+    if conn is not None and _restly_context_ctx.get() is None:
+        # conn.app would KeyError under a bare ASGI harness; go via the scope.
+        state = getattr(conn.scope.get("app"), "state", None)
+        app_context = getattr(state, "_fr_context", None)
+        if app_context is not None:
+            if sync:
+                if app_context.sync_session_generator or app_context.make_session:
+                    return app_context
+            elif app_context.session_generator or app_context.async_make_session:
+                return app_context
+    return current
 
 
-def _app_context_of(app: FastAPI | None) -> RestlyContext | None:
-    """The per-app context configure(app, ...) stored, if the app has one."""
-    if app is None:
-        return None
-    return getattr(app.state, "_fr_context", None)
+def _active_make_session():
+    """The sync factory in force: a test's, if one installed it."""
+    return _fr_globals.test_make_session or _fr_globals.make_session
 
 
-def get_async_engine(app: FastAPI | None = None) -> AsyncEngine:
-    """Return the async engine registered via configure().
+def _active_async_make_session():
+    """The async factory in force: a test's, if one installed it."""
+    return _fr_globals.test_async_make_session or _fr_globals.async_make_session
 
-    In a process serving several configured apps, pass the ``app`` whose
-    engine you mean; without it the process-wide configuration answers.
-    """
-    context = _app_context_of(app) or _get_restly_context()
-    if context.async_make_session is None:
+
+def get_async_engine() -> AsyncEngine:
+    """Return the async engine registered via configure()."""
+    if _fr_globals.async_make_session is None:
         raise RestlyConfigurationError(
             "Call fr.configure() before using get_async_engine()."
         )
     # This is a read-only lookup of application configuration. Test overrides may
     # be bound to a pinned connection or deliberately refuse session creation;
     # neither changes the engine that configure() registered.
-    bind = context.async_make_session.kw["bind"]
+    bind = _fr_globals.async_make_session.kw["bind"]
     if isinstance(bind, AsyncConnection):
         return bind.engine
     return bind
 
 
-def get_engine(app: FastAPI | None = None) -> Engine:
-    """Return the sync engine registered via configure().
-
-    In a process serving several configured apps, pass the ``app`` whose
-    engine you mean; without it the process-wide configuration answers.
-    """
-    context = _app_context_of(app) or _get_restly_context()
-    if context.make_session is None:
+def get_engine() -> Engine:
+    """Return the sync engine registered via configure()."""
+    if _fr_globals.make_session is None:
         raise RestlyConfigurationError("Call fr.configure() before using get_engine().")
-    bind = (_fr_globals.test_make_session or context.make_session).kw["bind"]
+    bind = _active_make_session().kw["bind"]
     # Under restly_session the factory is bound to a pinned Connection; resolve
     # its engine so this keeps returning the real Engine.
     if isinstance(bind, Connection):
@@ -427,9 +297,7 @@ def _resolve_metadata(base_or_metadata: type[DeclarativeBase] | MetaData) -> Met
     )
 
 
-def create_all(
-    base_or_metadata: type[DeclarativeBase] | MetaData, app: FastAPI | None = None
-) -> None:
+def create_all(base_or_metadata: type[DeclarativeBase] | MetaData) -> None:
     """Create all tables for ``base_or_metadata`` on the configured sync engine.
 
     A dev/demo convenience over ``metadata.create_all(engine)`` so a quickstart
@@ -438,23 +306,19 @@ def create_all(
         fr.db.create_all(Base)  # or fr.db.create_all(Base.metadata)
 
     Accepts a ``DeclarativeBase`` subclass (its ``.metadata`` is used) or a
-    ``MetaData``. Requires :func:`configure` first. In a process serving
-    several configured apps, pass the ``app`` whose database the schema
-    belongs on. Use Alembic migrations in production.
+    ``MetaData``. Requires :func:`configure` first. Use Alembic migrations in
+    production.
     """
     metadata = _resolve_metadata(base_or_metadata)
-    context = _app_context_of(app) or _get_restly_context()
-    if context.make_session is None:
+    if _fr_globals.make_session is None:
         raise RestlyConfigurationError("Call fr.configure() before using create_all().")
     # Create against the configured bind: the engine in production, or the pinned
     # Connection under restly_session so the schema is visible to the test's
     # isolated sessions instead of silently landing on a throwaway connection.
-    metadata.create_all((_fr_globals.test_make_session or context.make_session).kw["bind"])
+    metadata.create_all(_active_make_session().kw["bind"])
 
 
-async def async_create_all(
-    base_or_metadata: type[DeclarativeBase] | MetaData, app: FastAPI | None = None
-) -> None:
+async def async_create_all(base_or_metadata: type[DeclarativeBase] | MetaData) -> None:
     """Async equivalent of :func:`create_all`, on the configured async engine.
 
     Usage::
@@ -462,12 +326,11 @@ async def async_create_all(
         await fr.db.async_create_all(Base)
     """
     metadata = _resolve_metadata(base_or_metadata)
-    context = _app_context_of(app) or _get_restly_context()
-    if context.async_make_session is None:
+    if _fr_globals.async_make_session is None:
         raise RestlyConfigurationError(
             "Call fr.configure() before using async_create_all()."
         )
-    bind = (_fr_globals.test_async_make_session or context.async_make_session).kw["bind"]
+    bind = _active_async_make_session().kw["bind"]
     if isinstance(bind, AsyncConnection):
         # Under restly_async_session: create on the pinned connection, inside the
         # outer transaction, so the tables are visible to the test's sessions.
@@ -553,18 +416,18 @@ async def _async_generate_session(
     conn: HTTPConnection = None,  # type: ignore[assignment]
 ) -> AsyncIterator[SA_AsyncSession]:
     """FastAPI dependency for async database session."""
-    ctx, flag_ctx = _resolve_contexts(conn, sync=False)
+    ctx = _resolve_source_context(conn, sync=False)
     if ctx.test_async_make_session is not None:
         async with ctx.test_async_make_session() as session:
-            _arm_uncommitted_warning(session, flag_ctx)
+            _arm_uncommitted_warning(session, ctx)
             yield session
-            _warn_if_uncommitted(session, flag_ctx)
+            _warn_if_uncommitted(session, ctx)
         return
     if ctx.session_generator is not None:
         async for session in ctx.session_generator():
-            _arm_uncommitted_warning(session, flag_ctx)
+            _arm_uncommitted_warning(session, ctx)
             yield session
-            _warn_if_uncommitted(session, flag_ctx)
+            _warn_if_uncommitted(session, ctx)
         return
     if ctx.async_make_session is None:
         raise RestlyConfigurationError(
@@ -578,9 +441,9 @@ async def _async_generate_session(
     # back and closes on the way out, and any change a custom route flushed but
     # never committed is discarded (and warned about).
     async with ctx.async_make_session() as session:
-        _arm_uncommitted_warning(session, flag_ctx)
+        _arm_uncommitted_warning(session, ctx)
         yield session
-        _warn_if_uncommitted(session, flag_ctx)
+        _warn_if_uncommitted(session, ctx)
 
 
 def _session_dependency(dependency: Callable[..., Any]) -> Any:
@@ -601,26 +464,26 @@ def _generate_session(
     """FastAPI dependency for sync database session."""
     # A test's session source wins over everything, including a generator and
     # anything reconfigured after the test started.
-    ctx, flag_ctx = _resolve_contexts(conn, sync=True)
+    ctx = _resolve_source_context(conn, sync=True)
     if ctx.test_make_session is not None:
         with ctx.test_make_session() as session:
-            _arm_uncommitted_warning(session, flag_ctx)
+            _arm_uncommitted_warning(session, ctx)
             yield session
-            _warn_if_uncommitted(session, flag_ctx)
+            _warn_if_uncommitted(session, ctx)
         return
     if ctx.sync_session_generator is not None:
         for session in ctx.sync_session_generator():
-            _arm_uncommitted_warning(session, flag_ctx)
+            _arm_uncommitted_warning(session, ctx)
             yield session
-            _warn_if_uncommitted(session, flag_ctx)
+            _warn_if_uncommitted(session, ctx)
         return
     if ctx.make_session is None:
         raise RestlyConfigurationError("Call fr.configure() before using SessionDep.")
 
     with ctx.make_session() as session:
-        _arm_uncommitted_warning(session, flag_ctx)
+        _arm_uncommitted_warning(session, ctx)
         yield session
-        _warn_if_uncommitted(session, flag_ctx)
+        _warn_if_uncommitted(session, ctx)
 
 
 SessionDep = Annotated[SA_Session, _session_dependency(_generate_session)]

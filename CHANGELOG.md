@@ -9,30 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- App-scoped configuration: `fr.configure(app, ...)` now also stores exactly
-  what each call sets on the app itself, and requests are served from the
-  app's own configuration. Two apps in one process no longer overwrite each
-  other, and requests to a mounted sub-application resolve the nearest
-  enclosing configured app. The process-wide configuration remains the
-  default for scripts, `fr.open_session()`, and apps configured without
-  `app`.
-- `get_engine()`, `get_async_engine()`, `create_all()`, and
-  `async_create_all()` accept an `app=` argument naming the configured app
-  they should answer for.
+- App-scoped configuration: `fr.configure(app, ...)` now also stores the
+  configured session sources and warn flags on the app, and requests resolve
+  the app's own configuration first. Two apps in one process no longer
+  overwrite each other; the process-wide configuration remains the default
+  for scripts, `fr.open_session()`, and apps configured without `app`.
 
 ### Changed
 
 - An app configured via `fr.configure(app, ...)` keeps serving requests from
   that configuration even if a later app-less `fr.configure(...)` re-points
   the process-wide default. Reconfigure such an app by passing it to
-  `fr.configure(app, ...)` again; such a call must run before the app handles
-  its first request.
-- An app configured with session sources of one kind (sync or async) raises
-  `RestlyConfigurationError` when a request needs the other kind, instead of
-  silently borrowing whatever the process-wide configuration currently
-  holds. Configure both kinds on the app if it serves both.
-- `warn_on_misuse` / `warn_on_uncommitted` passed together with `app` apply
-  to that app only; passed without `app` they remain process-wide.
+  `fr.configure(app, ...)` again.
 
 ## [0.9.0] - 2026-08-13
 

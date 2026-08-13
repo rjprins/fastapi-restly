@@ -1326,10 +1326,9 @@ def _init_view_cls_and_add_to_router(
         if isinstance(parent_router, fastapi.FastAPI)
         else parent_router
     )
-    warn_on_misuse = _registration_warn_on_misuse(parent_router)
     mounted: set[type[View]] = getattr(holder, "_fr_mounted_views", None) or set()
     if view_cls in mounted:
-        if warn_on_misuse:
+        if _fr_globals.warn_on_misuse:
             warnings.warn(
                 f"{view_cls.__name__} is already registered on this app/router; "
                 f"this include_view() call is a no-op. Duplicate registration "
@@ -1339,7 +1338,7 @@ def _init_view_cls_and_add_to_router(
                 stacklevel=4,
             )
         return
-    _prepare_view_class(view_cls, warn_on_misuse=warn_on_misuse)
+    _prepare_view_class(view_cls)
     api_router = _init_api_router(view_cls)
     _register_for_resource_ref(parent_router, view_cls)
     parent_router.include_router(api_router)
@@ -1538,23 +1537,7 @@ def _reject_buried_markers_in_view_schemas(view_cls: type[View]) -> None:
         _reject_buried_markers(schema)
 
 
-def _registration_warn_on_misuse(
-    parent_router: "fastapi.APIRouter | fastapi.FastAPI",
-) -> bool:
-    """The misuse-lint flag for this mount target: the app's own context when
-    the target is an app configured via ``fr.configure(app, ...)``, otherwise
-    the current process context (which also covers bare ``APIRouter`` parents).
-    """
-    state = getattr(parent_router, "state", None)
-    app_context = getattr(state, "_fr_context", None) if state is not None else None
-    if app_context is not None:
-        return app_context.warn_on_misuse
-    return _fr_globals.warn_on_misuse
-
-
-def _prepare_view_class(
-    view_cls: type[View], warn_on_misuse: bool | None = None
-) -> None:
+def _prepare_view_class(view_cls: type[View]) -> None:
     """Run the one-time class-level setup for a View.
 
     Guarded by the ``_fr_initialised`` marker (stored in ``__dict__`` so it is
@@ -1563,9 +1546,7 @@ def _prepare_view_class(
     """
     if view_cls.__dict__.get("_fr_initialised", False):
         return
-    if warn_on_misuse is None:
-        warn_on_misuse = _fr_globals.warn_on_misuse
-    if warn_on_misuse:
+    if _fr_globals.warn_on_misuse:
         _warn_on_misuse(view_cls)
     _copy_all_parent_class_endpoints_into_this_subclass(view_cls)
     _reject_bare_verb_route_names(view_cls)
