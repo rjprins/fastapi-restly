@@ -191,7 +191,9 @@ inside a subject. Each is worth having once it holds more than one item.
 
 Keep application-wide concerns in top-level modules named for what they do,
 such as `auth.py`, `settings.py`, or `outbox.py`, and promote one to a package
-only when it grows several cohesive modules.
+only when it grows several cohesive modules. Avoid generic buckets such as
+`shared.py` or `utils.py`, which accumulate unrelated code and give no hint
+about where anything lives.
 
 ## See also
 

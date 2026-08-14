@@ -6,9 +6,8 @@ from importlib.metadata import version as _version
 #   fr.exc     — errors, HTTP exceptions, and the uncommitted-changes warning
 #   fr.objects — schema<->ORM helpers for use outside a view
 #   fr.query   — low-level list query-parameter helpers
-#   fr.utils   — helpers not tied to one subsystem
 # (fr.db / fr.models / fr.schemas / fr.views are bound by the from-imports below.)
-from . import exc, objects, query, utils  # noqa: F401
+from . import exc, objects, query  # noqa: F401
 
 # Database layer
 from .db import AsyncSessionDep, SessionDep, configure, open_async_session, open_session
