@@ -256,7 +256,7 @@ base, or its `MetaData`.
 A base only knows the models that have been imported by the time the suite
 freezes. Building the app first is what imports them, since composition reaches
 every view and each view imports its model. A conftest that reaches for `Base`
-without building the app should import the model registry as well, the way
+without building the app should import `api.py` as well, the way
 `alembic/env.py` does; see
 [Compose in one place](#compose-in-one-place).
 

@@ -4,7 +4,7 @@ import asyncio
 from logging.config import fileConfig
 
 from alembic import context
-from app import model_registry  # noqa: F401
+from app import api  # noqa: F401  (imports every view, and each view its models)
 from app.settings import Settings
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection

@@ -51,27 +51,23 @@ shows the same template and how to adapt an existing environment.
 
 Point `alembic/env.py` at the metadata of whichever declarative base your
 models inherit from (typically {class}`fr.DataclassBase <fastapi_restly.models.DataclassBase>`).
-In a [subject-first application](howto_project_structure.md), keep model
-ownership in each subject and use one explicit registry to import every model
-module:
-
-```python
-# myapp/model_registry.py
-from .tasks import models as tasks
-from .users import models as users
-
-__all__ = ["tasks", "users"]
-```
-
-Alembic imports that registry before reading the shared metadata:
+Metadata covers the models that have been imported, so `env.py` needs a module
+that has seen all of them. In a
+[subject-first application](howto_project_structure.md) that is `api.py`, since
+composition reaches every view and each view imports its model:
 
 ```python
 # alembic/env.py
 import fastapi_restly as fr
-from myapp import model_registry  # noqa: F401
+from myapp import api  # noqa: F401  (imports every view, and each view its model)
 
 target_metadata = fr.DataclassBase.metadata
 ```
+
+Models that no view reaches, such as an outbox or audit table, need importing
+wherever they are used, at module level rather than inside a function. Run
+`alembic check` in CI to catch one that is missed: it reports the absent model
+as a dropped table rather than failing quietly.
 
 Restly's declarative bases map plain `Mapped[datetime]` columns to
 `DateTime(timezone=True)`. On PostgreSQL, upgrading an existing naive timestamp

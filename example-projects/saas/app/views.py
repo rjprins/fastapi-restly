@@ -37,6 +37,9 @@ from sqlalchemy.orm import DeclarativeBase
 
 import fastapi_restly as fr
 
+# Module level, not inside _emit(): Alembic reaches models through this graph.
+from .outbox import OutboxEvent
+
 
 def check_api_key(request: fastapi.Request) -> None:
     """Placeholder auth check.
@@ -109,8 +112,6 @@ class TenantBase(fr.AsyncRestView):
         before commit: if the transaction rolls back, the email still goes out
         and leaks a row that does not exist. The outbox is the durable boundary.
         """
-        from .outbox import OutboxEvent
-
         self.session.add(
             OutboxEvent(
                 event_type=event_type,

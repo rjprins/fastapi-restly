@@ -17,8 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The documentation now recommends organizing an application by subject rather
   than by code type: each resource gets a package holding its `models.py`,
-  `schemas.py`, and `views.py`, view registration lives in one `api.py`, and
-  model imports for Alembic live in one `model_registry.py`. The new guide
+  `schemas.py`, and `views.py`, and one `api.py` registers every view. Alembic
+  and test setup read the schema through that same module, since composition
+  reaches every view and each view imports its model. The new guide
   "Structure a Project" owns the layout, and the SaaS example follows it.
 - The documentation now recommends building applications with a `create_app()`
   factory: the test suite selects its database by calling the factory with

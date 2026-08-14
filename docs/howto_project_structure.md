@@ -27,7 +27,6 @@ myapp/
 ├── main.py                 # Application factory and lifespan
 ├── api.py                  # View registration
 ├── database.py             # Engine, sessions, and any declarative base
-├── model_registry.py       # Explicit model imports for complete metadata
 ├── views.py                # Shared base view and mixins
 ├── users/
 │   ├── __init__.py
@@ -99,33 +98,39 @@ The factory then calls it after
 {func}`fr.configure(app, ...) <fastapi_restly.db.configure>`, as shown in
 [A production `main.py` template](#production-main-template).
 
-`model_registry.py` does the same job for SQLAlchemy metadata, and needs a
-word about where that metadata comes from. Most applications never declare a
-declarative base of their own: models inherit
+`api.py` also settles a question that subject-first layouts otherwise leave
+open: which module has seen every model. Most applications never declare a
+declarative base of their own. Models inherit
 {class}`fr.IDBase <fastapi_restly.models.IDBase>` or
 {class}`fr.DataclassBase <fastapi_restly.models.DataclassBase>`, and because
-`IDBase` subclasses `DataclassBase` they share one `MetaData`. The application
-schema is then `fr.DataclassBase.metadata`, and `database.py` holds only the
-engine. Declare your own base when you need different mapping defaults, keep it
-in `database.py`, and use it wherever this page names `fr.DataclassBase`.
+`IDBase` subclasses `DataclassBase` they share one `MetaData`, so the
+application schema is `fr.DataclassBase.metadata` and `database.py` holds only
+the engine. Declare your own base when you need different mapping defaults,
+keep it in `database.py`, and use it wherever this page names
+`fr.DataclassBase`.
 
-Either way the base is half the answer, because metadata describes the models
-that have been imported and nothing else. Subject-first layouts spread those
-imports across packages, so one module gathers them:
+A base describes the models that have been imported and nothing else, and
+importing `api.py` imports them all: composition reaches every view, and each
+view imports its model. Tools that need the schema without building an
+application import that one module. `alembic/env.py` does it before reading
+`target_metadata`:
 
 ```python
-# myapp/model_registry.py
-from .tasks import models as tasks
-from .users import models as users
+# alembic/env.py
+import fastapi_restly as fr
+from myapp import api  # noqa: F401  (imports every view, and each view its model)
 
-__all__ = ["tasks", "users"]
+target_metadata = fr.DataclassBase.metadata
 ```
 
-Anything that needs the full schema without building the application imports
-that one module: `alembic/env.py` before it reads `target_metadata`, and a
-`conftest.py` that asks `configure_tests()` to run `create_all`. Building the
-application covers it too, since composition reaches every view and each view
-imports its model. See
+A `conftest.py` that asks `configure_tests()` to run `create_all` gets the same
+coverage from building the app.
+
+That leaves models no view reaches, such as an outbox or audit table. Import
+those wherever they are used, at module level rather than inside a function, so
+they stay on the same graph. Getting it wrong is not silent: `alembic check`
+compares metadata against the database and reports a missing model as a
+dropped table, so run it in CI. See
 [Migrations with Alembic](deploying.md#migrations-with-alembic) and
 [Test APIs with RestlyTestClient and Fixtures](howto_testing.md).
 
