@@ -109,11 +109,14 @@ the engine. Declare your own base when you need different mapping defaults,
 keep it in `database.py`, and use it wherever this page names
 `fr.DataclassBase`.
 
-A base describes the models that have been imported and nothing else, and
-importing `api.py` imports them all: composition reaches every view, and each
-view imports its model. Tools that need the schema without building an
-application import that one module. `alembic/env.py` does it before reading
-`target_metadata`:
+A base describes the models that have been imported and nothing else, so the
+layout needs one module that has imported all of them. That module is `api.py`:
+importing it imports every view, and each view imports its model. Make it the
+only answer to that question, rather than adding a second list to maintain
+beside it.
+
+Tools that need the schema without building an application import that one
+module. `alembic/env.py` does it before reading `target_metadata`:
 
 ```python
 # alembic/env.py
@@ -123,14 +126,17 @@ from myapp import api  # noqa: F401  (imports every view, and each view its mode
 target_metadata = fr.DataclassBase.metadata
 ```
 
-A `conftest.py` that asks `configure_tests()` to run `create_all` gets the same
-coverage from building the app.
+A `conftest.py` that asks `configure_tests()` to run `create_all` needs the
+same coverage and usually has it already, since the app it passes was built by
+the factory. Import `api.py` there too when the suite reaches for a base
+without building an application first.
 
 That leaves models no view reaches, such as an outbox or audit table. Import
-those wherever they are used, at module level rather than inside a function, so
-they stay on the same graph. Getting it wrong is not silent: `alembic check`
-compares metadata against the database and reports a missing model as a
-dropped table, so run it in CI. See
+those at module level wherever the application uses them, rather than inside a
+function, so they stay on the same graph. A model nothing in the application
+uses, written only by a worker or a script, goes in `api.py` beside the views.
+Getting it wrong is not silent: `alembic check` compares metadata against the
+database and reports a missing model as a dropped table, so run it in CI. See
 [Migrations with Alembic](deploying.md#migrations-with-alembic) and
 [Test APIs with RestlyTestClient and Fixtures](howto_testing.md).
 

@@ -1,4 +1,10 @@
-"""Compose the domain views onto the FastAPI application."""
+"""Compose the domain views onto the FastAPI application.
+
+Importing this module imports the whole application: every view, and through
+each view its model. Alembic and any test that needs complete metadata without
+building an app rely on that, so a model no view reaches belongs on this graph
+too.
+"""
 
 from fastapi import FastAPI
 
