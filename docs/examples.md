@@ -33,8 +33,9 @@ permission patterns, shared base views, mixins, custom create/update schemas,
 PostgreSQL through `asyncpg`, Pydantic settings, and an application-owned async
 engine. Compose provides separate development and test databases, and the
 Restly test fixtures build their schema from the checked-in migrations. It also
-builds a substantial non-CRUD surface on the same views. The routes below, all
-defined in `example-projects/saas/app/views/`, highlight the patterns involved:
+builds a substantial non-CRUD surface on the same views. Each view lives beside
+its model and schemas in a subject package under `example-projects/saas/app/`.
+The routes below highlight the patterns involved:
 
 | Route | Pattern it demonstrates |
 |---|---|

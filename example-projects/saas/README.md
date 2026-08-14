@@ -26,8 +26,12 @@ service needs.
 - **Migration-backed fixtures.** Restly runs `alembic upgrade head` against the
   test database before the suite. The migration seeds the read-only country
   lookup used by the tests.
-- **Explicit API schemas.** `app/schemas/` defines the public Pydantic contracts,
-  including operation-specific validation and read-only fields.
+- **Subject-first organization.** Each resource package keeps its SQLAlchemy
+  model, Pydantic schemas, and Restly views together. Application-wide concerns
+  remain in specifically named top-level modules.
+- **Explicit API schemas.** Each subject's `schemas.py` defines its public
+  Pydantic contracts, including operation-specific validation and read-only
+  fields.
 - **Canonical endpoint spelling.** Collection routes use no trailing slash in
   OpenAPI, templates, and contract tests, for example `POST /tasks`.
 - **Real application patterns.** Tenant isolation, permissions, relationships,
@@ -48,12 +52,30 @@ saas/
 │   ├── database.py          # Application-owned async engine builder
 │   ├── settings.py          # Validated Pydantic settings
 │   ├── main.py              # create_app() factory: Restly wiring, lifespan
-│   ├── models/              # SQLAlchemy models
-│   ├── schemas/             # Explicit Pydantic API schemas
-│   └── views/               # AsyncRestView subclasses and custom routes
+│   ├── api.py               # Central, side-effect-free view registration
+│   ├── model_registry.py    # Explicit model discovery for Alembic
+│   ├── view_base.py         # Application-wide Restly view foundation
+│   ├── view_mixins.py       # Application-wide view behavior
+│   ├── outbox.py            # Cross-domain transactional outbox model
+│   ├── organizations/
+│   │   ├── model.py
+│   │   ├── schemas.py
+│   │   └── views.py
+│   ├── users/               # model.py, schemas.py, views.py
+│   ├── projects/            # model.py, schemas.py, views.py
+│   ├── tasks/               # model.py, schemas.py, views.py
+│   ├── labels/              # model.py, schemas.py, views.py
+│   ├── uploads/             # model.py, schemas.py, views.py
+│   └── lookups/             # model.py, schemas.py, views.py
 ├── tests/                   # Migration-backed Restly test suite
 └── pyproject.toml
 ```
+
+Domain modules only define classes and functions. `app/api.py` is the explicit
+composition boundary that imports every view and registers it on the app. This
+keeps imports directional: model, then schema, then view, then application.
+`app/model_registry.py` provides the corresponding explicit model-import
+boundary for SQLAlchemy and Alembic.
 
 ## Prerequisites
 
