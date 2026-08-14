@@ -12,20 +12,26 @@ In production, drive the engine from environment variables. A small
 `pydantic-settings` shim keeps the wiring obvious and 12-factor friendly:
 
 ```python
+import fastapi_restly as fr
 from pydantic_settings import BaseSettings
 
 
-class Settings(BaseSettings):
+class Settings(fr.utils.CurrentSettingsMixin, BaseSettings):
     database_url: str
     db_pool_size: int = 5
     db_max_overflow: int = 10
 ```
 
-Instantiating `Settings()` reads `DATABASE_URL` and the pool fields from the
-environment. [The production template below](#production-main-template) does
-that inside `create_app()` and passes the values into
+{class}`CurrentSettingsMixin <fastapi_restly.utils.CurrentSettingsMixin>` gives
+the class one shared instance without building it at import, so importing your
+package never requires a configured environment. `Settings.current` reads
+`DATABASE_URL` and the pool fields the first time something asks. [The
+production template below](#production-main-template) reads it inside
+`create_app()` and passes the values into
 {func}`fr.configure() <fastapi_restly.db.configure>` through an explicit
-engine, which is what lets you size the pool.
+engine, which is what lets you size the pool. `Settings.use(...)` installs an
+instance instead, which is how a test suite hands over settings it built
+itself; see [Test APIs with RestlyTestClient and Fixtures](howto_testing.md).
 
 Sizing is the part Restly leaves to you. Given a PostgreSQL URL it already sets
 `pool_pre_ping=True` and `pool_recycle=1800`, so the template below repeats
@@ -122,8 +128,8 @@ from .api import register_views
 from .settings import Settings
 
 
-def create_app(settings: Settings | None = None) -> FastAPI:
-    settings = settings or Settings()
+def create_app() -> FastAPI:
+    settings = Settings.current
     engine = create_async_engine(
         settings.database_url,
         pool_size=settings.db_pool_size,
@@ -147,8 +153,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 Note four details in this template:
 
 - The factory keeps configuration out of module import: settings are read and
-  the engine is built when `create_app()` runs, so a test suite can call the
-  same factory with its own settings. See
+  the engine is built when `create_app()` runs, so a test suite can install its
+  own settings first and call the same factory. See
   [Test APIs with RestlyTestClient and Fixtures](howto_testing.md).
 - `register_views(app)` keeps view definitions free of registration side
   effects and makes `api.py` the one application composition boundary; see

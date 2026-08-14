@@ -66,14 +66,13 @@ naming the test database explicitly, and hands the result to
 ```python
 # conftest.py
 import fastapi_restly as fr
-from myapp.database import Base
 from myapp.main import create_app
 
 app = create_app("sqlite+aiosqlite:///./test.db")
 
 fr.testing.configure_tests(
     app=app,
-    base=Base,
+    base=fr.DataclassBase,
     create_all=True,
 )
 ```
@@ -117,17 +116,16 @@ os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test.db"
 import fastapi_restly as fr
 
 from myapp.main import app  # noqa: E402
-from myapp.database import Base  # noqa: E402
 
-fr.testing.configure_tests(app=app, base=Base, create_all=True)
+fr.testing.configure_tests(app=app, base=fr.DataclassBase, create_all=True)
 ```
 
 A `.env` file is convenient in development, when the settings class enables
 one (the [production template](#production-main-template) does not; the [SaaS
 example](examples.md) does). Keep it out of the suite's way. When the conftest
-builds the app through the factory, pass explicit settings and disable the
-settings class's env file (with pydantic-settings:
-`Settings(database_url=..., _env_file=None)`). Explicitly passed values
+installs its own settings, build them with the env file disabled (with
+pydantic-settings: `Settings(database_url=..., _env_file=None)`). Explicitly
+passed values
 already outrank the file, but values the test leaves unset, such as pool
 sizes, would still come from a developer's local `.env`, and the suite would
 behave differently locally than in CI. `_env_file=None` disables only that file
@@ -175,17 +173,16 @@ the test database and the local `.env` disabled:
 ```python
 # conftest.py
 import fastapi_restly as fr
-from myapp.database import Base
 from myapp.main import create_app
 from myapp.settings import Settings
 
-app = create_app(
-    Settings(database_url="postgresql+asyncpg://...", _env_file=None)
-)
+Settings.use(Settings(database_url="postgresql+asyncpg://...", _env_file=None))
+
+app = create_app()
 
 fr.testing.configure_tests(
     app=app,
-    base=Base,
+    base=fr.DataclassBase,
     create_all=True,
 )
 ```
@@ -248,7 +245,7 @@ cleanup; see [the fixture reference](#pytest-fixture-reference).
 
 ## Test databases and migrations
 
-`base=Base` names your models. It is what `configure_tests()` cleans between
+`base=` names your models. It is what `configure_tests()` cleans between
 tests, and what it builds the schema from if you ask it to. Pass your declarative
 base, or its `MetaData`.
 
@@ -289,7 +286,7 @@ Pass a path if the config lives somewhere else:
 ```python
 fr.testing.configure_tests(
     app=app,
-    base=Base,
+    base=fr.DataclassBase,
     alembic_upgrade="backend/alembic.ini",
 )
 ```
@@ -356,7 +353,7 @@ them and they are left alone:
 ```python
 fr.testing.configure_tests(
     app=app,
-    base=Base,
+    base=fr.DataclassBase,
     alembic_upgrade=True,
     db_cleanup="delete",
     db_cleanup_exclude=["country", "role"],

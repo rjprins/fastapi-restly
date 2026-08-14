@@ -5,8 +5,10 @@ from pathlib import Path
 from pydantic import Field, PostgresDsn, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+import fastapi_restly as fr
 
-class Settings(BaseSettings):
+
+class Settings(fr.utils.CurrentSettingsMixin, BaseSettings):
     """Application settings loaded from environment variables or ``.env``."""
 
     # Absolute path: a relative env_file resolves against the working

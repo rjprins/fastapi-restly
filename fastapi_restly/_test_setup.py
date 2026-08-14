@@ -98,14 +98,13 @@ def configure_tests(
     database, typically through an app factory::
 
         import fastapi_restly as fr
-        from myapp.database import Base
-        from myapp.main import create_app
+                from myapp.main import create_app
 
         app = create_app("sqlite+aiosqlite:///./test.db")
 
         fr.testing.configure_tests(
             app=app,
-            base=Base,
+            base=fr.DataclassBase,
             create_all=True,
         )
 

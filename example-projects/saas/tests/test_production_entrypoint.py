@@ -1,10 +1,9 @@
 """Smoke-test the production entrypoint's no-arg create_app() branch.
 
-The suite's own conftest always passes explicit Settings to create_app(), so
-`settings = settings or Settings()` -- the branch `uvicorn --factory
-app.main:create_app` actually exercises in production -- is otherwise never
-run. A regression there (a new required field, a renamed env var) would only
-surface at deploy time. Runs in a subprocess: the in-process app is already
+The suite's own conftest installs explicit Settings with set_settings(), so
+`get_settings()` never builds from the environment -- the branch that
+`uvicorn app.asgi:app` actually exercises in production. A regression there
+(a new required field, a renamed env var) would only surface at deploy time. Runs in a subprocess: the in-process app is already
 locked by conftest's configure_tests(), and a second fr.configure() call
 would raise RestlyConfigurationError regardless of whether this branch works.
 """

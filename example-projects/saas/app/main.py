@@ -11,9 +11,9 @@ This example is a complete showcase of FastAPI-Restly customization patterns:
 - Custom endpoints alongside auto-generated CRUD
 - List-params filtering, sorting, and pagination on every CRUD view
 
-The application is built by a factory. Database setup runs only when
-``create_app()`` is called, so the test suite can build the app against its
-own database. Run it with ``uvicorn --factory app.main:create_app``.
+The application is built by a factory. Settings are read and the engine is
+built only when ``create_app()`` runs, so the test suite can install its own
+settings first. Run it with ``uvicorn app.asgi:app``.
 
 Importing this module is therefore free, and imports every view and model
 through ``api``. Alembic and anything else needing complete metadata import it
@@ -31,9 +31,9 @@ from .api import register_views
 from .settings import Settings
 
 
-def create_app(settings: Settings | None = None) -> FastAPI:
+def create_app() -> FastAPI:
     """Build the SaaS application from validated settings."""
-    settings = settings or Settings()  # type: ignore[call-arg]
+    settings = Settings.current
     # Restly's own defaults cover only engines it builds from a URL, so a
     # caller-built engine sets pool_pre_ping itself.
     engine = create_async_engine(

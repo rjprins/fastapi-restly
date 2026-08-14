@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   There is no such route unless you name a path, and a route your application
   already has at that path is left in place. Passing `health` without an `app`,
   or a path without a leading slash, raises `RestlyConfigurationError`.
+- `fr.utils.CurrentSettingsMixin` gives a `pydantic-settings` class one shared
+  instance through `Settings.current`, built the first time it is read rather
+  than at import, with `Settings.use(...)` to install an explicit one. A test
+  suite builds its own settings with the env file disabled and installs them
+  before calling the application factory, so importing the application never
+  requires a configured environment.
 - A production-shaped SaaS example with separate PostgreSQL development and
   test services, Pydantic settings, an application-owned asyncpg engine, async
   Alembic migrations, migration-seeded fixtures, and migration-backed tests.
@@ -54,10 +60,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   makes that free, so a module-level application belongs in its own `asgi.py`. The new guide
   "Structure a Project" owns the layout, and the SaaS example follows it.
 - The documentation now recommends building applications with a `create_app()`
-  factory: the test suite selects its database by calling the factory with
-  explicit settings instead of mutating `DATABASE_URL` before importing the
-  application, which stays documented as the fallback. The SaaS example
-  follows the pattern. Run it with `uvicorn app.asgi:app`.
+  factory and reaching settings through `Settings.current` rather than an
+  instance built at import. The test suite installs the settings it built, with
+  the env file disabled, and then calls the factory, instead of mutating
+  `DATABASE_URL` before importing the application, which stays documented as
+  the fallback. Keeping settings out of module import is what lets Alembic and
+  the suite import the application without a configured environment. The SaaS
+  example follows the pattern. Run it with `uvicorn app.asgi:app`.
 - Custom `RestView` collection routes declared at `"/"` now use the no-slash
   path as their OpenAPI form and keep the trailing-slash path as a hidden
   compatibility alias, matching generated list and create routes.
