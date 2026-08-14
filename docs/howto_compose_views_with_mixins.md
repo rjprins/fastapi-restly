@@ -86,7 +86,7 @@ Do not extract early. Wait until there is a second caller.
 
 The [SaaS example](examples.md#saas) ships three structural mixins of this
 kind in
-[`view_mixins.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/view_mixins.py).
+[`views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/views.py).
 Copy them into your project as a starting point.
 
 ### `TenantScopedMixin`: multi-tenant row scoping

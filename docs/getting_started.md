@@ -184,53 +184,12 @@ compares the two.
 
 ## Grow beyond one file
 
-Keep the one-file layout while the application is small. Once it has several
-resources, organize it by subject first and by code type within each subject:
-
-```text
-myapp/
-├── main.py                 # Application factory and lifespan
-├── api.py                  # View registration
-├── database.py             # Engine, sessions, and declarative base
-├── model_registry.py       # Explicit model discovery for Alembic
-├── users/
-│   ├── models.py
-│   ├── schemas.py
-│   └── views.py
-└── tasks/
-    ├── models.py
-    ├── schemas.py
-    └── views.py
-```
-
-Models do not import schemas or views. Schemas may import models, views may
-import both, and application composition imports the views. Keep package
-`__init__.py` files empty or light, and import concrete modules instead of
-building broad re-export modules.
-
-Define view classes without registration side effects, then register them in
-one explicit composition function:
-
-```python
-# myapp/api.py
-import fastapi_restly as fr
-from fastapi import FastAPI
-
-from .tasks.views import TaskView
-from .users.views import UserView
-
-
-def register_views(app: FastAPI) -> None:
-    for view in (TaskView, UserView):
-        fr.include_view(app, view)
-```
-
-Application-wide concerns can remain in specifically named top-level modules.
-Create a package only when that concern grows into several cohesive modules.
-Avoid generic buckets such as `shared` or `utils`. See the
-[SaaS example](examples.md#saas) for a complete subject-first application and
-[Migrations with Alembic](deploying.md#migrations-with-alembic) for the model
-registry pattern.
+Keep the one-file layout while the application is small. Once it holds several
+resources, give each one a package with its own `models.py`, `schemas.py`, and
+`views.py`, and register them all from a single `api.py`.
+[Structure a Project](howto_project_structure.md) covers the full layout, the
+import direction it depends on, and which modules to add only once they earn
+their place.
 
 ## Test quickly
 
