@@ -6,8 +6,7 @@ from pydantic import BaseModel
 
 import fastapi_restly as fr
 
-from ..view_base import TenantBase
-from ..view_mixins import AuditStampedMixin, SoftDeleteMixin
+from ..views import AuditStampedMixin, SoftDeleteMixin, TenantBase
 from .models import Task, TaskPriority, TaskStatus, TaskType
 from .schemas import TaskSchema
 

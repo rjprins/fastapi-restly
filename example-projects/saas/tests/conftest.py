@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from app.main import create_app
 from app.settings import Settings
-from app.view_base import get_current_org_id, get_current_user_id
+from app.views import get_current_org_id, get_current_user_id
 from sqlalchemy import make_url
 
 import fastapi_restly as fr

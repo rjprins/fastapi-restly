@@ -484,7 +484,7 @@ class TestAdminBypass:
 
         # Patch _is_admin to return True regardless of state — equivalent
         # to auth middleware having set ``request.state.is_admin = True``.
-        from app.view_base import TenantBase
+        from app.views import TenantBase
 
         monkeypatch.setattr(TenantBase, "_is_admin", lambda self: True)
 
@@ -495,7 +495,7 @@ class TestAdminBypass:
 
     def test_admin_sees_other_users_tasks(self, client, monkeypatch, auth_context):
         """TaskView's assignee scope also short-circuits for admin."""
-        from app.view_base import TenantBase
+        from app.views import TenantBase
 
         org = client.post(
             "/organizations", json={"name": "TaskOrg", "slug": "task-org"}

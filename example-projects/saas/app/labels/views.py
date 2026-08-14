@@ -9,8 +9,7 @@ from fastapi_restly.objects import async_make_new_object, async_save_object
 
 from ..projects.models import Project
 from ..tasks.models import Task
-from ..view_base import TenantBase
-from ..view_mixins import TenantScopedMixin
+from ..views import TenantBase, TenantScopedMixin
 from .models import Label, TaskLabel
 from .schemas import LabelSchema, TaskLabelSchema
 

@@ -8,8 +8,7 @@ from pydantic import BaseModel
 import fastapi_restly as fr
 
 from ..auth import hash_password, verify_password
-from ..view_base import TenantBase
-from ..view_mixins import AuditStampedMixin, SoftDeleteMixin, TenantScopedMixin
+from ..views import AuditStampedMixin, SoftDeleteMixin, TenantBase, TenantScopedMixin
 from .models import User, UserRole
 from .schemas import UserFullSchema, UserPublicSchema, UserSchema
 

@@ -12,8 +12,7 @@ import fastapi_restly as fr
 
 from ..tasks.models import Task, TaskPriority, TaskStatus, TaskType
 from ..tasks.schemas import TaskSchema
-from ..view_base import TenantBase
-from ..view_mixins import AuditStampedMixin, SoftDeleteMixin, TenantScopedMixin
+from ..views import AuditStampedMixin, SoftDeleteMixin, TenantBase, TenantScopedMixin
 from .models import Project, ProjectStatus
 from .schemas import ProjectSchema
 

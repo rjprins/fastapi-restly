@@ -54,8 +54,7 @@ saas/
 │   ├── main.py              # create_app() factory: Restly wiring, lifespan
 │   ├── api.py               # Central, side-effect-free view registration
 │   ├── model_registry.py    # Explicit model discovery for Alembic
-│   ├── view_base.py         # Application-wide Restly view foundation
-│   ├── view_mixins.py       # Application-wide view behavior
+│   ├── views.py             # Application-wide view foundation: base view and mixins
 │   ├── outbox.py            # Cross-domain transactional outbox model
 │   ├── organizations/
 │   │   ├── models.py
