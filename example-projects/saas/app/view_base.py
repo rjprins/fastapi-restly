@@ -102,7 +102,7 @@ class TenantBase(fr.AsyncRestView):
         before commit: if the transaction rolls back, the email still goes out
         and leaks a row that does not exist. The outbox is the durable boundary.
         """
-        from ..models import OutboxEvent
+        from .outbox import OutboxEvent
 
         self.session.add(
             OutboxEvent(

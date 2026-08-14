@@ -20,9 +20,9 @@ import fastapi
 
 import fastapi_restly as fr
 
-from ..models import Upload, UploadLine
-from ..schemas import UploadLineSchema, UploadSchema
-from ._base import TenantBase
+from ..view_base import TenantBase
+from .model import Upload, UploadLine
+from .schemas import UploadLineSchema, UploadSchema
 
 
 class UploadView(TenantBase):

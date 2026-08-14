@@ -65,7 +65,7 @@ class TestPasswordHashing:
 
     async def test_stored_value_is_a_real_hash(self, async_org_id, async_client):
         """Round-trip: pull the row from the DB, verify hash matches plaintext."""
-        from app.models import User
+        from app.users.model import User
 
         await async_client.post(
             "/users",
@@ -108,7 +108,7 @@ class TestPasswordHashing:
 
     async def test_change_password_swaps_hash(self, async_client, async_org_id):
         """Successful change replaces the stored digest."""
-        from app.models import User
+        from app.users.model import User
 
         u = (
             await async_client.post(
@@ -178,7 +178,7 @@ class TestProjectMeta:
 
 class TestOutbox:
     async def test_project_create_emits_outbox(self, async_client, async_org_id):
-        from app.models import OutboxEvent
+        from app.outbox import OutboxEvent
 
         await async_client.post(
             "/projects", json={"name": "Outboxed", "organization_id": async_org_id}
@@ -196,7 +196,7 @@ class TestOutbox:
         assert events[0].payload["name"] == "Outboxed"
 
     async def test_status_transition_emits_event(self, async_client, async_org_id):
-        from app.models import OutboxEvent
+        from app.outbox import OutboxEvent
 
         p = (
             await async_client.post(
@@ -218,7 +218,7 @@ class TestOutbox:
 
     async def test_no_event_for_idempotent_update(self, async_client, async_org_id):
         """Updating with the same status should NOT emit a transition event."""
-        from app.models import OutboxEvent
+        from app.outbox import OutboxEvent
 
         p = (
             await async_client.post(
@@ -264,7 +264,7 @@ class TestMultipartUpload:
         assert all(ln["upload_id"] == upload["id"] for ln in lines)
 
     async def test_upload_emits_completion_event(self, async_client, async_org_id):
-        from app.models import OutboxEvent
+        from app.outbox import OutboxEvent
 
         await async_client.post(
             "/uploads",
@@ -484,7 +484,7 @@ class TestAdminBypass:
 
         # Patch _is_admin to return True regardless of state — equivalent
         # to auth middleware having set ``request.state.is_admin = True``.
-        from app.views._base import TenantBase
+        from app.view_base import TenantBase
 
         monkeypatch.setattr(TenantBase, "_is_admin", lambda self: True)
 
@@ -495,7 +495,7 @@ class TestAdminBypass:
 
     def test_admin_sees_other_users_tasks(self, client, monkeypatch, auth_context):
         """TaskView's assignee scope also short-circuits for admin."""
-        from app.views._base import TenantBase
+        from app.view_base import TenantBase
 
         org = client.post(
             "/organizations", json={"name": "TaskOrg", "slug": "task-org"}
@@ -623,7 +623,7 @@ class TestSiblingCreation:
         instance (we're not in one — we're in TaskLabelView itself but
         building a TaskLabel via the *free* helper), or apply the stamp
         manually in the custom route."""
-        from app.views import label as label_module
+        from app.labels import views as label_module
 
         _org_id, override_auth = self._ctx(client, auth_context)
         with override_auth:

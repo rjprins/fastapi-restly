@@ -4,9 +4,12 @@ from fastapi import Response
 
 import fastapi_restly as fr
 
-from ..models import Organization
-from ..schemas import OrganizationSchema
-from ..schemas.organization import OrganizationCreateSchema, OrganizationUpdateSchema
+from .model import Organization
+from .schemas import (
+    OrganizationCreateSchema,
+    OrganizationSchema,
+    OrganizationUpdateSchema,
+)
 
 
 class OrganizationView(fr.AsyncRestView):

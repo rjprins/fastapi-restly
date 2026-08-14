@@ -22,18 +22,9 @@ from fastapi import FastAPI
 
 import fastapi_restly as fr
 
+from .api import register_views
 from .database import create_engine_from
 from .settings import Settings
-from .views import (
-    CountryView,
-    LabelView,
-    OrganizationView,
-    ProjectView,
-    TaskLabelView,
-    TaskView,
-    UploadView,
-    UserView,
-)
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -61,14 +52,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # Exposed so tests can assert engine identity; not part of the documented pattern.
     app.state.engine = engine
 
-    fr.include_view(app, OrganizationView)
-    fr.include_view(app, UserView)
-    fr.include_view(app, ProjectView)
-    fr.include_view(app, TaskView)
-    fr.include_view(app, LabelView)
-    fr.include_view(app, TaskLabelView)
-    fr.include_view(app, UploadView)
-    fr.include_view(app, CountryView)
+    register_views(app)
 
     @app.get("/health")
     async def health_check():

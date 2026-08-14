@@ -8,8 +8,8 @@ ordering pipeline.
 
 import fastapi_restly as fr
 
-from ..models import Country
-from ..schemas.lookup import CountrySchema
+from .model import Country
+from .schemas import CountrySchema
 
 
 class CountryView(fr.AsyncRestView):

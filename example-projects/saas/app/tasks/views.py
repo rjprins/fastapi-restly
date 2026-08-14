@@ -6,10 +6,10 @@ from pydantic import BaseModel
 
 import fastapi_restly as fr
 
-from ..models import Task, TaskPriority, TaskStatus, TaskType
-from ..schemas import TaskSchema
-from ._base import TenantBase
-from ._mixins import AuditStampedMixin, SoftDeleteMixin
+from ..view_base import TenantBase
+from ..view_mixins import AuditStampedMixin, SoftDeleteMixin
+from .model import Task, TaskPriority, TaskStatus, TaskType
+from .schemas import TaskSchema
 
 
 class TaskCreateSchema(BaseModel):
@@ -79,7 +79,7 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
 
     async def delete_object(self, obj):
         """Decrement the parent project's story-point rollup before delete."""
-        from ..models import Project
+        from ..projects.model import Project
 
         if obj.story_points:
             project = await self.session.get(Project, obj.project_id)
@@ -107,7 +107,8 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
 
     async def _validate_cross_resource(self, data: dict) -> None:
         """Validate cross-resource constraints (assignee must be in same org as project)."""
-        from ..models import Project, User
+        from ..projects.model import Project
+        from ..users.model import User
 
         project_id = data.get("project_id")
         assignee_id = data.get("assignee_id")
@@ -140,7 +141,7 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
         The rollup depends on request data, so it lives in the business verb and
         commits with the task.
         """
-        from ..models import Project, ProjectStatus
+        from ..projects.model import Project, ProjectStatus
 
         data = schema_obj.model_dump()
         project_id = data.get("project_id")
@@ -169,7 +170,7 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
         Capture old values, apply the update, then propagate the story-point
         delta to the related project in the same transaction.
         """
-        from ..models import Project
+        from ..projects.model import Project
 
         task = obj
 

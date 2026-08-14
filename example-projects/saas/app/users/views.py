@@ -8,11 +8,10 @@ from pydantic import BaseModel
 import fastapi_restly as fr
 
 from ..auth import hash_password, verify_password
-from ..models import User, UserRole
-from ..schemas import UserSchema
-from ..schemas.user import UserFullSchema, UserPublicSchema
-from ._base import TenantBase
-from ._mixins import AuditStampedMixin, SoftDeleteMixin, TenantScopedMixin
+from ..view_base import TenantBase
+from ..view_mixins import AuditStampedMixin, SoftDeleteMixin, TenantScopedMixin
+from .model import User, UserRole
+from .schemas import UserFullSchema, UserPublicSchema, UserSchema
 
 # Set by tests to simulate field-level permissions without real auth middleware.
 _TEST_USER_ROLE: "UserRole | None" = None
