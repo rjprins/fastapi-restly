@@ -28,8 +28,8 @@ service needs.
   lookup used by the tests.
 - **Subject-first organization.** Each resource package keeps its SQLAlchemy
   model, Pydantic schemas, and Restly views together. Application-wide concerns
-  remain in specifically named top-level modules, and `app/api.py` is the one
-  composition boundary for both views and model metadata.
+  remain in specifically named top-level modules. Importing `app/main.py` is
+  what gives any tool the complete model metadata.
 - **Explicit API schemas.** Each subject's `schemas.py` defines its public
   Pydantic contracts, including operation-specific validation and read-only
   fields.
@@ -73,8 +73,9 @@ saas/
 Domain modules only define classes and functions. `app/api.py` is the explicit
 composition boundary that imports every view and registers it on the app. This
 keeps imports directional: model, then schema, then view, then application.
-Alembic reads the schema through the same boundary: `alembic/env.py` imports
-`app/api.py`, which reaches every view and so every model. `app/outbox.py` has
+Alembic reads the schema through `app/main.py`, which reaches `app/api.py` and
+so every view and model. The factory builds nothing at import time, so that
+import is free. `app/outbox.py` has
 no view, so `app/views.py` imports it at module level to keep it on that graph.
 
 ## Prerequisites

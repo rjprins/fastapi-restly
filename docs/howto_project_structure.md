@@ -25,6 +25,7 @@ code they hold:
 ```text
 myapp/
 ├── main.py                 # Application factory and lifespan
+├── asgi.py                 # app = create_app(), for servers wanting an object
 ├── api.py                  # View registration
 ├── database.py             # Engine, sessions, and any declarative base
 ├── views.py                # Shared base view and mixins
@@ -74,7 +75,7 @@ subject to reach one class.
 ## Compose in one place
 
 Restly has no autodiscovery. Nothing scans your package for views or models,
-which is why the layout above needs two explicit composition modules. The
+which is why the layout above registers them in one place instead. The
 tradeoff is deliberate: your `create_app()` stays yours, and the set of
 registered views is something you can read rather than infer.
 
@@ -98,9 +99,10 @@ The factory then calls it after
 {func}`fr.configure(app, ...) <fastapi_restly.db.configure>`, as shown in
 [A production `main.py` template](#production-main-template).
 
-`api.py` also settles a question that subject-first layouts otherwise leave
-open: which module has seen every model. Most applications never declare a
-declarative base of their own. Models inherit
+Subject-first layouts leave one question open, which the rest of this section
+settles: which module has seen every model. Start with where the models are
+collected. Most applications never declare a declarative base of their own.
+Models inherit
 {class}`fr.IDBase <fastapi_restly.models.IDBase>` or
 {class}`fr.DataclassBase <fastapi_restly.models.DataclassBase>`, and because
 `IDBase` subclasses `DataclassBase` they share one `MetaData`, so the
@@ -110,31 +112,37 @@ keep it in `database.py`, and use it wherever this page names
 `fr.DataclassBase`.
 
 A base describes the models that have been imported and nothing else, so the
-layout needs one module that has imported all of them. That module is `api.py`:
-importing it imports every view, and each view imports its model. Make it the
-only answer to that question, rather than adding a second list to maintain
-beside it.
+layout needs one module that has imported all of them. That module is
+`main.py`. It reaches `api.py`, which reaches every view, and each view imports
+its model. Nothing else should have to be named: `main.py` is the one module
+every application has, so tools can rely on it without knowing how the rest is
+arranged.
 
-Tools that need the schema without building an application import that one
-module. `alembic/env.py` does it before reading `target_metadata`:
+This works only because the factory keeps `main.py` free of side effects.
+Importing it defines `create_app()` and builds nothing, so a tool pays for the
+imports and no more. Never put `app = create_app()` at module level there, or
+every importer starts paying for a full application, settings included.
+
+`alembic/env.py` imports it before reading `target_metadata`:
 
 ```python
 # alembic/env.py
 import fastapi_restly as fr
-from myapp import api  # noqa: F401  (imports every view, and each view its model)
+import myapp.main  # noqa: F401  (imports every view, and each view its model)
 
 target_metadata = fr.DataclassBase.metadata
 ```
 
 A `conftest.py` that asks `configure_tests()` to run `create_all` needs the
 same coverage and usually has it already, since the app it passes was built by
-the factory. Import `api.py` there too when the suite reaches for a base
+the factory. Import `myapp.main` there too when the suite reaches for a base
 without building an application first.
 
 That leaves models no view reaches, such as an outbox or audit table. Import
 those at module level wherever the application uses them, rather than inside a
 function, so they stay on the same graph. A model nothing in the application
-uses, written only by a worker or a script, goes in `api.py` beside the views.
+uses, written only by a worker or a script, goes in `api.py` beside the views,
+which keeps every such import in one place.
 Getting it wrong is not silent: `alembic check` compares metadata against the
 database and reports a missing model as a dropped table, so run it in CI. See
 [Migrations with Alembic](deploying.md#migrations-with-alembic) and

@@ -56,10 +56,10 @@ def create_app(database_url: str | None = None) -> FastAPI:
     return app
 ```
 
-Run it with `uvicorn --factory myapp.main:create_app`. A factory whose
-settings can be built without the environment, as the SQLite fallback above
-allows, may also keep a module-level `app = create_app()` for a plain
-`uvicorn myapp.main:app`. The test suite then builds the application it tests,
+Run it with `uvicorn --factory myapp.main:create_app`. A server that wants an
+application object instead gets one from a separate `asgi.py`, which keeps
+`main.py` free to import; see [Running the app](#running-the-app). The
+test suite then builds the application it tests,
 naming the test database explicitly, and hands the result to
 `configure_tests()`:
 
@@ -81,25 +81,24 @@ fr.testing.configure_tests(
 Restly's configuration is process-wide and the last `configure()` call wins,
 which is what makes this work: the factory call in `conftest.py` re-points the
 process at the test database before `configure_tests()` freezes it. That holds
-even when importing `myapp.main` already built a module-level default app,
-since the conftest's factory call runs after the import and before the freeze.
+even when something the conftest imports already built an app, since the
+conftest's factory call runs after the import and before the freeze.
 A factory that *requires* its settings, like the PostgreSQL one below, must
 not build an app at import time: keep it on the `--factory` form, or importing
 it in `conftest.py` would again require the environment variable to be set
 before the import, which is exactly the requirement the factory form lifts
 from tests. This safety only covers modules the conftest itself imports before
 `configure_tests()` runs. A module built elsewhere and imported later, such as
-an ASGI entrypoint a test file reaches for directly, still calls its
-module-level factory after the freeze and fails with
-`RestlyConfigurationError`. Keep default-app modules out of the import graph a
-managed suite pulls in after collection.
+an `asgi.py` a test file reaches for directly, still calls its module-level
+factory after the freeze and fails with `RestlyConfigurationError`. That is the
+second reason nothing but the server should import `asgi.py`.
 
 (factory-apps-share-one-configuration)=
 The apps a factory builds are therefore not independent. Each call re-points
 the one process-wide configuration, so only the most recently built app should
 serve requests. An app built earlier would read the newer database while still
-owning its original engine. In this suite that is the conftest's app, and the
-module-level default never serves a request. For the same reason the common
+owning its original engine. In this suite that is the conftest's app. For the
+same reason the common
 per-test factory fixture (`@pytest.fixture` returning `create_app(...)`) does
 not fit a managed suite: once `configure_tests()` has recorded the
 configuration, every later factory call that configures the database raises
@@ -256,7 +255,7 @@ base, or its `MetaData`.
 A base only knows the models that have been imported by the time the suite
 freezes. Building the app first is what imports them, since composition reaches
 every view and each view imports its model. A conftest that reaches for `Base`
-without building the app should import `api.py` as well, the way
+without building the app should import `myapp.main` as well, the way
 `alembic/env.py` does; see
 [Compose in one place](#compose-in-one-place).
 

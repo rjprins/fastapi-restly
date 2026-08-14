@@ -14,6 +14,10 @@ This example is a complete showcase of FastAPI-Restly customization patterns:
 The application is built by a factory. Database setup runs only when
 ``create_app()`` is called, so the test suite can build the app against its
 own database. Run it with ``uvicorn --factory app.main:create_app``.
+
+Importing this module is therefore free, and imports every view and model
+through ``api``. Alembic and anything else needing complete metadata import it
+for exactly that. Keep it free: never build an app at module level here.
 """
 
 from contextlib import asynccontextmanager

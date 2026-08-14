@@ -1,9 +1,8 @@
 """Compose the domain views onto the FastAPI application.
 
-Importing this module imports the whole application: every view, and through
-each view its model. Alembic and any test that needs complete metadata without
-building an app rely on that, so a model no view reaches belongs on this graph
-too.
+Keeping registration here rather than in ``main.py`` is organization, not
+contract. Tools that need complete metadata import ``main`` instead, which
+reaches this module and through it every view and model.
 """
 
 from fastapi import FastAPI

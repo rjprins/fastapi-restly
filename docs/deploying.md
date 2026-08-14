@@ -52,14 +52,14 @@ shows the same template and how to adapt an existing environment.
 Point `alembic/env.py` at the metadata of whichever declarative base your
 models inherit from (typically {class}`fr.DataclassBase <fastapi_restly.models.DataclassBase>`).
 Metadata covers the models that have been imported, so `env.py` needs a module
-that has seen all of them. In a
-[subject-first application](howto_project_structure.md) that is `api.py`, since
-composition reaches every view and each view imports its model:
+that has seen all of them. That is `main.py`: it reaches view registration,
+which reaches every view, and each view imports its model. Because the factory
+builds nothing at import time, this costs the imports and nothing else:
 
 ```python
 # alembic/env.py
 import fastapi_restly as fr
-from myapp import api  # noqa: F401  (imports every view, and each view its model)
+import myapp.main  # noqa: F401  (imports every view, and each view its model)
 
 target_metadata = fr.DataclassBase.metadata
 ```
@@ -159,6 +159,8 @@ Note four details in this template:
   `lifespan` cleans up the connection pool on shutdown so workers exit
   promptly.
 
+(running-the-app)=
+
 ## Running the app
 
 Use any production ASGI runner. The most common options are
@@ -173,11 +175,21 @@ A minimal invocation runs the factory directly:
 uvicorn "myapp.main:create_app" --factory --host 0.0.0.0 --port 8000 --workers 4
 ```
 
-A module-level `app = create_app()` at the bottom of `main.py` restores the
-plain `uvicorn myapp.main:app` form if your platform expects an application
-object. With this template's required settings that makes importing the module
-require `DATABASE_URL`, in every context including a test suite's
-`conftest.py`, so prefer the `--factory` form. Either way, build the
+When your platform expects an application object rather than a factory, put it
+in its own module and leave `main.py` alone:
+
+```python
+# myapp/asgi.py
+from .main import create_app
+
+app = create_app()
+```
+
+`uvicorn myapp.asgi:app` then works, while `main.py` stays free to import. Do
+not put `app = create_app()` at the bottom of `main.py` instead: with required
+settings that makes importing the module require `DATABASE_URL` everywhere,
+including `conftest.py` and `alembic/env.py`. Nothing inside the package should
+import `asgi.py`; only the server does. Either way, build the
 application once per process: Restly's session configuration is process-wide,
 so a later factory call re-points every earlier app's requests at the new
 database too. See [how a factory's apps share one
