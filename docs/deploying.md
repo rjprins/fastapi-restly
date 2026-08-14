@@ -50,12 +50,24 @@ separate synchronous database URL. Alembic's
 shows the same template and how to adapt an existing environment.
 
 Point `alembic/env.py` at the metadata of whichever declarative base your
-models inherit from (typically {class}`fr.DataclassBase <fastapi_restly.models.DataclassBase>`):
+models inherit from (typically {class}`fr.DataclassBase <fastapi_restly.models.DataclassBase>`).
+In a subject-first application, keep model ownership in each subject and use
+one explicit registry to import every model module:
+
+```python
+# myapp/model_registry.py
+from .tasks import models as tasks
+from .users import models as users
+
+__all__ = ["tasks", "users"]
+```
+
+Alembic imports that registry before reading the shared metadata:
 
 ```python
 # alembic/env.py
 import fastapi_restly as fr
-import myapp.models  # noqa: F401 (import side-effect: registers model classes)
+from myapp import model_registry  # noqa: F401
 
 target_metadata = fr.DataclassBase.metadata
 ```
@@ -107,8 +119,8 @@ import fastapi_restly as fr
 from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import create_async_engine
 
+from .api import register_views
 from .settings import Settings
-from .views import UserView
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -129,16 +141,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app = FastAPI(lifespan=lifespan)
     fr.configure(app, async_engine=engine)
-    fr.include_view(app, UserView)
+    register_views(app)
     return app
 ```
 
-Note three details in this template:
+Note four details in this template:
 
 - The factory keeps configuration out of module import: settings are read and
   the engine is built when `create_app()` runs, so a test suite can call the
   same factory with its own settings. See
   [Test APIs with RestlyTestClient and Fixtures](howto_testing.md).
+- `register_views(app)` keeps view definitions free of registration side
+  effects and makes `api.py` the one application composition boundary.
 - {func}`fr.configure(app, ...) <fastapi_restly.db.configure>` installs the default exception handlers
   (currently the translator that turns `IntegrityError` into a 409 response;
   see [Database conflicts](howto_error_responses.md#database-conflicts-integrityerror-to-409)).

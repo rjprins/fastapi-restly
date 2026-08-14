@@ -180,7 +180,7 @@ runtime behaviour:
 
 {func}`include_view() <fastapi_restly.views.include_view>` is the registration boundary between declarative view modules
 and application composition. For larger apps, define view classes without
-side effects in feature modules, then include them from the module that builds
+side effects in subject packages, then include them from the module that builds
 your `FastAPI` app or `APIRouter`:
 
 ```python

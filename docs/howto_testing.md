@@ -43,7 +43,7 @@ import os
 import fastapi_restly as fr
 from fastapi import FastAPI
 
-from .views import UserView
+from .api import register_views
 
 
 def create_app(database_url: str | None = None) -> FastAPI:
@@ -52,7 +52,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
         or os.environ.get("DATABASE_URL", "sqlite+aiosqlite:///./app.db")
     )
     app = FastAPI()
-    fr.include_view(app, UserView)
+    register_views(app)
     return app
 ```
 
@@ -66,8 +66,8 @@ naming the test database explicitly, and hands the result to
 ```python
 # conftest.py
 import fastapi_restly as fr
+from myapp.database import Base
 from myapp.main import create_app
-from myapp.models import Base
 
 app = create_app("sqlite+aiosqlite:///./test.db")
 
@@ -118,7 +118,7 @@ os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test.db"
 import fastapi_restly as fr
 
 from myapp.main import app  # noqa: E402
-from myapp.models import Base  # noqa: E402
+from myapp.database import Base  # noqa: E402
 
 fr.testing.configure_tests(app=app, base=Base, create_all=True)
 ```
@@ -176,8 +176,8 @@ the test database and the local `.env` disabled:
 ```python
 # conftest.py
 import fastapi_restly as fr
+from myapp.database import Base
 from myapp.main import create_app
-from myapp.models import Base
 from myapp.settings import Settings
 
 app = create_app(
