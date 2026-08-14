@@ -25,8 +25,9 @@ code they hold:
 ```text
 myapp/
 ├── main.py                 # Application factory and lifespan
-├── asgi.py                 # app = create_app(), for servers wanting an object
+├── asgi.py                 # app = create_app(), the deployment entrypoint
 ├── api.py                  # View registration
+├── settings.py             # Pydantic settings
 ├── database.py             # Engine, sessions, and any declarative base
 ├── views.py                # Shared base view and mixins
 ├── users/

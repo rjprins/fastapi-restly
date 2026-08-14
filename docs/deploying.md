@@ -185,11 +185,19 @@ from .main import create_app
 app = create_app()
 ```
 
-`uvicorn myapp.asgi:app` then works, while `main.py` stays free to import. Do
-not put `app = create_app()` at the bottom of `main.py` instead: with required
-settings that makes importing the module require `DATABASE_URL` everywhere,
-including `conftest.py` and `alembic/env.py`. Nothing inside the package should
-import `asgi.py`; only the server does. Either way, build the
+`uvicorn myapp.asgi:app` then works, while `main.py` stays free to import. The
+FastAPI CLI cannot call a factory, so name that module for it and
+`fastapi dev` and `fastapi run` work too:
+
+```toml
+[tool.fastapi]
+entrypoint = "myapp.asgi:app"
+```
+
+Do not put `app = create_app()` at the bottom of `main.py` instead: with
+required settings that makes importing the module require `DATABASE_URL`
+everywhere, including `conftest.py` and `alembic/env.py`. Nothing inside the
+package should import `asgi.py`; only the server does. Either way, build the
 application once per process: Restly's session configuration is process-wide,
 so a later factory call re-points every earlier app's requests at the new
 database too. See [how a factory's apps share one
