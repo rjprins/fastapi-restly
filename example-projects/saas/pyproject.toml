@@ -14,6 +14,11 @@ dependencies = [
     "python-multipart>=0.0.20",
 ]
 
+# `fastapi dev` and `fastapi run` cannot call a factory, so point them at the
+# one module that holds an application object.
+[tool.fastapi]
+entrypoint = "app.asgi:app"
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"

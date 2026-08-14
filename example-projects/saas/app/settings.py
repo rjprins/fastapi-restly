@@ -1,5 +1,7 @@
 """Validated environment settings for the SaaS example."""
 
+from pathlib import Path
+
 from pydantic import Field, PostgresDsn, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -7,8 +9,12 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     """Application settings loaded from environment variables or ``.env``."""
 
+    # Absolute path: a relative env_file resolves against the working
+    # directory, so running from a subdirectory would silently miss it.
     model_config = SettingsConfigDict(
-        env_file=".env", extra="ignore", hide_input_in_errors=True
+        env_file=Path(__file__).resolve().parent.parent / ".env",
+        extra="ignore",
+        hide_input_in_errors=True,
     )
 
     database_url: PostgresDsn

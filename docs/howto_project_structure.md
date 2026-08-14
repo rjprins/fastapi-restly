@@ -120,9 +120,13 @@ every application has, so tools can rely on it without knowing how the rest is
 arranged.
 
 This works only because the factory keeps `main.py` free of side effects.
-Importing it defines `create_app()` and builds nothing, so a tool pays for the
-imports and no more. Never put `app = create_app()` at module level there, or
-every importer starts paying for a full application, settings included.
+Importing it defines `create_app()` and builds nothing, so a test suite can
+name its own database rather than setting environment variables before its
+imports. Never put `app = create_app()` at module level there: with settings
+that have no defaults, importing the module would then require a configured
+environment, and the test suite is the first thing to break. The application
+object belongs in `asgi.py`, which only the server imports; see
+[Running the app](deploying.md#running-the-app).
 
 `alembic/env.py` imports it before reading `target_metadata`:
 

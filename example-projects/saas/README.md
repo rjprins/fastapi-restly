@@ -14,7 +14,9 @@ service needs.
 - **Validated settings.** `app/settings.py` requires `DATABASE_URL` and loads
   pool sizes with Pydantic settings, including explicit asyncpg and range
   validation.
-- **Application factory.** `app/main.py` exposes `create_app(settings)`.
+- **Application factory.** `app/main.py` exposes `create_app(settings)` and no
+  application object, so importing it never requires a configured environment.
+  The object servers want lives in `app/asgi.py`, which only they import.
   Settings reading, engine construction, and Restly configuration run only
   when the factory is called. The test suite calls the same factory with its
   own database.
@@ -53,6 +55,7 @@ saas/
 │   ├── database.py          # Application-owned async engine builder
 │   ├── settings.py          # Validated Pydantic settings
 │   ├── main.py              # create_app() factory: Restly wiring, lifespan
+│   ├── asgi.py              # app = create_app(), the deployment entrypoint
 │   ├── api.py               # Central, side-effect-free view registration
 │   ├── views.py             # Application-wide view foundation: base view and mixins
 │   ├── outbox.py            # Cross-domain transactional outbox model
@@ -92,8 +95,11 @@ uv sync
 cp .env.example .env
 docker compose up -d --wait db
 uv run alembic upgrade head
-uv run uvicorn --factory app.main:create_app --reload
+uv run uvicorn app.asgi:app --reload
 ```
+
+`uv run fastapi dev` works too: `pyproject.toml` names `app.asgi:app` as the
+entrypoint, since the FastAPI CLI cannot call a factory.
 
 The API is available at <http://127.0.0.1:8000> and the interactive OpenAPI
 documentation is at <http://127.0.0.1:8000/docs>.
