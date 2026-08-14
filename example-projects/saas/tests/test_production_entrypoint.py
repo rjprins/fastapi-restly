@@ -14,12 +14,18 @@ import subprocess
 import sys
 from pathlib import Path
 
+from tests.conftest import _test_url
 
-def test_create_app_builds_from_environment_settings() -> None:
+_SAAS_ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_create_app_builds_from_environment_settings(tmp_path: Path) -> None:
     env = dict(os.environ)
-    env["DATABASE_URL"] = (
-        "postgresql+asyncpg://postgres:postgres@localhost:5433/saas_test"
-    )
+    env["PYTHONPATH"] = str(_SAAS_ROOT)
+    # DATABASE_URL matches the same test service conftest resolved (honoring
+    # SAAS_TEST_DATABASE_URL / RESTLY_TEST_DATABASE_URL overrides), so this
+    # still targets CI's database when it isn't on the default port.
+    env["DATABASE_URL"] = _test_url.render_as_string(hide_password=False)
     env.pop("DB_POOL_SIZE", None)
     env.pop("DB_MAX_OVERFLOW", None)
 
@@ -27,11 +33,15 @@ def test_create_app_builds_from_environment_settings() -> None:
         [
             sys.executable,
             "-c",
+            "import fastapi_restly as fr\n"
             "from app.main import create_app\n"
-            "app = create_app()\n"
-            "print(app.state.engine.url.drivername)\n",
+            "create_app()\n"
+            "print(fr.db.get_async_engine().url.drivername)\n",
         ],
-        cwd=Path(__file__).resolve().parents[1],
+        # An empty cwd, not the project root: Settings' env_file=".env" is
+        # resolved relative to cwd, and a real .env there would leak pool
+        # settings into this default-settings smoke test.
+        cwd=tmp_path,
         env=env,
         capture_output=True,
         text=True,

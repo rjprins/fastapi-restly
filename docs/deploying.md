@@ -169,7 +169,7 @@ require `DATABASE_URL`, in every context including a test suite's
 application once per process: Restly's session configuration is process-wide,
 so a later factory call re-points every earlier app's requests at the new
 database too. See [how a factory's apps share one
-configuration](howto_testing.md#factory-apps-share-one-configuration).
+configuration](#factory-apps-share-one-configuration).
 
 Sync {class}`RestView <fastapi_restly.views.RestView>` endpoints run on FastAPI's threadpool, so worker count
 still has the usual effect; async {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` endpoints share the

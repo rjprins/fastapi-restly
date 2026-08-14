@@ -83,7 +83,6 @@ which is what makes this work: the factory call in `conftest.py` re-points the
 process at the test database before `configure_tests()` freezes it. That holds
 even when importing `myapp.main` already built a module-level default app,
 since the conftest's factory call runs after the import and before the freeze.
-The default app goes unused in tests, and its engine never opens a connection.
 A factory that *requires* its settings, like the PostgreSQL one below, must
 not build an app at import time: keep it on the `--factory` form, or importing
 it in `conftest.py` would again require the environment variable to be set
@@ -124,9 +123,11 @@ from myapp.models import Base  # noqa: E402
 fr.testing.configure_tests(app=app, base=Base, create_all=True)
 ```
 
-A `.env` file is convenient in development. Keep it out of the suite's way.
-When the conftest builds the app through the factory, pass explicit settings
-and disable the settings class's env file (with pydantic-settings:
+A `.env` file is convenient in development, when the settings class enables
+one (the [production template](#production-main-template) does not; the [SaaS
+example](examples.md) does). Keep it out of the suite's way. When the conftest
+builds the app through the factory, pass explicit settings and disable the
+settings class's env file (with pydantic-settings:
 `Settings(database_url=..., _env_file=None)`). Explicitly passed values
 already outrank the file, but values the test leaves unset, such as pool
 sizes, would still come from a developer's local `.env`, and the suite would

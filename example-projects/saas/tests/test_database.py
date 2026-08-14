@@ -6,11 +6,13 @@ import fastapi_restly as fr
 
 
 def test_the_factory_configured_the_asyncpg_engine(restly_app: FastAPI) -> None:
-    """Restly serves requests with the exact engine the factory's lifespan owns.
+    """Restly serves requests with the same engine object app.state.engine holds.
 
-    Not just a same-driver engine: identity, so a factory that configured
-    Restly with one engine while disposing a different one at shutdown
-    would fail this, even though both engines speak asyncpg.
+    Not just a same-driver check: identity between what get_async_engine()
+    returns and what the factory stashed on app.state, plus a pool setting
+    only create_engine_from() sets. A factory that configured Restly with a
+    different engine than the one it exposed on app.state would fail this.
     """
     assert fr.db.get_async_engine() is restly_app.state.engine
+    # SQLAlchemy has no public accessor for this; _pre_ping is private API.
     assert fr.db.get_async_engine().pool._pre_ping is True

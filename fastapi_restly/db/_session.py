@@ -154,10 +154,13 @@ def configure(
     if configures_database and _fr_globals.database_configuration_locked:
         raise RestlyConfigurationError(
             "Restly's database configuration cannot be changed after "
-            "fr.testing.configure_tests() recorded it. Configure the application "
-            "for its test database before calling configure_tests(), and do not "
-            "reconfigure its database later during collection or application "
-            "lifespan startup."
+            "fr.testing.configure_tests() recorded it. This is often a "
+            "per-test factory fixture (e.g. a @pytest.fixture that calls "
+            "create_app(...) again for every test) calling fr.configure() "
+            "after collection. Build the application once in conftest.py "
+            "before calling configure_tests(), and do not reconfigure its "
+            "database later during collection or application lifespan "
+            "startup."
         )
 
     if not any(
