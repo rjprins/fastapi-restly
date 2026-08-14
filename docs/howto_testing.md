@@ -88,8 +88,14 @@ A factory that *requires* its settings, like the PostgreSQL one below, must
 not build an app at import time: keep it on the `--factory` form, or importing
 it in `conftest.py` would again require the environment variable to be set
 before the import, which is exactly the requirement the factory form lifts
-from tests.
+from tests. This safety only covers modules the conftest itself imports before
+`configure_tests()` runs. A module built elsewhere and imported later, such as
+an ASGI entrypoint a test file reaches for directly, still calls its
+module-level factory after the freeze and fails with
+`RestlyConfigurationError`. Keep default-app modules out of the import graph a
+managed suite pulls in after collection.
 
+(factory-apps-share-one-configuration)=
 The apps a factory builds are therefore not independent. Each call re-points
 the one process-wide configuration, so only the most recently built app should
 serve requests. An app built earlier would read the newer database while still
@@ -124,10 +130,13 @@ and disable the settings class's env file (with pydantic-settings:
 `Settings(database_url=..., _env_file=None)`). Explicitly passed values
 already outrank the file, but values the test leaves unset, such as pool
 sizes, would still come from a developer's local `.env`, and the suite would
-behave differently locally than in CI. Under the env-before-import fallback,
-explicit process environment values must take precedence over file values, so
-avoid dotenv's “override existing variables” option. It would override the
-database the test selected.
+behave differently locally than in CI. `_env_file=None` disables only that file
+source; an exported shell variable still reaches `Settings()` in tests exactly
+as it would in production, so pin a setting explicitly if the suite must not
+vary with it. Under the env-before-import fallback, explicit process
+environment values must take precedence over file values, so avoid dotenv's
+“override existing variables” option. It would override the database the test
+selected.
 
 The `testing` extra installs `pytest-asyncio`. Set its default fixture loop scope
 in `pyproject.toml`, or pytest-asyncio prints a deprecation warning on every run:
@@ -159,11 +168,31 @@ the app with [the production template's factory](#production-main-template),
 whose lifespan owns the engine: it creates the engine from its settings and
 hands it to Restly with `fr.configure(app, async_engine=engine)`.
 
-Use a production URL such as `postgresql+asyncpg://...` in deployment, and in
-`conftest.py` pass a disposable PostgreSQL database to the factory. Then call
-`configure_tests()` as shown above. Restly neither rebuilds the engine nor
-changes its pool. The engine belongs to the app the factory built, and that
-app's lifespan owns the dispose call, in production and in tests alike.
+Use a production URL such as `postgresql+asyncpg://...` in deployment. That
+factory takes `Settings`, not a bare URL, so build one in `conftest.py` with
+the test database and the local `.env` disabled:
+
+```python
+# conftest.py
+import fastapi_restly as fr
+from myapp.main import create_app
+from myapp.models import Base
+from myapp.settings import Settings
+
+app = create_app(
+    Settings(database_url="postgresql+asyncpg://...", _env_file=None)
+)
+
+fr.testing.configure_tests(
+    app=app,
+    base=Base,
+    create_all=True,
+)
+```
+
+Restly neither rebuilds the engine nor changes its pool. The engine belongs to
+the app the factory built, and that app's lifespan owns the dispose call, in
+production and in tests alike.
 
 ## What you get
 

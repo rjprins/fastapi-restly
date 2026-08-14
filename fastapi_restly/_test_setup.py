@@ -93,12 +93,14 @@ def configure_tests(
 ) -> None:
     """Add Restly's managed testing behaviour to an already-configured app.
 
-    Call it from ``conftest.py`` after the application has configured Restly for
-    its test database::
+    Call it from ``conftest.py`` after building the application against its test
+    database, typically through an app factory::
 
         import fastapi_restly as fr
-        from myapp.main import app
+        from myapp.main import create_app
         from myapp.models import Base
+
+        app = create_app("sqlite+aiosqlite:///./test.db")
 
         fr.testing.configure_tests(
             app=app,
@@ -108,10 +110,11 @@ def configure_tests(
 
     ``configure_tests()`` never chooses, creates or replaces a database engine.
     The application owns that configuration through :func:`fastapi_restly.configure`;
-    this function records the session factories already in force. Point the
-    application at a disposable test database before importing it, or construct
-    it from explicit test settings. Database configuration performed afterwards
-    is rejected so schema setup, cleanup and requests cannot disagree.
+    this function records the session factories already in force. Construct the
+    application from explicit test settings, or, for an application that
+    configures at module import time, select the test database before importing
+    it. Database configuration performed afterwards is rejected so schema setup,
+    cleanup and requests cannot disagree.
 
     ``app`` becomes what the ``restly_app`` fixture returns. The schema is
     optionally built once before tests start, and every test gets a clean

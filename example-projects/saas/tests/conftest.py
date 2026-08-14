@@ -38,8 +38,9 @@ if _test_url.get_backend_name() != "postgresql":
     raise pytest.UsageError("The SaaS test suite requires a PostgreSQL database URL")
 _test_url = _test_url.set(drivername="postgresql+asyncpg")
 
-# Disable the local .env so omitted settings such as pool sizes do not vary
-# between local and CI runs.
+# Disable the local .env file so omitted settings do not pick up a developer's
+# dotenv values. An exported shell variable (e.g. DB_POOL_SIZE) still applies,
+# the same as it would in production, since only the file source is disabled.
 app = create_app(
     Settings(
         database_url=_test_url.render_as_string(hide_password=False), _env_file=None

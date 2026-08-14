@@ -1080,12 +1080,31 @@ from myapp import create_app
 
 app = create_app("sqlite+aiosqlite:///./test.db")
 
+
+# Present only on the conftest's app, never on myapp's module-level default,
+# so a test can tell which of the two actually served a request.
+@app.get("/conftest-app-marker")
+def _conftest_app_marker():
+    return {"served_by": "conftest"}
+
+
 fr.testing.configure_tests(
     app=app,
     base=fr.DataclassBase,
     create_all=True,
 )
 """
+
+_FACTORY_TESTS = (
+    _TESTS
+    + """
+
+def test_requests_are_served_by_the_conftest_app(restly_client):
+    # Only the conftest's app registers this route; the module-level default
+    # 404s here, so a fixture regression back to serving it would fail loudly.
+    assert restly_client.get("/conftest-app-marker").json() == {"served_by": "conftest"}
+"""
+)
 
 
 def test_a_factory_configured_suite_is_isolated_end_to_end(tmp_path: Path):
@@ -1095,11 +1114,13 @@ def test_a_factory_configured_suite_is_isolated_end_to_end(tmp_path: Path):
     before configure_tests() freezes it. Configuration stays process-wide, so
     only the most recently built app may serve requests, and the default app
     never serves any here."""
-    _write_project(tmp_path, _FACTORY_CONFTEST, _TESTS, app_module=_FACTORY_APP_MODULE)
+    _write_project(
+        tmp_path, _FACTORY_CONFTEST, _FACTORY_TESTS, app_module=_FACTORY_APP_MODULE
+    )
     result = _run_pytest(tmp_path)
 
     assert result.returncode == 0, result.stdout + result.stderr
-    assert "4 passed" in result.stdout
+    assert "5 passed" in result.stdout
     # The suite ran on the test database; the development default was
     # configured first but never connected, so its file never appeared.
     assert (tmp_path / "test.db").exists()

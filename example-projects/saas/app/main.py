@@ -58,6 +58,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     # Give Restly the application's engine. Alembic owns all schema changes.
     fr.configure(app, async_engine=engine)
+    app.state.engine = engine
 
     fr.include_view(app, OrganizationView)
     fr.include_view(app, UserView)

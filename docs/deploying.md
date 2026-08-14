@@ -22,9 +22,10 @@ class Settings(BaseSettings):
 ```
 
 Instantiating `Settings()` reads `DATABASE_URL` and the pool fields from the
-environment. The production template below does that inside `create_app()` and
-passes the values into {func}`fr.configure() <fastapi_restly.db.configure>`
-through an explicit engine, which is what lets you set pool options.
+environment. [The production template below](#production-main-template) does
+that inside `create_app()` and passes the values into
+{func}`fr.configure() <fastapi_restly.db.configure>` through an explicit
+engine, which is what lets you set pool options.
 
 `pool_pre_ping=True` is recommended in production: it issues a lightweight
 liveness check before handing out a pooled connection, which prevents
@@ -165,11 +166,10 @@ plain `uvicorn myapp.main:app` form if your platform expects an application
 object. With this template's required settings that makes importing the module
 require `DATABASE_URL`, in every context including a test suite's
 `conftest.py`, so prefer the `--factory` form. Either way, build the
-application once per process. Restly's session configuration is process-wide,
-so a later factory call re-points it for every earlier app as well. The
-earlier app keeps its routes, lifespan, and original engine, but its requests
-read the newly configured database, which is why only the most recently built
-app should serve requests.
+application once per process: Restly's session configuration is process-wide,
+so a later factory call re-points every earlier app's requests at the new
+database too. See [how a factory's apps share one
+configuration](howto_testing.md#factory-apps-share-one-configuration).
 
 Sync {class}`RestView <fastapi_restly.views.RestView>` endpoints run on FastAPI's threadpool, so worker count
 still has the usual effect; async {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` endpoints share the
