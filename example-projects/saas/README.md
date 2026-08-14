@@ -20,9 +20,10 @@ service needs.
   Settings reading, engine construction, and Restly configuration run only
   when the factory is called. The test suite calls the same factory with its
   own database.
-- **Application-owned engine.** `app/database.py` builds the async engine from
+- **Application-owned engine.** `create_app()` builds the async engine from
   settings, Restly receives that engine, and the FastAPI lifespan disposes its
-  pool.
+  pool. Restly's own engine defaults cover only engines it builds from a URL,
+  so the factory sets `pool_pre_ping` itself.
 - **Migration-owned schema.** The app never calls `async_create_all()`.
   `alembic/` contains an async environment and the initial schema migration.
 - **Migration-backed fixtures.** Restly runs `alembic upgrade head` against the
@@ -52,7 +53,6 @@ saas/
 │   ├── env.py               # Async Alembic environment
 │   └── versions/            # Initial schema and lookup seed data
 ├── app/
-│   ├── database.py          # Application-owned async engine builder
 │   ├── settings.py          # Validated Pydantic settings
 │   ├── main.py              # create_app() factory: Restly wiring, lifespan
 │   ├── asgi.py              # app = create_app(), the deployment entrypoint

@@ -28,7 +28,6 @@ myapp/
 ├── asgi.py                 # app = create_app(), the deployment entrypoint
 ├── api.py                  # View registration
 ├── settings.py             # Pydantic settings
-├── database.py             # Engine, sessions, and any declarative base
 ├── views.py                # Shared base view and mixins
 ├── users/
 │   ├── __init__.py
@@ -107,10 +106,9 @@ Models inherit
 {class}`fr.IDBase <fastapi_restly.models.IDBase>` or
 {class}`fr.DataclassBase <fastapi_restly.models.DataclassBase>`, and because
 `IDBase` subclasses `DataclassBase` they share one `MetaData`, so the
-application schema is `fr.DataclassBase.metadata` and `database.py` holds only
-the engine. Declare your own base when you need different mapping defaults,
-keep it in `database.py`, and use it wherever this page names
-`fr.DataclassBase`.
+application schema is `fr.DataclassBase.metadata`. Declare your own base only
+when you need different mapping defaults, put it in a root `models.py`, and use
+it wherever this page names `fr.DataclassBase`.
 
 A base describes the models that have been imported and nothing else, so the
 layout needs one module that has imported all of them. That module is
@@ -187,6 +185,13 @@ already that layer: business methods such as
 goes, and an extra layer that forwards to them adds indirection without
 adding a seam. Write a `service.py` when logic genuinely runs outside a
 request, such as work shared with a background worker.
+
+A `database.py` is the same story. Restly builds the engine from the URL you
+give {func}`fr.configure() <fastapi_restly.db.configure>`, with defaults suited
+to a web server, so most applications never construct one. Write the module
+when you need to build the engine yourself: pool sizing, or an engine shared
+with code that predates Restly. See
+[Engine Defaults](technical_details.md#engine-defaults).
 
 The same applies to `dependencies.py`, `constants.py`, and `exceptions.py`
 inside a subject. Each is worth having once it holds more than one item.

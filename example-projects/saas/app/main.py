@@ -23,18 +23,25 @@ for exactly that. Keep it free: never build an app at module level here.
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from sqlalchemy.ext.asyncio import create_async_engine
 
 import fastapi_restly as fr
 
 from .api import register_views
-from .database import create_engine_from
 from .settings import Settings
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     """Build the SaaS application from validated settings."""
     settings = settings or Settings()  # type: ignore[call-arg]
-    engine = create_engine_from(settings)
+    # Restly's own defaults cover only engines it builds from a URL, so a
+    # caller-built engine sets pool_pre_ping itself.
+    engine = create_async_engine(
+        settings.sqlalchemy_database_url,
+        pool_size=settings.db_pool_size,
+        max_overflow=settings.db_max_overflow,
+        pool_pre_ping=True,
+    )
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
