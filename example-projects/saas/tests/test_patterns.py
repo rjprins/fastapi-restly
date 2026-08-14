@@ -65,7 +65,7 @@ class TestPasswordHashing:
 
     async def test_stored_value_is_a_real_hash(self, async_org_id, async_client):
         """Round-trip: pull the row from the DB, verify hash matches plaintext."""
-        from app.users.model import User
+        from app.users.models import User
 
         await async_client.post(
             "/users",
@@ -108,7 +108,7 @@ class TestPasswordHashing:
 
     async def test_change_password_swaps_hash(self, async_client, async_org_id):
         """Successful change replaces the stored digest."""
-        from app.users.model import User
+        from app.users.models import User
 
         u = (
             await async_client.post(

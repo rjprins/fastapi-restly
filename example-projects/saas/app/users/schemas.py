@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 import fastapi_restly as fr
 
-from .model import UserRole
+from .models import UserRole
 
 
 class UserSchema(fr.TimestampsSchemaMixin, fr.IDSchema):

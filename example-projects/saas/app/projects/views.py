@@ -10,11 +10,11 @@ from sqlalchemy.orm import selectinload
 
 import fastapi_restly as fr
 
-from ..tasks.model import Task, TaskPriority, TaskStatus, TaskType
+from ..tasks.models import Task, TaskPriority, TaskStatus, TaskType
 from ..tasks.schemas import TaskSchema
 from ..view_base import TenantBase
 from ..view_mixins import AuditStampedMixin, SoftDeleteMixin, TenantScopedMixin
-from .model import Project, ProjectStatus
+from .models import Project, ProjectStatus
 from .schemas import ProjectSchema
 
 

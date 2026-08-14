@@ -4,7 +4,7 @@ from fastapi import Response
 
 import fastapi_restly as fr
 
-from .model import Organization
+from .models import Organization
 from .schemas import (
     OrganizationCreateSchema,
     OrganizationSchema,

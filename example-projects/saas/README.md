@@ -58,15 +58,15 @@ saas/
 │   ├── view_mixins.py       # Application-wide view behavior
 │   ├── outbox.py            # Cross-domain transactional outbox model
 │   ├── organizations/
-│   │   ├── model.py
+│   │   ├── models.py
 │   │   ├── schemas.py
 │   │   └── views.py
-│   ├── users/               # model.py, schemas.py, views.py
-│   ├── projects/            # model.py, schemas.py, views.py
-│   ├── tasks/               # model.py, schemas.py, views.py
-│   ├── labels/              # model.py, schemas.py, views.py
-│   ├── uploads/             # model.py, schemas.py, views.py
-│   └── lookups/             # model.py, schemas.py, views.py
+│   ├── users/               # models.py, schemas.py, views.py
+│   ├── projects/            # models.py, schemas.py, views.py
+│   ├── tasks/               # models.py, schemas.py, views.py
+│   ├── labels/              # models.py, schemas.py, views.py
+│   ├── uploads/             # models.py, schemas.py, views.py
+│   └── countries/           # models.py, schemas.py, views.py
 ├── tests/                   # Migration-backed Restly test suite
 └── pyproject.toml
 ```

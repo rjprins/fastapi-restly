@@ -7,11 +7,11 @@ from pydantic import BaseModel
 import fastapi_restly as fr
 from fastapi_restly.objects import async_make_new_object, async_save_object
 
-from ..projects.model import Project
-from ..tasks.model import Task
+from ..projects.models import Project
+from ..tasks.models import Task
 from ..view_base import TenantBase
 from ..view_mixins import TenantScopedMixin
-from .model import Label, TaskLabel
+from .models import Label, TaskLabel
 from .schemas import LabelSchema, TaskLabelSchema
 
 

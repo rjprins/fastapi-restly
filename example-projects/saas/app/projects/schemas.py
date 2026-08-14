@@ -6,7 +6,7 @@ from pydantic import computed_field
 
 import fastapi_restly as fr
 
-from .model import ProjectStatus
+from .models import ProjectStatus
 
 
 class ProjectSchema(fr.TimestampsSchemaMixin, fr.IDSchema):

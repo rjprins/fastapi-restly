@@ -675,7 +675,7 @@ class TestFieldLevelPermissions:
     def test_hr_can_see_salary(self, client):
         """Test that HR role can see salary field."""
         import app.users.views as user_view
-        from app.users.model import UserRole
+        from app.users.models import UserRole
 
         # Create org and user with salary
         response = client.post(
@@ -710,7 +710,7 @@ class TestFieldLevelPermissions:
     def test_member_cannot_see_salary(self, client):
         """Test that member role cannot see salary field."""
         import app.users.views as user_view
-        from app.users.model import UserRole
+        from app.users.models import UserRole
 
         # Create org and user with salary
         response = client.post(
@@ -744,7 +744,7 @@ class TestFieldLevelPermissions:
     def test_owner_can_see_salary(self, client):
         """Test that owner role can also see salary field."""
         import app.users.views as user_view
-        from app.users.model import UserRole
+        from app.users.models import UserRole
 
         # Create org and user with salary
         response = client.post(

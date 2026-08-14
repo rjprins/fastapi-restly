@@ -8,7 +8,7 @@ ordering pipeline.
 
 import fastapi_restly as fr
 
-from .model import Country
+from .models import Country
 from .schemas import CountrySchema
 
 

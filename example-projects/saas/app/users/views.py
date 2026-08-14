@@ -10,7 +10,7 @@ import fastapi_restly as fr
 from ..auth import hash_password, verify_password
 from ..view_base import TenantBase
 from ..view_mixins import AuditStampedMixin, SoftDeleteMixin, TenantScopedMixin
-from .model import User, UserRole
+from .models import User, UserRole
 from .schemas import UserFullSchema, UserPublicSchema, UserSchema
 
 # Set by tests to simulate field-level permissions without real auth middleware.

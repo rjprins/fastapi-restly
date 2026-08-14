@@ -4,9 +4,9 @@ from datetime import datetime
 
 import fastapi_restly as fr
 
-from ..projects.model import Project
-from ..users.model import User
-from .model import Task, TaskPriority, TaskStatus, TaskType
+from ..projects.models import Project
+from ..users.models import User
+from .models import Task, TaskPriority, TaskStatus, TaskType
 
 
 class TaskSchema(fr.TimestampsSchemaMixin, fr.IDSchema):

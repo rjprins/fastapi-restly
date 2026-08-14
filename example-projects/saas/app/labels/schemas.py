@@ -2,8 +2,8 @@
 
 import fastapi_restly as fr
 
-from ..tasks.model import Task
-from .model import Label
+from ..tasks.models import Task
+from .models import Label
 
 
 class LabelSchema(fr.TimestampsSchemaMixin, fr.IDSchema):

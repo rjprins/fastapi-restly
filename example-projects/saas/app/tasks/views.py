@@ -8,7 +8,7 @@ import fastapi_restly as fr
 
 from ..view_base import TenantBase
 from ..view_mixins import AuditStampedMixin, SoftDeleteMixin
-from .model import Task, TaskPriority, TaskStatus, TaskType
+from .models import Task, TaskPriority, TaskStatus, TaskType
 from .schemas import TaskSchema
 
 
@@ -79,7 +79,7 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
 
     async def delete_object(self, obj):
         """Decrement the parent project's story-point rollup before delete."""
-        from ..projects.model import Project
+        from ..projects.models import Project
 
         if obj.story_points:
             project = await self.session.get(Project, obj.project_id)
@@ -107,8 +107,8 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
 
     async def _validate_cross_resource(self, data: dict) -> None:
         """Validate cross-resource constraints (assignee must be in same org as project)."""
-        from ..projects.model import Project
-        from ..users.model import User
+        from ..projects.models import Project
+        from ..users.models import User
 
         project_id = data.get("project_id")
         assignee_id = data.get("assignee_id")
@@ -141,7 +141,7 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
         The rollup depends on request data, so it lives in the business verb and
         commits with the task.
         """
-        from ..projects.model import Project, ProjectStatus
+        from ..projects.models import Project, ProjectStatus
 
         data = schema_obj.model_dump()
         project_id = data.get("project_id")
@@ -170,7 +170,7 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
         Capture old values, apply the update, then propagate the story-point
         delta to the related project in the same transaction.
         """
-        from ..projects.model import Project
+        from ..projects.models import Project
 
         task = obj
 

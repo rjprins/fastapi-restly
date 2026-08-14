@@ -4,8 +4,8 @@ from fastapi import FastAPI
 
 import fastapi_restly as fr
 
+from .countries.views import CountryView
 from .labels.views import LabelView, TaskLabelView
-from .lookups.views import CountryView
 from .organizations.views import OrganizationView
 from .projects.views import ProjectView
 from .tasks.views import TaskView
