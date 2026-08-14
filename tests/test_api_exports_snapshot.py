@@ -14,6 +14,7 @@ PUBLIC_MODULES = (
     "fastapi_restly.query",
     "fastapi_restly.schemas",
     "fastapi_restly.testing",
+    "fastapi_restly.utils",
     "fastapi_restly.views",
 )
 

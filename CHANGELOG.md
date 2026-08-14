@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `fr.utils.lazy_proxy()` returns a stand-in for an object that is only built
+  the first time something reads it, with `fr.utils.lazy_proxy_set()` to
+  install an explicit one. A module-level `settings = fr.utils.lazy_proxy(
+  Settings)` keeps importing your application free of configuration, which is
+  what lets a test suite name its own database instead of setting environment
+  variables before its imports. Attribute reads, writes and `isinstance` all
+  reach the built object; only `type()` sees the proxy. Proxy what is
+  process-global and read-mostly, never a database session or anything else
+  request-scoped.
 - A production-shaped SaaS example with separate PostgreSQL development and
   test services, Pydantic settings, an application-owned asyncpg engine, async
   Alembic migrations, migration-seeded fixtures, and migration-backed tests.
