@@ -188,9 +188,9 @@ fr.include_view(app, MyView)
 ```
 
 This keeps imports predictable: importing `myapp.users.views` defines
-`UserView`, while `myapp.main` or `myapp.users.router` decides which app/router
-receives it. For small apps and examples, `include_view()` also works as a
-decorator:
+`UserView`, while `myapp.api` decides which app or router receives it. See
+[Structure a Project](howto_project_structure.md) for the layout this assumes.
+For small apps and examples, `include_view()` also works as a decorator:
 
 ```python
 @fr.include_view(app)

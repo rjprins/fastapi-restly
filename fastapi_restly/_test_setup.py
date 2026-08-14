@@ -123,7 +123,9 @@ def configure_tests(
 
     ``base=`` names the models the suite works with. It is what delete mode empties
     between tests, and what ``create_all`` builds. Pass your declarative base, or
-    its ``MetaData``.
+    its ``MetaData``. It covers only the models imported by the time this call
+    freezes the configuration; building the app first imports them, since
+    composition reaches every view and each view imports its model.
 
     Who builds the schema is a separate choice, and the two are mutually
     exclusive:

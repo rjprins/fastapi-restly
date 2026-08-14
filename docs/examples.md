@@ -34,7 +34,8 @@ PostgreSQL through `asyncpg`, Pydantic settings, and an application-owned async
 engine. Compose provides separate development and test databases, and the
 Restly test fixtures build their schema from the checked-in migrations. It also
 builds a substantial non-CRUD surface on the same views. Each view lives beside
-its model and schemas in a subject package under `example-projects/saas/app/`.
+its model and schemas in a subject package under `example-projects/saas/app/`,
+the layout [Structure a Project](howto_project_structure.md) describes.
 The routes below highlight the patterns involved:
 
 | Route | Pattern it demonstrates |

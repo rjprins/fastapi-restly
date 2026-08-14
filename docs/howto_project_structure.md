@@ -70,6 +70,8 @@ imported. Keep `__init__.py` empty or limited to a docstring, and import
 concrete modules rather than building re-export modules that pull in a whole
 subject to reach one class.
 
+(compose-in-one-place)=
+
 ## Compose in one place
 
 Restly has no autodiscovery. Nothing scans your package for views or models,

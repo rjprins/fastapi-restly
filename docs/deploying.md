@@ -51,8 +51,9 @@ shows the same template and how to adapt an existing environment.
 
 Point `alembic/env.py` at the metadata of whichever declarative base your
 models inherit from (typically {class}`fr.DataclassBase <fastapi_restly.models.DataclassBase>`).
-In a subject-first application, keep model ownership in each subject and use
-one explicit registry to import every model module:
+In a [subject-first application](howto_project_structure.md), keep model
+ownership in each subject and use one explicit registry to import every model
+module:
 
 ```python
 # myapp/model_registry.py
@@ -152,7 +153,8 @@ Note four details in this template:
   same factory with its own settings. See
   [Test APIs with RestlyTestClient and Fixtures](howto_testing.md).
 - `register_views(app)` keeps view definitions free of registration side
-  effects and makes `api.py` the one application composition boundary.
+  effects and makes `api.py` the one application composition boundary; see
+  [Structure a Project](howto_project_structure.md).
 - {func}`fr.configure(app, ...) <fastapi_restly.db.configure>` installs the default exception handlers
   (currently the translator that turns `IntegrityError` into a 409 response;
   see [Database conflicts](howto_error_responses.md#database-conflicts-integrityerror-to-409)).

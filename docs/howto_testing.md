@@ -253,6 +253,13 @@ cleanup; see [the fixture reference](#pytest-fixture-reference).
 tests, and what it builds the schema from if you ask it to. Pass your declarative
 base, or its `MetaData`.
 
+A base only knows the models that have been imported by the time the suite
+freezes. Building the app first is what imports them, since composition reaches
+every view and each view imports its model. A conftest that reaches for `Base`
+without building the app should import the model registry as well, the way
+`alembic/env.py` does; see
+[Compose in one place](#compose-in-one-place).
+
 Who builds the schema is a separate choice, and there are three answers.
 
 **From your models**, with `create_all=True`, which builds the tables the
