@@ -186,13 +186,6 @@ goes, and an extra layer that forwards to them adds indirection without
 adding a seam. Write a `service.py` when logic genuinely runs outside a
 request, such as work shared with a background worker.
 
-A `database.py` is the same story. Restly builds the engine from the URL you
-give {func}`fr.configure() <fastapi_restly.db.configure>`, with defaults suited
-to a web server, so most applications never construct one. Write the module
-when you need to build the engine yourself: pool sizing, or an engine shared
-with code that predates Restly. See
-[Engine Defaults](technical_details.md#engine-defaults).
-
 The same applies to `dependencies.py`, `constants.py`, and `exceptions.py`
 inside a subject. Each is worth having once it holds more than one item.
 
