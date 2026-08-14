@@ -147,7 +147,10 @@ Note three details in this template:
   Pass `install_default_exception_handlers=False` to opt out.
 - The engine belongs to the app the factory built: `engine.dispose()` in
   `lifespan` cleans up the connection pool on shutdown so workers exit
-  promptly.
+  promptly. Restly never disposes an engine itself, so an application that
+  configures from a URL instead reaches its engine through
+  {func}`fr.db.get_async_engine() <fastapi_restly.db.get_async_engine>`; see
+  [Engine Disposal](technical_details.md#engine-disposal).
 
 ## Running the app
 

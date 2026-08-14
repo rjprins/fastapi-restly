@@ -362,6 +362,56 @@ All of this rides on the URL rung alone. Pass `engine=`, `make_session=` or a
 session generator and Restly leaves your object exactly as it arrived, so
 building the engine yourself is how you decline any of these defaults.
 
+## Engine Disposal
+
+Disposing an engine closes the connections its pool is holding. Restly never
+disposes an engine, including the ones it builds, because an engine is meant to
+live as long as the process that serves requests through it. When that process
+exits, the operating system reclaims the sockets, so most applications never
+need to dispose anything.
+
+Asynchronous applications are the exception worth handling. `AsyncEngine.dispose()`
+is a coroutine, and nothing awaits it during interpreter shutdown, so an async
+engine that is never disposed drops its connections rather than closing them.
+The server on the other end sees each one as an unexpected disconnect.
+
+An application that builds its own engine already holds it and disposes it in
+its lifespan, which is what [the production
+template](#production-main-template) does. When you configure from a
+URL, Restly owns the engine, and
+{func}`fr.db.get_async_engine() <fastapi_restly.db.get_async_engine>` hands it
+back:
+
+```python
+from contextlib import asynccontextmanager
+
+import fastapi_restly as fr
+from fastapi import FastAPI
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    yield
+    await fr.db.get_async_engine().dispose()
+
+
+app = FastAPI(lifespan=lifespan)
+fr.configure(app, async_database_url="postgresql+asyncpg://localhost/app")
+```
+
+Synchronous applications call
+{func}`fr.db.get_engine() <fastapi_restly.db.get_engine>` and `dispose()`
+without awaiting. Note that Starlette runs `on_startup` and `on_shutdown`
+handlers only when the application was built without a `lifespan` argument, so
+disposal belongs in the lifespan itself rather than in a handler appended to
+`app.router`.
+
+Reconfiguring Restly in a running process abandons the previous pool rather than
+closing it. CPython reclaims it once the garbage collector reaches the cycle the
+engine sits in, which is why a test suite that reconfigures per test can hold
+several pools open at once. Suites that care dispose explicitly; Restly's own
+fixtures do.
+
 ## Session Factory Defaults
 
 When {func}`fr.configure() <fastapi_restly.db.configure>` creates session factories from URLs or engines, Restly
