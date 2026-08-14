@@ -26,8 +26,8 @@ code they hold:
 myapp/
 ├── main.py                 # Application factory and lifespan
 ├── api.py                  # View registration
-├── database.py             # Engine, sessions, and declarative base
-├── model_registry.py       # Explicit model imports for Alembic
+├── database.py             # Engine, sessions, and any declarative base
+├── model_registry.py       # Explicit model imports for complete metadata
 ├── views.py                # Shared base view and mixins
 ├── users/
 │   ├── __init__.py
@@ -99,8 +99,19 @@ The factory then calls it after
 {func}`fr.configure(app, ...) <fastapi_restly.db.configure>`, as shown in
 [A production `main.py` template](#production-main-template).
 
-`model_registry.py` does the same job for SQLAlchemy metadata. Importing it
-imports every model module, so Alembic sees a complete schema:
+`model_registry.py` does the same job for SQLAlchemy metadata, and needs a
+word about where that metadata comes from. Most applications never declare a
+declarative base of their own: models inherit
+{class}`fr.IDBase <fastapi_restly.models.IDBase>` or
+{class}`fr.DataclassBase <fastapi_restly.models.DataclassBase>`, and because
+`IDBase` subclasses `DataclassBase` they share one `MetaData`. The application
+schema is then `fr.DataclassBase.metadata`, and `database.py` holds only the
+engine. Declare your own base when you need different mapping defaults, keep it
+in `database.py`, and use it wherever this page names `fr.DataclassBase`.
+
+Either way the base is half the answer, because metadata describes the models
+that have been imported and nothing else. Subject-first layouts spread those
+imports across packages, so one module gathers them:
 
 ```python
 # myapp/model_registry.py
@@ -110,9 +121,13 @@ from .users import models as users
 __all__ = ["tasks", "users"]
 ```
 
-`alembic/env.py` imports that one module instead of tracking each subject by
-hand. See
-[Migrations with Alembic](deploying.md#migrations-with-alembic).
+Anything that needs the full schema without building the application imports
+that one module: `alembic/env.py` before it reads `target_metadata`, and a
+`conftest.py` that asks `configure_tests()` to run `create_all`. Building the
+application covers it too, since composition reaches every view and each view
+imports its model. See
+[Migrations with Alembic](deploying.md#migrations-with-alembic) and
+[Test APIs with RestlyTestClient and Fixtures](howto_testing.md).
 
 ## Share view behavior from the package root
 
