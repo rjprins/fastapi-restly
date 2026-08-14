@@ -1,13 +1,22 @@
-"""SQLAlchemy models for the SaaS example."""
+"""Temporary model exports while domains move to subject packages."""
 
-from .label import Label, TaskLabel
-from .lookup import Country
-from .organization import Organization
-from .outbox import OutboxEvent
-from .project import Project, ProjectStatus
-from .task import Task, TaskPriority, TaskStatus, TaskType
-from .upload import Upload, UploadLine
-from .user import User, UserRole
+from ..model_registry import (
+    Country,
+    Label,
+    Organization,
+    OutboxEvent,
+    Project,
+    ProjectStatus,
+    Task,
+    TaskLabel,
+    TaskPriority,
+    TaskStatus,
+    TaskType,
+    Upload,
+    UploadLine,
+    User,
+    UserRole,
+)
 
 __all__ = [
     "Organization",
