@@ -297,6 +297,71 @@ If an application needs multiple databases, wire a custom FastAPI dependency or
 session generator for that view. Restly does not currently bind different views
 to different named contexts.
 
+## Engine Defaults
+
+{func}`fr.configure() <fastapi_restly.db.configure>` builds an engine only when
+you give it a URL. To that engine, and no other, Restly applies the options a
+web application almost always wants but SQLAlchemy leaves at its library
+defaults:
+
+| Backend | Applied |
+|---|---|
+| SQLite, in-memory | `poolclass=StaticPool`, `connect_args={"check_same_thread": False}` |
+| SQLite, any | `PRAGMA foreign_keys=ON`, on every connection |
+| PostgreSQL | `pool_pre_ping=True`, `pool_recycle=1800` |
+
+An in-memory SQLite database lives inside its connection, so the default pool,
+which opens one connection per thread, serves every thread but the first a
+second and empty database. FastAPI runs `def` endpoints on a thread pool, so
+`StaticPool` is what makes an in-memory URL behave as one database.
+
+SQLite enforces foreign keys only under `PRAGMA foreign_keys=ON`. Without it the
+`ForeignKey` constraints your models declare are parsed and then ignored, so
+`ondelete` never fires and a dangling reference is stored instead of raising the
+`IntegrityError` that becomes a 409.
+
+On PostgreSQL, `pool_pre_ping=True` tests a pooled connection before handing it
+out, turning a connection left stale by a database restart or a network blip
+into a reconnect rather than an error. `pool_recycle` then discards connections
+older than 30 minutes, because proxies such as pgbouncer drop idle connections
+without telling the client. Pool sizing stays yours: Restly sets neither
+`pool_size` nor `max_overflow`.
+
+Each of these is connection state, and that is the line they stop at. Restly
+configures the connections it opens and does not modify the database they reach,
+so nothing here leaves a mark on your data once the process exits.
+
+`PRAGMA journal_mode=WAL` is the notable omission. WAL lets readers run while a
+writer holds the database, so it is the usual answer to `database is locked` on
+a file-backed SQLite database serving concurrent requests. Restly does not set
+it, because journal mode is written into the database file and outlives every
+process that touches it: a default here would permanently change a database you
+own, and every later reader would inherit the choice. It is also a loud failure
+rather than a silent one, unlike the pragmas above. Turn it on yourself when you
+want it:
+
+```python
+from sqlalchemy import create_engine, event
+
+engine = create_engine("sqlite:///app.db")
+
+
+@event.listens_for(engine, "connect")
+def _enable_wal(dbapi_connection, connection_record):
+    dbapi_connection.execute("PRAGMA journal_mode=WAL")
+
+
+fr.configure(engine=engine)
+```
+
+Note that WAL adds `-wal` and `-shm` files beside the database, which are
+removed on clean shutdown but remain after a hard kill, and that it does not
+work over network filesystems.
+
+All of this rides on the URL rung alone. Pass `engine=`, `make_session=` or a
+session generator and Restly leaves your object exactly as it arrived, so
+building the engine yourself is how you decline any of these defaults.
+
 ## Session Factory Defaults
 
 When {func}`fr.configure() <fastapi_restly.db.configure>` creates session factories from URLs or engines, Restly

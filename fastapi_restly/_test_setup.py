@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from .db import _session
+from .db._engine_defaults import is_memory_sqlite as _is_memory_sqlite
 from .db._globals import _fr_globals
 from .exc import RestlyConfigurationError
 
@@ -390,20 +391,6 @@ async def _clean_database_async(setup: _TestSetup) -> None:
     engine = _resolve_engine(async_make_session.kw["bind"])
     async with engine.begin() as connection:
         await connection.run_sync(lambda sync_conn: _delete_rows(sync_conn, tables))
-
-
-def _is_memory_sqlite(url: Any) -> bool:
-    """Whether ``url`` names an in-memory SQLite database, in any spelling
-    SQLAlchemy accepts: no database at all, ``:memory:``, or a ``file:`` URI
-    with ``mode=memory``."""
-    if url.get_backend_name() != "sqlite":
-        return False
-    return (
-        not url.database
-        or url.database == ":memory:"
-        or url.database == "file::memory:"
-        or url.query.get("mode") == "memory"
-    )
 
 
 #: Default ports by backend, so an omitted port and an explicit default compare

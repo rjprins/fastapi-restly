@@ -132,13 +132,11 @@ def test_patch_to_duplicate_unique_value_returns_409(client):
 
 def test_post_with_invalid_fk_via_plain_int_raises_integrity_error(client):
     """When the schema accepts a plain int FK (not IDSchema), the framework
-    does NOT validate that the parent row exists. The DB raises an
-    IntegrityError on flush.
+    does NOT validate that the parent row exists, so the database is what
+    rejects the row: an IntegrityError on flush, translated to 409.
 
-    Note: SQLite by default does not enforce FK constraints unless
-    `PRAGMA foreign_keys = ON` is set. The framework's default in-memory
-    SQLite session does not enable FK enforcement, so this currently
-    succeeds silently. We pin THAT behavior.
+    SQLite enforces foreign keys only under ``PRAGMA foreign_keys=ON``, which
+    Restly sets on every SQLite engine it builds from a URL.
     """
 
     class Owner(fr.IDBase):
@@ -152,21 +150,34 @@ def test_post_with_invalid_fk_via_plain_int_raises_integrity_error(client):
         name: str
         owner_id: int
 
+    class OwnerSchema(fr.IDSchema):
+        name: str
+
     @fr.include_view(client.app)
     class PetView(fr.AsyncRestView):
         prefix = "/pets"
         model = Pet
         schema = PetSchema
 
+    @fr.include_view(client.app)
+    class OwnerView(fr.AsyncRestView):
+        prefix = "/owners"
+        model = Owner
+        schema = OwnerSchema
+
     create_tables()
 
-    # No owner exists, but FK enforcement is OFF by default in SQLite.
-    response = client.post("/pets/", json={"name": "Rex", "owner_id": 9999})
-    # Pin the current behavior: this currently succeeds (no FK enforcement).
-    # If the framework later turns on PRAGMA foreign_keys, this becomes an
-    # IntegrityError translated to 409, and the test breaks deliberately.
+    # No owner with id 9999 exists, and the pragma makes SQLite say so.
+    response = client.post(
+        "/pets/", json={"name": "Rex", "owner_id": 9999}, assert_status_code=409
+    )
+    assert "foreign key" in response.json()["detail"].lower()
+
+    # A foreign key that does resolve still writes normally.
+    owner_id = client.post("/owners/", json={"name": "Ada"}).json()["id"]
+    response = client.post("/pets/", json={"name": "Rex", "owner_id": owner_id})
     assert response.status_code == 201
-    assert response.json()["owner_id"] == 9999
+    assert response.json()["owner_id"] == owner_id
 
 
 def test_post_with_invalid_fk_via_idschema_returns_404(client):
