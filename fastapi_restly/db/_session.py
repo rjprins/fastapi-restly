@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session as SA_Session
 
 from .._exception_handlers import register_default_exception_handlers
 from ..exc import RestlyConfigurationError, RestlyUncommittedChangesWarning
+from ._engine_defaults import apply_connect_hooks, engine_options
 from ._globals import _fr_globals
 
 
@@ -29,8 +30,10 @@ def _setup_async_database_connection(
     if not async_make_session:
         if not async_engine:
             async_engine = create_async_engine(
-                async_database_url  # type: ignore[arg-type]
+                async_database_url,  # type: ignore[arg-type]
+                **engine_options(async_database_url),  # type: ignore[arg-type]
             )
+            apply_connect_hooks(async_engine)
         async_make_session = async_sessionmaker(
             bind=async_engine, autoflush=False, expire_on_commit=False
         )
@@ -62,7 +65,16 @@ def _setup_database_connection(
 ) -> sessionmaker[Any]:
     if make_session is None:
         if engine is None:
-            engine = create_engine(database_url)  # type: ignore[arg-type]
+            # create_engine is overloaded, so the options splat costs pyright
+            # the return type; the cast restores it.
+            engine = cast(
+                Engine,
+                create_engine(
+                    database_url,  # type: ignore[arg-type]
+                    **engine_options(database_url),  # type: ignore[arg-type]
+                ),
+            )
+            apply_connect_hooks(engine)
         make_session = sessionmaker(bind=engine, expire_on_commit=False)
 
     _fr_globals.database_url = database_url
@@ -91,6 +103,16 @@ def configure(
     ``async_make_session``) to enable async support, sync parameters
     (``database_url``, ``engine``, or ``make_session``) for sync support,
     or both if your application uses both.
+
+    A URL is the one form Restly builds an engine from, and that engine gets
+    defaults suited to a web application: ``StaticPool`` for in-memory SQLite
+    (whose database otherwise lives per connection, so each thread would get its
+    own), ``PRAGMA foreign_keys=ON`` on every SQLite connection (SQLite ignores
+    foreign keys without it), and ``pool_pre_ping`` with ``pool_recycle`` on
+    PostgreSQL. Pool sizing is left alone, and so is anything written into the
+    database itself: these defaults configure connections, never their contents,
+    which is why ``journal_mode=WAL`` is not among them. Every other form is your
+    object and is used as given, so passing ``engine=`` declines all of this.
 
     A test suite that calls :func:`fastapi_restly.testing.configure_tests`
     freezes these database sources for the rest of that pytest process. Select

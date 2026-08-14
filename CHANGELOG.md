@@ -15,6 +15,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Engines that `fr.configure()` builds from a `database_url` or
+  `async_database_url` now get defaults suited to running under a web server.
+  In-memory SQLite uses `StaticPool` with `check_same_thread=False`, because an
+  in-memory database lives inside its connection and the previous default
+  opened one connection, and therefore one empty database, per thread; a `def`
+  endpoint reading from FastAPI's thread pool could not see rows written during
+  setup. Every SQLite connection now sets `PRAGMA foreign_keys=ON`, which SQLite
+  leaves off, so declared foreign keys are enforced, `ondelete` fires, and an
+  invalid reference raises `IntegrityError` and is translated to a 409 rather
+  than being stored. PostgreSQL engines get `pool_pre_ping=True` and
+  `pool_recycle=1800`. Pool sizing is unchanged: Restly sets neither
+  `pool_size` nor `max_overflow`.
+
+  Every one of these is connection state, which is the line they stop at:
+  Restly configures the connections it opens and does not modify the database
+  they reach. `PRAGMA journal_mode=WAL` is deliberately not set for that
+  reason, since journal mode is written into the database file and outlives the
+  process that set it. [Engine
+  Defaults](https://www.fastapi-restly.org/technical_details.html#engine-defaults)
+  shows how to enable it yourself.
+
+  These defaults apply only to engines Restly builds. An `engine`,
+  `async_engine`, `make_session`, `async_make_session` or session generator you
+  pass in is used exactly as given, so constructing the engine yourself remains
+  the way to decline any of them.
 - The documentation now recommends organizing an application by subject rather
   than by code type: each resource gets a package holding its `models.py`,
   `schemas.py`, and `views.py`, and one `api.py` registers every view. Alembic
@@ -26,7 +51,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   factory: the test suite selects its database by calling the factory with
   explicit settings instead of mutating `DATABASE_URL` before importing the
   application, which stays documented as the fallback. The SaaS example
-  follows the pattern. Run it with `uvicorn --factory app.main:create_app`.
+  follows the pattern. Run it with `uvicorn app.asgi:app`.
 - Custom `RestView` collection routes declared at `"/"` now use the no-slash
   path as their OpenAPI form and keep the trailing-slash path as a hidden
   compatibility alias, matching generated list and create routes.

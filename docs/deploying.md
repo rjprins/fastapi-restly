@@ -25,12 +25,14 @@ Instantiating `Settings()` reads `DATABASE_URL` and the pool fields from the
 environment. [The production template below](#production-main-template) does
 that inside `create_app()` and passes the values into
 {func}`fr.configure() <fastapi_restly.db.configure>` through an explicit
-engine, which is what lets you set pool options.
+engine, which is what lets you size the pool.
 
-`pool_pre_ping=True` is recommended in production: it issues a lightweight
-liveness check before handing out a pooled connection, which prevents
-stale-connection errors after database restarts or network blips. If your
-app already has an engine, pass that one instead; see
+Sizing is the part Restly leaves to you. Given a PostgreSQL URL it already sets
+`pool_pre_ping=True` and `pool_recycle=1800`, so the template below repeats
+`pool_pre_ping` only to keep it visible next to the settings it belongs with;
+see [Engine Defaults](technical_details.md#engine-defaults) for the full list
+and for how to decline it. If your app already has an engine, pass that one
+instead; see
 [Reuse Your Existing Engine](howto_existing_project.md#reuse-your-existing-engine).
 
 ## Migrations with Alembic
@@ -157,7 +159,10 @@ Note four details in this template:
   Pass `install_default_exception_handlers=False` to opt out.
 - The engine belongs to the app the factory built: `engine.dispose()` in
   `lifespan` cleans up the connection pool on shutdown so workers exit
-  promptly.
+  promptly. Restly never disposes an engine itself, so an application that
+  configures from a URL instead reaches its engine through
+  {func}`fr.db.get_async_engine() <fastapi_restly.db.get_async_engine>`; see
+  [Engine Disposal](technical_details.md#engine-disposal).
 
 (running-the-app)=
 
