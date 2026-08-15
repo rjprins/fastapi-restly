@@ -190,7 +190,8 @@ database and reports a missing model as a dropped table, so run it in CI. See
 
 Behavior common to every view belongs in a root `views.py`: the base class your
 views inherit from, plus any mixins. The subject packages hold concrete views,
-and the root module holds the foundation they are built on.
+and the root module holds the foundation they are built on. Add it once a second
+view wants the same behavior, which is why a generated project does not have one.
 
 ```python
 # myapp/users/views.py
