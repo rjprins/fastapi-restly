@@ -67,7 +67,7 @@ builds nothing at import time, this costs the imports and nothing else:
 ```python
 # alembic/env.py
 import fastapi_restly as fr
-import myapp.main  # noqa: F401  (imports every view, and each view its model)
+import app.main  # noqa: F401  (imports every view, and each view its model)
 
 target_metadata = fr.DataclassBase.metadata
 ```
@@ -188,26 +188,26 @@ for the full picture, including TLS, reverse proxies, and Docker.
 A minimal invocation runs the factory directly:
 
 ```bash
-uvicorn "myapp.main:create_app" --factory --host 0.0.0.0 --port 8000 --workers 4
+uvicorn "app.main:create_app" --factory --host 0.0.0.0 --port 8000 --workers 4
 ```
 
 When your platform expects an application object rather than a factory, put it
 in its own module and leave `main.py` alone:
 
 ```python
-# myapp/asgi.py
+# app/asgi.py
 from .main import create_app
 
 app = create_app()
 ```
 
-`uvicorn myapp.asgi:app` then works, while `main.py` stays free to import. The
+`uvicorn app.asgi:app` then works, while `main.py` stays free to import. The
 FastAPI CLI cannot call a factory, so name that module for it and
 `fastapi dev` and `fastapi run` work too:
 
 ```toml
 [tool.fastapi]
-entrypoint = "myapp.asgi:app"
+entrypoint = "app.asgi:app"
 ```
 
 Do not put `app = create_app()` at the bottom of `main.py` instead: with

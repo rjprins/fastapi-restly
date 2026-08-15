@@ -176,8 +176,8 @@ your `FastAPI` app or `APIRouter`:
 fr.include_view(app, MyView)
 ```
 
-This keeps imports predictable: importing `myapp.users.views` defines
-`UserView`, while `myapp.main` decides which app or router receives it. See
+This keeps imports predictable: importing `app.users.views` defines
+`UserView`, while `app.main` decides which app or router receives it. See
 [Structure a Project](howto_project_structure.md) for the layout this assumes.
 For small apps and examples, `include_view()` also works as a decorator:
 

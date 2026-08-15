@@ -23,7 +23,7 @@ package = false
 # `fastapi dev` and `fastapi run` cannot call a factory, so point them at the
 # one module that holds an application object.
 [tool.fastapi]
-entrypoint = "myapp.asgi:app"
+entrypoint = "app.asgi:app"
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

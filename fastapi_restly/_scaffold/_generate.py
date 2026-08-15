@@ -6,7 +6,7 @@ Two mechanisms, and the split between them is the design:
   They are composited in order, later winning, so choosing ``app_sync`` over
   ``app_async`` selects a different real ``tasks/views.py``, and choosing
   ``createall_async`` over ``alembic_async`` a different ``main.py``. The
-  placeholder package name is a valid identifier, so a template is ordinary
+  package is ``app`` in the tree and in the output, so a template is ordinary
   Python rather than markup. It is linted as a generated project, not as repo
   source: here ``fastapi_restly`` is first-party and there it is third-party, so
   one import order cannot satisfy both. ``scripts/scaffold_matrix.sh`` is the
@@ -25,6 +25,11 @@ from dataclasses import dataclass
 from importlib.resources import files
 from pathlib import Path
 from typing import Any
+
+# The package is the same in every generated project, so every import path in
+# the docs, the examples and a reader's own code is the one they already read.
+# The project name names the project: the directory, pyproject, the databases.
+PACKAGE = "app"
 
 PLACEHOLDER = "myapp"
 
@@ -213,12 +218,10 @@ def build_pyrightconfig(options: Options) -> str:
     ``alembic/versions`` is excluded: Alembic writes those, so they are not
     yours to answer for. ``alembic/env.py`` very much is.
     """
-    # Built files are written as-is, never through ``rename``, so the project
-    # name has to come from the options rather than the placeholder.
-    include = f'["{options.name}", "tests"]'
+    include = f'["{PACKAGE}", "tests"]'
     exclude = '["**/__pycache__", ".venv"]'
     if options.alembic:
-        include = f'["{options.name}", "tests", "alembic"]'
+        include = f'["{PACKAGE}", "tests", "alembic"]'
         exclude = '["**/__pycache__", ".venv", "alembic/versions"]'
     return (
         "{\n"
@@ -279,7 +282,7 @@ package = false
 # `fastapi dev` and `fastapi run` cannot call a factory, so point them at the
 # one module that holds an application object.
 [tool.fastapi]
-entrypoint = "{options.name}.asgi:app"
+entrypoint = "{PACKAGE}.asgi:app"
 
 [tool.pytest.ini_options]
 pythonpath = ["."]{asyncio_options}
@@ -324,8 +327,8 @@ import os
 
 import fastapi_restly as fr
 
-from {options.name}.main import create_app
-from {options.name}.settings import Settings
+from {PACKAGE}.main import create_app
+from {PACKAGE}.settings import Settings
 
 {memory_note}TEST_DATABASE_URL = os.environ.get(
     "TEST_DATABASE_URL",
@@ -365,7 +368,7 @@ uv run alembic revision --autogenerate -m "describe the change"
 uv run alembic upgrade head
 ```
 
-`alembic/env.py` imports `{options.name}.main`, which reaches every view and
+`alembic/env.py` imports `{PACKAGE}.main`, which reaches every view and
 through each view its models, so autogenerate sees the whole schema. A model
 that no view reaches must be imported wherever it is used. Run `alembic check`
 in CI to catch one that is missed.
@@ -374,7 +377,7 @@ in CI to catch one that is missed.
         else f"""
 ## Schema
 
-This project has no migrations. `{options.name}/main.py` creates the tables at
+This project has no migrations. `{PACKAGE}/main.py` creates the tables at
 startup, and the test suite builds its own the same way.
 
 Add Alembic before you deploy anything you care about. `create_all` adds tables
@@ -426,7 +429,7 @@ The API is then at <http://127.0.0.1:8000>, with interactive documentation at
 ## Layout
 
 ```text
-{options.name}/
+{PACKAGE}/
 ├── main.py        Application factory and the VIEWS it registers
 ├── asgi.py        app = create_app(), the only module a server imports
 ├── settings.py    Environment settings

@@ -2,7 +2,7 @@
 
 ``Settings.current`` builds the settings the first time something reads them and
 returns the same object afterwards. Nothing is built at import, so importing
-``myapp.main`` never requires a configured environment: Alembic and the test
+``app.main`` never requires a configured environment: Alembic and the test
 suite depend on that.
 
 ``Settings.use(...)`` installs settings explicitly, which is how ``tests/conftest.py``

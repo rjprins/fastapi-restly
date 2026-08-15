@@ -9,7 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `restly new <name>` generates a project in the prescribed layout: subject-first
+- `restly new <name>` generates a project in the prescribed layout. The package
+  is `app` in every project, so `from app.settings import Settings` is the same
+  line in the docs, in the examples, and in your own code; the name you give
+  names the project, meaning the directory, `pyproject.toml`, and the
+  databases. Inside it: subject-first
   packages, a `create_app()` factory with its `VIEWS` tuple, `asgi.py` for the
   server, settings through `Settings.current`, one worked resource with
   `build_query`, a business-method override and a `write_action` route, and a

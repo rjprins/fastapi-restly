@@ -22,7 +22,7 @@ The API is then at <http://127.0.0.1:8000>, with interactive documentation at
 ## Layout
 
 ```text
-myapp/
+app/
 ├── main.py        Application factory and the VIEWS it registers
 ├── asgi.py        app = create_app(), the only module a server imports
 ├── settings.py    Environment settings
@@ -51,7 +51,7 @@ uv run alembic revision --autogenerate -m "describe the change"
 uv run alembic upgrade head
 ```
 
-`alembic/env.py` imports `myapp.main`, which reaches every view and
+`alembic/env.py` imports `app.main`, which reaches every view and
 through each view its models, so autogenerate sees the whole schema. A model
 that no view reaches must be imported wherever it is used. Run `alembic check`
 in CI to catch one that is missed.

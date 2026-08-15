@@ -1,6 +1,6 @@
 """Alembic environment.
 
-``myapp.main`` is imported for its side effect on the metadata: it reaches every
+``app.main`` is imported for its side effect on the metadata: it reaches every
 view, and each view imports its model, so ``fr.DataclassBase.metadata`` is
 complete by the time Alembic reads it. A model no view reaches -- an outbox or
 audit table -- must be imported wherever it is used, at module level.
@@ -15,8 +15,8 @@ import fastapi_restly as fr
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-import myapp.main  # noqa: F401  (imports every view, and each view its models)
-from myapp.settings import Settings
+import app.main  # noqa: F401  (imports every view, and each view its models)
+from app.settings import Settings
 
 config = context.config
 

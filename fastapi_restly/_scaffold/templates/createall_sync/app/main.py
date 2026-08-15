@@ -1,8 +1,8 @@
 """The application factory.
 
 This module is the one every tool imports. It reaches ``VIEWS``, each view
-imports its model, so importing ``myapp.main`` is what gives Alembic and the
-test suite the complete schema.
+imports its model, so importing ``app.main`` is what gives the test suite,
+and any schema tool you add later, the complete set of models.
 
 Importing it must stay free of side effects: it defines ``create_app()`` and
 builds nothing. Never put ``app = create_app()`` at the bottom here, or
@@ -29,9 +29,9 @@ def create_app() -> FastAPI:
     app = FastAPI(title="myapp", lifespan=lifespan)
 
     # Restly builds the engine from the URL, with defaults suited to a web
-    # application. Pass ``async_engine=`` instead when you need to size the pool
+    # application. Pass ``engine=`` instead when you need to size the pool
     # yourself; see the deployment guide.
-    fr.configure(app, async_database_url=settings.database_url, health="/health")
+    fr.configure(app, database_url=settings.database_url, health="/health")
 
     for view in VIEWS:
         fr.include_view(app, view)
@@ -41,12 +41,15 @@ def create_app() -> FastAPI:
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    """Close the connection pool when the process shuts down.
+    """Create the schema at startup, which is what this project has instead of
+    migrations.
 
-    Async only: an async engine that is never disposed drops its connections
-    instead of closing them, which leaves a ResourceWarning per connection and,
-    if a request is still in flight, an "Event loop is closed" traceback. A
-    synchronous engine needs none of this.
+    Async even though the views are not: the ASGI lifespan protocol is, whatever
+    the endpoints do. Creating tables suits development, but add Alembic before
+    you deploy anything you care about, because ``create_all`` adds missing
+    tables and never alters an existing one, so it cannot carry a schema
+    forward. Nothing is needed on the way down: a synchronous engine needs no
+    disposal at shutdown.
     """
+    fr.db.create_all(fr.DataclassBase)
     yield
-    await fr.db.get_async_engine().dispose()

@@ -8,8 +8,8 @@ import os
 
 import fastapi_restly as fr
 
-from myapp.main import create_app
-from myapp.settings import Settings
+from app.main import create_app
+from app.settings import Settings
 
 TEST_DATABASE_URL = os.environ.get(
     "TEST_DATABASE_URL",

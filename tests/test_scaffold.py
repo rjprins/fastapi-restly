@@ -21,6 +21,7 @@ from sqlalchemy.engine import make_url
 from fastapi_restly._scaffold import _cli
 from fastapi_restly._scaffold._generate import (
     DOTFILE_NAMES,
+    PACKAGE,
     PLACEHOLDER,
     Options,
     _plan,
@@ -493,7 +494,7 @@ def test_pyrightconfig_covers_the_alembic_environment(options):
     migrations under alembic/versions are Alembic's output, so they are not."""
     config = build_pyrightconfig(options)
 
-    assert (f'"{options.name}", "tests", "alembic"' in config) is options.alembic
+    assert (f'"{PACKAGE}", "tests", "alembic"' in config) is options.alembic
     assert ('"alembic/versions"' in config) is options.alembic
 
 
@@ -501,7 +502,7 @@ def test_pyproject_uses_the_project_name():
     pyproject = build_pyproject(Options(name="shop"))
 
     assert 'name = "shop"' in pyproject
-    assert 'entrypoint = "shop.asgi:app"' in pyproject
+    assert 'entrypoint = "app.asgi:app"' in pyproject
     assert PLACEHOLDER not in pyproject
 
 
@@ -577,8 +578,8 @@ def test_conftest_explains_the_file_database_to_sqlite_projects(options):
 def test_conftest_imports_the_generated_package():
     conftest = build_conftest(Options(name="shop"))
 
-    assert "from shop.main import create_app" in conftest
-    assert "from shop.settings import Settings" in conftest
+    assert "from app.main import create_app" in conftest
+    assert "from app.settings import Settings" in conftest
     assert PLACEHOLDER not in conftest
 
 
@@ -696,10 +697,10 @@ def test_generate_with_the_shipped_templates(tmp_path):
         ".env.example",
         ".gitignore",
         "tests/conftest.py",
-        "shop/__init__.py",
-        "shop/main.py",
-        "shop/asgi.py",
-        "shop/settings.py",
+        "app/__init__.py",
+        "app/main.py",
+        "app/asgi.py",
+        "app/settings.py",
     }
     # Nothing keeps the placeholder, in a path or in a file. A plain substring
     # search, not the rename pattern: the point is to catch an occurrence the
@@ -798,7 +799,7 @@ def test_the_destination_defaults_to_the_name(tmp_path, monkeypatch, not_a_termi
     monkeypatch.chdir(tmp_path)
 
     assert _cli.main(["new", "shop", "-y"]) == 0
-    assert (tmp_path / "shop" / "shop" / "main.py").exists()
+    assert (tmp_path / "shop" / "app" / "main.py").exists()
 
 
 def test_main_reports_what_it_wrote_and_what_to_do_next(
@@ -1089,7 +1090,7 @@ def test_a_terminal_is_asked_for_a_missing_name(tmp_path, monkeypatch):
     monkeypatch.setattr("builtins.input", lambda prompt: next(answers))
 
     assert _cli.main(["new"]) == 0
-    assert (tmp_path / "shop" / "shop" / "main.py").exists()
+    assert (tmp_path / "shop" / "app" / "main.py").exists()
 
 
 def test_a_name_on_the_command_line_is_not_asked_for(tmp_path, monkeypatch):
@@ -1112,10 +1113,9 @@ def test_a_name_on_the_command_line_is_not_asked_for(tmp_path, monkeypatch):
     [
         ("my-app", "not usable as a package and project name"),
         ("class", "not usable as a package and project name"),
-        ("datetime", "would collide"),
         ("x" * (_cli.MAX_NAME_LENGTH + 1), "characters"),
     ],
-    ids=["not-an-identifier", "keyword", "reserved", "too-long"],
+    ids=["not-an-identifier", "keyword", "too-long"],
 )
 def test_the_name_prompt_asks_again_after_an_unusable_answer(
     rejected, reason, tmp_path, monkeypatch, capsys
@@ -1128,7 +1128,7 @@ def test_the_name_prompt_asks_again_after_an_unusable_answer(
 
     assert _cli.main(["new"]) == 0
     assert reason in capsys.readouterr().out
-    assert (tmp_path / "shop" / "shop" / "main.py").exists()
+    assert (tmp_path / "shop" / "app" / "main.py").exists()
 
 
 def test_the_name_prompt_asks_again_when_the_destination_is_taken(
@@ -1145,7 +1145,7 @@ def test_the_name_prompt_asks_again_when_the_destination_is_taken(
     assert _cli.main(["new"]) == 0
     assert "already exists and is not empty" in capsys.readouterr().out
     assert (tmp_path / "taken" / "keep.txt").read_text() == "keep me\n"
-    assert (tmp_path / "shop" / "shop" / "main.py").exists()
+    assert (tmp_path / "shop" / "app" / "main.py").exists()
 
 
 def test_a_taken_explicit_directory_is_an_error_not_a_question(
@@ -1232,15 +1232,34 @@ def test_names_pyproject_would_reject_are_refused(name, tmp_path, capsys):
     assert not (tmp_path / "out").exists()
 
 
-@pytest.mark.parametrize("name", ["alembic", "tests", "datetime", "sqlalchemy"])
-def test_names_that_would_collide_are_refused(name, tmp_path):
-    """`alembic` would put the package on top of the migration directory, and
-    `pythonpath = ["."]` puts the project root ahead of every module a generated
-    project imports."""
-    with pytest.raises(SystemExit):
-        _cli.main(["new", name, "--directory", str(tmp_path / "out"), "-y"])
+@pytest.mark.parametrize(
+    "name", ["alembic", "tests", "datetime", "sqlalchemy", "app", "json"]
+)
+def test_a_name_that_shadows_a_module_is_accepted(name, tmp_path):
+    """These were all refused while the package was named after the project.
 
-    assert not (tmp_path / "out").exists()
+    `restly new datetime` then produced a project whose own models.py could not
+    import datetime. The package is fixed now, so the project name never
+    reaches the import path and none of these collide with anything.
+    """
+    destination = tmp_path / name
+    assert _cli.main(["new", name, "--directory", str(destination), "-y"]) == 0
+    assert (destination / PACKAGE / "main.py").exists()
+
+
+def test_only_the_generator_controls_what_is_importable(tmp_path):
+    """`pythonpath = ["."]` is the project root, so these are the only names
+    that can shadow a module the templates import."""
+    destination = tmp_path / "datetime"
+    generate(Options(name="datetime"), destination)
+
+    importable = {
+        child.name.removesuffix(".py")
+        for child in destination.iterdir()
+        if child.is_dir() or child.suffix == ".py"
+    }
+
+    assert importable == {PACKAGE, "tests", "alembic"}
 
 
 def test_a_destination_that_is_a_file_is_refused(tmp_path, capsys):
@@ -1276,7 +1295,7 @@ def test_create_all_projects_build_their_schema_at_startup(options, tmp_path):
     the first request against a fresh database would fail."""
     generate(options, tmp_path / "shop")
 
-    main = (tmp_path / "shop" / "shop" / "main.py").read_text()
+    main = (tmp_path / "shop" / "app" / "main.py").read_text()
     call = "async_create_all" if options.is_async else "create_all"
 
     assert f"fr.db.{call}(fr.DataclassBase)" in main
@@ -1292,7 +1311,7 @@ def test_alembic_projects_never_create_tables_themselves(options, tmp_path):
     """Alembic owns the schema; a startup create_all would silently diverge."""
     generate(options, tmp_path / "shop")
 
-    assert "create_all" not in (tmp_path / "shop" / "shop" / "main.py").read_text()
+    assert "create_all" not in (tmp_path / "shop" / "app" / "main.py").read_text()
 
 
 def _template_root_node():
@@ -1346,48 +1365,43 @@ def test_every_shipped_overlay_is_reachable():
     assert overlays == named
 
 
-def _template_imports() -> set[str]:
-    """Top-level modules any template imports."""
-    import ast
-
-    modules: set[str] = set()
-    for relative, node in _walk_all(_template_root_node()):
-        if relative.suffix != ".py":
-            continue
-        for statement in ast.walk(ast.parse(node.read_text("utf-8"))):
-            if isinstance(statement, ast.Import):
-                modules |= {alias.name.split(".")[0] for alias in statement.names}
-            elif isinstance(statement, ast.ImportFrom):
-                if statement.level == 0 and statement.module:
-                    modules.add(statement.module.split(".")[0])
-    return modules
-
-
-def test_reserved_names_cover_everything_the_templates_import():
-    """`pythonpath = ["."]` puts the project root ahead of everything else, so a
-    project named after a module it imports cannot import it. The reserved set
-    is derived from the templates, and this is what keeps it from drifting."""
-    imported = _template_imports() - {PLACEHOLDER}
-
-    assert imported <= _cli.RESERVED_NAMES, sorted(imported - _cli.RESERVED_NAMES)
-
-
-def test_a_name_longer_than_the_generated_imports_allow_is_refused(tmp_path):
-    """`from <name>.settings import Settings` has to fit the line length the
-    generated project lints itself with, or its first `ruff check` fails."""
+def test_a_name_too_long_for_a_database_identifier_is_refused(tmp_path):
+    """PostgreSQL truncates at 63 bytes, and the name gets `_test` appended."""
     with pytest.raises(SystemExit):
-        _cli.main(["new", "a" * 51, "--directory", str(tmp_path / "out"), "-y"])
+        _cli.main(
+            [
+                "new",
+                "a" * (_cli.MAX_NAME_LENGTH + 1),
+                "--directory",
+                str(tmp_path / "out"),
+                "-y",
+            ]
+        )
 
     assert not (tmp_path / "out").exists()
 
 
-def test_the_longest_accepted_name_still_lints_clean(tmp_path):
+def test_the_longest_accepted_name_leaves_two_distinct_databases(tmp_path):
+    """PostgreSQL truncates at 63 bytes. Past the cap both databases truncate to
+    the same name and the suite runs against the development one."""
     name = "a" * _cli.MAX_NAME_LENGTH
-    generate(Options(name=name, postgres=False, alembic=False), tmp_path / "out")
+    options = Options(name=name)
 
-    conftest = (tmp_path / "out" / "tests" / "conftest.py").read_text()
-    longest = max(len(line) for line in conftest.splitlines())
+    development = options.database_url.rsplit("/", 1)[-1]
+    test = options.test_database_url.rsplit("/", 1)[-1]
 
-    # 88 is ruff's default, which the generated project does not override.
-    assert f"from {name}.settings import Settings" in conftest
-    assert longest <= 96, longest
+    assert len(test) <= 63, len(test)
+    assert development[:63] != test[:63]
+
+
+def test_the_generated_imports_no_longer_depend_on_the_name(tmp_path):
+    """The line that used to set the length cap is now the same in every project."""
+    short = build_conftest(Options(name="ab", postgres=False, alembic=False))
+    long = build_conftest(
+        Options(name="a" * _cli.MAX_NAME_LENGTH, postgres=False, alembic=False)
+    )
+
+    assert f"from {PACKAGE}.settings import Settings" in short
+    assert max(len(line) for line in short.splitlines()) == max(
+        len(line) for line in long.splitlines()
+    )

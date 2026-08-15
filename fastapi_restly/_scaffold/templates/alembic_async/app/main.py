@@ -1,8 +1,8 @@
 """The application factory.
 
 This module is the one every tool imports. It reaches ``VIEWS``, each view
-imports its model, so importing ``myapp.main`` is what gives the test suite,
-and any schema tool you add later, the complete set of models.
+imports its model, so importing ``app.main`` is what gives Alembic and the
+test suite the complete schema.
 
 Importing it must stay free of side effects: it defines ``create_app()`` and
 builds nothing. Never put ``app = create_app()`` at the bottom here, or
@@ -41,18 +41,12 @@ def create_app() -> FastAPI:
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    """Create the schema on the way up, close the pool on the way down.
+    """Close the connection pool when the process shuts down.
 
-    Creating tables at startup suits development, and is what this project has
-    instead of migrations. Add Alembic before you deploy anything you care
-    about: ``create_all`` adds missing tables and never alters an existing one,
-    so it cannot carry a schema forward.
-
-    Disposing is async only. An async engine that is never disposed drops its
-    connections instead of closing them, which leaves a ResourceWarning per
-    connection and, if a request is still in flight, an "Event loop is closed"
-    traceback. A synchronous engine needs none of that.
+    Async only: an async engine that is never disposed drops its connections
+    instead of closing them, which leaves a ResourceWarning per connection and,
+    if a request is still in flight, an "Event loop is closed" traceback. A
+    synchronous engine needs none of this.
     """
-    await fr.db.async_create_all(fr.DataclassBase)
     yield
     await fr.db.get_async_engine().dispose()

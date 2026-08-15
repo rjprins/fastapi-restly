@@ -5,7 +5,7 @@ Restly generates list, retrieve, create, update, and delete from ``model`` and
 you will use most, and ``complete`` is a route of your own. Delete any you do
 not need: the generated routes work without them.
 
-Add your own view classes beside this one, then list them in ``myapp/main.py``.
+Add your own view classes beside this one, then list them in ``app/main.py``.
 """
 
 from datetime import datetime, timezone

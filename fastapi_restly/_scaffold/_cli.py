@@ -16,37 +16,10 @@ _DESCRIPTION = "Create a new FastAPI-Restly project."
 # PEP 508 forbids a leading or trailing underscore in the latter.
 _PROJECT_NAME_RE = re.compile(r"[A-Za-z][A-Za-z0-9_]*[A-Za-z0-9]|[A-Za-z]")
 
-# Names that would land the package on top of something the generator also
-# writes, or shadow a module a generated project imports. `pythonpath = ["."]`
-# puts the project root first, so `restly new datetime` gives a project whose
-# own models.py cannot import datetime.
-_GENERATED_DIRECTORIES = frozenset({"alembic", "tests"})
-
-# Distributions a generated project imports, which the standard library listing
-# below cannot know about. A test derives the templates' imports and fails if
-# this falls behind them.
-_IMPORTED_DISTRIBUTIONS = frozenset(
-    {
-        "aiosqlite",
-        "asyncpg",
-        "fastapi",
-        "fastapi_restly",
-        "psycopg",
-        "pydantic",
-        "pydantic_settings",
-        "pytest",
-        "sqlalchemy",
-    }
-)
-
-RESERVED_NAMES = (
-    _GENERATED_DIRECTORIES | _IMPORTED_DISTRIBUTIONS | sys.stdlib_module_names
-)
-
-# The generated conftest writes `from <name>.settings import Settings`, which is
-# 30 columns plus the name. Past 58 ruff wants it wrapped, and the project fails
-# its own `ruff check` on the first command. Refuse well before that.
-MAX_NAME_LENGTH = 50
+# PostgreSQL truncates an identifier at 63 bytes, and the name is a database
+# name with `_test` appended for the second one. Past this the two databases
+# collide after truncation and the test suite runs against the development one.
+MAX_NAME_LENGTH = 63 - len("_test")
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -140,12 +113,8 @@ def _name_problem(name: str) -> str | None:
     if len(name) > MAX_NAME_LENGTH:
         return (
             f"{name!r} is {len(name)} characters. Keep it to {MAX_NAME_LENGTH} or "
-            "fewer, or the generated imports outgrow the project's own line length."
-        )
-    if name in RESERVED_NAMES:
-        return (
-            f"{name!r} would collide with a directory the project already has, "
-            "or shadow a standard library module that the project imports."
+            "fewer: PostgreSQL truncates a database name at 63 bytes, and this "
+            "one gets a second database with `_test` on the end."
         )
     return None
 

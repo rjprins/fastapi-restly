@@ -18,6 +18,12 @@ pip install fastapi-restly
 restly new myapp
 ```
 
+That writes `myapp/`, and the package inside it is `app`. The name you give
+names the project: the directory, `pyproject.toml`, and the databases. The
+package is `app` in every Restly project, so `from app.settings import
+Settings` is the same line here, in your project, and in every example on this
+site.
+
 The generated project uses [uv](https://docs.astral.sh/uv/), so install that
 too. A PostgreSQL project also needs Docker for its `compose.yaml`.
 
@@ -58,7 +64,7 @@ Give each resource a package, and name the modules inside it after the kind of
 code they hold:
 
 ```text
-myapp/
+app/
 ├── main.py                 # Application factory, VIEWS, and lifespan
 ├── asgi.py                 # app = create_app(), the deployment entrypoint
 ├── settings.py             # Pydantic settings
@@ -117,7 +123,7 @@ That one place is a `VIEWS` tuple in `main.py`. The factory registers each of
 its views after {func}`fr.configure(app, ...) <fastapi_restly.db.configure>`:
 
 ```python
-# myapp/main.py
+# app/main.py
 import fastapi_restly as fr
 from fastapi import FastAPI
 
@@ -172,14 +178,14 @@ object belongs in `asgi.py`, which only the server imports; see
 ```python
 # alembic/env.py
 import fastapi_restly as fr
-import myapp.main  # noqa: F401  (imports every view, and each view its model)
+import app.main  # noqa: F401  (imports every view, and each view its model)
 
 target_metadata = fr.DataclassBase.metadata
 ```
 
 A `conftest.py` that asks `configure_tests()` to run `create_all` needs the
 same coverage and usually has it already, since the app it passes was built by
-the factory. Import `myapp.main` there too when the suite reaches for a base
+the factory. Import `app.main` there too when the suite reaches for a base
 without building an application first.
 
 That leaves models no view reaches, such as an outbox or audit table. Import
@@ -200,7 +206,7 @@ and the root module holds the foundation they are built on. Add it once a second
 view wants the same behavior, which is why a generated project does not have one.
 
 ```python
-# myapp/users/views.py
+# app/users/views.py
 from ..views import TenantBase, SoftDeleteMixin
 
 from .models import User

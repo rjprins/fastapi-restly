@@ -37,7 +37,7 @@ build the application it wants instead of racing to change the environment
 first:
 
 ```python
-# myapp/main.py
+# app/main.py
 import os
 
 import fastapi_restly as fr
@@ -59,7 +59,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
     return app
 ```
 
-Run it with `uvicorn --factory myapp.main:create_app`. A server that wants an
+Run it with `uvicorn --factory app.main:create_app`. A server that wants an
 application object instead gets one from a separate `asgi.py`, which keeps
 `main.py` free to import; see [Running the app](#running-the-app). The
 test suite then builds the application it tests,
@@ -69,7 +69,7 @@ naming the test database explicitly, and hands the result to
 ```python
 # conftest.py
 import fastapi_restly as fr
-from myapp.main import create_app
+from app.main import create_app
 
 app = create_app("sqlite+aiosqlite:///./test.db")
 
@@ -118,7 +118,7 @@ os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test.db"
 
 import fastapi_restly as fr
 
-from myapp.main import app  # noqa: E402
+from app.main import app  # noqa: E402
 
 fr.testing.configure_tests(app=app, base=fr.DataclassBase, create_all=True)
 ```
@@ -176,8 +176,8 @@ the test database and the local `.env` disabled:
 ```python
 # conftest.py
 import fastapi_restly as fr
-from myapp.main import create_app
-from myapp.settings import Settings
+from app.main import create_app
+from app.settings import Settings
 
 Settings.use(Settings(database_url="postgresql+asyncpg://...", _env_file=None))
 
@@ -255,7 +255,7 @@ base, or its `MetaData`.
 A base only knows the models that have been imported by the time the suite
 freezes. Building the app first is what imports them, since composition reaches
 every view and each view imports its model. A conftest that reaches for `Base`
-without building the app should import `myapp.main` as well, the way
+without building the app should import `app.main` as well, the way
 `alembic/env.py` does; see
 [Compose in one place](#compose-in-one-place).
 
