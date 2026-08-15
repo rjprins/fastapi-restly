@@ -87,6 +87,19 @@ async def _health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+def _register_health_route(app: FastAPI, path: str) -> None:
+    """Mount the liveness endpoint at ``path``.
+
+    Skips if ``app`` already has a route at that path, whatever its method: a
+    repeated :func:`configure` call does not mount a second one, and an
+    application's own endpoint there is left in place.
+    """
+    if any(getattr(route, "path", None) == path for route in app.routes):
+        return
+    # name= keeps the private handler out of the generated operationId.
+    app.add_api_route(path, _health, methods=["GET"], name="health")
+
+
 def configure(
     app: FastAPI | None = None,
     *,
@@ -105,88 +118,67 @@ def configure(
 ) -> None:
     """Configure FastAPI-Restly. Call once at startup.
 
-    Pass async parameters (``async_database_url``, ``async_engine``, or
-    ``async_make_session``) to enable async support, sync parameters
-    (``database_url``, ``engine``, or ``make_session``) for sync support,
-    or both if your application uses both.
+    Async support comes from ``async_database_url``, ``async_engine``, or
+    ``async_make_session``; sync support from ``database_url``, ``engine``, or
+    ``make_session``. Pass both sets if the application uses both.
 
     A URL is the one form Restly builds an engine from, and that engine gets
-    defaults suited to a web application: ``StaticPool`` for in-memory SQLite
-    (whose database otherwise lives per connection, so each thread would get its
-    own), ``PRAGMA foreign_keys=ON`` on every SQLite connection (SQLite ignores
-    foreign keys without it), and ``pool_pre_ping`` with ``pool_recycle`` on
-    PostgreSQL. Pool sizing is left alone, and so is anything written into the
-    database itself: these defaults configure connections, never their contents,
-    which is why ``journal_mode=WAL`` is not among them. Every other form is your
-    object and is used as given, so passing ``engine=`` declines all of this.
+    defaults suited to a web application: ``StaticPool`` for in-memory SQLite,
+    ``PRAGMA foreign_keys=ON`` on every SQLite connection, and ``pool_pre_ping``
+    with ``pool_recycle`` on PostgreSQL. Pool sizing is left alone, and so is
+    anything written into the database itself, which is why ``journal_mode=WAL``
+    is not among them. Every other form is used as given, so passing ``engine=``
+    declines all of this.
 
-    A test suite that calls :func:`fastapi_restly.testing.configure_tests`
-    freezes these database sources for the rest of that pytest process. Select
-    the test settings and configure the application before enabling managed
-    testing; changing database sources afterwards would make schema setup,
-    cleanup, and requests disagree and therefore raises.
+    Restly owns the commit: the CRUD handlers and ``write_action`` run
+    ``before_commit`` -> commit -> ``after_commit`` around your domain logic. A
+    custom session generator constructs, yields, and cleans up, and must not
+    commit. A custom write route brackets its mutation with ``write_action(...)``
+    or commits the session itself.
 
-    Use ``session_generator`` / ``sync_session_generator`` (or ``engine`` /
-    ``make_session``) to construct sessions your way -- a custom engine,
-    isolation level, ``search_path``, logging, an existing ``sessionmaker``. A
-    custom generator's job is to **construct, yield, and clean up** (close /
-    roll back on the way out); it must **not** commit. Customizing how a session
-    is built never takes the commit away from Restly.
+    :func:`fastapi_restly.testing.configure_tests` freezes the database sources
+    for the rest of that pytest process, so configure the application before
+    enabling managed testing; changing them afterwards raises.
 
-    Restly owns the commit. Every write -- the CRUD handlers (``handle_create``
-    / ``handle_update`` / ``handle_delete``) and ``write_action`` -- runs
-    ``before_commit`` -> commit -> ``after_commit`` around your domain logic;
-    the commit is the framework's single responsibility. A custom (non-CRUD)
-    write route either brackets its mutation with ``write_action(...)``
-    (recommended) or commits the session itself with ``await
-    self.session.commit()``.
-
-    By default Restly warns (:class:`RestlyUncommittedChangesWarning`) when a
-    request finishes with uncommitted changes still in the session -- the tell
-    of a custom write route that forgot to commit. This applies to every session
-    source, built-in or custom. A route that intentionally leaves a flush
-    uncommitted (a validate-then-rollback dry run) should suppress the warning
-    for just that request with ``session.info["_fr_suppress_uncommitted"] =
-    True``. ``warn_on_uncommitted=False`` turns the check off globally; that is
-    rarely the right response to the warning -- prefer fixing the missing
-    commit or the per-route suppression.
-
-    Pass ``warn_on_misuse=True`` to enable opt-in registration-time misuse
-    warnings (:class:`RestlyMisuseWarning`): when a view class is registered
-    via ``include_view``, the framework flags route-shell overrides, direct
-    ``session.commit()`` calls in view methods, CRUD route sets hand-rolled
-    on a bare ``View``, and scalar foreign-key columns typed as an
-    ``IDRef`` / ``IDSchema`` reference instead of ``fr.MustExist``. Off by
-    default; intended for development, templates, and CI. Enable it before
-    registering views.
-
-    Pass your :class:`FastAPI` ``app`` to install fastapi-restly's default
-    exception handlers (currently: a translator that turns SQLAlchemy
-    :class:`~sqlalchemy.exc.IntegrityError` into HTTP 409 Conflict). Set
-    ``install_default_exception_handlers=False`` to opt out. If you do not
-    pass ``app`` here, the handlers are registered the first time a view is
-    mounted via :func:`fastapi_restly.include_view` instead.
-
-    Pass ``health="/health"`` to mount a liveness endpoint at that path, which
-    answers ``200`` with ``{"status": "ok"}``. It needs ``app``, and passing it
-    without one raises rather than quietly skipping a route you asked for. It
-    is off by default because naming the path is how a project opts in: Rails
-    and Laravel both ship this endpoint in *generated projects* rather than
-    from the framework, writing ``get "up" => "rails/health#show"`` into
-    ``config/routes.rb`` and ``health: '/up'`` into ``bootstrap/app.php``.
-    Default-on would also shadow an application's own ``/health`` route, since
-    Starlette matches in registration order and ``configure()`` normally runs
-    before the application adds its routes. The route is in the OpenAPI schema,
-    so ``/docs`` is a way to confirm it mounted.
-
-    It is a liveness check and deliberately makes no database round-trip. A
-    liveness probe that fails when a dependency is down restarts a process that
-    was working, which is why Rails documents its endpoint as not reflecting
-    the status of dependencies and Spring Boot keeps liveness away from
-    external systems. Readiness, which may check dependencies, is a separate
-    endpoint with different semantics, not a flag on this one. Kubernetes
-    ``httpGet`` probes read the status code and never the body, so the path is
-    the axis worth configuring and the payload is fixed.
+    :param app: Application to install the default exception handlers and the
+        health route on.
+    :param async_database_url: Async URL to build an
+        :class:`~sqlalchemy.ext.asyncio.AsyncEngine` from.
+    :param async_engine: Async engine to use as given.
+    :param async_make_session: ``async_sessionmaker`` to use as given.
+    :param database_url: Sync URL to build an
+        :class:`~sqlalchemy.engine.Engine` from.
+    :param engine: Sync engine to use as given.
+    :param make_session: ``sessionmaker`` to use as given.
+    :param session_generator: Callable yielding the
+        :class:`~sqlalchemy.ext.asyncio.AsyncSession` for each request.
+    :param sync_session_generator: Callable yielding the
+        :class:`~sqlalchemy.orm.Session` for each request.
+    :param warn_on_misuse: Emit
+        :class:`~fastapi_restly.exc.RestlyMisuseWarning` when ``include_view``
+        registers a view with a route-shell override, a direct
+        ``session.commit()``, a hand-rolled CRUD route set on a bare ``View``,
+        or a scalar foreign key typed as an ``IDRef`` / ``IDSchema`` reference
+        instead of ``fr.MustExist``. Off by default; set it before registering
+        views.
+    :param warn_on_uncommitted: Emit
+        :class:`~fastapi_restly.exc.RestlyUncommittedChangesWarning` when a
+        request finishes with uncommitted changes. On by default. Suppress one
+        deliberate case with ``session.info["_fr_suppress_uncommitted"] = True``
+        rather than turning the check off.
+    :param install_default_exception_handlers: Install the translator that
+        turns :class:`~sqlalchemy.exc.IntegrityError` into HTTP 409. On by
+        default. Without ``app``, the first
+        :func:`~fastapi_restly.views.include_view` installs them instead.
+    :param health: Path to mount a liveness endpoint on, such as ``"/health"``.
+        It answers ``200`` with ``{"status": "ok"}``, appears in the OpenAPI
+        schema, and makes no database round-trip. Off unless set, and requires
+        ``app``. A route already mounted at that path is left in place.
+        Readiness is a separate endpoint of your own, not a mode of this one.
+    :raises TypeError: No setup argument was given.
+    :raises RestlyConfigurationError: ``health`` is not an absolute path or was
+        passed without ``app``, or the database configuration changed after
+        ``configure_tests()`` recorded it.
     """
     configures_database = any(
         (
@@ -223,22 +215,18 @@ def configure(
     ):
         raise TypeError("fr.configure() requires at least one setup argument.")
 
-    # Validate before anything is applied, so a bad health path cannot leave a
+    # Validate before applying anything, so a bad health path cannot leave a
     # half-configured process behind.
     if health is not None:
         if not health.startswith("/"):
             raise RestlyConfigurationError(
                 f"fr.configure(health={health!r}) needs a path starting with "
-                f"'/', such as '/health'."
+                "'/', such as '/health'."
             )
         if app is None:
             raise RestlyConfigurationError(
                 f"fr.configure(health={health!r}) also needs the app to mount "
-                "the route on: fr.configure(app, health=...). Unlike the "
-                "default exception handlers, this is not deferred to the first "
-                "include_view() call, because a route is visible API surface "
-                "and should not appear on whichever app happens to register a "
-                "view first."
+                "the route on: fr.configure(app, health=...)."
             )
 
     if warn_on_misuse is not None:
@@ -267,9 +255,7 @@ def configure(
         if install_default_exception_handlers:
             register_default_exception_handlers(app)
         if health is not None:
-            # name= keeps the private handler's name out of the generated
-            # operationId, which clients turn into a method name.
-            app.add_api_route(health, _health, methods=["GET"], name="health")
+            _register_health_route(app, health)
 
 
 def _active_make_session():

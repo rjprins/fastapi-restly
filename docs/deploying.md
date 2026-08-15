@@ -157,8 +157,7 @@ Note four details in this template:
   (currently the translator that turns `IntegrityError` into a 409 response;
   see [Database conflicts](howto_error_responses.md#database-conflicts-integrityerror-to-409)).
   Pass `install_default_exception_handlers=False` to opt out. `health="/health"`
-  is what mounts the [liveness endpoint](#health-checks); leave it out and there
-  is no such route.
+  mounts the [liveness endpoint](#health-checks).
 - The engine belongs to the app the factory built: `engine.dispose()` in
   `lifespan` cleans up the connection pool on shutdown so workers exit
   promptly. Restly never disposes an engine itself, so an application that
@@ -219,27 +218,20 @@ event loop within a worker. Do not use `--reload` in production.
 ## Health checks
 
 Naming a path in {func}`fr.configure() <fastapi_restly.db.configure>` mounts an
-endpoint there that answers `200` with `{"status": "ok"}`:
+endpoint there:
 
 ```python
 fr.configure(app, async_engine=engine, health="/health")
 ```
 
-Omit the argument and there is no such route. Rails and Laravel put the same
-decision in the generated project rather than in the framework, and a route the
-framework injected would shadow an application's own `/health`, since Starlette
-matches in registration order and `fr.configure()` normally runs before the
-application adds its routes. The endpoint appears in `/docs` like any other
-route, which is the quickest way to confirm that it mounted.
+`GET /health` then answers `200` with `{"status": "ok"}`, and appears in `/docs`
+like any other route. The path is yours to choose; `/healthz` and `/up` are
+common alternatives. Omit the argument and there is no such route, and if your
+application already has one at that path, Restly leaves it alone.
 
-It is a liveness check: it reports that the process is up and answering, and it
-makes no database round-trip. That is the distinction Kubernetes draws between
-its two probes. A failing liveness probe restarts the container, so a
-dependency check there turns someone else's outage into a restart loop of a
-process that was working. A failing readiness probe removes the pod from
-rotation instead, which is where a dependency check belongs. Probes read the
-status code and never the body, which is why the path is the axis worth
-configuring:
+This is a liveness check: it reports that the process is up and answering, and
+makes no database round-trip. It suits a probe that restarts the container on
+failure:
 
 ```yaml
 livenessProbe:
@@ -248,9 +240,9 @@ livenessProbe:
     port: 8000
 ```
 
-Restly has no readiness endpoint, and `health` is not a flag that can turn this
-one into one. Write readiness as an ordinary route when you want it, so which
-dependencies it checks and how long it waits on them stay yours to decide.
+A readiness probe, which takes the instance out of rotation rather than
+restarting it, is the place to check the database and other dependencies.
+Write that as an ordinary route so its checks and timeouts stay yours.
 
 ## See also
 

@@ -10,21 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `fr.configure(app, health="/health")` mounts a liveness endpoint at that
-  path, answering `200` with `{"status": "ok"}`. It is off unless you name a
-  path, which is how Rails and Laravel ship theirs too: their generated
-  projects write the route into `config/routes.rb` and `bootstrap/app.php`
-  rather than the framework injecting it. Default-on would also shadow an
-  application's own `/health`, since Starlette matches in registration order
-  and `fr.configure()` normally runs before the application adds its routes.
-
-  The endpoint is liveness only and makes no database round-trip. A liveness
-  probe that fails because a dependency is down restarts a process that was
-  working, which is why Rails documents its endpoint as not reflecting the
-  status of dependencies and Spring Boot keeps liveness away from external
-  systems. Readiness, which may check them, is a separate endpoint with
-  different semantics rather than a flag on this one. The route appears in the
-  OpenAPI schema, so `/docs` confirms it mounted, and passing `health` without
-  an `app` raises instead of quietly skipping the route.
+  path, answering `200` with `{"status": "ok"}` and appearing in the OpenAPI
+  schema. It makes no database round-trip; readiness stays a route of your own.
+  There is no such route unless you name a path, and a route your application
+  already has at that path is left in place. Passing `health` without an `app`,
+  or a path without a leading slash, raises `RestlyConfigurationError`.
 - A production-shaped SaaS example with separate PostgreSQL development and
   test services, Pydantic settings, an application-owned asyncpg engine, async
   Alembic migrations, migration-seeded fixtures, and migration-backed tests.

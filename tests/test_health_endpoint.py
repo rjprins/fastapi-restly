@@ -1,12 +1,8 @@
-"""Tests for the optional health endpoint mounted by ``fr.configure(health=...)``.
-
-The endpoint is a liveness probe: it reports that the process is up and
-answering, and deliberately makes no database round-trip. It is off unless the
-application names a path, which is also how Rails and Laravel ship theirs (the
-generated project writes the route, the framework does not inject it).
-"""
+"""Tests for the health endpoint mounted by ``fr.configure(health=...)``."""
 
 from __future__ import annotations
+
+import warnings
 
 import pytest
 from fastapi import FastAPI
@@ -30,13 +26,16 @@ def _paths(app: FastAPI) -> set[str]:
     }
 
 
+def _routes_at(app: FastAPI, path: str) -> list[object]:
+    return [route for route in app.routes if getattr(route, "path", None) == path]
+
+
 # ---------------------------------------------------------------------------
 # Off by default
 # ---------------------------------------------------------------------------
 
 
 def test_no_health_route_by_default():
-    """Omitting ``health`` adds no route: the framework never injects one."""
     app = FastAPI()
     before = _paths(app)
 
@@ -47,27 +46,11 @@ def test_no_health_route_by_default():
 
 
 def test_no_health_route_when_configured_without_an_app():
-    """The database-only call that most test suites make adds nothing either."""
     app = FastAPI()
 
     fr.configure(async_database_url=ASYNC_URL)
 
     assert "/health" not in _paths(app)
-
-
-def test_default_off_leaves_an_existing_health_route_alone():
-    """Why the default is off: ``configure()`` normally runs before the
-    application adds its own routes, and Starlette matches in registration
-    order, so a default-on route would shadow the application's own."""
-    app = FastAPI()
-    fr.configure(app, async_database_url=ASYNC_URL)
-
-    @app.get("/health")
-    def app_health():
-        return {"status": "application's own"}
-
-    client = TestClient(app)
-    assert client.get("/health").json() == {"status": "application's own"}
 
 
 # ---------------------------------------------------------------------------
@@ -87,8 +70,6 @@ def test_health_route_answers_200_ok():
 
 @pytest.mark.parametrize("path", ["/health", "/up", "/healthz", "/_internal/live"])
 def test_health_mounts_at_the_given_path(path):
-    """The path is the configurable axis: Kubernetes ``httpGet`` probes read
-    the status code and never the body, so the payload stays fixed."""
     app = FastAPI()
     fr.configure(app, async_database_url=ASYNC_URL, health=path)
 
@@ -112,8 +93,6 @@ def test_health_answers_get_only():
 
 
 def test_health_path_is_in_the_openapi_schema():
-    """Visible on purpose: you opt in by naming a path, so hiding the route
-    would make ``/docs`` a misleading way to check that it worked."""
     app = FastAPI()
     fr.configure(app, async_database_url=ASYNC_URL, health="/health")
 
@@ -124,19 +103,16 @@ def test_health_path_is_in_the_openapi_schema():
 
 
 def test_health_route_is_named_health():
-    """``name="health"`` keeps the private handler out of the generated
-    operationId, which client generators turn into a method name."""
     app = FastAPI()
     fr.configure(app, async_database_url=ASYNC_URL, health="/health")
 
-    (route,) = [r for r in app.routes if getattr(r, "path", None) == "/health"]
+    (route,) = _routes_at(app, "/health")
     assert getattr(route, "name", None) == "health"
 
     operation_id = app.openapi()["paths"]["/health"]["get"]["operationId"]
     assert not operation_id.startswith("_")
 
-    # Contrast: without name=, FastAPI falls back to the handler's own name and
-    # the leading underscore reaches the generated client.
+    # Without name=, the private handler's own name reaches the operationId.
     from fastapi_restly.db._session import _health
 
     unnamed = FastAPI()
@@ -145,7 +121,6 @@ def test_health_route_is_named_health():
 
 
 def test_health_route_is_reversible_by_name():
-    """A named route can be reversed with ``url_path_for``."""
     app = FastAPI()
     fr.configure(app, async_database_url=ASYNC_URL, health="/_internal/live")
 
@@ -158,9 +133,7 @@ def test_health_route_is_reversible_by_name():
 
 
 def test_health_does_not_touch_the_database():
-    """A liveness probe that fails because a dependency is down restarts a
-    process that was working. The engine here can never connect; the endpoint
-    answers anyway because it never asks it to."""
+    """The engine here can never connect; the endpoint answers anyway."""
     app = FastAPI()
     fr.configure(
         app,
@@ -182,14 +155,76 @@ def test_health_works_with_no_database_configured_at_all():
 
 
 # ---------------------------------------------------------------------------
+# Deferring to a route already at that path
+# ---------------------------------------------------------------------------
+
+
+def test_configuring_twice_mounts_one_route():
+    app = FastAPI()
+    fr.configure(app, async_database_url=ASYNC_URL, health="/health")
+    fr.configure(app, async_database_url=ASYNC_URL, health="/health")
+
+    assert len(_routes_at(app, "/health")) == 1
+
+
+def test_configuring_twice_leaves_the_schema_warning_free():
+    """A second route at the same path would collide on the operation ID."""
+    app = FastAPI()
+    fr.configure(app, async_database_url=ASYNC_URL, health="/health")
+    fr.configure(app, async_database_url=ASYNC_URL, health="/health")
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        schema = app.openapi()
+
+    assert "/health" in schema["paths"]
+
+
+def test_an_existing_route_at_that_path_is_left_in_place():
+    app = FastAPI()
+
+    @app.get("/health")
+    def app_health():
+        return {"status": "the application's own"}
+
+    fr.configure(app, async_database_url=ASYNC_URL, health="/health")
+
+    assert len(_routes_at(app, "/health")) == 1
+    assert TestClient(app).get("/health").json() == {"status": "the application's own"}
+
+
+def test_an_existing_route_defers_whatever_its_method():
+    """The check is on the path alone, so a POST-only route defers too."""
+    app = FastAPI()
+
+    @app.post("/health")
+    def app_health():
+        return {"status": "posted"}
+
+    fr.configure(app, async_database_url=ASYNC_URL, health="/health")
+
+    assert len(_routes_at(app, "/health")) == 1
+    assert TestClient(app).get("/health").status_code == 405
+
+
+def test_two_calls_with_different_paths_mount_both():
+    app = FastAPI()
+    fr.configure(app, async_database_url=ASYNC_URL, health="/health")
+    fr.configure(app, async_database_url=ASYNC_URL, health="/healthz")
+
+    client = TestClient(app)
+    assert client.get("/health").json() == {"status": "ok"}
+    assert client.get("/healthz").json() == {"status": "ok"}
+
+
+# ---------------------------------------------------------------------------
 # Argument validation
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.parametrize("path", ["health", "healthz", "", "up"])
 def test_path_without_leading_slash_raises(path):
-    """Starlette's own failure is a bare AssertionError from ``Route.__init__``
-    that never names the caller."""
+    """Starlette's own failure is a bare AssertionError naming nothing."""
     app = FastAPI()
 
     with pytest.raises(RestlyConfigurationError, match="starting with"):
@@ -197,7 +232,6 @@ def test_path_without_leading_slash_raises(path):
 
 
 def test_bad_path_does_not_partially_configure():
-    """Validation runs before anything is applied."""
     app = FastAPI()
 
     with pytest.raises(RestlyConfigurationError):
@@ -210,9 +244,6 @@ def test_bad_path_does_not_partially_configure():
 
 
 def test_health_without_app_raises():
-    """It does not silently no-op, and unlike the default exception handlers it
-    is not deferred to the first ``include_view()``: a route is visible surface
-    and must not land on whichever app happens to mount a view first."""
     with pytest.raises(RestlyConfigurationError, match="needs the app"):
         fr.configure(health="/health")
 
@@ -223,7 +254,7 @@ def test_health_without_app_still_raises_alongside_a_database_url():
 
 
 def test_health_is_not_deferred_to_include_view():
-    """Follow-up on the above: no pending route is stashed for a later app."""
+    """No pending route is stashed for whichever app mounts a view first."""
     app = FastAPI()
 
     with pytest.raises(RestlyConfigurationError):
@@ -252,7 +283,6 @@ def test_health_is_not_deferred_to_include_view():
 
 
 def test_health_alone_satisfies_the_at_least_one_argument_check():
-    """``health`` is a setup argument, so it does not need a companion."""
     app = FastAPI()
 
     fr.configure(app, health="/health")
@@ -270,7 +300,6 @@ def test_health_counts_even_with_exception_handlers_opted_out():
 
 
 def test_health_does_not_configure_a_database():
-    """Mounting the route must not stand in for database configuration."""
     from fastapi_restly.db._globals import _fr_globals
 
     _fr_globals.async_make_session = None
