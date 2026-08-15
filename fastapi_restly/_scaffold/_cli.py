@@ -166,19 +166,15 @@ def _interactive(args: argparse.Namespace) -> bool:
     return not args.yes and sys.stdin.isatty()
 
 
-def _ask_name(directory: Path | None) -> str | None:
-    """Ask for the project name until the answer is usable, or None on end of input.
+def _ask_name(directory: Path | None) -> str:
+    """Ask for the project name until the answer is usable.
 
-    This re-asks where the choice prompts fall back, because there is no
-    default name to fall back to. When the destination follows the name, a
-    directory already in use is a reason to ask again as well.
+    Empty asks again rather than complaining, since there is no default here
+    for enter to mean. When the destination follows the name, a directory
+    already in use is a reason to ask again as well.
     """
     while True:
-        try:
-            name = input("Project name: ").strip()
-        except EOFError:
-            print()
-            return None
+        name = input("Project name: ").strip()
         if not name:
             continue
         problem = _name_problem(name)
@@ -198,7 +194,9 @@ def _ask(
     ``--help``, because a name can only say so much: `create-all` does not say
     what it creates, and the answer does not fit in a flag.
 
-    An empty answer takes the default, and so does anything unrecognised.
+    Enter takes the default. Anything else unrecognised asks again, rather
+    than taking the default on the reader's behalf and leaving them to find
+    out from the generated project which answer was recorded.
     """
     choices = (first, second)
     default = 0 if default_yes else 1
@@ -209,16 +207,17 @@ def _ask(
         marker = "(default)" if position == default else ""
         print(f"  {position + 1}  {name:<{width}}  {marker:<9}  {description}")
 
-    answer = input(f"Choice [{default + 1}]: ").strip().lower()
-    if not answer:
-        return default_yes
-    if answer in ("1", "2"):
-        return answer == "1"
-    if first[0].lower().startswith(answer):
-        return True
-    if second[0].lower().startswith(answer):
-        return False
-    return default_yes
+    while True:
+        answer = input(f"Choice [{default + 1}]: ").strip().lower()
+        if not answer:
+            return default_yes
+        if answer in ("1", "2"):
+            return answer == "1"
+        for position, (name, _) in enumerate(choices):
+            if name.lower().startswith(answer):
+                return position == 0
+        # The choices stay on screen above, so repeat only what to type.
+        print(f"  Answer 1 or 2, {first[0]} or {second[0]}, or enter for the default.")
 
 
 def _resolve(args: argparse.Namespace) -> Options:
@@ -273,18 +272,26 @@ def _next_steps(options: Options, destination: Path) -> list[str]:
 def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
+    try:
+        return _new(args)
+    except (EOFError, KeyboardInterrupt):
+        # Ctrl-D or Ctrl-C part way through the interview. Both prompts loop
+        # until answered, so neither ends on its own.
+        print("\nCancelled.")
+        return 1
 
+
+def _new(args: argparse.Namespace) -> int:
     # Reading it off the namespace loses the type, and with it the fact that
     # `error` never returns.
     subparser: argparse.ArgumentParser = args.subparser
 
     name: str | None = args.name
     if name is None:
-        name = _ask_name(args.directory) if _interactive(args) else None
-        if name is None:
+        if not _interactive(args):
             subparser.error("the following arguments are required: name")
         # _resolve reads the name off the namespace along with the choices.
-        args.name = name
+        name = args.name = _ask_name(args.directory)
     elif (problem := _name_problem(name)) is not None:
         subparser.error(problem)
 

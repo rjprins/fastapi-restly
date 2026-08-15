@@ -762,6 +762,30 @@ def test_a_non_empty_destination_is_refused(tmp_path, capsys):
     assert (tmp_path / "existing.txt").read_text() == "keep me\n"
 
 
+@pytest.mark.parametrize(
+    "occupant",
+    [".env", ".git/config", ".gitignore", "src/main.py"],
+    ids=["dotfile", "git-directory", "gitignore", "nested"],
+)
+def test_a_destination_holding_only_hidden_files_is_refused(occupant, tmp_path, capsys):
+    """`generate` overwrites whatever it lands on, so this check is the guard.
+
+    A directory holding nothing but `.git` or a `.env` looks empty to a
+    glance, and both are exactly what a reader would hate to lose.
+    """
+    occupied = tmp_path / "occupied"
+    (occupied / occupant).parent.mkdir(parents=True)
+    (occupied / occupant).write_text("keep me\n")
+
+    with pytest.raises(SystemExit) as exit_info:
+        _cli.main(["new", "shop", "--directory", str(occupied)])
+
+    assert exit_info.value.code == 2
+    assert "already exists and is not empty" in capsys.readouterr().err
+    assert (occupied / occupant).read_text() == "keep me\n"
+    assert not (occupied / "pyproject.toml").exists()
+
+
 def test_an_empty_existing_destination_is_accepted(tmp_path, not_a_terminal):
     destination = tmp_path / "empty"
     destination.mkdir()
@@ -882,10 +906,35 @@ def test_next_steps_mention_compose_only_for_postgres():
     assert not any("docker compose" in step for step in sqlite)
 
 
-def test_an_unrecognised_answer_keeps_the_default(monkeypatch):
+def test_an_unrecognised_answer_asks_again(monkeypatch, capsys):
+    """Taking the default silently recorded a choice the reader did not make."""
     monkeypatch.setattr(_cli.sys, "stdin", _Terminal())
-    answers = iter(["maybe", "", "  "])
+    answers = iter(["maybe", "", "", ""])
     monkeypatch.setattr("builtins.input", lambda prompt: next(answers))
+
+    assert _options_for(["new", "shop"]) == Options(name="shop")
+    assert "Answer 1 or 2, async or sync" in capsys.readouterr().out
+    # Four answers for three questions: the first one was not accepted.
+    assert next(answers, "exhausted") == "exhausted"
+
+
+def test_asking_again_does_not_reprint_the_choices(monkeypatch, capsys):
+    """The list is still on screen, so repeating it would push it off."""
+    monkeypatch.setattr(_cli.sys, "stdin", _Terminal())
+    answers = iter(["nope", "still nope", "2", "", ""])
+    monkeypatch.setattr("builtins.input", lambda prompt: next(answers))
+
+    _options_for(["new", "shop"])
+
+    printed = capsys.readouterr().out
+    assert printed.count("async def views, on an async driver") == 1
+    assert printed.count("Answer 1 or 2, async or sync") == 2
+
+
+def test_an_empty_answer_still_takes_the_default(monkeypatch):
+    """Enter is an answer, and the only one the prompt offers a shortcut for."""
+    monkeypatch.setattr(_cli.sys, "stdin", _Terminal())
+    monkeypatch.setattr("builtins.input", lambda prompt: "  ")
 
     assert _options_for(["new", "shop"]) == Options(name="shop")
 
@@ -1110,20 +1159,23 @@ def test_an_empty_name_asks_again_without_complaining(tmp_path, monkeypatch, cap
     assert "not usable" not in capsys.readouterr().out
 
 
-def test_end_of_input_at_the_name_prompt_is_rejected(monkeypatch, capsys):
-    """Ctrl-D has to end the run, not loop on input that will never arrive."""
+@pytest.mark.parametrize("interruption", [EOFError, KeyboardInterrupt])
+@pytest.mark.parametrize("argv", [["new"], ["new", "shop"]], ids=["name", "choice"])
+def test_an_interrupted_interview_cancels_the_run(
+    interruption, argv, tmp_path, monkeypatch, capsys
+):
+    """Both prompts loop until answered, so neither ends on its own."""
+    monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(_cli.sys, "stdin", _Terminal())
 
-    def end_of_input(prompt: str) -> str:
-        raise EOFError
+    def interrupt(prompt: str) -> str:
+        raise interruption
 
-    monkeypatch.setattr("builtins.input", end_of_input)
+    monkeypatch.setattr("builtins.input", interrupt)
 
-    with pytest.raises(SystemExit) as exit_info:
-        _cli.main(["new"])
-
-    assert exit_info.value.code == 2
-    assert "the following arguments are required: name" in capsys.readouterr().err
+    assert _cli.main(argv) == 1
+    assert "Cancelled." in capsys.readouterr().out
+    assert list(tmp_path.iterdir()) == []
 
 
 def test_a_missing_subcommand_is_rejected(capsys):
@@ -1173,14 +1225,16 @@ def test_names_that_would_collide_are_refused(name, tmp_path):
     assert not (tmp_path / "out").exists()
 
 
-def test_a_destination_that_is_a_file_is_refused(tmp_path):
+def test_a_destination_that_is_a_file_is_refused(tmp_path, capsys):
     """Otherwise iterdir raises NotADirectoryError as an unhandled traceback."""
     blocker = tmp_path / "blocker"
     blocker.write_text("not a directory")
 
-    with pytest.raises(SystemExit):
+    with pytest.raises(SystemExit) as exit_info:
         _cli.main(["new", "shop", "--directory", str(blocker), "-y"])
 
+    assert exit_info.value.code == 2
+    assert "exists and is not a directory" in capsys.readouterr().err
     assert blocker.read_text() == "not a directory"
 
 
