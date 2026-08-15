@@ -78,14 +78,9 @@ def create_app() -> FastAPI:
     )
 
     # Give Restly the application's engine. Alembic owns all schema changes.
-    fr.configure(app, async_engine=engine)
+    fr.configure(app, async_engine=engine, health="/health")
 
     for view in VIEWS:
         fr.include_view(app, view)
-
-    @app.get("/health")
-    async def health_check():
-        """Health check endpoint."""
-        return {"status": "ok"}
 
     return app
