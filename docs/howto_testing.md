@@ -43,7 +43,9 @@ import os
 import fastapi_restly as fr
 from fastapi import FastAPI
 
-from .api import register_views
+from .tasks.views import TaskView
+
+VIEWS = (TaskView,)
 
 
 def create_app(database_url: str | None = None) -> FastAPI:
@@ -52,7 +54,8 @@ def create_app(database_url: str | None = None) -> FastAPI:
         or os.environ.get("DATABASE_URL", "sqlite+aiosqlite:///./app.db")
     )
     app = FastAPI()
-    register_views(app)
+    for view in VIEWS:
+        fr.include_view(app, view)
     return app
 ```
 

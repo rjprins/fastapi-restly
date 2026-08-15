@@ -180,10 +180,14 @@ compares the two.
 
 Keep the one-file layout while the application is small. Once it holds several
 resources, give each one a package with its own `models.py`, `schemas.py`, and
-`views.py`, and register them all from a single `api.py`.
+`views.py`, and register them all from a `VIEWS` tuple in `main.py`.
 [Structure a Project](howto_project_structure.md) covers the full layout, the
 import direction it depends on, and which modules to add only once they earn
 their place.
+
+`restly new myapp` writes that layout for you, with a worked resource, a test
+suite, and the settings and Alembic wiring already in place. See
+[Generate it](#restly-new).
 
 ## Test quickly
 

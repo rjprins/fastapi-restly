@@ -124,8 +124,11 @@ import fastapi_restly as fr
 from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from .api import register_views
 from .settings import Settings
+from .tasks.views import TaskView
+from .users.views import UserView
+
+VIEWS = (TaskView, UserView)
 
 
 def create_app() -> FastAPI:
@@ -146,7 +149,8 @@ def create_app() -> FastAPI:
 
     app = FastAPI(lifespan=lifespan)
     fr.configure(app, async_engine=engine, health="/health")
-    register_views(app)
+    for view in VIEWS:
+        fr.include_view(app, view)
     return app
 ```
 
@@ -156,8 +160,8 @@ Note four details in this template:
   the engine is built when `create_app()` runs, so a test suite can install its
   own settings first and call the same factory. See
   [Test APIs with RestlyTestClient and Fixtures](howto_testing.md).
-- `register_views(app)` keeps view definitions free of registration side
-  effects and makes `api.py` the one application composition boundary; see
+- The `VIEWS` tuple keeps view definitions free of registration side effects
+  and makes `main.py` the one application composition boundary; see
   [Structure a Project](howto_project_structure.md).
 - {func}`fr.configure(app, ...) <fastapi_restly.db.configure>` installs the default exception handlers
   (currently the translator that turns `IntegrityError` into a 409 response;

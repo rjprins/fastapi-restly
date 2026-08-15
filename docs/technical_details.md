@@ -177,7 +177,7 @@ fr.include_view(app, MyView)
 ```
 
 This keeps imports predictable: importing `myapp.users.views` defines
-`UserView`, while `myapp.api` decides which app or router receives it. See
+`UserView`, while `myapp.main` decides which app or router receives it. See
 [Structure a Project](howto_project_structure.md) for the layout this assumes.
 For small apps and examples, `include_view()` also works as a decorator:
 
@@ -400,6 +400,12 @@ without awaiting. Note that Starlette runs `on_startup` and `on_shutdown`
 handlers only when the application was built without a `lifespan` argument, so
 disposal belongs in the lifespan itself rather than in a handler appended to
 `app.router`.
+
+An application that disposes its engine in the lifespan cannot be tested against
+an in-memory SQLite database. Restly's test clients run the ASGI lifespan, so the
+disposal happens at the end of every test, and an in-memory database lives inside
+its connection: closing that connection discards the schema, and the next test
+finds no tables. Point the suite at a file database instead.
 
 Reconfiguring Restly in a running process abandons the previous pool rather than
 closing it. CPython reclaims it once the garbage collector reaches the cycle the

@@ -6,6 +6,31 @@ modules that Python can import will work. This page describes the layout we
 recommend anyway, so that a growing application does not have to invent one,
 and explains what each part of it buys you.
 
+(restly-new)=
+
+## Generate it
+
+`restly new` writes this layout, with one worked resource, a test suite, and
+the Alembic and settings wiring already in place:
+
+```bash
+pip install fastapi-restly
+restly new myapp
+```
+
+Three choices shape the result, each with a flag and a prompt:
+
+| | default | alternative |
+|---|---|---|
+| Views and driver | `--async` | `--sync` |
+| Database | `--postgres`, with a `compose.yaml` | `--sqlite` |
+| Schema | `--alembic` | `--create-all`, for the test suite |
+
+`restly new myapp --sync --sqlite --create-all` takes every alternative, and
+`--yes` accepts the defaults without prompting. The command prints the next
+steps for the combination it generated. The rest of this page explains what it
+emitted, and is worth reading whether or not you used it.
+
 ## Start with one file
 
 A single module is the right shape for a first resource.
@@ -24,9 +49,8 @@ code they hold:
 
 ```text
 myapp/
-├── main.py                 # Application factory and lifespan
+├── main.py                 # Application factory, VIEWS, and lifespan
 ├── asgi.py                 # app = create_app(), the deployment entrypoint
-├── api.py                  # View registration
 ├── settings.py             # Pydantic settings
 ├── views.py                # Shared base view and mixins
 ├── users/
@@ -79,25 +103,32 @@ which is why the layout above registers them in one place instead. The
 tradeoff is deliberate: your `create_app()` stays yours, and the set of
 registered views is something you can read rather than infer.
 
-`api.py` registers every view on the application:
+That one place is a `VIEWS` tuple in `main.py`. The factory registers each of
+its views after {func}`fr.configure(app, ...) <fastapi_restly.db.configure>`:
 
 ```python
-# myapp/api.py
+# myapp/main.py
 import fastapi_restly as fr
 from fastapi import FastAPI
 
+from .settings import Settings
 from .tasks.views import TaskView
 from .users.views import UserView
 
+VIEWS = (TaskView, UserView)
 
-def register_views(app: FastAPI) -> None:
-    for view in (TaskView, UserView):
+
+def create_app() -> FastAPI:
+    settings = Settings.current
+    app = FastAPI()
+    fr.configure(app, async_database_url=settings.database_url, health="/health")
+    for view in VIEWS:
         fr.include_view(app, view)
+    return app
 ```
 
-The factory then calls it after
-{func}`fr.configure(app, ...) <fastapi_restly.db.configure>`, as shown in
-[A production `main.py` template](#production-main-template).
+[A production `main.py` template](#production-main-template) adds the engine and
+the lifespan that disposes it.
 
 Subject-first layouts leave one question open, which the rest of this section
 settles: which module has seen every model. Start with where the models are
@@ -112,9 +143,9 @@ it wherever this page names `fr.DataclassBase`.
 
 A base describes the models that have been imported and nothing else, so the
 layout needs one module that has imported all of them. That module is
-`main.py`. It reaches `api.py`, which reaches every view, and each view imports
-its model. Nothing else should have to be named: `main.py` is the one module
-every application has, so tools can rely on it without knowing how the rest is
+`main.py`. Its `VIEWS` tuple names every view, and each view imports its model.
+Nothing else should have to be named: `main.py` is the one module every
+application has, so tools can rely on it without knowing how the rest is
 arranged.
 
 This works only because the factory keeps `main.py` free of side effects.
@@ -144,7 +175,7 @@ without building an application first.
 That leaves models no view reaches, such as an outbox or audit table. Import
 those at module level wherever the application uses them, rather than inside a
 function, so they stay on the same graph. A model nothing in the application
-uses, written only by a worker or a script, goes in `api.py` beside the views,
+uses, written only by a worker or a script, goes in `main.py` beside `VIEWS`,
 which keeps every such import in one place.
 Getting it wrong is not silent: `alembic check` compares metadata against the
 database and reports a missing model as a dropped table, so run it in CI. See
@@ -188,6 +219,10 @@ request, such as work shared with a background worker.
 
 The same applies to `dependencies.py`, `constants.py`, and `exceptions.py`
 inside a subject. Each is worth having once it holds more than one item.
+
+At the package root, move `VIEWS` and its registration loop into an `api.py`
+exposing `register_views(app)` once `main.py` grows crowded; `main.py` imports
+it, so it still reaches every model.
 
 Keep application-wide concerns in top-level modules named for what they do,
 such as `auth.py`, `settings.py`, or `outbox.py`, and promote one to a package

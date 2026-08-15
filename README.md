@@ -174,6 +174,20 @@ the examples (Restly is driver-agnostic — use `asyncpg`/`psycopg` for
 PostgreSQL). Details, including the `[testing]` extra, are in
 [Getting Started](https://www.fastapi-restly.org/getting_started.html).
 
+## Start a project
+
+`restly new` writes a complete project: subject-first packages, an application
+factory, a worked resource, a test suite, and the settings and Alembic wiring.
+
+```bash
+restly new myapp
+```
+
+It asks three questions, each also available as a flag: `--async`/`--sync`,
+`--postgres`/`--sqlite`, and `--alembic`/`--create-all`. Add `--yes` to take
+the defaults. See
+[Structure a Project](https://www.fastapi-restly.org/howto_project_structure.html).
+
 ## Main features
 
 ### Manual schema definition

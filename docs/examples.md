@@ -4,6 +4,15 @@ The repository includes complete applications under `example-projects/`. They
 show different levels of Restly adoption, from a tiny resource to a
 production-shaped service with shared view foundations and custom behavior.
 
+## Starter
+
+[example-projects/starter](https://github.com/rjprins/fastapi-restly/tree/main/example-projects/starter)
+is exactly what `restly new myapp` writes with its default answers: async
+views, PostgreSQL, and Alembic. Read it to see the prescribed layout at its
+smallest, or generate your own with
+[`restly new`](#restly-new). A check in CI keeps it
+identical to the generator's output, so what you read here is what you get.
+
 ## Blog
 
 [example-projects/blog](https://github.com/rjprins/fastapi-restly/tree/main/example-projects/blog)
