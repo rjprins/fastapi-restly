@@ -68,6 +68,9 @@ Documentation = "https://www.fastapi-restly.org/"
 Issues = "https://github.com/rjprins/fastapi-restly/issues"
 Changelog = "https://github.com/rjprins/fastapi-restly/blob/main/CHANGELOG.md"
 
+[project.scripts]
+restly = "fastapi_restly._scaffold._cli:main"
+
 [project.entry-points.pytest11]
 fastapi_restly = "fastapi_restly.pytest_fixtures"
 
@@ -119,6 +122,13 @@ show_missing = true
 skip_covered = true
 omit = ["tests/*", "example-projects/*"]
 
+# Scaffold templates are linted as generated projects, not as repo source. There
+# they import fastapi_restly as a third-party package, while here it is
+# first-party, so one import order cannot satisfy both. scripts/scaffold_matrix.sh
+# runs ruff inside every generated combination, which covers every template file.
+[tool.ruff]
+extend-exclude = ["fastapi_restly/_scaffold/templates"]
+
 [tool.ruff.format]
 skip-magic-trailing-comma = true
 
@@ -138,6 +148,9 @@ split-on-trailing-comma = false
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["fastapi_restly", "fastapi_restly.*"]
+# The scaffold templates are data, not code: base/myapp/__init__.py would
+# otherwise be discovered as an importable package.
+exclude = ["fastapi_restly._scaffold.templates*"]
 
 [tool.setuptools.package-data]
-fastapi_restly = ["py.typed"]
+fastapi_restly = ["py.typed", "_scaffold/templates/**/*"]

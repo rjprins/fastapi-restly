@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `restly new <name>` generates a project in the prescribed layout: subject-first
+  packages, a `create_app()` factory with its `VIEWS` tuple, `asgi.py` for the
+  server, settings through `Settings.current`, one worked resource with
+  `build_query`, a business-method override and a `write_action` route, and a
+  test suite. Three choices, each a flag and a prompt: `--async` or `--sync`,
+  `--postgres` or `--sqlite`, `--alembic` or `--create-all`. `--yes` takes the
+  defaults, `--directory` writes somewhere other than `./<name>`. The command
+  prints the next steps for the combination it generated. `example-projects/starter`
+  is its default output, kept identical by a check in CI.
 - `fr.configure(app, health="/health")` mounts a liveness endpoint at that
   path, answering `200` with `{"status": "ok"}` and appearing in the OpenAPI
   schema. It makes no database round-trip; readiness stays a route of your own.
@@ -54,11 +63,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the way to decline any of them.
 - The documentation now recommends organizing an application by subject rather
   than by code type: each resource gets a package holding its `models.py`,
-  `schemas.py`, and `views.py`, and one `api.py` registers every view. Alembic
-  and test setup read the schema by importing `main.py`, which reaches every
-  view and so every model. A factory that builds nothing at import time is what
-  makes that free, so a module-level application belongs in its own `asgi.py`. The new guide
-  "Structure a Project" owns the layout, and the SaaS example follows it.
+  `schemas.py`, and `views.py`, and a `VIEWS` tuple in `main.py` names every
+  view for the factory to register. Alembic and test setup read the schema by
+  importing `main.py`, which reaches every view and so every model. A factory
+  that builds nothing at import time is what makes that free, so a module-level
+  application belongs in its own `asgi.py`. The new guide "Structure a Project"
+  owns the layout, and the SaaS example follows it.
 - The documentation now recommends building applications with a `create_app()`
   factory and reaching settings through `Settings.current` rather than an
   instance built at import. The test suite installs the settings it built, with

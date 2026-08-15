@@ -1,4 +1,4 @@
-.PHONY: test test-framework test-typing test-postgres test-postgres-asyncpg test-examples test-all clean install-dev lint pre-commit-install pre-commit-run docs docs-serve blog blog-serve build-pages
+.PHONY: test test-framework test-typing test-postgres test-postgres-asyncpg test-examples test-all clean install-dev lint pre-commit-install pre-commit-run docs docs-serve blog blog-serve build-pages scaffold-check scaffold-matrix scaffold-matrix-sqlite
 
 # Default target
 all: test-all
@@ -61,8 +61,25 @@ test-postgres-asyncpg:
 # Test all examples
 test-examples: test-shop test-blog test-saas
 
+# Assert example-projects/starter is still exactly what `restly new` emits.
+# Template changes then show up in review as concrete output diffs.
+scaffold-check:
+	@echo "=== Checking the starter snapshot matches the templates ==="
+	uv run python scripts/scaffold_check.py
+
+# Generate every `restly new` combination and run the documented flow in each.
+# The SQLite half needs no services; the PostgreSQL half needs a server, which
+# with_postgres.sh provides.
+scaffold-matrix-sqlite:
+	@echo "=== Scaffold matrix: SQLite combinations ==="
+	SCAFFOLD_ONLY=sqlite scripts/scaffold_matrix.sh
+
+scaffold-matrix:
+	@echo "=== Scaffold matrix: every combination ==="
+	scripts/with_postgres.sh scripts/scaffold_matrix.sh
+
 # Test everything
-test-all: test-framework test-typing test-postgres test-postgres-asyncpg test-examples
+test-all: test-framework test-typing test-postgres test-postgres-asyncpg test-examples scaffold-check scaffold-matrix
 	@echo "=== All Tests Complete ==="
 
 # Quick test (just framework)

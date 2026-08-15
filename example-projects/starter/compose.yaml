@@ -1,0 +1,37 @@
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: myapp
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d myapp"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+    volumes:
+      - myapp-data:/var/lib/postgresql/data
+
+  # A separate database for the test suite, so a test run never touches
+  # development data. Its storage is a tmpfs, so it starts empty every time.
+  test-db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: myapp_test
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "127.0.0.1:5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d myapp_test"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+    tmpfs:
+      - /var/lib/postgresql/data
+
+volumes:
+  myapp-data:

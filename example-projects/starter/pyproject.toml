@@ -1,0 +1,38 @@
+[project]
+name = "myapp"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi-restly[standard]",
+    "asyncpg>=0.30.0",
+    "alembic>=1.15.2",
+]
+
+[dependency-groups]
+dev = [
+    "fastapi-restly[testing]",
+    "pyright>=1.1.390",
+    "ruff>=0.8.0",
+]
+
+# Not a distribution: this is an application, so there is nothing to build and
+# no build backend to configure. pytest finds the package through pythonpath.
+[tool.uv]
+package = false
+
+# `fastapi dev` and `fastapi run` cannot call a factory, so point them at the
+# one module that holds an application object.
+[tool.fastapi]
+entrypoint = "myapp.asgi:app"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
+# Alembic writes migrations, so their layout is not yours to answer for.
+[tool.ruff]
+extend-exclude = ["alembic/versions"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]

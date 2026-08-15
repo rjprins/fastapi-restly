@@ -1,0 +1,5 @@
+{
+    "include": ["myapp", "tests"],
+    "exclude": ["**/__pycache__", ".venv"],
+    "pythonVersion": "3.10"
+}
