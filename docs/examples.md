@@ -12,6 +12,8 @@ views, PostgreSQL, and Alembic. Read it to see the prescribed layout at its
 smallest, or generate your own with
 [`restly new`](#restly-new). A check in CI keeps it
 identical to the generator's output, so what you read here is what you get.
+Unlike the other three, it depends on the released framework rather than this
+checkout, which makes it a reference rather than somewhere to try local changes.
 
 ## Blog
 
