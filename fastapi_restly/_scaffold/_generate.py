@@ -332,6 +332,15 @@ for the test suite, so a test run never touches development data.
         else ""
     )
 
+    test_note = (
+        "\nThe suite builds its schema by running the migrations, so it needs at\n"
+        "least one before it passes. Its database is separate from the\n"
+        "development one.\n"
+        if options.alembic
+        else "\nThe suite builds its schema from the models, in a database separate\n"
+        "from the development one.\n"
+    )
+
     numbered = "\n".join(steps)
     return f"""# {options.name}
 
@@ -370,7 +379,7 @@ and builds nothing, which is what lets the test suite name its own database.
 ```bash
 uv run pytest
 ```
-
+{test_note}
 ## Further reading
 
 - [Structure a project](https://www.fastapi-restly.org/howto_project_structure.html)

@@ -60,6 +60,10 @@ catch one that is missed.
 uv run pytest
 ```
 
+The suite builds its schema by running the migrations, so it needs at
+least one before it passes. Its database is separate from the
+development one.
+
 ## Further reading
 
 - [Structure a project](https://www.fastapi-restly.org/howto_project_structure.html)
