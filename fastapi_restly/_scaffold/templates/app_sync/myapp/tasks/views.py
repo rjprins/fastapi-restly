@@ -30,8 +30,6 @@ class TaskView(fr.RestView[Task, TaskSchema]):
     model = Task
     schema = TaskSchema
 
-    session: fr.SessionDep
-
     def build_query(self) -> sa.Select:
         """Shape every read.
 

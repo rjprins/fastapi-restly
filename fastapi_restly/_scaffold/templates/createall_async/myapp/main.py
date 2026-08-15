@@ -23,6 +23,22 @@ from .tasks.views import TaskView
 VIEWS = (TaskView,)
 
 
+def create_app() -> FastAPI:
+    """Build the application. Called by ``asgi.py`` and by the test suite."""
+    settings = Settings.current
+    app = FastAPI(title="myapp", lifespan=lifespan)
+
+    # Restly builds the engine from the URL, with defaults suited to a web
+    # application. Pass ``async_engine=`` instead when you need to size the pool
+    # yourself; see the deployment guide.
+    fr.configure(app, async_database_url=settings.database_url, health="/health")
+
+    for view in VIEWS:
+        fr.include_view(app, view)
+
+    return app
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     """Create the schema on the way up, close the pool on the way down.
@@ -40,19 +56,3 @@ async def lifespan(_app: FastAPI):
     await fr.db.async_create_all(fr.DataclassBase)
     yield
     await fr.db.get_async_engine().dispose()
-
-
-def create_app() -> FastAPI:
-    """Build the application. Called by ``asgi.py`` and by the test suite."""
-    settings = Settings.current
-    app = FastAPI(title="myapp", lifespan=lifespan)
-
-    # Restly builds the engine from the URL, with defaults suited to a web
-    # application. Pass ``async_engine=`` instead when you need to size the pool
-    # yourself; see the deployment guide.
-    fr.configure(app, async_database_url=settings.database_url, health="/health")
-
-    for view in VIEWS:
-        fr.include_view(app, view)
-
-    return app

@@ -23,22 +23,6 @@ from .tasks.views import TaskView
 VIEWS = (TaskView,)
 
 
-@asynccontextmanager
-async def lifespan(_app: FastAPI):
-    """Create the schema at startup, which is what this project has instead of
-    migrations.
-
-    Async even though the views are not: the ASGI lifespan protocol is, whatever
-    the endpoints do. Creating tables suits development, but add Alembic before
-    you deploy anything you care about, because ``create_all`` adds missing
-    tables and never alters an existing one, so it cannot carry a schema
-    forward. Nothing is needed on the way down: a synchronous engine needs no
-    disposal at shutdown.
-    """
-    fr.db.create_all(fr.DataclassBase)
-    yield
-
-
 def create_app() -> FastAPI:
     """Build the application. Called by ``asgi.py`` and by the test suite."""
     settings = Settings.current
@@ -53,3 +37,19 @@ def create_app() -> FastAPI:
         fr.include_view(app, view)
 
     return app
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    """Create the schema at startup, which is what this project has instead of
+    migrations.
+
+    Async even though the views are not: the ASGI lifespan protocol is, whatever
+    the endpoints do. Creating tables suits development, but add Alembic before
+    you deploy anything you care about, because ``create_all`` adds missing
+    tables and never alters an existing one, so it cannot carry a schema
+    forward. Nothing is needed on the way down: a synchronous engine needs no
+    disposal at shutdown.
+    """
+    fr.db.create_all(fr.DataclassBase)
+    yield

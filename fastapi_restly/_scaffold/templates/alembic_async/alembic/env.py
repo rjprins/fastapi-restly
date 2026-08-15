@@ -55,18 +55,6 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
-def do_run_migrations(connection: Connection) -> None:
-    """Run migrations through a synchronous connection adapter."""
-    context.configure(
-        connection=connection,
-        target_metadata=target_metadata,
-        render_as_batch=RENDER_AS_BATCH,
-    )
-
-    with context.begin_transaction():
-        context.run_migrations()
-
-
 async def run_async_migrations() -> None:
     """Open an async engine for an online migration run."""
     connectable = async_engine_from_config(
@@ -79,6 +67,18 @@ async def run_async_migrations() -> None:
         await connection.run_sync(do_run_migrations)
 
     await connectable.dispose()
+
+
+def do_run_migrations(connection: Connection) -> None:
+    """Run migrations through a synchronous connection adapter."""
+    context.configure(
+        connection=connection,
+        target_metadata=target_metadata,
+        render_as_batch=RENDER_AS_BATCH,
+    )
+
+    with context.begin_transaction():
+        context.run_migrations()
 
 
 if context.is_offline_mode():

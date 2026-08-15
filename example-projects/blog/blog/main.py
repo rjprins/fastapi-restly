@@ -32,4 +32,3 @@ class Blog(fr.IDBase):
 class BlogView(fr.RestView):
     prefix = "/blogs"
     model = Blog
-    session: fr.SessionDep

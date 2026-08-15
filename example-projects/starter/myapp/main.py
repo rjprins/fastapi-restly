@@ -23,19 +23,6 @@ from .tasks.views import TaskView
 VIEWS = (TaskView,)
 
 
-@asynccontextmanager
-async def lifespan(_app: FastAPI):
-    """Close the connection pool when the process shuts down.
-
-    Async only: an async engine that is never disposed drops its connections
-    instead of closing them, which leaves a ResourceWarning per connection and,
-    if a request is still in flight, an "Event loop is closed" traceback. A
-    synchronous engine needs none of this.
-    """
-    yield
-    await fr.db.get_async_engine().dispose()
-
-
 def create_app() -> FastAPI:
     """Build the application. Called by ``asgi.py`` and by the test suite."""
     settings = Settings.current
@@ -50,3 +37,16 @@ def create_app() -> FastAPI:
         fr.include_view(app, view)
 
     return app
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    """Close the connection pool when the process shuts down.
+
+    Async only: an async engine that is never disposed drops its connections
+    instead of closing them, which leaves a ResourceWarning per connection and,
+    if a request is still in flight, an "Event loop is closed" traceback. A
+    synchronous engine needs none of this.
+    """
+    yield
+    await fr.db.get_async_engine().dispose()
