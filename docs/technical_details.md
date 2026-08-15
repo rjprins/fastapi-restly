@@ -373,7 +373,13 @@ need to dispose anything.
 Asynchronous applications are the exception worth handling. `AsyncEngine.dispose()`
 is a coroutine, and nothing awaits it during interpreter shutdown, so an async
 engine that is never disposed drops its connections rather than closing them.
-The server on the other end sees each one as an unexpected disconnect.
+The database server is not what notices. The operating system closes the sockets
+as the process exits, and a backend waiting for its next command treats that as
+an ordinary end of session. The cost lands in your own shutdown output: a
+`ResourceWarning` for every connection left in the pool, and, when a request is
+still in flight, a `RuntimeError: Event loop is closed` traceback from the
+finalizer trying to terminate a connection on a loop that is already gone.
+SQLite has no server and no socket, so none of this applies to it.
 
 An application that builds its own engine already holds it and disposes it in
 its lifespan, which is what [the production
