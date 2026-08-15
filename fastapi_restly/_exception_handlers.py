@@ -8,8 +8,8 @@ and turns into a 500 Internal Server Error, which is misleading for clients
 (the server is fine; the request conflicts with the current state of the
 resource).
 
-The handler is installed automatically by :func:`fastapi_restly.configure`
-and as a fallback by :func:`fastapi_restly.include_view`. Users can opt out
+The handler is installed automatically by :func:`~fastapi_restly.db.configure`
+and as a fallback by :func:`~fastapi_restly.views.include_view`. Users can opt out
 by calling ``fr.configure(install_default_exception_handlers=False)`` or by
 registering their own handler for ``IntegrityError`` *before* the framework
 gets a chance to install one.
@@ -176,11 +176,11 @@ def integrity_error_handler(request: Request, exc: Exception) -> JSONResponse:
 def register_default_exception_handlers(app: FastAPI) -> None:
     """Idempotently install fastapi-restly default exception handlers on ``app``.
 
-    * Skips if a handler for :class:`IntegrityError` is already registered on
-      ``app`` — we always defer to the user.
+    * Skips if a handler for :class:`~sqlalchemy.exc.IntegrityError` is already
+      registered on ``app`` — we always defer to the user.
     * Skips if we have already installed handlers on this ``app`` instance
-      (so calling from both :func:`fastapi_restly.configure` and
-      :func:`fastapi_restly.include_view` is safe).
+      (so calling from both :func:`~fastapi_restly.db.configure` and
+      :func:`~fastapi_restly.views.include_view` is safe).
     """
     if getattr(app.state, _HANDLERS_INSTALLED_FLAG, False):
         return

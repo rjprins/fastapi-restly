@@ -1154,7 +1154,8 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         """Frozen capture of an object's already-loaded column values, passed as
         ``old`` to ``before_commit`` / ``after_commit`` for dirty detection.
         Override to change what ``old`` captures (e.g. include a relationship's
-        prior state); the default delegates to :func:`fastapi_restly.snapshot`.
+        prior state); the default delegates to
+        :func:`~fastapi_restly.objects.snapshot`.
         """
         return _object_snapshot(obj)
 

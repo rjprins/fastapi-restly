@@ -40,6 +40,30 @@ extensions = [
     "sphinx.ext.intersphinx",
 ]
 
+# A cross-reference role whose target does not exist renders as plain text, so
+# -W alone never catches a mistyped one. Nitpicky mode turns those into build
+# failures; the ignores below cover targets that have no published page to
+# point at, which autodoc emits from signatures rather than from prose.
+nitpicky = True
+nitpick_ignore_regex = [
+    (r"py:.*", r"(.*\.)?_.*"),  # private modules and classes, and their TypeVars
+    (r"py:.*", r"httpx2\..*"),  # httpx2 publishes no intersphinx inventory
+    (r"py:.*", r"typing\.Annotated\[.*"),
+]
+nitpick_ignore = [
+    # Names autodoc reads off an annotation unqualified, so intersphinx cannot
+    # resolve them.
+    ("py:class", "ConfigDict"),
+    ("py:class", "DeclarativeBase"),
+    ("py:class", "FastAPI"),
+    ("py:class", "MetaData"),
+    ("py:class", "Path"),
+    ("py:class", "fastapi.params.Depends"),
+    ("py:class", "starlette.datastructures.QueryParams"),
+    ("py:class", "fr.ReadOnly"),
+    ("py:class", "function"),
+]
+
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
     "sqlalchemy": ("https://docs.sqlalchemy.org/en/20", None),

@@ -109,8 +109,9 @@ def configure_tests(
         )
 
     ``configure_tests()`` never chooses, creates or replaces a database engine.
-    The application owns that configuration through :func:`fastapi_restly.configure`;
-    this function records the session factories already in force. Construct the
+    The application owns that configuration through
+    :func:`~fastapi_restly.db.configure`; this function records the session
+    factories already in force. Construct the
     application from explicit test settings, or, for an application that
     configures at module import time, select the test database before importing
     it. Database configuration performed afterwards is rejected so schema setup,

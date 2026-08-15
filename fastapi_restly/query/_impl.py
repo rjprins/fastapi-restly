@@ -180,7 +180,7 @@ def create_list_params_schema(
         default_page_size: Default value for the ``page_size`` parameter when
             the client omits it. Only used when ``paginated`` is true.
         max_page_size: Upper bound (inclusive) for the ``page_size``
-            parameter. Defaults to :data:`MAX_PAGE_SIZE`.
+            parameter. Defaults to ``MAX_PAGE_SIZE`` (1000).
         paginated: Whether to emit ``page``/``page_size`` parameters. False for
             an unpaginated view, which returns the full result set.
     """

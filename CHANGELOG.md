@@ -100,6 +100,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New or migrated PostgreSQL schemas now accept the UTC-aware values produced
   by `TimestampsMixin` when using asyncpg. SQLite does not preserve timezone
   information and continues to return naive datetime values.
+- References to `fr.configure()` and `fr.snapshot()` in the API reference are
+  links again rather than plain text. The documentation build now runs in
+  Sphinx's nitpicky mode, which fails on a cross-reference whose target does
+  not exist instead of rendering it as text.
 
 ## [0.9.0] - 2026-08-13
 

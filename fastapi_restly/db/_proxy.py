@@ -13,8 +13,8 @@ async def open_async_session() -> AsyncGenerator[SA_AsyncSession]:
     """Open an async database session for use outside of request context.
 
     Resolves the same source as ``AsyncSessionDep``: a custom
-    ``session_generator`` passed to :func:`fastapi_restly.configure` if one is
-    configured, otherwise the built-in async session factory. (The request-only
+    ``session_generator`` passed to :func:`~fastapi_restly.db.configure` if one
+    is configured, otherwise the built-in async session factory. (The request-only
     uncommitted-changes check is not armed here -- off-HTTP code owns its commit,
     exactly as a custom write route does.)
 
@@ -48,8 +48,8 @@ def open_session() -> Generator[SA_Session]:
     """Open a sync database session for use outside of request context.
 
     Resolves the same source as ``SessionDep``: a custom
-    ``sync_session_generator`` passed to :func:`fastapi_restly.configure` if one
-    is configured, otherwise the built-in sync session factory. (The request-only
+    ``sync_session_generator`` passed to :func:`~fastapi_restly.db.configure` if
+    one is configured, otherwise the built-in sync session factory. (The request-only
     uncommitted-changes check is not armed here -- off-HTTP code owns its commit,
     exactly as a custom write route does.)
 
