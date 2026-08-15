@@ -18,6 +18,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   defaults, `--directory` writes somewhere other than `./<name>`. The command
   prints the next steps for the combination it generated. `example-projects/starter`
   is its default output, kept identical by a check in CI.
+
+  A `--create-all` project builds its schema in the application lifespan and its
+  test suite does the same, so it runs on a fresh database without a migration.
+  An `--alembic` project ships the wiring but no migration, since the generator
+  cannot know your schema: its tests run the migrations, so they pass once the
+  first one exists. SQLite projects use a file for the test database rather than
+  `:memory:`, which cannot survive either Alembic's own connection or the engine
+  disposal the test client triggers through the lifespan.
 - `fr.configure(app, health="/health")` mounts a liveness endpoint at that
   path, answering `200` with `{"status": "ok"}` and appearing in the OpenAPI
   schema. It makes no database round-trip; readiness stays a route of your own.
