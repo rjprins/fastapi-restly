@@ -20,6 +20,18 @@ or `asyncpg`/`psycopg` for PostgreSQL. Test tooling lives in its own extra; see
 
 ## Create an app
 
+Two ways in, and they suit different moments.
+
+`restly new myapp` writes a complete project: subject-first packages, an
+application factory, a worked resource, a test suite, and the settings and
+migration wiring. Reach for it when you are starting something you intend to
+keep. See [Generate it](#restly-new) for what it emits and the three choices it
+offers.
+
+The rest of this guide builds an application by hand in one file, which is the
+shorter path to seeing how the pieces fit and the right shape for a first
+resource either way.
+
 A first application fits in one file, `main.py`:
 
 ```python
@@ -183,11 +195,8 @@ resources, give each one a package with its own `models.py`, `schemas.py`, and
 `views.py`, and register them all from a `VIEWS` tuple in `main.py`.
 [Structure a Project](howto_project_structure.md) covers the full layout, the
 import direction it depends on, and which modules to add only once they earn
-their place.
-
-`restly new myapp` writes that layout for you, with a worked resource, a test
-suite, and the settings and Alembic wiring already in place. See
-[Generate it](#restly-new).
+their place. Generating a project with `restly new` and moving this code into it
+is a reasonable way to make the move.
 
 ## Test quickly
 
