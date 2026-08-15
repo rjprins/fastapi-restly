@@ -34,7 +34,12 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Async views and driver (default)",
     )
-    new.add_argument("--sync", dest="is_async", action="store_false")
+    new.add_argument(
+        "--sync",
+        dest="is_async",
+        action="store_false",
+        help="Synchronous views and driver",
+    )
 
     new.add_argument(
         "--postgres",
@@ -43,7 +48,12 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         help="PostgreSQL, with a compose file (default)",
     )
-    new.add_argument("--sqlite", dest="postgres", action="store_false")
+    new.add_argument(
+        "--sqlite",
+        dest="postgres",
+        action="store_false",
+        help="SQLite, in a file beside the project",
+    )
 
     new.add_argument(
         "--alembic",
