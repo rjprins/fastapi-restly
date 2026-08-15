@@ -35,7 +35,7 @@ async def lifespan(_app: FastAPI):
     Disposing is async only. An async engine that is never disposed drops its
     connections instead of closing them, which leaves a ResourceWarning per
     connection and, if a request is still in flight, an "Event loop is closed"
-    traceback.
+    traceback. A synchronous engine needs none of that.
     """
     await fr.db.async_create_all(fr.DataclassBase)
     yield
