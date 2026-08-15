@@ -180,8 +180,21 @@ def build_files(options: Options) -> dict[str, str]:
     }
 
 
+def restly_requirement(extra: str) -> str:
+    """``fastapi-restly`` pinned at or above the version that generated this.
+
+    A generated project uses whatever the scaffold currently emits, so it needs
+    at least the release that emitted it. Without a floor, resolution could pick
+    an older one that lacks something the templates call.
+    """
+    from fastapi_restly import __version__
+
+    floor = "" if __version__ == "0+unknown" else f">={__version__}"
+    return f"fastapi-restly[{extra}]{floor}"
+
+
 def build_pyproject(options: Options) -> str:
-    dependencies = ["fastapi-restly[standard]"]
+    dependencies = [restly_requirement("standard")]
     if options.driver is not None:
         dependencies.append(options.driver)
     if options.alembic:
@@ -203,7 +216,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "fastapi-restly[testing]",
+    "{restly_requirement("testing")}",
     "pyright>=1.1.390",
     "ruff>=0.8.0",
 ]

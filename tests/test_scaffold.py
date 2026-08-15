@@ -493,7 +493,19 @@ def test_pyproject_has_no_driver_for_sync_sqlite():
 
     for driver in ("asyncpg", "psycopg", "aiosqlite"):
         assert driver not in pyproject
-    assert '"fastapi-restly[standard]",' in pyproject
+    assert '"fastapi-restly[standard]>=' in pyproject
+
+
+@pytest.mark.parametrize("options", ALL_COMBINATIONS, ids=_combination_id)
+def test_pyproject_floors_restly_at_the_generating_version(options):
+    """A generated project uses whatever this scaffold emits, so it needs at
+    least the release that emitted it."""
+    from fastapi_restly import __version__
+
+    pyproject = build_pyproject(options)
+
+    assert f'"fastapi-restly[standard]>={__version__}"' in pyproject
+    assert f'"fastapi-restly[testing]>={__version__}"' in pyproject
 
 
 @pytest.mark.parametrize("options", ALL_COMBINATIONS, ids=_combination_id)

@@ -119,8 +119,17 @@ Releases are cut by maintainers. The flow is:
    `CHANGELOG.md` (e.g. `## [0.2.0] - YYYY-MM-DD`) and update the comparison
    links at the bottom of the file.
 2. Bump `version` in `pyproject.toml`.
-3. Commit, tag (`git tag vX.Y.Z`), and push the tag.
-4. CI publishes the release artifacts.
+3. Regenerate the scaffold snapshot, which floors its `fastapi-restly`
+   requirement at the generating version:
+
+   ```bash
+   rm -r example-projects/starter
+   uv run python -c "from pathlib import Path; from fastapi_restly._scaffold._generate import Options, generate; generate(Options(name='myapp'), Path('example-projects/starter'))"
+   make scaffold-check
+   ```
+
+4. Commit, tag (`git tag vX.Y.Z`), and push the tag.
+5. CI publishes the release artifacts.
 
 ## Getting Help
 
