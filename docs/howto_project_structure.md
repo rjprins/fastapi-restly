@@ -10,7 +10,7 @@ and explains what each part of it buys you.
 
 ## Generate it
 
-`restly new` writes the layout below, with one worked resource, a test suite,
+`restly new` writes the layout below, with a `users` resource, a test suite,
 and the settings and schema wiring:
 
 ```bash

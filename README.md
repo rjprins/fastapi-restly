@@ -177,7 +177,7 @@ PostgreSQL). Details, including the `[testing]` extra, are in
 ## Start a project
 
 `restly new` writes a complete project: subject-first packages, an application
-factory, a worked resource, a test suite, and the settings and Alembic wiring.
+factory, a `users` resource, a test suite, and the settings and Alembic wiring.
 
 ```bash
 restly new myapp

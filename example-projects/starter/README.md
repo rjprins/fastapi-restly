@@ -26,12 +26,12 @@ app/
 ├── main.py        Application factory and the VIEWS it registers
 ├── asgi.py        app = create_app(), the only module a server imports
 ├── settings.py    Environment settings
-└── tasks/         One resource: model, schemas, view
+└── users/         One resource: model, schemas, view
 tests/
 ```
 
 Each resource is a package holding its model, its schemas, and its view,
-because those three change together. Add a package beside `tasks/`, then add
+because those three change together. Add a package beside `users/`, then add
 its view to `VIEWS` in `main.py`.
 
 Importing `main.py` must stay free of side effects: it defines `create_app()`

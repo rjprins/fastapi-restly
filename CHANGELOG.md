@@ -15,9 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   names the project, meaning the directory, `pyproject.toml`, and the
   databases. Inside it: subject-first
   packages, a `create_app()` factory with its `VIEWS` tuple, `asgi.py` for the
-  server, settings through `Settings.current`, one worked resource with
-  `build_query`, a business-method override and a `write_action` route, and a
-  test suite. Three choices, each a flag and a prompt: `--async` or `--sync`,
+  server, settings through `Settings.current`, a `users` resource with its
+  model, schemas and view, and a test suite. The resource is a plain
+  starting point rather than a demonstration: nothing in it is there to be
+  read and deleted. Three choices, each a flag and a prompt: `--async` or `--sync`,
   `--postgres` or `--sqlite`, `--alembic` or `--create-all`. On a terminal the
   command asks for whatever is missing, the name included, so a bare
   `restly new` is an interview; off a terminal it takes the defaults and still

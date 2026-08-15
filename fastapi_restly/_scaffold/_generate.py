@@ -4,7 +4,7 @@ Two mechanisms, and the split between them is the design:
 
 * **Overlay directories** hold whole files that are identical within one axis.
   They are composited in order, later winning, so choosing ``app_sync`` over
-  ``app_async`` selects a different real ``tasks/views.py``, and choosing
+  ``app_async`` selects a different real ``users/views.py``, and choosing
   ``createall_async`` over ``alembic_async`` a different ``main.py``. The
   package is ``app`` in the tree and in the output, so a template is ordinary
   Python rather than markup. It is linted as a generated project, not as repo
@@ -433,12 +433,12 @@ The API is then at <http://127.0.0.1:8000>, with interactive documentation at
 ├── main.py        Application factory and the VIEWS it registers
 ├── asgi.py        app = create_app(), the only module a server imports
 ├── settings.py    Environment settings
-└── tasks/         One resource: model, schemas, view
+└── users/         One resource: model, schemas, view
 tests/
 ```
 
 Each resource is a package holding its model, its schemas, and its view,
-because those three change together. Add a package beside `tasks/`, then add
+because those three change together. Add a package beside `users/`, then add
 its view to `VIEWS` in `main.py`.
 
 Importing `main.py` must stay free of side effects: it defines `create_app()`

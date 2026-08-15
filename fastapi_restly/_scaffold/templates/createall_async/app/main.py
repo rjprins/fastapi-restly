@@ -16,11 +16,11 @@ import fastapi_restly as fr
 from fastapi import FastAPI
 
 from .settings import Settings
-from .tasks.views import TaskView
+from .users.views import UserView
 
 # Every view the application serves. Add yours here; each one pulls in its own
 # model, which is how this module ends up seeing the whole schema.
-VIEWS = (TaskView,)
+VIEWS = (UserView,)
 
 
 def create_app() -> FastAPI:
