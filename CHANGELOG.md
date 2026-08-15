@@ -23,9 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   test suite does the same, so it runs on a fresh database without a migration.
   An `--alembic` project ships the wiring but no migration, since the generator
   cannot know your schema: its tests run the migrations, so they pass once the
-  first one exists. SQLite projects use a file for the test database rather than
-  `:memory:`, which cannot survive either Alembic's own connection or the engine
-  disposal the test client triggers through the lifespan.
+  first one exists. SQLite projects use a file for the test database. An
+  in-memory database does not survive Alembic's separate connection, nor the
+  engine disposal the test client triggers through the lifespan.
 - `fr.configure(app, health="/health")` mounts a liveness endpoint at that
   path, answering `200` with `{"status": "ok"}` and appearing in the OpenAPI
   schema. It makes no database round-trip; readiness stays a route of your own.

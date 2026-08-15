@@ -1,9 +1,9 @@
 """The Task API.
 
 Restly generates list, retrieve, create, update, and delete from ``model`` and
-``schema``. Below are the two override points you will reach for most, plus
-one route of your own. Delete any you do not need: the generated routes work
-without them.
+``schema``. ``build_query`` and ``create`` below are the two override points
+you will use most, and ``complete`` is a route of your own. Delete any you do
+not need: the generated routes work without them.
 
 Add your own view classes beside this one, then list them in ``myapp/main.py``.
 """
@@ -21,8 +21,8 @@ class TaskView(fr.AsyncRestView[Task, TaskSchema]):
     """CRUD for ``/tasks``, plus one custom route.
 
     The type parameters are optional: a bare ``fr.AsyncRestView`` works. They
-    earn their place as soon as you override a method, because they tell your
-    type checker that ``create`` returns a ``Task``.
+    tell your type checker that ``create`` returns a ``Task``, which starts to
+    matter once you override a method.
     """
 
     prefix = "/tasks"
@@ -43,8 +43,8 @@ class TaskView(fr.AsyncRestView[Task, TaskSchema]):
     async def create(self, schema_obj) -> Task:
         """Business logic for one create.
 
-        Business methods are where your own logic goes. Never commit here: the
-        framework brackets the write and commits once the request succeeds.
+        Never commit here: the framework brackets the write and commits once
+        the request succeeds.
         """
         task = await super().create(schema_obj)
         if task.done:

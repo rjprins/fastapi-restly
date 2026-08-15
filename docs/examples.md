@@ -7,13 +7,11 @@ production-shaped service with shared view foundations and custom behavior.
 ## Starter
 
 [example-projects/starter](https://github.com/rjprins/fastapi-restly/tree/main/example-projects/starter)
-is exactly what `restly new myapp` writes with its default answers: async
-views, PostgreSQL, and Alembic. Read it to see the prescribed layout at its
-smallest, or generate your own with
-[`restly new`](#restly-new). A check in CI keeps it
-identical to the generator's output, so what you read here is what you get.
-Unlike the other three, it depends on the released framework rather than this
-checkout, which makes it a reference rather than somewhere to try local changes.
+is exactly what [`restly new myapp`](#restly-new) writes with its default
+answers: async views, PostgreSQL, and Alembic. Read it to see the prescribed
+layout at its smallest; a check in CI keeps it identical to the generator's
+output. It depends on the released framework rather than this checkout, so
+local changes to Restly do not appear in it.
 
 ## Blog
 

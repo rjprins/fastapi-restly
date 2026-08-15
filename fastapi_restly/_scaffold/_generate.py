@@ -366,9 +366,9 @@ uv run alembic upgrade head
 ```
 
 `alembic/env.py` imports `{options.name}.main`, which reaches every view and
-through each view its models, so autogenerate sees the whole schema. A model no
-view reaches must be imported wherever it is used. Run `alembic check` in CI to
-catch one that is missed.
+through each view its models, so autogenerate sees the whole schema. A model
+that no view reaches must be imported wherever it is used. Run `alembic check`
+in CI to catch one that is missed.
 """
         if options.alembic
         else f"""
@@ -396,12 +396,12 @@ for the test suite, so a test run never touches development data.
     )
 
     test_note = (
-        "\nThe suite builds its schema by running the migrations, so it needs at\n"
-        "least one before it passes. Its database is separate from the\n"
-        "development one.\n"
+        "\nThe suite builds its schema by running the migrations, so it needs at"
+        " least one\nbefore it passes. Its database is separate from the"
+        " development one.\n"
         if options.alembic
-        else "\nThe suite builds its schema from the models, in a database separate\n"
-        "from the development one.\n"
+        else "\nThe suite builds its schema from the models, in a database"
+        " separate from the\ndevelopment one.\n"
     )
 
     docker_note = ", and Docker for the databases" if options.postgres else ""
@@ -411,7 +411,7 @@ for the test suite, so a test run never touches development data.
 
 A REST API built with [FastAPI-Restly](https://www.fastapi-restly.org).
 
-Managed with [uv](https://docs.astral.sh/uv/){docker_note}.
+Requires [uv](https://docs.astral.sh/uv/){docker_note}.
 
 ## Getting started
 

@@ -2,7 +2,7 @@
 
 A REST API built with [FastAPI-Restly](https://www.fastapi-restly.org).
 
-Managed with [uv](https://docs.astral.sh/uv/), and Docker for the databases.
+Requires [uv](https://docs.astral.sh/uv/), and Docker for the databases.
 
 ## Getting started
 
@@ -52,9 +52,9 @@ uv run alembic upgrade head
 ```
 
 `alembic/env.py` imports `myapp.main`, which reaches every view and
-through each view its models, so autogenerate sees the whole schema. A model no
-view reaches must be imported wherever it is used. Run `alembic check` in CI to
-catch one that is missed.
+through each view its models, so autogenerate sees the whole schema. A model
+that no view reaches must be imported wherever it is used. Run `alembic check`
+in CI to catch one that is missed.
 
 ## Tests
 
@@ -62,9 +62,8 @@ catch one that is missed.
 uv run pytest
 ```
 
-The suite builds its schema by running the migrations, so it needs at
-least one before it passes. Its database is separate from the
-development one.
+The suite builds its schema by running the migrations, so it needs at least one
+before it passes. Its database is separate from the development one.
 
 ## Further reading
 

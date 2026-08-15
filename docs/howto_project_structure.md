@@ -11,18 +11,17 @@ and explains what each part of it buys you.
 ## Generate it
 
 `restly new` writes the layout below, with one worked resource, a test suite,
-and the settings and schema wiring already in place:
+and the settings and schema wiring:
 
 ```bash
 pip install fastapi-restly
 restly new myapp
 ```
 
-The generated project is managed with [uv](https://docs.astral.sh/uv/), which
-the next steps and its README both assume, so install that too. A PostgreSQL
-project also expects Docker for its `compose.yaml`.
+The generated project uses [uv](https://docs.astral.sh/uv/), so install that
+too. A PostgreSQL project also needs Docker for its `compose.yaml`.
 
-Three choices shape the result, each with a flag and a prompt:
+Omit a flag and the command asks for it. The first column is the default:
 
 | | default | alternative |
 |---|---|---|
@@ -31,13 +30,12 @@ Three choices shape the result, each with a flag and a prompt:
 | Schema | `--alembic` | `--create-all`, built at startup and in tests |
 
 `restly new myapp --sync --sqlite --create-all` takes every alternative. Two
-more flags do not vary the project: `--yes` accepts the defaults without
+more flags leave the project unchanged: `--yes` accepts the defaults without
 prompting, and `--directory` writes somewhere other than `./myapp`. The command
 prints the next steps for the combination it generated.
 
 One resource is enough to start, so the generated project has no `views.py` and
 no `api.py`. Both appear below, as things to add once they earn their place.
-The rest of this page is worth reading whether or not you used the command.
 
 ## Start with one file
 

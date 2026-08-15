@@ -403,9 +403,9 @@ disposal belongs in the lifespan itself rather than in a handler appended to
 
 An application that disposes its engine in the lifespan cannot be tested against
 an in-memory SQLite database. Restly's test clients run the ASGI lifespan, so the
-disposal happens at the end of every test, and an in-memory database lives inside
-its connection: closing that connection discards the schema, and the next test
-finds no tables. Point the suite at a file database instead.
+disposal happens at the end of every test. An in-memory database lives inside its
+connection, so closing it discards the schema and the next test finds no tables.
+Point the suite at a file database instead.
 
 Reconfiguring Restly in a running process abandons the previous pool rather than
 closing it. CPython reclaims it once the garbage collector reaches the cycle the
