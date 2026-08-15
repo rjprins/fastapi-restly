@@ -21,7 +21,10 @@ restly new myapp
 The generated project uses [uv](https://docs.astral.sh/uv/), so install that
 too. A PostgreSQL project also needs Docker for its `compose.yaml`.
 
-Omit a flag and the command asks for it. The first column is the default:
+On a terminal, `restly new` asks for whatever you leave out, the name included,
+so a bare `restly new` is an interview. Off a terminal it takes the defaults
+and requires the name, which keeps it usable in CI. The first column is the
+default:
 
 | | default | alternative |
 |---|---|---|
@@ -31,8 +34,9 @@ Omit a flag and the command asks for it. The first column is the default:
 
 `restly new myapp --sync --sqlite --create-all` takes every alternative. Two
 more flags leave the project unchanged: `--yes` accepts the defaults without
-prompting, and `--directory` writes somewhere other than `./myapp`. The command
-prints the next steps for the combination it generated.
+prompting, so it needs the name as an argument, and `--directory` writes
+somewhere other than `./myapp`. The command prints the next steps for the
+combination it generated.
 
 One resource is enough to start, so the generated project has no `views.py` and
 no `api.py`. Both appear below, as things to add once they earn their place.

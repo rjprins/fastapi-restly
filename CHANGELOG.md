@@ -14,10 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   server, settings through `Settings.current`, one worked resource with
   `build_query`, a business-method override and a `write_action` route, and a
   test suite. Three choices, each a flag and a prompt: `--async` or `--sync`,
-  `--postgres` or `--sqlite`, `--alembic` or `--create-all`. `--yes` takes the
-  defaults, `--directory` writes somewhere other than `./<name>`. The command
-  prints the next steps for the combination it generated. `example-projects/starter`
-  is its default output, kept identical by a check in CI.
+  `--postgres` or `--sqlite`, `--alembic` or `--create-all`. On a terminal the
+  command asks for whatever is missing, the name included, so a bare
+  `restly new` is an interview; off a terminal it takes the defaults and still
+  requires the name. `--yes` takes the defaults, `--directory` writes somewhere
+  other than `./<name>`. The command prints the next steps for the combination
+  it generated. `example-projects/starter` is its default output, kept
+  identical by a check in CI.
 
   A `--create-all` project builds its schema in the application lifespan and its
   test suite does the same, so it runs on a fresh database without a migration.

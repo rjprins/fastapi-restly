@@ -846,7 +846,7 @@ def test_a_flag_answers_its_question_so_it_is_not_asked(monkeypatch):
 
 
 def test_a_prefix_answers_the_prompt(monkeypatch):
-    """The prompt renders as ``[async/sync]``, so a single letter has to work.
+    """The prompt renders as ``(async/sync)``, so a single letter has to work.
 
     Without this, `startswith` could become `==` with the suite still green.
     """
@@ -896,6 +896,166 @@ def test_yes_takes_the_defaults_without_asking(monkeypatch):
     monkeypatch.setattr("builtins.input", refuse)
 
     assert _options_for(["new", "shop", "-y"]) == Options(name="shop")
+
+
+def test_the_prompt_names_the_default_it_will_take(monkeypatch):
+    """``[async/sync]`` gave no sign which side pressing enter chooses."""
+    monkeypatch.setattr(_cli.sys, "stdin", _Terminal())
+    asked = []
+
+    def record(prompt: str) -> str:
+        asked.append(prompt)
+        return ""
+
+    monkeypatch.setattr("builtins.input", record)
+    _options_for(["new", "shop"])
+
+    assert asked == [
+        "Async views? (async/sync) [async]: ",
+        "Database? (postgres/sqlite) [postgres]: ",
+        "Migrations? (alembic/create-all) [alembic]: ",
+    ]
+
+
+# ---------------------------------------------------------------------------
+# The name prompt
+# ---------------------------------------------------------------------------
+
+
+def test_a_missing_name_is_rejected_off_a_terminal(not_a_terminal, capsys):
+    """Nothing may block on input in CI, so the name stays required there."""
+    with pytest.raises(SystemExit) as exit_info:
+        _cli.main(["new"])
+
+    assert exit_info.value.code == 2
+    assert "the following arguments are required: name" in capsys.readouterr().err
+
+
+def test_a_missing_name_is_rejected_under_yes(monkeypatch, capsys):
+    """--yes takes the defaults, and a name has no default to take."""
+    monkeypatch.setattr(_cli.sys, "stdin", _Terminal())
+
+    def refuse(prompt: str) -> str:
+        raise AssertionError(f"prompted despite --yes: {prompt}")
+
+    monkeypatch.setattr("builtins.input", refuse)
+
+    with pytest.raises(SystemExit) as exit_info:
+        _cli.main(["new", "-y"])
+
+    assert exit_info.value.code == 2
+    assert "the following arguments are required: name" in capsys.readouterr().err
+
+
+def test_a_terminal_is_asked_for_a_missing_name(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(_cli.sys, "stdin", _Terminal())
+    answers = iter(["shop", "", "", ""])
+    monkeypatch.setattr("builtins.input", lambda prompt: next(answers))
+
+    assert _cli.main(["new"]) == 0
+    assert (tmp_path / "shop" / "shop" / "main.py").exists()
+
+
+def test_a_name_on_the_command_line_is_not_asked_for(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(_cli.sys, "stdin", _Terminal())
+    asked = []
+
+    def record(prompt: str) -> str:
+        asked.append(prompt)
+        return ""
+
+    monkeypatch.setattr("builtins.input", record)
+
+    assert _cli.main(["new", "shop"]) == 0
+    assert not any("Project name" in prompt for prompt in asked)
+
+
+@pytest.mark.parametrize(
+    "rejected, reason",
+    [
+        ("my-app", "not usable as a package and project name"),
+        ("class", "not usable as a package and project name"),
+        ("datetime", "would collide"),
+        ("x" * (_cli.MAX_NAME_LENGTH + 1), "characters"),
+    ],
+    ids=["not-an-identifier", "keyword", "reserved", "too-long"],
+)
+def test_the_name_prompt_asks_again_after_an_unusable_answer(
+    rejected, reason, tmp_path, monkeypatch, capsys
+):
+    """The choice prompts fall back to a default. This one has none, so it re-asks."""
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(_cli.sys, "stdin", _Terminal())
+    answers = iter([rejected, "shop", "", "", ""])
+    monkeypatch.setattr("builtins.input", lambda prompt: next(answers))
+
+    assert _cli.main(["new"]) == 0
+    assert reason in capsys.readouterr().out
+    assert (tmp_path / "shop" / "shop" / "main.py").exists()
+
+
+def test_the_name_prompt_asks_again_when_the_destination_is_taken(
+    tmp_path, monkeypatch, capsys
+):
+    """The destination follows the name, so a taken one is a question, not an exit."""
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "taken").mkdir()
+    (tmp_path / "taken" / "keep.txt").write_text("keep me\n")
+    monkeypatch.setattr(_cli.sys, "stdin", _Terminal())
+    answers = iter(["taken", "shop", "", "", ""])
+    monkeypatch.setattr("builtins.input", lambda prompt: next(answers))
+
+    assert _cli.main(["new"]) == 0
+    assert "already exists and is not empty" in capsys.readouterr().out
+    assert (tmp_path / "taken" / "keep.txt").read_text() == "keep me\n"
+    assert (tmp_path / "shop" / "shop" / "main.py").exists()
+
+
+def test_a_taken_explicit_directory_is_an_error_not_a_question(
+    tmp_path, monkeypatch, capsys
+):
+    """--directory does not follow the name, so re-asking could never clear it."""
+    destination = tmp_path / "elsewhere"
+    destination.mkdir()
+    (destination / "keep.txt").write_text("keep me\n")
+    monkeypatch.setattr(_cli.sys, "stdin", _Terminal())
+    answers = iter(["shop", "also_shop", "third"])
+    monkeypatch.setattr("builtins.input", lambda prompt: next(answers))
+
+    with pytest.raises(SystemExit) as exit_info:
+        _cli.main(["new", "--directory", str(destination)])
+
+    assert exit_info.value.code == 2
+    assert "already exists and is not empty" in capsys.readouterr().err
+
+
+def test_an_empty_name_asks_again_without_complaining(tmp_path, monkeypatch, capsys):
+    """Pressing enter has nothing to mean here, so it is not worth an error."""
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(_cli.sys, "stdin", _Terminal())
+    answers = iter(["", "   ", "shop", "", "", ""])
+    monkeypatch.setattr("builtins.input", lambda prompt: next(answers))
+
+    assert _cli.main(["new"]) == 0
+    assert "not usable" not in capsys.readouterr().out
+
+
+def test_end_of_input_at_the_name_prompt_is_rejected(monkeypatch, capsys):
+    """Ctrl-D has to end the run, not loop on input that will never arrive."""
+    monkeypatch.setattr(_cli.sys, "stdin", _Terminal())
+
+    def end_of_input(prompt: str) -> str:
+        raise EOFError
+
+    monkeypatch.setattr("builtins.input", end_of_input)
+
+    with pytest.raises(SystemExit) as exit_info:
+        _cli.main(["new"])
+
+    assert exit_info.value.code == 2
+    assert "the following arguments are required: name" in capsys.readouterr().err
 
 
 def test_a_missing_subcommand_is_rejected(capsys):

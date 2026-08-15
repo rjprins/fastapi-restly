@@ -54,7 +54,18 @@ def _build_parser() -> argparse.ArgumentParser:
     subcommands = parser.add_subparsers(dest="command", required=True)
 
     new = subcommands.add_parser("new", help=_DESCRIPTION)
-    new.add_argument("name", help="Project and package name, e.g. myapp")
+    # Errors about `new`'s own arguments should print `new`'s usage, so main
+    # needs the subparser back.
+    new.set_defaults(subparser=new)
+
+    # Optional so that an interactive run can ask for it. main enforces it
+    # everywhere else, because argparse cannot tell the two cases apart.
+    new.add_argument(
+        "name",
+        nargs="?",
+        default=None,
+        help="Project and package name, e.g. myapp. Asked for if omitted",
+    )
     new.add_argument(
         "--directory",
         type=Path,
@@ -112,10 +123,80 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _name_problem(name: str) -> str | None:
+    """Why *name* cannot be a package and project name, or None if it can."""
+    if (
+        not name.isidentifier()
+        or keyword.iskeyword(name)
+        # Also the project name in pyproject.toml, where PEP 508 forbids a
+        # leading or trailing underscore.
+        or not _PROJECT_NAME_RE.fullmatch(name)
+    ):
+        return (
+            f"{name!r} is not usable as a package and project name. Use letters, "
+            "digits and underscores, starting with a letter and not ending in "
+            "an underscore."
+        )
+    if len(name) > MAX_NAME_LENGTH:
+        return (
+            f"{name!r} is {len(name)} characters. Keep it to {MAX_NAME_LENGTH} or "
+            "fewer, or the generated imports outgrow the project's own line length."
+        )
+    if name in RESERVED_NAMES:
+        return (
+            f"{name!r} would collide with a directory the project already has, "
+            "or shadow a standard library module that the project imports."
+        )
+    return None
+
+
+def _destination_problem(destination: Path) -> str | None:
+    """Why *destination* cannot be written into, or None if it can."""
+    if not destination.exists():
+        return None
+    if not destination.is_dir():
+        return f"{str(destination)!r} exists and is not a directory."
+    if any(destination.iterdir()):
+        return f"{str(destination)!r} already exists and is not empty."
+    return None
+
+
+def _interactive(args: argparse.Namespace) -> bool:
+    """Prompts run on a terminal only, and never under --yes."""
+    return not args.yes and sys.stdin.isatty()
+
+
+def _ask_name(directory: Path | None) -> str | None:
+    """Ask for the project name until the answer is usable, or None on end of input.
+
+    This re-asks where the choice prompts fall back, because there is no
+    default name to fall back to. When the destination follows the name, a
+    directory already in use is a reason to ask again as well.
+    """
+    while True:
+        try:
+            name = input("Project name: ").strip()
+        except EOFError:
+            print()
+            return None
+        if not name:
+            continue
+        problem = _name_problem(name)
+        if problem is None and directory is None:
+            problem = _destination_problem(Path(name))
+        if problem is None:
+            return name
+        print(f"  {problem}")
+
+
 def _ask(question: str, default_yes: bool, first: str, second: str) -> bool:
-    """Prompt for one either/or choice. Anything unrecognised keeps the default."""
-    shown = f"{first}/{second}" if default_yes else f"{second}/{first}"
-    answer = input(f"{question} [{shown}]: ").strip().lower()
+    """Prompt for one either/or choice. Anything unrecognised keeps the default.
+
+    The default is named in its own brackets rather than shown first, which
+    nothing on the line distinguishes from the alternative.
+    """
+    default = first if default_yes else second
+    answer = input(f"{question} ({first}/{second}) [{default}]: ").strip().lower()
     if not answer:
         return default_yes
     if first.lower().startswith(answer):
@@ -130,7 +211,7 @@ def _resolve(args: argparse.Namespace) -> Options:
     is_async, postgres, alembic = args.is_async, args.postgres, args.alembic
     unanswered = [value is None for value in (is_async, postgres, alembic)]
 
-    if any(unanswered) and not args.yes and sys.stdin.isatty():
+    if any(unanswered) and _interactive(args):
         if is_async is None:
             is_async = _ask("Async views?", True, "async", "sync")
         if postgres is None:
@@ -163,36 +244,23 @@ def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
 
-    name = args.name
-    if (
-        not name.isidentifier()
-        or keyword.iskeyword(name)
-        # Also the project name in pyproject.toml, where PEP 508 forbids a
-        # leading or trailing underscore.
-        or not _PROJECT_NAME_RE.fullmatch(name)
-    ):
-        parser.error(
-            f"{name!r} is not usable as a package and project name. Use letters, "
-            "digits and underscores, starting with a letter and not ending in "
-            "an underscore."
-        )
-    if len(name) > MAX_NAME_LENGTH:
-        parser.error(
-            f"{name!r} is {len(name)} characters. Keep it to {MAX_NAME_LENGTH} or "
-            "fewer, or the generated imports outgrow the project's own line length."
-        )
-    if name in RESERVED_NAMES:
-        parser.error(
-            f"{name!r} would collide with a directory the project already has, "
-            "or shadow a standard library module that the project imports."
-        )
+    # Reading it off the namespace loses the type, and with it the fact that
+    # `error` never returns.
+    subparser: argparse.ArgumentParser = args.subparser
+
+    name: str | None = args.name
+    if name is None:
+        name = _ask_name(args.directory) if _interactive(args) else None
+        if name is None:
+            subparser.error("the following arguments are required: name")
+        # _resolve reads the name off the namespace along with the choices.
+        args.name = name
+    elif (problem := _name_problem(name)) is not None:
+        subparser.error(problem)
 
     destination = args.directory if args.directory is not None else Path(name)
-    if destination.exists():
-        if not destination.is_dir():
-            parser.error(f"{str(destination)!r} exists and is not a directory.")
-        if any(destination.iterdir()):
-            parser.error(f"{str(destination)!r} already exists and is not empty.")
+    if (problem := _destination_problem(destination)) is not None:
+        subparser.error(problem)
 
     options = _resolve(args)
     written = generate(options, destination)
