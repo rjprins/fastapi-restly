@@ -17,9 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `--postgres` or `--sqlite`, `--alembic` or `--create-all`. On a terminal the
   command asks for whatever is missing, the name included, so a bare
   `restly new` is an interview; off a terminal it takes the defaults and still
-  requires the name. Each question lists its choices with the description the
-  flag carries in `--help`, marks the default, and takes a number, a name, or
-  enter. `--yes` takes the defaults, `--directory` writes somewhere other than
+  requires the name. Each question lists its choices with a line saying what
+  each one does, marks the default, and takes a number, a name, or enter. An
+  unrecognised answer asks again rather than taking the default.
+  `--yes` takes the defaults, `--directory` writes somewhere other than
   `./<name>`. The command prints the next steps for the combination it
   generated. `example-projects/starter` is its default output, kept identical
   by a check in CI.

@@ -190,9 +190,9 @@ def _ask(
 ) -> bool:
     """Prompt for one either/or choice, by number or by name.
 
-    Each choice is its flag name and the same description the flag carries in
-    ``--help``, because a name can only say so much: `create-all` does not say
-    what it creates, and the answer does not fit in a flag.
+    Each choice is a name and a line saying what it does, because a name can
+    only carry so much. Where a flag names a mechanism the choice is free to
+    name the outcome instead, and leave the mechanism to the description.
 
     Enter takes the default. Anything else unrecognised asks again, rather
     than taking the default on the reader's behalf and leaving them to find
@@ -230,8 +230,8 @@ def _resolve(args: argparse.Namespace) -> Options:
             is_async = _ask(
                 "Async views?",
                 True,
-                ("async", "async def views, on an async driver"),
-                ("sync", "plain def views, on a sync driver"),
+                ("async", "fr.AsyncRestView, an async session and driver"),
+                ("sync", "fr.RestView, a synchronous session and driver"),
             )
         if postgres is None:
             postgres = _ask(
@@ -245,7 +245,9 @@ def _resolve(args: argparse.Namespace) -> Options:
                 "Migrations?",
                 True,
                 ("alembic", "versioned migrations, written by you"),
-                ("create-all", "no migrations: the schema follows the models"),
+                # Named for the outcome, where --create-all names the
+                # mechanism. The description carries the mechanism instead.
+                ("no migrations", "the schema is built from the models by create_all"),
             )
 
     return Options(

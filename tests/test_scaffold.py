@@ -846,7 +846,7 @@ def test_unanswered_choices_take_the_defaults_off_a_terminal(not_a_terminal):
 
 def test_a_terminal_is_prompted_for_the_unanswered_choices(monkeypatch):
     monkeypatch.setattr(_cli.sys, "stdin", _Terminal())
-    answers = iter(["sync", "sqlite", "create-all"])
+    answers = iter(["sync", "sqlite", "no migrations"])
     monkeypatch.setattr("builtins.input", lambda prompt: next(answers))
 
     assert _options_for(["new", "shop"]) == Options(
@@ -878,7 +878,7 @@ def test_a_prefix_answers_the_prompt(monkeypatch):
     Without this, `startswith` could become `==` with the suite still green.
     """
     monkeypatch.setattr(_cli.sys, "stdin", _Terminal())
-    answers = iter(["s", "sq", "c"])
+    answers = iter(["s", "sq", "n"])
     monkeypatch.setattr("builtins.input", lambda prompt: next(answers))
 
     assert _options_for(["new", "shop"]) == Options(
@@ -927,7 +927,7 @@ def test_asking_again_does_not_reprint_the_choices(monkeypatch, capsys):
     _options_for(["new", "shop"])
 
     printed = capsys.readouterr().out
-    assert printed.count("async def views, on an async driver") == 1
+    assert printed.count("fr.AsyncRestView, an async session and driver") == 1
     assert printed.count("Answer 1 or 2, async or sync") == 2
 
 
@@ -966,17 +966,23 @@ def test_the_prompt_lists_the_choices_and_marks_the_default(monkeypatch, capsys)
     assert capsys.readouterr().out.splitlines() == [
         "",
         "Async views?",
-        "  1  async  (default)  async def views, on an async driver",
-        "  2  sync              plain def views, on a sync driver",
+        "  1  async  (default)  fr.AsyncRestView, an async session and driver",
+        "  2  sync              fr.RestView, a synchronous session and driver",
         "",
         "Database?",
         "  1  postgres  (default)  PostgreSQL, with a compose.yaml",
         "  2  sqlite               SQLite, in a file beside the project",
         "",
         "Migrations?",
-        "  1  alembic     (default)  versioned migrations, written by you",
-        "  2  create-all             no migrations: the schema follows the models",
+        "  1  alembic        (default)  versioned migrations, written by you",
+        "  2  no migrations             the schema is built from the models"
+        " by create_all",
     ]
+
+
+# A choice may name the outcome where its flag names the mechanism. Every
+# other choice has to match its flag, so the reader can type what they read.
+CHOICE_FLAGS = {"no migrations": "create-all"}
 
 
 def test_every_choice_is_described_and_none_is_missing(monkeypatch, capsys):
@@ -991,7 +997,7 @@ def test_every_choice_is_described_and_none_is_missing(monkeypatch, capsys):
 
     listed = dict(
         re.findall(
-            r"^ {2}\d {2}(\S+) +(?:\(default\) +)?(\S.*)$",
+            r"^ {2}\d {2}(\S+(?: \S+)*?) {2,}(?:\(default\) +)?(\S.*)$",
             capsys.readouterr().out,
             re.MULTILINE,
         )
@@ -1012,8 +1018,20 @@ def test_every_choice_is_described_and_none_is_missing(monkeypatch, capsys):
         "alembic",
         "create-all",
     }
-    assert set(listed) == axis_flags
+    assert {CHOICE_FLAGS.get(name, name) for name in listed} == axis_flags
     assert all(len(description.split()) >= 4 for description in listed.values())
+
+
+def test_a_renamed_choice_says_which_mechanism_it_uses(monkeypatch, capsys):
+    """Renaming to the outcome drops the flag name, so the description carries it."""
+    monkeypatch.setattr(_cli.sys, "stdin", _Terminal())
+    monkeypatch.setattr("builtins.input", lambda prompt: "")
+    _options_for(["new", "shop"])
+
+    printed = capsys.readouterr().out
+    for choice, flag in CHOICE_FLAGS.items():
+        (line,) = [row for row in printed.splitlines() if choice in row]
+        assert flag.replace("-", "_") in line, line
 
 
 @pytest.mark.parametrize(
