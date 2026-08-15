@@ -20,19 +20,9 @@ or `asyncpg`/`psycopg` for PostgreSQL. Test tooling lives in its own extra; see
 
 ## Create an app
 
-Two ways in, and they suit different moments.
-
-`restly new myapp` writes a complete project: subject-first packages, an
-application factory, a worked resource, a test suite, and the settings and
-migration wiring. Reach for it when you are starting something you intend to
-keep. See [Generate it](#restly-new) for what it emits and the three choices it
-offers.
-
-The rest of this guide builds an application by hand in one file, which is the
-shorter path to seeing how the pieces fit and the right shape for a first
-resource either way.
-
-A first application fits in one file, `main.py`:
+`restly new myapp` generates a complete project; see
+[Generate it](#restly-new). This guide builds one by hand instead, starting from
+a single file, `main.py`:
 
 ```python
 from contextlib import asynccontextmanager
