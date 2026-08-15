@@ -37,9 +37,9 @@ class TaskView(fr.RestView[Task, TaskSchema]):
         here returns 404 from ``GET /tasks/{id}`` as well. Tenant scoping,
         soft-delete filtering, and row-level visibility belong here.
         """
-        return super().build_query().order_by(Task.id)  # type: ignore[misc]
+        return super().build_query().order_by(Task.id)
 
-    def create(self, schema_obj):
+    def create(self, schema_obj) -> Task:
         """Business logic for one create.
 
         Business methods are where your own logic goes. Never commit here: the
