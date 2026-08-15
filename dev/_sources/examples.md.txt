@@ -29,15 +29,20 @@ covered in [React Admin Integration](howto_react_admin.md) and
 is the most complete example: a multi-tenant project management API with
 permission patterns, shared base views, mixins, custom create/update schemas,
 [query modifiers](howto_query_modifiers.md), and
-[Alembic migrations](deploying.md#migrations-with-alembic). It also builds a
-substantial non-CRUD surface on the same views. The routes below, all defined
-in `example-projects/saas/app/views/`, highlight the patterns involved:
+[Alembic migrations](deploying.md#migrations-with-alembic). Its runtime uses
+PostgreSQL through `asyncpg`, Pydantic settings, and an application-owned async
+engine. Compose provides separate development and test databases, and the
+Restly test fixtures build their schema from the checked-in migrations. It also
+builds a substantial non-CRUD surface on the same views. Each view lives beside
+its model and schemas in a subject package under `example-projects/saas/app/`,
+the layout [Structure a Project](howto_project_structure.md) describes.
+The routes below highlight the patterns involved:
 
 | Route | Pattern it demonstrates |
 |---|---|
 | `POST /tasks/{id}/start` / `complete` / `reopen` | State transitions via {meth}`write_action <fastapi_restly.views.RestView.write_action>` on a {class}`RestView <fastapi_restly.views.RestView>` |
 | `POST /tasks/bulk`, `/tasks/bulk-delete`, `/tasks/import-csv` | Bulk endpoints beside generated CRUD |
-| `POST /uploads/` + `GET /uploads/{id}/lines` | A file-upload flow with a custom create bracket |
+| `POST /uploads` + `GET /uploads/{id}/lines` | A file-upload flow with a custom create bracket |
 | `POST /task-labels/create-and-attach` | Two rows committed through one `write_action` block |
 | `POST /users/{id}/change-password`, `GET /users/me` | Account actions and a non-resource read |
 
@@ -51,6 +56,9 @@ These patterns are covered in
 
 Each project is self-contained: run `uv sync` in its directory, then use the
 commands in its README (linked above).
+
+The SaaS example also needs PostgreSQL. Its README includes the complete
+Compose, migration, application, and test commands.
 
 To build one of these yourself, start with
 [Getting Started](getting_started.md) and the [Tutorial](tutorial.md).

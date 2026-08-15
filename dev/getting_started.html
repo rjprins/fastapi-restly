@@ -579,7 +579,12 @@ or <code class="docutils literal notranslate"><span class="pre">asyncpg</span></
 <li><p>The model uses standard SQLAlchemy declarative style: your own <code class="docutils literal notranslate"><span class="pre">DeclarativeBase</span></code>,
 an explicit <code class="docutils literal notranslate"><span class="pre">__tablename__</span></code>, and an explicit primary-key column.</p></li>
 <li><p>If you prefer dataclass-oriented SQLAlchemy models, FastAPI-Restly also provides
-<a class="reference internal" href="api/models.html#fastapi_restly.models.DataclassBase" title="fastapi_restly.models.DataclassBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.DataclassBase</span></code></a> and <a class="reference internal" href="api/models.html#fastapi_restly.models.IDBase" title="fastapi_restly.models.IDBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDBase</span></code></a> convenience bases.</p></li>
+<a class="reference internal" href="api/models.html#fastapi_restly.models.DataclassBase" title="fastapi_restly.models.DataclassBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.DataclassBase</span></code></a> and <a class="reference internal" href="api/models.html#fastapi_restly.models.IDBase" title="fastapi_restly.models.IDBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDBase</span></code></a> convenience bases.
+On those bases, <code class="docutils literal notranslate"><span class="pre">Mapped[datetime]</span></code> represents a UTC instant and maps to
+<code class="docutils literal notranslate"><span class="pre">DateTime(timezone=True)</span></code>. PostgreSQL enforces that through its column type,
+while SQLite returns naive datetime values. Declare
+<code class="docutils literal notranslate"><span class="pre">mapped_column(DateTime())</span></code> explicitly only for a field that intentionally
+stores a timezone-free wall-clock value.</p></li>
 <li><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a> and <a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a> expect a single primary-key column; for
 composite-key tables, see
 <a class="reference internal" href="class_based_views.html#the-view-hierarchy"><span class="std std-ref">the view hierarchy</span></a>.</p></li>
@@ -612,14 +617,14 @@ not for production. Then open <code class="docutils literal notranslate"><span c
 <h2>Use the generated endpoints<a class="headerlink" href="#use-the-generated-endpoints" title="Link to this heading">#</a></h2>
 <p>Registering <code class="docutils literal notranslate"><span class="pre">UserView</span></code> with <code class="docutils literal notranslate"><span class="pre">prefix</span> <span class="pre">=</span> <span class="pre">&quot;/users&quot;</span></code> generated five endpoints:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/users/</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/users/</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/users</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/users</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/users/{id}</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">PATCH</span> <span class="pre">/users/{id}</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">DELETE</span> <span class="pre">/users/{id}</span></code></p></li>
 </ul>
 <p>These endpoints work as soon as the server starts. A <code class="docutils literal notranslate"><span class="pre">POST</span></code> creates a row:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>POST /users/
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>POST /users
 {&quot;name&quot;: &quot;Jane&quot;, &quot;email&quot;: &quot;jane@example.com&quot;}
 </pre></div>
 </div>
@@ -631,7 +636,7 @@ not for production. Then open <code class="docutils literal notranslate"><span c
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>The database assigned the <code class="docutils literal notranslate"><span class="pre">id</span></code>, and <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/users/</span></code> now returns that row in the
+<p>The database assigned the <code class="docutils literal notranslate"><span class="pre">id</span></code>, and <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/users</span></code> now returns that row in the
 default <code class="docutils literal notranslate"><span class="pre">data</span></code> envelope:</p>
 <div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;data&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Jane&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;email&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;jane@example.com&quot;</span><span class="p">}],</span>
@@ -645,7 +650,7 @@ default <code class="docutils literal notranslate"><span class="pre">data</span>
 <p>Update semantics are <code class="docutils literal notranslate"><span class="pre">PATCH</span></code> (partial update); see
 <a class="reference internal" href="api_reference.html#generated-rest-endpoints"><span class="std std-ref">Generated REST Endpoints</span></a> for the
 full contract. Filter lists with query parameters, for example
-<code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/users/?name=Jane</span></code>. See <a class="reference internal" href="howto_query_modifiers.html"><span class="std std-doc">Filter, Sort, and Paginate Lists</span></a>.</p>
+<code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/users?name=Jane</span></code>. See <a class="reference internal" href="howto_query_modifiers.html"><span class="std std-doc">Filter, Sort, and Paginate Lists</span></a>.</p>
 </section>
 <section id="add-an-explicit-schema-optional">
 <h2>Add an explicit schema (optional)<a class="headerlink" href="#add-an-explicit-schema-optional" title="Link to this heading">#</a></h2>
@@ -672,6 +677,15 @@ clarity for teams that prefer less implicit behavior;
 <a class="reference internal" href="howto_custom_schema.html#auto-generated-vs-explicit-schemas"><span class="std std-ref">Auto-Generated vs Explicit Schemas</span></a>
 compares the two.</p>
 </section>
+<section id="grow-beyond-one-file">
+<h2>Grow beyond one file<a class="headerlink" href="#grow-beyond-one-file" title="Link to this heading">#</a></h2>
+<p>Keep the one-file layout while the application is small. Once it holds several
+resources, give each one a package with its own <code class="docutils literal notranslate"><span class="pre">models.py</span></code>, <code class="docutils literal notranslate"><span class="pre">schemas.py</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">views.py</span></code>, and register them all from a single <code class="docutils literal notranslate"><span class="pre">api.py</span></code>.
+<a class="reference internal" href="howto_project_structure.html"><span class="std std-doc">Structure a Project</span></a> covers the full layout, the
+import direction it depends on, and which modules to add only once they earn
+their place.</p>
+</section>
 <section id="test-quickly">
 <h2>Test quickly<a class="headerlink" href="#test-quickly" title="Link to this heading">#</a></h2>
 <p>A quick check with FastAPI’s regular <code class="docutils literal notranslate"><span class="pre">TestClient</span></code> confirms the API works:</p>
@@ -679,7 +693,7 @@ compares the two.</p>
 <span class="kn">from</span><span class="w"> </span><span class="nn">main</span><span class="w"> </span><span class="kn">import</span> <span class="n">app</span>
 
 <span class="k">with</span> <span class="n">TestClient</span><span class="p">(</span><span class="n">app</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
-    <span class="n">res</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/users/&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Jane&quot;</span><span class="p">,</span> <span class="s2">&quot;email&quot;</span><span class="p">:</span> <span class="s2">&quot;jane@example.com&quot;</span><span class="p">})</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/users&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Jane&quot;</span><span class="p">,</span> <span class="s2">&quot;email&quot;</span><span class="p">:</span> <span class="s2">&quot;jane@example.com&quot;</span><span class="p">})</span>
     <span class="k">assert</span> <span class="n">res</span><span class="o">.</span><span class="n">status_code</span> <span class="o">==</span> <span class="mi">201</span>
 </pre></div>
 </div>
@@ -757,6 +771,7 @@ shows how Restly adopts per resource, beside your current routes.</p></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#run-the-app">Run the app</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#use-the-generated-endpoints">Use the generated endpoints</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#add-an-explicit-schema-optional">Add an explicit schema (optional)</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#grow-beyond-one-file">Grow beyond one file</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#test-quickly">Test quickly</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#next-steps">Next steps</a></li>
 </ul>

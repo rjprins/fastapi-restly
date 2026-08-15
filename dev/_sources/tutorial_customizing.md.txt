@@ -335,7 +335,7 @@ class PostView(ProtectedBase):
     schema = PostRead
 ```
 
-Every route on `/posts/` now runs `require_auth` before the endpoint function.
+Every route on `/posts` now runs `require_auth` before the endpoint function.
 
 ### Share a URL namespace with prefix concatenation
 
@@ -464,7 +464,7 @@ Run the file with `fastapi dev main.py`, then exercise the customized
 behaviour:
 
 ```bash
-curl -X POST http://127.0.0.1:8000/posts/ \
+curl -X POST http://127.0.0.1:8000/posts \
   -H 'Content-Type: application/json' \
   -d '{"title": "Hello", "content": "World", "published": false}'
 # 201; the server stamps author_id on the new row

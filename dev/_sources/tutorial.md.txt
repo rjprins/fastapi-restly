@@ -59,6 +59,12 @@ Post(title="Hello", content="World", published=False)  # correct
 
 The `id` column is excluded from `__init__` automatically, so you do not pass it.
 
+`IDBase` also maps a plain `Mapped[datetime]` column to
+`DateTime(timezone=True)`. Treat these values as UTC instants. PostgreSQL
+enforces the timezone-aware column type, while SQLite returns naive datetime
+values. For an intentional timezone-free wall-clock field, opt out per column
+with `mapped_column(DateTime())`.
+
 ## Schemas
 
 With the models in place, we can define the Pydantic schemas that shape the
@@ -92,7 +98,7 @@ wire format is the raw id:
 1
 ```
 
-So a `POST /comments/` request body looks like:
+So a `POST /comments` request body looks like:
 
 ```json
 {
@@ -174,8 +180,8 @@ For each view, FastAPI-Restly generates five endpoints. With `prefix = "/posts"`
 
 | Method   | Path          | Action         |
 |----------|---------------|----------------|
-| `GET`    | `/posts/`     | List all posts |
-| `POST`   | `/posts/`     | Create a post  |
+| `GET`    | `/posts`     | List all posts |
+| `POST`   | `/posts`     | Create a post  |
 | `GET`    | `/posts/{id}` | Get one post   |
 | `PATCH`  | `/posts/{id}` | Update a post  |
 | `DELETE` | `/posts/{id}` | Delete a post  |
@@ -237,9 +243,9 @@ through URL query parameters. Filters use direct field names with optional
 operator suffixes:
 
 ```text
-GET /posts/?published=true&sort=-id&page=1&page_size=10
-GET /posts/?title__icontains=hello
-GET /posts/?created_at__gte=2024-01-01&created_at__lt=2025-01-01
+GET /posts?published=true&sort=-id&page=1&page_size=10
+GET /posts?title__icontains=hello
+GET /posts?created_at__gte=2024-01-01&created_at__lt=2025-01-01
 ```
 
 See [Filter, Sort, and Paginate Lists](howto_query_modifiers.md)
@@ -256,7 +262,7 @@ from fastapi_restly.testing import RestlyTestClient
 # Enter it: the app's lifespan, which creates the tables above, runs on entry.
 with RestlyTestClient(app) as client:
     post = client.post(
-        "/posts/", json={"title": "Hello", "content": "World", "published": False}
+        "/posts", json={"title": "Hello", "content": "World", "published": False}
     )
     # Automatically asserts status 201
 
@@ -266,7 +272,10 @@ with RestlyTestClient(app) as client:
 
 For test isolation, install the testing extra (`pip install "fastapi-restly[testing]"`);
 pytest then auto-loads Restly's fixtures. Point the suite at a test database in
-`conftest.py`:
+`conftest.py`. Setting the environment variable before the import works because
+this tutorial's single file configures Restly when it is imported. An
+application built by a factory receives its test database explicitly instead,
+as shown in [Test APIs with RestlyTestClient and Fixtures](howto_testing.md):
 
 ```python
 # conftest.py
@@ -291,7 +300,7 @@ when they finish:
 ```python
 # test_posts.py
 def test_create_post(restly_client):
-    resp = restly_client.post("/posts/", json={"title": "Hi", "content": "...", "published": False})
+    resp = restly_client.post("/posts", json={"title": "Hi", "content": "...", "published": False})
     assert resp.json()["title"] == "Hi"
     # Database changes are rolled back automatically after this test
 ```

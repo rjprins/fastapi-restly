@@ -62,7 +62,7 @@
     <link rel="author" title="About these documents" href="../about.html" />
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Technical Details" href="../technical_details.html" />
+    <link rel="next" title="Utils API" href="utils.html" />
     <link rel="prev" title="Views API" href="views.html" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -466,6 +466,7 @@
 <li class="toctree-l2"><a class="reference internal" href="schemas.html">Schemas API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="views.html">Views API</a></li>
 <li class="toctree-l2 current active"><a class="current reference internal" href="#">Testing API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="utils.html">Utils API</a></li>
 </ul>
 </details></li>
 </ul>
@@ -652,32 +653,36 @@ it does not skip the check.</p>
 <dt class="sig sig-object py" id="fastapi_restly.testing.configure_tests">
 <span class="sig-prename descclassname"><span class="pre">fastapi_restly.testing.</span></span><span class="sig-name descname"><span class="pre">configure_tests</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">app</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">FastAPI</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">base</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><span class="pre">DeclarativeBase</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">MetaData</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">create_all</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alembic_upgrade</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Path</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">db_cleanup</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'rollback'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">db_cleanup_exclude</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">()</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#fastapi_restly.testing.configure_tests" title="Link to this definition">#</a></dt>
 <dd><p>Add Restly’s managed testing behaviour to an already-configured app.</p>
-<p>Call it from <code class="docutils literal notranslate"><span class="pre">conftest.py</span></code> after the application has configured Restly for
-its test database:</p>
+<p>Call it from <code class="docutils literal notranslate"><span class="pre">conftest.py</span></code> after building the application against its test
+database, typically through an app factory:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">myapp.main</span><span class="w"> </span><span class="kn">import</span> <span class="n">app</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">myapp.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Base</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">myapp.main</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_app</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">create_app</span><span class="p">(</span><span class="s2">&quot;sqlite+aiosqlite:///./test.db&quot;</span><span class="p">)</span>
 
 <span class="n">fr</span><span class="o">.</span><span class="n">testing</span><span class="o">.</span><span class="n">configure_tests</span><span class="p">(</span>
     <span class="n">app</span><span class="o">=</span><span class="n">app</span><span class="p">,</span>
-    <span class="n">base</span><span class="o">=</span><span class="n">Base</span><span class="p">,</span>
+    <span class="n">base</span><span class="o">=</span><span class="n">fr</span><span class="o">.</span><span class="n">DataclassBase</span><span class="p">,</span>
     <span class="n">create_all</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
 <span class="p">)</span>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">configure_tests()</span></code> never chooses, creates or replaces a database engine.
 The application owns that configuration through <code class="xref py py-func docutils literal notranslate"><span class="pre">fastapi_restly.configure()</span></code>;
-this function records the session factories already in force. Point the
-application at a disposable test database before importing it, or construct
-it from explicit test settings. Database configuration performed afterwards
-is rejected so schema setup, cleanup and requests cannot disagree.</p>
+this function records the session factories already in force. Construct the
+application from explicit test settings, or, for an application that
+configures at module import time, select the test database before importing
+it. Database configuration performed afterwards is rejected so schema setup,
+cleanup and requests cannot disagree.</p>
 <p><code class="docutils literal notranslate"><span class="pre">app</span></code> becomes what the <code class="docutils literal notranslate"><span class="pre">restly_app</span></code> fixture returns. The schema is
 optionally built once before tests start, and every test gets a clean
 database by the strategy <code class="docutils literal notranslate"><span class="pre">db_cleanup</span></code> names. Client-only tests are covered
 too.</p>
 <p><code class="docutils literal notranslate"><span class="pre">base=</span></code> names the models the suite works with. It is what delete mode empties
 between tests, and what <code class="docutils literal notranslate"><span class="pre">create_all</span></code> builds. Pass your declarative base, or
-its <code class="docutils literal notranslate"><span class="pre">MetaData</span></code>.</p>
+its <code class="docutils literal notranslate"><span class="pre">MetaData</span></code>. It covers only the models imported by the time this call
+freezes the configuration; building the app first imports them, since
+composition reaches every view and each view imports its model.</p>
 <p>Who builds the schema is a separate choice, and the two are mutually
 exclusive:</p>
 <ul class="simple">
@@ -753,11 +758,11 @@ reference, and how the rollback works.</p>
       </div>
     </a>
     <a class="right-next"
-       href="../technical_details.html"
+       href="utils.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Technical Details</p>
+        <p class="prev-next-title">Utils API</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>

@@ -63,7 +63,7 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Changelog" href="changelog.html" />
-    <link rel="prev" title="Testing API" href="api/testing.html" />
+    <link rel="prev" title="Utils API" href="api/utils.html" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
@@ -466,6 +466,7 @@
 <li class="toctree-l2"><a class="reference internal" href="api/schemas.html">Schemas API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/views.html">Views API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/testing.html">Testing API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/utils.html">Utils API</a></li>
 </ul>
 </details></li>
 </ul>
@@ -750,15 +751,15 @@ to return every row in a plain <code class="docutils literal notranslate"><span 
 <h3>include_view()<a class="headerlink" href="#include-view" title="Link to this heading">#</a></h3>
 <p><a class="reference internal" href="api/views.html#fastapi_restly.views.include_view" title="fastapi_restly.views.include_view"><code class="xref py py-func docutils literal notranslate"><span class="pre">include_view()</span></code></a> is the registration boundary between declarative view modules
 and application composition. For larger apps, define view classes without
-side effects in feature modules, then include them from the module that builds
+side effects in subject packages, then include them from the module that builds
 your <code class="docutils literal notranslate"><span class="pre">FastAPI</span></code> app or <code class="docutils literal notranslate"><span class="pre">APIRouter</span></code>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">MyView</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>This keeps imports predictable: importing <code class="docutils literal notranslate"><span class="pre">myapp.users.views</span></code> defines
-<code class="docutils literal notranslate"><span class="pre">UserView</span></code>, while <code class="docutils literal notranslate"><span class="pre">myapp.main</span></code> or <code class="docutils literal notranslate"><span class="pre">myapp.users.router</span></code> decides which app/router
-receives it. For small apps and examples, <code class="docutils literal notranslate"><span class="pre">include_view()</span></code> also works as a
-decorator:</p>
+<code class="docutils literal notranslate"><span class="pre">UserView</span></code>, while <code class="docutils literal notranslate"><span class="pre">myapp.api</span></code> decides which app or router receives it. See
+<a class="reference internal" href="howto_project_structure.html"><span class="std std-doc">Structure a Project</span></a> for the layout this assumes.
+For small apps and examples, <code class="docutils literal notranslate"><span class="pre">include_view()</span></code> also works as a decorator:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">MyView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="o">...</span>
@@ -857,6 +858,127 @@ If an application needs multiple databases, wire a custom FastAPI dependency or
 session generator for that view. Restly does not currently bind different views
 to different named contexts.</p>
 </section>
+<section id="engine-defaults">
+<h2>Engine Defaults<a class="headerlink" href="#engine-defaults" title="Link to this heading">#</a></h2>
+<p><a class="reference internal" href="api/db.html#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.configure()</span></code></a> builds an engine only when
+you give it a URL. To that engine, and no other, Restly applies the options a
+web application almost always wants but SQLAlchemy leaves at its library
+defaults:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Backend</p></th>
+<th class="head"><p>Applied</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>SQLite, in-memory</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">poolclass=StaticPool</span></code>, <code class="docutils literal notranslate"><span class="pre">connect_args={&quot;check_same_thread&quot;:</span> <span class="pre">False}</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>SQLite, any</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">PRAGMA</span> <span class="pre">foreign_keys=ON</span></code>, on every connection</p></td>
+</tr>
+<tr class="row-even"><td><p>PostgreSQL</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">pool_pre_ping=True</span></code>, <code class="docutils literal notranslate"><span class="pre">pool_recycle=1800</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>An in-memory SQLite database lives inside its connection, so the default pool,
+which opens one connection per thread, serves every thread but the first a
+second and empty database. FastAPI runs <code class="docutils literal notranslate"><span class="pre">def</span></code> endpoints on a thread pool, so
+<code class="docutils literal notranslate"><span class="pre">StaticPool</span></code> is what makes an in-memory URL behave as one database.</p>
+<p>SQLite enforces foreign keys only under <code class="docutils literal notranslate"><span class="pre">PRAGMA</span> <span class="pre">foreign_keys=ON</span></code>. Without it the
+<code class="docutils literal notranslate"><span class="pre">ForeignKey</span></code> constraints your models declare are parsed and then ignored, so
+<code class="docutils literal notranslate"><span class="pre">ondelete</span></code> never fires and a dangling reference is stored instead of raising the
+<code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code> that becomes a 409.</p>
+<p>On PostgreSQL, <code class="docutils literal notranslate"><span class="pre">pool_pre_ping=True</span></code> tests a pooled connection before handing it
+out, turning a connection left stale by a database restart or a network blip
+into a reconnect rather than an error. <code class="docutils literal notranslate"><span class="pre">pool_recycle</span></code> then discards connections
+older than 30 minutes, because proxies such as pgbouncer drop idle connections
+without telling the client. Pool sizing stays yours: Restly sets neither
+<code class="docutils literal notranslate"><span class="pre">pool_size</span></code> nor <code class="docutils literal notranslate"><span class="pre">max_overflow</span></code>.</p>
+<p>Each of these is connection state, and that is the line they stop at. Restly
+configures the connections it opens and does not modify the database they reach,
+so nothing here leaves a mark on your data once the process exits.</p>
+<p><code class="docutils literal notranslate"><span class="pre">PRAGMA</span> <span class="pre">journal_mode=WAL</span></code> is the notable omission. WAL lets readers run while a
+writer holds the database, so it is the usual answer to <code class="docutils literal notranslate"><span class="pre">database</span> <span class="pre">is</span> <span class="pre">locked</span></code> on
+a file-backed SQLite database serving concurrent requests. Restly does not set
+it, because journal mode is written into the database file and outlives every
+process that touches it: a default here would permanently change a database you
+own, and every later reader would inherit the choice. It is also a loud failure
+rather than a silent one, unlike the pragmas above. Turn it on yourself when you
+want it:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_engine</span><span class="p">,</span> <span class="n">event</span>
+
+<span class="n">engine</span> <span class="o">=</span> <span class="n">create_engine</span><span class="p">(</span><span class="s2">&quot;sqlite:///app.db&quot;</span><span class="p">)</span>
+
+
+<span class="nd">@event</span><span class="o">.</span><span class="n">listens_for</span><span class="p">(</span><span class="n">engine</span><span class="p">,</span> <span class="s2">&quot;connect&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_enable_wal</span><span class="p">(</span><span class="n">dbapi_connection</span><span class="p">,</span> <span class="n">connection_record</span><span class="p">):</span>
+    <span class="n">dbapi_connection</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;PRAGMA journal_mode=WAL&quot;</span><span class="p">)</span>
+
+
+<span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="n">engine</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Note that WAL adds <code class="docutils literal notranslate"><span class="pre">-wal</span></code> and <code class="docutils literal notranslate"><span class="pre">-shm</span></code> files beside the database, which are
+removed on clean shutdown but remain after a hard kill, and that it does not
+work over network filesystems.</p>
+<p>All of this rides on the URL rung alone. Pass <code class="docutils literal notranslate"><span class="pre">engine=</span></code>, <code class="docutils literal notranslate"><span class="pre">make_session=</span></code> or a
+session generator and Restly leaves your object exactly as it arrived, so
+building the engine yourself is how you decline any of these defaults.</p>
+</section>
+<section id="engine-disposal">
+<h2>Engine Disposal<a class="headerlink" href="#engine-disposal" title="Link to this heading">#</a></h2>
+<p>Disposing an engine closes the connections its pool is holding. Restly never
+disposes an engine, including the ones it builds, because an engine is meant to
+live as long as the process that serves requests through it. When that process
+exits, the operating system reclaims the sockets, so most applications never
+need to dispose anything.</p>
+<p>Asynchronous applications are the exception worth handling. <code class="docutils literal notranslate"><span class="pre">AsyncEngine.dispose()</span></code>
+is a coroutine, and nothing awaits it during interpreter shutdown, so an async
+engine that is never disposed drops its connections rather than closing them.
+The database server is not what notices. The operating system closes the sockets
+as the process exits, and a backend waiting for its next command treats that as
+an ordinary end of session. The cost lands in your own shutdown output: a
+<code class="docutils literal notranslate"><span class="pre">ResourceWarning</span></code> for every connection left in the pool, and, when a request is
+still in flight, a <code class="docutils literal notranslate"><span class="pre">RuntimeError:</span> <span class="pre">Event</span> <span class="pre">loop</span> <span class="pre">is</span> <span class="pre">closed</span></code> traceback from the
+finalizer trying to terminate a connection on a loop that is already gone.
+SQLite has no server and no socket, so none of this applies to it.</p>
+<p>An application that builds its own engine already holds it and disposes it in
+its lifespan, which is what <a class="reference internal" href="deploying.html#production-main-template"><span class="std std-ref">the production
+template</span></a> does. When you configure from a
+URL, Restly owns the engine, and
+<a class="reference internal" href="api/db.html#fastapi_restly.db.get_async_engine" title="fastapi_restly.db.get_async_engine"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.db.get_async_engine()</span></code></a> hands it
+back:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">contextlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">asynccontextmanager</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">FastAPI</span>
+
+
+<span class="nd">@asynccontextmanager</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">lifespan</span><span class="p">(</span><span class="n">app</span><span class="p">:</span> <span class="n">FastAPI</span><span class="p">):</span>
+    <span class="k">yield</span>
+    <span class="k">await</span> <span class="n">fr</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">get_async_engine</span><span class="p">()</span><span class="o">.</span><span class="n">dispose</span><span class="p">()</span>
+
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">FastAPI</span><span class="p">(</span><span class="n">lifespan</span><span class="o">=</span><span class="n">lifespan</span><span class="p">)</span>
+<span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">async_database_url</span><span class="o">=</span><span class="s2">&quot;postgresql+asyncpg://localhost/app&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Synchronous applications call
+<a class="reference internal" href="api/db.html#fastapi_restly.db.get_engine" title="fastapi_restly.db.get_engine"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.db.get_engine()</span></code></a> and <code class="docutils literal notranslate"><span class="pre">dispose()</span></code>
+without awaiting. Note that Starlette runs <code class="docutils literal notranslate"><span class="pre">on_startup</span></code> and <code class="docutils literal notranslate"><span class="pre">on_shutdown</span></code>
+handlers only when the application was built without a <code class="docutils literal notranslate"><span class="pre">lifespan</span></code> argument, so
+disposal belongs in the lifespan itself rather than in a handler appended to
+<code class="docutils literal notranslate"><span class="pre">app.router</span></code>.</p>
+<p>Reconfiguring Restly in a running process abandons the previous pool rather than
+closing it. CPython reclaims it once the garbage collector reaches the cycle the
+engine sits in, which is why a test suite that reconfigures per test can hold
+several pools open at once. Suites that care dispose explicitly; Restly’s own
+fixtures do.</p>
+</section>
 <section id="session-factory-defaults">
 <h2>Session Factory Defaults<a class="headerlink" href="#session-factory-defaults" title="Link to this heading">#</a></h2>
 <p>When <a class="reference internal" href="api/db.html#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.configure()</span></code></a> creates session factories from URLs or engines, Restly
@@ -917,12 +1039,12 @@ filter, sort, and pagination reference.</p></li>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="api/testing.html"
+       href="api/utils.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Testing API</p>
+        <p class="prev-next-title">Utils API</p>
       </div>
     </a>
     <a class="right-next"
@@ -969,6 +1091,8 @@ filter, sort, and pagination reference.</p></li>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#list-parameters-lifecycle">List Parameters Lifecycle</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#restly-runtime-configuration">Restly Runtime Configuration</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#engine-defaults">Engine Defaults</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#engine-disposal">Engine Disposal</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#session-factory-defaults">Session Factory Defaults</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#see-also">See Also</a></li>
 </ul>

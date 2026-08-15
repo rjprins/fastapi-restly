@@ -457,6 +457,7 @@
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="howto_project_structure.html">Structure a Project</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_existing_project.html">Use Restly in an Existing Project</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_custom_schema.html">Custom Schemas and Field Types</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys and Relationships</a></li>
@@ -564,7 +565,7 @@
     <span class="n">schema</span> <span class="o">=</span> <span class="n">OrderRead</span>
 </pre></div>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">audit_log.record</span></code> now runs for both <code class="docutils literal notranslate"><span class="pre">/users/</span></code> and <code class="docutils literal notranslate"><span class="pre">/orders/</span></code>. Register only concrete subclasses, not the base. Because <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create" title="fastapi_restly.views.RestView.create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create</span></code></a> is commit-free, the handler persists the same object the base method recorded.</p>
+<p><code class="docutils literal notranslate"><span class="pre">audit_log.record</span></code> now runs for both <code class="docutils literal notranslate"><span class="pre">/users</span></code> and <code class="docutils literal notranslate"><span class="pre">/orders</span></code>. Register only concrete subclasses, not the base. Because <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create" title="fastapi_restly.views.RestView.create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create</span></code></a> is commit-free, the handler persists the same object the base method recorded.</p>
 </section>
 <section id="call-super-to-layer-overrides">
 <h2>Call super() to layer overrides<a class="headerlink" href="#call-super-to-layer-overrides" title="Link to this heading">#</a></h2>
@@ -643,7 +644,7 @@
     <span class="n">schema</span> <span class="o">=</span> <span class="n">OrderRead</span>
 </pre></div>
 </div>
-<p>Every route on <code class="docutils literal notranslate"><span class="pre">/users/</span></code> and <code class="docutils literal notranslate"><span class="pre">/orders/</span></code> now requires authentication.</p>
+<p>Every route on <code class="docutils literal notranslate"><span class="pre">/users</span></code> and <code class="docutils literal notranslate"><span class="pre">/orders</span></code> now requires authentication.</p>
 </section>
 <section id="concatenate-url-prefixes">
 <span id="prefix-concatenation"></span><h2>Concatenate URL prefixes<a class="headerlink" href="#concatenate-url-prefixes" title="Link to this heading">#</a></h2>
@@ -709,7 +710,7 @@
     <span class="n">schema</span> <span class="o">=</span> <span class="n">ProductRead</span>
 </pre></div>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">ProductView</span></code> only exposes <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/products/</span></code> and <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/products/{id}</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">ProductView</span></code> only exposes <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/products</span></code> and <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/products/{id}</span></code>.</p>
 </section>
 <section id="implement-soft-delete-once">
 <h2>Implement soft-delete once<a class="headerlink" href="#implement-soft-delete-once" title="Link to this heading">#</a></h2>

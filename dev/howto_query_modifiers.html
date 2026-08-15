@@ -457,6 +457,7 @@
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="howto_project_structure.html">Structure a Project</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_existing_project.html">Use Restly in an Existing Project</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_custom_schema.html">Custom Schemas and Field Types</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys and Relationships</a></li>
@@ -534,7 +535,7 @@
                   
   <section id="filter-sort-and-paginate-lists">
 <h1>Filter, Sort, and Paginate Lists<a class="headerlink" href="#filter-sort-and-paginate-lists" title="Link to this heading">#</a></h1>
-<p>List endpoints (<code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/{prefix}/</span></code>) support filtering, sorting, and
+<p>List endpoints (<code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/{prefix}</span></code>) support filtering, sorting, and
 pagination through URL query parameters out of the box. Filter parameters
 are derived from the response schema; sort and pagination use a fixed set
 of names.</p>
@@ -556,7 +557,7 @@ To allow extra view-specific keys, see
 <h2>Filtering<a class="headerlink" href="#filtering" title="Link to this heading">#</a></h2>
 <p>Filter parameters compare a schema field against a value taken from the
 URL. Plain equality uses the bare field name:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users/?name=John
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users?name=John
 </pre></div>
 </div>
 <p>Operator suffixes on the field name select other comparisons:</p>
@@ -623,13 +624,13 @@ other operators would fail on every request.</p>
 <section id="comma-logic-on-bare-equality">
 <h3>Comma logic on bare equality<a class="headerlink" href="#comma-logic-on-bare-equality" title="Link to this heading">#</a></h3>
 <p>Comma-separated values in a plain equality filter are OR-combined:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users/?status=active,pending
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users?status=active,pending
 </pre></div>
 </div>
 <p>This produces <code class="docutils literal notranslate"><span class="pre">WHERE</span> <span class="pre">status</span> <span class="pre">=</span> <span class="pre">'active'</span> <span class="pre">OR</span> <span class="pre">status</span> <span class="pre">=</span> <span class="pre">'pending'</span></code>, which is
 equivalent to SQL <code class="docutils literal notranslate"><span class="pre">IN</span></code>. Use <code class="docutils literal notranslate"><span class="pre">__in</span></code> when you want that same SQL <code class="docutils literal notranslate"><span class="pre">IN</span></code>
 meaning to be explicit in the URL:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users/?status__in=active,pending
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users?status__in=active,pending
 </pre></div>
 </div>
 </section>
@@ -637,7 +638,7 @@ meaning to be explicit in the URL:</p>
 <h3>Comma logic on <code class="docutils literal notranslate"><span class="pre">__ne</span></code> (NOT IN)<a class="headerlink" href="#comma-logic-on-ne-not-in" title="Link to this heading">#</a></h3>
 <p>Comma-separated values in <code class="docutils literal notranslate"><span class="pre">__ne</span></code> are AND-combined, meaning the row must
 differ from every listed value:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users/?status__ne=archived,deleted
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users?status__ne=archived,deleted
 </pre></div>
 </div>
 <p>This produces <code class="docutils literal notranslate"><span class="pre">WHERE</span> <span class="pre">status</span> <span class="pre">!=</span> <span class="pre">'archived'</span> <span class="pre">AND</span> <span class="pre">status</span> <span class="pre">!=</span> <span class="pre">'deleted'</span></code>, which
@@ -648,8 +649,8 @@ is equivalent to SQL <code class="docutils literal notranslate"><span class="pre
 <p>To require several substrings at once, the precise form is to repeat the
 parameter: each predicate becomes its own <code class="docutils literal notranslate"><span class="pre">LIKE</span></code> / <code class="docutils literal notranslate"><span class="pre">ILIKE</span></code> clause and the
 clauses are AND-combined:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users/?name__contains=john&amp;name__contains=doe
-GET /users/?name__icontains=john&amp;name__icontains=doe
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users?name__contains=john&amp;name__contains=doe
+GET /users?name__icontains=john&amp;name__icontains=doe
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">__contains</span></code> produces <code class="docutils literal notranslate"><span class="pre">WHERE</span> <span class="pre">name</span> <span class="pre">LIKE</span> <span class="pre">'%john%'</span> <span class="pre">AND</span> <span class="pre">name</span> <span class="pre">LIKE</span> <span class="pre">'%doe%'</span></code>;
@@ -665,7 +666,7 @@ quoting changes.</p>
 <section id="multiple-filters-on-the-same-field">
 <h3>Multiple filters on the same field<a class="headerlink" href="#multiple-filters-on-the-same-field" title="Link to this heading">#</a></h3>
 <p>Repeat the parameter to add AND conditions:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users/?created_at__gte=2024-01-01&amp;created_at__lt=2025-01-01
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users?created_at__gte=2024-01-01&amp;created_at__lt=2025-01-01
 </pre></div>
 </div>
 <p>This produces
@@ -676,7 +677,7 @@ quoting changes.</p>
 <h2>Sorting<a class="headerlink" href="#sorting" title="Link to this heading">#</a></h2>
 <p>Use the <code class="docutils literal notranslate"><span class="pre">sort</span></code> parameter with comma-separated field names, prefixing a
 name with <code class="docutils literal notranslate"><span class="pre">-</span></code> for descending order:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users/?sort=-created_at,name
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users?sort=-created_at,name
 </pre></div>
 </div>
 <p>Dotted relation paths sort exactly as they filter:
@@ -689,7 +690,7 @@ column return results in an unspecified order.</p>
 <section id="pagination">
 <h2>Pagination<a class="headerlink" href="#pagination" title="Link to this heading">#</a></h2>
 <p>Pagination is controlled by the <code class="docutils literal notranslate"><span class="pre">page</span></code> and <code class="docutils literal notranslate"><span class="pre">page_size</span></code> parameters:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users/?page=2&amp;page_size=50
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users?page=2&amp;page_size=50
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">page</span></code> is 1-based. <code class="docutils literal notranslate"><span class="pre">page_size</span></code> must be <code class="docutils literal notranslate"><span class="pre">&gt;=</span> <span class="pre">1</span></code> and <code class="docutils literal notranslate"><span class="pre">&lt;=</span> <span class="pre">max_page_size</span></code>
@@ -740,8 +741,8 @@ Python-name aliases.</p>
 </pre></div>
 </div>
 <p>Only the alias is accepted on the URL surface:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users/?userName=Alice        # supported
-GET /users/?user_name=Alice       # rejected; the Python name is not exposed
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users?userName=Alice        # supported
+GET /users?user_name=Alice       # rejected, the Python name is not exposed
 </pre></div>
 </div>
 <p>If you want a different URL key, change the alias.</p>
@@ -749,8 +750,8 @@ GET /users/?user_name=Alice       # rejected; the Python name is not exposed
 <section id="relation-filtering">
 <h2>Relation filtering<a class="headerlink" href="#relation-filtering" title="Link to this heading">#</a></h2>
 <p>Filtering on a related model’s field uses dot notation:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /orders/?user.name=Alice
-GET /orders/?user.name__contains=ali
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /orders?user.name=Alice
+GET /orders?user.name__contains=ali
 </pre></div>
 </div>
 <p>The relation must be defined on both the SQLAlchemy model (as a
@@ -774,8 +775,8 @@ the response schema’s public names:</p>
 </pre></div>
 </div>
 <p>Requests must then use the aliased segments:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /articles/?writer.authorName=Alice    # supported (aliased segments)
-GET /articles/?author.name=Alice          # rejected; use public aliases
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /articles?writer.authorName=Alice    # supported (aliased segments)
+GET /articles?author.name=Alice          # rejected, use public aliases
 </pre></div>
 </div>
 </section>
@@ -784,12 +785,12 @@ GET /articles/?author.name=Alice          # rejected; use public aliases
 <p>A scalar foreign key declared with
 <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.MustExist[int,</span> <span class="pre">Post]</span></code></a> is
 filterable by its own public name, the same name the wire format uses:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /comments/?post_id=1
-GET /comments/?post_id=1,2          # OR (SQL IN)
-GET /comments/?post_id__in=1,2
-GET /comments/?post_id__ne=1
-GET /comments/?post_id__gte=10      # range operators apply to int ids
-GET /comments/?post_id__isnull=true
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /comments?post_id=1
+GET /comments?post_id=1,2          # OR (SQL IN)
+GET /comments?post_id__in=1,2
+GET /comments?post_id__ne=1
+GET /comments?post_id__gte=10      # range operators apply to int ids
+GET /comments?post_id__isnull=true
 </pre></div>
 </div>
 <p>A <code class="docutils literal notranslate"><span class="pre">MustExist[pk,</span> <span class="pre">...]</span></code> id filters exactly like its plain scalar <code class="docutils literal notranslate"><span class="pre">pk</span></code>
@@ -806,14 +807,14 @@ compares the two reference styles.</p>
 <section id="quick-reference">
 <h2>Quick reference<a class="headerlink" href="#quick-reference" title="Link to this heading">#</a></h2>
 <p>The requests below summarize the grammar in one place:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users/?name=John
-GET /users/?status=active,pending
-GET /users/?age__gte=18&amp;age__lt=65
-GET /users/?deleted_at__isnull=true
-GET /users/?email__icontains=example
-GET /users/?name__contains=john doe
-GET /users/?sort=-id
-GET /users/?page=2&amp;page_size=50
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users?name=John
+GET /users?status=active,pending
+GET /users?age__gte=18&amp;age__lt=65
+GET /users?deleted_at__isnull=true
+GET /users?email__icontains=example
+GET /users?name__contains=john doe
+GET /users?sort=-id
+GET /users?page=2&amp;page_size=50
 </pre></div>
 </div>
 </section>

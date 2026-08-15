@@ -819,7 +819,7 @@ envelopes and the opt-out are covered in
     <span class="n">schema</span> <span class="o">=</span> <span class="n">PostRead</span>
 </pre></div>
 </div>
-<p>Every route on <code class="docutils literal notranslate"><span class="pre">/posts/</span></code> now runs <code class="docutils literal notranslate"><span class="pre">require_auth</span></code> before the endpoint function.</p>
+<p>Every route on <code class="docutils literal notranslate"><span class="pre">/posts</span></code> now runs <code class="docutils literal notranslate"><span class="pre">require_auth</span></code> before the endpoint function.</p>
 </section>
 <section id="share-a-url-namespace-with-prefix-concatenation">
 <h3>Share a URL namespace with prefix concatenation<a class="headerlink" href="#share-a-url-namespace-with-prefix-concatenation" title="Link to this heading">#</a></h3>
@@ -946,7 +946,7 @@ runs as is:</p>
 <h2>Try it<a class="headerlink" href="#try-it" title="Link to this heading">#</a></h2>
 <p>Run the file with <code class="docutils literal notranslate"><span class="pre">fastapi</span> <span class="pre">dev</span> <span class="pre">main.py</span></code>, then exercise the customized
 behaviour:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://127.0.0.1:8000/posts/<span class="w"> </span><span class="se">\</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://127.0.0.1:8000/posts<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-H<span class="w"> </span><span class="s1">&#39;Content-Type: application/json&#39;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;title&quot;: &quot;Hello&quot;, &quot;content&quot;: &quot;World&quot;, &quot;published&quot;: false}&#39;</span>
 <span class="c1"># 201; the server stamps author_id on the new row</span>

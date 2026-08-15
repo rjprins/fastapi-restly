@@ -457,6 +457,7 @@
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="howto_project_structure.html">Structure a Project</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_existing_project.html">Use Restly in an Existing Project</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_custom_schema.html">Custom Schemas and Field Types</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Work with Foreign Keys and Relationships</a></li>
@@ -679,7 +680,7 @@ hooks, <code class="docutils literal notranslate"><span class="pre">data.author_
 <section id="list-filtering">
 <h2>List filtering<a class="headerlink" href="#list-filtering" title="Link to this heading">#</a></h2>
 <p>The FK field is filterable on the list endpoint by its own public name, as in
-<code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/articles/?author_id=1</span></code>. The suffixed operators <code class="docutils literal notranslate"><span class="pre">author_id__in</span></code>,
+<code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/articles?author_id=1</span></code>. The suffixed operators <code class="docutils literal notranslate"><span class="pre">author_id__in</span></code>,
 <code class="docutils literal notranslate"><span class="pre">author_id__ne</span></code>, and <code class="docutils literal notranslate"><span class="pre">author_id__isnull</span></code> are available as well, and because a
 <code class="docutils literal notranslate"><span class="pre">MustExist[int,</span> <span class="pre">...]</span></code> id is a plain integer, so is the range family
 <code class="docutils literal notranslate"><span class="pre">author_id__gte</span></code> / <code class="docutils literal notranslate"><span class="pre">__lte</span></code> / <code class="docutils literal notranslate"><span class="pre">__gt</span></code> / <code class="docutils literal notranslate"><span class="pre">__lt</span></code>. See

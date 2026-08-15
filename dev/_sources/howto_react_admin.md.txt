@@ -95,9 +95,9 @@ Content-Range: items 0-24/315
 ```
 
 `ra-data-simple-rest` requests the path without a trailing slash
-(`GET /products?sort=...`). Restly registers the collection routes (list and
-create) both with and without the trailing slash, so these requests are
-served directly, with no redirect involved.
+(`GET /products?sort=...`). Restly registers generated and custom `RestView`
+collection routes both with and without the trailing slash, so these requests
+are served directly, with no redirect involved.
 
 The `id` array form of `filter` (`{"id": [1, 2, 3]}`) is used by react-admin
 for `getMany` calls. It translates to `WHERE id IN (1, 2, 3)`. Other filter

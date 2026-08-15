@@ -11,11 +11,15 @@ Register a view with `fr.include_view(app, ViewClass)` or `@fr.include_view(app)
 
 | Method | Path | Purpose | Default Status |
 |---|---|---|---|
-| `GET` | `/{prefix}/` | List resources | `200` |
-| `POST` | `/{prefix}/` | Create resource | `201` |
+| `GET` | `/{prefix}` | List resources | `200` |
+| `POST` | `/{prefix}` | Create resource | `201` |
 | `GET` | `/{prefix}/{id}` | Get resource by ID | `200` |
 | `PATCH` | `/{prefix}/{id}` | Partial update | `200` |
 | `DELETE` | `/{prefix}/{id}` | Delete resource | `204` |
+
+OpenAPI uses the collection path without a trailing slash as the canonical
+form. Restly also accepts `/{prefix}/` as a hidden compatibility alias. Use
+`/{prefix}` in templates, examples, and contract tests.
 
 The generated routes share these conventions:
 
@@ -26,7 +30,7 @@ The generated routes share these conventions:
 
 ## List Endpoint Behavior
 
-`GET /{prefix}/` accepts filter, sort, and pagination parameters derived from
+`GET /{prefix}` accepts filter, sort, and pagination parameters derived from
 the response schema; keys use public field names (aliases included), and
 dotted paths filter on relations. The table below gives the grammar in one
 line each; the canonical treatment, including comma semantics, LIKE escaping,
@@ -122,6 +126,12 @@ These base classes and mixins form the declarative foundation for SQLAlchemy mod
 | `fastapi_restly.models.CASCADE_ALL_DELETE_ORPHAN_ASYNC` | Like `CASCADE_ALL_ASYNC` but also includes `"delete-orphan"`. |
 
 FastAPI-Restly also works with ordinary SQLAlchemy models that inherit from your own `DeclarativeBase`. Use `fr.IDBase` for Restly's dataclass convenience base; bring your own base for standard constructor semantics or existing model layers.
+
+On `DataclassBase` and `IDBase`, a plain `Mapped[datetime]` represents a UTC
+instant and maps to `DateTime(timezone=True)`. PostgreSQL enforces that through
+its `timestamptz` column type. SQLite does not preserve timezone metadata and
+returns naive datetime values. Use `mapped_column(DateTime())` to opt a specific
+wall-clock field out of timezone-aware storage.
 
 `RestView` and `AsyncRestView` assume one scalar resource identifier at `/{id}`. The column can have another name when you provide explicit schemas and `id_type`, but the generated CRUD routes, `IDSchema`, `IDRef`, React Admin, and OpenAPI identity shape all remain scalar-id contracts. For composite keys, use `fr.View` and explicit routes such as `@fr.get("/{tenant_id}/{slug}")`.
 

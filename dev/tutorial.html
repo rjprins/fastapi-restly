@@ -573,6 +573,11 @@ This is why <code class="docutils literal notranslate"><span class="pre">Foreign
 </pre></div>
 </div>
 <p>The <code class="docutils literal notranslate"><span class="pre">id</span></code> column is excluded from <code class="docutils literal notranslate"><span class="pre">__init__</span></code> automatically, so you do not pass it.</p>
+<p><code class="docutils literal notranslate"><span class="pre">IDBase</span></code> also maps a plain <code class="docutils literal notranslate"><span class="pre">Mapped[datetime]</span></code> column to
+<code class="docutils literal notranslate"><span class="pre">DateTime(timezone=True)</span></code>. Treat these values as UTC instants. PostgreSQL
+enforces the timezone-aware column type, while SQLite returns naive datetime
+values. For an intentional timezone-free wall-clock field, opt out per column
+with <code class="docutils literal notranslate"><span class="pre">mapped_column(DateTime())</span></code>.</p>
 </section>
 </section>
 <section id="schemas">
@@ -604,7 +609,7 @@ wire format is the raw id:</p>
 <div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="mi">1</span>
 </pre></div>
 </div>
-<p>So a <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/comments/</span></code> request body looks like:</p>
+<p>So a <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/comments</span></code> request body looks like:</p>
 <div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;content&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Great post!&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;post_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span>
@@ -683,11 +688,11 @@ request and response schemas, ready to try from the browser.</p>
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">GET</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">/posts/</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">/posts</span></code></p></td>
 <td><p>List all posts</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">POST</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">/posts/</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">/posts</span></code></p></td>
 <td><p>Create a post</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">GET</span></code></p></td>
@@ -754,9 +759,9 @@ covered in <a class="reference internal" href="howto_custom_schema.html#readonly
 <p>The generated list endpoints accept filtering, sorting, and pagination
 through URL query parameters. Filters use direct field names with optional
 operator suffixes:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /posts/?published=true&amp;sort=-id&amp;page=1&amp;page_size=10
-GET /posts/?title__icontains=hello
-GET /posts/?created_at__gte=2024-01-01&amp;created_at__lt=2025-01-01
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /posts?published=true&amp;sort=-id&amp;page=1&amp;page_size=10
+GET /posts?title__icontains=hello
+GET /posts?created_at__gte=2024-01-01&amp;created_at__lt=2025-01-01
 </pre></div>
 </div>
 <p>See <a class="reference internal" href="howto_query_modifiers.html"><span class="std std-doc">Filter, Sort, and Paginate Lists</span></a>
@@ -771,7 +776,7 @@ that asserts sensible default status codes and gives clear failure messages.</p>
 <span class="c1"># Enter it: the app&#39;s lifespan, which creates the tables above, runs on entry.</span>
 <span class="k">with</span> <span class="n">RestlyTestClient</span><span class="p">(</span><span class="n">app</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
     <span class="n">post</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
-        <span class="s2">&quot;/posts/&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="s2">&quot;Hello&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="s2">&quot;World&quot;</span><span class="p">,</span> <span class="s2">&quot;published&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">}</span>
+        <span class="s2">&quot;/posts&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="s2">&quot;Hello&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="s2">&quot;World&quot;</span><span class="p">,</span> <span class="s2">&quot;published&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">}</span>
     <span class="p">)</span>
     <span class="c1"># Automatically asserts status 201</span>
 
@@ -781,7 +786,10 @@ that asserts sensible default status codes and gives clear failure messages.</p>
 </div>
 <p>For test isolation, install the testing extra (<code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">&quot;fastapi-restly[testing]&quot;</span></code>);
 pytest then auto-loads Restly’s fixtures. Point the suite at a test database in
-<code class="docutils literal notranslate"><span class="pre">conftest.py</span></code>:</p>
+<code class="docutils literal notranslate"><span class="pre">conftest.py</span></code>. Setting the environment variable before the import works because
+this tutorial’s single file configures Restly when it is imported. An
+application built by a factory receives its test database explicitly instead,
+as shown in <a class="reference internal" href="howto_testing.html"><span class="std std-doc">Test APIs with RestlyTestClient and Fixtures</span></a>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># conftest.py</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 
@@ -802,7 +810,7 @@ pytest then auto-loads Restly’s fixtures. Point the suite at a test database i
 when they finish:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># test_posts.py</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">test_create_post</span><span class="p">(</span><span class="n">restly_client</span><span class="p">):</span>
-    <span class="n">resp</span> <span class="o">=</span> <span class="n">restly_client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/posts/&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="s2">&quot;Hi&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="s2">&quot;...&quot;</span><span class="p">,</span> <span class="s2">&quot;published&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">})</span>
+    <span class="n">resp</span> <span class="o">=</span> <span class="n">restly_client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/posts&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="s2">&quot;Hi&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="s2">&quot;...&quot;</span><span class="p">,</span> <span class="s2">&quot;published&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">})</span>
     <span class="k">assert</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;title&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;Hi&quot;</span>
     <span class="c1"># Database changes are rolled back automatically after this test</span>
 </pre></div>

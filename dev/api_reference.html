@@ -466,6 +466,7 @@
 <li class="toctree-l2"><a class="reference internal" href="api/schemas.html">Schemas API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/views.html">Views API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/testing.html">Testing API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/utils.html">Utils API</a></li>
 </ul>
 </details></li>
 </ul>
@@ -548,12 +549,12 @@ generated via Sphinx autodoc.</p>
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">GET</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">/{prefix}/</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">/{prefix}</span></code></p></td>
 <td><p>List resources</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">200</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">POST</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">/{prefix}/</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">/{prefix}</span></code></p></td>
 <td><p>Create resource</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">201</span></code></p></td>
 </tr>
@@ -575,6 +576,9 @@ generated via Sphinx autodoc.</p>
 </tbody>
 </table>
 </div>
+<p>OpenAPI uses the collection path without a trailing slash as the canonical
+form. Restly also accepts <code class="docutils literal notranslate"><span class="pre">/{prefix}/</span></code> as a hidden compatibility alias. Use
+<code class="docutils literal notranslate"><span class="pre">/{prefix}</span></code> in templates, examples, and contract tests.</p>
 <p>The generated routes share these conventions:</p>
 <ul class="simple">
 <li><p>Updates use <code class="docutils literal notranslate"><span class="pre">PATCH</span></code>, not <code class="docutils literal notranslate"><span class="pre">PUT</span></code>. React Admin views also expose <code class="docutils literal notranslate"><span class="pre">PUT</span> <span class="pre">/{id}</span></code> for <code class="docutils literal notranslate"><span class="pre">ra-data-simple-rest</span></code>; see <a class="reference internal" href="howto_react_admin.html"><span class="std std-doc">React Admin Integration</span></a>.</p></li>
@@ -585,7 +589,7 @@ generated via Sphinx autodoc.</p>
 </section>
 <section id="list-endpoint-behavior">
 <h2>List Endpoint Behavior<a class="headerlink" href="#list-endpoint-behavior" title="Link to this heading">#</a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/{prefix}/</span></code> accepts filter, sort, and pagination parameters derived from
+<p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/{prefix}</span></code> accepts filter, sort, and pagination parameters derived from
 the response schema; keys use public field names (aliases included), and
 dotted paths filter on relations. The table below gives the grammar in one
 line each; the canonical treatment, including comma semantics, LIKE escaping,
@@ -759,6 +763,11 @@ behavior:</p>
 </table>
 </div>
 <p>FastAPI-Restly also works with ordinary SQLAlchemy models that inherit from your own <code class="docutils literal notranslate"><span class="pre">DeclarativeBase</span></code>. Use <code class="docutils literal notranslate"><span class="pre">fr.IDBase</span></code> for Restly’s dataclass convenience base; bring your own base for standard constructor semantics or existing model layers.</p>
+<p>On <code class="docutils literal notranslate"><span class="pre">DataclassBase</span></code> and <code class="docutils literal notranslate"><span class="pre">IDBase</span></code>, a plain <code class="docutils literal notranslate"><span class="pre">Mapped[datetime]</span></code> represents a UTC
+instant and maps to <code class="docutils literal notranslate"><span class="pre">DateTime(timezone=True)</span></code>. PostgreSQL enforces that through
+its <code class="docutils literal notranslate"><span class="pre">timestamptz</span></code> column type. SQLite does not preserve timezone metadata and
+returns naive datetime values. Use <code class="docutils literal notranslate"><span class="pre">mapped_column(DateTime())</span></code> to opt a specific
+wall-clock field out of timezone-aware storage.</p>
 <p><code class="docutils literal notranslate"><span class="pre">RestView</span></code> and <code class="docutils literal notranslate"><span class="pre">AsyncRestView</span></code> assume one scalar resource identifier at <code class="docutils literal notranslate"><span class="pre">/{id}</span></code>. The column can have another name when you provide explicit schemas and <code class="docutils literal notranslate"><span class="pre">id_type</span></code>, but the generated CRUD routes, <code class="docutils literal notranslate"><span class="pre">IDSchema</span></code>, <code class="docutils literal notranslate"><span class="pre">IDRef</span></code>, React Admin, and OpenAPI identity shape all remain scalar-id contracts. For composite keys, use <code class="docutils literal notranslate"><span class="pre">fr.View</span></code> and explicit routes such as <code class="docutils literal notranslate"><span class="pre">&#64;fr.get(&quot;/{tenant_id}/{slug}&quot;)</span></code>.</p>
 </section>
 <section id="schema-classes-and-utilities">
@@ -1373,6 +1382,7 @@ This fallback covers apps that configure database sessions separately.</p></li>
 <li class="toctree-l2"><a class="reference internal" href="api/schemas.html">Schemas API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/views.html">Views API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/testing.html">Testing API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/utils.html">Utils API</a></li>
 </ul>
 </li>
 </ul>

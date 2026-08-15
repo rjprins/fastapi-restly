@@ -30,23 +30,82 @@ pytest_plugins = ["fastapi_restly.pytest_fixtures"]
 ```
 
 The application still owns its database configuration. Make that configuration
-selectable, for example through an environment-backed setting:
+selectable by building the application in a factory: a `create_app()` function
+that receives its settings, configures Restly, and returns the app. Configuring
+inside the factory keeps database setup out of module import, so a test can
+build the application it wants instead of racing to change the environment
+first:
 
 ```python
 # myapp/main.py
 import os
 
 import fastapi_restly as fr
+from fastapi import FastAPI
 
-fr.configure(
-    async_database_url=os.environ.get(
-        "DATABASE_URL", "sqlite+aiosqlite:///./app.db"
+from .api import register_views
+
+
+def create_app(database_url: str | None = None) -> FastAPI:
+    fr.configure(
+        async_database_url=database_url
+        or os.environ.get("DATABASE_URL", "sqlite+aiosqlite:///./app.db")
     )
+    app = FastAPI()
+    register_views(app)
+    return app
+```
+
+Run it with `uvicorn --factory myapp.main:create_app`. A server that wants an
+application object instead gets one from a separate `asgi.py`, which keeps
+`main.py` free to import; see [Running the app](#running-the-app). The
+test suite then builds the application it tests,
+naming the test database explicitly, and hands the result to
+`configure_tests()`:
+
+```python
+# conftest.py
+import fastapi_restly as fr
+from myapp.main import create_app
+
+app = create_app("sqlite+aiosqlite:///./test.db")
+
+fr.testing.configure_tests(
+    app=app,
+    base=fr.DataclassBase,
+    create_all=True,
 )
 ```
 
-Then select the test value before importing the application, and configure the
-suite from the application configuration already in force:
+Restly's configuration is process-wide and the last `configure()` call wins,
+which is what makes this work: the factory call in `conftest.py` re-points the
+process at the test database before `configure_tests()` freezes it. That holds
+even when something the conftest imports already built an app, since the
+conftest's factory call runs after the import and before the freeze.
+A factory that *requires* its settings, like the PostgreSQL one below, must
+not build an app at import time: keep it on the `--factory` form, or importing
+it in `conftest.py` would again require the environment variable to be set
+before the import, which is exactly the requirement the factory form lifts
+from tests. This safety only covers modules the conftest itself imports before
+`configure_tests()` runs. A module built elsewhere and imported later, such as
+an `asgi.py` a test file reaches for directly, still calls its module-level
+factory after the freeze and fails with `RestlyConfigurationError`. That is the
+second reason nothing but the server should import `asgi.py`.
+
+(factory-apps-share-one-configuration)=
+The apps a factory builds are therefore not independent. Each call re-points
+the one process-wide configuration, so only the most recently built app should
+serve requests. An app built earlier would read the newer database while still
+owning its original engine. In this suite that is the conftest's app. For the
+same reason the common
+per-test factory fixture (`@pytest.fixture` returning `create_app(...)`) does
+not fit a managed suite: once `configure_tests()` has recorded the
+configuration, every later factory call that configures the database raises
+`RestlyConfigurationError`. Build the app once in `conftest.py`.
+
+An application that instead calls `fr.configure()` at module import time can
+still be tested: select the value before importing it, and note the import
+order that the factory form avoids:
 
 ```python
 # conftest.py
@@ -57,20 +116,25 @@ os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test.db"
 import fastapi_restly as fr
 
 from myapp.main import app  # noqa: E402
-from myapp.models import Base  # noqa: E402
 
-fr.testing.configure_tests(
-    app=app,
-    base=Base,
-    create_all=True,
-)
+fr.testing.configure_tests(app=app, base=fr.DataclassBase, create_all=True)
 ```
 
-A `.env` file fits this pattern as long as explicit process environment values
-take precedence over file values. Avoid loading dotenv with an “override
-existing variables” option in application code; that makes the test unable to
-select its database before import. If import-time settings are awkward, pass an
-explicit test settings object to an app factory instead.
+A `.env` file is convenient in development, when the settings class enables
+one (the [production template](#production-main-template) does not; the [SaaS
+example](examples.md) does). Keep it out of the suite's way. When the conftest
+installs its own settings, build them with the env file disabled (with
+pydantic-settings: `Settings(database_url=..., _env_file=None)`). Explicitly
+passed values
+already outrank the file, but values the test leaves unset, such as pool
+sizes, would still come from a developer's local `.env`, and the suite would
+behave differently locally than in CI. `_env_file=None` disables only that file
+source; an exported shell variable still reaches `Settings()` in tests exactly
+as it would in production, so pin a setting explicitly if the suite must not
+vary with it. Under the env-before-import fallback, explicit process
+environment values must take precedence over file values, so avoid dotenv's
+“override existing variables” option. It would override the database the test
+selected.
 
 The `testing` extra installs `pytest-asyncio`. Set its default fixture loop scope
 in `pyproject.toml`, or pytest-asyncio prints a deprecation warning on every run:
@@ -97,40 +161,35 @@ a test also needs direct async database access.
 ### Async-only PostgreSQL
 
 An application configured only with async PostgreSQL can keep its ordinary
-pooled engine in tests; you do not need a test-only `NullPool` engine. Let the
-application own the engine and dispose it when the application shuts down:
+pooled engine in tests. You do not need a test-only `NullPool` engine. Build
+the app with [the production template's factory](#production-main-template),
+whose lifespan owns the engine: it creates the engine from its settings and
+hands it to Restly with `fr.configure(app, async_engine=engine)`.
+
+Use a production URL such as `postgresql+asyncpg://...` in deployment. That
+factory takes `Settings`, not a bare URL, so build one in `conftest.py` with
+the test database and the local `.env` disabled:
 
 ```python
-# myapp/main.py
-import os
-from contextlib import asynccontextmanager
-
-from fastapi import FastAPI
-from sqlalchemy.ext.asyncio import create_async_engine
-
+# conftest.py
 import fastapi_restly as fr
+from myapp.main import create_app
+from myapp.settings import Settings
 
-engine = create_async_engine(
-    os.environ["DATABASE_URL"],
-    pool_pre_ping=True,
+Settings.use(Settings(database_url="postgresql+asyncpg://...", _env_file=None))
+
+app = create_app()
+
+fr.testing.configure_tests(
+    app=app,
+    base=fr.DataclassBase,
+    create_all=True,
 )
-fr.configure(async_engine=engine)
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    yield
-    await engine.dispose()
-
-
-app = FastAPI(lifespan=lifespan)
 ```
 
-Use a production URL such as `postgresql+asyncpg://...` in deployment and set
-the same setting to a disposable PostgreSQL database before importing the app
-in `conftest.py`. Then call `configure_tests()` as shown above. Restly neither
-rebuilds the engine nor changes its pool. The application lifespan still owns
-the dispose call, in production and in tests alike.
+Restly neither rebuilds the engine nor changes its pool. The engine belongs to
+the app the factory built, and that app's lifespan owns the dispose call, in
+production and in tests alike.
 
 ## What you get
 
@@ -141,8 +200,8 @@ your application already configured; it does not create or replace them. If the
 database configuration changes later, during collection or lifespan startup,
 the suite fails instead of letting schema setup, cleanup and requests disagree.
 Selecting a disposable test database remains the application's responsibility.
-An environment variable, an explicit test settings object, or an app factory are
-all good ways to do that.
+An app factory receiving the test database explicitly is the recommended way to
+do that. An environment variable selected before import also works.
 
 **A schema that is already there.** Tables are created once, before the first
 test, either from your models with `create_all=True` or by running your
@@ -169,7 +228,7 @@ A test needs nothing but the client:
 # test_users.py
 def test_create_and_fetch_user(restly_client):
     response = restly_client.post(  # asserts 201 automatically
-        "/users/", json={"name": "Jane", "email": "jane@example.com"}
+        "/users", json={"name": "Jane", "email": "jane@example.com"}
     )
     user_id = response.json()["id"]
 
@@ -186,9 +245,16 @@ cleanup; see [the fixture reference](#pytest-fixture-reference).
 
 ## Test databases and migrations
 
-`base=Base` names your models. It is what `configure_tests()` cleans between
+`base=` names your models. It is what `configure_tests()` cleans between
 tests, and what it builds the schema from if you ask it to. Pass your declarative
 base, or its `MetaData`.
+
+A base only knows the models that have been imported by the time the suite
+freezes. Building the app first is what imports them, since composition reaches
+every view and each view imports its model. A conftest that reaches for `Base`
+without building the app should import `myapp.main` as well, the way
+`alembic/env.py` does; see
+[Compose in one place](#compose-in-one-place).
 
 Who builds the schema is a separate choice, and there are three answers.
 
@@ -220,7 +286,7 @@ Pass a path if the config lives somewhere else:
 ```python
 fr.testing.configure_tests(
     app=app,
-    base=Base,
+    base=fr.DataclassBase,
     alembic_upgrade="backend/alembic.ini",
 )
 ```
@@ -287,7 +353,7 @@ them and they are left alone:
 ```python
 fr.testing.configure_tests(
     app=app,
-    base=Base,
+    base=fr.DataclassBase,
     alembic_upgrade=True,
     db_cleanup="delete",
     db_cleanup_exclude=["country", "role"],
@@ -308,7 +374,7 @@ and enters it for you; use it directly when testing without the fixtures:
 from fastapi_restly.testing import RestlyTestClient
 
 with RestlyTestClient(app) as client:
-    response = client.get("/users/")
+    response = client.get("/users")
 ```
 
 Enter it. Starlette runs an application's `lifespan` startup and shutdown only
@@ -378,7 +444,7 @@ async def test_direct_setup_and_request(restly_async_client, restly_async_sessio
     restly_async_session.add(User(name="Alice"))
     await restly_async_session.commit()
 
-    response = await restly_async_client.get("/users/")
+    response = await restly_async_client.get("/users")
     assert response.json()["total_count"] == 1
 ```
 
@@ -571,7 +637,7 @@ transaction is still open, before any fixture tears down, and `restly_client`
 works from there:
 
 ```
-(Pdb) restly_client.get("/users/").json()
+(Pdb) restly_client.get("/users").json()
 {'data': [{'id': 1, 'name': 'Jane'}], 'total_count': 1, ...}
 ```
 

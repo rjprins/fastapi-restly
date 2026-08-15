@@ -457,6 +457,7 @@
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="howto_project_structure.html">Structure a Project</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_existing_project.html">Use Restly in an Existing Project</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_custom_schema.html">Custom Schemas and Field Types</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys and Relationships</a></li>
@@ -556,8 +557,8 @@ filter by its foreign key; the filter parameter is generated automatically for
 </pre></div>
 </div>
 <p>Clients then scope the list through the query string:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /tasks/?project_id=17        # all tasks of one project
-GET /tasks/?project_id__in=1,2   # tasks of several projects
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /tasks?project_id=17        # all tasks of one project
+GET /tasks?project_id__in=1,2   # tasks of several projects
 </pre></div>
 </div>
 <p>When the nested URL is part of your API contract, add a custom route on the

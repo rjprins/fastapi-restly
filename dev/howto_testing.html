@@ -457,6 +457,7 @@
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="howto_project_structure.html">Structure a Project</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_existing_project.html">Use Restly in an Existing Project</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_custom_schema.html">Custom Schemas and Field Types</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys and Relationships</a></li>
@@ -557,21 +558,75 @@ manually in <code class="docutils literal notranslate"><span class="pre">conftes
 </pre></div>
 </div>
 <p>The application still owns its database configuration. Make that configuration
-selectable, for example through an environment-backed setting:</p>
+selectable by building the application in a factory: a <code class="docutils literal notranslate"><span class="pre">create_app()</span></code> function
+that receives its settings, configures Restly, and returns the app. Configuring
+inside the factory keeps database setup out of module import, so a test can
+build the application it wants instead of racing to change the environment
+first:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># myapp/main.py</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">FastAPI</span>
 
-<span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span>
-    <span class="n">async_database_url</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-        <span class="s2">&quot;DATABASE_URL&quot;</span><span class="p">,</span> <span class="s2">&quot;sqlite+aiosqlite:///./app.db&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.api</span><span class="w"> </span><span class="kn">import</span> <span class="n">register_views</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">create_app</span><span class="p">(</span><span class="n">database_url</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FastAPI</span><span class="p">:</span>
+    <span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span>
+        <span class="n">async_database_url</span><span class="o">=</span><span class="n">database_url</span>
+        <span class="ow">or</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;DATABASE_URL&quot;</span><span class="p">,</span> <span class="s2">&quot;sqlite+aiosqlite:///./app.db&quot;</span><span class="p">)</span>
     <span class="p">)</span>
+    <span class="n">app</span> <span class="o">=</span> <span class="n">FastAPI</span><span class="p">()</span>
+    <span class="n">register_views</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">app</span>
+</pre></div>
+</div>
+<p>Run it with <code class="docutils literal notranslate"><span class="pre">uvicorn</span> <span class="pre">--factory</span> <span class="pre">myapp.main:create_app</span></code>. A server that wants an
+application object instead gets one from a separate <code class="docutils literal notranslate"><span class="pre">asgi.py</span></code>, which keeps
+<code class="docutils literal notranslate"><span class="pre">main.py</span></code> free to import; see <a class="reference internal" href="deploying.html#running-the-app"><span class="std std-ref">Running the app</span></a>. The
+test suite then builds the application it tests,
+naming the test database explicitly, and hands the result to
+<code class="docutils literal notranslate"><span class="pre">configure_tests()</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># conftest.py</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">myapp.main</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_app</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">create_app</span><span class="p">(</span><span class="s2">&quot;sqlite+aiosqlite:///./test.db&quot;</span><span class="p">)</span>
+
+<span class="n">fr</span><span class="o">.</span><span class="n">testing</span><span class="o">.</span><span class="n">configure_tests</span><span class="p">(</span>
+    <span class="n">app</span><span class="o">=</span><span class="n">app</span><span class="p">,</span>
+    <span class="n">base</span><span class="o">=</span><span class="n">fr</span><span class="o">.</span><span class="n">DataclassBase</span><span class="p">,</span>
+    <span class="n">create_all</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
 <span class="p">)</span>
 </pre></div>
 </div>
-<p>Then select the test value before importing the application, and configure the
-suite from the application configuration already in force:</p>
+<p>Restly’s configuration is process-wide and the last <code class="docutils literal notranslate"><span class="pre">configure()</span></code> call wins,
+which is what makes this work: the factory call in <code class="docutils literal notranslate"><span class="pre">conftest.py</span></code> re-points the
+process at the test database before <code class="docutils literal notranslate"><span class="pre">configure_tests()</span></code> freezes it. That holds
+even when something the conftest imports already built an app, since the
+conftest’s factory call runs after the import and before the freeze.
+A factory that <em>requires</em> its settings, like the PostgreSQL one below, must
+not build an app at import time: keep it on the <code class="docutils literal notranslate"><span class="pre">--factory</span></code> form, or importing
+it in <code class="docutils literal notranslate"><span class="pre">conftest.py</span></code> would again require the environment variable to be set
+before the import, which is exactly the requirement the factory form lifts
+from tests. This safety only covers modules the conftest itself imports before
+<code class="docutils literal notranslate"><span class="pre">configure_tests()</span></code> runs. A module built elsewhere and imported later, such as
+an <code class="docutils literal notranslate"><span class="pre">asgi.py</span></code> a test file reaches for directly, still calls its module-level
+factory after the freeze and fails with <code class="docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code>. That is the
+second reason nothing but the server should import <code class="docutils literal notranslate"><span class="pre">asgi.py</span></code>.</p>
+<p id="factory-apps-share-one-configuration">The apps a factory builds are therefore not independent. Each call re-points
+the one process-wide configuration, so only the most recently built app should
+serve requests. An app built earlier would read the newer database while still
+owning its original engine. In this suite that is the conftest’s app. For the
+same reason the common
+per-test factory fixture (<code class="docutils literal notranslate"><span class="pre">&#64;pytest.fixture</span></code> returning <code class="docutils literal notranslate"><span class="pre">create_app(...)</span></code>) does
+not fit a managed suite: once <code class="docutils literal notranslate"><span class="pre">configure_tests()</span></code> has recorded the
+configuration, every later factory call that configures the database raises
+<code class="docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code>. Build the app once in <code class="docutils literal notranslate"><span class="pre">conftest.py</span></code>.</p>
+<p>An application that instead calls <code class="docutils literal notranslate"><span class="pre">fr.configure()</span></code> at module import time can
+still be tested: select the value before importing it, and note the import
+order that the factory form avoids:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># conftest.py</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 
@@ -580,20 +635,25 @@ suite from the application configuration already in force:</p>
 <span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">myapp.main</span><span class="w"> </span><span class="kn">import</span> <span class="n">app</span>  <span class="c1"># noqa: E402</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">myapp.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Base</span>  <span class="c1"># noqa: E402</span>
 
-<span class="n">fr</span><span class="o">.</span><span class="n">testing</span><span class="o">.</span><span class="n">configure_tests</span><span class="p">(</span>
-    <span class="n">app</span><span class="o">=</span><span class="n">app</span><span class="p">,</span>
-    <span class="n">base</span><span class="o">=</span><span class="n">Base</span><span class="p">,</span>
-    <span class="n">create_all</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-<span class="p">)</span>
+<span class="n">fr</span><span class="o">.</span><span class="n">testing</span><span class="o">.</span><span class="n">configure_tests</span><span class="p">(</span><span class="n">app</span><span class="o">=</span><span class="n">app</span><span class="p">,</span> <span class="n">base</span><span class="o">=</span><span class="n">fr</span><span class="o">.</span><span class="n">DataclassBase</span><span class="p">,</span> <span class="n">create_all</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>A <code class="docutils literal notranslate"><span class="pre">.env</span></code> file fits this pattern as long as explicit process environment values
-take precedence over file values. Avoid loading dotenv with an “override
-existing variables” option in application code; that makes the test unable to
-select its database before import. If import-time settings are awkward, pass an
-explicit test settings object to an app factory instead.</p>
+<p>A <code class="docutils literal notranslate"><span class="pre">.env</span></code> file is convenient in development, when the settings class enables
+one (the <a class="reference internal" href="deploying.html#production-main-template"><span class="std std-ref">production template</span></a> does not; the <a class="reference internal" href="examples.html"><span class="std std-doc">SaaS
+example</span></a> does). Keep it out of the suite’s way. When the conftest
+installs its own settings, build them with the env file disabled (with
+pydantic-settings: <code class="docutils literal notranslate"><span class="pre">Settings(database_url=...,</span> <span class="pre">_env_file=None)</span></code>). Explicitly
+passed values
+already outrank the file, but values the test leaves unset, such as pool
+sizes, would still come from a developer’s local <code class="docutils literal notranslate"><span class="pre">.env</span></code>, and the suite would
+behave differently locally than in CI. <code class="docutils literal notranslate"><span class="pre">_env_file=None</span></code> disables only that file
+source; an exported shell variable still reaches <code class="docutils literal notranslate"><span class="pre">Settings()</span></code> in tests exactly
+as it would in production, so pin a setting explicitly if the suite must not
+vary with it. Under the env-before-import fallback, explicit process
+environment values must take precedence over file values, so avoid dotenv’s
+“override existing variables” option. It would override the database the test
+selected.</p>
 <p>The <code class="docutils literal notranslate"><span class="pre">testing</span></code> extra installs <code class="docutils literal notranslate"><span class="pre">pytest-asyncio</span></code>. Set its default fixture loop scope
 in <code class="docutils literal notranslate"><span class="pre">pyproject.toml</span></code>, or pytest-asyncio prints a deprecation warning on every run:</p>
 <div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[tool.pytest.ini_options]</span>
@@ -615,38 +675,32 @@ a test also needs direct async database access.</p>
 <section id="async-only-postgresql">
 <h3>Async-only PostgreSQL<a class="headerlink" href="#async-only-postgresql" title="Link to this heading">#</a></h3>
 <p>An application configured only with async PostgreSQL can keep its ordinary
-pooled engine in tests; you do not need a test-only <code class="docutils literal notranslate"><span class="pre">NullPool</span></code> engine. Let the
-application own the engine and dispose it when the application shuts down:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># myapp/main.py</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">contextlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">asynccontextmanager</span>
-
-<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">FastAPI</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.ext.asyncio</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_async_engine</span>
-
+pooled engine in tests. You do not need a test-only <code class="docutils literal notranslate"><span class="pre">NullPool</span></code> engine. Build
+the app with <a class="reference internal" href="deploying.html#production-main-template"><span class="std std-ref">the production template’s factory</span></a>,
+whose lifespan owns the engine: it creates the engine from its settings and
+hands it to Restly with <code class="docutils literal notranslate"><span class="pre">fr.configure(app,</span> <span class="pre">async_engine=engine)</span></code>.</p>
+<p>Use a production URL such as <code class="docutils literal notranslate"><span class="pre">postgresql+asyncpg://...</span></code> in deployment. That
+factory takes <code class="docutils literal notranslate"><span class="pre">Settings</span></code>, not a bare URL, so build one in <code class="docutils literal notranslate"><span class="pre">conftest.py</span></code> with
+the test database and the local <code class="docutils literal notranslate"><span class="pre">.env</span></code> disabled:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># conftest.py</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">myapp.main</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_app</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">myapp.settings</span><span class="w"> </span><span class="kn">import</span> <span class="n">Settings</span>
 
-<span class="n">engine</span> <span class="o">=</span> <span class="n">create_async_engine</span><span class="p">(</span>
-    <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;DATABASE_URL&quot;</span><span class="p">],</span>
-    <span class="n">pool_pre_ping</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="n">Settings</span><span class="o">.</span><span class="n">use</span><span class="p">(</span><span class="n">Settings</span><span class="p">(</span><span class="n">database_url</span><span class="o">=</span><span class="s2">&quot;postgresql+asyncpg://...&quot;</span><span class="p">,</span> <span class="n">_env_file</span><span class="o">=</span><span class="kc">None</span><span class="p">))</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">create_app</span><span class="p">()</span>
+
+<span class="n">fr</span><span class="o">.</span><span class="n">testing</span><span class="o">.</span><span class="n">configure_tests</span><span class="p">(</span>
+    <span class="n">app</span><span class="o">=</span><span class="n">app</span><span class="p">,</span>
+    <span class="n">base</span><span class="o">=</span><span class="n">fr</span><span class="o">.</span><span class="n">DataclassBase</span><span class="p">,</span>
+    <span class="n">create_all</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
 <span class="p">)</span>
-<span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">async_engine</span><span class="o">=</span><span class="n">engine</span><span class="p">)</span>
-
-
-<span class="nd">@asynccontextmanager</span>
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">lifespan</span><span class="p">(</span><span class="n">app</span><span class="p">:</span> <span class="n">FastAPI</span><span class="p">):</span>
-    <span class="k">yield</span>
-    <span class="k">await</span> <span class="n">engine</span><span class="o">.</span><span class="n">dispose</span><span class="p">()</span>
-
-
-<span class="n">app</span> <span class="o">=</span> <span class="n">FastAPI</span><span class="p">(</span><span class="n">lifespan</span><span class="o">=</span><span class="n">lifespan</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Use a production URL such as <code class="docutils literal notranslate"><span class="pre">postgresql+asyncpg://...</span></code> in deployment and set
-the same setting to a disposable PostgreSQL database before importing the app
-in <code class="docutils literal notranslate"><span class="pre">conftest.py</span></code>. Then call <code class="docutils literal notranslate"><span class="pre">configure_tests()</span></code> as shown above. Restly neither
-rebuilds the engine nor changes its pool. The application lifespan still owns
-the dispose call, in production and in tests alike.</p>
+<p>Restly neither rebuilds the engine nor changes its pool. The engine belongs to
+the app the factory built, and that app’s lifespan owns the dispose call, in
+production and in tests alike.</p>
 </section>
 </section>
 <section id="what-you-get">
@@ -657,8 +711,8 @@ your application already configured; it does not create or replace them. If the
 database configuration changes later, during collection or lifespan startup,
 the suite fails instead of letting schema setup, cleanup and requests disagree.
 Selecting a disposable test database remains the application’s responsibility.
-An environment variable, an explicit test settings object, or an app factory are
-all good ways to do that.</p>
+An app factory receiving the test database explicitly is the recommended way to
+do that. An environment variable selected before import also works.</p>
 <p><strong>A schema that is already there.</strong> Tables are created once, before the first
 test, either from your models with <code class="docutils literal notranslate"><span class="pre">create_all=True</span></code> or by running your
 migrations with <code class="docutils literal notranslate"><span class="pre">alembic_upgrade=True</span></code>.</p>
@@ -680,7 +734,7 @@ requests back with everything else under the default cleanup.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># test_users.py</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">test_create_and_fetch_user</span><span class="p">(</span><span class="n">restly_client</span><span class="p">):</span>
     <span class="n">response</span> <span class="o">=</span> <span class="n">restly_client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>  <span class="c1"># asserts 201 automatically</span>
-        <span class="s2">&quot;/users/&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Jane&quot;</span><span class="p">,</span> <span class="s2">&quot;email&quot;</span><span class="p">:</span> <span class="s2">&quot;jane@example.com&quot;</span><span class="p">}</span>
+        <span class="s2">&quot;/users&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Jane&quot;</span><span class="p">,</span> <span class="s2">&quot;email&quot;</span><span class="p">:</span> <span class="s2">&quot;jane@example.com&quot;</span><span class="p">}</span>
     <span class="p">)</span>
     <span class="n">user_id</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;id&quot;</span><span class="p">]</span>
 
@@ -697,9 +751,15 @@ cleanup; see <a class="reference internal" href="#pytest-fixture-reference">the 
 </section>
 <section id="test-databases-and-migrations">
 <h2>Test databases and migrations<a class="headerlink" href="#test-databases-and-migrations" title="Link to this heading">#</a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">base=Base</span></code> names your models. It is what <code class="docutils literal notranslate"><span class="pre">configure_tests()</span></code> cleans between
+<p><code class="docutils literal notranslate"><span class="pre">base=</span></code> names your models. It is what <code class="docutils literal notranslate"><span class="pre">configure_tests()</span></code> cleans between
 tests, and what it builds the schema from if you ask it to. Pass your declarative
 base, or its <code class="docutils literal notranslate"><span class="pre">MetaData</span></code>.</p>
+<p>A base only knows the models that have been imported by the time the suite
+freezes. Building the app first is what imports them, since composition reaches
+every view and each view imports its model. A conftest that reaches for <code class="docutils literal notranslate"><span class="pre">Base</span></code>
+without building the app should import <code class="docutils literal notranslate"><span class="pre">myapp.main</span></code> as well, the way
+<code class="docutils literal notranslate"><span class="pre">alembic/env.py</span></code> does; see
+<a class="reference internal" href="howto_project_structure.html#compose-in-one-place"><span class="std std-ref">Compose in one place</span></a>.</p>
 <p>Who builds the schema is a separate choice, and there are three answers.</p>
 <p><strong>From your models</strong>, with <code class="docutils literal notranslate"><span class="pre">create_all=True</span></code>, which builds the tables the
 way <a class="reference internal" href="api/db.html#fastapi_restly.db.create_all" title="fastapi_restly.db.create_all"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.db.create_all()</span></code></a> does. This is the
@@ -724,7 +784,7 @@ synchronous URL to Alembic.</p>
 <p>Pass a path if the config lives somewhere else:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">fr</span><span class="o">.</span><span class="n">testing</span><span class="o">.</span><span class="n">configure_tests</span><span class="p">(</span>
     <span class="n">app</span><span class="o">=</span><span class="n">app</span><span class="p">,</span>
-    <span class="n">base</span><span class="o">=</span><span class="n">Base</span><span class="p">,</span>
+    <span class="n">base</span><span class="o">=</span><span class="n">fr</span><span class="o">.</span><span class="n">DataclassBase</span><span class="p">,</span>
     <span class="n">alembic_upgrade</span><span class="o">=</span><span class="s2">&quot;backend/alembic.ini&quot;</span><span class="p">,</span>
 <span class="p">)</span>
 </pre></div>
@@ -780,7 +840,7 @@ migrations seeded with reference data, and nothing puts those rows back. Name
 them and they are left alone:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">fr</span><span class="o">.</span><span class="n">testing</span><span class="o">.</span><span class="n">configure_tests</span><span class="p">(</span>
     <span class="n">app</span><span class="o">=</span><span class="n">app</span><span class="p">,</span>
-    <span class="n">base</span><span class="o">=</span><span class="n">Base</span><span class="p">,</span>
+    <span class="n">base</span><span class="o">=</span><span class="n">fr</span><span class="o">.</span><span class="n">DataclassBase</span><span class="p">,</span>
     <span class="n">alembic_upgrade</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
     <span class="n">db_cleanup</span><span class="o">=</span><span class="s2">&quot;delete&quot;</span><span class="p">,</span>
     <span class="n">db_cleanup_exclude</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;country&quot;</span><span class="p">,</span> <span class="s2">&quot;role&quot;</span><span class="p">],</span>
@@ -800,7 +860,7 @@ and enters it for you; use it directly when testing without the fixtures:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi_restly.testing</span><span class="w"> </span><span class="kn">import</span> <span class="n">RestlyTestClient</span>
 
 <span class="k">with</span> <span class="n">RestlyTestClient</span><span class="p">(</span><span class="n">app</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
-    <span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/users/&quot;</span><span class="p">)</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/users&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Enter it. Starlette runs an application’s <code class="docutils literal notranslate"><span class="pre">lifespan</span></code> startup and shutdown only
@@ -875,7 +935,7 @@ you to use <code class="docutils literal notranslate"><span class="pre">restly_a
     <span class="n">restly_async_session</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">User</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;Alice&quot;</span><span class="p">))</span>
     <span class="k">await</span> <span class="n">restly_async_session</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
 
-    <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">restly_async_client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/users/&quot;</span><span class="p">)</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">restly_async_client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/users&quot;</span><span class="p">)</span>
     <span class="k">assert</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;total_count&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span>
 </pre></div>
 </div>
@@ -1057,7 +1117,7 @@ when the test ends. Two ways to see them anyway.</p>
 <p><strong>From inside the test.</strong> <code class="docutils literal notranslate"><span class="pre">pytest</span> <span class="pre">--pdb</span></code> stops at the failure while the
 transaction is still open, before any fixture tears down, and <code class="docutils literal notranslate"><span class="pre">restly_client</span></code>
 works from there:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="n">Pdb</span><span class="p">)</span> <span class="n">restly_client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/users/&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="n">Pdb</span><span class="p">)</span> <span class="n">restly_client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/users&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
 <span class="p">{</span><span class="s1">&#39;data&#39;</span><span class="p">:</span> <span class="p">[{</span><span class="s1">&#39;id&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="s1">&#39;Jane&#39;</span><span class="p">}],</span> <span class="s1">&#39;total_count&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="o">...</span><span class="p">}</span>
 </pre></div>
 </div>

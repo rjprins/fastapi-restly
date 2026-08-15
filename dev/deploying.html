@@ -457,6 +457,7 @@
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="howto_project_structure.html">Structure a Project</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_existing_project.html">Use Restly in an Existing Project</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_custom_schema.html">Custom Schemas and Field Types</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys and Relationships</a></li>
@@ -543,123 +544,211 @@ not duplicated here.</p>
 <h2>Database configuration<a class="headerlink" href="#database-configuration" title="Link to this heading">#</a></h2>
 <p>In production, drive the engine from environment variables. A small
 <code class="docutils literal notranslate"><span class="pre">pydantic-settings</span></code> shim keeps the wiring obvious and 12-factor friendly:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic_settings</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseSettings</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic_settings</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseSettings</span>
 
 
-<span class="k">class</span><span class="w"> </span><span class="nc">Settings</span><span class="p">(</span><span class="n">BaseSettings</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Settings</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">CurrentSettingsMixin</span><span class="p">,</span> <span class="n">BaseSettings</span><span class="p">):</span>
     <span class="n">database_url</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">db_pool_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span>
     <span class="n">db_max_overflow</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span>
-
-
-<span class="n">settings</span> <span class="o">=</span> <span class="n">Settings</span><span class="p">()</span>  <span class="c1"># reads DATABASE_URL etc. from the environment</span>
 </pre></div>
 </div>
-<p>Pass those values into <a class="reference internal" href="api/db.html#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.configure()</span></code></a> via an explicit engine so you can
-set pool options:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.ext.asyncio</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_async_engine</span>
-
-<span class="n">engine</span> <span class="o">=</span> <span class="n">create_async_engine</span><span class="p">(</span>
-    <span class="n">settings</span><span class="o">.</span><span class="n">database_url</span><span class="p">,</span>
-    <span class="n">pool_size</span><span class="o">=</span><span class="n">settings</span><span class="o">.</span><span class="n">db_pool_size</span><span class="p">,</span>
-    <span class="n">max_overflow</span><span class="o">=</span><span class="n">settings</span><span class="o">.</span><span class="n">db_max_overflow</span><span class="p">,</span>
-    <span class="n">pool_pre_ping</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-<span class="p">)</span>
-
-<span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">async_engine</span><span class="o">=</span><span class="n">engine</span><span class="p">)</span>
-</pre></div>
-</div>
-<p><code class="docutils literal notranslate"><span class="pre">pool_pre_ping=True</span></code> is recommended in production: it issues a lightweight
-liveness check before handing out a pooled connection, which prevents
-stale-connection errors after database restarts or network blips. If your
-app already has an engine, pass that one instead; see
+<p><a class="reference internal" href="api/utils.html#fastapi_restly.utils.CurrentSettingsMixin" title="fastapi_restly.utils.CurrentSettingsMixin"><code class="xref py py-class docutils literal notranslate"><span class="pre">CurrentSettingsMixin</span></code></a> gives
+the class one shared instance without building it at import, so importing your
+package never requires a configured environment. <code class="docutils literal notranslate"><span class="pre">Settings.current</span></code> reads
+<code class="docutils literal notranslate"><span class="pre">DATABASE_URL</span></code> and the pool fields the first time something asks. <a class="reference internal" href="#production-main-template">The
+production template below</a> reads it inside
+<code class="docutils literal notranslate"><span class="pre">create_app()</span></code> and passes the values into
+<a class="reference internal" href="api/db.html#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.configure()</span></code></a> through an explicit
+engine, which is what lets you size the pool. <code class="docutils literal notranslate"><span class="pre">Settings.use(...)</span></code> installs an
+instance instead, which is how a test suite hands over settings it built
+itself; see <a class="reference internal" href="howto_testing.html"><span class="std std-doc">Test APIs with RestlyTestClient and Fixtures</span></a>.</p>
+<p>Sizing is the part Restly leaves to you. Given a PostgreSQL URL it already sets
+<code class="docutils literal notranslate"><span class="pre">pool_pre_ping=True</span></code> and <code class="docutils literal notranslate"><span class="pre">pool_recycle=1800</span></code>, so the template below repeats
+<code class="docutils literal notranslate"><span class="pre">pool_pre_ping</span></code> only to keep it visible next to the settings it belongs with;
+see <a class="reference internal" href="technical_details.html#engine-defaults"><span class="std std-ref">Engine Defaults</span></a> for the full list
+and for how to decline it. If your app already has an engine, pass that one
+instead; see
 <a class="reference internal" href="howto_existing_project.html#reuse-your-existing-engine"><span class="std std-ref">Reuse Your Existing Engine</span></a>.</p>
 </section>
 <section id="migrations-with-alembic">
 <h2>Migrations with Alembic<a class="headerlink" href="#migrations-with-alembic" title="Link to this heading">#</a></h2>
 <p>In production, never call <code class="docutils literal notranslate"><span class="pre">metadata.create_all()</span></code>; use Alembic instead.
-Initialise it once in your project root:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>alembic<span class="w"> </span>init<span class="w"> </span>alembic
+For the recommended <code class="docutils literal notranslate"><span class="pre">postgresql+asyncpg</span></code> setup, initialise Alembic with its
+async template once in your project root:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>alembic<span class="w"> </span>init<span class="w"> </span>-t<span class="w"> </span>async<span class="w"> </span>alembic
 </pre></div>
 </div>
+<p>The generic template created by <code class="docutils literal notranslate"><span class="pre">alembic</span> <span class="pre">init</span> <span class="pre">alembic</span></code> builds a synchronous
+engine and cannot open an async URL. Use it only when Alembic receives a
+separate synchronous database URL. Alembic’s
+<a class="reference external" href="https://alembic.sqlalchemy.org/en/latest/cookbook.html#using-asyncio-with-alembic">asyncio recipe</a>
+shows the same template and how to adapt an existing environment.</p>
 <p>Point <code class="docutils literal notranslate"><span class="pre">alembic/env.py</span></code> at the metadata of whichever declarative base your
-models inherit from (typically <a class="reference internal" href="api/models.html#fastapi_restly.models.DataclassBase" title="fastapi_restly.models.DataclassBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.DataclassBase</span></code></a>):</p>
+models inherit from (typically <a class="reference internal" href="api/models.html#fastapi_restly.models.DataclassBase" title="fastapi_restly.models.DataclassBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.DataclassBase</span></code></a>).
+Metadata covers the models that have been imported, so <code class="docutils literal notranslate"><span class="pre">env.py</span></code> needs a module
+that has seen all of them. That is <code class="docutils literal notranslate"><span class="pre">main.py</span></code>: it reaches view registration,
+which reaches every view, and each view imports its model. Because the factory
+builds nothing at import time, this costs the imports and nothing else:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># alembic/env.py</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">myapp.models</span>  <span class="c1"># noqa: F401 (import side-effect: registers model classes)</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">myapp.main</span>  <span class="c1"># noqa: F401  (imports every view, and each view its model)</span>
 
 <span class="n">target_metadata</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">DataclassBase</span><span class="o">.</span><span class="n">metadata</span>
 </pre></div>
 </div>
+<p>Models that no view reaches, such as an outbox or audit table, need importing
+wherever they are used, at module level rather than inside a function. Run
+<code class="docutils literal notranslate"><span class="pre">alembic</span> <span class="pre">check</span></code> in CI to catch one that is missed: it reports the absent model
+as a dropped table rather than failing quietly.</p>
+<p>Restly’s declarative bases map plain <code class="docutils literal notranslate"><span class="pre">Mapped[datetime]</span></code> columns to
+<code class="docutils literal notranslate"><span class="pre">DateTime(timezone=True)</span></code>. On PostgreSQL, upgrading an existing naive timestamp
+column requires an explicit interpretation of the stored values. If they
+represent UTC, use a reviewed migration such as:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sa</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">alembic</span><span class="w"> </span><span class="kn">import</span> <span class="n">op</span>
+
+<span class="n">op</span><span class="o">.</span><span class="n">alter_column</span><span class="p">(</span>
+    <span class="s2">&quot;event&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;occurred_at&quot;</span><span class="p">,</span>
+    <span class="n">type_</span><span class="o">=</span><span class="n">sa</span><span class="o">.</span><span class="n">DateTime</span><span class="p">(</span><span class="n">timezone</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+    <span class="n">postgresql_using</span><span class="o">=</span><span class="s2">&quot;occurred_at AT TIME ZONE &#39;UTC&#39;&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>A bare type change can reinterpret values in the server’s local timezone. Use
+<code class="docutils literal notranslate"><span class="pre">mapped_column(DateTime())</span></code> on the model only when the column intentionally
+stores a timezone-free wall-clock value.</p>
 <p>Run migrations as part of your release or startup pipeline:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>alembic<span class="w"> </span>upgrade<span class="w"> </span>head
 </pre></div>
 </div>
-<p>If you want tests to exercise the same migration path, add a project-local
-fixture that runs <code class="docutils literal notranslate"><span class="pre">alembic</span> <span class="pre">upgrade</span> <span class="pre">head</span></code> before the suite. Restly’s pytest
-plugin does not run migrations automatically. See
+<p>To have tests exercise the same migration path, pass <code class="docutils literal notranslate"><span class="pre">alembic_upgrade=True</span></code> to
+<a class="reference internal" href="api/testing.html#fastapi_restly.testing.configure_tests" title="fastapi_restly.testing.configure_tests"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.testing.configure_tests()</span></code></a>.
+Restly then runs <code class="docutils literal notranslate"><span class="pre">alembic</span> <span class="pre">upgrade</span> <span class="pre">head</span></code> against the test database before the
+first test. See
 <a class="reference internal" href="howto_testing.html#test-databases-and-migrations"><span class="std std-ref">Test databases and migrations</span></a>.</p>
 </section>
 <section id="a-production-main-py-template">
-<h2>A production <code class="docutils literal notranslate"><span class="pre">main.py</span></code> template<a class="headerlink" href="#a-production-main-py-template" title="Link to this heading">#</a></h2>
+<span id="production-main-template"></span><h2>A production <code class="docutils literal notranslate"><span class="pre">main.py</span></code> template<a class="headerlink" href="#a-production-main-py-template" title="Link to this heading">#</a></h2>
 <p>With settings and migrations in place, the pieces combine into one small
-application module:</p>
+application factory:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">contextlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">asynccontextmanager</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">FastAPI</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.ext.asyncio</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_async_engine</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">.settings</span><span class="w"> </span><span class="kn">import</span> <span class="n">settings</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">.views</span><span class="w"> </span><span class="kn">import</span> <span class="n">UserView</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.api</span><span class="w"> </span><span class="kn">import</span> <span class="n">register_views</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.settings</span><span class="w"> </span><span class="kn">import</span> <span class="n">Settings</span>
 
 
-<span class="n">engine</span> <span class="o">=</span> <span class="n">create_async_engine</span><span class="p">(</span>
-    <span class="n">settings</span><span class="o">.</span><span class="n">database_url</span><span class="p">,</span>
-    <span class="n">pool_size</span><span class="o">=</span><span class="n">settings</span><span class="o">.</span><span class="n">db_pool_size</span><span class="p">,</span>
-    <span class="n">max_overflow</span><span class="o">=</span><span class="n">settings</span><span class="o">.</span><span class="n">db_max_overflow</span><span class="p">,</span>
-    <span class="n">pool_pre_ping</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-<span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">create_app</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">FastAPI</span><span class="p">:</span>
+    <span class="n">settings</span> <span class="o">=</span> <span class="n">Settings</span><span class="o">.</span><span class="n">current</span>
+    <span class="n">engine</span> <span class="o">=</span> <span class="n">create_async_engine</span><span class="p">(</span>
+        <span class="n">settings</span><span class="o">.</span><span class="n">database_url</span><span class="p">,</span>
+        <span class="n">pool_size</span><span class="o">=</span><span class="n">settings</span><span class="o">.</span><span class="n">db_pool_size</span><span class="p">,</span>
+        <span class="n">max_overflow</span><span class="o">=</span><span class="n">settings</span><span class="o">.</span><span class="n">db_max_overflow</span><span class="p">,</span>
+        <span class="n">pool_pre_ping</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
 
+    <span class="nd">@asynccontextmanager</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">lifespan</span><span class="p">(</span><span class="n">_app</span><span class="p">:</span> <span class="n">FastAPI</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">yield</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="k">await</span> <span class="n">engine</span><span class="o">.</span><span class="n">dispose</span><span class="p">()</span>
 
-<span class="nd">@asynccontextmanager</span>
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">lifespan</span><span class="p">(</span><span class="n">_app</span><span class="p">:</span> <span class="n">FastAPI</span><span class="p">):</span>
-    <span class="k">yield</span>
-    <span class="k">await</span> <span class="n">engine</span><span class="o">.</span><span class="n">dispose</span><span class="p">()</span>
-
-
-<span class="n">app</span> <span class="o">=</span> <span class="n">FastAPI</span><span class="p">(</span><span class="n">lifespan</span><span class="o">=</span><span class="n">lifespan</span><span class="p">)</span>
-<span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">async_engine</span><span class="o">=</span><span class="n">engine</span><span class="p">)</span>
-<span class="n">fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">UserView</span><span class="p">)</span>
+    <span class="n">app</span> <span class="o">=</span> <span class="n">FastAPI</span><span class="p">(</span><span class="n">lifespan</span><span class="o">=</span><span class="n">lifespan</span><span class="p">)</span>
+    <span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">async_engine</span><span class="o">=</span><span class="n">engine</span><span class="p">,</span> <span class="n">health</span><span class="o">=</span><span class="s2">&quot;/health&quot;</span><span class="p">)</span>
+    <span class="n">register_views</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">app</span>
 </pre></div>
 </div>
-<p>Note three details in this template:</p>
+<p>Note four details in this template:</p>
 <ul class="simple">
+<li><p>The factory keeps configuration out of module import: settings are read and
+the engine is built when <code class="docutils literal notranslate"><span class="pre">create_app()</span></code> runs, so a test suite can install its
+own settings first and call the same factory. See
+<a class="reference internal" href="howto_testing.html"><span class="std std-doc">Test APIs with RestlyTestClient and Fixtures</span></a>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">register_views(app)</span></code> keeps view definitions free of registration side
+effects and makes <code class="docutils literal notranslate"><span class="pre">api.py</span></code> the one application composition boundary; see
+<a class="reference internal" href="howto_project_structure.html"><span class="std std-doc">Structure a Project</span></a>.</p></li>
 <li><p><a class="reference internal" href="api/db.html#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.configure(app,</span> <span class="pre">...)</span></code></a> installs the default exception handlers
 (currently the translator that turns <code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code> into a 409 response;
 see <a class="reference internal" href="howto_error_responses.html#database-conflicts-integrityerror-to-409"><span class="std std-ref">Database conflicts</span></a>).
-Pass <code class="docutils literal notranslate"><span class="pre">install_default_exception_handlers=False</span></code> to opt out.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">engine.dispose()</span></code> in <code class="docutils literal notranslate"><span class="pre">lifespan</span></code> cleans up the connection pool on
-shutdown so workers exit promptly.</p></li>
-<li><p>Register views during startup with <a class="reference internal" href="api/views.html#fastapi_restly.views.include_view" title="fastapi_restly.views.include_view"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.include_view(app,</span> <span class="pre">ViewClass)</span></code></a>; avoid
-import-time side effects in larger apps.</p></li>
+Pass <code class="docutils literal notranslate"><span class="pre">install_default_exception_handlers=False</span></code> to opt out. <code class="docutils literal notranslate"><span class="pre">health=&quot;/health&quot;</span></code>
+mounts the <a class="reference internal" href="#health-checks">liveness endpoint</a>.</p></li>
+<li><p>The engine belongs to the app the factory built: <code class="docutils literal notranslate"><span class="pre">engine.dispose()</span></code> in
+<code class="docutils literal notranslate"><span class="pre">lifespan</span></code> cleans up the connection pool on shutdown so workers exit
+promptly. Restly never disposes an engine itself, so an application that
+configures from a URL instead reaches its engine through
+<a class="reference internal" href="api/db.html#fastapi_restly.db.get_async_engine" title="fastapi_restly.db.get_async_engine"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.db.get_async_engine()</span></code></a>; see
+<a class="reference internal" href="technical_details.html#engine-disposal"><span class="std std-ref">Engine Disposal</span></a>.</p></li>
 </ul>
 </section>
 <section id="running-the-app">
-<h2>Running the app<a class="headerlink" href="#running-the-app" title="Link to this heading">#</a></h2>
+<span id="id1"></span><h2>Running the app<a class="headerlink" href="#running-the-app" title="Link to this heading">#</a></h2>
 <p>Use any production ASGI runner. The most common options are
 <a class="reference external" href="https://www.uvicorn.org/">uvicorn</a> and
 <a class="reference external" href="https://www.uvicorn.org/deployment/#gunicorn">gunicorn with uvicorn workers</a>.
 See <a class="reference external" href="https://fastapi.tiangolo.com/deployment/">FastAPI’s deployment docs</a>
 for the full picture, including TLS, reverse proxies, and Docker.</p>
-<p>A minimal invocation looks like this:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uvicorn<span class="w"> </span>myapp.main:app<span class="w"> </span>--host<span class="w"> </span><span class="m">0</span>.0.0.0<span class="w"> </span>--port<span class="w"> </span><span class="m">8000</span><span class="w"> </span>--workers<span class="w"> </span><span class="m">4</span>
+<p>A minimal invocation runs the factory directly:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uvicorn<span class="w"> </span><span class="s2">&quot;myapp.main:create_app&quot;</span><span class="w"> </span>--factory<span class="w"> </span>--host<span class="w"> </span><span class="m">0</span>.0.0.0<span class="w"> </span>--port<span class="w"> </span><span class="m">8000</span><span class="w"> </span>--workers<span class="w"> </span><span class="m">4</span>
 </pre></div>
 </div>
+<p>When your platform expects an application object rather than a factory, put it
+in its own module and leave <code class="docutils literal notranslate"><span class="pre">main.py</span></code> alone:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># myapp/asgi.py</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.main</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_app</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">create_app</span><span class="p">()</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">uvicorn</span> <span class="pre">myapp.asgi:app</span></code> then works, while <code class="docutils literal notranslate"><span class="pre">main.py</span></code> stays free to import. The
+FastAPI CLI cannot call a factory, so name that module for it and
+<code class="docutils literal notranslate"><span class="pre">fastapi</span> <span class="pre">dev</span></code> and <code class="docutils literal notranslate"><span class="pre">fastapi</span> <span class="pre">run</span></code> work too:</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[tool.fastapi]</span>
+<span class="n">entrypoint</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;myapp.asgi:app&quot;</span>
+</pre></div>
+</div>
+<p>Do not put <code class="docutils literal notranslate"><span class="pre">app</span> <span class="pre">=</span> <span class="pre">create_app()</span></code> at the bottom of <code class="docutils literal notranslate"><span class="pre">main.py</span></code> instead: with
+required settings that makes importing the module require <code class="docutils literal notranslate"><span class="pre">DATABASE_URL</span></code>
+everywhere, including <code class="docutils literal notranslate"><span class="pre">conftest.py</span></code> and <code class="docutils literal notranslate"><span class="pre">alembic/env.py</span></code>. Nothing inside the
+package should import <code class="docutils literal notranslate"><span class="pre">asgi.py</span></code>; only the server does. Either way, build the
+application once per process: Restly’s session configuration is process-wide,
+so a later factory call re-points every earlier app’s requests at the new
+database too. See <a class="reference internal" href="howto_testing.html#factory-apps-share-one-configuration"><span class="std std-ref">how a factory’s apps share one
+configuration</span></a>.</p>
 <p>Sync <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a> endpoints run on FastAPI’s threadpool, so worker count
 still has the usual effect; async <a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a> endpoints share the
 event loop within a worker. Do not use <code class="docutils literal notranslate"><span class="pre">--reload</span></code> in production.</p>
+</section>
+<section id="health-checks">
+<span id="id2"></span><h2>Health checks<a class="headerlink" href="#health-checks" title="Link to this heading">#</a></h2>
+<p>Naming a path in <a class="reference internal" href="api/db.html#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.configure()</span></code></a> mounts an
+endpoint there:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">async_engine</span><span class="o">=</span><span class="n">engine</span><span class="p">,</span> <span class="n">health</span><span class="o">=</span><span class="s2">&quot;/health&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/health</span></code> then answers <code class="docutils literal notranslate"><span class="pre">200</span></code> with <code class="docutils literal notranslate"><span class="pre">{&quot;status&quot;:</span> <span class="pre">&quot;ok&quot;}</span></code>, and appears in <code class="docutils literal notranslate"><span class="pre">/docs</span></code>
+like any other route. The path is yours to choose; <code class="docutils literal notranslate"><span class="pre">/healthz</span></code> and <code class="docutils literal notranslate"><span class="pre">/up</span></code> are
+common alternatives. Omit the argument and there is no such route, and if your
+application already has one at that path, Restly leaves it alone.</p>
+<p>This is a liveness check: it reports that the process is up and answering, and
+makes no database round-trip. It suits a probe that restarts the container on
+failure:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">livenessProbe</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">httpGet</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/health</span>
+<span class="w">    </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8000</span>
+</pre></div>
+</div>
+<p>A readiness probe, which takes the instance out of rotation rather than
+restarting it, is the place to check the database and other dependencies.
+Write that as an ordinary route so its checks and timeouts stay yours.</p>
 </section>
 <section id="see-also">
 <h2>See also<a class="headerlink" href="#see-also" title="Link to this heading">#</a></h2>
@@ -667,7 +756,8 @@ event loop within a worker. Do not use <code class="docutils literal notranslate
 <li><p><a class="reference internal" href="howto_existing_project.html"><span class="std std-doc">Use Restly in an Existing Project</span></a>: wiring
 Restly into an app that already has an engine, sessions, and models.</p></li>
 <li><p><a class="reference internal" href="examples.html"><span class="std std-doc">Examples</span></a>: the production-shaped SaaS example to compare
-against.</p></li>
+against. It includes PostgreSQL Compose services, validated settings, an
+application-owned async engine, migrations, and migration-backed tests.</p></li>
 </ul>
 </section>
 </section>
@@ -723,6 +813,7 @@ against.</p></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#migrations-with-alembic">Migrations with Alembic</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#a-production-main-py-template">A production <code class="docutils literal notranslate"><span class="pre">main.py</span></code> template</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#running-the-app">Running the app</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#health-checks">Health checks</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#see-also">See also</a></li>
 </ul>
   </nav></div>

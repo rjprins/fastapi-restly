@@ -14,3 +14,4 @@ This section is generated with Sphinx autodoc from the public Python API.
    schemas
    views
    testing
+   utils

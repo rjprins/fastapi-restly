@@ -13,6 +13,14 @@ schemas it works from.
 ::::{grid} 1 2 2 2
 :gutter: 3
 
+:::{grid-item-card} Structure a Project
+:link: howto_project_structure
+:link-type: doc
+
+Lay out a growing application by subject, keep imports pointing one way, and
+compose views and models from one place each.
+:::
+
 :::{grid-item-card} Use Restly in an Existing Project
 :link: howto_existing_project
 :link-type: doc
@@ -173,6 +181,7 @@ checklist.
 :maxdepth: 1
 :hidden:
 
+howto_project_structure
 howto_existing_project
 howto_custom_schema
 howto_relationship_idschema

@@ -9,7 +9,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="noindex, follow">
 
-    <title>Query API &#8212; FastAPI-Restly 0.9.0 documentation</title>
+    <title>Utils API &#8212; FastAPI-Restly 0.9.0 documentation</title>
   
   
   
@@ -48,7 +48,7 @@
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../_static/copybutton.js?v=f281be69"></script>
     <script src="../_static/design-tabs.js?v=f930bc37"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'api/query';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api/utils';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://www.fastapi-restly.org/switcher.json';
@@ -57,13 +57,13 @@
             false;
         </script>
     <script src="../_static/newsletter.js?v=e342eb53"></script>
-    <link rel="canonical" href="https://www.fastapi-restly.org/dev/api/query.html" />
+    <link rel="canonical" href="https://www.fastapi-restly.org/dev/api/utils.html" />
     <link rel="icon" href="../_static/favicon.svg"/>
     <link rel="author" title="About these documents" href="../about.html" />
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Schemas API" href="schemas.html" />
-    <link rel="prev" title="Objects API" href="objects.html" />
+    <link rel="next" title="Technical Details" href="../technical_details.html" />
+    <link rel="prev" title="Testing API" href="testing.html" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
@@ -462,11 +462,11 @@
 <li class="toctree-l2"><a class="reference internal" href="exc.html">Exceptions API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="models.html">Models API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="objects.html">Objects API</a></li>
-<li class="toctree-l2 current active"><a class="current reference internal" href="#">Query API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="query.html">Query API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="schemas.html">Schemas API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="views.html">Views API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="testing.html">Testing API</a></li>
-<li class="toctree-l2"><a class="reference internal" href="utils.html">Utils API</a></li>
+<li class="toctree-l2 current active"><a class="current reference internal" href="#">Utils API</a></li>
 </ul>
 </details></li>
 </ul>
@@ -519,7 +519,7 @@
     
     <li class="breadcrumb-item"><a href="index.html" class="nav-link">API Modules</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Query API</span></li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Utils API</span></li>
   </ul>
 </nav>
 </div>
@@ -536,87 +536,53 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="query-api">
-<h1>Query API<a class="headerlink" href="#query-api" title="Link to this heading">#</a></h1>
-<p><code class="docutils literal notranslate"><span class="pre">fastapi_restly.query</span></code> implements list-endpoint filtering, sorting, and
-pagination: <code class="docutils literal notranslate"><span class="pre">create_list_params_schema()</span></code> derives the URL parameter schema
-from a response schema and its model, and <code class="docutils literal notranslate"><span class="pre">apply_list_params()</span></code> applies
-validated parameters to a SQLAlchemy select.</p>
-<dl class="py function" id="module-fastapi_restly.query">
-<dt class="sig sig-object py" id="fastapi_restly.query.apply_list_params">
-<span class="sig-prename descclassname"><span class="pre">fastapi_restly.query.</span></span><span class="sig-name descname"><span class="pre">apply_list_params</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">params</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pydantic.dev/docs/validation/latest/api/pydantic/base_model/#pydantic.BaseModel" title="(in Pydantic v0.0.0)"><span class="pre">BaseModel</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">QueryParams</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">select_query</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.sqlalchemy.org/en/20/core/selectable.html#sqlalchemy.sql.expression.Select" title="(in SQLAlchemy v2.0)"><span class="pre">Select</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/mapping_api.html#sqlalchemy.orm.DeclarativeBase" title="(in SQLAlchemy v2.0)"><span class="pre">DeclarativeBase</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">schema_cls</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://pydantic.dev/docs/validation/latest/api/pydantic/base_model/#pydantic.BaseModel" title="(in Pydantic v0.0.0)"><span class="pre">BaseModel</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.sqlalchemy.org/en/20/core/selectable.html#sqlalchemy.sql.expression.Select" title="(in SQLAlchemy v2.0)"><span class="pre">Select</span></a></span></span><a class="headerlink" href="#fastapi_restly.query.apply_list_params" title="Link to this definition">#</a></dt>
-<dd><p>Apply pagination, sorting, and filtering on a SQL query using validated
-list-endpoint query parameters.</p>
-<p><code class="docutils literal notranslate"><span class="pre">params</span></code> is normally an instance of the schema returned by
-<a class="reference internal" href="#fastapi_restly.query.create_list_params_schema" title="fastapi_restly.query.create_list_params_schema"><code class="xref py py-func docutils literal notranslate"><span class="pre">create_list_params_schema()</span></code></a>. The generated FastAPI endpoints
-always pass a validated instance, so pagination/filter bounds have
-already been checked.</p>
-<p>A raw <code class="xref py py-class docutils literal notranslate"><span class="pre">QueryParams</span></code> is also accepted
-for callers that build the query parameters programmatically.
-<strong>Raw inputs bypass schema validation</strong> — the caller is responsible
-for verifying <code class="docutils literal notranslate"><span class="pre">page</span></code>/<code class="docutils literal notranslate"><span class="pre">page_size</span></code> ranges and any per-view bounds
-(<code class="docutils literal notranslate"><span class="pre">max_page_size</span></code>); this function only performs the minimum coercion
-needed to apply the SQL clauses.</p>
-<p>Examples:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Pagination</span>
-<span class="n">page</span><span class="o">=</span><span class="mi">2</span><span class="o">&amp;</span><span class="n">page_size</span><span class="o">=</span><span class="mi">50</span>
-
-<span class="c1"># Sorting</span>
-<span class="n">sort</span><span class="o">=</span><span class="n">name</span><span class="p">,</span><span class="o">-</span><span class="n">created_at</span>
-
-<span class="c1"># Filtering</span>
-<span class="n">name</span><span class="o">=</span><span class="n">Bob</span><span class="o">&amp;</span><span class="n">status</span><span class="o">=</span><span class="n">active</span><span class="o">&amp;</span><span class="n">created_at__gte</span><span class="o">=</span><span class="mi">2024</span><span class="o">-</span><span class="mi">01</span><span class="o">-</span><span class="mi">01</span>
-
-<span class="c1"># Contains (string fields)</span>
-<span class="n">name__contains</span><span class="o">=</span><span class="n">John</span><span class="o">&amp;</span><span class="n">email__icontains</span><span class="o">=</span><span class="n">example</span>
+  <section id="utils-api">
+<h1>Utils API<a class="headerlink" href="#utils-api" title="Link to this heading">#</a></h1>
+<p><code class="docutils literal notranslate"><span class="pre">fastapi_restly.utils</span></code> holds helpers that belong to no single Restly
+subsystem.</p>
+<p id="module-fastapi_restly.utils">Helpers that belong to no single Restly subsystem.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="fastapi_restly.utils.CurrentSettingsMixin">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.utils.</span></span><span class="sig-name descname"><span class="pre">CurrentSettingsMixin</span></span><a class="headerlink" href="#fastapi_restly.utils.CurrentSettingsMixin" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Give a settings class one shared instance, built the first time it is read.</p>
+<p>Mixed into a <code class="docutils literal notranslate"><span class="pre">pydantic_settings.BaseSettings</span></code> subclass, it replaces the
+module-level instance that would otherwise make importing your application
+require a configured environment:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># myapp/settings.py</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Settings</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">CurrentSettingsMixin</span><span class="p">,</span> <span class="n">BaseSettings</span><span class="p">):</span>
+    <span class="n">database_url</span><span class="p">:</span> <span class="nb">str</span>
 </pre></div>
 </div>
+<p><code class="docutils literal notranslate"><span class="pre">Settings.current</span></code> builds the instance on first read and returns the same
+one after that, so nothing is constructed at import and <code class="docutils literal notranslate"><span class="pre">myapp.main</span></code> stays
+importable without configuration. Alembic and the test suite rely on that.</p>
+<p><code class="docutils literal notranslate"><span class="pre">Settings.use(...)</span></code> installs an instance instead of building one, which is
+how a test suite hands over settings it constructed itself:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># tests/conftest.py</span>
+<span class="n">Settings</span><span class="o">.</span><span class="n">use</span><span class="p">(</span><span class="n">Settings</span><span class="p">(</span><span class="n">database_url</span><span class="o">=...</span><span class="p">,</span> <span class="n">_env_file</span><span class="o">=</span><span class="kc">None</span><span class="p">))</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">current</span></code> and <code class="docutils literal notranslate"><span class="pre">use</span></code> become reserved names on the class: a settings field
+may not use either.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="fastapi_restly.utils.CurrentSettingsMixin.current">
+<span class="sig-name descname"><span class="pre">current</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;fastapi_restly.utils.CurrentSettingsMixin</span> <span class="pre">object&gt;</span></em><a class="headerlink" href="#fastapi_restly.utils.CurrentSettingsMixin.current" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="fastapi_restly.utils.CurrentSettingsMixin.use">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">use</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">instance</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">_T</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">_T</span></span></span><a class="headerlink" href="#fastapi_restly.utils.CurrentSettingsMixin.use" title="Link to this definition">#</a></dt>
+<dd><p>Install an explicit instance as <code class="docutils literal notranslate"><span class="pre">current</span></code>, and return it.</p>
 </dd></dl>
 
-<dl class="py function">
-<dt class="sig sig-object py" id="fastapi_restly.query.create_list_params_schema">
-<span class="sig-prename descclassname"><span class="pre">fastapi_restly.query.</span></span><span class="sig-name descname"><span class="pre">create_list_params_schema</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">schema_cls</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://pydantic.dev/docs/validation/latest/api/pydantic/base_model/#pydantic.BaseModel" title="(in Pydantic v0.0.0)"><span class="pre">BaseModel</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/mapping_api.html#sqlalchemy.orm.DeclarativeBase" title="(in SQLAlchemy v2.0)"><span class="pre">DeclarativeBase</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_page_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">50</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_page_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">paginated</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://pydantic.dev/docs/validation/latest/api/pydantic/base_model/#pydantic.BaseModel" title="(in Pydantic v0.0.0)"><span class="pre">BaseModel</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#fastapi_restly.query.create_list_params_schema" title="Link to this definition">#</a></dt>
-<dd><p>Create a Pydantic model that describes and validates URL query parameters
-for list endpoints.</p>
-<p>The generated model accepts pagination (<code class="docutils literal notranslate"><span class="pre">page</span></code>, <code class="docutils literal notranslate"><span class="pre">page_size</span></code>), sorting
-(<code class="docutils literal notranslate"><span class="pre">sort</span></code>), and one filter parameter per response-schema field that maps to
-a filterable column on <code class="docutils literal notranslate"><span class="pre">model</span></code> – with optional <code class="docutils literal notranslate"><span class="pre">__in</span></code>/<code class="docutils literal notranslate"><span class="pre">__ne</span></code>/<code class="docutils literal notranslate"><span class="pre">__gte</span></code>/
-<code class="docutils literal notranslate"><span class="pre">__lte</span></code>/<code class="docutils literal notranslate"><span class="pre">__gt</span></code>/<code class="docutils literal notranslate"><span class="pre">__lt</span></code>/<code class="docutils literal notranslate"><span class="pre">__isnull</span></code>/<code class="docutils literal notranslate"><span class="pre">__contains</span></code>/<code class="docutils literal notranslate"><span class="pre">__icontains</span></code>
-suffixes. Fields that do not resolve to a column (relationship/collection
-fields, or reference traversals the request path would reject) get no filter
-params, so the generated schema – and the OpenAPI it produces – no longer
-advertises filters for fields that are not filterable at all. Fields whose
-type is a collection (<code class="docutils literal notranslate"><span class="pre">dict</span></code>/<code class="docutils literal notranslate"><span class="pre">list</span></code>, e.g. <code class="docutils literal notranslate"><span class="pre">JSON</span></code> or <code class="docutils literal notranslate"><span class="pre">ARRAY</span></code> columns)
-generate only <code class="docutils literal notranslate"><span class="pre">__isnull</span></code>: a query-string value cannot coerce into them,
-so every other operator would fail at request time.</p>
-<p>When <code class="docutils literal notranslate"><span class="pre">paginated</span></code> is true (the default), <code class="docutils literal notranslate"><span class="pre">page</span></code> and <code class="docutils literal notranslate"><span class="pre">page_size</span></code> are
-added and validated by Pydantic with bounds (<code class="docutils literal notranslate"><span class="pre">page</span> <span class="pre">&gt;=</span> <span class="pre">1</span></code>,
-<code class="docutils literal notranslate"><span class="pre">1</span> <span class="pre">&lt;=</span> <span class="pre">page_size</span> <span class="pre">&lt;=</span> <span class="pre">max_page_size</span></code>); out-of-range values produce a standard
-422 response from FastAPI. When it is false, no pagination parameters are
-emitted at all – the endpoint returns every matching row – while sorting
-and filtering stay available.</p>
-<dl class="simple">
-<dt>Args:</dt><dd><dl class="simple">
-<dt>schema_cls: The response schema whose fields drive the available</dt><dd><p>filter parameters.</p>
-</dd>
-<dt>model: The SQLAlchemy model the list endpoint queries. Used to verify</dt><dd><p>each field resolves to a filterable column; non-column fields are
-omitted from the generated params.</p>
-</dd>
-<dt>default_page_size: Default value for the <code class="docutils literal notranslate"><span class="pre">page_size</span></code> parameter when</dt><dd><p>the client omits it. Only used when <code class="docutils literal notranslate"><span class="pre">paginated</span></code> is true.</p>
-</dd>
-<dt>max_page_size: Upper bound (inclusive) for the <code class="docutils literal notranslate"><span class="pre">page_size</span></code></dt><dd><p>parameter. Defaults to <code class="xref py py-data docutils literal notranslate"><span class="pre">MAX_PAGE_SIZE</span></code>.</p>
-</dd>
-<dt>paginated: Whether to emit <code class="docutils literal notranslate"><span class="pre">page</span></code>/<code class="docutils literal notranslate"><span class="pre">page_size</span></code> parameters. False for</dt><dd><p>an unpaginated view, which returns the full result set.</p>
-</dd>
-</dl>
-</dd>
-</dl>
 </dd></dl>
 
 <div class="admonition seealso">
 <p class="admonition-title">See also</p>
-<p><a class="reference internal" href="../howto_query_modifiers.html"><span class="doc">Filter, Sort, and Paginate Lists</span></a> documents the URL filter, sort, and
-pagination grammar that these helpers implement.</p>
+<p><a class="reference internal" href="../howto_project_structure.html"><span class="doc">Structure a Project</span></a> covers where settings live in an
+application, and why importing your <code class="docutils literal notranslate"><span class="pre">main</span></code> module must not require a
+configured environment.</p>
 </div>
 </section>
 
@@ -631,20 +597,20 @@ pagination grammar that these helpers implement.</p>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="objects.html"
+       href="testing.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Objects API</p>
+        <p class="prev-next-title">Testing API</p>
       </div>
     </a>
     <a class="right-next"
-       href="schemas.html"
+       href="../technical_details.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Schemas API</p>
+        <p class="prev-next-title">Technical Details</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -667,8 +633,11 @@ pagination grammar that these helpers implement.</p>
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.query.apply_list_params"><code class="docutils literal notranslate"><span class="pre">apply_list_params()</span></code></a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.query.create_list_params_schema"><code class="docutils literal notranslate"><span class="pre">create_list_params_schema()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.utils.CurrentSettingsMixin"><code class="docutils literal notranslate"><span class="pre">CurrentSettingsMixin</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.utils.CurrentSettingsMixin.current"><code class="docutils literal notranslate"><span class="pre">CurrentSettingsMixin.current</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.utils.CurrentSettingsMixin.use"><code class="docutils literal notranslate"><span class="pre">CurrentSettingsMixin.use()</span></code></a></li>
+</ul>
+</li>
 </ul>
   </nav></div>
 

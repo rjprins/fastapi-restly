@@ -457,6 +457,7 @@
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="howto_project_structure.html">Structure a Project</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_existing_project.html">Use Restly in an Existing Project</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_custom_schema.html">Custom Schemas and Field Types</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys and Relationships</a></li>
@@ -637,9 +638,9 @@ carries the total:</p>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">ra-data-simple-rest</span></code> requests the path without a trailing slash
-(<code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/products?sort=...</span></code>). Restly registers the collection routes (list and
-create) both with and without the trailing slash, so these requests are
-served directly, with no redirect involved.</p>
+(<code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/products?sort=...</span></code>). Restly registers generated and custom <code class="docutils literal notranslate"><span class="pre">RestView</span></code>
+collection routes both with and without the trailing slash, so these requests
+are served directly, with no redirect involved.</p>
 <p>The <code class="docutils literal notranslate"><span class="pre">id</span></code> array form of <code class="docutils literal notranslate"><span class="pre">filter</span></code> (<code class="docutils literal notranslate"><span class="pre">{&quot;id&quot;:</span> <span class="pre">[1,</span> <span class="pre">2,</span> <span class="pre">3]}</span></code>) is used by react-admin
 for <code class="docutils literal notranslate"><span class="pre">getMany</span></code> calls. It translates to <code class="docutils literal notranslate"><span class="pre">WHERE</span> <span class="pre">id</span> <span class="pre">IN</span> <span class="pre">(1,</span> <span class="pre">2,</span> <span class="pre">3)</span></code>. Other filter
 values match by exact equality, and only fields exposed on the response

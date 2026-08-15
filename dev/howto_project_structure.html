@@ -9,7 +9,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="noindex, follow">
 
-    <title>Customize the OpenAPI Schema &#8212; FastAPI-Restly 0.9.0 documentation</title>
+    <title>Structure a Project &#8212; FastAPI-Restly 0.9.0 documentation</title>
   
   
   
@@ -48,7 +48,7 @@
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="_static/copybutton.js?v=f281be69"></script>
     <script src="_static/design-tabs.js?v=f930bc37"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'howto_openapi';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'howto_project_structure';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://www.fastapi-restly.org/switcher.json';
@@ -57,13 +57,13 @@
             false;
         </script>
     <script src="_static/newsletter.js?v=e342eb53"></script>
-    <link rel="canonical" href="https://www.fastapi-restly.org/dev/howto_openapi.html" />
+    <link rel="canonical" href="https://www.fastapi-restly.org/dev/howto_project_structure.html" />
     <link rel="icon" href="_static/favicon.svg"/>
     <link rel="author" title="About these documents" href="about.html" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Test APIs with RestlyTestClient and Fixtures" href="howto_testing.html" />
-    <link rel="prev" title="React Admin Integration" href="howto_react_admin.html" />
+    <link rel="next" title="Use Restly in an Existing Project" href="howto_existing_project.html" />
+    <link rel="prev" title="How-To Guides" href="user_guide.html" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
@@ -457,7 +457,7 @@
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="howto_project_structure.html">Structure a Project</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Structure a Project</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_existing_project.html">Use Restly in an Existing Project</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_custom_schema.html">Custom Schemas and Field Types</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys and Relationships</a></li>
@@ -470,7 +470,7 @@
 <li class="toctree-l1"><a class="reference internal" href="howto_compose_views_with_mixins.html">Compose Views with Mixins</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_typing.html">Use Type Annotations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_react_admin.html">React Admin Integration</a></li>
-<li class="toctree-l1 current active"><a class="current reference internal" href="#">Customize the OpenAPI Schema</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_openapi.html">Customize the OpenAPI Schema</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_testing.html">Test APIs with RestlyTestClient and Fixtures</a></li>
 <li class="toctree-l1"><a class="reference internal" href="deploying.html">Deploying</a></li>
 </ul>
@@ -516,7 +516,7 @@
     
     <li class="breadcrumb-item"><a href="user_guide.html" class="nav-link">How-To Guides</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Customize the OpenAPI Schema</span></li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Structure a Project</span></li>
   </ul>
 </nav>
 </div>
@@ -533,72 +533,187 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="customize-the-openapi-schema">
-<h1>Customize the OpenAPI Schema<a class="headerlink" href="#customize-the-openapi-schema" title="Link to this heading">#</a></h1>
-<p>Restly’s generated routes are ordinary FastAPI path operations, so everything
-OpenAPI-related composes the FastAPI way. This page maps the customization
-points.</p>
-<section id="per-view-metadata">
-<h2>Per-view metadata<a class="headerlink" href="#per-view-metadata" title="Link to this heading">#</a></h2>
-<p>To apply OpenAPI metadata across a whole view, set the
-<a class="reference internal" href="api/views.html#fastapi_restly.views.View.tags" title="fastapi_restly.views.View.tags"><code class="xref py py-attr docutils literal notranslate"><span class="pre">tags</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.View.responses" title="fastapi_restly.views.View.responses"><code class="xref py py-attr docutils literal notranslate"><span class="pre">responses</span></code></a>, and <a class="reference internal" href="api/views.html#fastapi_restly.views.View.dependencies" title="fastapi_restly.views.View.dependencies"><code class="xref py py-attr docutils literal notranslate"><span class="pre">dependencies</span></code></a> class attributes;
-they exist on every view and apply to all of its routes, generated and custom:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">InvoiceView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
-    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/invoices&quot;</span>
-    <span class="n">tags</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;billing&quot;</span><span class="p">]</span>
-    <span class="n">responses</span> <span class="o">=</span> <span class="p">{</span><span class="mi">402</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Payment required&quot;</span><span class="p">}}</span>
-    <span class="n">model</span> <span class="o">=</span> <span class="n">Invoice</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">InvoiceRead</span>
+  <section id="structure-a-project">
+<h1>Structure a Project<a class="headerlink" href="#structure-a-project" title="Link to this heading">#</a></h1>
+<p>Restly does not impose a project layout. Views are ordinary Python classes and
+<a class="reference internal" href="api/views.html#fastapi_restly.views.include_view" title="fastapi_restly.views.include_view"><code class="xref py py-func docutils literal notranslate"><span class="pre">include_view()</span></code></a> is an ordinary function call, so any arrangement of
+modules that Python can import will work. This page describes the layout we
+recommend anyway, so that a growing application does not have to invent one,
+and explains what each part of it buys you.</p>
+<section id="start-with-one-file">
+<h2>Start with one file<a class="headerlink" href="#start-with-one-file" title="Link to this heading">#</a></h2>
+<p>A single module is the right shape for a first resource.
+<a class="reference internal" href="getting_started.html"><span class="std std-doc">Getting Started</span></a> builds a complete application in one
+file, and nothing is gained by splitting it while it stays that size.</p>
+<p>Split when the second or third resource arrives, or when one resource grows
+explicit schemas and a handful of overrides. The signal is scrolling: when you
+navigate the file by searching rather than by reading, it holds more than one
+subject.</p>
+</section>
+<section id="organize-by-subject-then-by-type">
+<h2>Organize by subject, then by type<a class="headerlink" href="#organize-by-subject-then-by-type" title="Link to this heading">#</a></h2>
+<p>Give each resource a package, and name the modules inside it after the kind of
+code they hold:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>myapp/
+├── main.py                 # Application factory and lifespan
+├── asgi.py                 # app = create_app(), the deployment entrypoint
+├── api.py                  # View registration
+├── settings.py             # Pydantic settings
+├── views.py                # Shared base view and mixins
+├── users/
+│   ├── __init__.py
+│   ├── models.py
+│   ├── schemas.py
+│   └── views.py
+└── tasks/
+    ├── __init__.py
+    ├── models.py
+    ├── schemas.py
+    └── views.py
 </pre></div>
 </div>
+<p>The alternative is to organize by type first: a top-level <code class="docutils literal notranslate"><span class="pre">models/</span></code>,
+<code class="docutils literal notranslate"><span class="pre">schemas/</span></code>, and <code class="docutils literal notranslate"><span class="pre">views/</span></code> package, each holding one module per resource. That
+layout is common and it works, but it scatters every change across three
+directories.</p>
+<p>Subject-first suits Restly in particular. A view names its model, names its
+schema, and carries the overrides for both, so the three modules are one unit
+of work: adding a field touches the model, the schema, and usually a business
+method, and all three sit in the same directory. Type-first organization is
+the better fit for Restly’s own source, where <code class="docutils literal notranslate"><span class="pre">models</span></code>, <code class="docutils literal notranslate"><span class="pre">schemas</span></code>, and <code class="docutils literal notranslate"><span class="pre">views</span></code>
+really are separate subsystems, and the worse fit for an application, where
+they are three views of one resource.</p>
+<p>Name each package after the route segment it serves, so <code class="docutils literal notranslate"><span class="pre">users/</span></code> serves
+<code class="docutils literal notranslate"><span class="pre">/users</span></code>.</p>
 </section>
-<section id="per-route-metadata-on-custom-routes">
-<h2>Per-route metadata on custom routes<a class="headerlink" href="#per-route-metadata-on-custom-routes" title="Link to this heading">#</a></h2>
-<p>To document a custom route, pass keyword arguments to its route decorator;
-the decorators forward them to FastAPI’s <code class="docutils literal notranslate"><span class="pre">add_api_route()</span></code>, so
-custom actions document themselves like any FastAPI endpoint:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
-        <span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">/publish&quot;</span><span class="p">,</span>
-        <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
-        <span class="n">summary</span><span class="o">=</span><span class="s2">&quot;Publish an article&quot;</span><span class="p">,</span>
-        <span class="n">responses</span><span class="o">=</span><span class="p">{</span><span class="mi">409</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Already published&quot;</span><span class="p">}},</span>
-    <span class="p">)</span>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">publish</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span> <span class="o">...</span>
+<section id="keep-imports-pointing-one-way">
+<h2>Keep imports pointing one way<a class="headerlink" href="#keep-imports-pointing-one-way" title="Link to this heading">#</a></h2>
+<p>Within a subject, models import nothing from their siblings, schemas import
+models, and views import both. Application composition imports the views. That
+ordering keeps subjects importable in isolation, which matters for Alembic,
+which loads models without an application, and for tests, which load one view
+without the rest of the app.</p>
+<p>Nothing in a subject package should register itself as a side effect of being
+imported. Keep <code class="docutils literal notranslate"><span class="pre">__init__.py</span></code> empty or limited to a docstring, and import
+concrete modules rather than building re-export modules that pull in a whole
+subject to reach one class.</p>
+</section>
+<section id="compose-in-one-place">
+<span id="id1"></span><h2>Compose in one place<a class="headerlink" href="#compose-in-one-place" title="Link to this heading">#</a></h2>
+<p>Restly has no autodiscovery. Nothing scans your package for views or models,
+which is why the layout above registers them in one place instead. The
+tradeoff is deliberate: your <code class="docutils literal notranslate"><span class="pre">create_app()</span></code> stays yours, and the set of
+registered views is something you can read rather than infer.</p>
+<p><code class="docutils literal notranslate"><span class="pre">api.py</span></code> registers every view on the application:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># myapp/api.py</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">FastAPI</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.tasks.views</span><span class="w"> </span><span class="kn">import</span> <span class="n">TaskView</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.users.views</span><span class="w"> </span><span class="kn">import</span> <span class="n">UserView</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">register_views</span><span class="p">(</span><span class="n">app</span><span class="p">:</span> <span class="n">FastAPI</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">view</span> <span class="ow">in</span> <span class="p">(</span><span class="n">TaskView</span><span class="p">,</span> <span class="n">UserView</span><span class="p">):</span>
+        <span class="n">fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">view</span><span class="p">)</span>
 </pre></div>
 </div>
+<p>The factory then calls it after
+<a class="reference internal" href="api/db.html#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.configure(app,</span> <span class="pre">...)</span></code></a>, as shown in
+<a class="reference internal" href="deploying.html#production-main-template"><span class="std std-ref">A production <code class="docutils literal notranslate"><span class="pre">main.py</span></code> template</span></a>.</p>
+<p>Subject-first layouts leave one question open, which the rest of this section
+settles: which module has seen every model. Start with where the models are
+collected. Most applications never declare a declarative base of their own.
+Models inherit
+<a class="reference internal" href="api/models.html#fastapi_restly.models.IDBase" title="fastapi_restly.models.IDBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDBase</span></code></a> or
+<a class="reference internal" href="api/models.html#fastapi_restly.models.DataclassBase" title="fastapi_restly.models.DataclassBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.DataclassBase</span></code></a>, and because
+<code class="docutils literal notranslate"><span class="pre">IDBase</span></code> subclasses <code class="docutils literal notranslate"><span class="pre">DataclassBase</span></code> they share one <code class="docutils literal notranslate"><span class="pre">MetaData</span></code>, so the
+application schema is <code class="docutils literal notranslate"><span class="pre">fr.DataclassBase.metadata</span></code>. Declare your own base only
+when you need different mapping defaults, put it in a root <code class="docutils literal notranslate"><span class="pre">models.py</span></code>, and use
+it wherever this page names <code class="docutils literal notranslate"><span class="pre">fr.DataclassBase</span></code>.</p>
+<p>A base describes the models that have been imported and nothing else, so the
+layout needs one module that has imported all of them. That module is
+<code class="docutils literal notranslate"><span class="pre">main.py</span></code>. It reaches <code class="docutils literal notranslate"><span class="pre">api.py</span></code>, which reaches every view, and each view imports
+its model. Nothing else should have to be named: <code class="docutils literal notranslate"><span class="pre">main.py</span></code> is the one module
+every application has, so tools can rely on it without knowing how the rest is
+arranged.</p>
+<p>This works only because the factory keeps <code class="docutils literal notranslate"><span class="pre">main.py</span></code> free of side effects.
+Importing it defines <code class="docutils literal notranslate"><span class="pre">create_app()</span></code> and builds nothing, so a test suite can
+name its own database rather than setting environment variables before its
+imports. Never put <code class="docutils literal notranslate"><span class="pre">app</span> <span class="pre">=</span> <span class="pre">create_app()</span></code> at module level there: with settings
+that have no defaults, importing the module would then require a configured
+environment, and the test suite is the first thing to break. The application
+object belongs in <code class="docutils literal notranslate"><span class="pre">asgi.py</span></code>, which only the server imports; see
+<a class="reference internal" href="deploying.html#id1"><span class="std std-ref">Running the app</span></a>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">alembic/env.py</span></code> imports it before reading <code class="docutils literal notranslate"><span class="pre">target_metadata</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># alembic/env.py</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">myapp.main</span>  <span class="c1"># noqa: F401  (imports every view, and each view its model)</span>
+
+<span class="n">target_metadata</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">DataclassBase</span><span class="o">.</span><span class="n">metadata</span>
+</pre></div>
+</div>
+<p>A <code class="docutils literal notranslate"><span class="pre">conftest.py</span></code> that asks <code class="docutils literal notranslate"><span class="pre">configure_tests()</span></code> to run <code class="docutils literal notranslate"><span class="pre">create_all</span></code> needs the
+same coverage and usually has it already, since the app it passes was built by
+the factory. Import <code class="docutils literal notranslate"><span class="pre">myapp.main</span></code> there too when the suite reaches for a base
+without building an application first.</p>
+<p>That leaves models no view reaches, such as an outbox or audit table. Import
+those at module level wherever the application uses them, rather than inside a
+function, so they stay on the same graph. A model nothing in the application
+uses, written only by a worker or a script, goes in <code class="docutils literal notranslate"><span class="pre">api.py</span></code> beside the views,
+which keeps every such import in one place.
+Getting it wrong is not silent: <code class="docutils literal notranslate"><span class="pre">alembic</span> <span class="pre">check</span></code> compares metadata against the
+database and reports a missing model as a dropped table, so run it in CI. See
+<a class="reference internal" href="deploying.html#migrations-with-alembic"><span class="std std-ref">Migrations with Alembic</span></a> and
+<a class="reference internal" href="howto_testing.html"><span class="std std-doc">Test APIs with RestlyTestClient and Fixtures</span></a>.</p>
 </section>
-<section id="change-a-generated-route-s-documented-contract">
-<h2>Change a generated route’s documented contract<a class="headerlink" href="#change-a-generated-route-s-documented-contract" title="Link to this heading">#</a></h2>
-<p>A generated route’s <code class="docutils literal notranslate"><span class="pre">response_model</span></code> (and therefore its documented schema)
-comes from the view’s <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema" title="fastapi_restly.views.BaseRestView.schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema</span></code></a> family. To document (and return) a different
-shape on one verb, replace that endpoint method with your own decorator and
-<code class="docutils literal notranslate"><span class="pre">response_model</span></code>; see
-<a class="reference internal" href="howto_response_schema.html"><span class="std std-doc">Response Envelopes and List Metadata</span></a>,
-<a class="reference internal" href="patterns.html#a-different-schema-for-the-list-endpoint"><span class="std std-ref">a different schema for the list endpoint</span></a>,
-and <a class="reference internal" href="customize.html#replace-an-endpoint-method-to-change-the-http-contract"><span class="std std-ref">replacing an endpoint method</span></a>.</p>
-<p>Routes removed with <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.exclude_routes" title="fastapi_restly.views.BaseRestView.exclude_routes"><code class="xref py py-attr docutils literal notranslate"><span class="pre">exclude_routes</span></code></a> disappear from the schema entirely.</p>
+<section id="share-view-behavior-from-the-package-root">
+<h2>Share view behavior from the package root<a class="headerlink" href="#share-view-behavior-from-the-package-root" title="Link to this heading">#</a></h2>
+<p>Behavior common to every view belongs in a root <code class="docutils literal notranslate"><span class="pre">views.py</span></code>: the base class your
+views inherit from, plus any mixins. The subject packages hold concrete views,
+and the root module holds the foundation they are built on.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># myapp/users/views.py</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..views</span><span class="w"> </span><span class="kn">import</span> <span class="n">TenantBase</span><span class="p">,</span> <span class="n">SoftDeleteMixin</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">User</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.schemas</span><span class="w"> </span><span class="kn">import</span> <span class="n">UserRead</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">SoftDeleteMixin</span><span class="p">,</span> <span class="n">TenantBase</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserRead</span>
+</pre></div>
+</div>
+<p><a class="reference internal" href="howto_inheritance.html"><span class="std std-doc">Share Behaviour with Base Views</span></a> covers the base class,
+and <a class="reference internal" href="howto_compose_views_with_mixins.html"><span class="std std-doc">Compose Views with Mixins</span></a> covers the
+mixins.</p>
 </section>
-<section id="resource-references-x-resource-ref">
-<h2>Resource references (<code class="docutils literal notranslate"><span class="pre">x-resource-ref</span></code>)<a class="headerlink" href="#resource-references-x-resource-ref" title="Link to this heading">#</a></h2>
-<p>Reference fields are annotated in the generated spec so clients and
-generators can see which resource a scalar id points at. Schema fields
-declared with <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.MustExist[int,</span> <span class="pre">Model]</span></code></a>
-(a foreign-key column) or <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDRef[Model]</span></code></a> /
-<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDSchema[Model]</span></code></a> (a relationship)
-carry the vendor extension <code class="docutils literal notranslate"><span class="pre">x-resource-ref:</span> <span class="pre">&quot;&lt;resource-name&gt;&quot;</span></code>. The reference
-styles are covered in
-<a class="reference internal" href="howto_relationship_idschema.html"><span class="std std-doc">Work with Foreign Keys and Relationships</span></a>.</p>
-<p>There is a known limit: views included on an <code class="docutils literal notranslate"><span class="pre">APIRouter</span></code> rather than the app
-currently lose these annotations.</p>
+<section id="add-modules-when-they-earn-them">
+<h2>Add modules when they earn them<a class="headerlink" href="#add-modules-when-they-earn-them" title="Link to this heading">#</a></h2>
+<p>Resist creating a module before there is something to put in it. In
+particular, a subject does not need a <code class="docutils literal notranslate"><span class="pre">service.py</span></code>. For CRUD, the view class is
+already that layer: business methods such as
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create" title="fastapi_restly.views.RestView.create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create</span></code></a> and
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.update" title="fastapi_restly.views.RestView.update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">update</span></code></a> are where your logic
+goes, and an extra layer that forwards to them adds indirection without
+adding a seam. Write a <code class="docutils literal notranslate"><span class="pre">service.py</span></code> when logic genuinely runs outside a
+request, such as work shared with a background worker.</p>
+<p>The same applies to <code class="docutils literal notranslate"><span class="pre">dependencies.py</span></code>, <code class="docutils literal notranslate"><span class="pre">constants.py</span></code>, and <code class="docutils literal notranslate"><span class="pre">exceptions.py</span></code>
+inside a subject. Each is worth having once it holds more than one item.</p>
+<p>Keep application-wide concerns in top-level modules named for what they do,
+such as <code class="docutils literal notranslate"><span class="pre">auth.py</span></code>, <code class="docutils literal notranslate"><span class="pre">settings.py</span></code>, or <code class="docutils literal notranslate"><span class="pre">outbox.py</span></code>, and promote one to a package
+only when it grows several cohesive modules.</p>
 </section>
 <section id="see-also">
 <h2>See also<a class="headerlink" href="#see-also" title="Link to this heading">#</a></h2>
 <ul class="simple">
-<li><p><a class="reference internal" href="class_based_views.html"><span class="std std-doc">Class-Based Views</span></a>: where the class-level attributes
-come from.</p></li>
-<li><p><a class="reference internal" href="api_reference.html#endpoint-decorators"><span class="std std-ref">Endpoint Decorators</span></a>: the decorator
-surface and pass-through keyword arguments.</p></li>
+<li><p><a class="reference internal" href="examples.html#saas"><span class="std std-ref">SaaS example</span></a>, a complete application in this layout</p></li>
+<li><p><a class="reference internal" href="deploying.html"><span class="std std-doc">Deploying</span></a> for the factory, engine, and Alembic setup</p></li>
+<li><p><a class="reference internal" href="howto_testing.html"><span class="std std-doc">Test APIs with RestlyTestClient and Fixtures</span></a> for the
+matching <code class="docutils literal notranslate"><span class="pre">conftest.py</span></code></p></li>
+<li><p><a class="reference internal" href="howto_existing_project.html"><span class="std std-doc">Use Restly in an Existing Project</span></a> when the
+layout is already decided</p></li>
 </ul>
 </section>
 </section>
@@ -614,20 +729,20 @@ surface and pass-through keyword arguments.</p></li>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="howto_react_admin.html"
+       href="user_guide.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">React Admin Integration</p>
+        <p class="prev-next-title">How-To Guides</p>
       </div>
     </a>
     <a class="right-next"
-       href="howto_testing.html"
+       href="howto_existing_project.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Test APIs with RestlyTestClient and Fixtures</p>
+        <p class="prev-next-title">Use Restly in an Existing Project</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -650,10 +765,12 @@ surface and pass-through keyword arguments.</p></li>
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#per-view-metadata">Per-view metadata</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#per-route-metadata-on-custom-routes">Per-route metadata on custom routes</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#change-a-generated-route-s-documented-contract">Change a generated route’s documented contract</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#resource-references-x-resource-ref">Resource references (<code class="docutils literal notranslate"><span class="pre">x-resource-ref</span></code>)</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#start-with-one-file">Start with one file</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#organize-by-subject-then-by-type">Organize by subject, then by type</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#keep-imports-pointing-one-way">Keep imports pointing one way</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#compose-in-one-place">Compose in one place</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#share-view-behavior-from-the-package-root">Share view behavior from the package root</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#add-modules-when-they-earn-them">Add modules when they earn them</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#see-also">See also</a></li>
 </ul>
   </nav></div>
