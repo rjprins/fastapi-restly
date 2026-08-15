@@ -35,8 +35,9 @@ if not config.get_main_option("sqlalchemy.url"):
 
 target_metadata = fr.DataclassBase.metadata
 
-# SQLite has no real ALTER TABLE, so Alembic must rebuild a table to change one.
-# Safe to leave on everywhere: it only takes effect for SQLite.
+# SQLite has no real ALTER TABLE, so Alembic rebuilds a table to change one.
+# Autogenerate then writes batch_alter_table blocks on every dialect, and only
+# SQLite actually does the rebuild. Without this a second migration fails there.
 RENDER_AS_BATCH = True
 
 

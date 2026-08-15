@@ -10,8 +10,8 @@ and explains what each part of it buys you.
 
 ## Generate it
 
-`restly new` writes this layout, with one worked resource, a test suite, and
-the Alembic and settings wiring already in place:
+`restly new` writes the layout below, with one worked resource, a test suite,
+and the settings and schema wiring already in place:
 
 ```bash
 pip install fastapi-restly
@@ -24,12 +24,16 @@ Three choices shape the result, each with a flag and a prompt:
 |---|---|---|
 | Views and driver | `--async` | `--sync` |
 | Database | `--postgres`, with a `compose.yaml` | `--sqlite` |
-| Schema | `--alembic` | `--create-all`, for the test suite |
+| Schema | `--alembic` | `--create-all`, built at startup and in tests |
 
-`restly new myapp --sync --sqlite --create-all` takes every alternative, and
-`--yes` accepts the defaults without prompting. The command prints the next
-steps for the combination it generated. The rest of this page explains what it
-emitted, and is worth reading whether or not you used it.
+`restly new myapp --sync --sqlite --create-all` takes every alternative. Two
+more flags do not vary the project: `--yes` accepts the defaults without
+prompting, and `--directory` writes somewhere other than `./myapp`. The command
+prints the next steps for the combination it generated.
+
+One resource is enough to start, so the generated project has no `views.py` and
+no `api.py`. Both appear below, as things to add once they earn their place.
+The rest of this page is worth reading whether or not you used the command.
 
 ## Start with one file
 

@@ -34,6 +34,17 @@ import sys
 import psycopg
 
 url = sys.argv[1].replace('postgresql+psycopg', 'postgresql')
+database = psycopg.conninfo.conninfo_to_dict(url).get('dbname', '')
+
+# This drops every table. RESTLY_TEST_DATABASE_URL is developer-settable, so
+# refuse anything that is not visibly a throwaway rather than trusting it.
+if 'test' not in database:
+    raise SystemExit(
+        f'Refusing to reset {database!r}: the scaffold matrix drops every table, '
+        'so it only runs against a database with \"test\" in its name. Point '
+        'RESTLY_TEST_DATABASE_URL at a throwaway database.'
+    )
+
 with psycopg.connect(url, autocommit=True) as connection:
     connection.execute('DROP SCHEMA public CASCADE')
     connection.execute('CREATE SCHEMA public')
@@ -79,13 +90,25 @@ from pathlib import Path
 from fastapi_restly._scaffold._generate import Options, generate
 
 options = Options(
-    name='myapp',
+    name='demoapp',
     is_async=$( [ "$is_async" = async ] && echo True || echo False ),
     postgres=$( [ "$database" = postgres ] && echo True || echo False ),
     alembic=$( [ "$migrations" = alembic ] && echo True || echo False ),
 )
-destination = Path('$dir/myapp')
+destination = Path('$dir/demoapp')
 generate(options, destination)
+
+# Deliberately not the placeholder name: generating as 'myapp' would hide any
+# occurrence the rename fails to reach, which is how a stale compose database
+# name once survived.
+survivors = [
+    str(path)
+    for path in destination.rglob('*')
+    if 'myapp' in path.name
+    or (path.is_file() and 'myapp' in path.read_text('utf-8'))
+]
+if survivors:
+    raise SystemExit('placeholder survived renaming in: ' + ', '.join(survivors))
 
 # Install the framework from this checkout rather than PyPI. Deliberately not
 # editable: an editable install is a path hook pyright cannot always follow, and
@@ -96,7 +119,7 @@ pyproject.write_text(
     + '\n[tool.uv.sources]\nfastapi-restly = { path = \"$REPO\" }\n'
 )
 "
-        cd "$dir/myapp"
+        cd "$dir/demoapp"
 
         if [ "$database" = postgres ]; then
             if [ -z "${RESTLY_TEST_DATABASE_URL:-}" ]; then

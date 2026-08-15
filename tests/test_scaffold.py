@@ -28,6 +28,7 @@ from fastapi_restly._scaffold._generate import (
     build_env_example,
     build_files,
     build_pyproject,
+    build_pyrightconfig,
     build_readme,
     generate,
     rename,
@@ -161,16 +162,22 @@ def test_a_single_overlay_is_composited_on_its_own(tmp_path):
     "options, expected",
     [
         (Options(name="shop"), ("base", "app_async", "db_postgres", "alembic_async")),
-        (Options(name="shop", alembic=False), ("base", "app_async", "db_postgres")),
+        (
+            Options(name="shop", alembic=False),
+            ("base", "app_async", "db_postgres", "createall_async"),
+        ),
         (Options(name="shop", postgres=False), ("base", "app_async", "alembic_async")),
-        (Options(name="shop", postgres=False, alembic=False), ("base", "app_async")),
+        (
+            Options(name="shop", postgres=False, alembic=False),
+            ("base", "app_async", "createall_async"),
+        ),
         (
             Options(name="shop", is_async=False),
             ("base", "app_sync", "db_postgres", "alembic_sync"),
         ),
         (
             Options(name="shop", is_async=False, alembic=False),
-            ("base", "app_sync", "db_postgres"),
+            ("base", "app_sync", "db_postgres", "createall_sync"),
         ),
         (
             Options(name="shop", is_async=False, postgres=False),
@@ -178,7 +185,7 @@ def test_a_single_overlay_is_composited_on_its_own(tmp_path):
         ),
         (
             Options(name="shop", is_async=False, postgres=False, alembic=False),
-            ("base", "app_sync"),
+            ("base", "app_sync", "createall_sync"),
         ),
     ],
     ids=[
@@ -218,6 +225,11 @@ def test_base_is_always_first_and_the_app_overlay_second(options):
         ("# myapp, myapp; myapp!", "# shop, shop; shop!"),
         ("path/to/myapp/main.py", "path/to/shop/main.py"),
         ('name = "myapp"', 'name = "shop"'),
+        # Identifiers derived from the package name move with it. The compose
+        # test database is the one that matters: it has to keep agreeing with
+        # the URL in tests/conftest.py.
+        ("POSTGRES_DB: myapp_test", "POSTGRES_DB: shop_test"),
+        ("myapp-data:/var/lib", "shop-data:/var/lib"),
     ],
 )
 def test_rename_replaces_whole_words(text, expected):
@@ -229,7 +241,6 @@ def test_rename_replaces_whole_words(text, expected):
     [
         "myapplication",
         "my_myapp_thing",
-        "myapp_extra",
         "extra_myapp",
         "myappy",
         "notmyapp",
@@ -458,13 +469,32 @@ def test_database_url(options, expected):
 # ---------------------------------------------------------------------------
 
 
-def test_build_files_covers_the_four_mixed_files():
+def test_build_files_covers_every_mixed_file():
     assert set(build_files(Options(name="shop"))) == {
         "pyproject.toml",
         ".env.example",
         "tests/conftest.py",
         "README.md",
+        "pyrightconfig.json",
     }
+
+
+@pytest.mark.parametrize("options", ALL_COMBINATIONS, ids=_combination_id)
+def test_no_built_file_leaks_the_placeholder(options):
+    """Built files are written as-is, never through ``rename``, so each one has
+    to reach for the project name itself."""
+    for name, content in build_files(options).items():
+        assert PLACEHOLDER not in content, name
+
+
+@pytest.mark.parametrize("options", ALL_COMBINATIONS, ids=_combination_id)
+def test_pyrightconfig_covers_the_alembic_environment(options):
+    """env.py is a file the scaffold ships, so it should be type-checked. The
+    migrations under alembic/versions are Alembic's output, so they are not."""
+    config = build_pyrightconfig(options)
+
+    assert (f'"{options.name}", "tests", "alembic"' in config) is options.alembic
+    assert ('"alembic/versions"' in config) is options.alembic
 
 
 def test_pyproject_uses_the_project_name():
@@ -637,6 +667,8 @@ def test_generate_composites_overlays_in_option_order(tmp_path):
             "base/myapp/main.py": "base\n",
             "app_async/myapp/main.py": "async\n",
             "app_sync/myapp/main.py": "sync\n",
+            "createall_async/keep.txt": "",
+            "createall_sync/keep.txt": "",
         },
     )
 
@@ -704,7 +736,7 @@ def test_a_name_that_is_not_an_identifier_is_rejected(name, capsys):
         _cli.main(["new", name])
 
     assert exit_info.value.code == 2
-    assert "not usable as a Python package name" in capsys.readouterr().err
+    assert "not usable as a package and project name" in capsys.readouterr().err
 
 
 @pytest.mark.parametrize("name", ["class", "import", "None", "lambda"])
@@ -713,7 +745,7 @@ def test_a_python_keyword_is_rejected(name, capsys):
         _cli.main(["new", name])
 
     assert exit_info.value.code == 2
-    assert "not usable as a Python package name" in capsys.readouterr().err
+    assert "not usable as a package and project name" in capsys.readouterr().err
 
 
 def test_a_non_empty_destination_is_refused(tmp_path, capsys):
@@ -838,8 +870,8 @@ def test_answering_with_the_default_side_is_taken_as_an_answer(monkeypatch):
 
 def test_next_steps_mention_compose_only_for_postgres():
     """A SQLite project has no compose.yaml, so it must not be told to run it."""
-    postgres = _cli._next_steps(Options(name="shop"))
-    sqlite = _cli._next_steps(Options(name="shop", postgres=False))
+    postgres = _cli._next_steps(Options(name="shop"), Path("shop"))
+    sqlite = _cli._next_steps(Options(name="shop", postgres=False), Path("shop"))
 
     assert any("docker compose" in step for step in postgres)
     assert not any("docker compose" in step for step in sqlite)
@@ -870,3 +902,137 @@ def test_a_missing_subcommand_is_rejected(capsys):
 
     assert exit_info.value.code == 2
     assert "required" in capsys.readouterr().err
+
+
+# ---------------------------------------------------------------------------
+# Name and destination validation (regressions found in review)
+# ---------------------------------------------------------------------------
+
+
+def test_the_compose_test_database_moves_with_the_project_name(tmp_path):
+    """`\\bmyapp\\b` left `myapp_test` alone, because an underscore is a word
+    character, so compose and the test URL named different databases."""
+    generate(Options(name="blog"), tmp_path / "blog")
+
+    compose = (tmp_path / "blog" / "compose.yaml").read_text()
+    conftest = (tmp_path / "blog" / "tests" / "conftest.py").read_text()
+
+    assert "myapp" not in compose
+    assert "POSTGRES_DB: blog_test" in compose
+    assert "blog_test" in conftest
+
+
+@pytest.mark.parametrize("name", ["_internal", "trailing_", "_", "1st"])
+def test_names_pyproject_would_reject_are_refused(name, tmp_path, capsys):
+    """The name is also `[project] name`, where PEP 508 forbids a leading or
+    trailing underscore."""
+    with pytest.raises(SystemExit):
+        _cli.main(["new", name, "--directory", str(tmp_path / "out"), "-y"])
+
+    assert not (tmp_path / "out").exists()
+
+
+@pytest.mark.parametrize("name", ["alembic", "tests", "json"])
+def test_names_that_would_collide_are_refused(name, tmp_path):
+    """`alembic` would put the package on top of the migration directory, and
+    `pythonpath = ["."]` puts a stdlib name ahead of the standard library."""
+    with pytest.raises(SystemExit):
+        _cli.main(["new", name, "--directory", str(tmp_path / "out"), "-y"])
+
+    assert not (tmp_path / "out").exists()
+
+
+def test_a_destination_that_is_a_file_is_refused(tmp_path):
+    """Otherwise iterdir raises NotADirectoryError as an unhandled traceback."""
+    blocker = tmp_path / "blocker"
+    blocker.write_text("not a directory")
+
+    with pytest.raises(SystemExit):
+        _cli.main(["new", "shop", "--directory", str(blocker), "-y"])
+
+    assert blocker.read_text() == "not a directory"
+
+
+def test_next_steps_cd_into_the_directory_that_was_written(tmp_path, capsys):
+    """`cd <name>` is wrong whenever --directory sent the project elsewhere."""
+    destination = tmp_path / "somewhere" / "else"
+
+    assert _cli.main(["new", "shop", "--directory", str(destination), "-y"]) == 0
+
+    out = capsys.readouterr().out
+    assert f"cd {destination}" in out
+
+
+@pytest.mark.parametrize(
+    "options",
+    [options for options in ALL_COMBINATIONS if not options.alembic],
+    ids=_combination_id,
+)
+def test_create_all_projects_build_their_schema_at_startup(options, tmp_path):
+    """Without migrations, nothing else would create the development schema, so
+    the first request against a fresh database would fail."""
+    generate(options, tmp_path / "shop")
+
+    main = (tmp_path / "shop" / "shop" / "main.py").read_text()
+    call = "async_create_all" if options.is_async else "create_all"
+
+    assert f"fr.db.{call}(fr.DataclassBase)" in main
+    assert "lifespan=lifespan" in main
+
+
+@pytest.mark.parametrize(
+    "options",
+    [options for options in ALL_COMBINATIONS if options.alembic],
+    ids=_combination_id,
+)
+def test_alembic_projects_never_create_tables_themselves(options, tmp_path):
+    """Alembic owns the schema; a startup create_all would silently diverge."""
+    generate(options, tmp_path / "shop")
+
+    assert "create_all" not in (tmp_path / "shop" / "shop" / "main.py").read_text()
+
+
+def _template_names() -> tuple[set[str], set[str]]:
+    """Overlay directory names, and every file name under the shipped tree.
+
+    Walks the ``Traversable`` API rather than converting to ``Path``: the
+    templates resolve to a ``MultiplexedPath`` whose ``str()`` is not a usable
+    filesystem path, so a Path-based walk silently finds nothing.
+    """
+    from importlib.resources import files
+
+    root = files("fastapi_restly._scaffold.templates")
+    overlays = {child.name for child in root.iterdir() if child.is_dir()}
+    file_names = {
+        relative.name for relative, _ in _walk_all(root) if relative.name != ""
+    }
+    return overlays, file_names
+
+
+def _walk_all(node, prefix=Path()):
+    for child in node.iterdir():
+        relative = prefix / child.name
+        if child.is_dir():
+            yield from _walk_all(child, relative)
+        else:
+            yield relative, child
+
+
+def test_no_template_file_is_dot_prefixed():
+    """setuptools' ``package-data`` glob cannot match a leading dot, so a
+    dot-prefixed template would be missing from the wheel while every check in a
+    source checkout stayed green. Dotfiles are stored dot-less and restored by
+    ``DOTFILE_NAMES`` instead."""
+    _, file_names = _template_names()
+
+    assert file_names, "walked no template files at all"
+    assert [name for name in file_names if name.startswith(".")] == []
+
+
+def test_every_shipped_overlay_is_reachable():
+    """An overlay no combination names would ship in the wheel and never appear
+    in a project, which is the quiet way for a template to rot."""
+    overlays, _ = _template_names()
+    named = {overlay for options in ALL_COMBINATIONS for overlay in options.overlays}
+
+    assert overlays == named

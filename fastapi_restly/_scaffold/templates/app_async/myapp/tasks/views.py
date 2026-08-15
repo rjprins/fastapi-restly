@@ -1,8 +1,9 @@
 """The Task API.
 
 Restly generates list, retrieve, create, update, and delete from ``model`` and
-``schema``. The three overrides below are the seams you will reach for most.
-Delete any you do not need: the generated routes work without them.
+``schema``. Below are the two override points you will reach for most, plus
+one route of your own. Delete any you do not need: the generated routes work
+without them.
 
 Add your own view classes beside this one, then list them in ``myapp/main.py``.
 """

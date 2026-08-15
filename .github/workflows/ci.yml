@@ -406,6 +406,21 @@ jobs:
           --with "$(ls dist/*.whl)"
           python -c "from importlib.metadata import version; import fastapi_restly; import fastapi_restly.db; import fastapi_restly.schemas; import fastapi_restly.views; print(version('fastapi-restly'))"
 
+      # Templates ship as package data and `restly` as a console script, so a
+      # packaging regression that drops either leaves every other gate green
+      # while `restly new` is broken for anyone installing from PyPI. Generating
+      # from the built wheel, outside the source tree, is what catches that.
+      - name: Generate a project from the built wheel
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/wheel-check && cd /tmp/wheel-check
+          uv venv
+          uv pip install "$(ls "$GITHUB_WORKSPACE"/dist/*.whl)"
+          ./.venv/bin/restly new demo --sqlite --create-all --yes
+          test -f demo/demo/main.py
+          test -f demo/tests/conftest.py
+          test -f demo/.gitignore
+
       - name: Check package
         run: uv run --with twine twine check dist/*
 

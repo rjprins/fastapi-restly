@@ -4,12 +4,25 @@ from __future__ import annotations
 
 import argparse
 import keyword
+import re
 import sys
 from pathlib import Path
 
 from ._generate import Options, generate
 
 _DESCRIPTION = "Create a new FastAPI-Restly project."
+
+# The name is both a Python package and the project name in pyproject.toml, and
+# PEP 508 forbids a leading or trailing underscore in the latter.
+_PROJECT_NAME_RE = re.compile(r"[A-Za-z][A-Za-z0-9_]*[A-Za-z0-9]|[A-Za-z]")
+
+# Names that would land the package on top of something the generator also
+# writes, or shadow a module the generated project imports. `pythonpath = ["."]`
+# puts the project root ahead of the standard library, so the stdlib ones are
+# not merely confusing.
+RESERVED_NAMES = frozenset(
+    {"alembic", "tests", "test", "types", "json", "typing", "logging", "abc", "io"}
+)
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -109,8 +122,8 @@ def _resolve(args: argparse.Namespace) -> Options:
     )
 
 
-def _next_steps(options: Options) -> list[str]:
-    steps = [f"cd {options.name}", "uv sync"]
+def _next_steps(options: Options, destination: Path) -> list[str]:
+    steps = [f"cd {destination}", "uv sync"]
     if options.postgres:
         steps.append("docker compose up -d --wait db test-db")
     steps.append("cp .env.example .env")
@@ -127,22 +140,37 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     name = args.name
-    if not name.isidentifier() or keyword.iskeyword(name):
+    if (
+        not name.isidentifier()
+        or keyword.iskeyword(name)
+        # Also the project name in pyproject.toml, where PEP 508 forbids a
+        # leading or trailing underscore.
+        or not _PROJECT_NAME_RE.fullmatch(name)
+    ):
         parser.error(
-            f"{name!r} is not usable as a Python package name. Use letters, "
-            "digits and underscores, starting with a letter."
+            f"{name!r} is not usable as a package and project name. Use letters, "
+            "digits and underscores, starting with a letter and not ending in "
+            "an underscore."
+        )
+    if name in RESERVED_NAMES:
+        parser.error(
+            f"{name!r} would collide with a directory the project already has, "
+            "or shadow a standard library module that the project imports."
         )
 
     destination = args.directory if args.directory is not None else Path(name)
-    if destination.exists() and any(destination.iterdir()):
-        parser.error(f"{str(destination)!r} already exists and is not empty.")
+    if destination.exists():
+        if not destination.is_dir():
+            parser.error(f"{str(destination)!r} exists and is not a directory.")
+        if any(destination.iterdir()):
+            parser.error(f"{str(destination)!r} already exists and is not empty.")
 
     options = _resolve(args)
     written = generate(options, destination)
 
     print(f"Created {destination}/ ({len(written)} files)\n")
     print("Next:")
-    for step in _next_steps(options):
+    for step in _next_steps(options, destination):
         print(f"  {step}")
     if options.alembic:
         print(

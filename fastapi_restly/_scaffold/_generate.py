@@ -25,7 +25,12 @@ from pathlib import Path
 from typing import Any
 
 PLACEHOLDER = "myapp"
-_PLACEHOLDER_RE = re.compile(rf"\b{PLACEHOLDER}\b")
+
+# Not \bmyapp\b: an underscore is a word character, so that would leave
+# `myapp_test` (the compose test database) alone and desynchronise it from the
+# URL in tests/conftest.py. Identifiers *derived* from the package name have to
+# move with it; only a longer word containing it must not.
+_PLACEHOLDER_RE = re.compile(rf"(?<![A-Za-z0-9_]){PLACEHOLDER}(?![A-Za-z0-9])")
 
 # Stored dot-less in the template tree for two reasons: a real ``.gitignore``
 # there would be applied by git to the templates themselves, and setuptools'
@@ -47,11 +52,14 @@ class Options:
     @property
     def overlays(self) -> tuple[str, ...]:
         """Template directories to composite, in order. Later ones win."""
-        names = ["base", "app_async" if self.is_async else "app_sync"]
+        suffix = "async" if self.is_async else "sync"
+        names = ["base", f"app_{suffix}"]
         if self.postgres:
             names.append("db_postgres")
-        if self.alembic:
-            names.append("alembic_async" if self.is_async else "alembic_sync")
+        # main.py lives here rather than in app_*: its lifespan depends on the
+        # schema choice as well, since a create_all project builds its tables at
+        # startup and an Alembic one must not.
+        names.append(f"{'alembic' if self.alembic else 'createall'}_{suffix}")
         return tuple(names)
 
     @property
@@ -177,6 +185,7 @@ def build_files(options: Options) -> dict[str, str]:
         ".env.example": build_env_example(options),
         "tests/conftest.py": build_conftest(options),
         "README.md": build_readme(options),
+        "pyrightconfig.json": build_pyrightconfig(options),
     }
 
 
@@ -193,6 +202,28 @@ def restly_requirement(extra: str) -> str:
     return f"fastapi-restly[{extra}]{floor}"
 
 
+def build_pyrightconfig(options: Options) -> str:
+    """Type-check the application, its tests, and the Alembic environment.
+
+    ``alembic/versions`` is excluded: Alembic writes those, so they are not
+    yours to answer for. ``alembic/env.py`` very much is.
+    """
+    # Built files are written as-is, never through ``rename``, so the project
+    # name has to come from the options rather than the placeholder.
+    include = f'["{options.name}", "tests"]'
+    exclude = '["**/__pycache__", ".venv"]'
+    if options.alembic:
+        include = f'["{options.name}", "tests", "alembic"]'
+        exclude = '["**/__pycache__", ".venv", "alembic/versions"]'
+    return (
+        "{\n"
+        f'    "include": {include},\n'
+        f'    "exclude": {exclude},\n'
+        '    "pythonVersion": "3.10"\n'
+        "}\n"
+    )
+
+
 def build_pyproject(options: Options) -> str:
     dependencies = [restly_requirement("standard")]
     if options.driver is not None:
@@ -201,6 +232,12 @@ def build_pyproject(options: Options) -> str:
         dependencies.append("alembic>=1.15.2")
 
     listed = "\n".join(f'    "{item}",' for item in dependencies)
+    ruff_exclude = (
+        "# Alembic writes migrations, so their layout is not yours to answer for.\n"
+        '[tool.ruff]\nextend-exclude = ["alembic/versions"]\n\n'
+        if options.alembic
+        else ""
+    )
     asyncio_options = (
         '\nasyncio_mode = "auto"\nasyncio_default_fixture_loop_scope = "function"'
         if options.is_async
@@ -234,11 +271,7 @@ entrypoint = "{options.name}.asgi:app"
 [tool.pytest.ini_options]
 pythonpath = ["."]{asyncio_options}
 
-# Alembic writes migrations, so their layout is not yours to answer for.
-[tool.ruff]
-extend-exclude = ["alembic/versions"]
-
-[tool.ruff.lint]
+{ruff_exclude}[tool.ruff.lint]
 select = ["E4", "E7", "E9", "F", "I"]
 """
 
@@ -328,9 +361,13 @@ catch one that is missed.
         else f"""
 ## Schema
 
-The test suite builds the schema from the models with `create_all`, and
-`{options.name}/main.py` does not create tables at startup. Add Alembic before
-you deploy anything you care about; see the deployment guide.
+This project has no migrations. `{options.name}/main.py` creates the tables at
+startup, and the test suite builds its own the same way.
+
+Add Alembic before you deploy anything you care about. `create_all` adds tables
+that are missing and never alters one that exists, so it cannot carry a schema
+forward: a renamed column or a new constraint will not appear. See the
+deployment guide.
 """
     )
 
