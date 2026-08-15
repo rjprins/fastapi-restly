@@ -189,19 +189,34 @@ def _ask_name(directory: Path | None) -> str | None:
         print(f"  {problem}")
 
 
-def _ask(question: str, default_yes: bool, first: str, second: str) -> bool:
-    """Prompt for one either/or choice. Anything unrecognised keeps the default.
+def _ask(
+    question: str, default_yes: bool, first: tuple[str, str], second: tuple[str, str]
+) -> bool:
+    """Prompt for one either/or choice, by number or by name.
 
-    The default is named in its own brackets rather than shown first, which
-    nothing on the line distinguishes from the alternative.
+    Each choice is its flag name and the same description the flag carries in
+    ``--help``, because a name can only say so much: `create-all` does not say
+    what it creates, and the answer does not fit in a flag.
+
+    An empty answer takes the default, and so does anything unrecognised.
     """
-    default = first if default_yes else second
-    answer = input(f"{question} ({first}/{second}) [{default}]: ").strip().lower()
+    choices = (first, second)
+    default = 0 if default_yes else 1
+    width = max(len(name) for name, _ in choices)
+
+    print(f"\n{question}")
+    for position, (name, description) in enumerate(choices):
+        marker = "(default)" if position == default else ""
+        print(f"  {position + 1}  {name:<{width}}  {marker:<9}  {description}")
+
+    answer = input(f"Choice [{default + 1}]: ").strip().lower()
     if not answer:
         return default_yes
-    if first.lower().startswith(answer):
+    if answer in ("1", "2"):
+        return answer == "1"
+    if first[0].lower().startswith(answer):
         return True
-    if second.lower().startswith(answer):
+    if second[0].lower().startswith(answer):
         return False
     return default_yes
 
@@ -213,11 +228,26 @@ def _resolve(args: argparse.Namespace) -> Options:
 
     if any(unanswered) and _interactive(args):
         if is_async is None:
-            is_async = _ask("Async views?", True, "async", "sync")
+            is_async = _ask(
+                "Async views?",
+                True,
+                ("async", "async def views, on an async driver"),
+                ("sync", "plain def views, on a sync driver"),
+            )
         if postgres is None:
-            postgres = _ask("Database?", True, "postgres", "sqlite")
+            postgres = _ask(
+                "Database?",
+                True,
+                ("postgres", "PostgreSQL, with a compose.yaml"),
+                ("sqlite", "SQLite, in a file beside the project"),
+            )
         if alembic is None:
-            alembic = _ask("Migrations?", True, "alembic", "create-all")
+            alembic = _ask(
+                "Migrations?",
+                True,
+                ("alembic", "versioned migrations, written by you"),
+                ("create-all", "no migrations: the schema follows the models"),
+            )
 
     return Options(
         name=args.name,

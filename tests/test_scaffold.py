@@ -11,6 +11,7 @@ generated tree looks like a project.
 from __future__ import annotations
 
 import io
+import re
 from pathlib import Path
 from typing import Any
 
@@ -829,7 +830,7 @@ def test_a_terminal_is_prompted_for_the_unanswered_choices(monkeypatch):
     )
 
 
-def test_a_flag_answers_its_question_so_it_is_not_asked(monkeypatch):
+def test_a_flag_answers_its_question_so_it_is_not_asked(monkeypatch, capsys):
     monkeypatch.setattr(_cli.sys, "stdin", _Terminal())
     asked = []
 
@@ -842,11 +843,13 @@ def test_a_flag_answers_its_question_so_it_is_not_asked(monkeypatch):
 
     assert options == Options(name="shop", is_async=False)
     assert len(asked) == 2
-    assert not any("Async" in prompt for prompt in asked)
+    # The question is printed above the choices, not carried in the input
+    # prompt, so counting inputs alone would not catch asking it anyway.
+    assert "Async views?" not in capsys.readouterr().out
 
 
 def test_a_prefix_answers_the_prompt(monkeypatch):
-    """The prompt renders as ``(async/sync)``, so a single letter has to work.
+    """Choices are answerable by name, so a single letter has to work.
 
     Without this, `startswith` could become `==` with the suite still green.
     """
@@ -898,7 +901,7 @@ def test_yes_takes_the_defaults_without_asking(monkeypatch):
     assert _options_for(["new", "shop", "-y"]) == Options(name="shop")
 
 
-def test_the_prompt_names_the_default_it_will_take(monkeypatch):
+def test_the_prompt_lists_the_choices_and_marks_the_default(monkeypatch, capsys):
     """``[async/sync]`` gave no sign which side pressing enter chooses."""
     monkeypatch.setattr(_cli.sys, "stdin", _Terminal())
     asked = []
@@ -910,11 +913,76 @@ def test_the_prompt_names_the_default_it_will_take(monkeypatch):
     monkeypatch.setattr("builtins.input", record)
     _options_for(["new", "shop"])
 
-    assert asked == [
-        "Async views? (async/sync) [async]: ",
-        "Database? (postgres/sqlite) [postgres]: ",
-        "Migrations? (alembic/create-all) [alembic]: ",
+    assert asked == ["Choice [1]: "] * 3
+    assert capsys.readouterr().out.splitlines() == [
+        "",
+        "Async views?",
+        "  1  async  (default)  async def views, on an async driver",
+        "  2  sync              plain def views, on a sync driver",
+        "",
+        "Database?",
+        "  1  postgres  (default)  PostgreSQL, with a compose.yaml",
+        "  2  sqlite               SQLite, in a file beside the project",
+        "",
+        "Migrations?",
+        "  1  alembic     (default)  versioned migrations, written by you",
+        "  2  create-all             no migrations: the schema follows the models",
     ]
+
+
+def test_every_choice_is_described_and_none_is_missing(monkeypatch, capsys):
+    """`create-all` names a mechanism, and alone it does not say what it builds.
+
+    Pinning the set catches a flag added to the parser but not to the
+    interview, which would leave it reachable only by reading `--help`.
+    """
+    monkeypatch.setattr(_cli.sys, "stdin", _Terminal())
+    monkeypatch.setattr("builtins.input", lambda prompt: "")
+    _options_for(["new", "shop"])
+
+    listed = dict(
+        re.findall(
+            r"^ {2}\d {2}(\S+) +(?:\(default\) +)?(\S.*)$",
+            capsys.readouterr().out,
+            re.MULTILINE,
+        )
+    )
+    subparser = _cli._build_parser().parse_args(["new", "shop"]).subparser
+    axis_flags = {
+        option.lstrip("-")
+        for action in subparser._actions
+        if action.dest in {"is_async", "postgres", "alembic"}
+        for option in action.option_strings
+    }
+
+    assert axis_flags == {
+        "async",
+        "sync",
+        "postgres",
+        "sqlite",
+        "alembic",
+        "create-all",
+    }
+    assert set(listed) == axis_flags
+    assert all(len(description.split()) >= 4 for description in listed.values())
+
+
+@pytest.mark.parametrize(
+    "answer, expected",
+    [("1", True), ("2", False), (" 2 ", False)],
+    ids=["first", "second", "padded"],
+)
+def test_a_number_answers_the_prompt(answer, expected, monkeypatch):
+    """The choices are listed as 1 and 2, so the numbers have to answer them."""
+    monkeypatch.setattr(_cli.sys, "stdin", _Terminal())
+    monkeypatch.setattr("builtins.input", lambda prompt: answer)
+
+    options = _options_for(["new", "shop"])
+    assert (options.is_async, options.postgres, options.alembic) == (
+        expected,
+        expected,
+        expected,
+    )
 
 
 # ---------------------------------------------------------------------------
