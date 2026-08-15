@@ -20,9 +20,10 @@ from .schemas import TaskSchema
 class TaskView(fr.AsyncRestView[Task, TaskSchema]):
     """CRUD for ``/tasks``, plus one custom route.
 
-    The type parameters are optional: a bare ``fr.AsyncRestView`` works. They
-    tell your type checker that ``create`` returns a ``Task``, which starts to
-    matter once you override a method.
+    The overrides below need the type parameters. Without them
+    ``super().create()`` returns a bare ``DeclarativeBase`` and a type checker
+    rejects ``task.done``. A view that overrides nothing can drop them and
+    subclass ``fr.AsyncRestView`` directly.
     """
 
     prefix = "/tasks"
