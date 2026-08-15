@@ -16,7 +16,7 @@ built only when ``create_app()`` runs, so the test suite can install its own
 settings first. Run it with ``uvicorn app.asgi:app``.
 
 Importing this module is therefore free, and imports every view and model
-through ``api``. Alembic and anything else needing complete metadata import it
+through ``VIEWS``. Alembic and anything else needing complete metadata import it
 for exactly that. Keep it free: never build an app at module level here.
 """
 
@@ -27,8 +27,27 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 import fastapi_restly as fr
 
-from .api import register_views
+from .countries.views import CountryView
+from .labels.views import LabelView, TaskLabelView
+from .organizations.views import OrganizationView
+from .projects.views import ProjectView
 from .settings import Settings
+from .tasks.views import TaskView
+from .uploads.views import UploadView
+from .users.views import UserView
+
+# The application's views, registered in create_app(). Listing them here is what
+# makes importing this module reach every view, and through each view its models.
+VIEWS = (
+    OrganizationView,
+    UserView,
+    ProjectView,
+    TaskView,
+    LabelView,
+    TaskLabelView,
+    UploadView,
+    CountryView,
+)
 
 
 def create_app() -> FastAPI:
@@ -61,7 +80,8 @@ def create_app() -> FastAPI:
     # Give Restly the application's engine. Alembic owns all schema changes.
     fr.configure(app, async_engine=engine)
 
-    register_views(app)
+    for view in VIEWS:
+        fr.include_view(app, view)
 
     @app.get("/health")
     async def health_check():

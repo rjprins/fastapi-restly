@@ -54,9 +54,8 @@ saas/
 │   └── versions/            # Initial schema and lookup seed data
 ├── app/
 │   ├── settings.py          # Validated Pydantic settings
-│   ├── main.py              # create_app() factory: Restly wiring, lifespan
+│   ├── main.py              # create_app() factory: VIEWS, Restly wiring, lifespan
 │   ├── asgi.py              # app = create_app(), the deployment entrypoint
-│   ├── api.py               # Central, side-effect-free view registration
 │   ├── views.py             # Application-wide view foundation: base view and mixins
 │   ├── outbox.py            # Cross-domain transactional outbox model
 │   ├── organizations/
@@ -73,13 +72,13 @@ saas/
 └── pyproject.toml
 ```
 
-Domain modules only define classes and functions. `app/api.py` is the explicit
-composition boundary that imports every view and registers it on the app. This
-keeps imports directional: model, then schema, then view, then application.
-Alembic reads the schema through `app/main.py`, which reaches `app/api.py` and
-so every view and model. The factory builds nothing at import time, so that
-import is free. `app/outbox.py` has
-no view, so `app/views.py` imports it at module level to keep it on that graph.
+Domain modules only define classes and functions. `app/main.py` is the explicit
+composition boundary: its `VIEWS` tuple names every view, and `create_app()`
+registers them. This keeps imports directional: model, then schema, then view,
+then application. Alembic reads the schema through `app/main.py`, which reaches
+every view and so every model. The factory builds nothing at import time, so
+that import is free. `app/outbox.py` has no view, so `app/views.py` imports it
+at module level to keep it on that graph.
 
 ## Prerequisites
 
