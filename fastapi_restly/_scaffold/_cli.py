@@ -17,12 +17,36 @@ _DESCRIPTION = "Create a new FastAPI-Restly project."
 _PROJECT_NAME_RE = re.compile(r"[A-Za-z][A-Za-z0-9_]*[A-Za-z0-9]|[A-Za-z]")
 
 # Names that would land the package on top of something the generator also
-# writes, or shadow a module the generated project imports. `pythonpath = ["."]`
-# puts the project root ahead of the standard library, so the stdlib ones are
-# not merely confusing.
-RESERVED_NAMES = frozenset(
-    {"alembic", "tests", "test", "types", "json", "typing", "logging", "abc", "io"}
+# writes, or shadow a module a generated project imports. `pythonpath = ["."]`
+# puts the project root first, so `restly new datetime` gives a project whose
+# own models.py cannot import datetime.
+_GENERATED_DIRECTORIES = frozenset({"alembic", "tests"})
+
+# Distributions a generated project imports, which the standard library listing
+# below cannot know about. A test derives the templates' imports and fails if
+# this falls behind them.
+_IMPORTED_DISTRIBUTIONS = frozenset(
+    {
+        "aiosqlite",
+        "asyncpg",
+        "fastapi",
+        "fastapi_restly",
+        "psycopg",
+        "pydantic",
+        "pydantic_settings",
+        "pytest",
+        "sqlalchemy",
+    }
 )
+
+RESERVED_NAMES = (
+    _GENERATED_DIRECTORIES | _IMPORTED_DISTRIBUTIONS | sys.stdlib_module_names
+)
+
+# The generated conftest writes `from <name>.settings import Settings`, which is
+# 30 columns plus the name. Past 58 ruff wants it wrapped, and the project fails
+# its own `ruff check` on the first command. Refuse well before that.
+MAX_NAME_LENGTH = 50
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -79,7 +103,7 @@ def _build_parser() -> argparse.ArgumentParser:
         "--create-all",
         dest="alembic",
         action="store_false",
-        help="Build the test schema from the models instead of migrations",
+        help="No migrations: build the schema from the models, at startup and in tests",
     )
 
     new.add_argument(
@@ -151,6 +175,11 @@ def main(argv: list[str] | None = None) -> int:
             f"{name!r} is not usable as a package and project name. Use letters, "
             "digits and underscores, starting with a letter and not ending in "
             "an underscore."
+        )
+    if len(name) > MAX_NAME_LENGTH:
+        parser.error(
+            f"{name!r} is {len(name)} characters. Keep it to {MAX_NAME_LENGTH} or "
+            "fewer, or the generated imports outgrow the project's own line length."
         )
     if name in RESERVED_NAMES:
         parser.error(

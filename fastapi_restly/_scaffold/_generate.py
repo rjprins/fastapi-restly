@@ -4,15 +4,17 @@ Two mechanisms, and the split between them is the design:
 
 * **Overlay directories** hold whole files that are identical within one axis.
   They are composited in order, later winning, so choosing ``app_sync`` over
-  ``app_async`` selects a different real ``main.py``. The placeholder package
-  name is a valid identifier, so a template is ordinary Python rather than
-  markup. It is linted as a generated project, not as repo source: here
-  ``fastapi_restly`` is first-party and there it is third-party, so one import
-  order cannot satisfy both. ``scripts/scaffold_matrix.sh`` is the gate.
+  ``app_async`` selects a different real ``tasks/views.py``, and choosing
+  ``createall_async`` over ``alembic_async`` a different ``main.py``. The
+  placeholder package name is a valid identifier, so a template is ordinary
+  Python rather than markup. It is linted as a generated project, not as repo
+  source: here ``fastapi_restly`` is first-party and there it is third-party, so
+  one import order cannot satisfy both. ``scripts/scaffold_matrix.sh`` is the
+  gate.
 * **Built files** are the ones whose content mixes axes -- ``pyproject.toml``,
-  ``.env.example``, ``tests/conftest.py``, ``README.md``. Their content is
-  assembled here rather than templated, which is why no template engine is
-  needed at all.
+  ``.env.example``, ``tests/conftest.py``, ``README.md`` and
+  ``pyrightconfig.json``. Their content is assembled here rather than templated,
+  which is why no template engine is needed at all.
 """
 
 from __future__ import annotations
@@ -146,9 +148,12 @@ def _destination(relative: Path, name: str) -> Path:
 
 
 def rename(text: str, name: str) -> str:
-    """Replace whole-word occurrences of the placeholder package name.
+    """Replace the placeholder package name, and identifiers derived from it.
 
-    Word-bounded so a longer identifier containing it is left alone.
+    ``myapp_test`` becomes ``<name>_test`` and ``myapp-data`` becomes
+    ``<name>-data``, because those have to keep agreeing with the package. A
+    longer *word* containing the placeholder, such as ``myapplication`` or
+    ``my_myapp_thing``, is left alone.
     """
     return _PLACEHOLDER_RE.sub(name, text)
 
@@ -232,9 +237,17 @@ def build_pyproject(options: Options) -> str:
         dependencies.append("alembic>=1.15.2")
 
     listed = "\n".join(f'    "{item}",' for item in dependencies)
-    ruff_exclude = (
+    ruff_alembic = (
         "# Alembic writes migrations, so their layout is not yours to answer for.\n"
         '[tool.ruff]\nextend-exclude = ["alembic/versions"]\n\n'
+        if options.alembic
+        else ""
+    )
+    # Without this, ruff sees the alembic/ directory and files the package as
+    # first-party, so the right import order in alembic/env.py would depend on
+    # whether the project name sorts before or after "alembic".
+    isort_alembic = (
+        '\n[tool.ruff.lint.isort]\nknown-third-party = ["alembic"]\n'
         if options.alembic
         else ""
     )
@@ -271,9 +284,9 @@ entrypoint = "{options.name}.asgi:app"
 [tool.pytest.ini_options]
 pythonpath = ["."]{asyncio_options}
 
-{ruff_exclude}[tool.ruff.lint]
+{ruff_alembic}[tool.ruff.lint]
 select = ["E4", "E7", "E9", "F", "I"]
-"""
+{isort_alembic}"""
 
 
 def build_env_example(options: Options) -> str:
@@ -391,10 +404,14 @@ for the test suite, so a test run never touches development data.
         "from the development one.\n"
     )
 
+    docker_note = ", and Docker for the databases" if options.postgres else ""
+
     numbered = "\n".join(steps)
     return f"""# {options.name}
 
 A REST API built with [FastAPI-Restly](https://www.fastapi-restly.org).
+
+Managed with [uv](https://docs.astral.sh/uv/){docker_note}.
 
 ## Getting started
 

@@ -18,6 +18,10 @@ pip install fastapi-restly
 restly new myapp
 ```
 
+The generated project is managed with [uv](https://docs.astral.sh/uv/), which
+the next steps and its README both assume, so install that too. A PostgreSQL
+project also expects Docker for its `compose.yaml`.
+
 Three choices shape the result, each with a flag and a prompt:
 
 | | default | alternative |

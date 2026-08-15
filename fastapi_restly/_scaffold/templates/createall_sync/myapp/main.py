@@ -1,8 +1,8 @@
 """The application factory.
 
 This module is the one every tool imports. It reaches ``VIEWS``, each view
-imports its model, so importing ``myapp.main`` is what gives Alembic and the
-test suite the complete schema.
+imports its model, so importing ``myapp.main`` is what gives the test suite,
+and any schema tool you add later, the complete set of models.
 
 Importing it must stay free of side effects: it defines ``create_app()`` and
 builds nothing. Never put ``app = create_app()`` at the bottom here, or

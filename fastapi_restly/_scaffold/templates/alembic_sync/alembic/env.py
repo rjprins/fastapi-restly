@@ -12,10 +12,10 @@ model as a dropped table rather than failing quietly.
 from logging.config import fileConfig
 
 import fastapi_restly as fr
+from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 import myapp.main  # noqa: F401  (imports every view, and each view its models)
-from alembic import context
 from myapp.settings import Settings
 
 config = context.config

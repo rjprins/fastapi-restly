@@ -13,12 +13,12 @@ import asyncio
 from logging.config import fileConfig
 
 import fastapi_restly as fr
+from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 import myapp.main  # noqa: F401  (imports every view, and each view its models)
-from alembic import context
 from myapp.settings import Settings
 
 config = context.config

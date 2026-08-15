@@ -11,7 +11,6 @@ generated tree looks like a project.
 from __future__ import annotations
 
 import io
-import re
 from pathlib import Path
 from typing import Any
 
@@ -701,11 +700,14 @@ def test_generate_with_the_shipped_templates(tmp_path):
         "shop/asgi.py",
         "shop/settings.py",
     }
-    # Nothing keeps the placeholder, in a path or in a file.
-    assert not list(destination.rglob(PLACEHOLDER))
+    # Nothing keeps the placeholder, in a path or in a file. A plain substring
+    # search, not the rename pattern: the point is to catch an occurrence the
+    # rename could not reach, so reusing its own rule would beg the question.
+    # Safe here because the project name does not contain the placeholder.
+    assert not list(destination.rglob(f"*{PLACEHOLDER}*"))
     for path in destination.rglob("*"):
         if path.is_file():
-            assert not re.search(rf"\b{PLACEHOLDER}\b", path.read_text("utf-8"))
+            assert PLACEHOLDER not in path.read_text("utf-8"), path
 
 
 # ---------------------------------------------------------------------------
@@ -932,10 +934,11 @@ def test_names_pyproject_would_reject_are_refused(name, tmp_path, capsys):
     assert not (tmp_path / "out").exists()
 
 
-@pytest.mark.parametrize("name", ["alembic", "tests", "json"])
+@pytest.mark.parametrize("name", ["alembic", "tests", "datetime", "sqlalchemy"])
 def test_names_that_would_collide_are_refused(name, tmp_path):
     """`alembic` would put the package on top of the migration directory, and
-    `pythonpath = ["."]` puts a stdlib name ahead of the standard library."""
+    `pythonpath = ["."]` puts the project root ahead of every module a generated
+    project imports."""
     with pytest.raises(SystemExit):
         _cli.main(["new", name, "--directory", str(tmp_path / "out"), "-y"])
 
@@ -992,6 +995,13 @@ def test_alembic_projects_never_create_tables_themselves(options, tmp_path):
     assert "create_all" not in (tmp_path / "shop" / "shop" / "main.py").read_text()
 
 
+def _template_root_node():
+    """The shipped template tree as a ``Traversable``."""
+    from importlib.resources import files
+
+    return files("fastapi_restly._scaffold.templates")
+
+
 def _template_names() -> tuple[set[str], set[str]]:
     """Overlay directory names, and every file name under the shipped tree.
 
@@ -999,9 +1009,7 @@ def _template_names() -> tuple[set[str], set[str]]:
     templates resolve to a ``MultiplexedPath`` whose ``str()`` is not a usable
     filesystem path, so a Path-based walk silently finds nothing.
     """
-    from importlib.resources import files
-
-    root = files("fastapi_restly._scaffold.templates")
+    root = _template_root_node()
     overlays = {child.name for child in root.iterdir() if child.is_dir()}
     file_names = {
         relative.name for relative, _ in _walk_all(root) if relative.name != ""
@@ -1036,3 +1044,50 @@ def test_every_shipped_overlay_is_reachable():
     named = {overlay for options in ALL_COMBINATIONS for overlay in options.overlays}
 
     assert overlays == named
+
+
+def _template_imports() -> set[str]:
+    """Top-level modules any template imports."""
+    import ast
+
+    modules: set[str] = set()
+    for relative, node in _walk_all(_template_root_node()):
+        if relative.suffix != ".py":
+            continue
+        for statement in ast.walk(ast.parse(node.read_text("utf-8"))):
+            if isinstance(statement, ast.Import):
+                modules |= {alias.name.split(".")[0] for alias in statement.names}
+            elif isinstance(statement, ast.ImportFrom):
+                if statement.level == 0 and statement.module:
+                    modules.add(statement.module.split(".")[0])
+    return modules
+
+
+def test_reserved_names_cover_everything_the_templates_import():
+    """`pythonpath = ["."]` puts the project root ahead of everything else, so a
+    project named after a module it imports cannot import it. The reserved set
+    is derived from the templates, and this is what keeps it from drifting."""
+    imported = _template_imports() - {PLACEHOLDER}
+
+    assert imported <= _cli.RESERVED_NAMES, sorted(imported - _cli.RESERVED_NAMES)
+
+
+def test_a_name_longer_than_the_generated_imports_allow_is_refused(tmp_path):
+    """`from <name>.settings import Settings` has to fit the line length the
+    generated project lints itself with, or its first `ruff check` fails."""
+    with pytest.raises(SystemExit):
+        _cli.main(["new", "a" * 51, "--directory", str(tmp_path / "out"), "-y"])
+
+    assert not (tmp_path / "out").exists()
+
+
+def test_the_longest_accepted_name_still_lints_clean(tmp_path):
+    name = "a" * _cli.MAX_NAME_LENGTH
+    generate(Options(name=name, postgres=False, alembic=False), tmp_path / "out")
+
+    conftest = (tmp_path / "out" / "tests" / "conftest.py").read_text()
+    longest = max(len(line) for line in conftest.splitlines())
+
+    # 88 is ruff's default, which the generated project does not override.
+    assert f"from {name}.settings import Settings" in conftest
+    assert longest <= 96, longest

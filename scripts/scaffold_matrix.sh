@@ -30,10 +30,12 @@ ran=0
 # this; it is purely an artifact of reusing one server across combinations.
 reset_postgres_schema() {
     uv run --with "psycopg[binary]" python -c "
+import re
 import sys
+
 import psycopg
 
-url = sys.argv[1].replace('postgresql+psycopg', 'postgresql')
+url = re.sub(r'^postgresql\+\w+', 'postgresql', sys.argv[1])
 database = psycopg.conninfo.conninfo_to_dict(url).get('dbname', '')
 
 # This drops every table. RESTLY_TEST_DATABASE_URL is developer-settable, so

@@ -417,9 +417,17 @@ jobs:
           uv venv
           uv pip install "$(ls "$GITHUB_WORKSPACE"/dist/*.whl)"
           ./.venv/bin/restly new demo --sqlite --create-all --yes
+          ./.venv/bin/restly new prod --postgres --alembic --async --yes
+          ./.venv/bin/restly new legacy --postgres --alembic --sync --yes
           test -f demo/demo/main.py
           test -f demo/tests/conftest.py
           test -f demo/.gitignore
+          test -f prod/compose.yaml
+          test -f prod/alembic/env.py
+          test -f prod/alembic/versions/.gitkeep
+          test -f legacy/alembic/env.py
+          # Between them these three name every overlay, so a template missing
+          # from the wheel fails here rather than at a user's first command.
 
       - name: Check package
         run: uv run --with twine twine check dist/*

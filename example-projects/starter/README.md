@@ -2,6 +2,8 @@
 
 A REST API built with [FastAPI-Restly](https://www.fastapi-restly.org).
 
+Managed with [uv](https://docs.astral.sh/uv/), and Docker for the databases.
+
 ## Getting started
 
 ```bash
