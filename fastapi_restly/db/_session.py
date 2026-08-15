@@ -82,6 +82,11 @@ def _setup_database_connection(
     return make_session
 
 
+async def _health() -> dict[str, str]:
+    """Liveness response for the route ``fr.configure(health=...)`` mounts."""
+    return {"status": "ok"}
+
+
 def configure(
     app: FastAPI | None = None,
     *,
@@ -96,6 +101,7 @@ def configure(
     warn_on_misuse: bool | None = None,
     warn_on_uncommitted: bool | None = None,
     install_default_exception_handlers: bool = True,
+    health: str | None = None,
 ) -> None:
     """Configure FastAPI-Restly. Call once at startup.
 
@@ -160,6 +166,27 @@ def configure(
     ``install_default_exception_handlers=False`` to opt out. If you do not
     pass ``app`` here, the handlers are registered the first time a view is
     mounted via :func:`fastapi_restly.include_view` instead.
+
+    Pass ``health="/health"`` to mount a liveness endpoint at that path, which
+    answers ``200`` with ``{"status": "ok"}``. It needs ``app``, and passing it
+    without one raises rather than quietly skipping a route you asked for. It
+    is off by default because naming the path is how a project opts in: Rails
+    and Laravel both ship this endpoint in *generated projects* rather than
+    from the framework, writing ``get "up" => "rails/health#show"`` into
+    ``config/routes.rb`` and ``health: '/up'`` into ``bootstrap/app.php``.
+    Default-on would also shadow an application's own ``/health`` route, since
+    Starlette matches in registration order and ``configure()`` normally runs
+    before the application adds its routes. The route is in the OpenAPI schema,
+    so ``/docs`` is a way to confirm it mounted.
+
+    It is a liveness check and deliberately makes no database round-trip. A
+    liveness probe that fails when a dependency is down restarts a process that
+    was working, which is why Rails documents its endpoint as not reflecting
+    the status of dependencies and Spring Boot keeps liveness away from
+    external systems. Readiness, which may check dependencies, is a separate
+    endpoint with different semantics, not a flag on this one. Kubernetes
+    ``httpGet`` probes read the status code and never the body, so the path is
+    the axis worth configuring and the payload is fixed.
     """
     configures_database = any(
         (
@@ -190,10 +217,29 @@ def configure(
             configures_database,
             warn_on_misuse is not None,
             warn_on_uncommitted is not None,
+            health is not None,
             app is not None and install_default_exception_handlers,
         )
     ):
         raise TypeError("fr.configure() requires at least one setup argument.")
+
+    # Validate before anything is applied, so a bad health path cannot leave a
+    # half-configured process behind.
+    if health is not None:
+        if not health.startswith("/"):
+            raise RestlyConfigurationError(
+                f"fr.configure(health={health!r}) needs a path starting with "
+                f"'/', such as '/health'."
+            )
+        if app is None:
+            raise RestlyConfigurationError(
+                f"fr.configure(health={health!r}) also needs the app to mount "
+                "the route on: fr.configure(app, health=...). Unlike the "
+                "default exception handlers, this is not deferred to the first "
+                "include_view() call, because a route is visible API surface "
+                "and should not appear on whichever app happens to register a "
+                "view first."
+            )
 
     if warn_on_misuse is not None:
         _fr_globals.warn_on_misuse = warn_on_misuse
@@ -217,8 +263,13 @@ def configure(
         _fr_globals.session_generator = session_generator
     if sync_session_generator is not None:
         _fr_globals.sync_session_generator = sync_session_generator
-    if app is not None and install_default_exception_handlers:
-        register_default_exception_handlers(app)
+    if app is not None:
+        if install_default_exception_handlers:
+            register_default_exception_handlers(app)
+        if health is not None:
+            # name= keeps the private handler's name out of the generated
+            # operationId, which clients turn into a method name.
+            app.add_api_route(health, _health, methods=["GET"], name="health")
 
 
 def _active_make_session():
