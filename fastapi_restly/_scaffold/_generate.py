@@ -240,8 +240,12 @@ def build_pyproject(options: Options) -> str:
         dependencies.append("alembic>=1.15.2")
 
     listed = "\n".join(f'    "{item}",' for item in dependencies)
-    # Alembic writes the files under alembic/versions, so their layout is not
-    # the project's to answer for.
+    # Migrations are excluded rather than linted, and both halves are forced:
+    # Alembic writes `import sqlalchemy as sa` into every migration whether it
+    # is used or not, so an op-only migration is F401 by construction, and
+    # autogenerate injects any extra import at a fixed position after
+    # `from alembic import op`, which is the wrong sort position for I001.
+    # Neither is reachable from script.py.mako.
     ruff_alembic = (
         '[tool.ruff]\nextend-exclude = ["alembic/versions"]\n\n'
         if options.alembic
