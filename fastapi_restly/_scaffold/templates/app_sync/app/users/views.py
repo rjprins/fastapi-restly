@@ -17,13 +17,6 @@ from .schemas import UserSchema
 
 
 class UserView(fr.RestView[User, UserSchema]):
-    """CRUD for ``/users``.
-
-    The type parameters tell a type checker that ``super().create()`` returns a
-    ``User``. Without them it returns a bare ``DeclarativeBase``, and reading a
-    field off the result is rejected as soon as you override a method.
-    """
-
     prefix = "/users"
     model = User
     schema = UserSchema
