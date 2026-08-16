@@ -171,18 +171,17 @@ def create_list_params_schema(
     emitted at all -- the endpoint returns every matching row -- while sorting
     and filtering stay available.
 
-    Args:
-        schema_cls: The response schema whose fields drive the available
-            filter parameters.
-        model: The SQLAlchemy model the list endpoint queries. Used to verify
-            each field resolves to a filterable column; non-column fields are
-            omitted from the generated params.
-        default_page_size: Default value for the ``page_size`` parameter when
-            the client omits it. Only used when ``paginated`` is true.
-        max_page_size: Upper bound (inclusive) for the ``page_size``
-            parameter. Defaults to ``MAX_PAGE_SIZE`` (1000).
-        paginated: Whether to emit ``page``/``page_size`` parameters. False for
-            an unpaginated view, which returns the full result set.
+    :param schema_cls: The response schema whose fields drive the available
+        filter parameters.
+    :param model: The SQLAlchemy model the list endpoint queries. Used to verify
+        each field resolves to a filterable column; non-column fields are
+        omitted from the generated params.
+    :param default_page_size: Default value for the ``page_size`` parameter when
+        the client omits it. Only used when ``paginated`` is true.
+    :param max_page_size: Upper bound (inclusive) for the ``page_size``
+        parameter. Defaults to ``MAX_PAGE_SIZE`` (1000).
+    :param paginated: Whether to emit ``page``/``page_size`` parameters. False
+        for an unpaginated view, which returns the full result set.
     """
     fields: dict[str, Any] = {}
     if paginated:

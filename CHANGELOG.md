@@ -104,6 +104,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   links again rather than plain text. The documentation build now runs in
   Sphinx's nitpicky mode, which fails on a cross-reference whose target does
   not exist instead of rendering it as text.
+- `create_list_params_schema()` and `create_schema_from_model()` show a
+  parameter table in the API reference. Their arguments were written in a
+  docstring style Sphinx does not parse here, so they rendered as one
+  paragraph of running text.
 
 ## [0.9.0] - 2026-08-13
 

@@ -916,12 +916,11 @@ def get_writable_inputs(
     - ReadOnly fields
     - fields not provided with input (using Pydantic model_fields_set)
 
-    Args:
-        schema_obj: The schema object to extract writable fields from
-        schema_cls: The schema class to check for readonly fields. If None, uses schema_obj.__class__
-
-    Returns:
-        Dictionary mapping field names to their values for writable input fields only
+    :param schema_obj: The schema object to extract writable fields from.
+    :param schema_cls: The schema class to check for read-only fields. Defaults
+        to ``schema_obj.__class__``.
+    :returns: Dictionary mapping field names to their values, for writable
+        input fields only.
     """
     if schema_cls is None:
         schema_cls = schema_obj.__class__

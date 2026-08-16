@@ -22,11 +22,8 @@ def get_sqlalchemy_field_type(field: Any) -> Any:
     """
     Extract the Python type from a SQLAlchemy Mapped field.
 
-    Args:
-        field: A SQLAlchemy Mapped field
-
-    Returns:
-        The Python type annotation
+    :param field: A SQLAlchemy Mapped field.
+    :returns: The Python type annotation.
     """
     # Get the type annotation from the Mapped field
     if hasattr(field, "type"):
@@ -42,11 +39,8 @@ def is_relationship_field(field: Any) -> bool:
     """
     Check if a field is a SQLAlchemy relationship.
 
-    Args:
-        field: A SQLAlchemy Mapped field
-
-    Returns:
-        True if the field is a relationship, False otherwise
+    :param field: A SQLAlchemy Mapped field.
+    :returns: True if the field is a relationship, False otherwise.
     """
     if isinstance(field, RelationshipProperty):
         return True
@@ -57,11 +51,8 @@ def get_relationship_target_model(field: Any) -> type[DeclarativeBase] | None:
     """
     Get the target model class for a relationship field.
 
-    Args:
-        field: A SQLAlchemy relationship field
-
-    Returns:
-        The target model class or None if not found
+    :param field: A SQLAlchemy relationship field.
+    :returns: The target model class, or None if not found.
     """
     if not is_relationship_field(field):
         return None
@@ -96,11 +87,8 @@ def get_model_fields(model_cls: type[DeclarativeBase]) -> dict[str, Any]:
     """
     Extract field information from a SQLAlchemy model.
 
-    Args:
-        model_cls: A SQLAlchemy model class
-
-    Returns:
-        Dictionary mapping field names to their types and metadata
+    :param model_cls: A SQLAlchemy model class.
+    :returns: Dictionary mapping field names to their types and metadata.
     """
     fields: dict[str, Any] = {}
 
@@ -184,14 +172,13 @@ def create_schema_from_model(
     """
     Auto-generate a Pydantic schema from a SQLAlchemy model.
 
-    Args:
-        model_cls: The SQLAlchemy model class
-        schema_name: Optional name for the generated schema class
-        include_relationships: Whether to include relationship fields
-        include_readonly_fields: Whether to include read-only fields like id, created_at, etc.
-
-    Returns:
-        A Pydantic schema class
+    :param model_cls: The SQLAlchemy model class.
+    :param schema_name: Name for the generated schema class. Defaults to the
+        model name suffixed with ``Read``.
+    :param include_relationships: Whether to include relationship fields.
+    :param include_readonly_fields: Whether to include read-only fields such as
+        ``id``, ``created_at`` and ``updated_at``.
+    :returns: A Pydantic schema class.
     """
     if schema_name is None:
         schema_name = f"{model_cls.__name__}Read"
@@ -299,12 +286,9 @@ def convert_sqlalchemy_type_to_pydantic(
     """
     Convert a SQLAlchemy type to a Pydantic-compatible type.
 
-    Args:
-        sqlalchemy_type: The SQLAlchemy type
-        is_optional: Whether the field is optional
-
-    Returns:
-        A Pydantic-compatible type
+    :param sqlalchemy_type: The SQLAlchemy type.
+    :param is_optional: Whether the field is optional.
+    :returns: A Pydantic-compatible type.
     """
     type_name = getattr(sqlalchemy_type, "__name__", str(sqlalchemy_type))
 
@@ -366,13 +350,11 @@ def auto_generate_schema_for_view(
     """
     Auto-generate a schema for a view class if none is specified.
 
-    Args:
-        view_cls: The view class
-        model_cls: The SQLAlchemy model class
-        schema_name: Optional name for the generated schema
-
-    Returns:
-        A Pydantic schema class
+    :param view_cls: The view class.
+    :param model_cls: The SQLAlchemy model class.
+    :param schema_name: Name for the generated schema. Defaults to the model
+        name suffixed with ``Read``.
+    :returns: A Pydantic schema class.
     """
     if schema_name is None:
         schema_name = f"{model_cls.__name__}Read"
