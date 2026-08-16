@@ -84,13 +84,10 @@ subject to reach one class.
 
 ## Compose in one place
 
-Restly has no autodiscovery. Nothing scans your package for views or models,
-which is why the layout above registers them in one place instead. The
-tradeoff is deliberate: your `create_app()` stays yours, and the set of
-registered views is something you can read rather than infer.
-
-That one place is a `VIEWS` tuple in `main.py`. The factory registers each of
-its views after {func}`fr.configure(app, ...) <fastapi_restly.db.configure>`:
+Restly has no autodiscovery: nothing scans your package for views or models, so
+the layout registers them itself. That one place is a `VIEWS` tuple in
+`main.py`, which the factory registers after
+{func}`fr.configure(app, ...) <fastapi_restly.db.configure>`:
 
 ```python
 # app/main.py
@@ -116,34 +113,14 @@ def create_app() -> FastAPI:
 [A production `main.py` template](#production-main-template) adds the engine and
 the lifespan that disposes it.
 
-Subject-first layouts leave one question open, which the rest of this section
-settles: which module has seen every model. Start with where the models are
-collected. Most applications never declare a declarative base of their own.
-Models inherit
-{class}`fr.IDBase <fastapi_restly.models.IDBase>` or
-{class}`fr.DataclassBase <fastapi_restly.models.DataclassBase>`, and because
-`IDBase` subclasses `DataclassBase` they share one `MetaData`, so the
-application schema is `fr.DataclassBase.metadata`. Declare your own base only
-when you need different mapping defaults, put it in a root `models.py`, and use
-it wherever this page names `fr.DataclassBase`.
+That tuple also decides which module has seen every model, since each view
+imports its own. A declarative base holds the models that have been imported
+and nothing else, and `IDBase` subclasses `DataclassBase`, so
+`fr.DataclassBase.metadata` is the whole schema once `main.py` has been
+imported. On your own base, see
+[Use Your Own DeclarativeBase Models](howto_existing_project.md#use-your-own-declarativebase-models).
 
-A base describes the models that have been imported and nothing else, so the
-layout needs one module that has imported all of them. That module is
-`main.py`. Its `VIEWS` tuple names every view, and each view imports its model.
-Nothing else should have to be named: `main.py` is the one module every
-application has, so tools can rely on it without knowing how the rest is
-arranged.
-
-This works only because the factory keeps `main.py` free of side effects.
-Importing it defines `create_app()` and builds nothing, so a test suite can
-name its own database rather than setting environment variables before its
-imports. Never put `app = create_app()` at module level there: with settings
-that have no defaults, importing the module would then require a configured
-environment, and the test suite is the first thing to break. The application
-object belongs in `asgi.py`, which only the server imports; see
-[Running the app](deploying.md#running-the-app).
-
-`alembic/env.py` imports it before reading `target_metadata`:
+`alembic/env.py` relies on exactly that:
 
 ```python
 # alembic/env.py
@@ -153,16 +130,16 @@ import app.main  # noqa: F401  (imports every view, and each view its model)
 target_metadata = fr.DataclassBase.metadata
 ```
 
-A `conftest.py` that asks `configure_tests()` to run `create_all` needs the
-same coverage and usually has it already, since the app it passes was built by
-the factory. Import `app.main` there too when the suite reaches for a base
-without building an application first.
+This works only because importing `main.py` builds nothing. Never put
+`app = create_app()` at module level there: with settings that have no
+defaults, importing the module would require a configured environment, and the
+test suite is the first thing to break. The application object belongs in
+`asgi.py`, which only the server imports; see
+[Running the app](deploying.md#running-the-app).
 
-That leaves models no view reaches, such as an outbox or audit table. Import
-those at module level wherever the application uses them, rather than inside a
-function, so they stay on the same graph. A model nothing in the application
-uses, written only by a worker or a script, goes in `main.py` beside `VIEWS`,
-which keeps every such import in one place.
+A model no view reaches, such as an outbox or audit table, is not on that
+graph. Import it at module level wherever the application uses it, or in
+`main.py` beside `VIEWS` when only a worker or a script does.
 Getting it wrong is not silent: `alembic check` compares metadata against the
 database and reports a missing model as a dropped table, so run it in CI. See
 [Migrations with Alembic](deploying.md#migrations-with-alembic) and
