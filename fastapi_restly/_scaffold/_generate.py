@@ -313,27 +313,16 @@ def build_env_example(options: Options) -> str:
 
 def build_conftest(options: Options) -> str:
     schema_setup = "alembic_upgrade=True" if options.alembic else "create_all=True"
-    schema_comment = (
-        "Build the schema by running the migrations, so the tests exercise the\n"
-        "# same path a deployment does."
-        if options.alembic
-        else "Build the schema straight from the models. Swap to\n"
-        "# alembic_upgrade=True once you start keeping migrations."
-    )
+    # A file rather than :memory: is the one choice here that looks like an
+    # oversight, so it keeps its reason. Everything else is left to read as
+    # ordinary test setup.
     memory_note = (
         ""
         if options.postgres
-        else "# A file rather than :memory:. An in-memory database lives inside its\n"
-        "# connection, and the test client would lose it the first time something\n"
-        "# else opened one. Delete test.db to start the suite from scratch.\n"
+        else "# A file rather than :memory:, which lives inside its connection and\n"
+        "# would be lost the first time anything opened a second one.\n"
     )
-    return f'''"""Test configuration.
-
-The suite builds its own settings and installs them before calling the factory,
-so no environment variable has to be set before an import.
-"""
-
-import os
+    return f'''import os
 
 import fastapi_restly as fr
 
@@ -345,14 +334,12 @@ from {PACKAGE}.settings import Settings
     "{options.test_database_url}",
 )
 
-# _env_file=None so a developer's local .env cannot redirect the test suite.
-# The ignore is for the type checker only: pydantic-settings accepts these
-# underscore arguments at runtime, but they are not in the synthesized __init__.
+# _env_file=None so a local .env cannot point the suite at the development
+# database. The ignore is for the type checker: pydantic-settings accepts the
+# underscore arguments at runtime but does not declare them.
 Settings.use(Settings(database_url=TEST_DATABASE_URL, _env_file=None))  # type: ignore[call-arg]
 
 app = create_app()
-
-# {schema_comment}
 fr.testing.configure_tests(app=app, base=fr.DataclassBase, {schema_setup})
 '''
 

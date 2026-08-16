@@ -84,6 +84,10 @@ run_one() {
     echo "=============================================================="
     ran=$((ran + 1))
 
+    # Start from nothing. With SCAFFOLD_WORK the directory survives between
+    # runs, and the placeholder check below walks the whole tree: a previous
+    # run's .venv and .ruff_cache are binary, so reading them as UTF-8 fails.
+    rm -rf "$dir"
     mkdir -p "$dir"
 
     # Not `( ... ) || { ... }`: a subshell used as the left operand of || is a

@@ -1,14 +1,3 @@
-"""Alembic environment.
-
-``app.main`` is imported for its side effect on the metadata: it reaches every
-view, and each view imports its model, so ``fr.DataclassBase.metadata`` is
-complete by the time Alembic reads it. A model no view reaches -- an outbox or
-audit table -- must be imported wherever it is used, at module level.
-
-Run ``alembic check`` in CI to catch one that is missed: it reports the absent
-model as a dropped table rather than failing quietly.
-"""
-
 from logging.config import fileConfig
 
 import fastapi_restly as fr
