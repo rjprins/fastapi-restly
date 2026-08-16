@@ -18,34 +18,17 @@ pip install fastapi-restly
 restly new myapp
 ```
 
-That writes `myapp/`, and the package inside it is `app`. The name you give
-names the project: the directory, `pyproject.toml`, and the databases. The
-package is `app` in every Restly project, so `from app.settings import
-Settings` is the same line here, in your project, and in every example on this
-site.
+The name names the project: the directory, `pyproject.toml`, and the databases.
+The package inside is always `app`, so `from app.settings import Settings` is
+the same line in every Restly project.
 
-The generated project uses [uv](https://docs.astral.sh/uv/), so install that
-too. A PostgreSQL project also needs Docker for its `compose.yaml`.
-
-On a terminal, `restly new` asks for whatever you leave out, the name included,
-so a bare `restly new` is an interview. Off a terminal it takes the defaults
-and requires the name, which keeps it usable in CI. The first column is the
-default:
+Three choices, each a flag, each asked for on a terminal when you leave it out:
 
 | | default | alternative |
 |---|---|---|
 | Views and driver | `--async` | `--sync` |
 | Database | `--postgres`, with a `compose.yaml` | `--sqlite` |
 | Schema | `--alembic` | `--create-all`, built at startup and in tests |
-
-`restly new myapp --sync --sqlite --create-all` takes every alternative. Two
-more flags leave the project unchanged: `--yes` accepts the defaults without
-prompting, so it needs the name as an argument, and `--directory` writes
-somewhere other than `./myapp`. The command prints the next steps for the
-combination it generated.
-
-One resource is enough to start, so the generated project has no `views.py` and
-no `api.py`. Both appear below, as things to add once they earn their place.
 
 ## Start with one file
 
@@ -81,21 +64,8 @@ app/
     └── views.py
 ```
 
-The alternative is to organize by type first: a top-level `models/`,
-`schemas/`, and `views/` package, each holding one module per resource. That
-layout is common and it works, but it scatters every change across three
-directories.
-
-Subject-first suits Restly in particular. A view names its model, names its
-schema, and carries the overrides for both, so the three modules are one unit
-of work: adding a field touches the model, the schema, and usually a business
-method, and all three sit in the same directory. Type-first organization is
-the better fit for Restly's own source, where `models`, `schemas`, and `views`
-really are separate subsystems, and the worse fit for an application, where
-they are three views of one resource.
-
-Name each package after the route segment it serves, so `users/` serves
-`/users`.
+Subject or domain first, code type second, once the application is large
+enough for the choice to matter.
 
 ## Keep imports pointing one way
 
