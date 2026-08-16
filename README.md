@@ -11,16 +11,21 @@
 </p>
 
 <p align="center">
-  <a href="https://codespaces.new/rjprins/fastapi-restly?quickstart=1"><img src="https://github.com/codespaces/badge.svg" alt="Open in GitHub Codespaces"></a>
-</p>
-
-<p align="center">
-  Try FastAPI-Restly in your browser: the badge above opens a GitHub Codespace with the dev environment installed, ready to run a live example API.
-</p>
-
-<p align="center">
   <strong>Build maintainable REST APIs on FastAPI, SQLAlchemy 2.0, and Pydantic v2 — with real class-based views.</strong>
 </p>
+
+With FastAPI-Restly imported as `fr`, a CRUD resource is four lines once `app`
+and `User` exist:
+
+```python
+@fr.include_view(app)
+class UserView(fr.AsyncRestView):
+    prefix = "/users"
+    model = User  # SQLAlchemy model
+```
+
+`UserView` inherits five CRUD endpoint methods from `AsyncRestView`.
+`include_view` registers them under `/users`.
 
 > **Status:** public beta release ([changelog](https://github.com/rjprins/fastapi-restly/blob/main/CHANGELOG.md)).
 >

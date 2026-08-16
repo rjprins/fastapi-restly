@@ -3,13 +3,6 @@
 This guide walks from zero to a working REST API with FastAPI-Restly. Python
 3.10 or later is required.
 
-To try FastAPI-Restly without installing anything, open the project in GitHub
-Codespaces, which builds the dev environment and its example projects for you:
-
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/rjprins/fastapi-restly?quickstart=1)
-
-Once the Codespace finishes setup, run `cd example-projects/blog && uv run uvicorn blog.main:app --port 8000` in the terminal, then open the forwarded port 8000 and visit `/docs` for the interactive API.
-
 ## Installation
 
 Install the framework and an async driver for your database:
