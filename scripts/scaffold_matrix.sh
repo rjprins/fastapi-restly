@@ -10,14 +10,21 @@
 #   ./scripts/scaffold_matrix.sh              every combination
 #   SCAFFOLD_ONLY=sqlite ...                  the four SQLite combinations
 #   SCAFFOLD_ONLY=postgres ...                the four PostgreSQL combinations
+#   SCAFFOLD_WORK=/tmp/variants ...           keep the generated projects there
 #
 # PostgreSQL combinations need a server. Set RESTLY_TEST_DATABASE_URL, or run
 # under scripts/with_postgres.sh, which starts a throwaway container.
 set -euo pipefail
 
 REPO=$(cd "$(dirname "$0")/.." && pwd)
-WORK=$(mktemp -d)
-trap 'rm -rf "$WORK"' EXIT
+
+# SCAFFOLD_WORK keeps the generated projects for inspection. Unset, they go to a
+# temporary directory and are removed, which is what CI wants.
+WORK=${SCAFFOLD_WORK:-$(mktemp -d)}
+mkdir -p "$WORK"
+if [ -z "${SCAFFOLD_WORK:-}" ]; then
+    trap 'rm -rf "$WORK"' EXIT
+fi
 
 SCAFFOLD_ONLY=${SCAFFOLD_ONLY:-all}
 failures=0
