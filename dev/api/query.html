@@ -595,20 +595,21 @@ added and validated by Pydantic with bounds (<code class="docutils literal notra
 422 response from FastAPI. When it is false, no pagination parameters are
 emitted at all – the endpoint returns every matching row – while sorting
 and filtering stay available.</p>
-<dl class="simple">
-<dt>Args:</dt><dd><dl class="simple">
-<dt>schema_cls: The response schema whose fields drive the available</dt><dd><p>filter parameters.</p>
-</dd>
-<dt>model: The SQLAlchemy model the list endpoint queries. Used to verify</dt><dd><p>each field resolves to a filterable column; non-column fields are
-omitted from the generated params.</p>
-</dd>
-<dt>default_page_size: Default value for the <code class="docutils literal notranslate"><span class="pre">page_size</span></code> parameter when</dt><dd><p>the client omits it. Only used when <code class="docutils literal notranslate"><span class="pre">paginated</span></code> is true.</p>
-</dd>
-<dt>max_page_size: Upper bound (inclusive) for the <code class="docutils literal notranslate"><span class="pre">page_size</span></code></dt><dd><p>parameter. Defaults to <code class="xref py py-data docutils literal notranslate"><span class="pre">MAX_PAGE_SIZE</span></code>.</p>
-</dd>
-<dt>paginated: Whether to emit <code class="docutils literal notranslate"><span class="pre">page</span></code>/<code class="docutils literal notranslate"><span class="pre">page_size</span></code> parameters. False for</dt><dd><p>an unpaginated view, which returns the full result set.</p>
-</dd>
-</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>schema_cls</strong> – The response schema whose fields drive the available
+filter parameters.</p></li>
+<li><p><strong>model</strong> – The SQLAlchemy model the list endpoint queries. Used to verify
+each field resolves to a filterable column; non-column fields are
+omitted from the generated params.</p></li>
+<li><p><strong>default_page_size</strong> – Default value for the <code class="docutils literal notranslate"><span class="pre">page_size</span></code> parameter when
+the client omits it. Only used when <code class="docutils literal notranslate"><span class="pre">paginated</span></code> is true.</p></li>
+<li><p><strong>max_page_size</strong> – Upper bound (inclusive) for the <code class="docutils literal notranslate"><span class="pre">page_size</span></code>
+parameter. Defaults to <code class="docutils literal notranslate"><span class="pre">MAX_PAGE_SIZE</span></code> (1000).</p></li>
+<li><p><strong>paginated</strong> – Whether to emit <code class="docutils literal notranslate"><span class="pre">page</span></code>/<code class="docutils literal notranslate"><span class="pre">page_size</span></code> parameters. False
+for an unpaginated view, which returns the full result set.</p></li>
+</ul>
 </dd>
 </dl>
 </dd></dl>

@@ -640,6 +640,14 @@ Filters for columns explicitly declared with <code class="docutils literal notra
 <li><p>New or migrated PostgreSQL schemas now accept the UTC-aware values produced
 by <code class="docutils literal notranslate"><span class="pre">TimestampsMixin</span></code> when using asyncpg. SQLite does not preserve timezone
 information and continues to return naive datetime values.</p></li>
+<li><p>References to <code class="docutils literal notranslate"><span class="pre">fr.configure()</span></code> and <code class="docutils literal notranslate"><span class="pre">fr.snapshot()</span></code> in the API reference are
+links again rather than plain text. The documentation build now runs in
+Sphinx’s nitpicky mode, which fails on a cross-reference whose target does
+not exist instead of rendering it as text.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">create_list_params_schema()</span></code> and <code class="docutils literal notranslate"><span class="pre">create_schema_from_model()</span></code> show a
+parameter table in the API reference. Their arguments were written in a
+docstring style Sphinx does not parse here, so they rendered as one
+paragraph of running text.</p></li>
 </ul>
 </section>
 </section>

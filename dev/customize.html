@@ -514,19 +514,19 @@
                   
   <section id="customize-restview">
 <h1>Customize RestView<a class="headerlink" href="#customize-restview" title="Link to this heading">#</a></h1>
-<p>A <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a> or <a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a> generates complete CRUD
-endpoints, and sooner or later one of them needs to behave differently: stamp
-a field server-side, archive instead of delete, scope every read to the
-current tenant. Because the endpoint is generated, making such a change means
-overriding a method, and which method depends on the kind of change. So this
-page first explains what a RestView does with a request, then works through
-the override points and recipes that follow from that structure.</p>
-<p>The page covers the generated CRUD machinery only. A plain <a class="reference internal" href="api/views.html#fastapi_restly.views.View" title="fastapi_restly.views.View"><code class="xref py py-class docutils literal notranslate"><span class="pre">View</span></code></a>
-has no generated behavior to override; the class mechanics that all views
-share are covered in <a class="reference internal" href="class_based_views.html"><span class="std std-doc">Class-Based Views</span></a>.</p>
+<p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a> and <a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a> define complete CRUD
+endpoints. Because views are class-based, a subclass changes an endpoint’s
+behavior by overriding the method that controls it: stamp a field server-side,
+archive instead of delete, or scope every read to the current tenant. This page
+first explains how each view handles a request, then works through the
+override points and recipes that follow from that structure.</p>
+<p>This page covers the CRUD behavior defined by <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a> and <a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a>.
+A plain <a class="reference internal" href="api/views.html#fastapi_restly.views.View" title="fastapi_restly.views.View"><code class="xref py py-class docutils literal notranslate"><span class="pre">View</span></code></a> defines no CRUD endpoints.
+<a class="reference internal" href="class_based_views.html"><span class="std std-doc">Class-Based Views</span></a> covers the class mechanics shared by
+all views.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>To <em>add</em> routes rather than change generated ones, declare a method with
+<p>To <em>add</em> routes rather than change existing ones, declare a method with
 <a class="reference internal" href="api/views.html#fastapi_restly.views.get" title="fastapi_restly.views.get"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;fr.get</span></code></a> or <a class="reference internal" href="api/views.html#fastapi_restly.views.post" title="fastapi_restly.views.post"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;fr.post</span></code></a>,
 <a class="reference internal" href="class_based_views.html#what-is-a-class-based-view"><span class="std std-ref">as on any view</span></a>; recipes
 are in <a class="reference internal" href="#add-a-custom-read-route">Add a custom read route</a> and
@@ -924,7 +924,7 @@ access into two independent concerns; each has its own override point:</p>
 </section>
 <section id="replace-an-endpoint-method-to-change-the-http-contract">
 <h2>Replace an endpoint method to change the HTTP contract<a class="headerlink" href="#replace-an-endpoint-method-to-change-the-http-contract" title="Link to this heading">#</a></h2>
-<p>Business methods and handlers change behavior inside a generated route. Replace the endpoint method when the HTTP contract itself must change: response shape, headers, status code, or query-parameter semantics.</p>
+<p>Business methods and handlers change behavior while preserving the default CRUD route’s HTTP contract. Replace the endpoint method when the HTTP contract itself must change: response shape, headers, status code, or query-parameter semantics.</p>
 <p>To replace a route, define the same endpoint-method name and add a route decorator. Usually, delegate to the handler and only reshape the response:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">ProductView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
@@ -940,20 +940,20 @@ access into two independent concerns; each has its own override point:</p>
         <span class="k">return</span> <span class="n">serialized</span>
 </pre></div>
 </div>
-<p>At view initialization, Restly uses endpoint methods defined directly on the class and skips the matching generated one. Other generated routes remain unchanged.</p>
+<p>At view registration, a directly defined endpoint method replaces the inherited method with the same name. The other inherited endpoint methods remain unchanged.</p>
 <p>The default <code class="docutils literal notranslate"><span class="pre">DELETE</span> <span class="pre">/{id}</span></code> returns <code class="docutils literal notranslate"><span class="pre">204</span> <span class="pre">No</span> <span class="pre">Content</span></code>; this version returns the deleted record, as <code class="docutils literal notranslate"><span class="pre">ra-data-simple-rest</span></code> expects (see <a class="reference internal" href="howto_react_admin.html"><span class="std std-doc">React Admin Integration</span></a>).</p>
 <section id="to-response-the-one-response-method">
 <h3><code class="docutils literal notranslate"><span class="pre">to_response</span></code>: the one response method<a class="headerlink" href="#to-response-the-one-response-method" title="Link to this heading">#</a></h3>
-<p>Generated endpoint methods return through <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_response" title="fastapi_restly.views.BaseRestView.to_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">self.to_response(obj_or_list,</span> <span class="pre">shape)</span></code></a>, where <code class="docutils literal notranslate"><span class="pre">shape</span></code> is <a class="reference internal" href="api/views.html#fastapi_restly.views.ResponseShape.SINGLE" title="fastapi_restly.views.ResponseShape.SINGLE"><code class="xref py py-attr docutils literal notranslate"><span class="pre">SINGLE</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.ResponseShape.LISTING" title="fastapi_restly.views.ResponseShape.LISTING"><code class="xref py py-attr docutils literal notranslate"><span class="pre">LISTING</span></code></a>, or <a class="reference internal" href="api/views.html#fastapi_restly.views.ResponseShape.EMPTY" title="fastapi_restly.views.ResponseShape.EMPTY"><code class="xref py py-attr docutils literal notranslate"><span class="pre">EMPTY</span></code></a>. Override it for envelopes or shape-wide response behavior:</p>
+<p>The default endpoint methods return through <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_response" title="fastapi_restly.views.BaseRestView.to_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">self.to_response(obj_or_list,</span> <span class="pre">shape)</span></code></a>, where <code class="docutils literal notranslate"><span class="pre">shape</span></code> is <a class="reference internal" href="api/views.html#fastapi_restly.views.ResponseShape.SINGLE" title="fastapi_restly.views.ResponseShape.SINGLE"><code class="xref py py-attr docutils literal notranslate"><span class="pre">SINGLE</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.ResponseShape.LISTING" title="fastapi_restly.views.ResponseShape.LISTING"><code class="xref py py-attr docutils literal notranslate"><span class="pre">LISTING</span></code></a>, or <a class="reference internal" href="api/views.html#fastapi_restly.views.ResponseShape.EMPTY" title="fastapi_restly.views.ResponseShape.EMPTY"><code class="xref py py-attr docutils literal notranslate"><span class="pre">EMPTY</span></code></a>. Override it for envelopes or shape-wide response behavior:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">def</span><span class="w"> </span><span class="nf">to_response</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj_or_list</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="n">fr</span><span class="o">.</span><span class="n">ResponseShape</span><span class="o">.</span><span class="n">SINGLE</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">shape</span> <span class="ow">is</span> <span class="n">fr</span><span class="o">.</span><span class="n">ResponseShape</span><span class="o">.</span><span class="n">SINGLE</span><span class="p">:</span>
             <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_response_schema</span><span class="p">(</span><span class="n">obj_or_list</span><span class="p">)}</span>
         <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">to_response</span><span class="p">(</span><span class="n">obj_or_list</span><span class="p">,</span> <span class="n">shape</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>If this changes a generated route’s HTTP contract, also replace that endpoint method
-and set a matching <code class="docutils literal notranslate"><span class="pre">response_model</span></code>; otherwise FastAPI response validation and
-OpenAPI still use the generated schema. See
+<p>If this changes a default CRUD route’s HTTP contract, also replace that endpoint
+method and set a matching <code class="docutils literal notranslate"><span class="pre">response_model</span></code>. Otherwise, FastAPI validates and
+documents the response with the original response model. See
 <a class="reference internal" href="howto_response_schema.html"><span class="std std-doc">Response Envelopes and List Metadata</span></a> for the full pattern.</p>
 <p><code class="docutils literal notranslate"><span class="pre">to_response</span></code> is keyed on wire shape, not action. It cannot distinguish <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create" title="fastapi_restly.views.RestView.create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create</span></code></a> from <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one</span></code></a>; both are <code class="docutils literal notranslate"><span class="pre">SINGLE</span></code>. For one verb’s HTTP contract, override that endpoint method:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
@@ -1029,7 +1029,7 @@ OpenAPI still use the generated schema. See
 </section>
 <section id="add-a-custom-read-route">
 <h2>Add a custom read route<a class="headerlink" href="#add-a-custom-read-route" title="Link to this heading">#</a></h2>
-<p>Beyond overriding generated routes, a view can add routes of its own. Use <a class="reference internal" href="api/views.html#fastapi_restly.views.get" title="fastapi_restly.views.get"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;fr.get</span></code></a> for computed read endpoints, calling <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one(id)</span></code></a> for a scoped load that 404s on missing rows, or <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_get_one" title="fastapi_restly.views.RestView.handle_get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_get_one(id)</span></code></a> to include read authorization:</p>
+<p>A CRUD view can add routes alongside its inherited CRUD routes. Use <a class="reference internal" href="api/views.html#fastapi_restly.views.get" title="fastapi_restly.views.get"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;fr.get</span></code></a> for computed read endpoints, calling <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one(id)</span></code></a> for a scoped load that 404s on missing rows, or <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_get_one" title="fastapi_restly.views.RestView.handle_get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_get_one(id)</span></code></a> to include read authorization:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>
@@ -1109,9 +1109,9 @@ validation), <a class="reference internal" href="api/schemas.html#fastapi_restly
 </div>
 <p>For permission gating specifically, prefer <a class="reference internal" href="#authorize-gate-the-action"><code class="docutils literal notranslate"><span class="pre">authorize</span></code></a>; it runs at the right phase of the handler and keeps the business method auth-free.</p>
 </section>
-<section id="exclude-generated-routes">
-<h2>Exclude generated routes<a class="headerlink" href="#exclude-generated-routes" title="Link to this heading">#</a></h2>
-<p>Set <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.exclude_routes" title="fastapi_restly.views.BaseRestView.exclude_routes"><code class="xref py py-attr docutils literal notranslate"><span class="pre">exclude_routes</span></code></a> to suppress specific generated endpoints:</p>
+<section id="exclude-crud-routes">
+<h2>Exclude CRUD routes<a class="headerlink" href="#exclude-crud-routes" title="Link to this heading">#</a></h2>
+<p>Set <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.exclude_routes" title="fastapi_restly.views.BaseRestView.exclude_routes"><code class="xref py py-attr docutils literal notranslate"><span class="pre">exclude_routes</span></code></a> to prevent selected CRUD endpoint methods from being registered as routes:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>
@@ -1260,7 +1260,7 @@ classified method list.</p></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#raise-http-errors-from-any-method">Raise HTTP errors from any method</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#exclude-generated-routes">Exclude generated routes</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#exclude-crud-routes">Exclude CRUD routes</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#choosing-between-fr-route-and-the-shorthand-decorators">Choosing between <code class="docutils literal notranslate"><span class="pre">@fr.route</span></code> and the shorthand decorators</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#what-is-available-on-self">What is available on <code class="docutils literal notranslate"><span class="pre">self</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#see-also">See also</a></li>

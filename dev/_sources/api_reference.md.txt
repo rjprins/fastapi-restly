@@ -95,7 +95,7 @@ class UserView(fr.AsyncRestView):
 
 The valid route values for exclusion are `fr.ViewRoute.GET_MANY`, `fr.ViewRoute.GET_ONE`, `fr.ViewRoute.CREATE`, `fr.ViewRoute.UPDATE`, and `fr.ViewRoute.DELETE`.
 
-`exclude_routes` accepts `ViewRoute` values or the equivalent route-shell method names, such as `"delete_endpoint"`. Worked examples are in [Exclude generated routes](customize.md#exclude-generated-routes).
+`exclude_routes` accepts `ViewRoute` values or the equivalent route-shell method names, such as `"delete_endpoint"`. Worked examples are in [Exclude CRUD routes](customize.md#exclude-crud-routes).
 
 ## Response Modeling
 

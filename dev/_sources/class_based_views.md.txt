@@ -123,59 +123,13 @@ the parent router or app.
 Routes are bound at *include-time* against the class you pass in; they are
 not bound at decoration time. This is what makes subclassing work.
 
-## True subclassing
-
-The naive way to add CBV support to FastAPI is a class decorator that mutates
-the class on definition:
-
-```python
-@cbv(router)
-class UserView:
-    @router.get("/users")
-    async def list_users(self): ...
-```
-
-That works for a single class, but it falls apart the moment you try to
-subclass:
-
-- Routes are registered on `router` against `UserView`; if you override
-  `list_users` on a subclass, the registered handler still calls the
-  original.
-- Re-decorate the subclass with `@cbv(router)` and you get duplicate routes.
-- Decorate the subclass on a *different* router and only the subclass's
-  directly-decorated methods register; the parent's routes do not follow.
-
-FastAPI-Restly avoids this by deferring registration:
-
-```python
-class AdminUserView(UserView):
-    async def list_users(self):
-        # filter to soft-deleted users
-        ...
-
-fr.include_view(admin_app, AdminUserView)
-```
-
-When {func}`include_view <fastapi_restly.views.include_view>` runs, it walks `AdminUserView.__mro__`, finds inherited
-route metadata, and registers handlers against `AdminUserView`, so your
-override runs. The same view can be included on multiple routers; including
-it twice on the *same* router is a no-op, never a duplicate route set.
-
-That is what "true class-based views" means in this framework. You can:
-
-- Define an abstract parent that supplies handlers but is never registered.
-- Subclass a working view to specialise it for a different prefix, a
-  different role, or a different audience.
-- Mix in behaviour through multiple inheritance, as shown in the
-  [share-behaviour guide](howto_inheritance.md).
-
 (app-wide-base-view)=
 
 ## One base view for the whole app
 
-The simplest payoff of true subclassing is an application-wide base view:
-declare your app's request context once, on a bare {class}`View <fastapi_restly.views.View>`, and subclass
-it everywhere. No CRUD is required:
+An application-wide base view declares your app's request context once on a
+bare {class}`View <fastapi_restly.views.View>`. Subclass it everywhere. No CRUD
+is required:
 
 ```python
 from typing import Annotated

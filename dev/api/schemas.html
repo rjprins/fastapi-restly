@@ -682,13 +682,19 @@ existence check on write (404 on a miss). It is exactly the marker form
 <dt class="sig sig-object py" id="fastapi_restly.schemas.create_schema_from_model">
 <span class="sig-prename descclassname"><span class="pre">fastapi_restly.schemas.</span></span><span class="sig-name descname"><span class="pre">create_schema_from_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_cls</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/mapping_api.html#sqlalchemy.orm.DeclarativeBase" title="(in SQLAlchemy v2.0)"><span class="pre">DeclarativeBase</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">schema_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_relationships</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_readonly_fields</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#fastapi_restly.schemas.BaseSchema" title="fastapi_restly.schemas._base.BaseSchema"><span class="pre">BaseSchema</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#fastapi_restly.schemas.create_schema_from_model" title="Link to this definition">#</a></dt>
 <dd><p>Auto-generate a Pydantic schema from a SQLAlchemy model.</p>
-<dl class="simple">
-<dt>Args:</dt><dd><p>model_cls: The SQLAlchemy model class
-schema_name: Optional name for the generated schema class
-include_relationships: Whether to include relationship fields
-include_readonly_fields: Whether to include read-only fields like id, created_at, etc.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model_cls</strong> – The SQLAlchemy model class.</p></li>
+<li><p><strong>schema_name</strong> – Name for the generated schema class. Defaults to the
+model name suffixed with <code class="docutils literal notranslate"><span class="pre">Read</span></code>.</p></li>
+<li><p><strong>include_relationships</strong> – Whether to include relationship fields.</p></li>
+<li><p><strong>include_readonly_fields</strong> – Whether to include read-only fields such as
+<code class="docutils literal notranslate"><span class="pre">id</span></code>, <code class="docutils literal notranslate"><span class="pre">created_at</span></code> and <code class="docutils literal notranslate"><span class="pre">updated_at</span></code>.</p></li>
+</ul>
 </dd>
-<dt>Returns:</dt><dd><p>A Pydantic schema class</p>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A Pydantic schema class.</p>
 </dd>
 </dl>
 </dd></dl>

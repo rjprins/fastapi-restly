@@ -4,6 +4,20 @@ FastAPI-Restly (`fr`) is a REST framework for FastAPI, backed by SQLAlchemy 2.0
 and Pydantic v2. Views are real Python classes: share behavior with inheritance
 and mixins, and override the one operation you need.
 
+With FastAPI-Restly imported as `fr`, a CRUD resource is four lines once `app`
+and `User` exist:
+
+```python
+@fr.include_view(app)
+class UserView(fr.AsyncRestView):
+    prefix = "/users"
+    model = User  # SQLAlchemy model
+```
+
+`UserView` inherits five CRUD endpoint methods from {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>`.
+{func}`include_view <fastapi_restly.views.include_view>` registers them under
+`/users`.
+
 > **Status:** {{ release }}, a public beta after
 > [four years of internal use](about.md). Expect small breaking changes in
 > deeper extension points on the way to `1.0.0`; see the

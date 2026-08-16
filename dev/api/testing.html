@@ -668,8 +668,9 @@ database, typically through an app factory:</p>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">configure_tests()</span></code> never chooses, creates or replaces a database engine.
-The application owns that configuration through <code class="xref py py-func docutils literal notranslate"><span class="pre">fastapi_restly.configure()</span></code>;
-this function records the session factories already in force. Construct the
+The application owns that configuration through
+<a class="reference internal" href="db.html#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">configure()</span></code></a>; this function records the session
+factories already in force. Construct the
 application from explicit test settings, or, for an application that
 configures at module import time, select the test database before importing
 it. Database configuration performed afterwards is rejected so schema setup,

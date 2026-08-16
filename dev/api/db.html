@@ -656,8 +656,8 @@ production.</p>
 <span class="sig-prename descclassname"><span class="pre">fastapi_restly.db.</span></span><span class="sig-name descname"><span class="pre">open_async_session</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.AsyncGenerator" title="(in Python v3.14)"><span class="pre">AsyncGenerator</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html#sqlalchemy.ext.asyncio.AsyncSession" title="(in SQLAlchemy v2.0)"><span class="pre">AsyncSession</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#fastapi_restly.db.open_async_session" title="Link to this definition">#</a></dt>
 <dd><p>Open an async database session for use outside of request context.</p>
 <p>Resolves the same source as <code class="docutils literal notranslate"><span class="pre">AsyncSessionDep</span></code>: a custom
-<code class="docutils literal notranslate"><span class="pre">session_generator</span></code> passed to <code class="xref py py-func docutils literal notranslate"><span class="pre">fastapi_restly.configure()</span></code> if one is
-configured, otherwise the built-in async session factory. (The request-only
+<code class="docutils literal notranslate"><span class="pre">session_generator</span></code> passed to <a class="reference internal" href="#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">configure()</span></code></a> if one
+is configured, otherwise the built-in async session factory. (The request-only
 uncommitted-changes check is not armed here – off-HTTP code owns its commit,
 exactly as a custom write route does.)</p>
 <p>In a managed test this yields a session from the test’s isolated factory,
@@ -674,8 +674,8 @@ even when no public session or client fixture is requested.</p>
 <span class="sig-prename descclassname"><span class="pre">fastapi_restly.db.</span></span><span class="sig-name descname"><span class="pre">open_session</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Generator" title="(in Python v3.14)"><span class="pre">Generator</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/session_api.html#sqlalchemy.orm.Session" title="(in SQLAlchemy v2.0)"><span class="pre">Session</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#fastapi_restly.db.open_session" title="Link to this definition">#</a></dt>
 <dd><p>Open a sync database session for use outside of request context.</p>
 <p>Resolves the same source as <code class="docutils literal notranslate"><span class="pre">SessionDep</span></code>: a custom
-<code class="docutils literal notranslate"><span class="pre">sync_session_generator</span></code> passed to <code class="xref py py-func docutils literal notranslate"><span class="pre">fastapi_restly.configure()</span></code> if one
-is configured, otherwise the built-in sync session factory. (The request-only
+<code class="docutils literal notranslate"><span class="pre">sync_session_generator</span></code> passed to <a class="reference internal" href="#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">configure()</span></code></a> if
+one is configured, otherwise the built-in sync session factory. (The request-only
 uncommitted-changes check is not armed here – off-HTTP code owns its commit,
 exactly as a custom write route does.)</p>
 <p>In a managed test this yields a session from the test’s isolated factory,

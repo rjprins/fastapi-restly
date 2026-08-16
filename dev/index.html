@@ -485,6 +485,17 @@
 <p>FastAPI-Restly (<code class="docutils literal notranslate"><span class="pre">fr</span></code>) is a REST framework for FastAPI, backed by SQLAlchemy 2.0
 and Pydantic v2. Views are real Python classes: share behavior with inheritance
 and mixins, and override the one operation you need.</p>
+<p>With FastAPI-Restly imported as <code class="docutils literal notranslate"><span class="pre">fr</span></code>, a CRUD resource is four lines once <code class="docutils literal notranslate"><span class="pre">app</span></code>
+and <code class="docutils literal notranslate"><span class="pre">User</span></code> exist:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>  <span class="c1"># SQLAlchemy model</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">UserView</span></code> inherits five CRUD endpoint methods from <a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a>.
+<a class="reference internal" href="api/views.html#fastapi_restly.views.include_view" title="fastapi_restly.views.include_view"><code class="xref py py-func docutils literal notranslate"><span class="pre">include_view</span></code></a> registers them under
+<code class="docutils literal notranslate"><span class="pre">/users</span></code>.</p>
 <blockquote>
 <div><p><strong>Status:</strong> <code class="docutils literal notranslate"><span class="pre">0.9.0</span></code>, a public beta after
 <a class="reference internal" href="about.html"><span class="std std-doc">four years of internal use</span></a>. Expect small breaking changes in

@@ -1,19 +1,19 @@
 # Customize RestView
 
-A {class}`RestView <fastapi_restly.views.RestView>` or {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` generates complete CRUD
-endpoints, and sooner or later one of them needs to behave differently: stamp
-a field server-side, archive instead of delete, scope every read to the
-current tenant. Because the endpoint is generated, making such a change means
-overriding a method, and which method depends on the kind of change. So this
-page first explains what a RestView does with a request, then works through
-the override points and recipes that follow from that structure.
+{class}`RestView <fastapi_restly.views.RestView>` and {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` define complete CRUD
+endpoints. Because views are class-based, a subclass changes an endpoint's
+behavior by overriding the method that controls it: stamp a field server-side,
+archive instead of delete, or scope every read to the current tenant. This page
+first explains how each view handles a request, then works through the
+override points and recipes that follow from that structure.
 
-The page covers the generated CRUD machinery only. A plain {class}`View <fastapi_restly.views.View>`
-has no generated behavior to override; the class mechanics that all views
-share are covered in [Class-Based Views](class_based_views.md).
+This page covers the CRUD behavior defined by {class}`RestView <fastapi_restly.views.RestView>` and {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>`.
+A plain {class}`View <fastapi_restly.views.View>` defines no CRUD endpoints.
+[Class-Based Views](class_based_views.md) covers the class mechanics shared by
+all views.
 
 :::{note}
-To *add* routes rather than change generated ones, declare a method with
+To *add* routes rather than change existing ones, declare a method with
 {func}`@fr.get <fastapi_restly.views.get>` or {func}`@fr.post <fastapi_restly.views.post>`,
 [as on any view](class_based_views.md#what-is-a-class-based-view); recipes
 are in [Add a custom read route](#add-a-custom-read-route) and
@@ -404,7 +404,7 @@ Because none of these commit, the same code works inside a view or worker; only 
 
 ## Replace an endpoint method to change the HTTP contract
 
-Business methods and handlers change behavior inside a generated route. Replace the endpoint method when the HTTP contract itself must change: response shape, headers, status code, or query-parameter semantics.
+Business methods and handlers change behavior while preserving the default CRUD route's HTTP contract. Replace the endpoint method when the HTTP contract itself must change: response shape, headers, status code, or query-parameter semantics.
 
 To replace a route, define the same endpoint-method name and add a route decorator. Usually, delegate to the handler and only reshape the response:
 
@@ -423,13 +423,13 @@ class ProductView(fr.AsyncRestView):
         return serialized
 ```
 
-At view initialization, Restly uses endpoint methods defined directly on the class and skips the matching generated one. Other generated routes remain unchanged.
+At view registration, a directly defined endpoint method replaces the inherited method with the same name. The other inherited endpoint methods remain unchanged.
 
 The default `DELETE /{id}` returns `204 No Content`; this version returns the deleted record, as `ra-data-simple-rest` expects (see [React Admin Integration](howto_react_admin.md)).
 
 ### `to_response`: the one response method
 
-Generated endpoint methods return through {meth}`self.to_response(obj_or_list, shape) <fastapi_restly.views.BaseRestView.to_response>`, where `shape` is {attr}`SINGLE <fastapi_restly.views.ResponseShape.SINGLE>`, {attr}`LISTING <fastapi_restly.views.ResponseShape.LISTING>`, or {attr}`EMPTY <fastapi_restly.views.ResponseShape.EMPTY>`. Override it for envelopes or shape-wide response behavior:
+The default endpoint methods return through {meth}`self.to_response(obj_or_list, shape) <fastapi_restly.views.BaseRestView.to_response>`, where `shape` is {attr}`SINGLE <fastapi_restly.views.ResponseShape.SINGLE>`, {attr}`LISTING <fastapi_restly.views.ResponseShape.LISTING>`, or {attr}`EMPTY <fastapi_restly.views.ResponseShape.EMPTY>`. Override it for envelopes or shape-wide response behavior:
 
 ```python
     def to_response(self, obj_or_list, shape=fr.ResponseShape.SINGLE):
@@ -438,9 +438,9 @@ Generated endpoint methods return through {meth}`self.to_response(obj_or_list, s
         return super().to_response(obj_or_list, shape)
 ```
 
-If this changes a generated route's HTTP contract, also replace that endpoint method
-and set a matching `response_model`; otherwise FastAPI response validation and
-OpenAPI still use the generated schema. See
+If this changes a default CRUD route's HTTP contract, also replace that endpoint
+method and set a matching `response_model`. Otherwise, FastAPI validates and
+documents the response with the original response model. See
 [Response Envelopes and List Metadata](howto_response_schema.md) for the full pattern.
 
 `to_response` is keyed on wire shape, not action. It cannot distinguish {meth}`create <fastapi_restly.views.RestView.create>` from {meth}`get_one <fastapi_restly.views.RestView.get_one>`; both are `SINGLE`. For one verb's HTTP contract, override that endpoint method:
@@ -523,7 +523,7 @@ class ProductView(DeleteReturnsObjectMixin, fr.AsyncRestView):
 
 ## Add a custom read route
 
-Beyond overriding generated routes, a view can add routes of its own. Use {func}`@fr.get <fastapi_restly.views.get>` for computed read endpoints, calling {meth}`get_one(id) <fastapi_restly.views.RestView.get_one>` for a scoped load that 404s on missing rows, or {meth}`handle_get_one(id) <fastapi_restly.views.RestView.handle_get_one>` to include read authorization:
+A CRUD view can add routes alongside its inherited CRUD routes. Use {func}`@fr.get <fastapi_restly.views.get>` for computed read endpoints, calling {meth}`get_one(id) <fastapi_restly.views.RestView.get_one>` for a scoped load that 404s on missing rows, or {meth}`handle_get_one(id) <fastapi_restly.views.RestView.handle_get_one>` to include read authorization:
 
 ```python
 @fr.include_view(app)
@@ -616,9 +616,9 @@ import fastapi
 
 For permission gating specifically, prefer [`authorize`](#authorize-gate-the-action); it runs at the right phase of the handler and keeps the business method auth-free.
 
-## Exclude generated routes
+## Exclude CRUD routes
 
-Set {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>` to suppress specific generated endpoints:
+Set {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>` to prevent selected CRUD endpoint methods from being registered as routes:
 
 ```python
 @fr.include_view(app)

@@ -639,53 +639,11 @@ the parent router or app.</p>
 <p>Routes are bound at <em>include-time</em> against the class you pass in; they are
 not bound at decoration time. This is what makes subclassing work.</p>
 </section>
-<section id="true-subclassing">
-<h2>True subclassing<a class="headerlink" href="#true-subclassing" title="Link to this heading">#</a></h2>
-<p>The naive way to add CBV support to FastAPI is a class decorator that mutates
-the class on definition:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@cbv</span><span class="p">(</span><span class="n">router</span><span class="p">)</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">:</span>
-    <span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/users&quot;</span><span class="p">)</span>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">list_users</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span> <span class="o">...</span>
-</pre></div>
-</div>
-<p>That works for a single class, but it falls apart the moment you try to
-subclass:</p>
-<ul class="simple">
-<li><p>Routes are registered on <code class="docutils literal notranslate"><span class="pre">router</span></code> against <code class="docutils literal notranslate"><span class="pre">UserView</span></code>; if you override
-<code class="docutils literal notranslate"><span class="pre">list_users</span></code> on a subclass, the registered handler still calls the
-original.</p></li>
-<li><p>Re-decorate the subclass with <code class="docutils literal notranslate"><span class="pre">&#64;cbv(router)</span></code> and you get duplicate routes.</p></li>
-<li><p>Decorate the subclass on a <em>different</em> router and only the subclass’s
-directly-decorated methods register; the parent’s routes do not follow.</p></li>
-</ul>
-<p>FastAPI-Restly avoids this by deferring registration:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">AdminUserView</span><span class="p">(</span><span class="n">UserView</span><span class="p">):</span>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">list_users</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="c1"># filter to soft-deleted users</span>
-        <span class="o">...</span>
-
-<span class="n">fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">admin_app</span><span class="p">,</span> <span class="n">AdminUserView</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>When <a class="reference internal" href="api/views.html#fastapi_restly.views.include_view" title="fastapi_restly.views.include_view"><code class="xref py py-func docutils literal notranslate"><span class="pre">include_view</span></code></a> runs, it walks <code class="docutils literal notranslate"><span class="pre">AdminUserView.__mro__</span></code>, finds inherited
-route metadata, and registers handlers against <code class="docutils literal notranslate"><span class="pre">AdminUserView</span></code>, so your
-override runs. The same view can be included on multiple routers; including
-it twice on the <em>same</em> router is a no-op, never a duplicate route set.</p>
-<p>That is what “true class-based views” means in this framework. You can:</p>
-<ul class="simple">
-<li><p>Define an abstract parent that supplies handlers but is never registered.</p></li>
-<li><p>Subclass a working view to specialise it for a different prefix, a
-different role, or a different audience.</p></li>
-<li><p>Mix in behaviour through multiple inheritance, as shown in the
-<a class="reference internal" href="howto_inheritance.html"><span class="std std-doc">share-behaviour guide</span></a>.</p></li>
-</ul>
-</section>
 <section id="one-base-view-for-the-whole-app">
 <span id="app-wide-base-view"></span><h2>One base view for the whole app<a class="headerlink" href="#one-base-view-for-the-whole-app" title="Link to this heading">#</a></h2>
-<p>The simplest payoff of true subclassing is an application-wide base view:
-declare your app’s request context once, on a bare <a class="reference internal" href="api/views.html#fastapi_restly.views.View" title="fastapi_restly.views.View"><code class="xref py py-class docutils literal notranslate"><span class="pre">View</span></code></a>, and subclass
-it everywhere. No CRUD is required:</p>
+<p>An application-wide base view declares your app’s request context once on a
+bare <a class="reference internal" href="api/views.html#fastapi_restly.views.View" title="fastapi_restly.views.View"><code class="xref py py-class docutils literal notranslate"><span class="pre">View</span></code></a>. Subclass it everywhere. No CRUD
+is required:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">Depends</span>
 
@@ -952,7 +910,6 @@ multi-tenant scoping, role-based filtering, and shared mixins.</p></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#what-is-a-class-based-view">What is a class-based view?</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#why-cbvs-at-all">Why CBVs at all?</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#declaration-and-registration">Declaration and registration</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#true-subclassing">True subclassing</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#one-base-view-for-the-whole-app">One base view for the whole app</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#the-view-hierarchy">The view hierarchy</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#a-complete-example-a-tenant-scoped-base-view">A complete example: a tenant-scoped base view</a></li>
