@@ -240,15 +240,17 @@ def build_pyproject(options: Options) -> str:
         dependencies.append("alembic>=1.15.2")
 
     listed = "\n".join(f'    "{item}",' for item in dependencies)
+    # Alembic writes the files under alembic/versions, so their layout is not
+    # the project's to answer for.
     ruff_alembic = (
-        "# Alembic writes migrations, so their layout is not yours to answer for.\n"
         '[tool.ruff]\nextend-exclude = ["alembic/versions"]\n\n'
         if options.alembic
         else ""
     )
-    # Without this, ruff sees the alembic/ directory and files the package as
-    # first-party, so the right import order in alembic/env.py would depend on
-    # whether the project name sorts before or after "alembic".
+    # The alembic/ directory at the project root makes ruff file `alembic` as
+    # first-party, which puts `from alembic import context` in the same block as
+    # the `app` imports. Without this the generated project fails its own
+    # `ruff check` with I001 on the first command.
     isort_alembic = (
         '\n[tool.ruff.lint.isort]\nknown-third-party = ["alembic"]\n'
         if options.alembic
@@ -259,6 +261,14 @@ def build_pyproject(options: Options) -> str:
         if options.is_async
         else ""
     )
+    # Two settings a reader would otherwise wonder about, explained here rather
+    # than in the file they land in:
+    # * `[tool.uv] package = false` because this is an application and not a
+    #   distribution, so there is nothing to build and no backend to configure.
+    #   pytest reaches the package through pythonpath instead.
+    # * `[tool.fastapi] entrypoint` because `fastapi dev` and `fastapi run`
+    #   cannot call a factory, so they need the one module holding an app
+    #   object. See asgi.py.
     return f"""[project]
 name = "{options.name}"
 version = "0.1.0"
@@ -274,13 +284,9 @@ dev = [
     "ruff>=0.8.0",
 ]
 
-# Not a distribution: this is an application, so there is nothing to build and
-# no build backend to configure. pytest finds the package through pythonpath.
 [tool.uv]
 package = false
 
-# `fastapi dev` and `fastapi run` cannot call a factory, so point them at the
-# one module that holds an application object.
 [tool.fastapi]
 entrypoint = "{PACKAGE}.asgi:app"
 

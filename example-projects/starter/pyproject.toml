@@ -15,13 +15,9 @@ dev = [
     "ruff>=0.8.0",
 ]
 
-# Not a distribution: this is an application, so there is nothing to build and
-# no build backend to configure. pytest finds the package through pythonpath.
 [tool.uv]
 package = false
 
-# `fastapi dev` and `fastapi run` cannot call a factory, so point them at the
-# one module that holds an application object.
 [tool.fastapi]
 entrypoint = "app.asgi:app"
 
@@ -30,7 +26,6 @@ pythonpath = ["."]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 
-# Alembic writes migrations, so their layout is not yours to answer for.
 [tool.ruff]
 extend-exclude = ["alembic/versions"]
 
