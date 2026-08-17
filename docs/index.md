@@ -9,7 +9,8 @@ Designed for customization.
 > deeper extension points on the way to `1.0.0`; see the
 > [changelog](changelog.md).
 
-Basic example:
+With FastAPI-Restly imported as `fr`, a CRUD resource is four lines once `app`
+and `User` exist:
 
 ```python
 @fr.include_view(app)
@@ -18,7 +19,7 @@ class UserView(fr.AsyncRestView):
     model = User  # SQLAlchemy model
 ```
 
-`UserView` provides full CRUD and is free to [customize](customize.md).
+See [Customize](customize.md) for how you can change it.
 
 ## Quick Start
 
