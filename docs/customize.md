@@ -196,13 +196,18 @@ a `password`. Any server-owned field follows the same shape, reading
 request context through `self`:
 
 ```python
+from typing import Annotated
+from fastapi import Depends
+
+    current_user: Annotated[User, Depends(get_current_user)]
+
     async def create(self, schema_obj):
         obj = await self.make_new_object(schema_obj)
-        obj.created_by = self.request.state.user_id  # set from request context
+        obj.created_by = self.current_user.id
         return await self.save_object(obj)
 ```
 
-{attr}`self.request <fastapi_restly.views.BaseRestView.request>` is the live FastAPI `Request`. {attr}`self.session <fastapi_restly.views.RestView.session>` is the injected async SQLAlchemy session. Both are available in every method.
+`current_user` is a class-level dependency, injected per request like any other ([Dependency injection on class attributes](class_based_views.md#dependency-injection-on-class-attributes)). {attr}`self.request <fastapi_restly.views.BaseRestView.request>` is the live FastAPI `Request`. {attr}`self.session <fastapi_restly.views.RestView.session>` is the injected async SQLAlchemy session. Both are available in every method.
 
 ### `update`: run validation before saving
 
@@ -317,15 +322,18 @@ definition with a pointer to
 {meth}`authorize(action, obj=None, data=None) <fastapi_restly.views.RestView.authorize>` runs inside `handle_<verb>`: before {meth}`create <fastapi_restly.views.RestView.create>` and {meth}`get_many <fastapi_restly.views.RestView.get_many>`, and after the object is loaded for {meth}`get_one <fastapi_restly.views.RestView.get_one>` / {meth}`update <fastapi_restly.views.RestView.update>` / {meth}`delete <fastapi_restly.views.RestView.delete>`. Override it to enforce policy:
 
 ```python
+from typing import Annotated
+from fastapi import Depends
+
 @fr.include_view(app)
 class InvoiceView(fr.AsyncRestView):
     prefix = "/invoices"
     model = Invoice
     schema = InvoiceRead
+    current_user: Annotated[User, Depends(get_current_user)]
 
     async def authorize(self, action, obj=None, data=None):
-        user = self.request.user  # populated by your auth middleware
-        if action in ("create", "update", "delete") and not user.is_staff:
+        if action in ("create", "update", "delete") and not self.current_user.is_staff:
             raise fr.exc.Forbidden()
         if action == "update" and obj.posted:
             raise fr.exc.Forbidden("Posted invoices are immutable")
@@ -710,7 +718,7 @@ Every method runs inside a request context, so you can raise `fastapi.HTTPExcept
 import fastapi
 
     async def create(self, schema_obj):
-        if not self.request.state.user.is_admin:
+        if not self.current_user.is_admin:
             raise fastapi.HTTPException(403, "Admin access required")
         return await super().create(schema_obj)
 ```
