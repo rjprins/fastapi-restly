@@ -9,8 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `restly new <name>` creates a sync or async project with SQLite or
-  PostgreSQL and Alembic or `create_all`.
+- `restly new <name>` scaffolding command to create a project from scratch with
+  optional database and alembic set up.
 - Pass `health="/health"` to `fr.configure()` to add a liveness endpoint that
   returns `200` with `{"status": "ok"}`.
 - `fr.utils.CurrentSettingsMixin` adds a lazily initialized
