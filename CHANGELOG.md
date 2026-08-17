@@ -9,106 +9,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `restly new <name>` generates a project in the prescribed layout. The package
-  is `app` in every project, so `from app.settings import Settings` is the same
-  line in the docs, in the examples, and in your own code; the name you give
-  names the project, meaning the directory, `pyproject.toml`, and the
-  databases. Inside it: subject-first
-  packages, a `create_app()` factory with its `VIEWS` tuple, `asgi.py` for the
-  server, settings through `Settings.current`, a `users` resource with its
-  model, schemas and view, and a test suite. The resource is a plain
-  starting point rather than a demonstration: nothing in it is there to be
-  read and deleted. Three choices, each a flag and a prompt: `--async` or `--sync`,
-  `--postgres` or `--sqlite`, `--alembic` or `--create-all`. On a terminal the
-  command asks for whatever is missing, the name included, so a bare
-  `restly new` is an interview; off a terminal it takes the defaults and still
-  requires the name. Each question lists its choices with a line saying what
-  each one does, marks the default, and takes a number, a name, or enter. An
-  unrecognised answer asks again rather than taking the default.
-  `--yes` takes the defaults, `--directory` writes somewhere other than
-  `./<name>`. The command prints the next steps for the combination it
-  generated. `example-projects/starter` is its default output, kept identical
-  by a check in CI.
-
-  A `--create-all` project builds its schema in the application lifespan and its
-  test suite does the same, so it runs on a fresh database without a migration.
-  An `--alembic` project ships the wiring but no migration, since the generator
-  cannot know your schema: its tests run the migrations, so they pass once the
-  first one exists. SQLite projects use a file for the test database. An
-  in-memory database does not survive Alembic's separate connection, nor the
-  engine disposal the test client triggers through the lifespan.
-- `fr.configure(app, health="/health")` mounts a liveness endpoint at that
-  path, answering `200` with `{"status": "ok"}` and appearing in the OpenAPI
-  schema. It makes no database round-trip; readiness stays a route of your own.
-  There is no such route unless you name a path, and a route your application
-  already has at that path is left in place. Passing `health` without an `app`,
-  or a path without a leading slash, raises `RestlyConfigurationError`.
-- `fr.utils.CurrentSettingsMixin` gives a `pydantic-settings` class one shared
-  instance through `Settings.current`, built the first time it is read rather
-  than at import, with `Settings.use(...)` to install an explicit one. A test
-  suite builds its own settings with the env file disabled and installs them
-  before calling the application factory, so importing the application never
-  requires a configured environment.
-- A production-shaped SaaS example with separate PostgreSQL development and
-  test services, Pydantic settings, an application-owned asyncpg engine, async
-  Alembic migrations, migration-seeded fixtures, and migration-backed tests.
+- `restly new <name>` creates a sync or async project with SQLite or
+  PostgreSQL and Alembic or `create_all`.
+- Pass `health="/health"` to `fr.configure()` to add a liveness endpoint that
+  returns `200` with `{"status": "ok"}`.
+- `fr.utils.CurrentSettingsMixin` adds a lazily initialized
+  `Settings.current` instance to a Pydantic settings class. Call
+  `Settings.use(...)` to install explicit settings.
 
 ### Changed
 
-- Engines that `fr.configure()` builds from a `database_url` or
-  `async_database_url` now get defaults suited to running under a web server.
-  In-memory SQLite uses `StaticPool` with `check_same_thread=False`, because an
-  in-memory database lives inside its connection and the previous default
-  opened one connection, and therefore one empty database, per thread; a `def`
-  endpoint reading from FastAPI's thread pool could not see rows written during
-  setup. Every SQLite connection now sets `PRAGMA foreign_keys=ON`, which SQLite
-  leaves off, so declared foreign keys are enforced, `ondelete` fires, and an
-  invalid reference raises `IntegrityError` and is translated to a 409 rather
-  than being stored. PostgreSQL engines get `pool_pre_ping=True` and
-  `pool_recycle=1800`. Pool sizing is unchanged: Restly sets neither
-  `pool_size` nor `max_overflow`.
-
-  Every one of these is connection state, which is the line they stop at:
-  Restly configures the connections it opens and does not modify the database
-  they reach. `PRAGMA journal_mode=WAL` is deliberately not set for that
-  reason, since journal mode is written into the database file and outlives the
-  process that set it. [Engine
-  Defaults](https://www.fastapi-restly.org/technical_details.html#engine-defaults)
-  shows how to enable it yourself.
-
-  These defaults apply only to engines Restly builds. An `engine`,
-  `async_engine`, `make_session`, `async_make_session` or session generator you
-  pass in is used exactly as given, so constructing the engine yourself remains
-  the way to decline any of them.
-- The documentation now recommends organizing an application by subject rather
-  than by code type: each resource gets a package holding its `models.py`,
-  `schemas.py`, and `views.py`, and a `VIEWS` tuple in `main.py` names every
-  view for the factory to register. Alembic and test setup read the schema by
-  importing `main.py`, which reaches every view and so every model. A factory
-  that builds nothing at import time is what makes that free, so a module-level
-  application belongs in its own `asgi.py`. The new guide "Structure a Project"
-  owns the layout, and the SaaS example follows it.
-- The documentation now recommends building applications with a `create_app()`
-  factory and reaching settings through `Settings.current` rather than an
-  instance built at import. The test suite installs the settings it built, with
-  the env file disabled, and then calls the factory, instead of mutating
-  `DATABASE_URL` before importing the application, which stays documented as
-  the fallback. Keeping settings out of module import is what lets Alembic and
-  the suite import the application without a configured environment. The SaaS
-  example follows the pattern. Run it with `uvicorn app.asgi:app`.
-- Custom `RestView` collection routes declared at `"/"` now use the no-slash
-  path as their OpenAPI form and keep the trailing-slash path as a hidden
-  compatibility alias, matching generated list and create routes.
-- Plain `Mapped[datetime]` annotations now map to
-  `DateTime(timezone=True)` by default, so PostgreSQL enforces UTC-instant
-  semantics with `timestamptz`. `TimestampsMixin` uses the same timezone-aware
-  mapping. On PostgreSQL, timestamps in API responses now include the UTC
-  offset, for example `+00:00`, instead of serializing as naive values.
+- Engines created by `fr.configure()` now share one connection across threads
+  for in-memory SQLite. SQLite foreign-key constraints are now enforced, so
+  invalid references return 409 instead of being stored. Fix callers and tests
+  that write invalid references. PostgreSQL engines now check connections and
+  recycle them after 30 minutes. Pass your own engine or session factory to
+  control these settings.
+- Custom `RestView` collection routes declared at `"/"` now use the path
+  without a trailing slash in OpenAPI. The trailing-slash path remains as a
+  hidden compatibility alias.
+- Plain `Mapped[datetime]` annotations and `TimestampsMixin` now use
+  `DateTime(timezone=True)`. PostgreSQL responses include the UTC offset.
 
   Existing PostgreSQL databases must migrate every affected
-  `timestamp without time zone` column, including columns declared with a plain
-  `Mapped[datetime]`. If existing naive values represent UTC, use an explicit
-  conversion such as:
+  `timestamp without time zone` column. Review generated Alembic migrations
+  before applying them. A bare type change interprets existing values in the
+  server's timezone and can shift them. If existing naive values represent UTC,
+  convert them explicitly:
 
   ```sql
   ALTER TABLE example
@@ -116,27 +43,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     USING created_at AT TIME ZONE 'UTC';
   ```
 
-  A bare type alteration can reinterpret stored values in the server's local
-  timezone and shift them. Review generated Alembic migrations before applying
-  them. To retain naive wall-clock semantics for a specific column, opt out
-  explicitly with `mapped_column(DateTime())`.
+  Use `mapped_column(DateTime())` on columns that must retain naive wall-clock
+  values.
 
 ### Fixed
 
-- Datetime query filters without an explicit offset are interpreted as UTC for
-  timezone-aware columns, preventing host-local timezone shifts with asyncpg.
-  Filters for columns explicitly declared with `DateTime()` remain naive.
-- New or migrated PostgreSQL schemas now accept the UTC-aware values produced
-  by `TimestampsMixin` when using asyncpg. SQLite does not preserve timezone
-  information and continues to return naive datetime values.
-- References to `fr.configure()` and `fr.snapshot()` in the API reference are
-  links again rather than plain text. The documentation build now runs in
-  Sphinx's nitpicky mode, which fails on a cross-reference whose target does
-  not exist instead of rendering it as text.
-- `create_list_params_schema()` and `create_schema_from_model()` show a
-  parameter table in the API reference. Their arguments were written in a
-  docstring style Sphinx does not parse here, so they rendered as one
-  paragraph of running text.
+- Datetime query filters without an offset now use UTC for timezone-aware
+  columns. Filters for `DateTime()` columns remain naive.
+- `TimestampsMixin` values are accepted by PostgreSQL columns created from its
+  annotations when using asyncpg.
 
 ## [0.9.0] - 2026-08-13
 
