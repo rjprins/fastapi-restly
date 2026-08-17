@@ -401,3 +401,10 @@ These pages cover the topics from this tutorial in more detail:
 - [Testing](howto_testing.md): savepoint isolation and test fixtures
 - [Examples](examples.md): complete sample apps that extend these patterns
 - [API Reference](api_reference.md)
+
+```{toctree}
+:maxdepth: 1
+:hidden:
+
+tutorial_customizing
+```

@@ -186,9 +186,11 @@ Production engine config, Alembic migrations, and an ASGI checklist.
 :hidden:
 
 getting_started
-Views <class_based_views>
+Tutorial <tutorial>
+CRUD Views <class_based_views>
 How-To <user_guide>
 API <api_reference>
+Blog <https://www.fastapi-restly.org/blog/>
 examples
 About <about>
 ```

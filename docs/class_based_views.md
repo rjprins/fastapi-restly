@@ -1,4 +1,4 @@
-# Views
+# Views & CRUD
 
 Views group related FastAPI endpoints in Python classes. A view declares shared
 route configuration and dependencies once. Subclasses inherit or override its
