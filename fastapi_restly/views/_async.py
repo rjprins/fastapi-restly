@@ -39,7 +39,7 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
             schema = FooRead
             model = Foo
 
-    Each verb is three tiers (see "Customize RestView" in the docs):
+    Each verb is three tiers (see "Customizing RestView" in the docs):
 
     * ``<verb>_endpoint`` — the endpoint method. Owns the HTTP signature,
       ``response_model``, and ``to_response``. Rarely overridden.

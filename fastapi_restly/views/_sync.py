@@ -39,7 +39,7 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
             schema = FooRead
             model = Foo
 
-    Each verb is three tiers (see "Customize RestView" in the docs): the
+    Each verb is three tiers (see "Customizing RestView" in the docs): the
     endpoint method ``<verb>_endpoint``, the handler ``handle_<verb>``
     (authorize + commit bracket), and the bare verb ``<verb>`` (the domain
     operation -- the common override point).
