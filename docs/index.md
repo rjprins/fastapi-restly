@@ -128,11 +128,11 @@ Fast path from zero to a working REST API.
 Build a complete blog API in two parts: generated CRUD, then customization.
 :::
 
-:::{grid-item-card} Class-Based Views
-:link: class_based_views
+:::{grid-item-card} RestView and AsyncRestView
+:link: rest_views
 :link-type: doc
 
-How subclassable views make the override model work.
+Define a model-backed CRUD resource and understand its default contract.
 :::
 
 :::{grid-item-card} Customize RestView
@@ -184,6 +184,7 @@ Production engine config, Alembic migrations, and an ASGI checklist.
 :hidden:
 
 getting_started
+RestView and AsyncRestView <rest_views>
 Tutorial <tutorial_overview>
 Views <class_based_views>
 Customize <customize>
