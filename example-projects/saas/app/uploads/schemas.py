@@ -20,7 +20,7 @@ class UploadSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
     The matching upload endpoint is a custom multipart POST on
     ``UploadView``; the generic CRUD ``post`` route is excluded because
     the wire format (``multipart/form-data`` with a file) doesn't fit
-    the framework's JSON-only auto-generated handler.
+    the framework's default JSON create handler.
     """
 
     filename: str

@@ -9,7 +9,7 @@ staying close to the FastAPI and SQLAlchemy code you already write.
 FastAPI deliberately handles one side of a web application: routing,
 validation, serialization, and dependency injection. Restly focuses on the
 resource layer around that: SQLAlchemy sessions, ORM-to-schema mapping,
-generated CRUD routes, query parameters, error translation, and test fixtures.
+default CRUD routes, query parameters, error translation, and test fixtures.
 
 ## Philosophy
 
@@ -23,8 +23,8 @@ generated CRUD routes, query parameters, error translation, and test fixtures.
   [savepoint-isolated test fixtures](howto_testing.md)
   all work from {func}`fr.configure() <fastapi_restly.db.configure>` onward.
 - **Customization is never off the path.** Applications are rarely just CRUD.
-  Every generated operation has explicit override points
-  so generated behavior is a starting point, not a boundary (see [three tiers](customize.md)).
+  Every CRUD operation has explicit override points, so the default behavior
+  is a starting point, not a boundary (see [three tiers](customize.md)).
 - **Documentation you don't have to guess at.** Common paths have runnable
   examples and extension points say where custom behavior belongs, for your
   team.

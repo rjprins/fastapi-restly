@@ -99,7 +99,7 @@ def test_excluded_restly_route_can_be_replaced_by_plain_fastapi_route():
     assert deleted_ids == [user_id]
 
     # The plain FastAPI route handled DELETE; the Restly delete route is absent,
-    # so the row was not removed by Restly's generated CRUD handler.
+    # so the row was not removed by Restly's default delete handler.
     get_response = client.get(f"/api/users/{user_id}")
     assert get_response.status_code == 200
     assert get_response.json() == {"id": user_id, "name": "Grace"}

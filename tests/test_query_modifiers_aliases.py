@@ -167,7 +167,7 @@ class TestParseValueWithAliases:
         assert result == "John Doe"
 
         # Python field name is rejected even with populate_by_name=True —
-        # generated FastAPI endpoints would not have declared this query
+        # The default list endpoint would not have declared this query
         # parameter, so accepting it via the raw helper would be a
         # contract divergence.
         with pytest.raises(HTTPException) as exc_info:

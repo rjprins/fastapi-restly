@@ -6,7 +6,7 @@ starting point or smoke test.
 
 ## What it demonstrates
 
-- Auto-generated CRUD endpoints (`GET`, `POST`, `PATCH`, `DELETE`) from a
+- Default CRUD routes (`GET`, `POST`, `PATCH`, `DELETE`) for a
   SQLAlchemy 2.0 dataclass-style model
 - Connecting to a sync SQLite database via `fr.configure(...)`
 - Creating tables on startup via the FastAPI `lifespan` hook

@@ -340,7 +340,7 @@ with Restly is covered in
 
 ## Reference fields in custom routes
 
-Generated `POST` and `PATCH` routes validate the body before Restly calls
+The default `POST` and `PATCH` routes validate the body before Restly calls
 `make_new_object()` or `update_object()`, so reference fields are already in the
 right shape. A {class}`MustExist <fastapi_restly.schemas.MustExist>` field is a
 plain id; {class}`IDRef[Model] <fastapi_restly.schemas.IDRef>` and

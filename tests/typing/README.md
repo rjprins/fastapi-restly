@@ -19,7 +19,7 @@ uv run pyright fastapi_restly
 As of 2026-05-05 this reports 22 package-internal errors. The previously
 user-facing `ClassVar[type[SchemaT]]` cascade in `views/_base.py` and bare
 `_ReactAdminMixin` attribute cascade in `views/_react_admin.py` are fixed.
-The `schema_obj` annotations on generated write endpoints are also hidden from
+The `schema_obj` annotations on inherited write endpoint methods are hidden from
 consumers because FastAPI rewrites those signatures at route registration. The
 remaining package errors are internal dynamic-framework edges: SQLAlchemy model
 `id` access through `DeclarativeBase`, dynamic endpoint attributes installed

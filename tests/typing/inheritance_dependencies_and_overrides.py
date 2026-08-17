@@ -48,7 +48,7 @@ class CustomProjectView(
     model = Project
     schema = ProjectRead
 
-    # Custom endpoint methods override the generated ``*_endpoint`` methods. They
+    # Custom endpoint methods override the inherited ``*_endpoint`` methods. They
     # must NOT be named after the business methods (get_many/create/...), which
     # would shadow them and make handle_<verb> -> self.<verb> recurse.
     @fr.get("/")

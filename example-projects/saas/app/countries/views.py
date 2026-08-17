@@ -1,7 +1,7 @@
 """Read-only Country lookup view.
 
-Demonstrates the "read-only resource" use-case from the matrix: the
-generated create / update / delete routes are excluded so the API only
+Demonstrates the "read-only resource" use-case from the matrix: the default
+create, update, and delete routes are excluded so the API only
 serves GETs. Reads still go through the framework's filtering / paging /
 ordering pipeline.
 """

@@ -27,7 +27,7 @@
   <text class="sans" x="92" y="305" font-size="40" font-weight="500" fill="#14424c">A REST framework for FastAPI</text>
 
   <!-- feature lines -->
-  <text class="sans" x="92" y="352" font-size="24" font-weight="400" fill="#5a7175">Class-based views &#183; Auto-generated CRUD</text>
+  <text class="sans" x="92" y="352" font-size="24" font-weight="400" fill="#5a7175">Class-based views &#183; Default CRUD routes</text>
   <text class="sans" x="92" y="386" font-size="24" font-weight="400" fill="#5a7175">SQLAlchemy 2.0 &#183; Pydantic v2 &#183; React-Admin ready</text>
 
   <!-- pip install pill -->

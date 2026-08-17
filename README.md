@@ -50,7 +50,7 @@ Its class-based views are real Python classes: use inheritance, mixins, and
 method overrides to share behavior across resources.
 
 - **Class-based views**: group endpoints on Python classes with inheritance and method overrides.
-- **REST endpoints in minutes**: use `View` for custom endpoint groups, or `AsyncRestView` / `RestView` for generated CRUD.
+- **REST endpoints in minutes**: use `View` for custom endpoint groups, or `AsyncRestView` / `RestView` for default CRUD routes.
 - **Incremental adoption**: use Restly per resource; drop to ordinary FastAPI when needed — see [Existing Project Integration](https://www.fastapi-restly.org/howto_existing_project.html).
 - **Class-level dependencies**: declare shared dependencies once and read their values from `self`.
 - **Explicit override points**: change the route shell, request handler, or business verb.
@@ -118,8 +118,9 @@ column type, while SQLite returns naive datetime values.
 
 ### Not just CRUD
 
-`View` is the same class-based machinery without the generated routes — use it
-to group related non-CRUD endpoints (auth flows, webhook receivers, actions):
+`View` uses the same class-based machinery without CRUD endpoint methods. Use
+it to group related non-CRUD endpoints (auth flows, webhook receivers,
+actions):
 
 ```python
 @fr.include_view(app)
@@ -158,7 +159,7 @@ Why a `View` over a bare `APIRouter`?
 - Prefix, tags, responses, and dependencies are declared once on the class.
 - Views compose: inheritance and mixins share behavior across endpoint groups.
 - One registration call (`fr.include_view`) per class, bindable to any app or router.
-- And when a group grows into a resource, `RestView` adds generated CRUD and lifecycle hooks on the same class shape.
+- When a group grows into a resource, `RestView` adds CRUD endpoint methods and lifecycle hooks on the same class shape.
 
 ## Installation
 

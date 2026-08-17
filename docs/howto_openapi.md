@@ -1,14 +1,14 @@
 # Customize the OpenAPI Schema
 
-Restly's generated routes are ordinary FastAPI path operations, so everything
-OpenAPI-related composes the FastAPI way. This page maps the customization
-points.
+Restly registers its default CRUD routes as ordinary FastAPI path operations,
+so FastAPI's OpenAPI customization applies to them. This page maps the
+customization points.
 
 ## Per-view metadata
 
 To apply OpenAPI metadata across a whole view, set the
 {attr}`tags <fastapi_restly.views.View.tags>`, {attr}`responses <fastapi_restly.views.View.responses>`, and {attr}`dependencies <fastapi_restly.views.View.dependencies>` class attributes;
-they exist on every view and apply to all of its routes, generated and custom:
+they exist on every view and apply to all of its routes, default and custom:
 
 ```python
 @fr.include_view(app)
@@ -36,10 +36,10 @@ custom actions document themselves like any FastAPI endpoint:
     async def publish(self, id: int): ...
 ```
 
-## Change a generated route's documented contract
+## Change a default CRUD route's documented contract
 
-A generated route's `response_model` (and therefore its documented schema)
-comes from the view's {attr}`schema <fastapi_restly.views.BaseRestView.schema>` family. To document (and return) a different
+A default route's `response_model` (and therefore its documented schema) comes
+from the view's {attr}`schema <fastapi_restly.views.BaseRestView.schema>` family. To document (and return) a different
 shape on one verb, replace that endpoint method with your own decorator and
 `response_model`; see
 [Response Envelopes and List Metadata](howto_response_schema.md),

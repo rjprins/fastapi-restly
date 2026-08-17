@@ -7,7 +7,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 import fastapi_restly as fr
 
 
-def test_custom_declarative_base_works_with_generated_async_crud(client):
+def test_custom_declarative_base_works_with_default_async_crud(client):
     class Base(DeclarativeBase):
         pass
 

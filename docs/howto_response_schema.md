@@ -9,7 +9,7 @@ changing the *container* around the data, not the fields inside it.
 
 ## What Restly returns by default
 
-Before changing the container, it helps to know what the generated routes put
+Before changing the container, it helps to know what the default routes put
 on the wire:
 
 | Route | Response body |
@@ -166,8 +166,8 @@ override points is covered in
         return super().to_response(obj_or_list, shape)
 ```
 
-Be aware that overriding `to_response` without also replacing the shells
-leaves the generated shells' `response_model` describing the bare object, so
+Be aware that overriding `to_response` without also replacing the endpoint
+methods leaves their `response_model` describing the bare object, so
 FastAPI response validation *and* OpenAPI disagree with the enveloped payload
 you return. A new contract therefore needs both pieces: the `to_response`
 override for the runtime shape, and a replaced shell with a matching

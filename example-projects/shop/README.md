@@ -1,12 +1,12 @@
 # Shop Example
 
-A minimal FastAPI-Restly example showcasing auto-generated CRUD endpoints
+A minimal FastAPI-Restly example showcasing the default CRUD routes
 that are wire-compatible with [React Admin](https://marmelab.com/react-admin/)
 via `AsyncReactAdminView`.
 
 ## What it demonstrates
 
-- Auto-generated CRUD endpoints from SQLAlchemy 2.0 dataclass-style models
+- Default CRUD routes for SQLAlchemy 2.0 dataclass-style models
 - Three primary key strategies: integer (`IDBase`), UUID, and integer with
   timestamps (`IDBase + TimestampsMixin`)
 - A many-to-many relationship (`Product` <-> `Order`) via an association table

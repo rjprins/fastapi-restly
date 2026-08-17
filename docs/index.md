@@ -98,7 +98,7 @@ first test.
 
 ## Features
 
-- **[Generated REST endpoints](api_reference.md#generated-rest-endpoints)**: GET, POST, PATCH, DELETE with minimal boilerplate
+- **[Default CRUD routes](api_reference.md#default-crud-routes)**: GET, POST, PATCH, DELETE with minimal boilerplate
 - **[True class-based views](class_based_views.md)**: inheritance, mixins, and method overrides
 - **[Explicit override points](customize.md)**: every CRUD verb split into endpoint method, handler, and business method
 - **[React Admin ready](howto_react_admin.md)**: `AsyncReactAdminView` speaks `ra-data-simple-rest`
@@ -125,7 +125,7 @@ Fast path from zero to a working REST API.
 :link: tutorial_overview
 :link-type: doc
 
-Build a complete blog API in two parts: generated CRUD, then customization.
+Build a complete blog API in two parts: default CRUD, then customization.
 :::
 
 :::{grid-item-card} RestView and AsyncRestView
@@ -161,7 +161,7 @@ Complete sample applications from a tiny API to a production-shaped service.
 :link: api_reference
 :link-type: doc
 
-Generated endpoints, all public symbols, query parameters, and autodoc.
+Default CRUD routes, all public symbols, query parameters, and autodoc.
 :::
 
 :::{grid-item-card} About

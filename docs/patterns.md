@@ -92,7 +92,7 @@ Replacing an endpoint method is the outermost override; see
 ## Restore a soft-deleted row
 
 Soft delete hides rows in {meth}`build_query <fastapi_restly.views.RestView.build_query>`,
-so every generated read returns 404 for them, including the read your restore
+so every default read returns 404 for them, including the read your restore
 action needs. The restore route therefore makes a deliberately unscoped
 query, then mutates inside {meth}`write_action <fastapi_restly.views.RestView.write_action>`
 so that authorization and the commit bracket still run:

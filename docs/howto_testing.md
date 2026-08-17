@@ -399,8 +399,9 @@ raise an `AssertionError` that includes the response body:
 | `patch`  | `200`                   |
 | `delete` | `204`                   |
 
-`AsyncRestView` and {class}`RestView <fastapi_restly.views.RestView>` do not generate `PUT` routes; the client's
-`put` exists for [React Admin views](howto_react_admin.md) and custom routes.
+`AsyncRestView` and {class}`RestView <fastapi_restly.views.RestView>` do not
+define `PUT` routes. The client's `put` exists for [React Admin
+views](howto_react_admin.md) and custom routes.
 
 Override the expectation when testing error paths:
 

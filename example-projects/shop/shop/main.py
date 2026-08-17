@@ -1,7 +1,7 @@
 """
 Shop example for FastAPI-Restly.
 
-This example demonstrates auto-generated CRUD with React-Admin-compatible
+This example demonstrates default CRUD routes with React-Admin-compatible
 endpoints, integer/UUID primary keys, timestamp mixins, and one-to-many and
 many-to-many relationships -- all driven by the framework's defaults with no
 custom endpoints, filters, or schema overrides.

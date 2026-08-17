@@ -102,9 +102,10 @@ The `fastapi dev` command comes from the `standard` extra; the dev server is
 not for production. Then open `http://127.0.0.1:8000/docs` or
 `http://127.0.0.1:8000/openapi.json`.
 
-## Use the generated endpoints
+## Use the CRUD routes
 
-Registering `UserView` with `prefix = "/users"` generated five endpoints:
+`UserView` inherits five endpoint methods from `AsyncRestView`. Registering it
+with `prefix = "/users"` exposes these routes:
 
 - `GET /users`
 - `POST /users`
@@ -142,9 +143,9 @@ default `data` envelope:
 }
 ```
 
-Update semantics are `PATCH` (partial update); see
-[Generated REST Endpoints](api_reference.md#generated-rest-endpoints) for the
-full contract. Filter lists with query parameters, for example
+Update semantics are `PATCH` (partial update). See
+[Default CRUD Routes](api_reference.md#default-crud-routes) for the full
+contract. Filter lists with query parameters, for example
 `GET /users?name=Jane`. See [Filter, Sort, and Paginate Lists](howto_query_modifiers.md).
 
 ## Add an explicit schema (optional)

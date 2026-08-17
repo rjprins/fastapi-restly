@@ -1,16 +1,20 @@
 # API Reference
 
 This page is the condensed reference for FastAPI-Restly. It documents the
-generated HTTP endpoints and their query behavior, lists the key public
+default CRUD routes and their query behavior, lists the key public
 symbols with brief descriptions, and links to the full Python API reference
 generated via Sphinx autodoc.
 
 [RestView and AsyncRestView](rest_views.md) is the usage guide for the CRUD
 view classes. This page supplies exact contracts, types, and signatures.
 
-## Generated REST Endpoints
+(generated-rest-endpoints)=
+(default-crud-routes)=
+## Default CRUD Routes
 
-Register a view with `fr.include_view(app, ViewClass)` or `@fr.include_view(app)`. `fr.AsyncRestView` and `fr.RestView` expose the same generated resource surface:
+Register a view with `fr.include_view(app, ViewClass)` or
+`@fr.include_view(app)`. `fr.AsyncRestView` and `fr.RestView` define the same
+default CRUD endpoint methods. `include_view` registers them as these routes:
 
 | Method | Path | Purpose | Default Status |
 |---|---|---|---|
@@ -24,7 +28,7 @@ OpenAPI uses the collection path without a trailing slash as the canonical
 form. Restly also accepts `/{prefix}/` as a hidden compatibility alias. Use
 `/{prefix}` in templates, examples, and contract tests.
 
-The generated routes share these conventions:
+The default routes share these conventions:
 
 - Updates use `PATCH`, not `PUT`. React Admin views also expose `PUT /{id}` for `ra-data-simple-rest`; see [React Admin Integration](howto_react_admin.md).
 - `GET /{id}` and `DELETE /{id}` return `404` when the object is not found.
@@ -63,7 +67,11 @@ behavior:
 The envelope's shape and custom alternatives are covered in
 [Response Envelopes and List Metadata](howto_response_schema.md).
 
-At a lower level, `fr.query.create_list_params_schema(...)` and `fr.query.apply_list_params(...)` power the generated list endpoints. Use the view classes for normal CRUD; call these helpers directly only for custom endpoints that need the same list grammar, and pass a validated params-schema instance rather than raw `QueryParams`.
+At a lower level, `fr.query.create_list_params_schema(...)` and
+`fr.query.apply_list_params(...)` power the default list endpoint. Use the
+view classes for normal CRUD. Call these helpers directly only for custom
+endpoints that need the same list grammar, and pass a validated params-schema
+instance instead of raw `QueryParams`.
 
 ## Endpoint Decorators
 
@@ -82,11 +90,12 @@ The shorthand decorators explicitly set the default status code shown. Pass `sta
 
 Other keyword arguments pass through to FastAPI route registration: `response_model=`, `dependencies=`, `responses=`, `tags=`, and other `APIRouter.add_api_route()` options.
 
-`@fr.put(...)` is available for custom endpoints, but default generated update endpoints use `PATCH`.
+`@fr.put(...)` is available for custom endpoints, but the default update route
+uses `PATCH`.
 
 ## Route Exclusion
 
-To disable generated endpoints on a view, set `exclude_routes`:
+To disable default CRUD routes on a view, set `exclude_routes`:
 
 ```python
 @fr.include_view(app)
@@ -102,7 +111,8 @@ The valid route values for exclusion are `fr.ViewRoute.GET_MANY`, `fr.ViewRoute.
 
 ## Response Modeling
 
-Generated CRUD endpoints derive their request and response schemas from the view's configuration:
+The inherited CRUD endpoint methods derive their request and response schemas
+from the view's configuration:
 
 - The response schema defaults to `schema` (or an auto-generated `*Read` schema when omitted).
 - The input schema for `POST` defaults to the schema without read-only fields (`schema_create`, generated as `*Create`).
@@ -136,7 +146,12 @@ its `timestamptz` column type. SQLite does not preserve timezone metadata and
 returns naive datetime values. Use `mapped_column(DateTime())` to opt a specific
 wall-clock field out of timezone-aware storage.
 
-`RestView` and `AsyncRestView` assume one scalar resource identifier at `/{id}`. The column can have another name when you provide explicit schemas and `id_type`, but the generated CRUD routes, `IDSchema`, `IDRef`, React Admin, and OpenAPI identity shape all remain scalar-id contracts. For composite keys, use `fr.View` and explicit routes such as `@fr.get("/{tenant_id}/{slug}")`.
+`RestView` and `AsyncRestView` assume one scalar resource identifier at
+`/{id}`. The column can have another name when you provide explicit schemas
+and `id_type`, but the default CRUD routes, `IDSchema`, `IDRef`, React Admin,
+and OpenAPI identity shape all remain scalar-id contracts. For composite keys,
+use `fr.View` and explicit routes such as
+`@fr.get("/{tenant_id}/{slug}")`.
 
 ### Schema Classes and Utilities
 
@@ -151,7 +166,7 @@ These classes and markers define how model data crosses the wire; the reference-
 | {class}`fr.IDSchema[Model] <fastapi_restly.schemas.IDSchema>` | Nested relationship-object field type. Wire format is `{"id": 5}` on request and response. Use this when a client expects relationship objects instead of flat scalar ids. |
 | {class}`fr.TimestampsSchemaMixin <fastapi_restly.schemas.TimestampsSchemaMixin>` | Pydantic mixin adding read-only `created_at` / `updated_at` fields to a schema. |
 | `fr.ReadOnly[T]` | Type annotation marker. Fields annotated `ReadOnly[T]` are excluded from create/update inputs. |
-| `fr.WriteOnly[T]` | Type annotation marker. Fields annotated `WriteOnly[T]` are stripped by `self.to_response_schema(obj)`, which the generated CRUD and ReactAdmin routes use. Direct FastAPI/Pydantic serialization treats it as schema metadata only. |
+| `fr.WriteOnly[T]` | Type annotation marker. Fields annotated `WriteOnly[T]` are stripped by `self.to_response_schema(obj)`, which the inherited CRUD and React Admin endpoint methods use. Direct FastAPI/Pydantic serialization treats it as schema metadata only. |
 | {func}`fastapi_restly.schemas.create_schema_from_model(model) <fastapi_restly.schemas.create_schema_from_model>` | Auto-generate a Pydantic schema from a SQLAlchemy model. Useful for scaffolding, prototypes, and internal tools; prefer explicit schemas for stable public API contracts. Import from `fastapi_restly.schemas`; it is intentionally not exported at the top level. |
 
 ### View Classes
@@ -243,7 +258,7 @@ Every `View` subclass, CRUD or not, honors these class attributes:
 | {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` | `ClassVar[type[pydantic.BaseModel]]` | Schema for `POST` input. Auto-derived by removing `ReadOnly` fields and named `ModelCreate`. |
 | {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>` | `ClassVar[type[pydantic.BaseModel]]` | Schema for `PATCH` input. Auto-derived by making all writable fields optional and named `ModelUpdate`. |
 | {attr}`model <fastapi_restly.views.BaseRestView.model>` | `ClassVar[type[DeclarativeBase]]` | The SQLAlchemy model class. |
-| {attr}`id_type <fastapi_restly.views.BaseRestView.id_type>` | `ClassVar[type]` | Scalar primary-key type used in the generated `/{id}` routes. Defaults to `int`. |
+| {attr}`id_type <fastapi_restly.views.BaseRestView.id_type>` | `ClassVar[type]` | Scalar primary-key type used in the default `/{id}` routes. Defaults to `int`. |
 | {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>` | `ClassVar[Iterable[str \| ViewRoute]]` | Route names to suppress. |
 
 The list-tuning attributes (`default_page_size`, `max_page_size`, `paginated`, `extra_query_params`) are tabulated under [List Endpoint Behavior](#list-endpoint-behavior).
@@ -388,13 +403,14 @@ fr.configure(app=app, async_database_url="sqlite+aiosqlite:///app.db")
 
 ## Important Limitations and Capabilities
 
-The generated CRUD surface has deliberate boundaries; the points below summarize what is and is not supported.
+The default CRUD contract has these boundaries:
 
 - Nested schemas are supported for **responses** and relation filtering, including nested aliases.
 - Full nested schemas are **not** supported for create/update payloads by the default CRUD flow; write payloads must map directly to model fields, or use model-aware reference fields such as `*_id: fr.MustExist[int, Model]` for FK columns and relationship fields typed as `IDRef[Model]` or `IDSchema[Model]`.
-- Ordinary SQLAlchemy `DeclarativeBase` models work with generated CRUD views.
+- Ordinary SQLAlchemy `DeclarativeBase` models work with CRUD views.
 - UUID and other non-`int` scalar primary keys are supported through `id_type`, `fr.MustExist[UUID, Model]`, `IDRef[Model]`, and `IDSchema[Model]`.
-- Composite primary keys are not supported by generated `RestView` / `AsyncRestView` CRUD routes; use `fr.View` for custom route shapes.
+- Composite primary keys are not supported by the default `RestView` /
+  `AsyncRestView` CRUD routes. Use `fr.View` for custom route shapes.
 
 ## Full Python API (Autodoc)
 

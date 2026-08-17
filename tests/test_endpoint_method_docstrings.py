@@ -36,7 +36,7 @@ def test_endpoint_methods_have_redirect_docstrings():
             assert doc and "endpoint method" in doc, (cls, endpoint)
 
 
-def test_generated_routes_do_not_leak_endpoint_docstrings_into_openapi():
+def test_default_routes_do_not_leak_endpoint_docstrings_into_openapi():
     class PlainView(fr.AsyncRestView):
         prefix = "/endpoint-doc-plain"
         model = EndpointDocModel

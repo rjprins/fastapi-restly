@@ -41,7 +41,7 @@ The routes below highlight the patterns involved:
 | Route | Pattern it demonstrates |
 |---|---|
 | `POST /tasks/{id}/start` / `complete` / `reopen` | State transitions via {meth}`write_action <fastapi_restly.views.RestView.write_action>` on a {class}`RestView <fastapi_restly.views.RestView>` |
-| `POST /tasks/bulk`, `/tasks/bulk-delete`, `/tasks/import-csv` | Bulk endpoints beside generated CRUD |
+| `POST /tasks/bulk`, `/tasks/bulk-delete`, `/tasks/import-csv` | Bulk endpoints beside the default CRUD routes |
 | `POST /uploads` + `GET /uploads/{id}/lines` | A file-upload flow with a custom create bracket |
 | `POST /task-labels/create-and-attach` | Two rows committed through one `write_action` block |
 | `POST /users/{id}/change-password`, `GET /users/me` | Account actions and a non-resource read |

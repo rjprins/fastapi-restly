@@ -35,9 +35,10 @@ class BaseSchema(pydantic.BaseModel):
             model_config = pydantic.ConfigDict(from_attributes=True)
 
     ``from_attributes=True`` lets Pydantic/FastAPI validate objects by
-    attribute when the schema is used directly. Generated Restly routes still
-    serialize through ``to_response_schema()`` so Restly-specific behavior such
-    as ``WriteOnly`` filtering and relationship-id normalization is applied.
+    attribute when the schema is used directly. The inherited CRUD endpoint
+    methods still serialize through ``to_response_schema()`` so Restly-specific
+    behavior such as ``WriteOnly`` filtering and relationship-id normalization
+    is applied.
     """
 
     model_config = pydantic.ConfigDict(from_attributes=True)

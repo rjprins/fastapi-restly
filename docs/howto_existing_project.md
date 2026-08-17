@@ -31,7 +31,7 @@ class UserView(fr.AsyncRestView):
     schema = UserRead
 
 
-fr.include_view(api, UserView)  # generated /api/users routes
+fr.include_view(api, UserView)  # registers /api/users CRUD routes
 
 app.include_router(api)
 ```
@@ -55,7 +55,7 @@ async def export_user(id: int):
 
 ## Step Out for One Endpoint
 
-If one generated endpoint should be hand-written, exclude only that route and
+If one default CRUD route should be hand-written, exclude it and
 add the FastAPI route yourself:
 
 ```python
@@ -93,13 +93,13 @@ modules.
 
 ## Replace an Existing Hand-Written Router
 
-The previous sections stepped out of Restly; going the other direction,
-retiring a hand-written CRUD router in favor of a generated view, is a mapping
-exercise:
+The previous sections stepped out of Restly. Going the other direction means
+retiring a hand-written CRUD router in favor of a CRUD view. Map the existing
+contract before replacing it:
 
-1. Map your routes to the generated table. `GET /`, `POST /`, and
+1. Map your routes to Restly's default CRUD contract. `GET /`, `POST /`, and
    `GET`/`PATCH`/`DELETE` on `/{id}` are covered ([the exact
-   contract](api_reference.md#generated-rest-endpoints)). Anything else on the
+   contract](api_reference.md#default-crud-routes)). Anything else on the
    router (exports, actions) stays as custom routes on the view or as plain
    FastAPI routes beside it.
 2. Keep custom semantics out of the swap. A route whose contract differs
@@ -288,7 +288,7 @@ class WorldView(fr.AsyncRestView):
     model = World
 ```
 
-FastAPI-Restly supports these models for generated CRUD routes and
+FastAPI-Restly supports these models for default CRUD routes and
 [auto-generated schemas](technical_details.md#auto-generated-schemas). When
 creating tables, use your own base metadata (for example
 `AppBase.metadata.create_all(...)`).

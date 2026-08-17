@@ -1,4 +1,3 @@
-(rest-views)=
 # RestView and AsyncRestView
 
 {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` and
@@ -95,8 +94,8 @@ multi-package application.
 (default-crud-behavior)=
 ## Default CRUD behavior
 
-For `prefix = "/users"`, the inherited endpoint methods register this HTTP
-contract:
+For `prefix = "/users"`, `include_view` registers the inherited endpoint
+methods as this HTTP contract:
 
 | Request | Endpoint method | Input | Response | Status |
 |---|---|---|---|---|

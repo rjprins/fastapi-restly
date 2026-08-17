@@ -14,7 +14,7 @@ public endpoints; set `paginated = False` to return every matching row uncapped.
 
 Unknown query keys are rejected with 422. Filters are narrowing controls,
 so a typo or unsupported operator silently ignored could widen the result
-set. Generated list endpoints therefore validate the request against the
+set. The default list endpoints therefore validate the request against the
 schema's declared parameters and reject anything else; for which
 malformed requests produce which status, see
 [422 vs 400 on list endpoints](howto_error_responses.md#422-vs-400-on-list-endpoints).

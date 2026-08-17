@@ -89,7 +89,7 @@ split, and app-wide error envelopes (problem+json).
 
 ## Customizing Views
 
-These guides change what the generated views do, from overriding a single
+These guides change what CRUD views do, from overriding a single
 method to sharing behaviour across many views.
 
 ::::{grid} 1 2 2 2
@@ -109,7 +109,8 @@ flows, custom actions, and tenant scoping.
 :link-type: doc
 
 Override the business methods ({meth}`create <fastapi_restly.views.RestView.create>`, {meth}`update <fastapi_restly.views.RestView.update>`, ...), the handlers,
-or the endpoint methods, and add custom routes alongside generated CRUD.
+or the endpoint methods, and add custom routes alongside the default CRUD
+routes.
 :::
 
 :::{grid-item-card} Share Behaviour with Base Views
@@ -158,7 +159,7 @@ Use {class}`AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>` to g
 :link-type: doc
 
 Set per-view tags and responses, add metadata to custom routes, replace a
-generated route's documented contract, and use `x-resource-ref`.
+default CRUD route's documented contract, and use `x-resource-ref`.
 :::
 
 :::{grid-item-card} Test APIs with RestlyTestClient and Fixtures

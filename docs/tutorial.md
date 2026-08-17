@@ -1,9 +1,10 @@
-# Tutorial Part 1: Generated CRUD
+# Tutorial Part 1: CRUD Views
 
 In Part 1 we build a small blog API with two related models, using the most
-common FastAPI-Restly patterns: models, schemas, and a view class that generates
-full CRUD endpoints. It assumes you have read [Getting Started](getting_started.md)
-and installed `fastapi-restly[standard]` with the `aiosqlite` driver.
+common FastAPI-Restly patterns: models, schemas, and view classes that inherit
+full CRUD endpoint methods. It assumes you have read [Getting
+Started](getting_started.md) and installed `fastapi-restly[standard]` with the
+`aiosqlite` driver.
 
 This tutorial uses explicit schemas for clarity. For faster scaffolding, you can omit
 `schema = ...` on a view and let FastAPI-Restly auto-generate it from the model.
@@ -174,9 +175,10 @@ fastapi dev main.py
 Open <http://127.0.0.1:8000/docs>. Both resources are listed with their
 request and response schemas, ready to try from the browser.
 
-## Generated endpoints
+## Default CRUD routes
 
-For each view, FastAPI-Restly generates five endpoints. With `prefix = "/posts"`:
+Each view inherits five endpoint methods. With `prefix = "/posts"`,
+`include_view` registers them at these paths:
 
 | Method   | Path          | Action         |
 |----------|---------------|----------------|
@@ -228,7 +230,7 @@ class PostRead(fr.IDSchema):
 - `ReadOnly` fields appear in responses but are ignored on create and update;
   the server owns them.
 - `WriteOnly` fields are accepted on create and update but stripped from every
-  generated response.
+  CRUD response.
 
 `id` on {class}`IDSchema <fastapi_restly.schemas.IDSchema>` is already `ReadOnly`, which is why it appears in responses without
 being part of the create/update body.
@@ -238,7 +240,7 @@ covered in [ReadOnly and WriteOnly](howto_custom_schema.md#readonly-and-writeonl
 
 ## Querying lists
 
-The generated list endpoints accept filtering, sorting, and pagination
+The default list endpoints accept filtering, sorting, and pagination
 through URL query parameters. Filters use direct field names with optional
 operator suffixes:
 

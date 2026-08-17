@@ -1,4 +1,4 @@
-"""Class-based views: generated CRUD plus explicit override tiers.
+"""Class-based views with default CRUD methods and explicit override tiers.
 
 Every CRUD verb on ``RestView`` / ``AsyncRestView`` exists at three tiers —
 name the tier that owns your change and override one method:

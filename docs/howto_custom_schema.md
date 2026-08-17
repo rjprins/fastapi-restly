@@ -41,7 +41,7 @@ class BaseSchema(pydantic.BaseModel):
 `ReadOnly`/`WriteOnly` markers, described in
 [ReadOnly and WriteOnly](#readonly-and-writeonly).)
 
-Generated Restly routes still serialize ORM objects through
+The inherited CRUD endpoint methods still serialize ORM objects through
 {meth}`self.to_response_schema(obj) <fastapi_restly.views.BaseRestView.to_response_schema>`. That is where Restly applies response-specific
 behavior such as `WriteOnly` filtering and relationship-id normalization.
 
@@ -112,7 +112,7 @@ class UserRead(fr.IDSchema):
 
 The two markers take effect in different places, which matters when a schema
 is used outside a view. `WriteOnly` sets Pydantic's field-level `exclude`, so
-every serialization of the schema drops the field: generated routes, FastAPI's
+every serialization of the schema drops the field: CRUD responses, FastAPI's
 `response_model`, and your own `model_dump()` calls all strip it, recursively
 through nested schemas, and the documented response schema in OpenAPI omits it.
 `ReadOnly` is applied by Restly itself when it generates

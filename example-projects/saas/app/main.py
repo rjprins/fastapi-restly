@@ -8,7 +8,7 @@ This example is a complete showcase of FastAPI-Restly customization patterns:
   users, projects, tasks, and labels
 - Enum fields (role, status, priority, task type)
 - Custom create/update schemas with validation
-- Custom endpoints alongside auto-generated CRUD
+- Custom endpoints alongside default CRUD routes
 - List-params filtering, sorting, and pagination on every CRUD view
 
 The application is built by a factory. Settings are read and the engine is

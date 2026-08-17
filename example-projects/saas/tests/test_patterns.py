@@ -332,7 +332,7 @@ class TestReadOnlyLookup:
         assert {"NL", "DE"} <= codes
 
     def test_post_is_not_allowed(self, client):
-        # Generated POST is excluded — no route registered.
+        # The default POST route is excluded, so no route is registered.
         client.post(
             "/countries", json={"code": "FR", "name": "France"}, assert_status_code=405
         )

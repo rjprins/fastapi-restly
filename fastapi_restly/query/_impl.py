@@ -341,9 +341,8 @@ def apply_list_params(
     list-endpoint query parameters.
 
     ``params`` is normally an instance of the schema returned by
-    :func:`create_list_params_schema`. The generated FastAPI endpoints
-    always pass a validated instance, so pagination/filter bounds have
-    already been checked.
+    :func:`create_list_params_schema`. The default list endpoints always pass a
+    validated instance, so pagination/filter bounds have already been checked.
 
     A raw :class:`~starlette.datastructures.QueryParams` is also accepted
     for callers that build the query parameters programmatically.
