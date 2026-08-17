@@ -2,8 +2,10 @@
 
 These guides are task-focused: each one shows how to accomplish a specific
 goal with FastAPI-Restly. If you are new to the framework, start with
-[Getting Started](getting_started.md), then the [Tutorial](tutorial.md), and
-come back here when you have a concrete task.
+[Getting Started](getting_started.md), read [RestView and
+AsyncRestView](rest_views.md) for the default CRUD contract, then use the
+[Tutorial](tutorial.md) for a complete multi-model example. Come back here
+when you have a concrete task.
 
 ## Adopting and Modeling
 

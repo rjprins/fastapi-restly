@@ -205,8 +205,11 @@ For test isolation (rolling back test data between tests), see the
 Continue with the **[Tutorial](tutorial.md)**, which builds a complete
 multi-model API step by step. The pages below go deeper into individual topics:
 
-- [Class-Based Views](class_based_views.md): what makes the views subclassable,
-  and when to use {class}`View <fastapi_restly.views.View>`, {class}`RestView <fastapi_restly.views.RestView>`, or a plain FastAPI route.
+- [RestView and AsyncRestView](rest_views.md): the default CRUD contract, view
+  configuration, and the map from common changes to their owning guides.
+- [Class-Based Views](class_based_views.md): when to use a generic
+  {class}`View <fastapi_restly.views.View>` or a plain FastAPI route, and how
+  view registration and inheritance work.
 - Already have a FastAPI app? [Use Restly in an Existing Project](howto_existing_project.md)
   shows how Restly adopts per resource, beside your current routes.
 - [Filter, Sort, and Paginate Lists](howto_query_modifiers.md)

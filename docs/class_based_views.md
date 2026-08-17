@@ -194,25 +194,18 @@ View                   ← class-based view primitive (no CRUD)
 
 - {class}`View <fastapi_restly.views.View>` is the bare CBV primitive. Use it for non-CRUD endpoints: auth flows,
   custom RPC, file uploads, or composite-key resources.
-- {class}`BaseRestView <fastapi_restly.views.BaseRestView>` extends `View` with {attr}`model <fastapi_restly.views.BaseRestView.model>`, {attr}`schema <fastapi_restly.views.BaseRestView.schema>`, the auto-generated
-  [create/update schemas](technical_details.md#generated-input-schemas)
-  ({attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` / {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>`), [query-modifier](howto_query_modifiers.md)
-  configuration, and helper methods like {meth}`to_response() <fastapi_restly.views.BaseRestView.to_response>` and
-  {meth}`to_response_schema() <fastapi_restly.views.BaseRestView.to_response_schema>`. The concrete CRUD methods live on {class}`RestView <fastapi_restly.views.RestView>` /
-  {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>`; `BaseRestView` is an abstract scaffold with no endpoints of
-  its own.
-- `RestView` and `AsyncRestView` provide the concrete sync and async
-  implementations of the CRUD endpoints; one of these two is usually the
-  class you subclass. They assume a single scalar resource id for the
-  generated `/{id}` routes; composite primary keys are not supported by the
-  default CRUD view contract. For legacy tables with composite keys, subclass
-  `View` directly and define routes that match your API shape.
+- {class}`BaseRestView <fastapi_restly.views.BaseRestView>` adds the model,
+  schema, list, and response helpers shared by the concrete CRUD views. It is
+  an abstract scaffold with no endpoints of its own.
+- {class}`RestView <fastapi_restly.views.RestView>` and
+  {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` define the sync
+  and async CRUD endpoint methods. [RestView and
+  AsyncRestView](rest_views.md) owns their default contract, configuration,
+  and limits.
 
-The public method surface is classified in the
-[API reference](api_reference.md#view-method-surface). Each CRUD verb is split
-into three tiers: `<verb>_endpoint` (HTTP contract), `handle_<verb>`
-(authorization + commit bracket), and `<verb>` (domain operation). Cross-cutting
-override points include {meth}`build_query <fastapi_restly.views.RestView.build_query>`, {meth}`authorize <fastapi_restly.views.RestView.authorize>`, hooks, and `to_response`.
+The [API reference](api_reference.md#view-method-surface) classifies the public
+method surface. [Customize RestView](customize.md) explains the three override
+tiers and cross-cutting override points.
 
 ## A complete example: a tenant-scoped base view
 

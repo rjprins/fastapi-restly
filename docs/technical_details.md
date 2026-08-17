@@ -157,24 +157,13 @@ changes, Restly warns with {class}`RestlyUncommittedChangesWarning <fastapi_rest
 [Custom session generators](howto_existing_project.md#provide-your-own-session-generator)
 control construction and cleanup, not commit ownership.
 
-Both views expose several class variables that affect endpoint registration and
-runtime behaviour:
-
-- {attr}`schema <fastapi_restly.views.BaseRestView.schema>` holds the Pydantic schema class; it is auto-generated if absent.
-- {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` and {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>` are derived from `schema` if not declared.
-- {attr}`model <fastapi_restly.views.BaseRestView.model>` names the SQLAlchemy model class.
-- {attr}`id_type <fastapi_restly.views.BaseRestView.id_type>` sets the Python type of the scalar `{id}` path parameter (default `int`).
-  Composite primary keys are outside the generated CRUD route contract; use
-  {class}`View <fastapi_restly.views.View>` directly when a resource needs a multi-part identity.
-- {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>` is an iterable of route names to suppress (e.g.
-  `exclude_routes = [fr.ViewRoute.DELETE]`). Route-name strings such as
-  `"delete"` are also accepted. Routes listed here have their
-  `_api_route_args` marker removed during {meth}`before_include_view() <fastapi_restly.views.BaseRestView.before_include_view>` so FastAPI
-  never registers them.
-- {attr}`paginated <fastapi_restly.views.BaseRestView.paginated>` (default `True`) makes the {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>` route
-  return a [paginated `data` envelope](howto_response_schema.md#the-list-envelope)
-  with `total_count`, `page`, `page_size`, and `total_pages`. Set it to `False`
-  to return every row in a plain `data` envelope.
+[RestView and AsyncRestView](rest_views.md) owns the user-facing model, schema,
+identity, route, and list configuration. At registration,
+{meth}`before_include_view() <fastapi_restly.views.BaseRestView.before_include_view>`
+turns that configuration into FastAPI signatures. It derives missing schemas,
+constructs the list query-parameter schema, sets the endpoint annotations, and
+removes the route marker for each exclusion. An exclusion may use a
+`ViewRoute` value or its endpoint-method string, such as `"delete_endpoint"`.
 
 ### include_view()
 

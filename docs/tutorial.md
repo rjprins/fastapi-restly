@@ -392,6 +392,8 @@ The tutorial continues with
 handlers, adds custom routes, and shares behaviour with base classes. The
 pages below go deeper into the topics this part touched on:
 
+- [RestView and AsyncRestView](rest_views.md): the default CRUD contract and
+  resource configuration
 - [Auto-Generated Schemas](technical_details.md#auto-generated-schemas): skip writing schemas for simple models
 - [Filter, Sort, and Paginate Lists](howto_query_modifiers.md): the full filter and sort reference
 - [Work with Foreign Keys and Relationships](howto_relationship_idschema.md): reference related rows by id

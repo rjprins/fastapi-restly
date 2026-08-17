@@ -5,6 +5,9 @@ generated HTTP endpoints and their query behavior, lists the key public
 symbols with brief descriptions, and links to the full Python API reference
 generated via Sphinx autodoc.
 
+[RestView and AsyncRestView](rest_views.md) is the usage guide for the CRUD
+view classes. This page supplies exact contracts, types, and signatures.
+
 ## Generated REST Endpoints
 
 Register a view with `fr.include_view(app, ViewClass)` or `@fr.include_view(app)`. `fr.AsyncRestView` and `fr.RestView` expose the same generated resource surface:

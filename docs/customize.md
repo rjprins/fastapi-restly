@@ -7,8 +7,9 @@ archive instead of delete, or scope every read to the current tenant. This page
 first explains how each view handles a request, then works through the
 override points and recipes that follow from that structure.
 
-This page covers the CRUD behavior defined by {class}`RestView <fastapi_restly.views.RestView>` and {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>`.
-A plain {class}`View <fastapi_restly.views.View>` defines no CRUD endpoints.
+[RestView and AsyncRestView](rest_views.md) covers the default CRUD contract
+and its class configuration. This page starts where those defaults stop. A
+plain {class}`View <fastapi_restly.views.View>` defines no CRUD endpoints.
 [Class-Based Views](class_based_views.md) covers the class mechanics shared by
 all views.
 
