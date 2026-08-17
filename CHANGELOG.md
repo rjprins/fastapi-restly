@@ -50,9 +50,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Datetime query filters without an offset now use UTC for timezone-aware
   columns. Filters for `DateTime()` columns remain naive.
-- `TimestampsMixin` values are accepted by PostgreSQL columns created from its
-  annotations when using asyncpg.
-
 ## [0.9.0] - 2026-08-13
 
 ### Added
