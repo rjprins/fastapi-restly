@@ -19,7 +19,8 @@ class UserView(fr.AsyncRestView):
     model = User  # SQLAlchemy model
 ```
 
-See [Customize](customize.md) for how you can change it.
+See [RestView and AsyncRestView](rest_views.md) for the full guide and
+[Customize](customize.md) for how you can change it.
 
 ## Quick Start
 
