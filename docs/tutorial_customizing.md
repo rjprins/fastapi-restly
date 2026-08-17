@@ -1,11 +1,13 @@
-# Tutorial Part 2: Customizing Views
+# Customize the Blog API
 
-In Part 2 we extend the blog API from [Part 1](tutorial.md), working through
-customization from single-method overrides to shared base classes. Part 1's
-`author_token` and `view_count` demo fields are set aside in this part; a
-shared base class stamps authorship server-side instead.
+This tutorial extends [Build a Blog API](tutorial.md) from single-method
+overrides through shared base classes. Its `author_token` and `view_count` demo
+fields are set aside. A shared base class stamps authorship server-side
+instead.
 
-The examples use {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>`. The same methods and patterns apply to {class}`RestView <fastapi_restly.views.RestView>`, the sync variant; simply drop the `async`/`await`.
+The examples use {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>`.
+The same methods and patterns apply to {class}`RestView <fastapi_restly.views.RestView>`,
+the sync variant. Drop the `async` and `await` keywords.
 
 ## The three tiers of a CRUD verb
 
@@ -13,7 +15,7 @@ Before overriding anything, it helps to know where each behavior lives. Every
 CRUD verb has three tiers, and the rule is to override the lowest tier that
 owns the behavior you need. The full model, including lifecycles and a
 decision table, is covered in
-[Customize RestView](customize.md). From the wire
+[Customizing RestView](customize.md). From the wire
 inward, the tiers are:
 
 ```
@@ -120,7 +122,14 @@ class PostView(fr.AsyncRestView):
         # Do NOT call super() / delete_object; that would remove the row.
 ```
 
-`DELETE /posts/{id}` now marks the row instead of removing it. {meth}`delete_endpoint <fastapi_restly.views.RestView.delete_endpoint>` still returns 204, and {meth}`handle_delete <fastapi_restly.views.RestView.handle_delete>` still commits. Pair this with a {meth}`build_query <fastapi_restly.views.RestView.build_query>` filter that hides deleted rows; the canonical recipe lives in [Customize RestView](customize.md#delete-soft-delete-instead-of-removing-the-row), and the reusable mixin version in [Compose Views with Mixins](howto_compose_views_with_mixins.md).
+`DELETE /posts/{id}` now marks the row instead of removing it.
+{meth}`delete_endpoint <fastapi_restly.views.RestView.delete_endpoint>` still
+returns 204, and {meth}`handle_delete <fastapi_restly.views.RestView.handle_delete>`
+still commits. Pair this with a {meth}`build_query <fastapi_restly.views.RestView.build_query>`
+filter that hides deleted rows. The canonical recipe lives in [Customizing
+RestView](customize.md#delete-soft-delete-instead-of-removing-the-row). The
+reusable mixin version is in [Compose Views with
+Mixins](howto_compose_views_with_mixins.md).
 
 ## Tier 2: the handler (orchestration and timing)
 
@@ -346,9 +355,9 @@ When a base class defines {attr}`prefix <fastapi_restly.views.View.prefix>`, sub
 
 ## Putting it together
 
-Here is the blog API from Part 1, extended with the customizations from this
-part. A three-line middleware stands in for real authentication so the file
-runs as is:
+Here is the blog API from [Build a Blog API](tutorial.md), extended with the
+customizations from this tutorial. A three-line middleware stands in for real
+authentication so the file runs as shown:
 
 ```python
 import fastapi
@@ -486,9 +495,9 @@ the soft-delete section above.
 
 ## Next steps
 
-The pages below go deeper into the patterns from this part:
+These pages cover the patterns from this tutorial in more detail:
 
-- [Customize RestView](customize.md): the complete override reference with all recipes
+- [Customizing RestView](customize.md): the complete override reference with all recipes
 - [Share Behaviour with Base Views](howto_inheritance.md): the full inheritance guide
 - [Testing](howto_testing.md): test the overrides you write
 - [API Reference](api_reference.md)

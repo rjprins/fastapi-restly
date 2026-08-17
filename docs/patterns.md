@@ -57,7 +57,7 @@ The filter grammar, including
 [foreign-key filtering](howto_query_modifiers.md#foreign-key-filtering), is
 documented in [Filter, Sort, and Paginate Lists](howto_query_modifiers.md);
 custom routes are covered in
-[Customize RestView](customize.md).
+[Customizing RestView](customize.md).
 
 ## A different schema for the list endpoint
 
@@ -123,7 +123,7 @@ class ItemView(fr.AsyncRestView):
 ```
 
 Soft delete itself is covered as a one-off override in
-[Customize RestView](customize.md#delete-soft-delete-instead-of-removing-the-row)
+[Customizing RestView](customize.md#delete-soft-delete-instead-of-removing-the-row)
 and as a reusable mixin in
 [Compose Views with Mixins](howto_compose_views_with_mixins.md#softdeletemixin-hide-deleted-rows),
 which also discusses the admin bypass.
@@ -156,7 +156,7 @@ class PaymentWebhookView(fr.View):
 
 For *outbound* webhooks (calling someone else after a write), use the
 {meth}`after_commit <fastapi_restly.views.RestView.after_commit>` hook
-instead; see [Customize RestView](customize.md).
+instead. See [Customizing RestView](customize.md).
 
 The decision between `View` and `RestView` is covered in
 [When to use `View` directly](class_based_views.md#when-to-use-view-directly).
@@ -165,9 +165,8 @@ The decision between `View` and `RestView` is covered in
 
 Declare `session`, `current_user`, and the rest of your request context once
 on a bare {class}`View <fastapi_restly.views.View>` base; every endpoint group
-(CRUD or not) subclasses it and reads from `self`. This pattern is owned by
-[One base view for the whole app](class_based_views.md#one-base-view-for-the-whole-app)
-in Class-Based Views.
+(CRUD or not) subclasses it and reads from `self`. [One base view for the whole
+app](class_based_views.md#one-base-view-for-the-whole-app) owns this pattern.
 
 ## Login and other auth flows
 
@@ -180,9 +179,8 @@ which owns this pattern.
 
 Reuse `handle_<verb>` when the action is CRUD under another URL; use
 {meth}`write_action("publish", ...) <fastapi_restly.views.RestView.write_action>`
-when the action has its own identity. The full walkthrough is
-[Add a custom action route](customize.md#add-a-custom-action-route)
-in Customize RestView, which owns this pattern.
+when the action has its own identity. [Add a custom action
+route](customize.md#add-a-custom-action-route) provides the full walkthrough.
 
 ## Tenant scoping
 

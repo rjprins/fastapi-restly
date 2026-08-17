@@ -1,4 +1,4 @@
-# RestView and AsyncRestView
+# Using RestView
 
 {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` and
 {class}`RestView <fastapi_restly.views.RestView>` define five CRUD endpoint
@@ -165,7 +165,7 @@ Change the layer that owns the behavior instead of rewriting the entire route:
 
 | Change | Use |
 |---|---|
-| Stamp or transform data during create or update | Override the business method or cooperative object builder in [Customize RestView](customize.md) |
+| Stamp or transform data during create or update | Override the business method or cooperative object builder in [Customizing RestView](customize.md) |
 | Hide rows from every read | Override {meth}`build_query() <fastapi_restly.views.AsyncRestView.build_query>` |
 | Permit or reject an action | Override {meth}`authorize() <fastapi_restly.views.AsyncRestView.authorize>` |
 | Run an atomic side effect or a post-commit action | Override `before_commit()` or `after_commit()` |
@@ -174,7 +174,7 @@ Change the layer that owns the behavior instead of rewriting the entire route:
 | Share behavior across resources | Use a [base view](howto_inheritance.md) or [cooperative mixins](howto_compose_views_with_mixins.md) |
 | Replace the list query grammar | Follow [Filter, Sort, and Paginate Lists](howto_query_modifiers.md) |
 
-[Customize RestView](customize.md) owns the lifecycle diagrams, complete
+[Customizing RestView](customize.md) owns the lifecycle diagrams, complete
 override decision table, and worked recipes.
 
 ## Limits and alternatives
@@ -198,10 +198,10 @@ The default CRUD contract has these boundaries:
 ## Next steps
 
 - [Getting Started](getting_started.md) builds and runs a first resource.
-- [Customize RestView](customize.md) changes behavior at the correct layer.
+- [Customizing RestView](customize.md) changes behavior at the correct layer.
 - [Custom Schemas and Field Types](howto_custom_schema.md) defines stable wire
   contracts.
-- [Class-Based Views](class_based_views.md) explains registration, shared
+- [Views](class_based_views.md) explains registration, shared
   dependencies, and the inheritance model.
 - [How-To Guides](user_guide.md) covers individual tasks.
 - [API Reference](api_reference.md) lists exact signatures and defaults.

@@ -2,9 +2,9 @@
 
 These guides are task-focused: each one shows how to accomplish a specific
 goal with FastAPI-Restly. If you are new to the framework, start with
-[Getting Started](getting_started.md), read [RestView and
-AsyncRestView](rest_views.md) for the default CRUD contract, then use the
-[Tutorial](tutorial.md) for a complete multi-model example. Come back here
+[Getting Started](getting_started.md), read [Using RestView](rest_views.md) for
+the default CRUD contract, then use [Build a Blog API](tutorial.md) for a
+complete multi-model example. Come back here
 when you have a concrete task.
 
 ## Adopting and Modeling
@@ -104,7 +104,7 @@ different list schema, restoring soft-deleted rows, webhook receivers, login
 flows, custom actions, and tenant scoping.
 :::
 
-:::{grid-item-card} Customize RestView
+:::{grid-item-card} Customizing RestView
 :link: customize
 :link-type: doc
 

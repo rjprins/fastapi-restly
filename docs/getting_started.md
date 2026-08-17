@@ -203,12 +203,16 @@ For test isolation (rolling back test data between tests), see the
 
 ## Next steps
 
-Continue with the **[Tutorial](tutorial.md)**, which builds a complete
-multi-model API step by step. The pages below go deeper into individual topics:
+[Build a Blog API](tutorial.md) adds a related model, explicit schemas,
+filtering, and broader tests. [Customize the Blog
+API](tutorial_customizing.md) then adds overrides, custom routes,
+authorization, and shared base classes.
 
-- [RestView and AsyncRestView](rest_views.md): the default CRUD contract, view
+Use these pages for individual topics:
+
+- [Using RestView](rest_views.md): the default CRUD contract, view
   configuration, and the map from common changes to their owning guides.
-- [Class-Based Views](class_based_views.md): when to use a generic
+- [Views](class_based_views.md): when to use a generic
   {class}`View <fastapi_restly.views.View>` or a plain FastAPI route, and how
   view registration and inheritance work.
 - Already have a FastAPI app? [Use Restly in an Existing Project](howto_existing_project.md)
@@ -216,3 +220,11 @@ multi-model API step by step. The pages below go deeper into individual topics:
 - [Filter, Sort, and Paginate Lists](howto_query_modifiers.md)
 - [Deploying](deploying.md): production engine config, Alembic, and a `main.py` template.
 - [API Reference](api_reference.md)
+
+```{toctree}
+:maxdepth: 1
+:hidden:
+
+tutorial
+tutorial_customizing
+```

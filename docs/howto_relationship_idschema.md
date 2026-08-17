@@ -415,7 +415,7 @@ view governs it. References are a *policy* concern, and they are gated in
 {meth}`authorize <fastapi_restly.views.RestView.authorize>` /
 {meth}`before_commit <fastapi_restly.views.RestView.before_commit>` like any
 other write-path authorization; both hooks are described in
-[Customize RestView](customize.md#authorize-gate-the-action).
+[Customizing RestView](customize.md#authorize-gate-the-action).
 
 Gate in `authorize`, where `data` carries the write-side value before
 resolution. For a {class}`MustExist <fastapi_restly.schemas.MustExist>` field,
@@ -448,7 +448,7 @@ fetch and is the standard policy seam.
 
 - [Relationship Loading and Async](howto_relationship_loading.md): how these
   relationship fields load for responses, and `MissingGreenlet` fixes on async.
-- [Tutorial](tutorial.md): reference fields in the blog build, in context.
+- [Build a Blog API](tutorial.md): reference fields in the blog build, in context.
 - [Custom Schemas and Field Types](howto_custom_schema.md): the schema bases
   and field markers these compose with.
 - [API Reference](api_reference.md): {class}`MustExist <fastapi_restly.schemas.MustExist>` / {class}`IDRef <fastapi_restly.schemas.IDRef>` / {class}`IDSchema <fastapi_restly.schemas.IDSchema>` signatures and the

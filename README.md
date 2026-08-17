@@ -27,6 +27,11 @@ class UserView(fr.AsyncRestView):
 `UserView` inherits five CRUD endpoint methods from `AsyncRestView`.
 `include_view` registers them under `/users`.
 
+Read [Using RestView](https://www.fastapi-restly.org/rest_views.html) for the
+full CRUD guide and [Customizing
+RestView](https://www.fastapi-restly.org/customize.html) for changing its
+behavior.
+
 > **Status:** public beta release ([changelog](https://github.com/rjprins/fastapi-restly/blob/main/CHANGELOG.md)).
 >
 > Restly is public after four years of internal use. The API is settling on the
@@ -409,11 +414,12 @@ For wiring Restly into an existing app's engine, sessions, and models, see
 
 ## Documentation
 
-- **[Getting Started](https://www.fastapi-restly.org/getting_started.html)** — fast path from zero to a working API
-- **[Class-Based Views](https://www.fastapi-restly.org/class_based_views.html)** — what "real class-based views" means, and when to use `View` vs `RestView`
-- **[The Handle Design](https://www.fastapi-restly.org/the_handle_design.html)** — the three tiers behind every CRUD verb, and which one to override
-- **[User Guide](https://www.fastapi-restly.org/user_guide.html)** — tutorial walkthroughs and topic guides
-- **[API Reference](https://www.fastapi-restly.org/api_reference.html)** — complete API docs
+- **[Getting Started](https://www.fastapi-restly.org/getting_started.html)**: fast path from zero to a working API
+- **[Views](https://www.fastapi-restly.org/class_based_views.html)**: choose a view type and understand the shared class mechanics
+- **[Using RestView](https://www.fastapi-restly.org/rest_views.html)**: define a model-backed CRUD resource and its contract
+- **[Customizing RestView](https://www.fastapi-restly.org/customize.html)**: choose the right method to override or add a custom route
+- **[How-To Guides](https://www.fastapi-restly.org/user_guide.html)**: complete individual tasks
+- **[API Reference](https://www.fastapi-restly.org/api_reference.html)**: inspect exact signatures and defaults
 
 ## Examples
 

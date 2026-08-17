@@ -49,7 +49,7 @@ The routes below highlight the patterns involved:
 These patterns are covered in
 [Compose Views with Mixins](howto_compose_views_with_mixins.md),
 [Share Behaviour with Base Views](howto_inheritance.md),
-[Customize RestView](customize.md), and
+[Customizing RestView](customize.md), and
 [Patterns](patterns.md).
 
 ## Running them
@@ -61,4 +61,4 @@ The SaaS example also needs PostgreSQL. Its README includes the complete
 Compose, migration, application, and test commands.
 
 To build one of these yourself, start with
-[Getting Started](getting_started.md) and the [Tutorial](tutorial.md).
+[Getting Started](getting_started.md) and [Build a Blog API](tutorial.md).

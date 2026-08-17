@@ -157,7 +157,7 @@ changes, Restly warns with {class}`RestlyUncommittedChangesWarning <fastapi_rest
 [Custom session generators](howto_existing_project.md#provide-your-own-session-generator)
 control construction and cleanup, not commit ownership.
 
-[RestView and AsyncRestView](rest_views.md) owns the user-facing model, schema,
+[Using RestView](rest_views.md) owns the user-facing model, schema,
 identity, route, and list configuration. At registration,
 {meth}`before_include_view() <fastapi_restly.views.BaseRestView.before_include_view>`
 turns that configuration into FastAPI signatures. It derives missing schemas,
@@ -196,7 +196,7 @@ attach an `APIRouter` to the parent app/router.
 Every CRUD verb is split into an endpoint method (`<verb>_endpoint`), a
 handler (`handle_<verb>`), and a business method (`<verb>`); the model and the
 override decision table live in
-[Customize RestView](customize.md).
+[Customizing RestView](customize.md).
 
 The implementation detail worth knowing here is that the endpoint method calls
 {meth}`to_response(obj, shape) <fastapi_restly.views.BaseRestView.to_response>`, the single response method, which delegates to

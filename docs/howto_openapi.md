@@ -64,7 +64,7 @@ currently lose these annotations.
 
 ## See also
 
-- [Class-Based Views](class_based_views.md): where the class-level attributes
+- [Views](class_based_views.md): where the class-level attributes
   come from.
 - [Endpoint Decorators](api_reference.md#endpoint-decorators): the decorator
   surface and pass-through keyword arguments.

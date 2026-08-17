@@ -1,8 +1,8 @@
-# Tutorial Part 1: CRUD Views
+# Build a Blog API
 
-In Part 1 we build a small blog API with two related models, using the most
-common FastAPI-Restly patterns: models, schemas, and view classes that inherit
-full CRUD endpoint methods. It assumes you have read [Getting
+This tutorial builds a small blog API with two related models. It uses
+FastAPI-Restly models, schemas, and view classes that inherit full CRUD
+endpoint methods. It assumes you have read [Getting
 Started](getting_started.md) and installed `fastapi-restly[standard]` with the
 `aiosqlite` driver.
 
@@ -389,12 +389,11 @@ class CommentView(fr.AsyncRestView):
 
 ## Next steps
 
-The tutorial continues with
-**[Part 2: Customizing Views](tutorial_customizing.md)**, which overrides
-handlers, adds custom routes, and shares behaviour with base classes. The
-pages below go deeper into the topics this part touched on:
+Continue with [Customize the Blog API](tutorial_customizing.md), which
+overrides handlers, adds custom routes, and shares behaviour with base classes.
+These pages cover the topics from this tutorial in more detail:
 
-- [RestView and AsyncRestView](rest_views.md): the default CRUD contract and
+- [Using RestView](rest_views.md): the default CRUD contract and
   resource configuration
 - [Auto-Generated Schemas](technical_details.md#auto-generated-schemas): skip writing schemas for simple models
 - [Filter, Sort, and Paginate Lists](howto_query_modifiers.md): the full filter and sort reference

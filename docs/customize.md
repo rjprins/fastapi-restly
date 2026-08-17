@@ -1,4 +1,4 @@
-# Customize RestView
+# Customizing RestView
 
 {class}`RestView <fastapi_restly.views.RestView>` and {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` define complete CRUD
 endpoints. Because views are class-based, a subclass changes an endpoint's
@@ -7,16 +7,16 @@ archive instead of delete, or scope every read to the current tenant. This page
 first explains how each view handles a request, then works through the
 override points and recipes that follow from that structure.
 
-[RestView and AsyncRestView](rest_views.md) covers the default CRUD contract
+[Using RestView](rest_views.md) covers the default CRUD contract
 and its class configuration. This page starts where those defaults stop. A
 plain {class}`View <fastapi_restly.views.View>` defines no CRUD endpoints.
-[Class-Based Views](class_based_views.md) covers the class mechanics shared by
+[Views](class_based_views.md) covers the class mechanics shared by
 all views.
 
 :::{note}
 To *add* routes rather than change existing ones, declare a method with
 {func}`@fr.get <fastapi_restly.views.get>` or {func}`@fr.post <fastapi_restly.views.post>`,
-[as on any view](class_based_views.md#what-is-a-class-based-view); recipes
+{ref}`as on any view <what-is-a-class-based-view>`. Recipes
 are in [Add a custom read route](#add-a-custom-read-route) and
 [Add a custom action route](#add-a-custom-action-route) below.
 :::
@@ -660,7 +660,7 @@ Any class-level `Annotated` dependency you declare on the view (for example a cu
 
 ## See also
 
-- [Class-Based Views](class_based_views.md): why subclassable views make all
+- [Views](class_based_views.md): why subclassable views make all
   of this possible.
 - [Compose Views with Mixins](howto_compose_views_with_mixins.md): structural
   stamping and scoping through cooperative mixins.

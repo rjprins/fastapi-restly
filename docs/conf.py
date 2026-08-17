@@ -77,6 +77,7 @@ redirects = {
     "pytest_fixtures": "howto_testing.html",
     "the_handle_design": "customize.html",
     "howto_override_endpoints": "customize.html",
+    "tutorial_overview": "getting_started.html",
 }
 myst_heading_anchors = 3
 myst_enable_extensions = ["colon_fence", "substitution"]
@@ -110,9 +111,9 @@ html_theme_options = {
     "show_toc_level": 2,
     "navigation_depth": 3,
     "icon_links": [],
-    # All eight top-level sections plus the Blog link in the header; no
-    # "More" dropdown.
-    "header_links_before_dropdown": 9,
+    # Keep the four primary task entry points visible. Examples, About, and
+    # Blog remain available from the "More" dropdown.
+    "header_links_before_dropdown": 4,
     "external_links": [{"name": "Blog", "url": f"{SITE_URL}blog/"}],
     # Version dropdown. json_url is absolute so frozen snapshots read the same
     # canonical list and surface versions published after they were built.

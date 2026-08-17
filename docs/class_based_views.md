@@ -1,25 +1,27 @@
-# Class-Based Views
+# Views
 
-Class-based views are the core of FastAPI-Restly. They make REST scaffolding
-subclassable, keep shared behavior in one place, and let you override one
-method without rewriting the route.
+Views group related FastAPI endpoints in Python classes. A view declares shared
+route configuration and dependencies once. Subclasses inherit or override its
+endpoint methods.
 
-## When to use what
-
-`View` is a general route-organization layer, not just scaffolding for CRUD.
-The table below matches each kind of endpoint group to the construct that
-serves it:
+## Choose a view
 
 | You are building | Use |
 |---|---|
-| One simple standalone endpoint | A plain FastAPI route; no Restly needed |
-| A group of related non-CRUD endpoints: login/auth flows, webhook receivers, RPC-style actions, composite-key resources | [`fr.View`](#when-to-use-view-directly) |
+| One simple standalone endpoint | A plain FastAPI route, with no Restly view |
+| A group of related non-CRUD endpoints: login/auth flows, webhook receivers, RPC-style actions, composite-key resources | {class}`fr.View <fastapi_restly.views.View>` ([when to use `View` directly](#when-to-use-view-directly)) |
 | A database-backed CRUD resource | {class}`fr.AsyncRestView <fastapi_restly.views.AsyncRestView>` / {class}`fr.RestView <fastapi_restly.views.RestView>` |
-| CRUD plus custom actions such as publish, vote, or bulk operations | `RestView` with extra {func}`@fr.get <fastapi_restly.views.get>` / {func}`@fr.post <fastapi_restly.views.post>` methods ([custom actions](customize.md#add-a-custom-action-route)) |
+| CRUD plus custom actions such as publish, vote, or bulk operations | {class}`fr.AsyncRestView <fastapi_restly.views.AsyncRestView>` or {class}`fr.RestView <fastapi_restly.views.RestView>` with extra {func}`@fr.get <fastapi_restly.views.get>` or {func}`@fr.post <fastapi_restly.views.post>` methods ([custom actions](customize.md#add-a-custom-action-route)) |
 
-The rest of this page explains the machinery behind all four rows.
+Use {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` for new
+applications unless the application already uses synchronous SQLAlchemy. [Using
+RestView](rest_views.md) defines its CRUD routes, schemas, and configuration.
+[Customizing RestView](customize.md) shows how to override those routes or add
+custom actions. All three classes use the same registration, dependency
+injection, and inheritance mechanics.
 
-## What is a class-based view?
+(what-is-a-class-based-view)=
+## How class-based views work
 
 A class-based view (CBV) is a class that groups related endpoints together
 with the configuration they share. In plain FastAPI, an endpoint is a
@@ -178,6 +180,7 @@ Testing inherits the benefit: FastAPI's `dependency_overrides` applies to the
 class-level dependencies, so overriding `get_current_user` reaches
 `self.current_user` in every view at once.
 
+(the-view-hierarchy)=
 ## The view hierarchy
 
 The CRUD rows of the opening table are served by a short inheritance chain,
@@ -199,12 +202,11 @@ View                   ← class-based view primitive (no CRUD)
   an abstract scaffold with no endpoints of its own.
 - {class}`RestView <fastapi_restly.views.RestView>` and
   {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` define the sync
-  and async CRUD endpoint methods. [RestView and
-  AsyncRestView](rest_views.md) owns their default contract, configuration,
-  and limits.
+  and async CRUD endpoint methods. [Using RestView](rest_views.md) owns their
+  default contract, configuration, and limits.
 
 The [API reference](api_reference.md#view-method-surface) classifies the public
-method surface. [Customize RestView](customize.md) explains the three override
+method surface. [Customizing RestView](customize.md) explains the three override
 tiers and cross-cutting override points.
 
 ## A complete example: a tenant-scoped base view
@@ -259,8 +261,9 @@ bracket), and the business method (domain logic, auth-free and commit-free).
 One behavior change therefore means one method override, while routing,
 authorization, and the commit stay framework-owned. The tier model, both
 request lifecycles, the override decision table, and task-shaped recipes
-live in [Customize RestView](customize.md).
+live in [Customizing RestView](customize.md).
 
+(dependency-injection-on-class-attributes)=
 ## Dependency injection on class attributes
 
 A class attribute on a view is wired as a FastAPI dependency only when its
@@ -303,6 +306,7 @@ host without shadowing the host's wiring. See
 [Composing views with mixins](howto_compose_views_with_mixins.md) for the
 mixin pattern.
 
+(when-to-use-view-directly)=
 ## When to use `View` directly
 
 {class}`View <fastapi_restly.views.View>` is the right tool when your endpoints do not fit a CRUD shape:
@@ -336,12 +340,22 @@ others, write a plain function endpoint. CBVs pay off when you have shared
 metadata, shared dependencies, or related endpoints that benefit from being
 co-located. Do not reach for them just for the sake of structure.
 
-## Cross-references
+## Next steps
 
-- [Customize RestView](customize.md): the tier model behind every CRUD verb,
+- [Using RestView](rest_views.md): the default CRUD contract, schemas, and view
+  configuration.
+- [Customizing RestView](customize.md): the tier model behind every CRUD verb,
   both request lifecycles, the override decision table, and every override
   recipe.
 - [Share Behaviour with Base Views](howto_inheritance.md): patterns for
   multi-tenant scoping, role-based filtering, and shared mixins.
 - [API Reference](api_reference.md): full {class}`View <fastapi_restly.views.View>`, {class}`BaseRestView <fastapi_restly.views.BaseRestView>`,
   {class}`RestView <fastapi_restly.views.RestView>`, {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` signatures and class attributes.
+
+```{toctree}
+:maxdepth: 1
+:hidden:
+
+Using RestView <rest_views>
+Customizing RestView <customize>
+```

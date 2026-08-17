@@ -19,8 +19,8 @@ class UserView(fr.AsyncRestView):
     model = User  # SQLAlchemy model
 ```
 
-See [RestView and AsyncRestView](rest_views.md) for the full guide and
-[Customize](customize.md) for how you can change it.
+See [Using RestView](rest_views.md) for the full guide and [Customizing
+RestView](customize.md) for how you can change it.
 
 ## Quick Start
 
@@ -119,24 +119,25 @@ first test.
 :link: getting_started
 :link-type: doc
 
-Fast path from zero to a working REST API.
+Build a working REST API, then continue with a two-model blog API.
 :::
 
-:::{grid-item-card} Tutorial
-:link: tutorial_overview
+:::{grid-item-card} Views
+:link: class_based_views
 :link-type: doc
 
-Build a complete blog API in two parts: default CRUD, then customization.
+Choose a view type, then learn how registration, dependencies, and inheritance
+work.
 :::
 
-:::{grid-item-card} RestView and AsyncRestView
+:::{grid-item-card} Using RestView
 :link: rest_views
 :link-type: doc
 
 Define a model-backed CRUD resource and understand its default contract.
 :::
 
-:::{grid-item-card} Customize RestView
+:::{grid-item-card} Customizing RestView
 :link: customize
 :link-type: doc
 
@@ -185,12 +186,9 @@ Production engine config, Alembic migrations, and an ASGI checklist.
 :hidden:
 
 getting_started
-RestView and AsyncRestView <rest_views>
-Tutorial <tutorial_overview>
 Views <class_based_views>
-Customize <customize>
 How-To <user_guide>
-examples
 API <api_reference>
+examples
 About <about>
 ```

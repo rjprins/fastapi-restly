@@ -164,5 +164,5 @@ so it lazy-loads and raises `MissingGreenlet` on async.
 
 - [How Restly serializes nested responses](technical_details.md#nested-response-schemas-vs-write-payloads): the loader mechanism in depth.
 - [Work with Foreign Keys and Relationships](howto_relationship_idschema.md): declaring reference fields (`MustExist`, `IDRef`, `IDSchema`).
-- [Customize RestView](#eager-load-extra-relationships): read-scoped `build_query` and `get_one` recipes.
+- {ref}`Customizing RestView <eager-load-extra-relationships>`: read-scoped `build_query` and `get_one` recipes.
 - [Session Factory Defaults](technical_details.md#session-factory-defaults): why Restly uses `expire_on_commit=False`.

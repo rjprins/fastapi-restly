@@ -4,7 +4,7 @@ Restly returns bare objects and a `data` envelope for lists; this page covers
 changing the *container* around the data, not the fields inside it.
 
 - To change which fields an object exposes, see [Custom Schemas and Field Types](howto_custom_schema.md).
-- For a different schema per route (list vs detail), see [Customize RestView](customize.md).
+- For a different schema per route (list vs detail), see [Customizing RestView](customize.md).
 - To change the error shape, see [Shape Error Responses](howto_error_responses.md).
 
 ## What Restly returns by default
@@ -157,7 +157,7 @@ boundary keyed on the wire shape:
 {attr}`LISTING <fastapi_restly.views.ResponseShape.LISTING>`, or
 {attr}`EMPTY <fastapi_restly.views.ResponseShape.EMPTY>`. Its place among the
 override points is covered in
-[Customize RestView](customize.md#to_response-the-one-response-method).
+[Customizing RestView](customize.md#to_response-the-one-response-method).
 
 ```python
     def to_response(self, obj_or_list, shape=fr.ResponseShape.SINGLE):
@@ -176,7 +176,7 @@ override for the runtime shape, and a replaced shell with a matching
 ## See also
 
 - [Custom Schemas and Field Types](howto_custom_schema.md): which fields an object exposes.
-- [Customize RestView](customize.md): endpoint-method replacement mechanics, and [a different schema for the list endpoint](patterns.md#a-different-schema-for-the-list-endpoint).
+- [Customizing RestView](customize.md): endpoint-method replacement mechanics, and [a different schema for the list endpoint](patterns.md#a-different-schema-for-the-list-endpoint).
 - [Shape Error Responses](howto_error_responses.md): errors bypass `to_response`.
 - [Filter, Sort, and Paginate Lists](howto_query_modifiers.md): the pagination inputs clients send.
 - [Relationship Loading and Async](howto_relationship_loading.md): how nested relationship fields load, and `MissingGreenlet` on async.
