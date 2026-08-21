@@ -63,7 +63,10 @@ def _caller_origin() -> str | None:
     frame = sys._getframe(1)
     while frame is not None:
         filename = frame.f_code.co_filename
-        if not filename.startswith(_PACKAGE_DIR) and filename != _CONTEXTLIB_FILE:
+        if (
+            not filename.startswith(_PACKAGE_DIR + os.sep)
+            and filename != _CONTEXTLIB_FILE
+        ):
             try:
                 path = os.path.relpath(filename)
             except ValueError:
@@ -154,7 +157,7 @@ def _make(
         if p.kind
         in (inspect.Parameter.POSITIONAL_OR_KEYWORD, inspect.Parameter.KEYWORD_ONLY)
     }
-    label = name or func.__qualname__
+    label = name or getattr(func, "__qualname__", None) or repr(func)
     var: ContextVar[dict[str, Any]] = ContextVar(f"contextual:{label}", default={})
     origins_var: ContextVar[dict[str, str | None]] = ContextVar(
         f"contextual-origins:{label}", default={}
