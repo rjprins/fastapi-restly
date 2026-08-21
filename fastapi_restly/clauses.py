@@ -35,8 +35,9 @@ reached through several branches is fine and binds once.
 Statement construction stays plain SQLAlchemy: build select()/update()/
 delete() as usual and pass the result through apply_clauses(), the
 bridge between the two worlds. The Clause.select/.update/.delete
-methods are shorthand for the common single-clause path, and accept an
-ephemeral bind as keyword arguments. apply_clauses collects transforms
+methods are shorthand for the common single-clause path. Wherever a
+clause resolves, keyword arguments are an ephemeral bind: the shorthand
+methods and apply_clauses alike. apply_clauses collects transforms
 from the whole clause tree, each distinct transform applied once, so a
 join carried inside an all_of or combine is never lost. any_of and
 none_of reject operands that carry a transform: OR/NOT over an
@@ -117,6 +118,7 @@ class Clause:
         self._transform_fn: _Contextual | None = None
         self._param_fn: _Contextual | None = None
         self._placeholder: _BindParameter | None = None
+        self._condition: _ColumnElement[bool] | None = None
         # context names routable to the transform: its accepted names
         # minus the statement parameter, which is never a context value
         self._transform_routable: frozenset[str] | None = None
@@ -127,6 +129,14 @@ class Clause:
         # is a query fragment, not an answer
         raise TypeError("a Clause is not a boolean; apply it to a query instead")
 
+    def _own_routing(self) -> _Iterator[tuple[_Contextual, frozenset[str] | None]]:
+        if self._where_fn is not None:
+            yield self._where_fn, self._where_fn.accepted
+        if self._transform_fn is not None:
+            yield self._transform_fn, self._transform_routable
+        if self._param_fn is not None:
+            yield self._param_fn, self._param_fn.accepted
+
     def _routing(
         self, _seen: set[int] | None = None
     ) -> _Iterator[tuple[_Contextual, frozenset[str] | None]]:
@@ -135,12 +145,7 @@ class Clause:
         if id(self) in seen:
             return
         seen.add(id(self))
-        if self._where_fn is not None:
-            yield self._where_fn, self._where_fn.accepted
-        if self._transform_fn is not None:
-            yield self._transform_fn, self._transform_routable
-        if self._param_fn is not None:
-            yield self._param_fn, self._param_fn.accepted
+        yield from self._own_routing()
         for child in self._children:
             yield from child._routing(seen)
 
@@ -214,6 +219,15 @@ class Clause:
         fn = self._where_fn or self._transform_fn or self._param_fn
         name = getattr(fn, "__name__", "")
         label = "" if not name or name.startswith("<") else f" {name}"
+        if not label and self._condition is not None:
+            try:
+                condition = str(self._condition).replace("\n", " ")
+            except Exception:
+                condition = ""
+            if condition:
+                if len(condition) > 50:
+                    condition = condition[:47] + "..."
+                label = f" {condition}"
         wanted = sorted(
             {n for _, routable in self._routing() for n in (routable or ())}
         )
@@ -221,30 +235,66 @@ class Clause:
         return f"<{type(self).__name__}{label}{binds}>"
 
     def explain(self) -> str:
-        """The clause's bind names with their current values and origins.
+        """The clause tree with per-leaf bind names, values, and origins.
 
-        One line per name: the bound value (repr, truncated) and the
-        file:line that bound it, or UNBOUND. The answer to "why is this
-        query filtered the way it is" without leaving the debugger.
+        Node labels are the nodes' reprs; under each node, one line per
+        bind name it owns: the bound value (repr, truncated) with the
+        file:line that bound it, or UNBOUND. A subtree reached through
+        several paths renders once and is marked shared after that. The
+        answer to "why is this query filtered the way it is" without
+        leaving the debugger.
         """
-        lines = [repr(self)]
-        reported: set[str] = set()
-        for fn, routable in self._routing():
-            names = routable if routable is not None else fn.accepted
-            bound = fn.bindings()
-            for bind_name in sorted(names or ()):
-                if bind_name in reported:
-                    continue
-                reported.add(bind_name)
-                if bind_name in bound:
-                    value, origin = bound[bind_name]
-                    shown = repr(value)
-                    if len(shown) > 60:
-                        shown = shown[:57] + "..."
-                    suffix = f"   bound at {origin}" if origin else ""
-                    lines.append(f"  {bind_name} = {shown}{suffix}")
+        lines: list[str] = []
+        seen: set[int] = set()
+
+        def bind_entries(node: Clause, label: str) -> list[str]:
+            entries: list[str] = []
+            for fn, routable in node._own_routing():
+                names = routable if routable is not None else fn.accepted
+                bound = fn.bindings()
+                for bind_name in sorted(names or ()):
+                    if bind_name in bound:
+                        value, origin = bound[bind_name]
+                        shown = repr(value)
+                        if len(shown) > 60:
+                            shown = shown[:57] + "..."
+                        # a ContextParam's label already names its bind site
+                        suffix = (
+                            f"   bound at {origin}"
+                            if origin and origin not in label
+                            else ""
+                        )
+                        entries.append(f"{bind_name} = {shown}{suffix}")
+                    else:
+                        entries.append(f"{bind_name}: UNBOUND")
+            return entries
+
+        def render(node: Clause, prefix: str, connector: str) -> None:
+            label = repr(node)
+            if id(node) in seen:
+                lines.append(prefix + connector + label + "  (shared, shown above)")
+                return
+            seen.add(id(node))
+            lines.append(prefix + connector + label)
+            if connector == "└─ ":
+                child_prefix = prefix + "   "
+            elif connector == "├─ ":
+                child_prefix = prefix + "│  "
+            else:
+                child_prefix = prefix
+            entries: list[tuple[str, object]] = [
+                ("bind", entry) for entry in bind_entries(node, label)
+            ]
+            entries += [("node", child) for child in node._children]
+            for index, (kind, payload) in enumerate(entries):
+                last = index == len(entries) - 1
+                branch = "└─ " if last else "├─ "
+                if kind == "bind":
+                    lines.append(child_prefix + branch + payload)  # type: ignore[operator]
                 else:
-                    lines.append(f"  {bind_name}: UNBOUND")
+                    render(payload, child_prefix, branch)  # type: ignore[arg-type]
+
+        render(self, "", "")
         return "\n".join(lines)
 
     def alias(self, name: str | None = None) -> Clause:
@@ -263,6 +313,7 @@ class Clause:
             )
         result = type(self)()
         result._children = self._children  # embedded slots stay shared by design
+        result._condition = self._condition
         if self._where_fn is not None:
             result._where_fn = self._where_fn.alias(name)
         if self._transform_fn is not None:
@@ -573,6 +624,7 @@ def where_clause(
     else:
         clause._where_fn = _contextual(lambda: condition)
         clause._children = _embedded_slots(condition)
+        clause._condition = condition
     return clause
 
 
@@ -794,13 +846,22 @@ def _statement_tables(stmt: _Select[_Any] | _Update | _Delete) -> set[str]:
 _SelectT = _TypeVar("_SelectT", bound=_Select[_Any])
 
 
+class _Forest(Clause):
+    """Routing-only node over apply_clauses' arguments: one tree, so an
+    ephemeral bind routes across them with Clause.bind()'s rules."""
+
+
 @_overload
-def apply_clauses(stmt: _SelectT, *clauses: Clause) -> _SelectT: ...
+def apply_clauses(stmt: _SelectT, /, *clauses: Clause, **binds: _Any) -> _SelectT: ...
 @_overload
-def apply_clauses(stmt: _Update, *clauses: WhereClause) -> _Update: ...
+def apply_clauses(
+    stmt: _Update, /, *clauses: WhereClause, **binds: _Any
+) -> _Update: ...
 @_overload
-def apply_clauses(stmt: _Delete, *clauses: WhereClause) -> _Delete: ...
-def apply_clauses(stmt, *clauses: Clause):
+def apply_clauses(
+    stmt: _Delete, /, *clauses: WhereClause, **binds: _Any
+) -> _Delete: ...
+def apply_clauses(stmt, /, *clauses: Clause, **binds: _Any):
     """Apply clauses to a statement built with plain SQLAlchemy.
 
     The bridge between the two worlds: build select()/update()/delete()
@@ -809,7 +870,17 @@ def apply_clauses(stmt, *clauses: Clause):
     transform is rejected there. A where that references a table the
     statement does not select from is rejected too: the silent
     alternative is a cartesian product.
+
+    Keyword arguments are an ephemeral bind() routed across all the
+    given clauses, layered over any ambient bind for the duration of
+    the call. The statement is positional-only, so every keyword name
+    stays free for binding.
     """
+    if binds:
+        forest = _Forest()
+        forest._children = clauses
+        with forest.bind(**binds):
+            return apply_clauses(stmt, *clauses)
     for clause in clauses:
         if clause._where_fn is None and not _has_transform(clause):
             raise TypeError(

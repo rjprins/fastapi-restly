@@ -17,8 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   statements, and `fr.ClauseNamespace` groups a model's clauses as
   `Model.C`. See the Query Clauses guide.
 - Binding provenance: every bound clause value records the file and line
-  that bound it; `Clause.explain()` renders bind names with values and
-  origins, and an active `fr.context_param` repr names its bind site.
+  that bound it; `Clause.explain()` renders the clause tree with each
+  node's bind names, values, and origins, and an active
+  `fr.context_param` repr names its bind site.
 - `restly new <name>` scaffolding command to create a project from scratch with
   optional database and alembic set up.
 - Pass `health="/health"` to `fr.configure()` to add a liveness endpoint that

@@ -429,6 +429,127 @@ def test_ephemeral_bind_does_not_leak():
         tenant_filter.select(Item)
 
 
+# --- apply_clauses ephemeral bind ------------------------------------------
+
+
+def test_apply_clauses_ephemeral_bind():
+    stmt = apply_clauses(select(Item), tenant_filter, tenant_id=7)
+    assert 7 in params_of(stmt).values()
+
+
+def test_apply_clauses_bind_routes_across_clauses():
+    stmt = apply_clauses(
+        select(Item),
+        soft_deleted,
+        tenant_filter,
+        in_period,
+        tenant_id=7,
+        start=1,
+        end=2,
+    )
+    assert sorted(params_of(stmt).values()) == [1, 2, 7]
+    assert "deleted_at IS NULL" in str(stmt)
+
+
+def test_apply_clauses_bind_reaches_transforms():
+    @transform_clause
+    def limited(stmt: Select, n: int) -> Select:
+        return stmt.limit(n)
+
+    result = apply_clauses(select(Item), limited, n=10)
+    assert "LIMIT" in str(result)
+
+
+def test_apply_clauses_bind_reaches_embedded_slot():
+    slot = context_param("current_tenant", int)
+    owned = where_clause(Item.tenant_id == slot)
+    stmt = apply_clauses(select(Item), owned, current_tenant=3)
+    assert 3 in params_of(stmt).values()
+
+
+def test_apply_clauses_bind_on_update_and_delete():
+    stmt = apply_clauses(update(Item), tenant_filter, tenant_id=5).values(tenant_id=6)
+    assert str(stmt).startswith("UPDATE item")
+    assert 5 in params_of(stmt).values()
+    stmt = apply_clauses(delete(Item), tenant_filter, tenant_id=5)
+    assert str(stmt).startswith("DELETE FROM item")
+    assert 5 in params_of(stmt).values()
+
+
+def test_apply_clauses_bind_layers_over_ambient():
+    with tenant_filter.bind(tenant_id=1):
+        overridden = apply_clauses(select(Item), tenant_filter, tenant_id=2)
+        ambient = apply_clauses(select(Item), tenant_filter)
+    assert 2 in params_of(overridden).values()
+    assert 1 in params_of(ambient).values()
+
+
+def test_apply_clauses_bind_does_not_leak():
+    apply_clauses(select(Item), tenant_filter, tenant_id=7)
+    with pytest.raises(TypeError):
+        apply_clauses(select(Item), tenant_filter)
+
+
+def test_apply_clauses_bind_stays_strict():
+    with pytest.raises(TypeError, match="no clause accepts: nope"):
+        apply_clauses(select(Item), tenant_filter, tenant_id=7, nope=1)
+    # no clauses at all: nothing can claim the value
+    with pytest.raises(TypeError, match="no clause accepts"):
+        apply_clauses(select(Item), tenant_id=7)
+
+
+def test_apply_clauses_ambiguous_bind_raises():
+    @where_clause
+    def f1(limit: int) -> ColumnElement[bool]:
+        return Item.tenant_id < limit
+
+    @where_clause
+    def f2(limit: int) -> ColumnElement[bool]:
+        return Item.collection_id < limit
+
+    with pytest.raises(TypeError, match="unrelated"):
+        apply_clauses(select(Item), f1, f2, limit=5)
+
+
+def test_apply_clauses_shared_leaf_across_arguments_binds_once():
+    a = all_of(tenant_filter, soft_deleted)
+    b = all_of(tenant_filter, none_of(soft_deleted))
+    stmt = apply_clauses(select(Item), a, b, tenant_id=7)
+    tenant_params = [v for k, v in params_of(stmt).items() if k.startswith("tenant_id")]
+    assert tenant_params and all(v == 7 for v in tenant_params)
+
+
+def test_apply_clauses_bind_matches_composite_bind():
+    # pin: the argument list routes binds exactly like the composite the
+    # caller could have written, so the two spellings cannot drift apart
+    flat = apply_clauses(select(Item), tenant_filter, soft_deleted, tenant_id=7)
+    composed = apply_clauses(
+        select(Item), all_of(tenant_filter, soft_deleted), tenant_id=7
+    )
+    assert str(flat) == str(composed)
+    assert params_of(flat) == params_of(composed)
+
+    flat = apply_clauses(select(Item), join_collection, tenant_filter, tenant_id=7)
+    composed = apply_clauses(
+        select(Item), combine(join_collection, tenant_filter), tenant_id=7
+    )
+    assert str(flat) == str(composed)
+    assert params_of(flat) == params_of(composed)
+
+
+def test_apply_clauses_stmt_is_positional_only():
+    # the statement cannot be passed by name, so `stmt` stays free as a
+    # bind name
+    @where_clause
+    def stmt_named(stmt: int) -> ColumnElement[bool]:
+        return Item.tenant_id == stmt
+
+    result = apply_clauses(select(Item), stmt_named, stmt=7)
+    assert 7 in params_of(result).values()
+    with pytest.raises(TypeError):
+        apply_clauses(stmt=select(Item))
+
+
 # --- clause namespaces -----------------------------------------------------
 
 
@@ -519,7 +640,9 @@ def test_embedded_slot_in_bare_condition():
 def test_embedded_slot_visible_in_repr():
     slot = context_param("repr_tenant")
     owned = where_clause(Item.tenant_id == slot)
-    assert repr(owned) == "<WhereClause binds: repr_tenant>"
+    assert (
+        repr(owned) == "<WhereClause item.tenant_id = :repr_tenant binds: repr_tenant>"
+    )
 
 
 def test_embedded_slot_shared_across_clauses():
@@ -843,7 +966,7 @@ def test_unbound_transform_error_teaches_bind():
 
 def test_repr_shows_kind_name_and_binds():
     assert repr(tenant_filter) == "<WhereClause tenant_filter binds: tenant_id>"
-    assert repr(soft_deleted) == "<WhereClause>"
+    assert repr(soft_deleted) == "<WhereClause item.deleted_at IS NULL>"
     assert repr(join_collection) == "<TransformClause join_collection>"
 
 
@@ -859,9 +982,14 @@ def test_repr_of_param():
 # --- provenance and explain -------------------------------------------------
 
 
-def test_explain_shows_unbound():
+def test_explain_renders_tree_with_unbound():
     q = all_of(tenant_filter, soft_deleted)
-    assert q.explain() == "<WhereClause all_of binds: tenant_id>\n  tenant_id: UNBOUND"
+    assert q.explain() == (
+        "<WhereClause all_of binds: tenant_id>\n"
+        "├─ <WhereClause tenant_filter binds: tenant_id>\n"
+        "│  └─ tenant_id: UNBOUND\n"
+        "└─ <WhereClause item.deleted_at IS NULL>"
+    )
 
 
 def test_explain_shows_value_and_origin():
@@ -871,6 +999,23 @@ def test_explain_shows_value_and_origin():
     assert "tenant_id = 7" in text
     assert "bound at" in text
     assert "test_clauses.py" in text
+
+
+def test_explain_marks_shared_subtree():
+    q = all_of(tenant_filter, soft_deleted)
+    outer = all_of(q, q)
+    text = outer.explain()
+    assert text.count("(shared, shown above)") == 1
+    assert text.count("tenant_filter") == 1  # the shared subtree renders once
+
+
+def test_explain_param_node_does_not_repeat_origin():
+    slot = context_param("tree_org")
+    q = where_clause(Item.collection_id == slot)
+    with slot.bind(tree_org=3):
+        text = q.explain()
+    assert "tree_org = 3" in text
+    assert text.count("bound at") == 1  # alleen in het ContextParam-label
 
 
 def test_context_param_repr_names_bind_site():

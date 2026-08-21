@@ -251,6 +251,15 @@ from sqlalchemy import select
 stmt = fr.apply_clauses(select(Item), Item.C.visible, with_live_collection)
 ```
 
+Keyword arguments are an ephemeral bind: routed across all the given
+clauses, the values live only while the statement is built and layer
+over any ambient `bind()`. The statement is positional-only, so every
+keyword name stays free for binding:
+
+```python
+stmt = fr.apply_clauses(select(Item), Item.C.visible, tenant_id=tenant_id)
+```
+
 Transforms are collected from the whole clause tree and each distinct
 transform is applied once, so a join carried inside an `all_of` or a
 `combine` is never lost, and a join shared by two bundles is never
@@ -277,7 +286,7 @@ Every clause also carries
 {class}`WhereClause <fastapi_restly.clauses.WhereClause>` carries
 {meth}`update() <fastapi_restly.clauses.WhereClause.update>` and
 {meth}`delete() <fastapi_restly.clauses.WhereClause.delete>`. These are
-shorthand for `apply_clauses` on a fresh statement, and they accept an
+shorthand for `apply_clauses` on a fresh statement, with the same
 ephemeral bind as keyword arguments:
 
 ```python
@@ -342,15 +351,19 @@ for tenant_id in tenant_ids:
 ```
 
 Every binding records where it was made.
-{meth}`Clause.explain <fastapi_restly.clauses.Clause.explain>` renders a
-clause's bind names with their current values and the file and line
-that bound each, and an active `context_param`'s repr names its bind
-site:
+{meth}`Clause.explain <fastapi_restly.clauses.Clause.explain>` renders
+the clause tree: node labels are the nodes' reprs, and under each node
+one line per bind name it owns, with the bound value and the file and
+line that bound it, or UNBOUND. A subtree reached through several
+paths renders once and is marked shared after that.
 
 ```python
 >>> Item.C.visible.explain()
 <WhereClause all_of binds: tenant_id>
-  tenant_id = UUID('7f3a...')   bound at app/deps.py:23 (bind_tenant)
+├─ <WhereClause owned_by_tenant binds: tenant_id>
+│  └─ tenant_id = UUID('7f3a...')   bound at app/deps.py:23 (bind_tenant)
+└─ <WhereClause none_of>
+   └─ <WhereClause item.deleted_at IS NOT NULL>
 ```
 
 The system verifies that bindings exist and route to the right slot.
