@@ -125,9 +125,9 @@ class ArticleView(fr.AsyncRestView):
 ```
 
 On create and update, Restly looks up the `User` with `id=1`. If it does not
-exist, the request returns `404`. That lookup is an *unscoped* existence check;
-see [Visibility and multi-tenancy](#visibility-and-multi-tenancy) below. In
-hooks, `data.author_id` is the plain integer.
+exist, or falls outside the model's `default_scope`, the request returns
+`404`; see [Visibility and multi-tenancy](#visibility-and-multi-tenancy)
+below. In hooks, `data.author_id` is the plain integer.
 
 ## List filtering
 
@@ -405,13 +405,17 @@ their wire format is already scalar.
 
 ## Visibility and multi-tenancy
 
-Reference resolution is an **unscoped existence check**. Restly fetches the
-referenced row by primary key only (`session.get(User, id)`). View
-{meth}`build_query <fastapi_restly.views.RestView.build_query>` scoping is not applied, so tenant, soft-delete, and row-level
-visibility checks are your responsibility.
+Reference resolution applies the referenced model's `default_scope`, the
+clause declared on its namespace ([Scopes](scopes.md)): a reference to a
+row the scope hides returns 404, so a tenant scope declared once on
+`User` covers every `author_id` on every write. A per-field override
+(check against another clause, or none) is spelled with
+{class}`RefExists <fastapi_restly.schemas.RefExists>`; see
+[References: overriding per field](#reference-scopes).
 
-The resolver only knows the referenced *model* from the field type, not which
-view governs it. References are a *policy* concern, and they are gated in
+A model **without** a `default_scope` resolves by bare primary key
+(`session.get(User, id)`): tenant, soft-delete, and row-level visibility
+checks are then your responsibility. Gate them in
 {meth}`authorize <fastapi_restly.views.RestView.authorize>` /
 {meth}`before_commit <fastapi_restly.views.RestView.before_commit>` like any
 other write-path authorization; both hooks are described in

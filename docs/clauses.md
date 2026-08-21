@@ -195,6 +195,10 @@ transforms after the change they make: `newest_first`, `paged`. Skip
 mechanism suffixes such as `_filter` or `_clause`; the namespace and the
 type already say what the attribute is.
 
+One attribute name is reserved by convention: a clause declared as
+`default_scope` becomes the scope every view read and every reference
+check on the model applies. [Scopes](scopes.md) owns that topic.
+
 (composing-clauses)=
 ## Composing
 

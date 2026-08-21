@@ -85,6 +85,14 @@ Declare reusable query fragments such as tenant ownership or soft
 deletion, compose them, and bind per-request values where they become known.
 :::
 
+:::{grid-item-card} Scopes
+:link: scopes
+:link-type: doc
+
+Impose a clause on every read and every reference to a model: one
+`default_scope` line closes tenant and soft-delete leaks framework-wide.
+:::
+
 :::{grid-item-card} Shape Error Responses
 :link: howto_error_responses
 :link-type: doc
@@ -200,6 +208,7 @@ howto_response_schema
 howto_relationship_loading
 howto_query_modifiers
 clauses
+scopes
 howto_error_responses
 patterns
 howto_inheritance

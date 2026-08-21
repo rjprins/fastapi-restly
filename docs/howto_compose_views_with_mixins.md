@@ -12,7 +12,7 @@ Three [override points](customize.md) carry almost all
 structural concerns:
 
 - {meth}`build_query <fastapi_restly.views.RestView.build_query>` is the
-  unified [read scope](customize.md#build_query-scope-every-read-at-once).
+  unified [read scope](#build-query-scope).
   List, count, and retrieve all route through it, so one `.where(...)` clause
   filters every read.
 - `make_new_object` and `update_object` perform

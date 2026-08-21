@@ -125,19 +125,17 @@ GET /{id}
   └─ get_one_endpoint(id)            # endpoint method
        └─ handle_get_one(id)         # handler
             ├─ get_one(id)           # business method
-            │    └─ build_query()    # VISIBILITY: scope (tenant, soft-delete, row-level)
+            │    └─ the view scope   # VISIBILITY: tenant, soft-delete, row-level
             │                        #   a hidden row is a clean 404 for every caller
             └─ authorize("get_one", obj=obj)   # POLICY: read-auth on the loaded row
        └─ to_response(obj)
 ```
 
-Because {meth}`get_one <fastapi_restly.views.RestView.get_one>` routes through {meth}`build_query <fastapi_restly.views.RestView.build_query>`, visibility lives in one
+Because {meth}`get_one <fastapi_restly.views.RestView.get_one>` applies the view scope ([Scopes](scopes.md)), visibility lives in one
 place across list, count, and single-row reads: a hidden row returns 404 from
 `GET /{id}`. `get_one` itself stays auth-free; {meth}`authorize <fastapi_restly.views.RestView.authorize>` handles policy.
-Scoping recipes are shown in
-[`build_query`: scope every read at once](#build_query-scope-every-read-at-once).
 
-{meth}`get_many <fastapi_restly.views.RestView.get_many>` works the same way: {meth}`build_query <fastapi_restly.views.RestView.build_query>` establishes the scope,
+{meth}`get_many <fastapi_restly.views.RestView.get_many>` works the same way: the scope establishes visibility,
 {meth}`apply_query_params <fastapi_restly.views.RestView.apply_query_params>` applies filtering, sorting, and pagination, and
 {meth}`count <fastapi_restly.views.RestView.count>` produces the total, with `authorize("get_many")` added by
 {meth}`handle_get_many <fastapi_restly.views.RestView.handle_get_many>`.
@@ -151,7 +149,7 @@ The table below maps the change you want to make to the method that owns it:
 | Domain logic (hash, derive, compute)    | {meth}`create <fastapi_restly.views.RestView.create>` / {meth}`update <fastapi_restly.views.RestView.update>` / {meth}`delete <fastapi_restly.views.RestView.delete>`    | business method        |
 | Orchestration, timing, transaction      | `handle_<verb>`                   | handler                |
 | The HTTP contract (status, signature)   | `<verb>_endpoint`                 | endpoint method        |
-| Read scope / row visibility             | {meth}`build_query <fastapi_restly.views.RestView.build_query>`                     | read extension point   |
+| Read scope / row visibility             | {attr}`scope <fastapi_restly.views.BaseRestView.scope>` / {meth}`get_scope <fastapi_restly.views.BaseRestView.get_scope>` ([Scopes](scopes.md))  | read extension point   |
 | Filter / sort / pagination grammar      | {meth}`apply_query_params <fastapi_restly.views.RestView.apply_query_params>`              | read extension point   |
 | The list total                          | {meth}`count <fastapi_restly.views.RestView.count>`                           | read extension point   |
 | Authorization / policy                  | {meth}`authorize <fastapi_restly.views.RestView.authorize>` (override to gate)    | handler hook           |
@@ -252,17 +250,29 @@ For post-query decoration, override {meth}`get_many <fastapi_restly.views.RestVi
         return result
 ```
 
-## Read scope: `build_query` + `authorize`
+## Read scope: the view scope + `authorize`
 
 The [read lifecycle](#request-lifecycle-a-read-get_one) above split read
 access into two independent concerns; each has its own override point:
 
-- Visibility, meaning which rows exist at all for this caller, lives in {meth}`build_query <fastapi_restly.views.RestView.build_query>`.
+- Visibility, meaning which rows exist at all for this caller, lives in the
+  view scope: a [query clause](clauses.md) declared as the model's
+  `default_scope` or the view's
+  {attr}`scope <fastapi_restly.views.BaseRestView.scope>`.
+  [Scopes](scopes.md) owns that topic.
 - Policy, meaning whether this caller may perform the action, lives in {meth}`authorize <fastapi_restly.views.RestView.authorize>`, which the handler calls.
 
-### `build_query`: scope every read at once
+(build-query-scope)=
+### `build_query`: the deprecated scope seam
 
-{meth}`build_query <fastapi_restly.views.RestView.build_query>` is the read-scope override point. {meth}`get_many <fastapi_restly.views.RestView.get_many>` (list and count) and {meth}`get_one <fastapi_restly.views.RestView.get_one>` both use it, so one filter covers:
+Overriding {meth}`build_query <fastapi_restly.views.RestView.build_query>`
+for visibility is deprecated; declare the rule as a clause instead, which
+also covers reference checks
+([Migrating from build_query](#migrating-build-query)). The
+mechanics below still hold for existing overrides, and the scope is applied
+on top of whatever `build_query` returns.
+
+{meth}`get_many <fastapi_restly.views.RestView.get_many>` (list and count) and {meth}`get_one <fastapi_restly.views.RestView.get_one>` both use it, so one filter covers:
 
 - the listed page,
 - the pagination total ({meth}`count <fastapi_restly.views.RestView.count>` counts the same scoped query),
@@ -311,7 +321,7 @@ class InvoiceView(fr.AsyncRestView):
 
 `action` is the verb, `obj` is the loaded row, and `data` is the validated request payload. Authentication itself is yours to wire; Restly calls `authorize` and maps {class}`fr.exc.Forbidden <fastapi_restly.exc.Forbidden>` / {class}`fr.exc.NotFound <fastapi_restly.exc.NotFound>` to HTTP responses.
 
-Visibility belongs in {meth}`build_query <fastapi_restly.views.RestView.build_query>`, not here: raising from `authorize` produces a 403, whereas hiding a row through `build_query` produces a 404.
+Visibility belongs in the [scope](scopes.md), not here: raising from `authorize` produces a 403, whereas a row outside the scope produces a 404.
 
 ## Override `handle_<verb>` for orchestration
 
