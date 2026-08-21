@@ -452,7 +452,7 @@ def _teaching_call(fn: _Contextual, *args):
             + ", ".join(error.names)
             + f"; bind them around this code with .bind({first}=...) on the "
             "clause, an enclosing composite, or the shared ContextParam, or "
-            "pass them as keywords to .select()/.update()/.delete()"
+            "pass them as keywords to .select()/.update()/.delete() or apply_clauses()"
         ) from None
 
 

@@ -299,7 +299,9 @@ stmt = (
 )
 ```
 
-The result is a normal `Select` or `Update`; chain onto it freely. The
+The result is a normal `Select` or `Update`; chain onto it freely.
+`apply_clauses` accepts the same ephemeral bind as keywords, routed
+across all the clauses it is given. The
 method form reads clause-first, `apply_clauses` reads statement-first;
 both build the same statement.
 
