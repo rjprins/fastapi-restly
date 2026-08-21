@@ -63,7 +63,7 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
     @get("/{id}")
     def get_one_endpoint(self, id: Any) -> Any:
         """``GET /{id}`` endpoint method. Override ``get_one`` for domain
-        logic (visibility lives in ``build_query``), ``handle_get_one`` for
+        logic (visibility lives in the scope), ``handle_get_one`` for
         orchestration, ``to_response`` for the response shape; replace this
         method only to change the HTTP contract."""
         obj = self.handle_get_one(id)
@@ -147,7 +147,7 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
     # ====================================================================
 
     def get_many(self, query_params: Any) -> ListingResult[ModelT]:
-        query = self.build_query()
+        query = self._apply_scope(self.build_query())
         query = self.apply_query_params(query, query_params)
         total_count = self.count(query) if self.paginated else None
         loader_options = self.get_relationship_loader_options()
@@ -155,7 +155,7 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
             query = query.options(*loader_options)
         scalar_result = self.session.scalars(query)
         return ListingResult(
-            # unique(): collapse the row fan-out a to-many JOIN in build_query
+            # unique(): collapse the row fan-out a to-many JOIN in the query
             # would produce, so the page never repeats the same entity.
             objects=scalar_result.unique().all(),
             total_count=total_count,
@@ -169,7 +169,7 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
                 f"{self.model.__name__} has a composite primary key; "
                 "override get_one to fetch it."
             )
-        query = self.build_query().where(pk_cols[0] == id)
+        query = self._apply_scope(self.build_query()).where(pk_cols[0] == id)
         loader_options = self.get_relationship_loader_options()
         if loader_options:
             query = query.options(*loader_options)
@@ -199,9 +199,15 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
     # ====================================================================
 
     def build_query(self) -> sqlalchemy.Select[Any]:
-        """Return the base SQLAlchemy ``Select`` used by every read -- list,
-        count, and retrieve. Override to add ``WHERE`` clauses (tenant scope,
-        soft-delete, row-level visibility) that apply to all three.
+        """Return the base SQLAlchemy ``Select`` every read starts from.
+
+        .. deprecated:: overriding this to add visibility filtering is
+           superseded by the view scope: declare the rule as a clause
+           (``C.default_scope`` on the model, or
+           :attr:`~fastapi_restly.views.BaseRestView.scope` /
+           :meth:`~fastapi_restly.views.BaseRestView.get_scope` on the
+           view). See the Scopes guide. Existing overrides keep working;
+           the scope is applied on top of the returned statement.
         """
         return sqlalchemy.select(self.model)
 
@@ -214,8 +220,8 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
     def count(self, query: sqlalchemy.Select[Any]) -> int:
         """Total for the list, ignoring presentation ordering/pagination.
 
-        Made ``DISTINCT`` before counting so a ``build_query`` that joins a
-        to-many relationship doesn't inflate the total via row fan-out.
+        Made ``DISTINCT`` before counting so a scope or ``build_query`` that
+        joins a to-many relationship doesn't inflate the total via row fan-out.
         """
         count_source = query.order_by(None).limit(None).offset(None).distinct()
         count_query = select(func.count()).select_from(count_source.subquery())
@@ -267,7 +273,7 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         """Gate a verb. Sync counterpart of :meth:`AsyncRestView.authorize` -- a
         **no-op** by default; override to enforce policy and raise
         ``fr.exc.Forbidden`` / ``fr.exc.NotFound`` to reject. Row *visibility* belongs in
-        ``build_query``.
+        the scope.
         """
 
     def before_commit(

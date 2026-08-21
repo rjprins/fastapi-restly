@@ -42,6 +42,7 @@ from .schemas import (
     IDSchema,
     MustExist,
     ReadOnly,
+    RefExists,
     TimestampsSchemaMixin,
     WriteOnly,
 )
@@ -118,6 +119,7 @@ __all__ = [
     "IDSchema",
     "MustExist",
     "ReadOnly",
+    "RefExists",
     "WriteOnly",
     "TimestampsSchemaMixin",
     # Views

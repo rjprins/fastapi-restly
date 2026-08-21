@@ -48,8 +48,9 @@ from starlette.datastructures import QueryParams
 from typing_extensions import TypeVar
 
 from .._exception_handlers import register_default_exception_handlers
+from ..clauses import Clause, _default_scope, apply_clauses
 from ..db._globals import _fr_globals
-from ..exc import RestlyMisuseWarning
+from ..exc import RestlyConfigurationError, RestlyMisuseWarning
 from ..objects import snapshot as _object_snapshot
 from ..query import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, create_list_params_schema
 from ..schemas import BaseSchema, IDSchema
@@ -971,6 +972,13 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     schema_create: ClassVar[type[pydantic.BaseModel]]
     schema_update: ClassVar[type[pydantic.BaseModel]]
     model: ClassVar[type[DeclarativeBase]]
+    #: The clause every read on this view applies: list, count, and retrieve
+    #: (a row outside it is 404). ``None`` (the default) falls back to the
+    #: model's ``C.default_scope``. Declaring a scope replaces that default,
+    #: it does not stack on it; compose the replacement from the same leaves
+    #: (``Item.C.trashed`` containing the tenant clause ``visible`` contains).
+    #: See the Scopes guide.
+    scope: ClassVar[Clause | None] = None
     id_type: ClassVar[type[Any]] = int
     exclude_routes: ClassVar[Iterable[str | ViewRoute]] = ()
     #: Extra query-parameter keys to allow on the listing endpoint beyond those
@@ -993,6 +1001,40 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     listing_param_schema: ClassVar[type[pydantic.BaseModel]]
 
     request: fastapi.Request
+
+    def get_scope(self) -> Clause | None:
+        """Return the clause every read on this view applies, or ``None``.
+
+        The default reads :attr:`scope`, falling back to the model's
+        ``C.default_scope``. Override it to choose a clause per request::
+
+            def get_scope(self):
+                if self.requester_is_admin():
+                    return Item.C.everything
+                return Item.C.visible
+
+        The hook chooses which clause applies; a value that varies per
+        request (a tenant id) is bound around the request instead, via the
+        clause's ``bind()`` in a dependency (see Query Clauses). Returning
+        ``None`` reads unscoped.
+        """
+        if self.scope is not None:
+            return self.scope
+        return _default_scope(self.model)
+
+    def _apply_scope(self, query: Any) -> Any:
+        # the framework verb behind every read; not an override point:
+        # choose the clause in get_scope, bind values around the request
+        scope = self.get_scope()
+        if scope is None:
+            return query
+        if not isinstance(scope, Clause):
+            raise RestlyConfigurationError(
+                f"{type(self).__name__}: the scope must be a Clause, got "
+                f"{type(scope).__name__}; wrap a raw expression with "
+                "where_clause()"
+            )
+        return apply_clauses(query, scope)
 
     def get_relationship_loader_options(self) -> list[Any]:
         """Loader options for the relationships the response schema names.

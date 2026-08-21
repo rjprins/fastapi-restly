@@ -4,6 +4,7 @@ from ._base import (
     IDSchema,
     MustExist,
     ReadOnly,
+    RefExists,
     TimestampsSchemaMixin,
     WriteOnly,
 )
@@ -25,6 +26,7 @@ __all__ = [
     "IDRef",
     "IDSchema",
     "ReadOnly",
+    "RefExists",
     "TimestampsSchemaMixin",
     "WriteOnly",
     "create_schema_from_model",

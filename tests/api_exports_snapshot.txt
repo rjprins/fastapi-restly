@@ -16,6 +16,7 @@ fastapi_restly:
   - MustExist
   - ReactAdminView
   - ReadOnly
+  - RefExists
   - ResponseShape
   - RestView
   - SessionDep
@@ -132,6 +133,7 @@ fastapi_restly.schemas:
   - IDSchema
   - MustExist
   - ReadOnly
+  - RefExists
   - TimestampsSchemaMixin
   - WriteOnly
   - create_schema_from_model

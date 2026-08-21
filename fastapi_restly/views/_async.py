@@ -69,7 +69,7 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     @get("/{id}")
     async def get_one_endpoint(self, id: Any) -> Any:
         """``GET /{id}`` endpoint method. Override ``get_one`` for domain
-        logic (visibility lives in ``build_query``), ``handle_get_one`` for
+        logic (visibility lives in the scope), ``handle_get_one`` for
         orchestration, ``to_response`` for the response shape; replace this
         method only to change the HTTP contract."""
         obj = await self.handle_get_one(id)
@@ -166,11 +166,12 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     async def get_many(self, query_params: Any) -> ListingResult[ModelT]:
         """Return the scoped, filtered, paginated page plus the total count.
 
-        Routes through :meth:`build_query` (scope) + :meth:`apply_query_params`
-        (filter/sort/page) + :meth:`count`. Auth-free; ``handle_get_many`` adds
-        the ``authorize`` call.
+        Routes through the view scope
+        (:meth:`~fastapi_restly.views.BaseRestView.get_scope`) +
+        :meth:`apply_query_params` (filter/sort/page) + :meth:`count`.
+        Auth-free; ``handle_get_many`` adds the ``authorize`` call.
         """
-        query = self.build_query()
+        query = self._apply_scope(self.build_query())
         query = self.apply_query_params(query, query_params)
         total_count = (await self.count(query)) if self.paginated else None
         loader_options = self.get_relationship_loader_options()
@@ -178,7 +179,7 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
             query = query.options(*loader_options)
         scalar_result = await self.session.scalars(query)
         return ListingResult(
-            # unique(): collapse the row fan-out a to-many JOIN in build_query
+            # unique(): collapse the row fan-out a to-many JOIN in the query
             # would produce, so the page never repeats the same entity.
             objects=scalar_result.unique().all(),
             total_count=total_count,
@@ -186,10 +187,10 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         )
 
     async def get_one(self, id: IdT) -> ModelT:
-        """Load one object through :meth:`build_query` (scope + 404).
+        """Load one object through the view scope (scope + 404).
 
-        Auth-free: visibility comes from ``build_query``, so a row hidden by the
-        scope is a clean 404 for every caller. ``handle_get_one`` adds read-auth.
+        Auth-free: visibility comes from the scope, so a row outside it is a
+        clean 404 for every caller. ``handle_get_one`` adds read-auth.
         """
         pk_cols = sa_inspect(self.model).primary_key
         if len(pk_cols) != 1:
@@ -197,7 +198,7 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
                 f"{self.model.__name__} has a composite primary key; "
                 "override get_one to fetch it."
             )
-        query = self.build_query().where(pk_cols[0] == id)
+        query = self._apply_scope(self.build_query()).where(pk_cols[0] == id)
         loader_options = self.get_relationship_loader_options()
         if loader_options:
             query = query.options(*loader_options)
@@ -234,14 +235,15 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     # ====================================================================
 
     def build_query(self) -> sqlalchemy.Select[Any]:
-        """Return the base SQLAlchemy ``Select`` used by every read on this
-        view's model -- list, count, and retrieve. Override to add ``WHERE``
-        clauses that should apply to all of them (tenant scope, soft-delete
-        filtering, row-level permission visibility). Call ``super().build_query()``
-        and chain ``.where(...)`` to compose with base-class or mixin filters.
+        """Return the base SQLAlchemy ``Select`` every read starts from.
 
-        Retrieve also routes through this query, so a row hidden from the list
-        returns 404 from ``GET /{id}``.
+        .. deprecated:: overriding this to add visibility filtering is
+           superseded by the view scope: declare the rule as a clause
+           (``C.default_scope`` on the model, or
+           :attr:`~fastapi_restly.views.BaseRestView.scope` /
+           :meth:`~fastapi_restly.views.BaseRestView.get_scope` on the
+           view). See the Scopes guide. Existing overrides keep working;
+           the scope is applied on top of the returned statement.
         """
         return sqlalchemy.select(self.model)
 
@@ -257,9 +259,10 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         """Total for the list, ignoring presentation-layer ordering/pagination.
 
         The stripped query is made ``DISTINCT`` and wrapped as a subquery, so the
-        total is correct across user-provided query shapes -- including a
-        ``build_query`` that joins a to-many relationship, whose row fan-out would
-        otherwise inflate the count. Override for estimated counts on huge tables.
+        total is correct across user-provided query shapes -- including a scope
+        or ``build_query`` that joins a to-many relationship, whose row fan-out
+        would otherwise inflate the count. Override for estimated counts on huge
+        tables.
         """
         count_source = query.order_by(None).limit(None).offset(None).distinct()
         count_query = select(func.count()).select_from(count_source.subquery())
@@ -327,8 +330,8 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         The default is a **no-op** -- override to enforce policy, raising
         ``fr.exc.Forbidden`` / ``fr.exc.NotFound`` to reject (``action`` says which verb;
         ``obj`` / ``data`` carry the loaded row and the request payload). Row
-        *visibility* -- hiding a row from every caller -- belongs in
-        ``build_query``, not here.
+        *visibility* -- hiding a row from every caller -- belongs in the
+        scope, not here.
         """
 
     async def before_commit(

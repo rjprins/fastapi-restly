@@ -209,7 +209,7 @@ class Clause:
             yield
 
     def select(self, /, *entities: _Any, **binds: _Any) -> _Select[_Any]:
-        """sqlalchemy.select(*entities) with this clause applied.
+        """``sqlalchemy.select(*entities)`` with this clause applied.
 
         Positional arguments are exactly SQLAlchemy's: mapped classes,
         columns, functions. Keyword arguments are an ephemeral bind():
@@ -387,6 +387,12 @@ class ClauseNamespace:
     `C: ClassVar[type[TheNamespace]]`; the guard matters on dataclass
     bases (MappedAsDataclass), whose annotation scan de-stringifies the
     forward reference at class creation and raises NameError.
+
+    The name `default_scope` is reserved by convention: a clause under
+    that name is the scope every view read and every reference check on
+    the model applies unless a view declares its own (see the Scopes
+    guide). Keep it a pure predicate (a WhereClause, EXISTS over joins):
+    reference checks apply only the predicate half.
     """
 
     model: _ClassVar[type[_DeclarativeBase]]
@@ -412,6 +418,19 @@ class ClauseNamespace:
                 f"{getattr(existing, '__name__', repr(existing))}"
             )
         setattr(model, "C", cls)
+
+
+def _default_scope(model: type[_DeclarativeBase]) -> Clause | None:
+    """The model's declared `C.default_scope`, or None.
+
+    An unrelated `C` attribute (not a ClauseNamespace) yields None: the
+    model simply has no clause namespace.
+    """
+    namespace = getattr(model, "C", None)
+    if not (isinstance(namespace, type) and issubclass(namespace, ClauseNamespace)):
+        return None
+    scope = getattr(namespace, "default_scope", None)
+    return scope if isinstance(scope, Clause) else None
 
 
 class CombinedClause(Clause):
@@ -946,6 +965,13 @@ def apply_clauses(stmt, /, *clauses: Clause, **binds: _Any):
             f"{type(stmt).__name__.upper()} cannot join; use where-only clauses",
         )
     wheres = _resolved_wheres(clauses, _seed_owners(stmt))
+    _guard_statement_tables(stmt, wheres)
+    return stmt.where(*wheres)
+
+
+def _guard_statement_tables(
+    stmt: _Select[_Any] | _Update | _Delete, wheres: _Sequence[_ColumnElement[bool]]
+) -> None:
     available = _statement_tables(stmt)
     for where in wheres:
         missing = _expression_tables(where) - available
@@ -956,4 +982,15 @@ def apply_clauses(stmt, /, *clauses: Clause, **binds: _Any):
                 + ", ".join(shown)
                 + "; add the join via a transform_clause, or use EXISTS (.any()/.has())"
             )
+
+
+def _apply_where_half(stmt: _SelectT, clause: Clause) -> _SelectT:
+    """Apply only the predicate half of `clause`; transforms are dropped.
+
+    Reference existence checks use this: predicates decide whether the
+    row exists, ordering does not. A predicate that depends on a dropped
+    join still fails the table validation above, loudly.
+    """
+    wheres = _resolved_wheres([clause], _seed_owners(stmt))
+    _guard_statement_tables(stmt, wheres)
     return stmt.where(*wheres)
