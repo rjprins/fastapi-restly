@@ -77,6 +77,14 @@ set, and resolve `MissingGreenlet` on async sessions.
 Filter, sort, and paginate list endpoints using URL query parameters.
 :::
 
+:::{grid-item-card} Query Clauses
+:link: clauses
+:link-type: doc
+
+Declare reusable query fragments such as tenant ownership or soft
+deletion, compose them, and bind per-request values where they become known.
+:::
+
 :::{grid-item-card} Shape Error Responses
 :link: howto_error_responses
 :link-type: doc
@@ -191,6 +199,7 @@ howto_relationship_idschema
 howto_response_schema
 howto_relationship_loading
 howto_query_modifiers
+clauses
 howto_error_responses
 patterns
 howto_inheritance
