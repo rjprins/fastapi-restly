@@ -16,6 +16,7 @@ from sqlalchemy import ForeignKey, Select, create_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 
 import fastapi_restly as fr
+from fastapi_restly.clauses import _default_scope
 from fastapi_restly.exc import NotFound, RestlyConfigurationError
 from fastapi_restly.schemas._base import (
     _check_ref_exists,
@@ -499,3 +500,123 @@ def test_ref_exists_rejects_a_non_clause_scope():
         fr.RefExists(SyncRow, scope=SyncRow.tenant_id == 1)
     with pytest.raises(TypeError, match="ContextParam"):
         fr.RefExists(SyncRow, scope=fr.context_param("x"))
+    with pytest.raises(TypeError, match="no predicate"):
+        fr.RefExists(SyncRow, scope=fr.transform_clause(_by_rank))
+
+
+# ---------------------------------------------------------------------------
+# fail-loud guards: a scope that cannot filter must not exist quietly
+# ---------------------------------------------------------------------------
+
+
+def test_default_scope_must_carry_a_predicate():
+    class _Plain(_SyncBase):
+        __tablename__ = "scope_sync_plain"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+
+    with pytest.raises(TypeError, match="carries no predicate"):
+
+        class _TransformOnly(fr.ClauseNamespace):
+            model = _Plain
+            default_scope = fr.transform_clause(_by_rank)
+
+    with pytest.raises(TypeError, match="carries no predicate"):
+
+        class _SlotOnly(fr.ClauseNamespace):
+            model = _Plain
+            default_scope = fr.context_param("z")
+
+
+def test_subclass_namespace_must_restate_default_scope():
+    class Animal(_SyncBase):
+        __tablename__ = "scope_sync_animal"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+        kind: Mapped[str]
+        tenant_id: Mapped[int]
+        __mapper_args__ = {"polymorphic_on": "kind", "polymorphic_identity": "animal"}
+
+    class Dog(Animal):
+        __mapper_args__ = {"polymorphic_identity": "dog"}
+
+    class Cat(Animal):
+        __mapper_args__ = {"polymorphic_identity": "cat"}
+
+    class AnimalClauses(fr.ClauseNamespace):
+        model = Animal
+        default_scope = fr.where_clause(Animal.tenant_id == _sync_tenant)
+
+    assert _default_scope(Dog) is AnimalClauses.default_scope  # inherited
+
+    # a shadowing namespace must say what happens to the inherited scope
+    with pytest.raises(TypeError, match="shadows"):
+
+        class _SilentDogClauses(fr.ClauseNamespace):
+            model = Dog
+            is_dog = fr.where_clause(Dog.kind == "dog")
+
+    class DogClauses(fr.ClauseNamespace):
+        model = Dog
+        default_scope = None  # explicit opt-out
+
+    assert _default_scope(Dog) is None
+
+    class CatClauses(fr.ClauseNamespace):
+        model = Cat
+        default_scope = AnimalClauses.default_scope  # explicit reuse
+
+    assert _default_scope(Cat) is AnimalClauses.default_scope
+
+
+def test_post_hoc_default_scope_corruption_is_loud():
+    class _Row(_SyncBase):
+        __tablename__ = "scope_sync_corrupt"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+        tenant_id: Mapped[int]
+
+    class _RowClauses(fr.ClauseNamespace):
+        model = _Row
+        default_scope = fr.where_clause(_Row.tenant_id == _sync_tenant)
+
+    _RowClauses.default_scope = _Row.tenant_id == 1  # forgot where_clause()
+    with pytest.raises(TypeError, match="not a Clause"):
+        _default_scope(_Row)
+
+
+def test_buried_must_exist_marker_is_rejected():
+    with pytest.raises(RestlyConfigurationError, match="unchecked"):
+
+        class _ListRefSchema(fr.BaseSchema):
+            row_ids: list[fr.MustExist[int, SyncRow]]
+
+
+class SyncWeird(_SyncBase):
+    __tablename__ = "scope_sync_weird"
+
+    code: Mapped[int] = mapped_column(primary_key=True)  # pk not named `id`
+    tenant_id: Mapped[int]
+
+
+class SyncWeirdClauses(fr.ClauseNamespace):
+    model = SyncWeird
+
+    default_scope = fr.where_clause(SyncWeird.tenant_id == _sync_tenant)
+
+
+def test_scoped_resolution_uses_the_mapper_pk(sync_session):
+    sync_session.add(SyncWeird(code=7, tenant_id=1))
+    sync_session.flush()
+
+    class _WeirdSchema(fr.BaseSchema):
+        thing: fr.IDSchema[SyncWeird]
+
+    with _sync_tenant.bind(tenant_id=1):
+        resolved = _resolve_ids_to_sqlalchemy_objects(
+            sync_session, _WeirdSchema(thing=7)
+        )
+        assert resolved["thing"].code == 7
+    with _sync_tenant.bind(tenant_id=2):
+        with pytest.raises(NotFound, match="thing"):
+            _resolve_ids_to_sqlalchemy_objects(sync_session, _WeirdSchema(thing=7))

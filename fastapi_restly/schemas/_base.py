@@ -126,7 +126,8 @@ def _find_buried_marker_fields(
 
 
 def _reject_buried_markers(model_cls: type[pydantic.BaseModel]) -> None:
-    """Raise if any field nests a ReadOnly/WriteOnly marker inside its type."""
+    """Raise if any field nests a ReadOnly/WriteOnly/RefExists marker inside
+    its type, where the marker machinery cannot see it."""
     for name, marker in _find_buried_marker_fields(model_cls):
         raise RestlyConfigurationError(
             f"{model_cls.__name__}.{name} nests the {marker.name} marker inside "
@@ -135,6 +136,116 @@ def _reject_buried_markers(model_cls: type[pydantic.BaseModel]) -> None:
             f"outer annotation, so it is silently ignored here and {marker.name} "
             f"is not applied. Wrap the whole field type instead, e.g. "
             f"{marker.name}[Optional[T]]."
+        )
+    _reject_buried_ref_exists(model_cls)
+
+
+@final
+class _Infer:
+    """Static-only sentinel: the default ``MustExist`` model argument.
+
+    ``MustExist[int]`` supplies no target model, so the second type parameter
+    defaults to ``_Infer`` (a PEP 696 default that keeps Pyright happy about
+    "supply all params"). It carries no runtime meaning of its own: one type
+    argument is already unambiguous, and the runtime reads it as "resolve the
+    target model from the column's ``ForeignKey``".
+    """
+
+
+@final
+class _NotGiven:
+    """Static-only sentinel: ``RefExists`` received no ``scope`` argument.
+
+    Not given means the target model's ``default_scope`` applies; ``None``
+    means explicitly unscoped, so the default cannot be ``None`` itself.
+    """
+
+
+_NOT_GIVEN = _NotGiven()
+
+
+class RefExists:
+    """Marker for an existence-checked scalar foreign key.
+
+    Built by ``MustExist[pk]`` / ``MustExist[pk, Model]`` (or written directly as
+    ``Annotated[pk, RefExists(Model)]``). On write, Restly batch-checks that each
+    marked id exists in the target table and raises ``NotFound`` (404) on a miss.
+    The field stays a plain scalar -- this only adds the check; it does not wrap
+    the value or do any relationship routing.
+
+    The check applies the target model's ``C.default_scope`` (predicate half
+    only), like ``IDRef``/``IDSchema`` resolution: a reference to a row the
+    scope hides is a miss. ``scope`` overrides that per field: a clause checks
+    against that clause instead (``RefExists(Item, scope=Item.C.trashed)`` for
+    a restore target), and ``scope=None`` checks unscoped, greppably. A model
+    without a ``default_scope`` is checked unscoped, as before.
+
+    ``model`` is the target ORM model, or ``_Infer`` when it should be resolved
+    from the marked column's ``ForeignKey`` (the ``MustExist[pk]`` form).
+    """
+
+    def __init__(
+        self,
+        model: type[DeclarativeBase] | type[_Infer],
+        scope: Clause | None | _NotGiven = _NOT_GIVEN,
+    ) -> None:
+        if isinstance(scope, ContextParam):
+            raise TypeError(
+                "RefExists scope cannot be a ContextParam; it carries a value, "
+                "not a predicate"
+            )
+        if not (scope is None or isinstance(scope, (Clause, _NotGiven))):
+            raise TypeError(
+                f"RefExists scope must be a Clause or None, got "
+                f"{type(scope).__name__}; wrap a raw expression with "
+                "where_clause()"
+            )
+        if isinstance(scope, Clause) and scope._where_fn is None:
+            raise TypeError(
+                "RefExists scope carries no predicate; a reference check "
+                "applies only the predicate half of a scope, so its row "
+                "filtering must live in a where"
+            )
+        self.model = model
+        self.scope = scope
+
+    def __repr__(self) -> str:
+        name = (
+            "infer"
+            if self.model is _Infer
+            else getattr(self.model, "__name__", self.model)
+        )
+        if isinstance(self.scope, _NotGiven):
+            return f"RefExists({name})"
+        return f"RefExists({name}, scope={self.scope!r})"
+
+
+def _annotation_contains_ref_exists(annotation: Any) -> bool:
+    if any(isinstance(m, RefExists) for m in getattr(annotation, "__metadata__", ())):
+        return True
+    return any(_annotation_contains_ref_exists(arg) for arg in get_args(annotation))
+
+
+def _reject_buried_ref_exists(model_cls: type[pydantic.BaseModel]) -> None:
+    """Raise for a RefExists marker the check machinery cannot see.
+
+    The existence check reads a field's top-level metadata (plus the
+    Optional-unwrapped form); a marker inside a container element
+    (``list[MustExist[int, T]]``) is invisible there, so the field would
+    validate and write with no check at all -- a silent no-op of a check
+    the schema explicitly asks for.
+    """
+    for name, field_info in model_cls.model_fields.items():
+        if not _annotation_contains_ref_exists(field_info.annotation):
+            continue
+        if _ref_exists_marker(field_info) is not None:
+            continue
+        raise RestlyConfigurationError(
+            f"{model_cls.__name__}.{name} buries a RefExists/MustExist marker "
+            f"inside its type (e.g. list[MustExist[int, T]]), where the "
+            f"existence check cannot see it, so the reference would go "
+            f"unchecked. To reference several rows, use "
+            f"list[IDRef[T]] on a relationship-named field instead."
         )
 
 
@@ -332,80 +443,6 @@ class IDRef(IDSchema[SQLAlchemyModel], Generic[SQLAlchemyModel]):
         return self.id if hasattr(self, "id") else self
 
 
-@final
-class _Infer:
-    """Static-only sentinel: the default ``MustExist`` model argument.
-
-    ``MustExist[int]`` supplies no target model, so the second type parameter
-    defaults to ``_Infer`` (a PEP 696 default that keeps Pyright happy about
-    "supply all params"). It carries no runtime meaning of its own: one type
-    argument is already unambiguous, and the runtime reads it as "resolve the
-    target model from the column's ``ForeignKey``".
-    """
-
-
-@final
-class _NotGiven:
-    """Static-only sentinel: ``RefExists`` received no ``scope`` argument.
-
-    Not given means the target model's ``default_scope`` applies; ``None``
-    means explicitly unscoped, so the default cannot be ``None`` itself.
-    """
-
-
-_NOT_GIVEN = _NotGiven()
-
-
-class RefExists:
-    """Marker for an existence-checked scalar foreign key.
-
-    Built by ``MustExist[pk]`` / ``MustExist[pk, Model]`` (or written directly as
-    ``Annotated[pk, RefExists(Model)]``). On write, Restly batch-checks that each
-    marked id exists in the target table and raises ``NotFound`` (404) on a miss.
-    The field stays a plain scalar -- this only adds the check; it does not wrap
-    the value or do any relationship routing.
-
-    The check applies the target model's ``C.default_scope`` (predicate half
-    only), like ``IDRef``/``IDSchema`` resolution: a reference to a row the
-    scope hides is a miss. ``scope`` overrides that per field: a clause checks
-    against that clause instead (``RefExists(Item, scope=Item.C.trashed)`` for
-    a restore target), and ``scope=None`` checks unscoped, greppably. A model
-    without a ``default_scope`` is checked unscoped, as before.
-
-    ``model`` is the target ORM model, or ``_Infer`` when it should be resolved
-    from the marked column's ``ForeignKey`` (the ``MustExist[pk]`` form).
-    """
-
-    def __init__(
-        self,
-        model: type[DeclarativeBase] | type[_Infer],
-        scope: Clause | None | _NotGiven = _NOT_GIVEN,
-    ) -> None:
-        if isinstance(scope, ContextParam):
-            raise TypeError(
-                "RefExists scope cannot be a ContextParam; it carries a value, "
-                "not a predicate"
-            )
-        if not (scope is None or isinstance(scope, (Clause, _NotGiven))):
-            raise TypeError(
-                f"RefExists scope must be a Clause or None, got "
-                f"{type(scope).__name__}; wrap a raw expression with "
-                "where_clause()"
-            )
-        self.model = model
-        self.scope = scope
-
-    def __repr__(self) -> str:
-        name = (
-            "infer"
-            if self.model is _Infer
-            else getattr(self.model, "__name__", self.model)
-        )
-        if isinstance(self.scope, _NotGiven):
-            return f"RefExists({name})"
-        return f"RefExists({name}, scope={self.scope!r})"
-
-
 if TYPE_CHECKING:
     _MustExistPK = TypeVar("_MustExistPK")
     _MustExistModel = TypeVar("_MustExistModel", default=_Infer)
@@ -547,8 +584,10 @@ async def _async_resolve_ids_to_sqlalchemy_objects(
                 except NoResultFound as e:
                     raise NotFound(f"Id not found for {field}: {value.id}") from e
             else:
+                # mapper pk, not `.id`: the pk attribute can be named anything
+                pk_col = sql_model.__mapper__.primary_key[0]
                 query = _apply_where_half(
-                    select(sql_model).where(sql_model.id == value.id), scope
+                    select(sql_model).where(pk_col == value.id), scope
                 )
                 sql_model_obj = (await session.scalars(query)).first()
                 if sql_model_obj is None:
@@ -618,8 +657,10 @@ def _resolve_ids_to_sqlalchemy_objects(
                 except NoResultFound as e:
                     raise NotFound(f"Id not found for {field}: {value.id}") from e
             else:
+                # mapper pk, not `.id`: the pk attribute can be named anything
+                pk_col = sql_model.__mapper__.primary_key[0]
                 query = _apply_where_half(
-                    select(sql_model).where(sql_model.id == value.id), scope
+                    select(sql_model).where(pk_col == value.id), scope
                 )
                 sql_model_obj = session.scalars(query).first()
                 if sql_model_obj is None:

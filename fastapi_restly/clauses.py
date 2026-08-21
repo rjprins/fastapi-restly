@@ -388,11 +388,14 @@ class ClauseNamespace:
     bases (MappedAsDataclass), whose annotation scan de-stringifies the
     forward reference at class creation and raises NameError.
 
-    The name `default_scope` is reserved by convention: a clause under
-    that name is the scope every view read and every reference check on
-    the model applies unless a view declares its own (see the Scopes
-    guide). Keep it a pure predicate (a WhereClause, EXISTS over joins):
-    reference checks apply only the predicate half.
+    The name `default_scope` is reserved: a clause under that name is
+    the scope every view read and every reference check on the model
+    applies unless a view declares its own (see the Scopes guide). It
+    must carry a predicate; a value slot or a bare transform is rejected
+    at definition, because reference checks apply only the predicate
+    half. `default_scope = None` is the explicit opt-out, required when
+    a namespace on a model subclass would otherwise silently drop a
+    default_scope a base model's namespace declares.
     """
 
     model: _ClassVar[type[_DeclarativeBase]]
@@ -405,12 +408,40 @@ class ClauseNamespace:
         for name, value in vars(cls).items():
             if name.startswith("_") or name == "model":
                 continue
+            if name == "default_scope" and value is None:
+                continue  # explicit opt-out; see the shadowing check below
             if not isinstance(value, Clause):
                 raise TypeError(
                     f"{cls.__name__}.{name} is not a Clause; wrap it with "
                     "where_clause() or transform_clause(), or prefix it with "
                     "an underscore if it is a helper"
                 )
+        scope = vars(cls).get("default_scope")
+        if scope is not None and scope._where_fn is None:
+            # a ContextParam or a bare transform: reads would order or 500,
+            # reference checks would silently check nothing
+            raise TypeError(
+                f"{cls.__name__}.default_scope carries no predicate; a "
+                "scope's row filtering must live in a where (reference "
+                "checks apply only the predicate half)"
+            )
+        if "default_scope" not in vars(cls):
+            # a namespace on a model subclass shadows the base namespace;
+            # dropping an inherited default_scope must be said, not implied
+            for base in model.__mro__[1:]:
+                base_namespace = vars(base).get("C")
+                if (
+                    isinstance(base_namespace, type)
+                    and issubclass(base_namespace, ClauseNamespace)
+                    and getattr(base_namespace, "default_scope", None) is not None
+                ):
+                    raise TypeError(
+                        f"{cls.__name__} shadows {base_namespace.__name__}, "
+                        f"which declares a default_scope; declare one "
+                        f"(reuse it with default_scope = "
+                        f"{base_namespace.__name__}.default_scope) or opt "
+                        "out with default_scope = None"
+                    )
         if "C" in vars(model):
             existing = vars(model)["C"]
             raise TypeError(
@@ -424,13 +455,23 @@ def _default_scope(model: type[_DeclarativeBase]) -> Clause | None:
     """The model's declared `C.default_scope`, or None.
 
     An unrelated `C` attribute (not a ClauseNamespace) yields None: the
-    model simply has no clause namespace.
+    model simply has no clause namespace. A `default_scope` that is not
+    a Clause raises: the namespace validation guarantees it at class
+    definition, so this only fires on a later assignment, which must not
+    silently unscope the model.
     """
     namespace = getattr(model, "C", None)
     if not (isinstance(namespace, type) and issubclass(namespace, ClauseNamespace)):
         return None
     scope = getattr(namespace, "default_scope", None)
-    return scope if isinstance(scope, Clause) else None
+    if scope is None:
+        return None
+    if not isinstance(scope, Clause):
+        raise TypeError(
+            f"{namespace.__name__}.default_scope is not a Clause; wrap it "
+            "with where_clause()"
+        )
+    return scope
 
 
 class CombinedClause(Clause):
@@ -987,10 +1028,21 @@ def _guard_statement_tables(
 def _apply_where_half(stmt: _SelectT, clause: Clause) -> _SelectT:
     """Apply only the predicate half of `clause`; transforms are dropped.
 
-    Reference existence checks use this: predicates decide whether the
-    row exists, ordering does not. A predicate that depends on a dropped
-    join still fails the table validation above, loudly.
+    Reference existence checks use this, so for a scope used in them the
+    predicate half must be the whole visibility rule: a clause without
+    any predicate is rejected rather than silently checking nothing, and
+    a predicate that depends on a dropped join fails the table
+    validation above. A transform that itself filters rows (a filtering
+    join) is the one shape neither guard can see; express row filtering
+    as a where (EXISTS via .any()/.has()) instead.
     """
     wheres = _resolved_wheres([clause], _seed_owners(stmt))
+    if not wheres:
+        raise TypeError(
+            f"{clause!r} carries no predicate; a reference check applies "
+            "only the predicate half of a scope, so its row filtering must "
+            "live in a where (use EXISTS via .any()/.has() instead of a "
+            "filtering join)"
+        )
     _guard_statement_tables(stmt, wheres)
     return stmt.where(*wheres)

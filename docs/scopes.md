@@ -54,13 +54,32 @@ clause under that name is the scope for the model. The one line
 A model without a `default_scope` behaves as before: unscoped reads,
 bare primary-key reference checks. The feature is opt-in per model.
 
+The scope guards reads *of* the model and references *to* it; it does
+not reach through relationships. A scoped model serialized inside
+another model's response (`ItemRead.comments` embedding a soft-deleted
+comment, say) is loaded through the relationship, unscoped, and a
+dotted query-parameter filter or sort (`?items.name=x`) joins the
+related table without its scope. Shape the response schema, or override
+{meth}`get_relationship_loader_options <fastapi_restly.views.BaseRestView.get_relationship_loader_options>`,
+where embedded rows must be filtered.
+
 Keep `default_scope` a pure predicate: a
 {class}`WhereClause <fastapi_restly.clauses.WhereClause>`, with EXISTS
-(`.any()`/`.has()`) instead of joins. Reference checks apply only the
-predicate half of the clause (a dropped ordering is harmless, but a
-predicate that needs a dropped join is rejected loudly), and a
-visibility rule that multiplies rows would distort every list it
-guards.
+(`.any()`/`.has()`) instead of joins. A clause without any predicate (a
+value slot, a bare transform) is rejected at definition. Reference
+checks apply only the predicate half of the clause: a transform riding
+along is dropped there (a dropped ordering is harmless, and a predicate
+that needs the dropped join is rejected loudly), so a transform must
+never carry row filtering itself. A filtering join would hide rows from
+views while reference checks cannot see it; row filtering lives in the
+predicate, always.
+
+A namespace declared on a model *subclass* shadows the base model's
+namespace. If the base declares a `default_scope`, the subclass
+namespace must say what happens: reuse it (`default_scope =
+BaseClauses.default_scope`), declare its own, or opt out with
+`default_scope = None`. Silence is an error at definition, not a silent
+unscope.
 
 The tenant value is bound per request, in a dependency shared by the
 whole app; see [Binding scope values](#binding-scope-values):
@@ -152,7 +171,8 @@ class OrderCreate(fr.BaseSchema):
   endpoint above accepts exactly the ids the trash view shows.
 - **`scope=None`**: the check is explicitly unscoped, and
   `grep -r "scope=None"` hands a security review every exception in one
-  command.
+  command. Write the `None` as a literal: a variable that happens to be
+  `None` unscopes just the same, but escapes the grep.
 
 `IDRef` / `IDSchema` relationship references always use the target's
 `default_scope`; the per-field override exists on the scalar marker
