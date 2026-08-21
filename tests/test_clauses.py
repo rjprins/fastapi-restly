@@ -1,7 +1,7 @@
 from datetime import datetime
 
 import pytest
-from sqlalchemy import ColumnElement, ForeignKey, Select, delete, select, update
+from sqlalchemy import ColumnElement, ForeignKey, Select, delete, func, select, update
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 from fastapi_restly.clauses import (
@@ -410,6 +410,42 @@ def test_delete_method():
     stmt = tenant_filter.delete(Item, tenant_id=5)
     assert str(stmt).startswith("DELETE FROM item")
     assert 5 in params_of(stmt).values()
+
+
+def test_select_method_takes_sqlalchemy_entities():
+    stmt = tenant_filter.select(Item.id, Item.tenant_id, tenant_id=7)
+    assert "item.id" in str(stmt)
+    assert 7 in params_of(stmt).values()
+    count_stmt = tenant_filter.select(func.count(Item.id), tenant_id=7)
+    assert "count(item.id)" in str(count_stmt)
+
+
+def test_select_method_no_entities_raises():
+    # empty select brings no FROMs, so the table validation catches it
+    with pytest.raises(TypeError, match="not in the statement"):
+        tenant_filter.select(tenant_id=7)
+
+
+def test_method_keywords_all_stay_free_for_binds():
+    # select is variadic and update/delete take the model positional-only,
+    # so `model` (a real-world column name) binds everywhere
+    @where_clause
+    def by_model(model: int) -> ColumnElement[bool]:
+        return Item.tenant_id == model
+
+    assert 7 in params_of(by_model.select(Item, model=7)).values()
+    assert 5 in params_of(by_model.update(Item, model=5)).values()
+    assert 5 in params_of(by_model.delete(Item, model=5)).values()
+    with pytest.raises(TypeError):
+        by_model.update(model=Item)  # the mapped class cannot go by name
+
+
+def test_call_forms_self_stays_free_for_binds():
+    slot = context_param("self", int)
+    assert slot(self=3) == 3
+    owned = where_clause(Item.tenant_id == slot)
+    stmt = select(Item).where(owned(self=4))
+    assert 4 in params_of(stmt).values()
 
 
 def test_combined_clause_has_no_update_or_delete():

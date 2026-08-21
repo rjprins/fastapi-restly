@@ -35,9 +35,11 @@ reached through several branches is fine and binds once.
 Statement construction stays plain SQLAlchemy: build select()/update()/
 delete() as usual and pass the result through apply_clauses(), the
 bridge between the two worlds. The Clause.select/.update/.delete
-methods are shorthand for the common single-clause path. Wherever a
-clause resolves, keyword arguments are an ephemeral bind: the shorthand
-methods and apply_clauses alike. apply_clauses collects transforms
+methods are shorthand for the common single-clause path; select()
+takes the same entities SQLAlchemy's select() takes. Wherever a
+clause resolves, keyword arguments are an ephemeral bind: the
+shorthand methods and apply_clauses alike, with no signature
+reserving a keyword name. apply_clauses collects transforms
 from the whole clause tree, each distinct transform applied once, so a
 join carried inside an all_of or combine is never lost. any_of and
 none_of reject operands that carry a transform: OR/NOT over an
@@ -160,7 +162,7 @@ class Clause:
             yield from child._transforms(seen)
 
     @_contextmanager
-    def bind(self, **values: _Any):
+    def bind(self, /, **values: _Any):
         """Bind values for the duration of the with block.
 
         Each value is routed to the one leaf in this tree whose function
@@ -205,15 +207,19 @@ class Clause:
                     stack.enter_context(fn.context(**subset))
             yield
 
-    def select(self, model: type[_DeclarativeBase], **binds: _Any) -> _Select[_Any]:
-        """SELECT on model with this clause applied.
+    def select(self, /, *entities: _Any, **binds: _Any) -> _Select[_Any]:
+        """sqlalchemy.select(*entities) with this clause applied.
 
-        Keyword arguments are an ephemeral bind(): the values live only
-        for the duration of building this statement. Without them the
-        ambient bind (a surrounding with ...bind():) applies as usual.
+        Positional arguments are exactly SQLAlchemy's: mapped classes,
+        columns, functions. Keyword arguments are an ephemeral bind():
+        the values live only for the duration of building this
+        statement. Without them the ambient bind (a surrounding with
+        ...bind():) applies as usual. Types as Select[Any]; for precise
+        row typing build the statement with plain select() and use
+        apply_clauses(), which preserves the statement's exact type.
         """
         with self.bind(**binds):
-            return apply_clauses(_sqla_select(model), self)
+            return apply_clauses(_sqla_select(*entities), self)
 
     def __repr__(self) -> str:
         fn = self._where_fn or self._transform_fn or self._param_fn
@@ -336,7 +342,7 @@ class WhereClause(Clause):
     for use inside plain SQLAlchemy expressions.
     """
 
-    def __call__(self, **binds: _Any) -> _ColumnElement[bool]:
+    def __call__(self, /, **binds: _Any) -> _ColumnElement[bool]:
         """Resolve to the raw ColumnElement, for plain SQLAlchemy use.
 
         Keyword arguments are an ephemeral bind(). The result drops into
@@ -348,12 +354,12 @@ class WhereClause(Clause):
         assert result is not None  # invariant: a WhereClause always has a where
         return result
 
-    def update(self, model: type[_DeclarativeBase], **binds: _Any) -> _Update:
+    def update(self, model: type[_DeclarativeBase], /, **binds: _Any) -> _Update:
         """UPDATE on model with this clause applied; see select()."""
         with self.bind(**binds):
             return apply_clauses(_sqla_update(model), self)
 
-    def delete(self, model: type[_DeclarativeBase], **binds: _Any) -> _Delete:
+    def delete(self, model: type[_DeclarativeBase], /, **binds: _Any) -> _Delete:
         """DELETE on model with this clause applied; see select()."""
         with self.bind(**binds):
             return apply_clauses(_sqla_delete(model), self)
@@ -435,7 +441,7 @@ class ContextParam(Clause):
             return f"<ContextParam {names}, bound>"
         return f"<ContextParam {names}>"
 
-    def __call__(self, **binds: _Any) -> _Any:
+    def __call__(self, /, **binds: _Any) -> _Any:
         """Resolve to the bound value; keyword arguments are an ephemeral bind()."""
         with self.bind(**binds):
             assert self._param_fn is not None  # invariant: set by context_param()

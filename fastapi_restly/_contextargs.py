@@ -133,9 +133,16 @@ def _make(
     sig = inspect.signature(func)
     params = sig.parameters.values()
     # plain functions only: wrapper is a closure-based function, so its
-    # attributes (context_call etc.) can never bind self on obj.method
+    # attributes (context_call etc.) can never bind self on obj.method.
+    # A method receiver is always positional; keyword-only self/cls is
+    # just a name (e.g. context_param("self")) and stays allowed
     first = next(iter(params), None)
-    if first is not None and first.name in ("self", "cls"):
+    if (
+        first is not None
+        and first.name in ("self", "cls")
+        and first.kind
+        in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD)
+    ):
         raise TypeError(
             f"{func.__qualname__} looks like a method; contextual supports "
             "plain functions only — obj.method.context_call() cannot bind self"

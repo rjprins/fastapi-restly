@@ -174,6 +174,17 @@ def test_classmethod_style_rejected():
             return x
 
 
+def test_keyword_only_self_is_not_a_method():
+    # a method receiver is always positional; keyword-only `self` is
+    # just a name and must stay bindable
+    @contextual
+    def m(*, self):
+        return self
+
+    with m.context(self=3):
+        assert m.context_call() == 3
+
+
 def test_accepted_exposed():
     assert greet.accepted == frozenset({"name", "greeting"})
 

@@ -97,3 +97,9 @@ _stmt = select(Ticket).where(expr, Ticket.C.is_deleted())
 
 # statement methods chain as normal SQLAlchemy statements
 _chained = Ticket.C.visible.select(Ticket, tenant_id=1).where(Ticket.id == 1).limit(1)
+
+# select() takes any SQLAlchemy entities; exact row typing lives on the
+# apply_clauses path, which keeps the statement type select() produced
+_projected = Ticket.C.visible.select(Ticket.id, Ticket.created_at, tenant_id=1)
+_typed = fr.apply_clauses(select(Ticket.id, Ticket.created_at), Ticket.C.visible)
+_typed = _typed.where(Ticket.tenant_id == 1).limit(1)

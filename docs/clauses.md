@@ -285,12 +285,15 @@ Every clause also carries
 {meth}`select() <fastapi_restly.clauses.Clause.select>`, and a
 {class}`WhereClause <fastapi_restly.clauses.WhereClause>` carries
 {meth}`update() <fastapi_restly.clauses.WhereClause.update>` and
-{meth}`delete() <fastapi_restly.clauses.WhereClause.delete>`. These are
-shorthand for `apply_clauses` on a fresh statement, with the same
-ephemeral bind as keyword arguments:
+{meth}`delete() <fastapi_restly.clauses.WhereClause.delete>`.
+`select()` takes the same entities SQLAlchemy's `select()` takes; all
+three are shorthand for `apply_clauses` on a fresh statement, with the
+same ephemeral bind as keyword arguments:
 
 ```python
 stmt = Item.C.visible.select(Item, tenant_id=tenant_id).where(Item.id == item_id)
+
+count = Item.C.visible.select(func.count(Item.id), tenant_id=tenant_id)
 
 stmt = (
     Item.C.trashed.update(Item, tenant_id=tenant_id)
@@ -303,7 +306,10 @@ The result is a normal `Select` or `Update`; chain onto it freely.
 `apply_clauses` accepts the same ephemeral bind as keywords, routed
 across all the clauses it is given. The
 method form reads clause-first, `apply_clauses` reads statement-first;
-both build the same statement.
+both build the same statement. The method form types as `Select[Any]`;
+for precise row typing, build the statement with plain `select()` and
+pass it through `apply_clauses`, which preserves the statement's exact
+type.
 
 (binding-values)=
 ## Binding values
