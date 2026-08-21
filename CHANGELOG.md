@@ -15,7 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   values bind late via `Clause.bind()` or a `fr.context_param` slot shared
   across models; `fr.apply_clauses` applies clauses to plain SQLAlchemy
   statements, and `fr.ClauseNamespace` groups a model's clauses as
-  `Model.C`. See the Query Clauses guide.
+  `Model.C`; ephemeral values pass as keywords to `fr.apply_clauses`
+  and the `select()`/`update()`/`delete()` shorthands. See the Query
+  Clauses guide.
 - Binding provenance: every bound clause value records the file and line
   that bound it; `Clause.explain()` renders the clause tree with each
   node's bind names, values, and origins, and an active
