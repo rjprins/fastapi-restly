@@ -856,6 +856,33 @@ def test_repr_of_param():
     assert repr(context_param("tenant_id")) == "<ContextParam tenant_id>"
 
 
+# --- provenance and explain -------------------------------------------------
+
+
+def test_explain_shows_unbound():
+    q = all_of(tenant_filter, soft_deleted)
+    assert q.explain() == "<WhereClause all_of binds: tenant_id>\n  tenant_id: UNBOUND"
+
+
+def test_explain_shows_value_and_origin():
+    q = all_of(tenant_filter, soft_deleted)
+    with q.bind(tenant_id=7):
+        text = q.explain()
+    assert "tenant_id = 7" in text
+    assert "bound at" in text
+    assert "test_clauses.py" in text
+
+
+def test_context_param_repr_names_bind_site():
+    slot = context_param("prov_repr")
+    assert repr(slot) == "<ContextParam prov_repr>"
+    with slot.bind(prov_repr=1):
+        text = repr(slot)
+    assert text.startswith("<ContextParam prov_repr, bound at ")
+    assert "test_clauses.py" in text
+    assert repr(slot) == "<ContextParam prov_repr>"  # reset after exit
+
+
 # --- composition ----------------------------------------------------------
 
 

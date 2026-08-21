@@ -341,6 +341,23 @@ for tenant_id in tenant_ids:
     stmt = Item.C.trashed.delete(Item, tenant_id=tenant_id)
 ```
 
+Every binding records where it was made.
+{meth}`Clause.explain <fastapi_restly.clauses.Clause.explain>` renders a
+clause's bind names with their current values and the file and line
+that bound each, and an active `context_param`'s repr names its bind
+site:
+
+```python
+>>> Item.C.visible.explain()
+<WhereClause all_of binds: tenant_id>
+  tenant_id = UUID('7f3a...')   bound at app/deps.py:23 (bind_tenant)
+```
+
+The system verifies that bindings exist and route to the right slot.
+Whether the bound value is the right one, the authenticated user's
+tenant and not another, is the application's invariant; assert it where
+the value enters, in the binding dependency.
+
 Binding fails loud in each direction. Resolving a clause whose value is
 not bound raises `TypeError` while the statement is built, never a
 silently unfiltered query. Binding a name no clause in the tree accepts

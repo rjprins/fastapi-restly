@@ -220,6 +220,33 @@ class Clause:
         binds = " binds: " + ", ".join(wanted) if wanted else ""
         return f"<{type(self).__name__}{label}{binds}>"
 
+    def explain(self) -> str:
+        """The clause's bind names with their current values and origins.
+
+        One line per name: the bound value (repr, truncated) and the
+        file:line that bound it, or UNBOUND. The answer to "why is this
+        query filtered the way it is" without leaving the debugger.
+        """
+        lines = [repr(self)]
+        reported: set[str] = set()
+        for fn, routable in self._routing():
+            names = routable if routable is not None else fn.accepted
+            bound = fn.bindings()
+            for bind_name in sorted(names or ()):
+                if bind_name in reported:
+                    continue
+                reported.add(bind_name)
+                if bind_name in bound:
+                    value, origin = bound[bind_name]
+                    shown = repr(value)
+                    if len(shown) > 60:
+                        shown = shown[:57] + "..."
+                    suffix = f"   bound at {origin}" if origin else ""
+                    lines.append(f"  {bind_name} = {shown}{suffix}")
+                else:
+                    lines.append(f"  {bind_name}: UNBOUND")
+        return "\n".join(lines)
+
     def alias(self, name: str | None = None) -> Clause:
         """An independent instance with its own context namespace.
 
@@ -349,7 +376,13 @@ class ContextParam(Clause):
 
     def __repr__(self) -> str:
         assert self._param_fn is not None
-        return "<ContextParam " + ", ".join(sorted(self._param_fn.accepted or ())) + ">"
+        names = ", ".join(sorted(self._param_fn.accepted or ()))
+        for _, origin in self._param_fn.bindings().values():
+            if origin:
+                return f"<ContextParam {names}, bound at {origin}>"
+        if self._param_fn.bindings():
+            return f"<ContextParam {names}, bound>"
+        return f"<ContextParam {names}>"
 
     def __call__(self, **binds: _Any) -> _Any:
         """Resolve to the bound value; keyword arguments are an ephemeral bind()."""

@@ -37,13 +37,42 @@ a name always returns a fresh anonymous instance.
 
 from __future__ import annotations
 
+import contextlib
 import inspect
+import os
+import sys
 from contextlib import AbstractContextManager, contextmanager
 from contextvars import ContextVar
 from functools import wraps
 from typing import Any, Callable, ParamSpec, Protocol, TypeVar, cast
 
 __all__ = ["Contextual", "MissingContextValues", "contextual"]
+
+
+_PACKAGE_DIR = os.path.dirname(__file__)
+_CONTEXTLIB_FILE = contextlib.__file__
+
+
+def _caller_origin() -> str | None:
+    """file:line (function) of the first frame outside this package.
+
+    Walks past the contextmanager plumbing and the clauses layer so the
+    origin names the user's bind site, not the machinery. Only strings
+    are kept; no frame reference survives.
+    """
+    frame = sys._getframe(1)
+    while frame is not None:
+        filename = frame.f_code.co_filename
+        if not filename.startswith(_PACKAGE_DIR) and filename != _CONTEXTLIB_FILE:
+            try:
+                path = os.path.relpath(filename)
+            except ValueError:
+                path = filename
+            if path.startswith(".."):
+                path = filename
+            return f"{path}:{frame.f_lineno} ({frame.f_code.co_name})"
+        frame = frame.f_back
+    return None
 
 
 class MissingContextValues(TypeError):
@@ -86,6 +115,8 @@ class Contextual(Protocol[P, R_co]):
 
     def context(self, **values: Any) -> AbstractContextManager[None]: ...
 
+    def bindings(self) -> dict[str, tuple[Any, str | None]]: ...
+
     def alias(self, name: str | None = None) -> Contextual[P, R_co]: ...
 
 
@@ -118,6 +149,9 @@ def _make(
     }
     label = name or func.__qualname__
     var: ContextVar[dict[str, Any]] = ContextVar(f"contextual:{label}", default={})
+    origins_var: ContextVar[dict[str, str | None]] = ContextVar(
+        f"contextual-origins:{label}", default={}
+    )
     impl = cast(Callable[..., R], func)
 
     def merge(args: tuple, kwargs: dict[str, Any]) -> dict[str, Any]:
@@ -175,10 +209,15 @@ def _make(
                     + ", ".join(sorted(unknown))
                 )
         # layer over any enclosing context; reset restores the outer layer
+        origin = _caller_origin()
         token = var.set({**var.get(), **values})
+        origin_token = origins_var.set(
+            {**origins_var.get(), **{key: origin for key in values}}
+        )
         try:
             yield
         finally:
+            origins_var.reset(origin_token)
             var.reset(token)
 
     # introspection only (help(), inspect.signature): the parent's keyword
@@ -201,6 +240,11 @@ def _make(
         )
     setattr(context, "__signature__", inspect.Signature(context_params))
 
+    def bindings() -> dict[str, tuple[Any, str | None]]:
+        # currently bound values with the origin that bound each
+        current, where = var.get(), origins_var.get()
+        return {key: (value, where.get(key)) for key, value in current.items()}
+
     def alias(name: str | None = None) -> Contextual[P, R]:
         # each instance gets its own context namespace; named ones are
         # memoized getLogger-style, so the same name addresses the same
@@ -212,6 +256,7 @@ def _make(
         # build, but every caller gets the one stored instance
         return registry.setdefault(name, _make(f, name, registry, family))
 
+    setattr(wrapper, "bindings", bindings)
     setattr(wrapper, "context_call", context_call)
     setattr(wrapper, "context", context)
     setattr(wrapper, "alias", alias)

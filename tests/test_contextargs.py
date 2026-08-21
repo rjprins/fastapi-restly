@@ -208,6 +208,14 @@ def test_family_distinct_between_functions():
     assert other.family is not greet.family
 
 
+def test_bindings_expose_value_and_origin():
+    with greet.context(name="World"):
+        bound = greet.bindings()
+    assert bound["name"][0] == "World"
+    assert "test_contextargs.py" in bound["name"][1]
+    assert greet.bindings() == {}
+
+
 def test_async_function():
     @contextual
     async def whoami(name):
