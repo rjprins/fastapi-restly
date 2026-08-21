@@ -80,6 +80,7 @@ from sqlalchemy.sql.expression import Join as _Join
 from sqlalchemy.sql.expression import ScalarSelect as _ScalarSelect
 from sqlalchemy.sql.expression import SelectBase as _SelectBase
 from sqlalchemy.sql.expression import Subquery as _Subquery
+from sqlalchemy.sql.visitors import iterate as _sqla_iterate
 
 from ._contextargs import Contextual as _Contextual
 from ._contextargs import MissingContextValues as _MissingContextValues
@@ -215,8 +216,10 @@ class Clause:
         the values live only for the duration of building this
         statement. Without them the ambient bind (a surrounding with
         ...bind():) applies as usual. Types as Select[Any]; for precise
-        row typing build the statement with plain select() and use
-        apply_clauses(), which preserves the statement's exact type.
+        row typing build the statement with plain select() into its own
+        variable and pass that to apply_clauses(), which preserves the
+        statement's exact type. The inline nested call widens to
+        Select[Any] under bidirectional inference.
         """
         with self.bind(**binds):
             return apply_clauses(_sqla_select(*entities), self)
@@ -261,7 +264,10 @@ class Clause:
                 for bind_name in sorted(names or ()):
                     if bind_name in bound:
                         value, origin = bound[bind_name]
-                        shown = repr(value)
+                        try:
+                            shown = repr(value)
+                        except Exception:
+                            shown = f"<unrepresentable {type(value).__name__}>"
                         if len(shown) > 60:
                             shown = shown[:57] + "..."
                         # a ContextParam's label already names its bind site
@@ -457,8 +463,9 @@ def _teaching_call(fn: _Contextual, *args):
             f"{error.label} is missing bound values for: "
             + ", ".join(error.names)
             + f"; bind them around this code with .bind({first}=...) on the "
-            "clause, an enclosing composite, or the shared ContextParam, or "
-            "pass them as keywords to .select()/.update()/.delete() or apply_clauses()"
+            "shared ContextParam itself, or on the clause or an enclosing "
+            "composite when it routes the name; routable names can also be "
+            "passed as keywords to the statement shorthands or apply_clauses()"
         ) from None
 
 
@@ -544,7 +551,9 @@ def _has_transform(clause: Clause) -> bool:
 
 def _validate_clause_fn(fn: _Callable) -> None:
     label = getattr(fn, "__name__", "clause function")
-    if _inspect.iscoroutinefunction(fn):
+    if _inspect.iscoroutinefunction(fn) or _inspect.iscoroutinefunction(
+        getattr(type(fn), "__call__", None)
+    ):
         raise TypeError(
             f"{label} is async; clause functions build expressions and must be sync"
         )
@@ -584,9 +593,19 @@ def _marker_slots(fn: _Callable) -> tuple[_Callable, tuple[ContextParam, ...]]:
     for pname in _inspect.signature(fn).parameters:
         annotation = raw.get(pname)
         if isinstance(annotation, str):
+            source = annotation
             try:
                 annotation = eval(annotation, globalns, localns)  # noqa: S307
             except Exception:
+                if "Annotated" in source:
+                    label = getattr(fn, "__qualname__", fn)
+                    raise TypeError(
+                        f"cannot resolve the annotation {source!r} on parameter "
+                        f"{pname!r} of {label}; an Annotated marker must be "
+                        "resolvable at declaration time. Define the ContextParam "
+                        "at module scope, or avoid string annotations for this "
+                        "function"
+                    ) from None
                 continue
         for meta in getattr(annotation, "__metadata__", ()):
             if isinstance(meta, ContextParam):
@@ -804,9 +823,33 @@ def _apply_transforms(stmt: _Select[_Any], clauses: _Sequence[Clause]) -> _Selec
     return stmt
 
 
-def _resolved_wheres(clauses: _Sequence[Clause]) -> list[_ColumnElement[bool]]:
+def _seed_owners(stmt: object) -> dict[str, object]:
+    # SQLAlchemy's bind-key space is per statement, so ownership must be
+    # too: binds the statement already carries (earlier apply_clauses
+    # layers, hand-written bindparams) claim their keys before any
+    # clause of this call fills a slot
     owners: dict[str, object] = {}
+    for el in _sqla_iterate(stmt):
+        if isinstance(el, _BindParameter) and not el.unique:
+            slot = getattr(el, "_fr_param", None)
+            owners.setdefault(
+                el.key, slot._param_fn if slot is not None else _HANDWRITTEN
+            )
+    return owners
+
+
+def _resolved_wheres(
+    clauses: _Sequence[Clause], owners: dict[str, object] | None = None
+) -> list[_ColumnElement[bool]]:
+    if owners is None:
+        owners = {}
     return [w for w in (_resolve_where(c, owners) for c in clauses) if w is not None]
+
+
+def _display_table_name(key: str) -> str:
+    # strip the metadata-identity prefix _table_name adds for membership
+    head, sep, tail = key.partition(":")
+    return tail if sep and head.isdigit() else key
 
 
 def _table_name(table) -> str:
@@ -902,14 +945,15 @@ def apply_clauses(stmt, /, *clauses: Clause, **binds: _Any):
             clauses,
             f"{type(stmt).__name__.upper()} cannot join; use where-only clauses",
         )
-    wheres = _resolved_wheres(clauses)
+    wheres = _resolved_wheres(clauses, _seed_owners(stmt))
     available = _statement_tables(stmt)
     for where in wheres:
         missing = _expression_tables(where) - available
         if missing:
+            shown = sorted(_display_table_name(key) for key in missing)
             raise TypeError(
                 "clause references table(s) not in the statement: "
-                + ", ".join(sorted(missing))
+                + ", ".join(shown)
                 + "; add the join via a transform_clause, or use EXISTS (.any()/.has())"
             )
     return stmt.where(*wheres)

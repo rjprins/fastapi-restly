@@ -522,7 +522,7 @@ Use the bare-condition or `Annotated` form for those clauses.
 
 Sharing is by identity: every clause that embeds or marks the same slot
 is served by a single bind, wherever it happens. One dependency covers
-every tenant-scoped model, present and future:
+every tenant-scoped model, present and future (illustrative):
 
 ```python
 async def bind_tenant(tenant_id: TenantIdFromAuth):

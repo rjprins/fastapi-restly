@@ -83,11 +83,17 @@ listing = listing.where(Ticket.tenant_id == 1).limit(1)
 assert_type(fr.apply_clauses(update(Ticket), Ticket.C.owned_by_tenant), Update)
 assert_type(fr.apply_clauses(delete(Ticket), Ticket.C.owned_by_tenant), Delete)
 
-# ephemeral binds keep the per-statement-kind dispatch
-bound = fr.apply_clauses(select(Ticket), Ticket.C.visible, tenant_id=1)
+# ephemeral binds keep the per-statement-kind dispatch; assign the
+# select() first: the inline nested call widens under bidirectional
+# inference
+_base = select(Ticket)
+bound = fr.apply_clauses(_base, Ticket.C.visible, tenant_id=1)
 bound = bound.limit(1)
 assert_type(
     fr.apply_clauses(update(Ticket), Ticket.C.owned_by_tenant, tenant_id=1), Update
+)
+assert_type(
+    fr.apply_clauses(delete(Ticket), Ticket.C.owned_by_tenant, tenant_id=1), Delete
 )
 
 # the call form resolves to a ColumnElement usable in plain SQLAlchemy

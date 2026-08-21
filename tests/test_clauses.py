@@ -1064,6 +1064,55 @@ def test_context_param_repr_names_bind_site():
     assert repr(slot) == "<ContextParam prov_repr>"  # reset after exit
 
 
+# --- review round 2: statement-wide ownership -------------------------------
+
+
+def test_layered_apply_same_name_slots_raise():
+    a = context_param("layer_t")
+    b = context_param("layer_t")
+    ca = where_clause(Item.tenant_id == a)
+    cb = where_clause(Item.collection_id == b)
+    with a.bind(layer_t=1), b.bind(layer_t=2):
+        stmt = apply_clauses(select(Item), ca)
+        with pytest.raises(TypeError, match="layer_t"):
+            apply_clauses(stmt, cb)
+
+
+def test_layered_apply_shared_slot_is_fine():
+    slot = context_param("layer_shared")
+    ca = where_clause(Item.tenant_id == slot)
+    cb = where_clause(Item.collection_id == slot)
+    with slot.bind(layer_shared=5):
+        stmt = apply_clauses(apply_clauses(select(Item), ca), cb)
+    assert params_of(stmt) == {"layer_shared": 5}
+
+
+def test_statement_bindparam_protected_from_slot_fill():
+    from sqlalchemy import bindparam
+
+    slot = context_param("prot_t")
+    clause = where_clause(Item.tenant_id == slot)
+    stmt = select(Item).where(Item.collection_id == bindparam("prot_t", value=99))
+    with slot.bind(prot_t=1):
+        with pytest.raises(TypeError, match="hand-written"):
+            apply_clauses(stmt, clause)
+
+
+def test_cross_model_error_shows_plain_table_name():
+    with pytest.raises(TypeError, match=r"not in the statement: collection;"):
+        apply_clauses(select(Item), collection_active)
+
+
+def test_explain_survives_broken_repr():
+    class Boom:
+        def __repr__(self):
+            raise RuntimeError("no repr")
+
+    with tenant_filter.bind(tenant_id=Boom()):
+        text = all_of(tenant_filter, soft_deleted).explain()
+    assert "unrepresentable Boom" in text
+
+
 # --- composition ----------------------------------------------------------
 
 
