@@ -7,8 +7,27 @@ from importlib.metadata import version as _version
 #   fr.objects — schema<->ORM helpers for use outside a view
 #   fr.query   — low-level list query-parameter helpers
 #   fr.utils   — helpers not tied to one subsystem
-# (fr.db / fr.models / fr.schemas / fr.views are bound by the from-imports below.)
+# (fr.db / fr.models / fr.schemas / fr.views / fr.clauses are bound by the
+# from-imports below.)
 from . import exc, objects, query, utils  # noqa: F401
+
+# Clauses — composable, context-aware query fragments
+from .clauses import (
+    Clause,
+    ClauseNamespace,
+    CombinedClause,
+    ContextParam,
+    TransformClause,
+    WhereClause,
+    all_of,
+    any_of,
+    apply_clauses,
+    combine,
+    context_param,
+    none_of,
+    transform_clause,
+    where_clause,
+)
 
 # Database layer
 from .db import AsyncSessionDep, SessionDep, configure, open_async_session, open_session
@@ -74,6 +93,21 @@ __all__ = [
     "SessionDep",
     # Database — setup
     "configure",
+    # Clauses
+    "Clause",
+    "ClauseNamespace",
+    "CombinedClause",
+    "TransformClause",
+    "WhereClause",
+    "where_clause",
+    "transform_clause",
+    "all_of",
+    "any_of",
+    "none_of",
+    "combine",
+    "apply_clauses",
+    "context_param",
+    "ContextParam",
     # Models
     "DataclassBase",
     "IDBase",

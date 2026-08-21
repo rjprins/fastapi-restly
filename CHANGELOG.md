@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Context-bound query clauses: declare reusable query fragments once and
+  compose them with `fr.where_clause` / `fr.transform_clause`,
+  `fr.all_of` / `fr.any_of` / `fr.none_of` / `fr.combine`. Per-request
+  values bind late via `Clause.bind()` or a `fr.context_param` slot shared
+  across models; `fr.apply_clauses` applies clauses to plain SQLAlchemy
+  statements, and `fr.ClauseNamespace` groups a model's clauses as
+  `Model.C`. See the Query Clauses guide.
 - `restly new <name>` scaffolding command to create a project from scratch with
   optional database and alembic set up.
 - Pass `health="/health"` to `fr.configure()` to add a liveness endpoint that

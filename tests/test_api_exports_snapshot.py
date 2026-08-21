@@ -6,6 +6,7 @@ from pathlib import Path
 
 PUBLIC_MODULES = (
     "fastapi_restly",
+    "fastapi_restly.clauses",
     "fastapi_restly.db",
     "fastapi_restly.exc",
     "fastapi_restly.models",
