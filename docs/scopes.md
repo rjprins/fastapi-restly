@@ -131,7 +131,7 @@ class ItemView(fr.AsyncRestView):
     scope = fr.combine(Item.C.visible, Item.C.newest_first)
 ```
 
-The explicit opt-out is `fr.UNSCOPED`: it reads past the model's
+The explicit opt-out is `fr.clauses.UNSCOPED`: it reads past the model's
 `default_scope`, where `None` would fall back to it. Reserve it for a
 genuinely all-seeing view behind its own authorization; an "admin"
 view usually stays tenant-bound and just widens (`scope =
@@ -143,7 +143,7 @@ class AdminItemView(fr.AsyncRestView):
     prefix = "/admin/items"
     model = Item
     schema = ItemRead
-    scope = fr.UNSCOPED
+    scope = fr.clauses.UNSCOPED
 ```
 
 There is no per-request hook, deliberately: a clause is already a
@@ -205,7 +205,7 @@ only.
 This is `default_scope` without the parts that earned Rails'
 `default_scope` its reputation. It does not default attribute *values*
 on create; it only filters reads and reference checks. A view escapes it
-by declaring a replacement or `fr.UNSCOPED`, both visible in the class
+by declaring a replacement or `fr.clauses.UNSCOPED`, both visible in the class
 body, and the reference escape is the greppable `scope=None`. Nothing
 escapes it implicitly.
 

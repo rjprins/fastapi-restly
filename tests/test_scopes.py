@@ -2,7 +2,7 @@
 
 A model's ``C.default_scope`` arms every view read (list, retrieve, count)
 and every reference check on the model. A view's ``scope`` attribute
-replaces that default; ``fr.UNSCOPED`` opts out explicitly. Reference
+replaces that default; ``fr.clauses.UNSCOPED`` opts out explicitly. Reference
 checks (``MustExist`` / ``RefExists`` / ``IDRef`` / ``IDSchema``) apply
 only the predicate half of the clause, and ``RefExists(scope=...)``
 overrides per field, with ``scope=None`` the explicit unscoped escape.
@@ -143,7 +143,7 @@ def test_unscoped_view_reads_past_the_default_scope(client):
         prefix = "/all-docs"
         model = ScopeDoc
         schema = ScopeDocSchema
-        scope = fr.UNSCOPED  # the explicit opt-out; e.g. behind admin auth
+        scope = fr.clauses.UNSCOPED  # the explicit opt-out; e.g. behind admin auth
 
     create_tables()
 
@@ -209,7 +209,7 @@ def test_reference_checks_apply_scopes_over_http(client):
         prefix = "/scope-owners"
         model = ScopeOwner
         schema = ScopeOwnerSchema
-        scope = fr.UNSCOPED  # seeding endpoint: read past the default_scope
+        scope = fr.clauses.UNSCOPED  # seeding endpoint: read past the default_scope
 
     @fr.include_view(client.app)
     class ScopeTaskView(fr.AsyncRestView):
@@ -286,7 +286,7 @@ def test_idref_resolution_applies_default_scope_over_http(client):
         prefix = "/scope-authors"
         model = ScopeAuthor
         schema = ScopeAuthorSchema
-        scope = fr.UNSCOPED
+        scope = fr.clauses.UNSCOPED
 
     @fr.include_view(client.app)
     class ScopeBookView(fr.AsyncRestView):
@@ -389,7 +389,7 @@ def test_scope_resolution_falls_back_from_view_to_model_to_none():
     assert _PinnedView()._resolved_scope() is other
 
     class _OptedOutView(_SyncRowView):
-        scope = fr.UNSCOPED
+        scope = fr.clauses.UNSCOPED
 
     assert _OptedOutView()._resolved_scope() is None
 

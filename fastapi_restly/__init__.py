@@ -53,7 +53,6 @@ from .schemas import (
 # write_action share, and the off-HTTP use case that would justify a public name
 # isn't built yet. They remain importable from fastapi_restly.views.)
 from .views import (
-    UNSCOPED,
     Action,
     AsyncReactAdminView,
     AsyncRestView,
@@ -131,7 +130,6 @@ __all__ = [
     "ReactAdminView",
     "Action",
     "ResponseShape",
-    "UNSCOPED",
     "View",
     "ViewRoute",
     "include_view",

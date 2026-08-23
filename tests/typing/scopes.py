@@ -1,6 +1,6 @@
 """Typing fixture: view scopes and scoped reference markers.
 
-Covers the ``scope`` class attribute (a ``Clause`` or ``fr.UNSCOPED``),
+Covers the ``scope`` class attribute (a ``Clause`` or ``fr.clauses.UNSCOPED``),
 the annotated ``Model.C`` access pattern feeding a view scope, and the
 three ``RefExists`` states on a schema field (defaulted,
 ``scope=<Clause>``, ``scope=None``) leaving the field a plain scalar.
@@ -57,7 +57,7 @@ class TrashView(TicketView):
 
 
 class AdminView(TicketView):
-    scope = fr.UNSCOPED  # explicit opt-out; deviating views declare
+    scope = fr.clauses.UNSCOPED  # explicit opt-out; deviating views declare
 
 
 if TYPE_CHECKING:

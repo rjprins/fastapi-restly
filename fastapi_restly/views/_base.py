@@ -31,7 +31,6 @@ from typing import (
     Protocol,
     Sequence,
     cast,
-    final,
     get_args,
     get_origin,
     get_type_hints,
@@ -49,7 +48,7 @@ from starlette.datastructures import QueryParams
 from typing_extensions import TypeVar
 
 from .._exception_handlers import register_default_exception_handlers
-from ..clauses import Clause, _default_scope, apply_clauses
+from ..clauses import UNSCOPED, Clause, _default_scope, _Unscoped, apply_clauses
 from ..db._globals import _fr_globals
 from ..exc import RestlyConfigurationError, RestlyMisuseWarning
 from ..objects import snapshot as _object_snapshot
@@ -954,20 +953,6 @@ def delete(path: str, **api_route_kwargs: Any) -> Callable[..., Any]:
     return route(path, **api_route_kwargs)
 
 
-@final
-class _Unscoped:
-    """Sentinel for :attr:`BaseRestView.scope`: read unscoped despite the
-    model's ``default_scope``. ``None`` on the attribute means "fall back
-    to the default", so the explicit opt-out needs its own spelling.
-    """
-
-    def __repr__(self) -> str:
-        return "fr.UNSCOPED"
-
-
-UNSCOPED = _Unscoped()
-
-
 class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT]):
     """
     Base class for RestView implementations.
@@ -989,9 +974,9 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     model: ClassVar[type[DeclarativeBase]]
     #: The clause every read on this view applies: list, count, and retrieve
     #: (a row outside it is 404). ``None`` (the default) falls back to the
-    #: model's ``C.default_scope``; ``fr.UNSCOPED`` reads unscoped despite
-    #: that default. Declaring a scope replaces the default, it does not
-    #: stack on it; compose the replacement from the same leaves
+    #: model's ``C.default_scope``; ``fr.clauses.UNSCOPED`` reads unscoped
+    #: despite that default. Declaring a scope replaces the default, it does
+    #: not stack on it; compose the replacement from the same leaves
     #: (``Item.C.trashed`` containing the tenant clause ``visible`` contains).
     #: See the Scopes guide.
     scope: ClassVar[Clause | _Unscoped | None] = None
@@ -1025,8 +1010,8 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         scope = cls.__dict__.get("scope")
         if not (scope is None or scope is UNSCOPED or isinstance(scope, Clause)):
             raise RestlyConfigurationError(
-                f"{cls.__name__}.scope must be a Clause, fr.UNSCOPED, or "
-                f"None, got {type(scope).__name__}; wrap a raw expression "
+                f"{cls.__name__}.scope must be a Clause, fr.clauses.UNSCOPED, "
+                f"or None, got {type(scope).__name__}; wrap a raw expression "
                 "with where_clause()"
             )
 

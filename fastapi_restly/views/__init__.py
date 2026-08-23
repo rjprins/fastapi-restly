@@ -22,7 +22,6 @@ primitive for non-CRUD endpoint groups (auth flows, webhooks, RPC).
 
 from ._async import AsyncRestView
 from ._base import (
-    UNSCOPED,
     Action,
     BaseRestView,
     Envelope,
@@ -60,7 +59,6 @@ __all__ = [
     "PaginatedEnvelope",
     "Action",
     "ResponseShape",
-    "UNSCOPED",
     "View",
     "ViewRoute",
     "async_run_write_action",

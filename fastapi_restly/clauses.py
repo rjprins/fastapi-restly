@@ -60,6 +60,7 @@ from typing import ClassVar as _ClassVar
 from typing import Iterator as _Iterator
 from typing import Sequence as _Sequence
 from typing import TypeVar as _TypeVar
+from typing import final as _final
 from typing import overload as _overload
 
 from sqlalchemy import ColumnElement as _ColumnElement
@@ -87,6 +88,7 @@ from ._contextargs import MissingContextValues as _MissingContextValues
 from ._contextargs import contextual as _contextual
 
 __all__ = [
+    "UNSCOPED",
     "Clause",
     "ClauseNamespace",
     "CombinedClause",
@@ -449,6 +451,22 @@ class ClauseNamespace:
                 f"{getattr(existing, '__name__', repr(existing))}"
             )
         setattr(model, "C", cls)
+
+
+@_final
+class _Unscoped:
+    """Sentinel scope: read unscoped despite a model's `default_scope`.
+
+    On a view's `scope` attribute `None` means "fall back to the model's
+    default", so the explicit opt-out needs its own spelling. Deliberately
+    not re-exported at the top level: the escape is spelled in full.
+    """
+
+    def __repr__(self) -> str:
+        return "fr.clauses.UNSCOPED"
+
+
+UNSCOPED = _Unscoped()
 
 
 def _default_scope(model: type[_DeclarativeBase]) -> Clause | None:

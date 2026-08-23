@@ -4,8 +4,7 @@ Clauses API
 ``fastapi_restly.clauses`` implements composable, context-bound query
 clauses: named fragments of a query, declared once at module level,
 composed with boolean functions, and applied to plain SQLAlchemy
-statements. Every symbol here is also importable from the top-level
-``fastapi_restly`` namespace.
+statements.
 
 .. automodule:: fastapi_restly.clauses
    :members:
