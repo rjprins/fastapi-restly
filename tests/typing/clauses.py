@@ -61,8 +61,9 @@ class TicketClauses(fr.ClauseNamespace):
     visible = fr.all_of(owned_by_tenant, fr.none_of(is_deleted))
 
 
-# constructor -> type symmetry
+# constructor -> type symmetry; alias() preserves the subtype (Self)
 assert_type(TicketClauses.is_deleted, fr.WhereClause)
+assert_type(TicketClauses.is_deleted.alias("aliased"), fr.WhereClause)
 assert_type(TicketClauses.newest_first, fr.TransformClause)
 assert_type(
     fr.combine(TicketClauses.newest_first, TicketClauses.is_deleted), fr.CombinedClause

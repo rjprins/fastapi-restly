@@ -63,16 +63,15 @@ related table without its scope. Shape the response schema, or override
 {meth}`get_relationship_loader_options <fastapi_restly.views.BaseRestView.get_relationship_loader_options>`,
 where embedded rows must be filtered.
 
-Keep `default_scope` a pure predicate: a
-{class}`WhereClause <fastapi_restly.clauses.WhereClause>`, with EXISTS
-(`.any()`/`.has()`) instead of joins. A clause without any predicate (a
-value slot, a bare transform) is rejected at definition. Reference
-checks apply only the predicate half of the clause: a transform riding
-along is dropped there (a dropped ordering is harmless, and a predicate
-that needs the dropped join is rejected loudly), so a transform must
-never carry row filtering itself. A filtering join would hide rows from
-views while reference checks cannot see it; row filtering lives in the
-predicate, always.
+`default_scope` must be a
+{class}`WhereClause <fastapi_restly.clauses.WhereClause>`: a pure
+predicate, with EXISTS (`.any()`/`.has()`) instead of joins. The rule is
+enforced, in the type (`ClassVar[WhereClause | None]`) and at class
+definition, because a reference check is an existence probe that cannot
+honor a transform: a scope carrying one would filter view reads while
+reference checks could not see it. Nothing is lost by the restriction;
+ordering and other reshaping belong on the [view scope](#view-scope),
+which takes any clause.
 
 A namespace declared on a model *subclass* shadows the base model's
 namespace. If the base declares a `default_scope`, the subclass
@@ -189,8 +188,10 @@ class OrderCreate(fr.BaseSchema):
 ```
 
 - **Not given**: the target's `default_scope` applies.
-- **`scope=<Clause>`**: that clause applies instead; the restore
-  endpoint above accepts exactly the ids the trash view shows.
+- **`scope=<WhereClause>`**: that predicate applies instead; the restore
+  endpoint above accepts exactly the ids the trash view shows. A
+  `WhereClause`, like `default_scope` and for the same reason: an
+  existence probe cannot honor a transform.
 - **`scope=None`**: the check is explicitly unscoped, and
   `grep -r "scope=None"` hands a security review every exception in one
   command. Write the `None` as a literal: a variable that happens to be

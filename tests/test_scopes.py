@@ -464,40 +464,39 @@ class SyncRankedClauses(fr.ClauseNamespace):
     model = SyncRanked
 
     owned_by_tenant = fr.where_clause(SyncRanked.tenant_id == _sync_tenant)
-    by_rank = fr.transform_clause(_by_rank)
-    # against convention on purpose: default_scope carrying a transform
-    default_scope = fr.combine(owned_by_tenant, by_rank)
+    by_rank = fr.transform_clause(_by_rank)  # material is fine; a scope is not
+    default_scope = owned_by_tenant
 
 
-def test_reference_check_uses_only_the_predicate_half(sync_session):
-    sync_session.add(SyncRanked(id=1, tenant_id=1, rank=5))
-    sync_session.flush()
+def test_transform_carrying_default_scope_is_rejected():
+    # an existence probe cannot honor a transform, so a scope carrying one
+    # is refused outright instead of silently half-applied
+    with pytest.raises(TypeError, match="WhereClause"):
 
-    class _TaskSchema(fr.BaseSchema):
-        ranked_id: Annotated[int, fr.RefExists(SyncRanked)]
+        class _OrderedClauses(fr.ClauseNamespace):
+            model = SyncRanked
+            default_scope = fr.combine(
+                SyncRankedClauses.owned_by_tenant, SyncRankedClauses.by_rank
+            )
 
-    # the ordering transform in default_scope is dropped, the tenant
-    # predicate is kept
-    with _sync_tenant.bind(tenant_id=1):
-        _check_ref_exists(sync_session, SyncRanked, _TaskSchema(ranked_id=1))
-    with _sync_tenant.bind(tenant_id=2):
-        with pytest.raises(NotFound, match="ranked_id"):
-            _check_ref_exists(sync_session, SyncRanked, _TaskSchema(ranked_id=1))
+    with pytest.raises(TypeError, match="WhereClause"):
+        fr.RefExists(
+            SyncRanked,
+            scope=fr.combine(
+                SyncRankedClauses.owned_by_tenant, SyncRankedClauses.by_rank
+            ),
+        )
 
 
 def test_join_dependent_reference_scope_fails_loudly(sync_session):
-    def _join_side(stmt: Select) -> Select:
-        return stmt.join(SyncSide, SyncSide.ranked_id == SyncRanked.id)
-
-    joined = fr.combine(
-        fr.transform_clause(_join_side), fr.where_clause(SyncSide.id.is_not(None))
-    )
-
+    # a predicate on a table the probe does not select from would be a
+    # cartesian product; the table validation rejects it and points at EXISTS
     class _JoinSchema(fr.BaseSchema):
-        ranked_id: Annotated[int, fr.RefExists(SyncRanked, scope=joined)]
+        ranked_id: Annotated[
+            int,
+            fr.RefExists(SyncRanked, scope=fr.where_clause(SyncSide.id.is_not(None))),
+        ]
 
-    # the join is dropped with the transform half, so its where would be a
-    # cartesian product; the table validation rejects it instead
     with pytest.raises(TypeError, match="not in the statement"):
         _check_ref_exists(sync_session, SyncRanked, _JoinSchema(ranked_id=1))
 
@@ -507,7 +506,7 @@ def test_ref_exists_rejects_a_non_clause_scope():
         fr.RefExists(SyncRow, scope=SyncRow.tenant_id == 1)
     with pytest.raises(TypeError, match="ContextParam"):
         fr.RefExists(SyncRow, scope=fr.context_param("x"))
-    with pytest.raises(TypeError, match="no predicate"):
+    with pytest.raises(TypeError, match="WhereClause"):
         fr.RefExists(SyncRow, scope=fr.transform_clause(_by_rank))
 
 
@@ -516,19 +515,19 @@ def test_ref_exists_rejects_a_non_clause_scope():
 # ---------------------------------------------------------------------------
 
 
-def test_default_scope_must_carry_a_predicate():
+def test_default_scope_must_be_a_where_clause():
     class _Plain(_SyncBase):
         __tablename__ = "scope_sync_plain"
 
         id: Mapped[int] = mapped_column(primary_key=True)
 
-    with pytest.raises(TypeError, match="carries no predicate"):
+    with pytest.raises(TypeError, match="WhereClause"):
 
         class _TransformOnly(fr.ClauseNamespace):
             model = _Plain
             default_scope = fr.transform_clause(_by_rank)
 
-    with pytest.raises(TypeError, match="carries no predicate"):
+    with pytest.raises(TypeError, match="WhereClause"):
 
         class _SlotOnly(fr.ClauseNamespace):
             model = _Plain
@@ -588,7 +587,7 @@ def test_post_hoc_default_scope_corruption_is_loud():
         default_scope = fr.where_clause(_Row.tenant_id == _sync_tenant)
 
     _RowClauses.default_scope = _Row.tenant_id == 1  # forgot where_clause()
-    with pytest.raises(TypeError, match="not a Clause"):
+    with pytest.raises(TypeError, match="WhereClause"):
         _default_scope(_Row)
 
 

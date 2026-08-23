@@ -28,8 +28,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   model. Views replace it with the `scope` class attribute, validated at
   class definition; `fr.clauses.UNSCOPED` is the explicit opt-out.
   `fr.RefExists(Model, scope=...)` overrides per reference field, with
-  `scope=None` the explicit unscoped escape. `fr.RefExists` and
-  `fr.clauses.UNSCOPED` are now exported. See the Scopes guide.
+  `scope=None` the explicit unscoped escape. `default_scope` and a
+  `RefExists` scope must be a `WhereClause` (a pure predicate), enforced
+  in the type and at definition: an existence check cannot honor a
+  transform, so ordering and joins belong on the view scope.
+  `fr.RefExists` and `fr.clauses.UNSCOPED` are now exported. See the
+  Scopes guide.
 - `restly new <name>` scaffolding command to create a project from scratch with
   optional database and alembic set up.
 - Pass `health="/health"` to `fr.configure()` to add a liveness endpoint that

@@ -82,6 +82,7 @@ from sqlalchemy.sql.expression import ScalarSelect as _ScalarSelect
 from sqlalchemy.sql.expression import SelectBase as _SelectBase
 from sqlalchemy.sql.expression import Subquery as _Subquery
 from sqlalchemy.sql.visitors import iterate as _sqla_iterate
+from typing_extensions import Self as _Self
 
 from ._contextargs import Contextual as _Contextual
 from ._contextargs import MissingContextValues as _MissingContextValues
@@ -311,7 +312,7 @@ class Clause:
         render(self, "", "")
         return "\n".join(lines)
 
-    def alias(self, name: str | None = None) -> Clause:
+    def alias(self, name: str | None = None) -> _Self:
         """An independent instance with its own context namespace.
 
         Leaf-only: which leaves of a composite should share bindings and
@@ -393,14 +394,16 @@ class ClauseNamespace:
     The name `default_scope` is reserved: a clause under that name is
     the scope every view read and every reference check on the model
     applies unless a view declares its own (see the Scopes guide). It
-    must carry a predicate; a value slot or a bare transform is rejected
-    at definition, because reference checks apply only the predicate
-    half. `default_scope = None` is the explicit opt-out, required when
-    a namespace on a model subclass would otherwise silently drop a
-    default_scope a base model's namespace declares.
+    must be a WhereClause: a reference check is an existence probe and
+    cannot honor a transform, so ordering and joins stay on the view
+    scope, and a join-dependent predicate is an EXISTS
+    (.any()/.has()). `default_scope = None` is the explicit opt-out,
+    required when a namespace on a model subclass would otherwise
+    silently drop a default_scope a base model's namespace declares.
     """
 
     model: _ClassVar[type[_DeclarativeBase]]
+    default_scope: _ClassVar[WhereClause | None]
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
@@ -419,13 +422,13 @@ class ClauseNamespace:
                     "an underscore if it is a helper"
                 )
         scope = vars(cls).get("default_scope")
-        if scope is not None and scope._where_fn is None:
-            # a ContextParam or a bare transform: reads would order or 500,
-            # reference checks would silently check nothing
+        if scope is not None and not isinstance(scope, WhereClause):
+            # a transform cannot be honored by the reference checks this
+            # scope also feeds, so accepting one here would be a lie
             raise TypeError(
-                f"{cls.__name__}.default_scope carries no predicate; a "
-                "scope's row filtering must live in a where (reference "
-                "checks apply only the predicate half)"
+                f"{cls.__name__}.default_scope must be a WhereClause; "
+                "ordering and joins belong on the view scope, and a "
+                "join-dependent predicate is an EXISTS (.any()/.has())"
             )
         if "default_scope" not in vars(cls):
             # a namespace on a model subclass shadows the base namespace;
@@ -469,14 +472,14 @@ class _Unscoped:
 UNSCOPED = _Unscoped()
 
 
-def _default_scope(model: type[_DeclarativeBase]) -> Clause | None:
+def _default_scope(model: type[_DeclarativeBase]) -> WhereClause | None:
     """The model's declared `C.default_scope`, or None.
 
     An unrelated `C` attribute (not a ClauseNamespace) yields None: the
     model simply has no clause namespace. A `default_scope` that is not
-    a Clause raises: the namespace validation guarantees it at class
-    definition, so this only fires on a later assignment, which must not
-    silently unscope the model.
+    a WhereClause raises: the namespace validation guarantees it at
+    class definition, so this only fires on a later assignment, which
+    must not silently weaken the model's scope.
     """
     namespace = getattr(model, "C", None)
     if not (isinstance(namespace, type) and issubclass(namespace, ClauseNamespace)):
@@ -484,10 +487,11 @@ def _default_scope(model: type[_DeclarativeBase]) -> Clause | None:
     scope = getattr(namespace, "default_scope", None)
     if scope is None:
         return None
-    if not isinstance(scope, Clause):
+    if not isinstance(scope, WhereClause):
         raise TypeError(
-            f"{namespace.__name__}.default_scope is not a Clause; wrap it "
-            "with where_clause()"
+            f"{namespace.__name__}.default_scope must be a WhereClause; "
+            "wrap a raw expression with where_clause(), and keep ordering "
+            "and joins on the view scope"
         )
     return scope
 

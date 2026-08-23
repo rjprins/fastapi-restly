@@ -23,7 +23,7 @@ from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm.session import Session as SA_Session
 from typing_extensions import TypeAliasType, TypeVar
 
-from ..clauses import Clause, ContextParam, _apply_where_half, _default_scope
+from ..clauses import ContextParam, WhereClause, _apply_where_half, _default_scope
 from ..exc import NotFound, RestlyConfigurationError
 
 
@@ -173,12 +173,12 @@ class RefExists:
     The field stays a plain scalar -- this only adds the check; it does not wrap
     the value or do any relationship routing.
 
-    The check applies the target model's ``C.default_scope`` (predicate half
-    only), like ``IDRef``/``IDSchema`` resolution: a reference to a row the
-    scope hides is a miss. ``scope`` overrides that per field: a clause checks
-    against that clause instead (``RefExists(Item, scope=Item.C.trashed)`` for
-    a restore target), and ``scope=None`` checks unscoped, greppably. A model
-    without a ``default_scope`` is checked unscoped, as before.
+    The check applies the target model's ``C.default_scope``, like
+    ``IDRef``/``IDSchema`` resolution: a reference to a row the scope hides
+    is a miss. ``scope`` overrides that per field: a ``WhereClause`` checks
+    against that clause instead (``RefExists(Item, scope=Item.C.trashed)``
+    for a restore target), and ``scope=None`` checks unscoped, greppably. A
+    model without a ``default_scope`` is checked unscoped, as before.
 
     ``model`` is the target ORM model, or ``_Infer`` when it should be resolved
     from the marked column's ``ForeignKey`` (the ``MustExist[pk]`` form).
@@ -187,24 +187,21 @@ class RefExists:
     def __init__(
         self,
         model: type[DeclarativeBase] | type[_Infer],
-        scope: Clause | None | _NotGiven = _NOT_GIVEN,
+        scope: WhereClause | None | _NotGiven = _NOT_GIVEN,
     ) -> None:
         if isinstance(scope, ContextParam):
             raise TypeError(
                 "RefExists scope cannot be a ContextParam; it carries a value, "
                 "not a predicate"
             )
-        if not (scope is None or isinstance(scope, (Clause, _NotGiven))):
+        if not (scope is None or isinstance(scope, (WhereClause, _NotGiven))):
+            # covers raw expressions and transform-carrying clauses alike:
+            # an existence probe cannot honor a transform
             raise TypeError(
-                f"RefExists scope must be a Clause or None, got "
+                f"RefExists scope must be a WhereClause or None, got "
                 f"{type(scope).__name__}; wrap a raw expression with "
-                "where_clause()"
-            )
-        if isinstance(scope, Clause) and scope._where_fn is None:
-            raise TypeError(
-                "RefExists scope carries no predicate; a reference check "
-                "applies only the predicate half of a scope, so its row "
-                "filtering must live in a where"
+                "where_clause(), and express a join-dependent predicate "
+                "as EXISTS (.any()/.has())"
             )
         self.model = model
         self.scope = scope
@@ -408,8 +405,8 @@ class IDRef(IDSchema[SQLAlchemyModel], Generic[SQLAlchemyModel]):
         author: IDRef[User]             # to-one relationship, flat id
         products: list[IDRef[Product]]  # serializes as [1, 2, 3]
 
-    Resolution applies the referenced model's ``C.default_scope`` (predicate
-    half only): a reference to a row the scope hides raises ``NotFound``, so a
+    Resolution applies the referenced model's ``C.default_scope``: a
+    reference to a row the scope hides raises ``NotFound``, so a
     tenant scope declared once covers every reference to the model. A model
     without a ``default_scope`` resolves by bare primary key; gate visibility
     there in ``authorize`` (``data.<field>.id`` is the requested id, before
@@ -560,8 +557,8 @@ async def _async_resolve_ids_to_sqlalchemy_objects(
     keeps its validated wire shape (``IDRef[T]`` values, not ORM rows). The
     write path consumes the returned mapping.
 
-    The lookup applies the referenced model's ``C.default_scope`` (predicate
-    half only), so a reference to a row the scope hides is ``NotFound``. A
+    The lookup applies the referenced model's ``C.default_scope``, so a
+    reference to a row the scope hides is ``NotFound``. A
     model without a ``default_scope`` resolves by bare primary key, as before;
     see the ``IDRef`` docstring.
     """
@@ -633,8 +630,8 @@ def _resolve_ids_to_sqlalchemy_objects(
     keeps its validated wire shape (``IDRef[T]`` values, not ORM rows). The
     write path consumes the returned mapping.
 
-    The lookup applies the referenced model's ``C.default_scope`` (predicate
-    half only), so a reference to a row the scope hides is ``NotFound``. A
+    The lookup applies the referenced model's ``C.default_scope``, so a
+    reference to a row the scope hides is ``NotFound``. A
     model without a ``default_scope`` resolves by bare primary key, as before;
     see the ``IDRef`` docstring.
     """
@@ -746,7 +743,7 @@ def _infer_ref_model(
 
 def _effective_ref_scope(
     marker: RefExists, model: type[DeclarativeBase]
-) -> Clause | None:
+) -> WhereClause | None:
     """The scope a ``RefExists`` check applies: the marker's own ``scope``
     when given (``None`` meaning explicitly unscoped), the target model's
     ``default_scope`` otherwise."""
@@ -757,7 +754,7 @@ def _effective_ref_scope(
 
 def _ref_exists_fields(
     model_cls: type[DeclarativeBase], schema_obj: pydantic.BaseModel
-) -> dict[tuple[type[DeclarativeBase], Clause | None], list[tuple[str, Any]]]:
+) -> dict[tuple[type[DeclarativeBase], WhereClause | None], list[tuple[str, Any]]]:
     """Group provided, non-``None`` ``RefExists``-marked scalar fields by
     target model and effective scope.
 
@@ -771,7 +768,7 @@ def _ref_exists_fields(
     (``model_fields_set``) with a non-``None`` value are included.
     """
     by_target: dict[
-        tuple[type[DeclarativeBase], Clause | None], list[tuple[str, Any]]
+        tuple[type[DeclarativeBase], WhereClause | None], list[tuple[str, Any]]
     ] = {}
     model_fields = type(schema_obj).model_fields
     for field_name in schema_obj.model_fields_set:
@@ -799,7 +796,9 @@ def _raise_for_missing_refs(items: list[tuple[str, Any]], found: set[Any]) -> No
 
 
 def _ref_exists_query(
-    model: type[DeclarativeBase], scope: Clause | None, items: list[tuple[str, Any]]
+    model: type[DeclarativeBase],
+    scope: WhereClause | None,
+    items: list[tuple[str, Any]],
 ) -> Any:
     unique = list(dict.fromkeys(value for _, value in items))
     pk_col = model.__mapper__.primary_key[0]
