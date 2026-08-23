@@ -25,10 +25,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Scopes: a clause declared as `default_scope` on a model's
   `fr.ClauseNamespace` is applied to every view read (list, count,
   retrieve; a row outside it is 404) and to every reference check on the
-  model. Views replace it with the `scope` class attribute or a
-  `get_scope()` override; `fr.RefExists(Model, scope=...)` overrides per
-  reference field, with `scope=None` the explicit unscoped escape.
-  `fr.RefExists` is now exported. See the Scopes guide.
+  model. Views replace it with the `scope` class attribute, validated at
+  class definition; `fr.UNSCOPED` is the explicit opt-out.
+  `fr.RefExists(Model, scope=...)` overrides per reference field, with
+  `scope=None` the explicit unscoped escape. `fr.RefExists` and
+  `fr.UNSCOPED` are now exported. See the Scopes guide.
 - `restly new <name>` scaffolding command to create a project from scratch with
   optional database and alembic set up.
 - Pass `health="/health"` to `fr.configure()` to add a liveness endpoint that

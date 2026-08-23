@@ -23,6 +23,7 @@ fastapi_restly:
   - TimestampsMixin
   - TimestampsSchemaMixin
   - TransformClause
+  - UNSCOPED
   - View
   - ViewRoute
   - WhereClause
@@ -154,6 +155,7 @@ fastapi_restly.views:
   - ReactAdminView
   - ResponseShape
   - RestView
+  - UNSCOPED
   - View
   - ViewRoute
   - async_run_write_action

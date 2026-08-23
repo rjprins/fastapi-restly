@@ -1,10 +1,9 @@
 """Typing fixture: view scopes and scoped reference markers.
 
-Covers the ``scope`` class attribute (a ``Clause``), a ``get_scope``
-override returning ``Clause | None``, the annotated ``Model.C`` access
-pattern feeding a view scope, and the three ``RefExists`` states on a
-schema field (defaulted, ``scope=<Clause>``, ``scope=None``) leaving the
-field a plain scalar.
+Covers the ``scope`` class attribute (a ``Clause`` or ``fr.UNSCOPED``),
+the annotated ``Model.C`` access pattern feeding a view scope, and the
+three ``RefExists`` states on a schema field (defaulted,
+``scope=<Clause>``, ``scope=None``) leaving the field a plain scalar.
 """
 
 from datetime import datetime
@@ -58,15 +57,10 @@ class TrashView(TicketView):
 
 
 class AdminView(TicketView):
-    def get_scope(self) -> fr.Clause | None:
-        if self.request.headers.get("x-unscoped") == "1":
-            return None
-        return super().get_scope()
+    scope = fr.UNSCOPED  # explicit opt-out; deviating views declare
 
 
 if TYPE_CHECKING:
-    assert_type(TicketView().get_scope(), fr.Clause | None)
-    assert_type(TrashView.scope, fr.Clause | None)
     _payload = cast(TicketSchema, None)
     assert_type(_payload.reviewer_id, int)
     assert_type(_payload.restore_id, int)

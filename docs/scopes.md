@@ -131,23 +131,45 @@ class ItemView(fr.AsyncRestView):
     scope = fr.combine(Item.C.visible, Item.C.newest_first)
 ```
 
-For a per-request *choice* of clause, override
-{meth}`get_scope <fastapi_restly.views.BaseRestView.get_scope>`, whose
-default reads the attribute and falls back to the model's
-`default_scope`:
+The explicit opt-out is `fr.UNSCOPED`: it reads past the model's
+`default_scope`, where `None` would fall back to it. Reserve it for a
+genuinely all-seeing view behind its own authorization; an "admin"
+view usually stays tenant-bound and just widens (`scope =
+Item.C.owned_by_tenant` sees the trash too):
 
 ```python
+@fr.include_view(admin_router)      # router with admin auth
 class AdminItemView(fr.AsyncRestView):
-    ...
-    def get_scope(self):
-        if self.requester_is_admin():
-            return None             # None reads unscoped
-        return super().get_scope()
+    prefix = "/admin/items"
+    model = Item
+    schema = ItemRead
+    scope = fr.UNSCOPED
 ```
 
-The hook chooses which clause applies; a *value* that varies per request
-(the tenant id) is bound, not chosen. The framework applies the chosen
-clause itself, on every read; there is no apply-side override point.
+There is no per-request hook, deliberately: a clause is already a
+function. A per-request *value* (the tenant id) is bound around the
+request; a per-request *choice* is a clause function branching on a
+bound value, which fails loudly when the value is missing and shows
+its decision in `explain()`:
+
+```python
+is_admin = fr.context_param("is_admin", bool)
+
+@fr.where_clause
+def role_visibility(admin: Annotated[bool, is_admin]) -> ColumnElement[bool]:
+    return Item.C.owned_by_tenant() if admin else Item.C.visible()
+
+class ItemView(fr.AsyncRestView):
+    ...
+    scope = role_visibility         # the dependency binds is_admin
+```
+
+A policy clause like this names a request-boundary value, so it lives
+beside the view that applies it, not in the model's namespace; the
+namespace holds model facts (`is_deleted`, `owned_by_tenant`), views
+compose policy from them. The framework applies the declared clause
+itself, on every read; there is no apply-side override point, and a
+non-Clause `scope` is rejected as the view class is defined.
 
 (reference-scopes)=
 ## References: overriding per field
@@ -183,9 +205,9 @@ only.
 This is `default_scope` without the parts that earned Rails'
 `default_scope` its reputation. It does not default attribute *values*
 on create; it only filters reads and reference checks. A view escapes it
-by declaring a replacement or returning `None` from `get_scope()`, both
-visible in the class body, and the reference escape is the greppable
-`scope=None`. Nothing escapes it implicitly.
+by declaring a replacement or `fr.UNSCOPED`, both visible in the class
+body, and the reference escape is the greppable `scope=None`. Nothing
+escapes it implicitly.
 
 (migrating-build-query)=
 ## Migrating from `build_query`

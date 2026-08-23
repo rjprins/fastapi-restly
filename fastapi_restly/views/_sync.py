@@ -204,10 +204,9 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         .. deprecated:: overriding this to add visibility filtering is
            superseded by the view scope: declare the rule as a clause
            (``C.default_scope`` on the model, or
-           :attr:`~fastapi_restly.views.BaseRestView.scope` /
-           :meth:`~fastapi_restly.views.BaseRestView.get_scope` on the
-           view). See the Scopes guide. Existing overrides keep working;
-           the scope is applied on top of the returned statement.
+           :attr:`~fastapi_restly.views.BaseRestView.scope` on the view).
+           See the Scopes guide. Existing overrides keep working; the
+           scope is applied on top of the returned statement.
         """
         return sqlalchemy.select(self.model)
 

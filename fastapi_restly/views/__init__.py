@@ -13,8 +13,8 @@ name the tier that owns your change and override one method:
    — the business method: the domain operation, auth-free and commit-free. The
    usual override point.
 
-Cross-cutting seams: ``scope`` / ``get_scope`` (read visibility; the
-deprecated ``build_query`` still composes), ``authorize`` (policy),
+Cross-cutting seams: ``scope`` (read visibility; the deprecated
+``build_query`` still composes), ``authorize`` (policy),
 ``apply_query_params`` (URL grammar), ``to_response`` (wire shape),
 ``write_action`` (custom write brackets). ``View`` is the bare class-based
 primitive for non-CRUD endpoint groups (auth flows, webhooks, RPC).
@@ -22,6 +22,7 @@ primitive for non-CRUD endpoint groups (auth flows, webhooks, RPC).
 
 from ._async import AsyncRestView
 from ._base import (
+    UNSCOPED,
     Action,
     BaseRestView,
     Envelope,
@@ -59,6 +60,7 @@ __all__ = [
     "PaginatedEnvelope",
     "Action",
     "ResponseShape",
+    "UNSCOPED",
     "View",
     "ViewRoute",
     "async_run_write_action",

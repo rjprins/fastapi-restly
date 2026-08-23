@@ -149,7 +149,7 @@ The table below maps the change you want to make to the method that owns it:
 | Domain logic (hash, derive, compute)    | {meth}`create <fastapi_restly.views.RestView.create>` / {meth}`update <fastapi_restly.views.RestView.update>` / {meth}`delete <fastapi_restly.views.RestView.delete>`    | business method        |
 | Orchestration, timing, transaction      | `handle_<verb>`                   | handler                |
 | The HTTP contract (status, signature)   | `<verb>_endpoint`                 | endpoint method        |
-| Read scope / row visibility             | {attr}`scope <fastapi_restly.views.BaseRestView.scope>` / {meth}`get_scope <fastapi_restly.views.BaseRestView.get_scope>` ([Scopes](scopes.md))  | read extension point   |
+| Read scope / row visibility             | {attr}`scope <fastapi_restly.views.BaseRestView.scope>` ([Scopes](scopes.md))  | read extension point   |
 | Filter / sort / pagination grammar      | {meth}`apply_query_params <fastapi_restly.views.RestView.apply_query_params>`              | read extension point   |
 | The list total                          | {meth}`count <fastapi_restly.views.RestView.count>`                           | read extension point   |
 | Authorization / policy                  | {meth}`authorize <fastapi_restly.views.RestView.authorize>` (override to gate)    | handler hook           |

@@ -31,6 +31,7 @@ from typing import (
     Protocol,
     Sequence,
     cast,
+    final,
     get_args,
     get_origin,
     get_type_hints,
@@ -953,6 +954,20 @@ def delete(path: str, **api_route_kwargs: Any) -> Callable[..., Any]:
     return route(path, **api_route_kwargs)
 
 
+@final
+class _Unscoped:
+    """Sentinel for :attr:`BaseRestView.scope`: read unscoped despite the
+    model's ``default_scope``. ``None`` on the attribute means "fall back
+    to the default", so the explicit opt-out needs its own spelling.
+    """
+
+    def __repr__(self) -> str:
+        return "fr.UNSCOPED"
+
+
+UNSCOPED = _Unscoped()
+
+
 class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT]):
     """
     Base class for RestView implementations.
@@ -974,11 +989,12 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     model: ClassVar[type[DeclarativeBase]]
     #: The clause every read on this view applies: list, count, and retrieve
     #: (a row outside it is 404). ``None`` (the default) falls back to the
-    #: model's ``C.default_scope``. Declaring a scope replaces that default,
-    #: it does not stack on it; compose the replacement from the same leaves
+    #: model's ``C.default_scope``; ``fr.UNSCOPED`` reads unscoped despite
+    #: that default. Declaring a scope replaces the default, it does not
+    #: stack on it; compose the replacement from the same leaves
     #: (``Item.C.trashed`` containing the tenant clause ``visible`` contains).
     #: See the Scopes guide.
-    scope: ClassVar[Clause | None] = None
+    scope: ClassVar[Clause | _Unscoped | None] = None
     id_type: ClassVar[type[Any]] = int
     exclude_routes: ClassVar[Iterable[str | ViewRoute]] = ()
     #: Extra query-parameter keys to allow on the listing endpoint beyond those
@@ -1002,38 +1018,47 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
 
     request: fastapi.Request
 
-    def get_scope(self) -> Clause | None:
-        """Return the clause every read on this view applies, or ``None``.
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        super().__init_subclass__(**kwargs)
+        # validate at class definition, so a raw expression fails at
+        # import instead of on the first read
+        scope = cls.__dict__.get("scope")
+        if not (scope is None or scope is UNSCOPED or isinstance(scope, Clause)):
+            raise RestlyConfigurationError(
+                f"{cls.__name__}.scope must be a Clause, fr.UNSCOPED, or "
+                f"None, got {type(scope).__name__}; wrap a raw expression "
+                "with where_clause()"
+            )
 
-        The default reads :attr:`scope`, falling back to the model's
-        ``C.default_scope``. Override it to choose a clause per request::
+    def _resolved_scope(self) -> Clause | None:
+        """The clause this view's reads apply, or None for unscoped.
 
-            def get_scope(self):
-                if self.requester_is_admin():
-                    return Item.C.everything
-                return Item.C.visible
-
-        The hook chooses which clause applies; a value that varies per
-        request (a tenant id) is bound around the request instead, via the
-        clause's ``bind()`` in a dependency (see Query Clauses). Returning
-        ``None`` reads unscoped.
+        Resolution: :attr:`scope` when declared (``UNSCOPED`` meaning no
+        clause), the model's ``C.default_scope`` otherwise. A per-request
+        *value* is bound around the request; a per-request *choice* is a
+        clause function branching on a bound value (see the Scopes guide).
         """
-        if self.scope is not None:
-            return self.scope
-        return _default_scope(self.model)
-
-    def _apply_scope(self, query: Any) -> Any:
-        # the framework verb behind every read; not an override point:
-        # choose the clause in get_scope, bind values around the request
-        scope = self.get_scope()
+        scope = self.scope
+        if scope is UNSCOPED:
+            return None
         if scope is None:
-            return query
+            return _default_scope(self.model)
         if not isinstance(scope, Clause):
+            # backstop for a post-definition assignment; the declared form
+            # is validated in __init_subclass__
             raise RestlyConfigurationError(
                 f"{type(self).__name__}: the scope must be a Clause, got "
                 f"{type(scope).__name__}; wrap a raw expression with "
                 "where_clause()"
             )
+        return scope
+
+    def _apply_scope(self, query: Any) -> Any:
+        # the framework verb behind every read; not an override point:
+        # declare the clause on `scope`, bind values around the request
+        scope = self._resolved_scope()
+        if scope is None:
+            return query
         return apply_clauses(query, scope)
 
     def get_relationship_loader_options(self) -> list[Any]:

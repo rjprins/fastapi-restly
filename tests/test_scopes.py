@@ -2,7 +2,7 @@
 
 A model's ``C.default_scope`` arms every view read (list, retrieve, count)
 and every reference check on the model. A view's ``scope`` attribute
-replaces that default; ``get_scope()`` chooses per request. Reference
+replaces that default; ``fr.UNSCOPED`` opts out explicitly. Reference
 checks (``MustExist`` / ``RefExists`` / ``IDRef`` / ``IDSchema``) apply
 only the predicate half of the clause, and ``RefExists(scope=...)``
 overrides per field, with ``scope=None`` the explicit unscoped escape.
@@ -110,7 +110,7 @@ def test_default_scope_and_view_scope_over_http(client):
     assert client.get(f"/scope-items/{gone['id']}", headers=t1).json()["name"] == "gone"
 
 
-def test_get_scope_chooses_per_request(client):
+def test_unscoped_view_reads_past_the_default_scope(client):
     class ScopeDoc(fr.IDBase):
         tenant_id: Mapped[int]
         name: Mapped[str]
@@ -138,11 +138,12 @@ def test_get_scope_chooses_per_request(client):
         schema = ScopeDocSchema
         dependencies = [Depends(bind_tenant)]
 
-        def get_scope(self):
-            # per-request CHOICE of clause; None reads unscoped
-            if self.request.headers.get("x-unscoped") == "1":
-                return None
-            return super().get_scope()
+    @fr.include_view(client.app)
+    class AllDocsView(fr.AsyncRestView):
+        prefix = "/all-docs"
+        model = ScopeDoc
+        schema = ScopeDocSchema
+        scope = fr.UNSCOPED  # the explicit opt-out; e.g. behind admin auth
 
     create_tables()
 
@@ -153,7 +154,7 @@ def test_get_scope_chooses_per_request(client):
     scoped = client.get("/scope-docs/", headers=t1).json()
     assert [row["name"] for row in scoped["data"]] == ["mine"]
 
-    unscoped = client.get("/scope-docs/", headers={**t1, "x-unscoped": "1"}).json()
+    unscoped = client.get("/all-docs/").json()  # no tenant bind needed
     assert {row["name"] for row in unscoped["data"]} == {"mine", "theirs"}
 
 
@@ -208,9 +209,7 @@ def test_reference_checks_apply_scopes_over_http(client):
         prefix = "/scope-owners"
         model = ScopeOwner
         schema = ScopeOwnerSchema
-
-        def get_scope(self):
-            return None  # seeding endpoint: read unscoped despite default_scope
+        scope = fr.UNSCOPED  # seeding endpoint: read past the default_scope
 
     @fr.include_view(client.app)
     class ScopeTaskView(fr.AsyncRestView):
@@ -287,9 +286,7 @@ def test_idref_resolution_applies_default_scope_over_http(client):
         prefix = "/scope-authors"
         model = ScopeAuthor
         schema = ScopeAuthorSchema
-
-        def get_scope(self):
-            return None
+        scope = fr.UNSCOPED
 
     @fr.include_view(client.app)
     class ScopeBookView(fr.AsyncRestView):
@@ -380,16 +377,21 @@ def test_unbound_scope_raises_the_teaching_error(sync_session):
         view.get_one(1)
 
 
-def test_get_scope_falls_back_from_view_to_model_to_none():
+def test_scope_resolution_falls_back_from_view_to_model_to_none():
     view = _SyncRowView()
-    assert view.get_scope() is SyncRowClauses.default_scope
+    assert view._resolved_scope() is SyncRowClauses.default_scope
 
     other = fr.where_clause(SyncRow.tenant_id == 0)
 
     class _PinnedView(_SyncRowView):
         scope = other
 
-    assert _PinnedView().get_scope() is other
+    assert _PinnedView()._resolved_scope() is other
+
+    class _OptedOutView(_SyncRowView):
+        scope = fr.UNSCOPED
+
+    assert _OptedOutView()._resolved_scope() is None
 
     class _Bare(_SyncBase):
         __tablename__ = "scope_sync_bare"
@@ -402,15 +404,20 @@ def test_get_scope_falls_back_from_view_to_model_to_none():
         model = _Bare
         schema = fr.IDSchema
 
-    assert _BareView().get_scope() is None
+    assert _BareView()._resolved_scope() is None
 
 
 def test_non_clause_scope_is_a_loud_configuration_error(sync_session):
-    class _BrokenView(_SyncRowView):
-        scope = SyncRow.tenant_id == 1  # forgot where_clause()
+    # declared form: rejected as the class is defined
+    with pytest.raises(RestlyConfigurationError, match="where_clause"):
 
-    view = _BrokenView()
+        class _BrokenView(_SyncRowView):
+            scope = SyncRow.tenant_id == 1  # forgot where_clause()
+
+    # post-definition assignment: the read-time backstop catches it
+    view = _SyncRowView()
     view.session = sync_session
+    view.scope = SyncRow.tenant_id == 1  # type: ignore[assignment]
     with pytest.raises(RestlyConfigurationError, match="where_clause"):
         view.get_one(1)
 
