@@ -52,12 +52,11 @@ clause under that name is the scope for the model. The one line
   reference-IDOR hole without leaking that the id exists.
 
 Every model namespace has a `default_scope`, and its default is
-`fr.clauses.UNSCOPED`: a model that declares none behaves as before, with
-unscoped reads and bare primary-key reference checks. The feature is
-opt-in per model, and `UNSCOPED` is the one explicit unscoped spelling
-everywhere a scope can appear, so `grep -rn UNSCOPED` hands a security
-review every escape in the system, view, namespace, and reference alike,
-in one command.
+`fr.clauses.UNSCOPED`: a model that declares none reads unscoped, and
+its reference checks are bare primary-key lookups. `UNSCOPED` is the one
+explicit unscoped spelling everywhere a scope can appear, so
+`grep -rn UNSCOPED` hands a security review every escape, view,
+namespace, and reference alike, in one command.
 
 The scope guards reads *of* the model and references *to* it; it does
 not reach through relationships. A scoped model serialized inside
@@ -71,12 +70,11 @@ where embedded rows must be filtered.
 `default_scope` must be a
 {class}`WhereClause <fastapi_restly.clauses.WhereClause>`: a pure
 predicate, with EXISTS (`.any()`/`.has()`) instead of joins. The rule is
-enforced, in the type (`ClassVar[WhereClause | None]`) and at class
-definition, because a reference check is an existence probe that cannot
-honor a transform: a scope carrying one would filter view reads while
-reference checks could not see it. Nothing is lost by the restriction;
-ordering and other reshaping belong on the [view scope](#view-scope),
-which takes any clause.
+enforced, in the declared attribute type and at class definition,
+because a reference check is an existence probe that cannot honor a
+transform: a scope carrying one would filter view reads while reference
+checks could not see it. Ordering and other reshaping belong on the
+[view scope](#view-scope), which takes any clause.
 
 A namespace declared on a model *subclass* shadows the base model's
 namespace. If the base declares a `default_scope`, the subclass
@@ -96,7 +94,7 @@ async def bind_tenant(user: CurrentUserDep):
 ```
 
 An unbound scope raises at request time, naming the missing value: a
-scoped model can not be read silently unfiltered.
+scoped model cannot be read silently unfiltered.
 
 (view-scope)=
 ## Views: replacing the scope
@@ -121,7 +119,7 @@ class TrashView(fr.AsyncRestView):
     scope = Item.C.trashed          # the deviating view declares
 ```
 
-Declaring a scope **replaces** the default, it does not stack on it.
+Declaring a scope **replaces** the default; it does not stack on it.
 `Item.C.trashed` is safe as a whole scope because it is composed from
 the same `owned_by_tenant` leaf that `visible` contains; build every
 scope from the namespace's leaves and the tenant rule cannot fall out
@@ -139,7 +137,7 @@ class ItemView(fr.AsyncRestView):
 The explicit opt-out is `fr.clauses.UNSCOPED`: it reads past the model's
 `default_scope`, where `None` would fall back to it. Reserve it for a
 genuinely all-seeing view behind its own authorization; an "admin"
-view usually stays tenant-bound and just widens (`scope =
+view usually stays tenant-bound and widens (`scope =
 Item.C.owned_by_tenant` sees the trash too):
 
 ```python
