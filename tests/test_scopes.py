@@ -316,6 +316,57 @@ def test_idref_resolution_applies_default_scope_over_http(client):
     assert "author_id" in response.json()["detail"]
 
 
+def test_async_bind_dependency_reaches_sync_endpoints(sync_db):
+    engine, _make_session = sync_db
+    """A def endpoint runs in the threadpool with a COPY of the request
+    task's context, so a bind set by an async-generator dependency reaches
+    it; this pins the must-be-async-def rule for sync views too."""
+    from fastapi import FastAPI
+
+    from fastapi_restly.testing import RestlyTestClient
+
+    class SyncScopedNote(fr.IDBase):
+        tenant_id: Mapped[int]
+        name: Mapped[str]
+
+    current_tenant = fr.context_param("tenant_id", int)
+
+    class SyncScopedNoteClauses(fr.ClauseNamespace):
+        model = SyncScopedNote
+
+        default_scope = fr.where_clause(SyncScopedNote.tenant_id == current_tenant)
+
+    class SyncScopedNoteSchema(fr.IDSchema):
+        tenant_id: int
+        name: str
+
+    async def bind_tenant(tenant: Annotated[int, Header(alias="x-tenant-id")]):
+        with current_tenant.bind(tenant_id=tenant):
+            yield
+
+    client = RestlyTestClient(FastAPI())
+
+    @fr.include_view(client.app)
+    class SyncScopedNoteView(fr.RestView):
+        prefix = "/sync-notes"
+        model = SyncScopedNote
+        schema = SyncScopedNoteSchema
+        dependencies = [Depends(bind_tenant)]
+
+    fr.DataclassBase.metadata.create_all(engine)
+
+    t1 = {"x-tenant-id": "1"}
+    t2 = {"x-tenant-id": "2"}
+    mine = client.post(
+        "/sync-notes/", json={"tenant_id": 1, "name": "mine"}, headers=t1
+    ).json()
+    client.post("/sync-notes/", json={"tenant_id": 2, "name": "theirs"}, headers=t2)
+
+    listed = client.get("/sync-notes/", headers=t1).json()
+    assert [row["name"] for row in listed["data"]] == ["mine"]
+    client.get(f"/sync-notes/{mine['id']}", headers=t2, assert_status_code=404)
+
+
 # ---------------------------------------------------------------------------
 # programmatic coverage: sync flavor, fallbacks, fail-loud paths
 # ---------------------------------------------------------------------------
