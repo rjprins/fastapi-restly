@@ -3,7 +3,8 @@
 Covers the ``scope`` class attribute (a ``Clause`` or ``fr.clauses.UNSCOPED``),
 the annotated ``Model.C`` access pattern feeding a view scope, and the
 three ``RefExists`` states on a schema field (defaulted,
-``scope=<Clause>``, ``scope=None``) leaving the field a plain scalar.
+``scope=<WhereClause>``, ``scope=UNSCOPED``) leaving the field a plain
+scalar.
 """
 
 from datetime import datetime
@@ -43,7 +44,7 @@ class TicketSchema(fr.IDSchema):
     assignee_id: fr.MustExist[int, Ticket]
     reviewer_id: Annotated[int, fr.RefExists(Ticket)]
     restore_id: Annotated[int, fr.RefExists(Ticket, scope=Ticket.C.trashed)]
-    audit_id: Annotated[int, fr.RefExists(Ticket, scope=None)]
+    audit_id: Annotated[int, fr.RefExists(Ticket, scope=fr.clauses.UNSCOPED)]
 
 
 class TicketView(fr.AsyncRestView):

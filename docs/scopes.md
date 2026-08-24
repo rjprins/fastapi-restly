@@ -51,8 +51,13 @@ clause under that name is the scope for the model. The one line
   tenant's row on a write is "does not exist" (404), which closes the
   reference-IDOR hole without leaking that the id exists.
 
-A model without a `default_scope` behaves as before: unscoped reads,
-bare primary-key reference checks. The feature is opt-in per model.
+Every model namespace has a `default_scope`, and its default is
+`fr.clauses.UNSCOPED`: a model that declares none behaves as before, with
+unscoped reads and bare primary-key reference checks. The feature is
+opt-in per model, and `UNSCOPED` is the one explicit unscoped spelling
+everywhere a scope can appear, so `grep -rn UNSCOPED` hands a security
+review every escape in the system, view, namespace, and reference alike,
+in one command.
 
 The scope guards reads *of* the model and references *to* it; it does
 not reach through relationships. A scoped model serialized inside
@@ -77,8 +82,9 @@ A namespace declared on a model *subclass* shadows the base model's
 namespace. If the base declares a `default_scope`, the subclass
 namespace must say what happens: reuse it (`default_scope =
 BaseClauses.default_scope`), declare its own, or opt out with
-`default_scope = None`. Silence is an error at definition, not a silent
-unscope.
+`default_scope = fr.clauses.UNSCOPED`. Silence is an error at
+definition, not a silent unscope, and so is `default_scope = None`,
+which says nothing.
 
 The tenant value is bound per request, in a dependency shared by the
 whole app; see [Binding scope values](#binding-scope-values):
@@ -184,7 +190,7 @@ class OrderCreate(fr.BaseSchema):
 
     restore_id: Annotated[int, fr.RefExists(Item, scope=Item.C.trashed)]
 
-    audit_item_id: Annotated[int, fr.RefExists(Item, scope=None)]
+    audit_item_id: Annotated[int, fr.RefExists(Item, scope=fr.clauses.UNSCOPED)]
 ```
 
 - **Not given**: the target's `default_scope` applies.
@@ -192,10 +198,10 @@ class OrderCreate(fr.BaseSchema):
   endpoint above accepts exactly the ids the trash view shows. A
   `WhereClause`, like `default_scope` and for the same reason: an
   existence probe cannot honor a transform.
-- **`scope=None`**: the check is explicitly unscoped, and
-  `grep -r "scope=None"` hands a security review every exception in one
-  command. Write the `None` as a literal: a variable that happens to be
-  `None` unscopes just the same, but escapes the grep.
+- **`scope=fr.clauses.UNSCOPED`**: the check is explicitly unscoped, in
+  the same loud spelling as everywhere else. `scope=None` is rejected, so
+  a variable that happens to be `None` can never silently unscope the
+  check or escape the grep.
 
 `IDRef` / `IDSchema` relationship references always use the target's
 `default_scope`; the per-field override exists on the scalar marker
@@ -206,8 +212,8 @@ only.
 This is `default_scope` without the parts that earned Rails'
 `default_scope` its reputation. It does not default attribute *values*
 on create; it only filters reads and reference checks. A view escapes it
-by declaring a replacement or `fr.clauses.UNSCOPED`, both visible in the class
-body, and the reference escape is the greppable `scope=None`. Nothing
+by declaring a replacement or `fr.clauses.UNSCOPED`, both visible in the
+class body, and the reference escape is the same greppable word. Nothing
 escapes it implicitly.
 
 (migrating-build-query)=

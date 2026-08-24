@@ -27,8 +27,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   retrieve; a row outside it is 404) and to every reference check on the
   model. Views replace it with the `scope` class attribute, validated at
   class definition; `fr.clauses.UNSCOPED` is the explicit opt-out.
-  `fr.RefExists(Model, scope=...)` overrides per reference field, with
-  `scope=None` the explicit unscoped escape. `default_scope` and a
+  `fr.RefExists(Model, scope=...)` overrides per reference field.
+  `fr.clauses.UNSCOPED` is the one explicit unscoped spelling everywhere
+  a scope can appear (view, namespace, reference), so one grep surfaces
+  every escape; `scope=None` is rejected. `default_scope` and a
   `RefExists` scope must be a `WhereClause` (a pure predicate), enforced
   in the type and at definition: an existence check cannot honor a
   transform, so ordering and joins belong on the view scope.

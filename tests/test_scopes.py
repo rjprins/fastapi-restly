@@ -5,7 +5,8 @@ and every reference check on the model. A view's ``scope`` attribute
 replaces that default; ``fr.clauses.UNSCOPED`` opts out explicitly. Reference
 checks (``MustExist`` / ``RefExists`` / ``IDRef`` / ``IDSchema``) apply
 only the predicate half of the clause, and ``RefExists(scope=...)``
-overrides per field, with ``scope=None`` the explicit unscoped escape.
+overrides per field, with ``fr.clauses.UNSCOPED`` the one explicit
+unscoped spelling, system-wide.
 """
 
 from typing import Annotated
@@ -196,9 +197,9 @@ def test_reference_checks_apply_scopes_over_http(client):
             ]
             | None
         ) = None
-        audit_owner_id: Annotated[int, fr.RefExists(ScopeOwner, scope=None)] | None = (
-            None
-        )
+        audit_owner_id: (
+            Annotated[int, fr.RefExists(ScopeOwner, scope=fr.clauses.UNSCOPED)] | None
+        ) = None
 
     async def bind_tenant(tenant: Annotated[int, Header(alias="x-tenant-id")]):
         with current_tenant.bind(tenant_id=tenant):
@@ -249,7 +250,7 @@ def test_reference_checks_apply_scopes_over_http(client):
     post_task(tenant_owner_id=mine_inactive)
     post_task(tenant_owner_id=theirs, assert_status_code=404)
 
-    # scope=None: the explicit unscoped escape
+    # scope=UNSCOPED: the explicit unscoped escape
     post_task(audit_owner_id=theirs)
 
 
@@ -527,6 +528,10 @@ def test_ref_exists_rejects_a_non_clause_scope():
         fr.RefExists(SyncRow, scope=fr.context_param("x"))
     with pytest.raises(TypeError, match="WhereClause"):
         fr.RefExists(SyncRow, scope=fr.transform_clause(_by_rank))
+    # None says nothing: a variable that happens to be None must not
+    # silently unscope; the escape is the loud word
+    with pytest.raises(TypeError, match="UNSCOPED"):
+        fr.RefExists(SyncRow, scope=None)
 
 
 # ---------------------------------------------------------------------------
@@ -551,6 +556,12 @@ def test_default_scope_must_be_a_where_clause():
         class _SlotOnly(fr.ClauseNamespace):
             model = _Plain
             default_scope = fr.context_param("z")
+
+    with pytest.raises(TypeError, match="UNSCOPED"):
+
+        class _NoneScope(fr.ClauseNamespace):
+            model = _Plain
+            default_scope = None
 
 
 def test_subclass_namespace_must_restate_default_scope():
@@ -583,7 +594,7 @@ def test_subclass_namespace_must_restate_default_scope():
 
     class DogClauses(fr.ClauseNamespace):
         model = Dog
-        default_scope = None  # explicit opt-out
+        default_scope = fr.clauses.UNSCOPED  # explicit opt-out
 
     assert _default_scope(Dog) is None
 

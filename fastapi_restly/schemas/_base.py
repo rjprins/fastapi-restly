@@ -23,7 +23,14 @@ from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm.session import Session as SA_Session
 from typing_extensions import TypeAliasType, TypeVar
 
-from ..clauses import ContextParam, WhereClause, _apply_where_half, _default_scope
+from ..clauses import (
+    UNSCOPED,
+    ContextParam,
+    WhereClause,
+    _apply_where_half,
+    _default_scope,
+    _Unscoped,
+)
 from ..exc import NotFound, RestlyConfigurationError
 
 
@@ -156,8 +163,9 @@ class _Infer:
 class _NotGiven:
     """Static-only sentinel: ``RefExists`` received no ``scope`` argument.
 
-    Not given means the target model's ``default_scope`` applies; ``None``
-    means explicitly unscoped, so the default cannot be ``None`` itself.
+    Not given means the target model's ``default_scope`` applies; the
+    explicit opt-out is ``fr.clauses.UNSCOPED``, and ``None`` is rejected
+    so a variable that happens to be ``None`` can never silently unscope.
     """
 
 
@@ -177,8 +185,9 @@ class RefExists:
     ``IDRef``/``IDSchema`` resolution: a reference to a row the scope hides
     is a miss. ``scope`` overrides that per field: a ``WhereClause`` checks
     against that clause instead (``RefExists(Item, scope=Item.C.trashed)``
-    for a restore target), and ``scope=None`` checks unscoped, greppably. A
-    model without a ``default_scope`` is checked unscoped, as before.
+    for a restore target), and ``scope=fr.clauses.UNSCOPED`` checks
+    unscoped, greppably; ``None`` is rejected. A model without a
+    ``default_scope`` is checked unscoped, as before.
 
     ``model`` is the target ORM model, or ``_Infer`` when it should be resolved
     from the marked column's ``ForeignKey`` (the ``MustExist[pk]`` form).
@@ -187,18 +196,24 @@ class RefExists:
     def __init__(
         self,
         model: type[DeclarativeBase] | type[_Infer],
-        scope: WhereClause | None | _NotGiven = _NOT_GIVEN,
+        scope: WhereClause | _Unscoped | _NotGiven = _NOT_GIVEN,
     ) -> None:
+        if scope is None:
+            raise TypeError(
+                "RefExists scope=None says nothing; opt out explicitly with "
+                "scope=fr.clauses.UNSCOPED, so a variable that happens to be "
+                "None can never silently unscope the check"
+            )
         if isinstance(scope, ContextParam):
             raise TypeError(
                 "RefExists scope cannot be a ContextParam; it carries a value, "
                 "not a predicate"
             )
-        if not (scope is None or isinstance(scope, (WhereClause, _NotGiven))):
+        if not isinstance(scope, (WhereClause, _Unscoped, _NotGiven)):
             # covers raw expressions and transform-carrying clauses alike:
             # an existence probe cannot honor a transform
             raise TypeError(
-                f"RefExists scope must be a WhereClause or None, got "
+                f"RefExists scope must be a WhereClause or UNSCOPED, got "
                 f"{type(scope).__name__}; wrap a raw expression with "
                 "where_clause(), and express a join-dependent predicate "
                 "as EXISTS (.any()/.has())"
@@ -745,10 +760,12 @@ def _effective_ref_scope(
     marker: RefExists, model: type[DeclarativeBase]
 ) -> WhereClause | None:
     """The scope a ``RefExists`` check applies: the marker's own ``scope``
-    when given (``None`` meaning explicitly unscoped), the target model's
+    when given (``UNSCOPED`` meaning explicitly none), the target model's
     ``default_scope`` otherwise."""
     if isinstance(marker.scope, _NotGiven):
         return _default_scope(model)
+    if marker.scope is UNSCOPED:
+        return None
     return marker.scope
 
 
