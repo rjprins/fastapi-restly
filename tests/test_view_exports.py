@@ -67,7 +67,6 @@ def test_rest_view_route_and_hook_names_are_current():
         "update",
         "delete",
         # Read / response helpers
-        "build_query",
         "count",
         "to_listing_response",
         "to_response_schema",

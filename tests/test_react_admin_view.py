@@ -558,9 +558,7 @@ def test_react_admin_list_respects_build_query_scope(client):
         prefix = "/scoped-items"
         model = ScopedItem
         schema = ScopedItemSchema
-
-        def build_query(self):
-            return super().build_query().where(ScopedItem.hidden.is_(False))
+        scope = fr.where_clause(ScopedItem.hidden.is_(False))
 
     create_tables()
     client.post("/scoped-items/", json={"name": "visible", "hidden": False})

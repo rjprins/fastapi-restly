@@ -156,9 +156,6 @@ def test_clean_restview_does_not_warn():
         prefix = "/clean-articles"
         model = CleanArticle
 
-        def build_query(self):
-            return super().build_query()
-
         async def create(self, schema_obj: Any) -> Any:
             return await super().create(schema_obj)
 

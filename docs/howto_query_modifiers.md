@@ -289,33 +289,28 @@ GET /users?page=2&page_size=50
 
 ## Overriding query logic per view
 
-Everything above operates on a query that the view builds. Override
-{meth}`build_query <fastapi_restly.views.RestView.build_query>` to inject
-a base query before URL parameters are applied.
+Everything above operates on a query the view scope establishes first.
+Declare the base filter as the view's
+{attr}`scope <fastapi_restly.views.BaseRestView.scope>`;
 {meth}`get_many <fastapi_restly.views.RestView.get_many>`,
 {meth}`count <fastapi_restly.views.RestView.count>`, and
-{meth}`get_one <fastapi_restly.views.RestView.get_one>` all use this
-query, so the filter applies to listings, totals, and single-row fetches:
+{meth}`get_one <fastapi_restly.views.RestView.get_one>` all apply it, so
+the filter covers listings, totals, and single-row fetches:
 
 ```python
 import fastapi_restly as fr
 
 class UserView(fr.AsyncRestView):
     ...
-
-    def build_query(self):
-        return super().build_query().where(self.model.active.is_(True))
+    scope = fr.where_clause(User.active.is_(True))
 ```
 
-Calling `super().build_query()` and chaining `.where(...)` composes
-cleanly with any base-class or mixin filter. See
-[Composing views with mixins](howto_compose_views_with_mixins.md) for the
-multi-layer pattern.
+[Scopes](scopes.md) owns the topic, including the model-wide
+`default_scope` form and composing clauses.
 
 The `get_many` business method does not accept a separate `query` argument.
-Keep SQL-level base query changes in `build_query()` so listing,
-pagination totals, and single-row fetches all see the same visibility
-rules.
+Keep SQL-level base query changes in the scope so listing, pagination
+totals, and single-row fetches all see the same visibility rules.
 
 For a different URL **grammar** (other parameter names, another dialect's
 filter syntax), the seam is

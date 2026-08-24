@@ -87,11 +87,11 @@ create and update responses alike, because the write path reloads by primary
 key through the same options. Return a fresh list to replace the strategy
 entirely, for example to swap `selectinload` for `joinedload`.
 
-For a load you only ever read and never serialize, such as a join you filter or
-sort on, {meth}`build_query() <fastapi_restly.views.RestView.build_query>` with
+For a load you only ever read and never serialize, such as a join you filter
+or sort on, a transform clause on the view [scope](scopes.md) adding
 `.options(...)` is the lighter place to put it. It shapes the read query only,
-so an eager load added there is absent from create and update responses; reach
-for it only when that difference does not matter.
+so an eager load added there is absent from create and update responses; use
+it only when that difference does not matter.
 
 ## Reach a relationship the schema does not name
 
@@ -135,8 +135,8 @@ in a nested model. For that case, work through these in order:
 2. **Is a hook or property reaching it?** Load it explicitly with
    `await obj.awaitable_attrs.<name>`, or add it to
    `get_relationship_loader_options` if every request needs it.
-3. **Did you add the load only in `build_query`?** That covers reads but not
-   write responses; move it to `get_relationship_loader_options`.
+3. **Did you add the load only in a scope transform?** That covers reads but
+   not write responses; move it to `get_relationship_loader_options`.
 
 Restly already sets `expire_on_commit=False` on its session factories so a
 committed object stays readable during serialization. If you build your own
@@ -164,5 +164,5 @@ so it lazy-loads and raises `MissingGreenlet` on async.
 
 - [How Restly serializes nested responses](technical_details.md#nested-response-schemas-vs-write-payloads): the loader mechanism in depth.
 - [Work with Foreign Keys and Relationships](howto_relationship_idschema.md): declaring reference fields (`MustExist`, `IDRef`, `IDSchema`).
-- {ref}`Customizing RestView <eager-load-extra-relationships>`: read-scoped `build_query` and `get_one` recipes.
+- {ref}`Customizing RestView <eager-load-extra-relationships>`: read-side eager-loading and `get_one` recipes.
 - [Session Factory Defaults](technical_details.md#session-factory-defaults): why Restly uses `expire_on_commit=False`.

@@ -71,12 +71,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Use `mapped_column(DateTime())` on columns that must retain naive wall-clock
   values.
 
-### Deprecated
+### Removed
 
-- Overriding `build_query` for row visibility. Declare the rule as a
-  clause instead: `default_scope` on the model's namespace, or `scope`
-  on the view. Existing overrides keep working; the scope is applied on
-  top of the returned statement.
+- `build_query`. Row visibility is declared as a clause instead:
+  `default_scope` on the model's namespace, or `scope` on the view;
+  read-wide reshaping is a transform clause on the view scope. A view
+  class that still defines `build_query`, itself or through a mixin,
+  fails at class definition with a migration pointer, because a dead
+  visibility override must not sit silently. See "Migrating from
+  build_query" in the Scopes guide.
 
 ### Fixed
 

@@ -1,15 +1,19 @@
 """Application-wide view foundation for the SaaS example.
 
 ``TenantBase`` provides shared auth-context dependencies, tenant helpers, and
-transactional outbox emission. ``TenantScopedMixin``, ``SoftDeleteMixin``, and
-``AuditStampedMixin`` add reusable behavior through cooperative ``super()``
-chains. Write-side stamps use ``make_new_object`` and ``update_object``.
-Read-side filters use ``build_query``, while soft deletion uses
-``delete_object``.
+transactional outbox emission. Read-side visibility is declared as scope
+clauses: ``tenant_scope(Model)`` and ``soft_delete_scope(Model)`` build the
+predicates, ``bind_request_context`` broadcasts the per-request values they
+read (org, user, admin flag, the ``include_deleted`` toggle), and each view
+declares its composition as ``scope = ...``. ``TenantScopedMixin``,
+``SoftDeleteMixin``, and ``AuditStampedMixin`` add the write-side behavior
+through cooperative ``super()`` chains: ``make_new_object`` /
+``update_object`` stamps, and soft deletion via ``delete_object``.
 
-The mixins run before ``save_object``, only stamp or scope data, and compose
-linearly so combinations work without ordering surprises. Concrete subject
-views import the foundation and mixins from this root module.
+The mixins run before ``save_object``, only stamp data, and compose linearly
+so combinations work without ordering surprises. Concrete subject views
+import the foundation, the scope factories, and the mixins from this root
+module.
 
 Inheritance and prefix concatenation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -27,6 +31,7 @@ update every route::
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Annotated, Any, ClassVar
 
@@ -61,6 +66,80 @@ def get_current_user_id(request: fastapi.Request) -> int | None:
     return getattr(request.state, "user_id", None)
 
 
+def get_is_admin(request: fastapi.Request) -> bool:
+    """Whether this request bypasses tenant and row scoping."""
+    return bool(getattr(request.state, "is_admin", False))
+
+
+# Per-request context values the scope clauses read. The bind dependency
+# below broadcasts them once per request; the clauses branch on them.
+current_org = fr.context_param("org_id", int)
+current_user = fr.context_param("user_id", int)
+request_is_admin = fr.context_param("is_admin", bool)
+show_deleted = fr.context_param("include_deleted", bool)
+
+
+async def bind_request_context(
+    request: fastapi.Request,
+    org_id: Annotated[int | None, fastapi.Depends(get_current_org_id)],
+    user_id: Annotated[int | None, fastapi.Depends(get_current_user_id)],
+    is_admin: Annotated[bool, fastapi.Depends(get_is_admin)],
+) -> AsyncIterator[None]:
+    """Bind auth and request context for the scope clauses.
+
+    Runs on every TenantBase route (see ``TenantBase.dependencies``). The
+    sources are the auth dependencies themselves, so
+    ``app.dependency_overrides`` keeps working in tests. Must be an
+    ``async def`` generator: the bind has to land in the request's task.
+    """
+    include_deleted = (
+        request.query_params.get("include_deleted", "false").lower() == "true"
+    )
+    with (
+        current_org.bind(org_id=org_id),
+        current_user.bind(user_id=user_id),
+        request_is_admin.bind(is_admin=is_admin),
+        show_deleted.bind(include_deleted=include_deleted),
+    ):
+        yield
+
+
+def tenant_scope(model: type[Any]) -> fr.WhereClause:
+    """Rows of ``model`` owned by the authenticated organization.
+
+    Admin requests, and requests without an org in context, see every row.
+    ``model`` must carry an ``organization_id`` column.
+    """
+
+    @fr.where_clause
+    def owned_by_tenant(
+        org_id: Annotated[int | None, current_org],
+        admin: Annotated[bool, request_is_admin],
+    ) -> sa.ColumnElement[bool]:
+        if admin or org_id is None:
+            return sa.true()
+        return model.organization_id == org_id
+
+    return owned_by_tenant
+
+
+def soft_delete_scope(model: type[Any]) -> fr.WhereClause:
+    """Rows of ``model`` not soft-deleted, unless ``?include_deleted=true``.
+
+    Pair with ``SoftDeleteMixin`` (which sets ``deleted_at`` on delete) and
+    keep ``include_deleted`` in ``extra_query_params`` so the listing
+    endpoint accepts the toggle.
+    """
+
+    @fr.where_clause
+    def not_deleted(
+        include_deleted: Annotated[bool, show_deleted],
+    ) -> sa.ColumnElement[bool]:
+        return sa.true() if include_deleted else model.deleted_at.is_(None)
+
+    return not_deleted
+
+
 class TenantBase(fr.AsyncRestView):
     """Base view wired with auth and audit logging for every concrete view.
 
@@ -72,7 +151,10 @@ class TenantBase(fr.AsyncRestView):
     """
 
     # Applied to every route registered by this view and all subclasses.
-    dependencies: ClassVar[list[Any]] = [fastapi.Depends(check_api_key)]
+    dependencies: ClassVar[list[Any]] = [
+        fastapi.Depends(check_api_key),
+        fastapi.Depends(bind_request_context),
+    ]
     current_org_id: Annotated[int | None, fastapi.Depends(get_current_org_id)]
     current_user_id: Annotated[int | None, fastapi.Depends(get_current_user_id)]
 
@@ -88,10 +170,6 @@ class TenantBase(fr.AsyncRestView):
     def _current_user_id(self) -> int | None:
         """Return the current authenticated user ID."""
         return self.current_user_id
-
-    def _is_admin(self) -> bool:
-        """Whether this request bypasses tenant and row scoping."""
-        return bool(getattr(self.request.state, "is_admin", False))
 
     async def save_object(self, obj):
         """Flush and refresh, with a placeholder for audit side effects."""
@@ -123,11 +201,11 @@ class TenantBase(fr.AsyncRestView):
 
 
 class TenantScopedMixin:
-    """Stamp ``organization_id`` from auth on writes and filter reads to it.
+    """Stamp ``organization_id`` from auth context on writes.
 
-    Assumes ``self.model`` has an ``organization_id`` column. Concrete
-    views inherit this before ``TenantBase`` so ``_current_org_id`` is
-    available via the cooperative chain.
+    The read-side counterpart is ``tenant_scope(Model)``, declared on the
+    view's ``scope``. Concrete views inherit this before ``TenantBase`` so
+    ``_current_org_id`` is available via the cooperative chain.
 
     Type stubs below describe what the mixin expects from its host class.
     """
@@ -140,17 +218,6 @@ class TenantScopedMixin:
         model: type[DeclarativeBase]
 
         def _current_org_id(self) -> int | None: ...
-        def _is_admin(self) -> bool: ...
-
-    def build_query(self) -> sa.Select:
-        # Filters listing, count, and retrieve through one read hook.
-        q = super().build_query()  # type: ignore[misc]
-        if self._is_admin():
-            return q
-        org_id = self._current_org_id()
-        if org_id is not None and hasattr(self.model, "organization_id"):
-            q = q.where(self.model.organization_id == org_id)
-        return q
 
     async def make_new_object(self, schema_obj: Any) -> Any:
         obj = await super().make_new_object(schema_obj)  # type: ignore[misc]
@@ -162,10 +229,11 @@ class TenantScopedMixin:
 
 
 class SoftDeleteMixin:
-    """Hide deleted rows from reads and set ``deleted_at`` on deletion.
+    """Set ``deleted_at`` on deletion instead of removing the row.
 
-    Assumes ``self.model`` has a ``deleted_at: datetime | None`` column.
-    Pass ``?include_deleted=true`` on list/get to bypass the filter.
+    The read-side counterpart is ``soft_delete_scope(Model)``, declared on
+    the view's ``scope``; ``?include_deleted=true`` on list/get bypasses
+    that filter. Assumes ``self.model`` has a ``deleted_at`` column.
 
     Concrete views can still replace the DELETE route when they need a
     different HTTP contract, such as ``200 + body``.
@@ -180,17 +248,6 @@ class SoftDeleteMixin:
     # Allow ``?include_deleted=true`` through the listing endpoint's
     # unknown-query-param guard.
     extra_query_params = ("include_deleted",)
-
-    def _include_deleted(self) -> bool:
-        return (
-            self.request.query_params.get("include_deleted", "false").lower() == "true"
-        )
-
-    def build_query(self) -> sa.Select:
-        q = super().build_query()  # type: ignore[misc]
-        if not self._include_deleted() and hasattr(self.model, "deleted_at"):
-            q = q.where(self.model.deleted_at.is_(None))
-        return q
 
     async def delete_object(self, obj: Any) -> None:
         if hasattr(obj, "deleted_at"):

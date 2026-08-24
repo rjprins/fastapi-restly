@@ -8,7 +8,14 @@ from pydantic import BaseModel
 import fastapi_restly as fr
 
 from ..auth import hash_password, verify_password
-from ..views import AuditStampedMixin, SoftDeleteMixin, TenantBase, TenantScopedMixin
+from ..views import (
+    AuditStampedMixin,
+    SoftDeleteMixin,
+    TenantBase,
+    TenantScopedMixin,
+    soft_delete_scope,
+    tenant_scope,
+)
 from .models import User, UserRole
 from .schemas import UserFullSchema, UserPublicSchema, UserSchema
 
@@ -39,14 +46,16 @@ class ChangePasswordRequest(BaseModel):
 class UserView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantBase):
     """CRUD endpoints for users.
 
-    Mixins handle tenant scope, audit stamps, and soft delete. This view keeps
-    user-specific behavior: password hashing, field-level permissions, /me
-    routes, and change-password.
+    The declared ``scope`` handles tenant + soft-delete visibility; the
+    mixins handle audit stamps, tenant stamping, and soft delete on the
+    write side. This view keeps user-specific behavior: password hashing,
+    field-level permissions, /me routes, and change-password.
     """
 
     prefix = "/users"
     model = User
     schema = UserSchema
+    scope = fr.all_of(tenant_scope(User), soft_delete_scope(User))
 
     def _current_user_role(self) -> UserRole | None:
         """Return the current user's role.

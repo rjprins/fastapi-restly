@@ -1,14 +1,45 @@
 """Task view."""
 
+from typing import Annotated
+
 import fastapi
+import sqlalchemy as sa
 from fastapi import HTTPException
 from pydantic import BaseModel
 
 import fastapi_restly as fr
 
-from ..views import AuditStampedMixin, SoftDeleteMixin, TenantBase
+from ..views import (
+    AuditStampedMixin,
+    SoftDeleteMixin,
+    TenantBase,
+    current_user,
+    request_is_admin,
+    soft_delete_scope,
+)
 from .models import Task, TaskPriority, TaskStatus, TaskType
 from .schemas import TaskSchema
+
+
+@fr.where_clause
+def assigned_to_current_user(
+    user_id: Annotated[int | None, current_user],
+    admin: Annotated[bool, request_is_admin],
+) -> sa.ColumnElement[bool]:
+    """Row-level permission: tasks assigned to the authenticated user.
+
+    Admin requests, and requests without a user in context, see every task.
+    Policy for one view, so it lives here beside it, built from the shared
+    context values in ``app.views``.
+    """
+    if admin or user_id is None:
+        return sa.true()
+    return Task.assignee_id == user_id
+
+
+# The whole visibility rule for tasks, under one name so custom routes on
+# other views (ProjectView's /{id}/tasks) can apply the same scope.
+task_visibility = fr.all_of(assigned_to_current_user, soft_delete_scope(Task))
 
 
 class TaskCreateSchema(BaseModel):
@@ -60,21 +91,22 @@ VALID_TRANSITIONS = {
 class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
     """CRUD endpoints for tasks.
 
-    Mixin-composed: soft delete + audit stamps. Tenant scope is *not*
-    applied here — task scoping is by ``assignee_id`` (a row-level
-    permission, not a tenant filter), implemented in ``build_query`` below.
-    Because retrieve also routes through ``build_query``, the same predicate
-    that filters listing also returns 404 from ``GET /tasks/{id}`` for tasks
-    not assigned to the current user — and cascades through ``handle_update``
-    and ``handle_delete`` (both load the row through ``get_one`` first).
+    Tenant scope is *not* applied here — task visibility is by
+    ``assignee_id`` (a row-level permission, not a tenant filter), declared
+    in the ``scope`` together with the soft-delete predicate. Retrieve
+    applies the same scope, so the predicate that filters listing also
+    returns 404 from ``GET /tasks/{id}`` for tasks not assigned to the
+    current user — and cascades through ``handle_update`` and
+    ``handle_delete`` (both load the row through ``get_one`` first).
     Demonstrates that views with non-tenant-aligned access models still
-    benefit from the soft-delete + audit mixins, and that mixin composition
+    benefit from the soft-delete + audit mixins, and that scope composition
     is a la carte.
     """
 
     prefix = "/tasks"
     model = Task
     schema = TaskSchema
+    scope = task_visibility
 
     async def delete_object(self, obj):
         """Decrement the parent project's story-point rollup before delete."""
@@ -85,24 +117,6 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
             if project is not None:
                 project.total_story_points -= obj.story_points
         await super().delete_object(obj)
-
-    def build_query(self):
-        """Filter tasks to those assigned to the current user.
-
-        Admin requests bypass this filter — they see every task regardless
-        of assignee. Applied at the ``build_query`` override point so the same scope
-        feeds listing, count, AND retrieve — the row-level permission is
-        enforced at the SQL level on every read path, and cascades through
-        ``handle_update`` / ``handle_delete`` (which load via ``get_one``).
-        Composes with ``SoftDeleteMixin.build_query`` via ``super()``.
-        """
-        q = super().build_query()
-        if self._is_admin():
-            return q
-        current_user = self._current_user_id()
-        if current_user is not None:
-            q = q.where(Task.assignee_id == current_user)
-        return q
 
     async def _validate_cross_resource(self, data: dict) -> None:
         """Validate cross-resource constraints (assignee must be in same org as project)."""

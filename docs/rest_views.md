@@ -166,7 +166,7 @@ Change the layer that owns the behavior instead of rewriting the entire route:
 | Change | Use |
 |---|---|
 | Stamp or transform data during create or update | Override the business method or cooperative object builder in [Customizing RestView](customize.md) |
-| Hide rows from every read | Override {meth}`build_query() <fastapi_restly.views.AsyncRestView.build_query>` |
+| Hide rows from every read | Declare a [scope](scopes.md): `default_scope` on the model, or `scope` on the view |
 | Permit or reject an action | Override {meth}`authorize() <fastapi_restly.views.AsyncRestView.authorize>` |
 | Run an atomic side effect or a post-commit action | Override `before_commit()` or `after_commit()` |
 | Change status, headers, request parameters, or response model | Replace the endpoint method |

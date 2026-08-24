@@ -80,27 +80,31 @@ To reject an update based on current state, override {meth}`update <fastapi_rest
 
 {meth}`handle_update <fastapi_restly.views.RestView.handle_update>` has already loaded `obj` through {meth}`get_one <fastapi_restly.views.RestView.get_one>` and run {meth}`authorize <fastapi_restly.views.RestView.authorize>`, so `update` only describes the domain change.
 
-### build_query: filter results to the current user
+### The scope: filter results to the current user
 
-The common read override is row visibility. {meth}`get_many <fastapi_restly.views.RestView.get_many>`, {meth}`count <fastapi_restly.views.RestView.count>`, and {meth}`get_one <fastapi_restly.views.RestView.get_one>` all use {meth}`build_query <fastapi_restly.views.RestView.build_query>`, so one filter keeps listings, totals, single-row reads, updates, and deletes aligned. Here we restrict every read to the requesting user's own posts:
+The common read customization is row visibility. {meth}`get_many <fastapi_restly.views.RestView.get_many>`, {meth}`count <fastapi_restly.views.RestView.count>`, and {meth}`get_one <fastapi_restly.views.RestView.get_one>` all apply the view's declared {attr}`scope <fastapi_restly.views.BaseRestView.scope>`, so one clause keeps listings, totals, single-row reads, updates, and deletes aligned. Here we restrict every read to the requesting user's own posts:
 
 ```python
+current_user = fr.context_param("user_id", int)
+
+async def bind_user(request: fastapi.Request):
+    with current_user.bind(user_id=request.state.user_id):
+        yield
+
 @fr.include_view(app)
 class PostView(fr.AsyncRestView):
     prefix = "/posts"
     model = Post
     schema = PostRead
-
-    def build_query(self):
-        user_id = self.request.state.user_id
-        return super().build_query().where(Post.author_id == user_id)
+    dependencies = [Depends(bind_user)]
+    scope = fr.where_clause(Post.author_id == current_user)
 ```
 
-Calling `super().build_query()` and chaining `.where(...)` composes cleanly with any base-class or mixin filter.
+The clause is declared once at module level; the dependency binds the per-request value. [Scopes](scopes.md) covers composing clauses and the model-wide `default_scope` form.
 
-Read access has two halves, and they live in two different tiers:
+Read access has two halves, and they live in two different places:
 
-- **Visibility** belongs to `build_query`: a hidden row is not part of this view, so `get_one` returns 404.
+- **Visibility** belongs to the scope: a hidden row is not part of this view, so `get_one` returns 404.
 - **Policy** belongs to {meth}`authorize <fastapi_restly.views.RestView.authorize>`, which is called in the handler. Use it for "may this caller read at all", not for "which rows exist".
 
 ### delete: implement soft-delete
@@ -125,8 +129,7 @@ class PostView(fr.AsyncRestView):
 `DELETE /posts/{id}` now marks the row instead of removing it.
 {meth}`delete_endpoint <fastapi_restly.views.RestView.delete_endpoint>` still
 returns 204, and {meth}`handle_delete <fastapi_restly.views.RestView.handle_delete>`
-still commits. Pair this with a {meth}`build_query <fastapi_restly.views.RestView.build_query>`
-filter that hides deleted rows. The canonical recipe lives in [Customizing
+still commits. Pair this with a scope clause that hides deleted rows. The canonical recipe lives in [Customizing
 RestView](customize.md#delete-soft-delete-instead-of-removing-the-row). The
 reusable mixin version is in [Compose Views with
 Mixins](howto_compose_views_with_mixins.md).
@@ -140,7 +143,7 @@ handle_create  →  authorize("create", data=schema_obj)
                →  create(schema_obj)
                →  before_commit → commit → after_commit
 
-handle_update  →  get_one(id)                     # loads through build_query
+handle_update  →  get_one(id)                     # loads through the scope
                →  authorize("update", obj, data=schema_obj)
                →  update(obj, schema_obj)
                →  before_commit → commit → after_commit
@@ -490,8 +493,8 @@ curl -X DELETE http://127.0.0.1:8000/posts/1
 ```
 
 A follow-up `GET /posts/1` still returns the post, because nothing filters
-soft-deleted rows yet; hiding them is the `build_query` pairing described in
-the soft-delete section above.
+soft-deleted rows yet; hiding them is the scope pairing described in the
+soft-delete section above.
 
 ## Next steps
 

@@ -2,19 +2,19 @@
 
 Some concerns belong on many views: tenant scoping, soft delete, audit stamps,
 permission filters. They are structural, not business logic: they stamp
-server-controlled fields or add read filters. Python mixins layer these concerns
-through cooperative `super()` calls. This guide covers the pattern, when to use
-it, and two gotchas.
+server-controlled fields or filter reads. The read side is declared as
+[scope](scopes.md) clauses; the write side layers through Python mixins with
+cooperative `super()` calls. This guide covers the pattern, when to use it,
+and two gotchas.
 
-## The structural override points
+## The structural seams
 
-Three [override points](customize.md) carry almost all
-structural concerns:
+Three seams carry almost all structural concerns:
 
-- {meth}`build_query <fastapi_restly.views.RestView.build_query>` is the
-  unified [read scope](#build-query-scope).
-  List, count, and retrieve all route through it, so one `.where(...)` clause
-  filters every read.
+- The view {attr}`scope <fastapi_restly.views.BaseRestView.scope>` is the
+  unified read filter. List, count, and retrieve all apply it, so one
+  declared clause filters every read; clauses compose with
+  {func}`fr.all_of <fastapi_restly.clauses.all_of>`.
 - `make_new_object` and `update_object` perform
   [cooperative field stamping](customize.md#cooperative-field-stamping-override-make_new_object--update_object).
   Each calls `super()` to get the constructed object, mutates the
@@ -89,44 +89,60 @@ kind in
 [`views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/views.py).
 Copy them into your project as a starting point.
 
-### `TenantScopedMixin`: multi-tenant row scoping
+(tenant-row-scoping)=
+### Tenant row scoping: a scope clause plus a stamping mixin
 
-`TenantScopedMixin` stamps `organization_id` from the authenticated request on
-writes and filters every read to the same organization:
+The read half is a clause factory: one function builds the tenant predicate
+for any model with an ``organization_id`` column, branching on values a
+dependency binds once per request (see the SaaS example's
+``bind_request_context``):
+
+```python
+from typing import Annotated, Any
+import sqlalchemy as sa
+import fastapi_restly as fr
+
+current_org = fr.context_param("org_id", int)
+request_is_admin = fr.context_param("is_admin", bool)
+
+
+def tenant_scope(model: type[Any]) -> fr.WhereClause:
+    """Rows of ``model`` owned by the authenticated organization."""
+
+    @fr.where_clause
+    def owned_by_tenant(
+        org_id: Annotated[int | None, current_org],
+        admin: Annotated[bool, request_is_admin],
+    ) -> sa.ColumnElement[bool]:
+        if admin or org_id is None:
+            return sa.true()
+        return model.organization_id == org_id
+
+    return owned_by_tenant
+```
+
+The write half stays a mixin, stamping the same column cooperatively:
 
 ```python
 import fastapi
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import DeclarativeBase
-from typing import TYPE_CHECKING, Any
-import sqlalchemy as sa
+from typing import TYPE_CHECKING
 
 
 class TenantScopedMixin:
-    """Stamp ``organization_id`` from auth on writes; filter reads to it."""
+    """Stamp ``organization_id`` from auth context on writes."""
 
     if TYPE_CHECKING:
         request: fastapi.Request
         session: AsyncSession
         model: type[DeclarativeBase]
         def _current_org_id(self) -> int | None: ...
-        def _is_admin(self) -> bool: ...
-
-    def build_query(self) -> sa.Select:
-        # Filters get_many, count, AND get_one via the framework's
-        # unified read scope; no separate retrieve override is needed.
-        q = super().build_query()  # type: ignore[misc]
-        if self._is_admin():
-            return q
-        org_id = self._current_org_id()
-        if org_id is not None and hasattr(self.model, "organization_id"):
-            q = q.where(self.model.organization_id == org_id)
-        return q
 
     async def make_new_object(self, schema_obj: Any) -> Any:
         obj = await super().make_new_object(schema_obj)  # type: ignore[misc]
         org_id = self._current_org_id()
-        if org_id is not None and hasattr(self.model, "organization_id"):
+        if org_id is not None and hasattr(obj, "organization_id"):
             obj.organization_id = org_id
         return obj
 ```
@@ -134,17 +150,34 @@ class TenantScopedMixin:
 The `if TYPE_CHECKING:` block declares what the mixin expects from its host
 class (see the gotchas below).
 
-### `SoftDeleteMixin`: hide deleted rows
+(soft-delete-mixin)=
+### Soft delete: a scope clause plus a delete mixin
 
-`SoftDeleteMixin` filters deleted rows out of every read unless the request
-asks for them, and turns `delete` into a timestamp flip:
+The read half hides deleted rows unless the request asks for them
+(``?include_deleted=true``, bound from the query string by the same
+request-context dependency); the write half turns `delete` into a
+timestamp flip:
 
 ```python
 from datetime import datetime, timezone
 
+show_deleted = fr.context_param("include_deleted", bool)
+
+
+def soft_delete_scope(model: type[Any]) -> fr.WhereClause:
+    """Rows of ``model`` not soft-deleted, unless ``?include_deleted=true``."""
+
+    @fr.where_clause
+    def not_deleted(
+        include_deleted: Annotated[bool, show_deleted],
+    ) -> sa.ColumnElement[bool]:
+        return sa.true() if include_deleted else model.deleted_at.is_(None)
+
+    return not_deleted
+
 
 class SoftDeleteMixin:
-    """Hide deleted rows; ``delete`` flips ``deleted_at`` instead."""
+    """``delete`` flips ``deleted_at`` instead of removing the row."""
 
     if TYPE_CHECKING:
         request: fastapi.Request
@@ -152,14 +185,8 @@ class SoftDeleteMixin:
         model: type[DeclarativeBase]
         def save_object(self, obj: Any) -> Any: ...
 
-    def _include_deleted(self) -> bool:
-        return self.request.query_params.get("include_deleted", "false").lower() == "true"
-
-    def build_query(self) -> sa.Select:
-        q = super().build_query()  # type: ignore[misc]
-        if not self._include_deleted() and hasattr(self.model, "deleted_at"):
-            q = q.where(self.model.deleted_at.is_(None))
-        return q
+    # Let ``?include_deleted=true`` through the unknown-query-param guard.
+    extra_query_params = ("include_deleted",)
 
     async def delete(self, obj: Any) -> None:
         if hasattr(obj, "deleted_at"):
@@ -220,14 +247,14 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, fr.Asyn
     prefix = "/projects"
     model = Project
     schema = ProjectRead
+    scope = fr.all_of(tenant_scope(Project), soft_delete_scope(Project))
 ```
 
 {meth}`get_many <fastapi_restly.views.RestView.get_many>`,
 {meth}`count <fastapi_restly.views.RestView.count>`, and
-{meth}`get_one <fastapi_restly.views.RestView.get_one>` all use
-{meth}`build_query <fastapi_restly.views.RestView.build_query>`, so tenant and
-soft-delete filters apply to listings, totals, single-row reads, updates, and
-deletes.
+{meth}`get_one <fastapi_restly.views.RestView.get_one>` all apply the
+declared scope, so tenant and soft-delete filters cover listings, totals,
+single-row reads, updates, and deletes; the mixins add the write halves.
 
 ## Two ergonomic gotchas
 
@@ -284,15 +311,15 @@ it.
 
 ## Admin bypass: runtime flag, not a parallel view tree
 
-The `_is_admin()` check in `TenantScopedMixin` points at a broader decision.
-Admin endpoints often do not need a parallel view hierarchy; a per-request
-`_is_admin()` predicate can let
-each scope-filtering mixin skip its filter. This keeps the route tree simple,
-but every read-scope mixin must consult the flag. A parallel admin view tree
-gives class-time guarantees at the cost of more classes.
+The ``admin`` branch in ``tenant_scope`` points at a broader decision. Admin
+endpoints often do not need a parallel view hierarchy; a bound per-request
+flag lets each scope clause skip its filter, and a missing binding fails
+loudly. This keeps the route tree simple, but every scope clause must
+consult the flag. A parallel admin view tree (a second view with its own
+``scope``) gives class-time guarantees at the cost of more classes.
 
-Read scope is *visibility*, not *policy*. Rows hidden by
-{meth}`build_query <fastapi_restly.views.RestView.build_query>` return 404;
+Read scope is *visibility*, not *policy*. Rows outside the
+[scope](scopes.md) return 404;
 allow/deny decisions such as "only managers may create" belong in
 {meth}`authorize <fastapi_restly.views.RestView.authorize>`, described in
 [`authorize`: gate the action](customize.md#authorize-gate-the-action).

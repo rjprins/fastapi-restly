@@ -213,12 +213,11 @@ escapes it implicitly.
 (migrating-build-query)=
 ## Migrating from `build_query`
 
-Overriding {meth}`build_query <fastapi_restly.views.RestView.build_query>`
-for visibility is deprecated in favor of scopes. The mechanics differ in
-one point: `build_query` overrides compose through `super()` chains,
-scopes replace. A `build_query` override keeps working, and the scope is
-applied on top of whatever it returns, so migration can proceed one rule
-at a time:
+Restly's earlier read seam, overriding `build_query()`, is removed: a view
+class that still defines one, itself or through a mixin, fails at class
+definition with a pointer here. Nothing it did is lost, and the mechanics
+differ in one point: `build_query` overrides composed through `super()`
+chains, scopes replace, so a chain of filters becomes one composed clause:
 
 ```python
 # before

@@ -147,7 +147,7 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
     # ====================================================================
 
     def get_many(self, query_params: Any) -> ListingResult[ModelT]:
-        query = self._apply_scope(self.build_query())
+        query = self._apply_scope(select(self.model))
         query = self.apply_query_params(query, query_params)
         total_count = self.count(query) if self.paginated else None
         loader_options = self.get_relationship_loader_options()
@@ -169,7 +169,7 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
                 f"{self.model.__name__} has a composite primary key; "
                 "override get_one to fetch it."
             )
-        query = self._apply_scope(self.build_query()).where(pk_cols[0] == id)
+        query = self._apply_scope(select(self.model)).where(pk_cols[0] == id)
         loader_options = self.get_relationship_loader_options()
         if loader_options:
             query = query.options(*loader_options)
@@ -198,18 +198,6 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
     # Read seams
     # ====================================================================
 
-    def build_query(self) -> sqlalchemy.Select[Any]:
-        """Return the base SQLAlchemy ``Select`` every read starts from.
-
-        .. deprecated:: overriding this to add visibility filtering is
-           superseded by the view scope: declare the rule as a clause
-           (``C.default_scope`` on the model, or
-           :attr:`~fastapi_restly.views.BaseRestView.scope` on the view).
-           See the Scopes guide. Existing overrides keep working; the
-           scope is applied on top of the returned statement.
-        """
-        return sqlalchemy.select(self.model)
-
     def apply_query_params(
         self, query: sqlalchemy.Select[Any], query_params: Any
     ) -> sqlalchemy.Select[Any]:
@@ -219,8 +207,8 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
     def count(self, query: sqlalchemy.Select[Any]) -> int:
         """Total for the list, ignoring presentation ordering/pagination.
 
-        Made ``DISTINCT`` before counting so a scope or ``build_query`` that
-        joins a to-many relationship doesn't inflate the total via row fan-out.
+        Made ``DISTINCT`` before counting so a scope that joins a to-many
+        relationship doesn't inflate the total via row fan-out.
         """
         count_source = query.order_by(None).limit(None).offset(None).distinct()
         count_query = select(func.count()).select_from(count_source.subquery())

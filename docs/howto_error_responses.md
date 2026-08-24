@@ -19,7 +19,7 @@ All request-time errors live in `fr.exc` and subclass {class}`fr.exc.RestlyHTTPE
 
 | Exception | Status | Raised when / raise it for |
 |---|---|---|
-| {class}`fr.exc.NotFound <fastapi_restly.exc.NotFound>` | `404` | A row does not exist, or is hidden by {meth}`build_query <fastapi_restly.views.RestView.build_query>` scoping. |
+| {class}`fr.exc.NotFound <fastapi_restly.exc.NotFound>` | `404` | A row does not exist, or is outside the view's [scope](scopes.md). |
 | {class}`fr.exc.Forbidden <fastapi_restly.exc.Forbidden>` | `403` | {meth}`authorize <fastapi_restly.views.RestView.authorize>` rejects the action. |
 | {class}`fr.exc.Conflict <fastapi_restly.exc.Conflict>` | `409` | The request conflicts with current resource state. |
 | {class}`fr.exc.BadQueryParam <fastapi_restly.exc.BadQueryParam>` | `400` | A list-endpoint parameter that is structurally valid but semantically wrong (e.g. `?sort=unknown_field`). |

@@ -191,8 +191,9 @@ the business method (`<verb>`). You override the layer that owns your change;
 the model and the decision table live in
 [Customizing RestView](customize.md).
 
-Alongside the tiers are cross-cutting **override points** (`build_query`,
-`apply_query_params`, `count`, `authorize`,
+Alongside the tiers are the declared read [scope](scopes.md) (the
+`scope` class attribute) and cross-cutting **override points**
+(`apply_query_params`, `count`, `authorize`,
 `before_commit` / `after_commit`, `to_response`,
 `get_relationship_loader_options`, `snapshot`) and **domain
 utilities** that you call rather than override (`make_new_object`,
@@ -214,15 +215,15 @@ On `AsyncRestView` every method below is `async`; the signatures are otherwise i
 | Request handler | {meth}`handle_update <fastapi_restly.views.RestView.handle_update>` | `(id, schema_obj)` | `Model` | Load, authorize, snapshot, run `update`, then the commit bracket. |
 | Request handler | {meth}`handle_delete <fastapi_restly.views.RestView.handle_delete>` | `(id)` | `None` | Load, authorize, snapshot, run `delete`, then the commit bracket. |
 | Custom-action bracket | {meth}`write_action <fastapi_restly.views.RestView.write_action>` | `(action, *, obj=None, data=None)` | context manager | Entered as `async with self.write_action("publish", obj=...):`, it runs the full bracket around your inline mutation: authorize and snapshot on enter; `before_commit`, commit, and `after_commit` on exit. Use it for a custom write *action* that is not a plain create/update/delete; deposit a create's new object on the yielded handle's `.obj`. The implementation is shared with the CRUD handlers via the self-free `run_write_action` (in `fastapi_restly.views`). |
-| Business method | {meth}`get_many <fastapi_restly.views.RestView.get_many>` | `(query_params)` | `ListingResult[Model]` | Scoped and filtered listing via `build_query` + `apply_query_params`. Paginated views return one page plus a total count; unpaginated views return every matching row with `total_count=None` and skip `count`. Auth-free. |
-| Business method | {meth}`get_one <fastapi_restly.views.RestView.get_one>` | `(id)` | `Model` | Load one row through `build_query` or raise `fr.exc.NotFound`. Visibility comes from `build_query`, so a hidden row is a clean 404 for every caller. Auth-free. |
+| Business method | {meth}`get_many <fastapi_restly.views.RestView.get_many>` | `(query_params)` | `ListingResult[Model]` | Scoped and filtered listing via the view scope + `apply_query_params`. Paginated views return one page plus a total count; unpaginated views return every matching row with `total_count=None` and skip `count`. Auth-free. |
+| Business method | {meth}`get_one <fastapi_restly.views.RestView.get_one>` | `(id)` | `Model` | Load one row through the view scope or raise `fr.exc.NotFound`. Visibility comes from the scope, so a hidden row is a clean 404 for every caller. Auth-free. |
 | Business method | {meth}`create <fastapi_restly.views.RestView.create>` | `(schema_obj)` | `Model` | Build a new object and save it. Commit-free: the usual create override point. |
 | Business method | {meth}`update <fastapi_restly.views.RestView.update>` | `(obj, schema_obj)` | `Model` | Apply the update payload to `obj` and save it. Commit-free. |
 | Business method | {meth}`delete <fastapi_restly.views.RestView.delete>` | `(obj)` | `None` | Delete `obj`. Override (e.g. on a soft-delete mixin) to flip a timestamp instead. |
-| Override point | {meth}`build_query <fastapi_restly.views.RestView.build_query>` | `()` | `sqlalchemy.Select` | Base read query shared by `get_many`, `count`, and `get_one`; add `WHERE` clauses here for scope/soft-delete/visibility. |
+| Configuration | {attr}`scope <fastapi_restly.views.BaseRestView.scope>` | class attribute | `Clause \| UNSCOPED \| None` | The clause every read applies, shared by `get_many`, `count`, and `get_one`. `None` falls back to the model's `C.default_scope`; `fr.clauses.UNSCOPED` reads unscoped. See [Scopes](scopes.md). |
 | Override point | {meth}`apply_query_params <fastapi_restly.views.RestView.apply_query_params>` | `(query, query_params)` | `sqlalchemy.Select` | Apply URL filter/sort/pagination to `query`. Override for a non-default URL grammar. |
 | Override point | {meth}`count <fastapi_restly.views.RestView.count>` | `(query)` | `int` | Total for a paginated list: receives the same params-applied query and strips `ORDER BY`, `LIMIT`, and `OFFSET` before counting. Unpaginated views skip it. Override for estimated counts on huge tables. |
-| Override point | {meth}`authorize <fastapi_restly.views.RestView.authorize>` | `(action, obj=None, data=None)` | `None` | Gate a verb. A no-op by default; override to enforce policy and raise `fr.exc.Forbidden` / `fr.exc.NotFound` to reject. Row *visibility* belongs in `build_query`. |
+| Override point | {meth}`authorize <fastapi_restly.views.RestView.authorize>` | `(action, obj=None, data=None)` | `None` | Gate a verb. A no-op by default; override to enforce policy and raise `fr.exc.Forbidden` / `fr.exc.NotFound` to reject. Row *visibility* belongs in the scope. |
 | Override point | {meth}`before_commit <fastapi_restly.views.RestView.before_commit>` | `(action, new, old=None)` | `None` | In-transaction side effect (outbox/audit rows), atomic with the write. `old` is the pre-mutation snapshot dict. |
 | Override point | {meth}`after_commit <fastapi_restly.views.RestView.after_commit>` | `(action, new, old=None)` | `None` | Post-commit side effect (email, webhook, cache invalidation). `old` enables dirty detection. |
 | Override point | {meth}`to_response <fastapi_restly.views.BaseRestView.to_response>` | `(obj_or_list, shape=ResponseShape.SINGLE)` | response payload | The single wire-level response method, called by the endpoint methods with the wire `ResponseShape` (`SINGLE` / `LISTING` / `EMPTY`), not the write action. Override for envelopes or custom status codes; for a per-verb HTTP contract change, override that verb's endpoint method. |
@@ -330,7 +331,7 @@ There are two families: configuration errors subclass `RestlyError`, and request
 | {class}`fr.exc.RestlyError <fastapi_restly.exc.RestlyError>` | Base class for FastAPI-Restly framework (configuration-time) errors. |
 | {class}`fr.exc.RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>` | Raised when a public Restly helper needs configuration that has not been set up yet, such as calling `fr.open_session()` before `fr.configure(...)`. |
 | {class}`fr.exc.RestlyHTTPError <fastapi_restly.exc.RestlyHTTPError>` | Base for Restly's request-time HTTP errors. Subclass of `fastapi.HTTPException`; each subclass sets a status code. |
-| {class}`fr.exc.NotFound <fastapi_restly.exc.NotFound>` | HTTP `404`. Raised by `get_one` when a row does not exist or is hidden by `build_query`; also raisable from `authorize` to hide a row's existence. |
+| {class}`fr.exc.NotFound <fastapi_restly.exc.NotFound>` | HTTP `404`. Raised by `get_one` when a row does not exist or is outside the scope; also raisable from `authorize` to hide a row's existence. |
 | {class}`fr.exc.Forbidden <fastapi_restly.exc.Forbidden>` | HTTP `403`. Raise from an `authorize` override to reject a verb. |
 | {class}`fr.exc.Conflict <fastapi_restly.exc.Conflict>` | HTTP `409`. For request conflicts with the current resource state. |
 | {class}`fr.exc.BadQueryParam <fastapi_restly.exc.BadQueryParam>` | HTTP `400`. For an invalid filter/sort/pagination query parameter. |

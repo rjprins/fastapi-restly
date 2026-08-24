@@ -1014,6 +1014,19 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
                 f"or None, got {type(scope).__name__}; wrap a raw expression "
                 "with where_clause()"
             )
+        # build_query is removed; a definition would be silently dead code,
+        # and dead visibility filtering is a security hole
+        for klass in cls.__mro__:
+            if "build_query" in vars(klass):
+                origin = "" if klass is cls else f" (from {klass.__name__})"
+                raise RestlyConfigurationError(
+                    f"{cls.__name__} defines build_query{origin}, which is "
+                    "removed and no longer called. Declare visibility as a "
+                    "clause: C.default_scope on the model, or the scope "
+                    "attribute on the view; read-wide reshaping is a "
+                    "transform clause on the view scope. See Migrating from "
+                    "build_query in the Scopes guide."
+                )
 
     def _resolved_scope(self) -> Clause | None:
         """The clause this view's reads apply, or None for unscoped.
@@ -1513,8 +1526,8 @@ def _warn_on_misuse(view_cls: type[View]) -> None:
                 f"{name} hand-rolls a CRUD route set on a bare View. RestView / "
                 f"AsyncRestView already define list/create/get/update/delete "
                 f"endpoint methods. Subclass one and override the bare verbs "
-                f"(create/update/delete), build_query, or authorize for custom "
-                f"behavior.",
+                f"(create/update/delete), declare a scope, or override "
+                f"authorize for custom behavior.",
                 RestlyMisuseWarning,
                 stacklevel=5,
             )

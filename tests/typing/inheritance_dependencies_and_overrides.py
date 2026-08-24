@@ -1,6 +1,5 @@
 from typing import Annotated, Any
 
-import sqlalchemy
 from fastapi import Depends, FastAPI, Response
 from sqlalchemy.orm import Mapped
 
@@ -23,16 +22,22 @@ class ProjectRead(fr.IDSchema[Project]):
     name: str
 
 
+current_tenant = fr.context_param("tenant_id", int)
+
+
+async def bind_tenant(tenant_id: Annotated[int, Depends(current_tenant_id)]):
+    with current_tenant.bind(tenant_id=tenant_id):
+        yield
+
+
 class TenantScopedView(
     fr.AsyncRestView[Project, ProjectRead, ProjectRead, ProjectRead, int]
 ):
     prefix = "/tenants"
     model = Project
     schema = ProjectRead
-    tenant_id: Annotated[int, Depends(current_tenant_id)]
-
-    def build_query(self) -> sqlalchemy.Select[Any]:
-        return super().build_query().where(Project.tenant_id == self.tenant_id)
+    dependencies = [Depends(bind_tenant)]
+    scope = fr.where_clause(Project.tenant_id == current_tenant)
 
 
 @fr.include_view(app)

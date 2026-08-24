@@ -219,38 +219,38 @@ With a shared base view you express that once and inherit it:
 import fastapi_restly as fr
 from fastapi import Depends
 
-async def require_logged_in(user_id: int = Depends(get_current_user_id)) -> int:
-    return user_id
+current_tenant = fr.context_param("tenant_id", int)
 
-class TenantScopedView(fr.AsyncRestView):
+async def bind_tenant(user_id: int = Depends(get_current_user_id)):
+    with current_tenant.bind(tenant_id=await tenant_for(user_id)):
+        yield
+
+class TenantBase(fr.AsyncRestView):
     """Internal base, never registered directly."""
-    dependencies = [Depends(require_logged_in)]
-
-    def build_query(self):
-        # Automatic tenant filtering for every read: list, pagination
-        # total, and single-row retrieve all route through this method.
-        return super().build_query().where(
-            self.model.tenant_id == self.request.state.tenant_id
-        )
+    dependencies = [Depends(bind_tenant)]
 
 
 @fr.include_view(app)
-class InvoiceView(TenantScopedView):
+class InvoiceView(TenantBase):
     prefix = "/invoices"
     model = Invoice
     schema = InvoiceRead
+    scope = fr.where_clause(Invoice.tenant_id == current_tenant)
 
 
 @fr.include_view(app)
-class CustomerView(TenantScopedView):
+class CustomerView(TenantBase):
     prefix = "/customers"
     model = Customer
     schema = CustomerRead
+    scope = fr.where_clause(Customer.tenant_id == current_tenant)
 ```
 
-The result is two views with one shared dependency and one shared filter. Add
-a new tenant-scoped resource and it inherits the same auth and scoping
-behavior. For soft delete, audit stamps, and permission scoping, see
+The result is two views with one shared dependency and a declared filter on
+every read: list, pagination total, and single-row retrieve. Declaring the
+tenant rule as each model's `default_scope` removes even the `scope` lines
+and covers reference checks too; [Scopes](scopes.md) owns that topic. For
+soft delete, audit stamps, and permission scoping, see
 [Composing views with mixins](howto_compose_views_with_mixins.md).
 
 ## Override a single tier

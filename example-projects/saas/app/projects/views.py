@@ -12,7 +12,14 @@ import fastapi_restly as fr
 
 from ..tasks.models import Task, TaskPriority, TaskStatus, TaskType
 from ..tasks.schemas import TaskSchema
-from ..views import AuditStampedMixin, SoftDeleteMixin, TenantBase, TenantScopedMixin
+from ..views import (
+    AuditStampedMixin,
+    SoftDeleteMixin,
+    TenantBase,
+    TenantScopedMixin,
+    soft_delete_scope,
+    tenant_scope,
+)
 from .models import Project, ProjectStatus
 from .schemas import ProjectSchema
 
@@ -43,18 +50,18 @@ class ProjectStats(BaseModel):
 class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantBase):
     """CRUD endpoints for projects.
 
-    Mixin composition (left → right via MRO):
-    - ``SoftDeleteMixin`` — hides ``deleted_at`` rows; ``delete_object``
-      sets the timestamp instead of removing the row.
+    Read visibility is the declared ``scope``: tenant ownership AND
+    not-soft-deleted, feeding listing, count, and retrieve alike. The
+    mixins add the write-side halves (left → right via MRO):
+    - ``SoftDeleteMixin`` — ``delete_object`` sets ``deleted_at`` instead of
+      removing the row.
     - ``AuditStampedMixin`` — stamps ``created_by_id`` / ``updated_by_id``
       via ``make_new_object`` / ``update_object`` before flush.
-    - ``TenantScopedMixin`` — adds ``organization_id`` filter to reads,
-      stamps it on writes from auth context.
-    - ``TenantBase`` — auth dep, audit ``save_object`` override point, ``_emit``
-      outbox helper. The ``build_query`` override point consumed by the mixins
-      above lives on ``AsyncRestView`` itself.
+    - ``TenantScopedMixin`` — stamps ``organization_id`` on writes from auth
+      context.
+    - ``TenantBase`` — auth + context-bind deps, audit ``save_object``
+      override point, ``_emit`` outbox helper.
 
-    The mixins compose tenant and soft-delete filters through ``build_query``.
     This view keeps project-specific logic: slug derivation, response
     decoration, update immutability, and project-level events.
     """
@@ -62,6 +69,7 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
     prefix = "/projects"
     model = Project
     schema = ProjectSchema
+    scope = fr.all_of(tenant_scope(Project), soft_delete_scope(Project))
     exclude_routes = [fr.ViewRoute.DELETE]  # replaced by soft_delete below
 
     async def _decorate_project_response(self, project: Project) -> Project:
@@ -88,9 +96,9 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
         return project
 
     async def get_many(self, query_params) -> fr.ListingResult[Project]:
-        # The mixins enforce tenant scope + soft-delete filtering already
-        # (via build_query). Here we only do project-specific response
-        # decoration on each row in the page.
+        # The declared scope enforces tenant + soft-delete filtering already.
+        # Here we only do project-specific response decoration on each row
+        # in the page.
         result = await super().get_many(query_params)
         decorated = [
             await self._decorate_project_response(project) for project in result.objects
@@ -102,7 +110,7 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
         )
 
     async def get_one(self, id: int):
-        # The mixins enforce tenant scope + soft-delete filtering already.
+        # The declared scope enforces tenant + soft-delete filtering already.
         # ``get_one`` is the auth-free load+scope+404 override point; we layer only
         # project-specific response decoration on top. ``handle_get_one``
         # (and therefore every read path) routes through here.
@@ -343,24 +351,16 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
     async def list_project_tasks(self, id: int) -> list[Task]:
         """List tasks for a specific project, honouring task visibility rules.
 
-        Mirrors the predicates ``TaskView`` applies to ``GET /tasks/``:
-        soft-deleted tasks are hidden (unless ``?include_deleted=true``),
-        and non-admin callers see only tasks assigned to themselves.
-        Tenant scoping is implicit — ``self.handle_get_one(id)`` already
-        verified the project is visible to the caller, and tasks are
-        project-bound.
+        Applies ``task_visibility`` — the same scope clause ``TaskView``
+        declares — so ``GET /projects/{id}/tasks`` and ``GET /tasks/`` can
+        never disagree about which tasks exist for the caller. Tenant
+        scoping is implicit: ``self.handle_get_one(id)`` already verified
+        the project is visible to the caller, and tasks are project-bound.
         """
+        from ..tasks.views import task_visibility
+
         await self.handle_get_one(id)
-        q = select(Task).where(Task.project_id == id)
-        include_deleted = (
-            self.request.query_params.get("include_deleted", "false").lower() == "true"
-        )
-        if not include_deleted:
-            q = q.where(Task.deleted_at.is_(None))
-        if not self._is_admin():
-            user_id = self._current_user_id()
-            if user_id is not None:
-                q = q.where(Task.assignee_id == user_id)
+        q = fr.apply_clauses(select(Task).where(Task.project_id == id), task_visibility)
         result = await self.session.scalars(q)
         return list(result.all())
 

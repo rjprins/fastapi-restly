@@ -503,8 +503,8 @@ def test_async_rest_view_dispatches_to_handle_overrides():
     ]
 
 
-def test_async_perform_listing_uses_build_query():
-    """get_many applies list params on top of the view's build_query."""
+def test_async_perform_listing_uses_the_scope():
+    """get_many applies list params on top of the view's scope."""
 
     class Widget(fr.IDBase):
         name: Mapped[str]
@@ -518,9 +518,7 @@ def test_async_perform_listing_uses_build_query():
         prefix = "/widgets"
         model = Widget
         schema = WidgetSchema
-
-        def build_query(self):
-            return super().build_query().where(Widget.active.is_(True))
+        scope = fr.where_clause(Widget.active.is_(True))
 
     async def run():
         engine, make_session = _make_engine_and_session()
@@ -551,9 +549,9 @@ def test_async_perform_listing_uses_build_query():
     asyncio.run(run())
 
 
-def test_async_build_query_is_consulted_by_list_and_count():
-    """get_many routes through build_query and count uses that query so a
-    single override filters listing AND its pagination total."""
+def test_async_scope_is_consulted_by_list_and_count():
+    """get_many routes through the scope and count uses that query so a
+    single declaration filters listing AND its pagination total."""
 
     class Gizmo(fr.IDBase):
         name: Mapped[str]
@@ -567,9 +565,7 @@ def test_async_build_query_is_consulted_by_list_and_count():
         prefix = "/gizmos"
         model = Gizmo
         schema = GizmoSchema
-
-        def build_query(self):
-            return super().build_query().where(Gizmo.active.is_(True))
+        scope = fr.where_clause(Gizmo.active.is_(True))
 
     async def run():
         engine, make_session = _make_engine_and_session()
@@ -590,20 +586,14 @@ def test_async_build_query_is_consulted_by_list_and_count():
             view = GizmoView()
             view.session = session
 
-            # Default build_query returns select(self.model).
-            assert str(fr.AsyncRestView.build_query(view)) == str(
-                sqlalchemy.select(Gizmo)
-            )
-
-            # Override is consulted by both list and count.
+            # The scope is consulted by both list and count.
             results = await view.get_many({})
             assert len(results.objects) == 2
             assert results.total_count == 2
             assert all(g.active for g in results.objects)
 
-            query = fr.query.apply_list_params(
-                {}, view.build_query(), Gizmo, GizmoSchema
-            )
+            scoped = view._apply_scope(sqlalchemy.select(Gizmo))
+            query = fr.query.apply_list_params({}, scoped, Gizmo, GizmoSchema)
             total = await view.count(query)
             assert total == 2
 

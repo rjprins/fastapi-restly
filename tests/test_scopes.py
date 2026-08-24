@@ -407,6 +407,25 @@ def test_scope_resolution_falls_back_from_view_to_model_to_none():
     assert _BareView()._resolved_scope() is None
 
 
+def test_defining_build_query_fails_at_class_definition():
+    # build_query is removed; a definition would be dead code, and dead
+    # visibility filtering is a security hole
+    with pytest.raises(RestlyConfigurationError, match="build_query"):
+
+        class _LegacyView(_SyncRowView):
+            def build_query(self):
+                return None
+
+    class _LegacyMixin:
+        def build_query(self):
+            return None
+
+    with pytest.raises(RestlyConfigurationError, match="_LegacyMixin"):
+
+        class _MixedView(_LegacyMixin, _SyncRowView):
+            pass
+
+
 def test_non_clause_scope_is_a_loud_configuration_error(sync_session):
     # declared form: rejected as the class is defined
     with pytest.raises(RestlyConfigurationError, match="where_clause"):

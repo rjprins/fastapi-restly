@@ -605,9 +605,7 @@ def test_sync_build_query_is_consulted_by_list_and_count(sync_db):
         prefix = "/gadgets"
         model = Gadget
         schema = GadgetSchema
-
-        def build_query(self):
-            return super().build_query().where(Gadget.active.is_(True))
+        scope = fr.where_clause(Gadget.active.is_(True))
 
     fr.DataclassBase.metadata.create_all(engine)
 
@@ -625,15 +623,13 @@ def test_sync_build_query_is_consulted_by_list_and_count(sync_db):
         view = GadgetView()
         view.session = session
 
-        # Default build_query returns select(self.model).
-        assert str(fr.RestView.build_query(view)) == str(sqlalchemy.select(Gadget))
-
-        # Override is consulted by both list and count.
+        # The scope is consulted by both list and count.
         results = view.get_many({})
         assert len(results.objects) == 2
         assert results.total_count == 2
         assert all(g.active for g in results.objects)
 
-        query = fr.query.apply_list_params({}, view.build_query(), Gadget, GadgetSchema)
+        scoped = view._apply_scope(sqlalchemy.select(Gadget))
+        query = fr.query.apply_list_params({}, scoped, Gadget, GadgetSchema)
         total = view.count(query)
         assert total == 2

@@ -10,12 +10,12 @@ Covers two list-endpoint bugs:
   the PK). These are asserted on the compiled SQL, so they hold regardless of a
   given backend's incidental tie ordering.
 
-* **to-many JOIN fan-out** — a ``build_query`` that JOINs a to-many relationship fans out
-  (one row per child), which duplicated entities in the page and inflated the
-  total. ``get_many`` now de-duplicates via ``.unique()`` and ``count`` counts a
-  ``DISTINCT`` subquery. (Not reachable through the public URL grammar -- dotted
-  filters/sorts only traverse to-one relations -- so the trigger is a
-  collection JOIN added by an override, as exercised here.)
+* **to-many JOIN fan-out** — a view scope that JOINs a to-many relationship
+  fans out (one row per child), which duplicated entities in the page and
+  inflated the total. ``get_many`` now de-duplicates via ``.unique()`` and
+  ``count`` counts a ``DISTINCT`` subquery. (Not reachable through the public
+  URL grammar -- dotted filters/sorts only traverse to-one relations -- so the
+  trigger is a collection JOIN in a scope transform, as exercised here.)
 """
 
 import sqlalchemy
@@ -83,11 +83,11 @@ def test_react_admin_sort_by_pk_is_not_duplicated():
 
 
 # ---------------------------------------------------------------------------
-# A to-many JOIN in build_query must not duplicate rows / inflate count
+# A to-many JOIN in the scope must not duplicate rows / inflate count
 # ---------------------------------------------------------------------------
 
 
-def test_to_many_join_in_build_query_does_not_duplicate_or_inflate(client):
+def test_to_many_join_in_scope_does_not_duplicate_or_inflate(client):
     class Author(fr.IDBase):
         name: Mapped[str]
 
@@ -102,15 +102,17 @@ def test_to_many_join_in_build_query_does_not_duplicate_or_inflate(client):
         title: str
         author_id: int
 
+    @fr.transform_clause
+    def join_books(stmt: sqlalchemy.Select) -> sqlalchemy.Select:
+        # A collection JOIN: one row per book -> fan-out without dedup.
+        return stmt.join(Book, Book.author_id == Author.id)
+
     @fr.include_view(client.app)
     class AuthorView(fr.AsyncRestView):
         prefix = "/authors"
         model = Author
         schema = AuthorSchema
-
-        def build_query(self):
-            # A collection JOIN: one row per book -> fan-out without dedup.
-            return super().build_query().join(Book, Book.author_id == Author.id)
+        scope = join_books
 
     @fr.include_view(client.app)
     class BookView(fr.AsyncRestView):

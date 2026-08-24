@@ -13,8 +13,7 @@ name the tier that owns your change and override one method:
    — the business method: the domain operation, auth-free and commit-free. The
    usual override point.
 
-Cross-cutting seams: ``scope`` (read visibility; the deprecated
-``build_query`` still composes), ``authorize`` (policy),
+Cross-cutting seams: ``scope`` (read visibility), ``authorize`` (policy),
 ``apply_query_params`` (URL grammar), ``to_response`` (wire shape),
 ``write_action`` (custom write brackets). ``View`` is the bare class-based
 primitive for non-CRUD endpoint groups (auth flows, webhooks, RPC).

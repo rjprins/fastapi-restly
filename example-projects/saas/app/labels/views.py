@@ -9,7 +9,7 @@ from fastapi_restly.objects import async_make_new_object, async_save_object
 
 from ..projects.models import Project
 from ..tasks.models import Task
-from ..views import TenantBase, TenantScopedMixin
+from ..views import TenantBase, TenantScopedMixin, tenant_scope
 from .models import Label, TaskLabel
 from .schemas import LabelSchema, TaskLabelSchema
 
@@ -25,13 +25,15 @@ class CreateAndAttachLabelRequest(BaseModel):
 class LabelView(TenantScopedMixin, TenantBase):
     """CRUD for labels (organization-scoped).
 
-    ``TenantScopedMixin`` handles read filtering + write stamping of
-    ``organization_id``; this class only adds the cascade-on-delete.
+    The ``scope`` filters reads to the organization; ``TenantScopedMixin``
+    stamps ``organization_id`` on writes. This class only adds the
+    cascade-on-delete.
     """
 
     prefix = "/labels"
     model = Label
     schema = LabelSchema
+    scope = tenant_scope(Label)
 
     async def delete_object(self, obj):
         """Remove task-label associations before deleting the label."""

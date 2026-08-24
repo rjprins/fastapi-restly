@@ -216,20 +216,12 @@ For reusable soft-delete that also hides rows on read, see `SoftDeleteMixin` in 
 
 ### `get_one`: eager-load extra relationships
 
-The default {meth}`get_one <fastapi_restly.views.RestView.get_one>` loads through {meth}`build_query <fastapi_restly.views.RestView.build_query>` and schema-derived loader options. If one endpoint needs extra eager loading, keep `build_query` in the query so visibility still applies:
+The default {meth}`get_one <fastapi_restly.views.RestView.get_one>` loads through the view scope and schema-derived loader options. If one endpoint needs an extra relationship, delegate to ``super()`` so the scoped load and its 404 stay intact, then load the extra attribute explicitly:
 
 ```python
-from sqlalchemy import inspect as sa_inspect
-from sqlalchemy.orm import selectinload
-
     async def get_one(self, id):
-        pk = sa_inspect(self.model).primary_key[0]
-        query = self.build_query().where(pk == id).options(
-            selectinload(User.audit_log)
-        )
-        obj = (await self.session.scalars(query)).first()
-        if obj is None:
-            raise fr.exc.NotFound(f"User {id!r} not found")
+        obj = await super().get_one(id)   # scoped load + 404
+        await obj.awaitable_attrs.audit_log
         return obj
 ```
 
@@ -240,7 +232,7 @@ instead; see [Relationship Loading and Async](howto_relationship_loading.md).
 
 ### `get_many`: decorate results after the query
 
-For post-query decoration, override {meth}`get_many <fastapi_restly.views.RestView.get_many>` and delegate to `super()`. For filters, joins, or eager loading that apply to every read, prefer {meth}`build_query <fastapi_restly.views.RestView.build_query>`.
+For post-query decoration, override {meth}`get_many <fastapi_restly.views.RestView.get_many>` and delegate to `super()`. For filters, joins, or eager loading that apply to every read, prefer a clause on the view [scope](scopes.md).
 
 ```python
     async def get_many(self, query_params):
@@ -263,42 +255,38 @@ access into two independent concerns; each has its own override point:
 - Policy, meaning whether this caller may perform the action, lives in {meth}`authorize <fastapi_restly.views.RestView.authorize>`, which the handler calls.
 
 (build-query-scope)=
-### `build_query`: the deprecated scope seam
-
-Overriding {meth}`build_query <fastapi_restly.views.RestView.build_query>`
-for visibility is deprecated; declare the rule as a clause instead, which
-also covers reference checks
-([Migrating from build_query](#migrating-build-query)). The
-mechanics below still hold for existing overrides, and the scope is applied
-on top of whatever `build_query` returns.
-
-{meth}`get_many <fastapi_restly.views.RestView.get_many>` (list and count) and {meth}`get_one <fastapi_restly.views.RestView.get_one>` both use it, so one filter covers:
-
-- the listed page,
-- the pagination total ({meth}`count <fastapi_restly.views.RestView.count>` counts the same scoped query),
-- and single-row fetches: a row hidden from the list returns 404 from `GET /{id}` as well, with no extra code.
-
-Because {meth}`handle_update <fastapi_restly.views.RestView.handle_update>` and {meth}`handle_delete <fastapi_restly.views.RestView.handle_delete>` load through `get_one` first, they inherit the same visibility check.
+### The scope: filter every read at once
 
 The following view scopes every read to rows owned by the requesting user:
 
 ```python
-import sqlalchemy as sa
+current_user = fr.context_param("user_id", int)
 
 @fr.include_view(app)
 class DocumentView(fr.AsyncRestView):
     prefix = "/documents"
     model = Document
     schema = DocumentRead
-
-    def build_query(self):
-        user_id = self.request.state.user_id
-        return super().build_query().where(Document.owner_id == user_id)
+    scope = fr.where_clause(Document.owner_id == current_user)
 ```
 
-Calling `super().build_query()` and chaining `.where(...)` composes with base-class and mixin filters. Put joins, eager-loading `.options(...)`, and other read-wide `Select` changes here. Eager loads added here cover reads only; for a relationship that must also appear on create/update responses, use {meth}`get_relationship_loader_options <fastapi_restly.views.BaseRestView.get_relationship_loader_options>` (see [Relationship Loading and Async](howto_relationship_loading.md)).
+with a dependency binding ``user_id`` per request.
+{meth}`get_many <fastapi_restly.views.RestView.get_many>` (list and count) and
+{meth}`get_one <fastapi_restly.views.RestView.get_one>` both apply the scope,
+so one declaration covers:
 
-`get_one` stays auth-free even though it 404s on hidden rows: visibility comes from the query. Custom routes that call `get_one(id)` get the same scope.
+- the listed page,
+- the pagination total ({meth}`count <fastapi_restly.views.RestView.count>` counts the same scoped query),
+- and single-row fetches: a row hidden from the list returns 404 from `GET /{id}` as well, with no extra code.
+
+Because {meth}`handle_update <fastapi_restly.views.RestView.handle_update>` and {meth}`handle_delete <fastapi_restly.views.RestView.handle_delete>` load through `get_one` first, they inherit the same visibility check. `get_one` stays auth-free even though it 404s on hidden rows: visibility comes from the query, and custom routes that call `get_one(id)` get the same scope.
+
+[Scopes](scopes.md) owns the full topic: composing clauses, the model-wide
+`default_scope` (which also covers reference checks), and transforms for
+read-wide joins or eager loading. Restly's earlier seam, overriding
+``build_query()``, is removed; a view that still defines it fails at class
+definition with a pointer to
+[Migrating from build_query](#migrating-build-query).
 
 ### `authorize`: gate the action
 

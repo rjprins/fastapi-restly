@@ -450,10 +450,10 @@ class TestAdminBypass:
     """The matrix's 'Admin bypass of tenant/row scope' row.
 
     A request with ``request.state.is_admin = True`` short-circuits the
-    tenant filter in TenantScopedMixin and the assignee filter in
-    TaskView.build_query — the unified read seam that feeds get_many, count,
-    and get_one. Demonstrates the runtime-flag design: no separate route tree,
-    no parallel base view.
+    tenant filter in ``tenant_scope`` and the assignee filter in
+    ``assigned_to_current_user`` — the scope clauses that feed get_many,
+    count, and get_one. Demonstrates the runtime-flag design: no separate
+    route tree, no parallel base view.
     """
 
     def _setup_two_orgs_with_projects(self, client):
@@ -482,11 +482,13 @@ class TestAdminBypass:
         """Admin bypass: setting request.state.is_admin shows everything."""
         a_id, _b_id, pa_id, pb_id = self._setup_two_orgs_with_projects(client)
 
-        # Patch _is_admin to return True regardless of state — equivalent
-        # to auth middleware having set ``request.state.is_admin = True``.
-        from app.views import TenantBase
+        # Override the admin source — equivalent to auth middleware having
+        # set ``request.state.is_admin = True``.
+        from app.views import get_is_admin
 
-        monkeypatch.setattr(TenantBase, "_is_admin", lambda self: True)
+        from tests.conftest import app
+
+        monkeypatch.setitem(app.dependency_overrides, get_is_admin, lambda: True)
 
         with auth_context(org_id=a_id):  # would normally hide org B
             ids = {p["id"] for p in client.get("/projects").json()["data"]}
@@ -495,7 +497,9 @@ class TestAdminBypass:
 
     def test_admin_sees_other_users_tasks(self, client, monkeypatch, auth_context):
         """TaskView's assignee scope also short-circuits for admin."""
-        from app.views import TenantBase
+        from app.views import get_is_admin
+
+        from tests.conftest import app
 
         org = client.post(
             "/organizations", json={"name": "TaskOrg", "slug": "task-org"}
@@ -537,7 +541,7 @@ class TestAdminBypass:
             assert titles == {"T1"}
 
             # Now flip admin on while user_id is still u1 — should see both.
-            monkeypatch.setattr(TenantBase, "_is_admin", lambda self: True)
+            monkeypatch.setitem(app.dependency_overrides, get_is_admin, lambda: True)
             titles = {t["title"] for t in client.get("/tasks").json()["data"]}
             assert titles == {"T1", "T2"}
 

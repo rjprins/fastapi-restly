@@ -91,29 +91,29 @@ Replacing an endpoint method is the outermost override; see
 
 ## Restore a soft-deleted row
 
-Soft delete hides rows in {meth}`build_query <fastapi_restly.views.RestView.build_query>`,
-so every default read returns 404 for them, including the read your restore
-action needs. The restore route therefore makes a deliberately unscoped
-query, then mutates inside {meth}`write_action <fastapi_restly.views.RestView.write_action>`
-so that authorization and the commit bracket still run:
+The soft-delete [scope](scopes.md) hides deleted rows from every default
+read, including the read your restore action needs. The restore route
+therefore reads through the *complementary* clause, then mutates inside
+{meth}`write_action <fastapi_restly.views.RestView.write_action>` so that
+authorization and the commit bracket still run:
 
 ```python
+is_deleted = fr.where_clause(Item.deleted_at.is_not(None))
+
 class ItemView(fr.AsyncRestView):
     prefix = "/items"
     model = Item
     schema = ItemRead
-
-    def build_query(self):
-        return super().build_query().where(self.model.deleted_at.is_(None))
+    scope = fr.none_of(is_deleted)
 
     async def delete(self, obj):
         obj.deleted_at = datetime.now(timezone.utc)
 
     @fr.post("/{id}/restore", response_model=ItemRead, status_code=200)
     async def restore(self, id: int):
-        # The framework's read path calls build_query() with no arguments,
-        # so the bypass is an explicit query here, visibly on purpose.
-        query = sa.select(self.model).where(self.model.id == id)
+        # Reads through the complement of the view scope: only a deleted
+        # row can be restored, and the bypass is visible on purpose.
+        query = is_deleted.select(self.model).where(self.model.id == id)
         obj = (await self.session.scalars(query)).one_or_none()
         if obj is None:
             raise fr.exc.NotFound(f"Item {id!r} not found")
@@ -125,7 +125,7 @@ class ItemView(fr.AsyncRestView):
 Soft delete itself is covered as a one-off override in
 [Customizing RestView](customize.md#delete-soft-delete-instead-of-removing-the-row)
 and as a reusable mixin in
-[Compose Views with Mixins](howto_compose_views_with_mixins.md#softdeletemixin-hide-deleted-rows),
+[Compose Views with Mixins](#soft-delete-mixin),
 which also discusses the admin bypass.
 
 ## Receive a webhook (inbound)
@@ -184,9 +184,8 @@ route](customize.md#add-a-custom-action-route) provides the full walkthrough.
 
 ## Tenant scoping
 
-A `TenantScopedMixin` filters every read through
-{meth}`build_query <fastapi_restly.views.RestView.build_query>` and stamps
-writes cooperatively; the pattern is owned by
-[`TenantScopedMixin` in Compose Views with Mixins](howto_compose_views_with_mixins.md#tenantscopedmixin-multi-tenant-row-scoping).
+A tenant clause on the view [scope](scopes.md) filters every read, and a
+`TenantScopedMixin` stamps writes cooperatively; the pattern is owned by
+[tenant row scoping in Compose Views with Mixins](#tenant-row-scoping).
 The single-base-class variant is in
 [Share Behaviour with Base Views](howto_inheritance.md).
