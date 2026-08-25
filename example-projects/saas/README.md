@@ -56,6 +56,7 @@ saas/
 │   ├── settings.py          # Validated Pydantic settings
 │   ├── main.py              # create_app() factory: VIEWS, Restly wiring, lifespan
 │   ├── asgi.py              # app = create_app(), the deployment entrypoint
+│   ├── context.py           # Request context (Current) and the scope clause factories
 │   ├── views.py             # Application-wide view foundation: base view and mixins
 │   ├── outbox.py            # Cross-domain transactional outbox model
 │   ├── organizations/

@@ -7,9 +7,7 @@ from pydantic import BaseModel
 import fastapi_restly as fr
 from fastapi_restly.objects import async_make_new_object, async_save_object
 
-from ..projects.models import Project
-from ..tasks.models import Task
-from ..views import TenantBase, TenantScopedMixin, tenant_scope
+from ..views import TenantBase, TenantScopedMixin
 from .models import Label, TaskLabel
 from .schemas import LabelSchema, TaskLabelSchema
 
@@ -25,15 +23,14 @@ class CreateAndAttachLabelRequest(BaseModel):
 class LabelView(TenantScopedMixin, TenantBase):
     """CRUD for labels (organization-scoped).
 
-    The ``scope`` filters reads to the organization; ``TenantScopedMixin``
-    stamps ``organization_id`` on writes. This class only adds the
-    cascade-on-delete.
+    ``LabelClauses.default_scope`` filters reads to the organization;
+    ``TenantScopedMixin`` stamps ``organization_id`` on writes. This class
+    only adds the cascade-on-delete.
     """
 
     prefix = "/labels"
     model = Label
     schema = LabelSchema
-    scope = tenant_scope(Label)
 
     async def delete_object(self, obj):
         """Remove task-label associations before deleting the label."""
@@ -66,26 +63,17 @@ class TaskLabelView(TenantBase):
     ) -> TaskLabelSchema:
         """Sibling-creation: build a Label *and* a TaskLabel in one request.
 
-        The Label is flushed first so its id can be used in the TaskLabel
-        ``MustExist`` schema. Both rows commit through one ``write_action`` block.
+        The Label is flushed first so its id can pass the TaskLabel schema's
+        ``MustExist`` checks. Those checks run inside each target model's
+        ``default_scope``, so a ``task_id`` from another organization reads
+        as "does not exist" (404): the tenant EXISTS in
+        ``TaskClauses.default_scope`` replaces the org-join this route used
+        to spell out by hand, and the aborted request rolls the flushed
+        Label back with it.
         """
         org_id = self._current_org_id()
         if org_id is None:
             raise HTTPException(400, "Cannot create labels without an org context")
-
-        # Scope the task lookup to the caller's org. A Task reaches an org only
-        # through its Project, so join Project and filter organization_id. A bare
-        # session.get(Task, id) would let any org attach a label to any task, so
-        # a task outside this org must read as 404, not silently attach.
-        task = (
-            await self.session.execute(
-                sa.select(Task)
-                .join(Project, Task.project_id == Project.id)
-                .where(Task.id == request.task_id, Project.organization_id == org_id)
-            )
-        ).scalar_one_or_none()
-        if task is None:
-            raise HTTPException(404, "Task not found")
 
         # Commit the Label + TaskLabel pair atomically.
         async with self.write_action("create", data=request) as w:
@@ -96,7 +84,8 @@ class TaskLabelView(TenantBase):
             self.session.add(label)
             await self.session.flush()  # <-- existence check needs the PK to exist
 
-            # 2) Build TaskLabel with plain ids so references are checked.
+            # 2) Build TaskLabel with plain ids so references are checked,
+            #    each inside its target's default_scope.
             link_schema = TaskLabelSchema.model_construct(
                 task_id=request.task_id, label_id=label.id
             )

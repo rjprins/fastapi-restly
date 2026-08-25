@@ -1,19 +1,19 @@
 """Application-wide view foundation for the SaaS example.
 
 ``TenantBase`` provides shared auth-context dependencies, tenant helpers, and
-transactional outbox emission. Read-side visibility is declared as scope
-clauses: ``tenant_scope(Model)`` and ``soft_delete_scope(Model)`` build the
-predicates, ``bind_request_context`` broadcasts the per-request values they
-read (org, user, admin flag, the ``include_deleted`` toggle), and each view
-declares its composition as ``scope = ...``. ``TenantScopedMixin``,
+transactional outbox emission. Read-side visibility lives next to each model:
+its ``ClauseNamespace`` (in the subject's ``models.py``) composes the
+``tenant_scope(Model)`` / ``soft_delete_scope(Model)`` predicates from
+``app.context`` into a ``default_scope``, and a view that should see
+something else declares its own ``scope``. ``TenantScopedMixin``,
 ``SoftDeleteMixin``, and ``AuditStampedMixin`` add the write-side behavior
 through cooperative ``super()`` chains: ``make_new_object`` /
 ``update_object`` stamps, and soft deletion via ``delete_object``.
 
 The mixins run before ``save_object``, only stamp data, and compose linearly
 so combinations work without ordering surprises. Concrete subject views
-import the foundation, the scope factories, and the mixins from this root
-module.
+import the foundation and the mixins from this root module; the context
+values and the scope factories live in ``app.context``.
 
 Inheritance and prefix concatenation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -35,11 +35,12 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Annotated, Any, ClassVar
 
 import fastapi
-import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import DeclarativeBase
 
 import fastapi_restly as fr
+
+from .context import bind_request_context, get_current_org_id, get_current_user_id
 
 # Module level, not inside _emit(): Alembic reaches models through this graph.
 from .outbox import OutboxEvent
@@ -53,86 +54,6 @@ def check_api_key(request: fastapi.Request) -> None:
     This dependency runs before every route on every TenantBase subclass.
     """
     pass  # Always passes in this example; replace with real auth logic
-
-
-def get_current_org_id(request: fastapi.Request) -> int | None:
-    """Return the authenticated tenant ID set by auth middleware."""
-    return getattr(request.state, "org_id", None)
-
-
-def get_current_user_id(request: fastapi.Request) -> int | None:
-    """Return the authenticated user ID set by auth middleware."""
-    return getattr(request.state, "user_id", None)
-
-
-def get_is_admin(request: fastapi.Request) -> bool:
-    """Whether this request bypasses tenant and row scoping."""
-    return bool(getattr(request.state, "is_admin", False))
-
-
-class Current(fr.ContextNamespace):
-    """Per-request context the scope clauses read.
-
-    The bind dependency below broadcasts these once per request; the
-    clauses branch on them. Member names are the bind names.
-    """
-
-    org_id: fr.ContextParam[int | None]
-    user_id: fr.ContextParam[int | None]
-    is_admin: fr.ContextParam[bool]
-    include_deleted: fr.ContextParam[bool]
-
-
-def get_include_deleted(request: fastapi.Request) -> bool:
-    """Whether ``?include_deleted=true`` asks to see soft-deleted rows."""
-    return request.query_params.get("include_deleted", "false").lower() == "true"
-
-
-# One generated dependency binds every Current member per request. The
-# sources are the auth dependencies themselves, so
-# ``app.dependency_overrides`` keeps working in tests.
-bind_request_context = Current.depends(
-    org_id=get_current_org_id,
-    user_id=get_current_user_id,
-    is_admin=get_is_admin,
-    include_deleted=get_include_deleted,
-)
-
-
-def tenant_scope(model: type[Any]) -> fr.WhereClause:
-    """Rows of ``model`` owned by the authenticated organization.
-
-    Admin requests, and requests without an org in context, see every row.
-    ``model`` must carry an ``organization_id`` column.
-    """
-
-    @fr.where_clause
-    def owned_by_tenant(
-        org_id: Annotated[int | None, Current.org_id],
-        admin: Annotated[bool, Current.is_admin],
-    ) -> sa.ColumnElement[bool]:
-        if admin or org_id is None:
-            return sa.true()
-        return model.organization_id == org_id
-
-    return owned_by_tenant
-
-
-def soft_delete_scope(model: type[Any]) -> fr.WhereClause:
-    """Rows of ``model`` not soft-deleted, unless ``?include_deleted=true``.
-
-    Pair with ``SoftDeleteMixin`` (which sets ``deleted_at`` on delete) and
-    keep ``include_deleted`` in ``extra_query_params`` so the listing
-    endpoint accepts the toggle.
-    """
-
-    @fr.where_clause
-    def not_deleted(
-        include_deleted: Annotated[bool, Current.include_deleted],
-    ) -> sa.ColumnElement[bool]:
-        return sa.true() if include_deleted else model.deleted_at.is_(None)
-
-    return not_deleted
 
 
 class TenantBase(fr.AsyncRestView):
@@ -198,9 +119,10 @@ class TenantBase(fr.AsyncRestView):
 class TenantScopedMixin:
     """Stamp ``organization_id`` from auth context on writes.
 
-    The read-side counterpart is ``tenant_scope(Model)``, declared on the
-    view's ``scope``. Concrete views inherit this before ``TenantBase`` so
-    ``_current_org_id`` is available via the cooperative chain.
+    The read-side counterpart is the ``owned_by_tenant`` clause in the
+    model's namespace, applied through its ``default_scope``. Concrete
+    views inherit this before ``TenantBase`` so ``_current_org_id`` is
+    available via the cooperative chain.
 
     Type stubs below describe what the mixin expects from its host class.
     """
@@ -226,9 +148,10 @@ class TenantScopedMixin:
 class SoftDeleteMixin:
     """Set ``deleted_at`` on deletion instead of removing the row.
 
-    The read-side counterpart is ``soft_delete_scope(Model)``, declared on
-    the view's ``scope``; ``?include_deleted=true`` on list/get bypasses
-    that filter. Assumes ``self.model`` has a ``deleted_at`` column.
+    The read-side counterpart is the ``not_deleted`` clause in the model's
+    namespace, applied through its ``default_scope``;
+    ``?include_deleted=true`` on list/get bypasses that filter. Assumes
+    ``self.model`` has a ``deleted_at`` column.
 
     Concrete views can still replace the DELETE route when they need a
     different HTTP contract, such as ``200 + body``.

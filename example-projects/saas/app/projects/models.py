@@ -7,6 +7,8 @@ from sqlalchemy import ForeignKey, orm
 
 import fastapi_restly as fr
 
+from ..context import soft_delete_scope, tenant_scope
+
 
 class ProjectStatus(str, Enum):
     """Project status options."""
@@ -56,3 +58,19 @@ class Project(fr.TimestampsMixin, fr.IDBase):
     tasks: orm.Mapped[list["Task"]] = orm.relationship(  # noqa: F821
         back_populates="project", default_factory=list, cascade="all, delete-orphan"
     )
+
+
+class ProjectClauses(fr.ClauseNamespace):
+    """Project visibility: owned by the tenant and not soft-deleted.
+
+    ``default_scope`` arms every view read and every reference to Project,
+    so a cross-tenant or deleted ``project_id`` on a write reads as "does
+    not exist" (404). ``ProjectView.restore`` reads through
+    ``owned_by_tenant`` alone to reach the deleted rows.
+    """
+
+    model = Project
+
+    owned_by_tenant = tenant_scope(Project)
+    not_deleted = soft_delete_scope(Project)
+    default_scope = fr.all_of(owned_by_tenant, not_deleted)

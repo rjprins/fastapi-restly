@@ -484,7 +484,7 @@ class TestAdminBypass:
 
         # Override the admin source — equivalent to auth middleware having
         # set ``request.state.is_admin = True``.
-        from app.views import get_is_admin
+        from app.context import get_is_admin
 
         from tests.conftest import app
 
@@ -497,7 +497,7 @@ class TestAdminBypass:
 
     def test_admin_sees_other_users_tasks(self, client, monkeypatch, auth_context):
         """TaskView's assignee scope also short-circuits for admin."""
-        from app.views import get_is_admin
+        from app.context import get_is_admin
 
         from tests.conftest import app
 
@@ -655,9 +655,10 @@ class TestSiblingCreation:
     def test_create_and_attach_rejects_cross_tenant_task(self, client, auth_context):
         """A task in another org must not be attachable from the caller's org.
 
-        create-and-attach scopes the task lookup through
-        ``Project.organization_id``, so a foreign org's task id reads as 404 —
-        the guard returns before the Label insert, so neither row is created.
+        The ``task_id`` reference check runs inside
+        ``TaskClauses.default_scope`` (the tenant EXISTS), so a foreign
+        org's task id reads as 404 — the rejected request rolls back, so
+        neither row is created.
         """
         # Two orgs, each with its own project/task. Built with no org context so
         # the explicit ``organization_id`` on each project sticks (the tenant
@@ -686,7 +687,7 @@ class TestSiblingCreation:
             assert client.get("/labels").json()["data"] == []
 
     def test_create_and_attach_missing_task_returns_404(self, client, auth_context):
-        """A task id that matches no row reads as 404 under the scoped lookup."""
+        """A task id that matches no row reads as 404 from the reference check."""
         _org_id, override_auth = self._ctx(client, auth_context)
         with override_auth:
             client.post(
@@ -699,9 +700,8 @@ class TestSiblingCreation:
     def test_create_and_attach_requires_org_context(self, client):
         """Without a current org, create-and-attach refuses with 400.
 
-        The org id both stamps the new Label and scopes the task lookup, so
-        the org check runs first: even with a real, existing task there is no
-        tenant to attach to.
+        The org id stamps the new Label, so the org check runs first: even
+        with a real, existing task there is no tenant to attach to.
         """
         org = client.post(
             "/organizations", json={"name": "Ctxless", "slug": "ctxless"}

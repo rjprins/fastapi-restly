@@ -4,6 +4,8 @@ from sqlalchemy import ForeignKey, orm
 
 import fastapi_restly as fr
 
+from ..context import tenant_scope
+
 
 class Label(fr.TimestampsMixin, fr.IDBase):
     """
@@ -24,6 +26,18 @@ class Label(fr.TimestampsMixin, fr.IDBase):
     task_labels: orm.Mapped[list["TaskLabel"]] = orm.relationship(
         back_populates="label", init=False, default_factory=list
     )
+
+
+class LabelClauses(fr.ClauseNamespace):
+    """Label visibility: owned by the tenant (labels have no soft delete).
+
+    ``default_scope`` also guards the ``label_id`` reference on TaskLabel.
+    """
+
+    model = Label
+
+    owned_by_tenant = tenant_scope(Label)
+    default_scope = owned_by_tenant
 
 
 class TaskLabel(fr.TimestampsMixin, fr.IDBase):

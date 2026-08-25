@@ -10,17 +10,10 @@ from sqlalchemy.orm import selectinload
 
 import fastapi_restly as fr
 
-from ..tasks.models import Task, TaskPriority, TaskStatus, TaskType
+from ..tasks.models import Task, TaskClauses, TaskPriority, TaskStatus, TaskType
 from ..tasks.schemas import TaskSchema
-from ..views import (
-    AuditStampedMixin,
-    SoftDeleteMixin,
-    TenantBase,
-    TenantScopedMixin,
-    soft_delete_scope,
-    tenant_scope,
-)
-from .models import Project, ProjectStatus
+from ..views import AuditStampedMixin, SoftDeleteMixin, TenantBase, TenantScopedMixin
+from .models import Project, ProjectClauses, ProjectStatus
 from .schemas import ProjectSchema
 
 
@@ -50,8 +43,9 @@ class ProjectStats(BaseModel):
 class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantBase):
     """CRUD endpoints for projects.
 
-    Read visibility is the declared ``scope``: tenant ownership AND
-    not-soft-deleted, feeding listing, count, and retrieve alike. The
+    Read visibility is the model's ``default_scope`` (``ProjectClauses``):
+    tenant ownership AND not-soft-deleted, feeding listing, count,
+    retrieve, and every ``project_id`` reference alike. The
     mixins add the write-side halves (left → right via MRO):
     - ``SoftDeleteMixin`` — ``delete_object`` sets ``deleted_at`` instead of
       removing the row.
@@ -69,7 +63,7 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
     prefix = "/projects"
     model = Project
     schema = ProjectSchema
-    scope = fr.all_of(tenant_scope(Project), soft_delete_scope(Project))
+    # No scope declared: reads apply ProjectClauses.default_scope.
     exclude_routes = [fr.ViewRoute.DELETE]  # replaced by soft_delete below
 
     async def _decorate_project_response(self, project: Project) -> Project:
@@ -96,7 +90,7 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
         return project
 
     async def get_many(self, query_params) -> fr.ListingResult[Project]:
-        # The declared scope enforces tenant + soft-delete filtering already.
+        # The default scope enforces tenant + soft-delete filtering already.
         # Here we only do project-specific response decoration on each row
         # in the page.
         result = await super().get_many(query_params)
@@ -110,7 +104,7 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
         )
 
     async def get_one(self, id: int):
-        # The declared scope enforces tenant + soft-delete filtering already.
+        # The default scope enforces tenant + soft-delete filtering already.
         # ``get_one`` is the auth-free load+scope+404 override point; we layer only
         # project-specific response decoration on top. ``handle_get_one``
         # (and therefore every read path) routes through here.
@@ -223,14 +217,13 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
     async def restore(self, id: int) -> Project:
         """Restore a soft-deleted project.
 
-        This bypasses the mixin's ``deleted_at IS NULL`` filter, then re-checks
-        tenant scope before running the restore write action.
+        Reads through ``ProjectClauses.owned_by_tenant`` alone: the tenant
+        leaf of the default scope without ``not_deleted``, so the deleted
+        row is reachable while another tenant's still 404s.
         """
-        project = await self.session.get(Project, id)
+        q = ProjectClauses.owned_by_tenant.select(Project).where(Project.id == id)
+        project = (await self.session.scalars(q)).one_or_none()
         if project is None:
-            raise HTTPException(404)
-        org_id = self._current_org_id()
-        if org_id is not None and project.organization_id != org_id:
             raise HTTPException(404, detail="Project not found")
         if project.deleted_at is None:
             raise HTTPException(status_code=400, detail="Project is not deleted")
@@ -351,16 +344,14 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
     async def list_project_tasks(self, id: int) -> list[Task]:
         """List tasks for a specific project, honouring task visibility rules.
 
-        Applies ``task_visibility`` — the same scope clause ``TaskView``
+        Applies ``TaskClauses.visible`` — the same scope ``TaskView``
         declares — so ``GET /projects/{id}/tasks`` and ``GET /tasks/`` can
         never disagree about which tasks exist for the caller. Tenant
         scoping is implicit: ``self.handle_get_one(id)`` already verified
         the project is visible to the caller, and tasks are project-bound.
         """
-        from ..tasks.views import task_visibility
-
         await self.handle_get_one(id)
-        q = fr.apply_clauses(select(Task).where(Task.project_id == id), task_visibility)
+        q = TaskClauses.visible.select(Task).where(Task.project_id == id)
         result = await self.session.scalars(q)
         return list(result.all())
 

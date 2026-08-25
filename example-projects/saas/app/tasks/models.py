@@ -2,12 +2,16 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Any
+from typing import Annotated, Any
 
+import sqlalchemy as sa
 from sqlalchemy import ForeignKey, Integer, orm
 from sqlalchemy.types import TypeDecorator
 
 import fastapi_restly as fr
+
+from ..context import Current, soft_delete_scope
+from ..projects.models import Project
 
 
 class IntEnumType(TypeDecorator):
@@ -127,3 +131,58 @@ class Task(fr.TimestampsMixin, fr.IDBase):
     task_labels: orm.Mapped[list["TaskLabel"]] = orm.relationship(  # noqa: F821
         back_populates="task", init=False, default_factory=list
     )
+
+
+@fr.where_clause
+def _in_current_org(
+    org_id: Annotated[int | None, Current.org_id],
+    admin: Annotated[bool, Current.is_admin],
+) -> sa.ColumnElement[bool]:
+    """The task's project belongs to the caller's organization.
+
+    Tasks reach their organization through the project, so the tenant
+    rule is an EXISTS: the shape a reference-check scope must have.
+    Admin requests, and requests without an org in context, see every
+    task.
+    """
+    if admin or org_id is None:
+        return sa.true()
+    return Task.project.has(Project.organization_id == org_id)
+
+
+@fr.where_clause
+def _assigned_to_current_user(
+    user_id: Annotated[int | None, Current.user_id],
+    admin: Annotated[bool, Current.is_admin],
+) -> sa.ColumnElement[bool]:
+    """Row-level permission: tasks assigned to the authenticated user.
+
+    Admin requests, and requests without a user in context, see every
+    task.
+    """
+    if admin or user_id is None:
+        return sa.true()
+    return Task.assignee_id == user_id
+
+
+class TaskClauses(fr.ClauseNamespace):
+    """Task visibility: two rules with two audiences.
+
+    ``default_scope`` guards references to Task (``parent_id``, a label
+    attach): the task must live in the caller's organization, reached
+    through its project with EXISTS. ``visible`` is the stricter read rule
+    ``TaskView`` declares as its ``scope``: assigned to the current user
+    and not soft-deleted.
+    """
+
+    model = Task
+
+    in_current_org = _in_current_org
+    assigned_to_current_user = _assigned_to_current_user
+    not_deleted = soft_delete_scope(Task)
+
+    # The read rule TaskView declares; shared here so ProjectView's
+    # /{id}/tasks route can never disagree with GET /tasks.
+    visible = fr.all_of(assigned_to_current_user, not_deleted)
+
+    default_scope = in_current_org

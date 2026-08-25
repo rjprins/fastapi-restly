@@ -240,22 +240,33 @@ fields.
 
 The mixins layer through cooperative `super()` calls, and order matters only
 for short-circuit behaviour (for example `_is_admin()` skipping tenant
-scoping). A typical project view composes all three:
+scoping). The read halves compose in the model's
+[clause namespace](#clause-namespaces) as its
+[default scope](#default-scope), so a typical project view only
+stacks the write-side mixins:
 
 ```python
+class ProjectClauses(fr.ClauseNamespace):
+    model = Project
+
+    owned_by_tenant = tenant_scope(Project)
+    not_deleted = soft_delete_scope(Project)
+    default_scope = fr.all_of(owned_by_tenant, not_deleted)
+
+
 @fr.include_view(app)
 class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, fr.AsyncRestView):
     prefix = "/projects"
     model = Project
     schema = ProjectRead
-    scope = fr.all_of(tenant_scope(Project), soft_delete_scope(Project))
 ```
 
 {meth}`get_many <fastapi_restly.views.RestView.get_many>`,
 {meth}`count <fastapi_restly.views.RestView.count>`, and
 {meth}`get_one <fastapi_restly.views.RestView.get_one>` all apply the
-declared scope, so tenant and soft-delete filters cover listings, totals,
-single-row reads, updates, and deletes; the mixins add the write halves.
+default scope, so tenant and soft-delete filters cover listings, totals,
+single-row reads, updates, and deletes, and every reference to Project
+checks it too; the mixins add the write halves.
 
 ## Two ergonomic gotchas
 

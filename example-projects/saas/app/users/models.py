@@ -7,6 +7,8 @@ from sqlalchemy import ForeignKey, orm
 
 import fastapi_restly as fr
 
+from ..context import soft_delete_scope, tenant_scope
+
 
 class UserRole(str, Enum):
     """User roles within an organization."""
@@ -63,3 +65,17 @@ class User(fr.TimestampsMixin, fr.IDBase):
         # updated_by_id FKs to user.id from AuditStampedMixin's columns.
         foreign_keys="Task.assignee_id",
     )
+
+
+class UserClauses(fr.ClauseNamespace):
+    """User visibility: owned by the tenant and not soft-deleted.
+
+    ``default_scope`` also guards references, so a cross-tenant or deleted
+    ``assignee_id`` on a task reads as "does not exist" (404).
+    """
+
+    model = User
+
+    owned_by_tenant = tenant_scope(User)
+    not_deleted = soft_delete_scope(User)
+    default_scope = fr.all_of(owned_by_tenant, not_deleted)

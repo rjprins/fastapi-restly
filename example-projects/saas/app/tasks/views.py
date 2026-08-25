@@ -1,44 +1,14 @@
 """Task view."""
 
-from typing import Annotated
-
 import fastapi
-import sqlalchemy as sa
 from fastapi import HTTPException
 from pydantic import BaseModel
 
 import fastapi_restly as fr
 
-from ..views import (
-    AuditStampedMixin,
-    Current,
-    SoftDeleteMixin,
-    TenantBase,
-    soft_delete_scope,
-)
-from .models import Task, TaskPriority, TaskStatus, TaskType
+from ..views import AuditStampedMixin, SoftDeleteMixin, TenantBase
+from .models import Task, TaskClauses, TaskPriority, TaskStatus, TaskType
 from .schemas import TaskSchema
-
-
-@fr.where_clause
-def assigned_to_current_user(
-    user_id: Annotated[int | None, Current.user_id],
-    admin: Annotated[bool, Current.is_admin],
-) -> sa.ColumnElement[bool]:
-    """Row-level permission: tasks assigned to the authenticated user.
-
-    Admin requests, and requests without a user in context, see every task.
-    Policy for one view, so it lives here beside it, built from the shared
-    context values in ``app.views``.
-    """
-    if admin or user_id is None:
-        return sa.true()
-    return Task.assignee_id == user_id
-
-
-# The whole visibility rule for tasks, under one name so custom routes on
-# other views (ProjectView's /{id}/tasks) can apply the same scope.
-task_visibility = fr.all_of(assigned_to_current_user, soft_delete_scope(Task))
 
 
 class TaskCreateSchema(BaseModel):
@@ -90,9 +60,10 @@ VALID_TRANSITIONS = {
 class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
     """CRUD endpoints for tasks.
 
-    Tenant scope is *not* applied here — task visibility is by
-    ``assignee_id`` (a row-level permission, not a tenant filter), declared
-    in the ``scope`` together with the soft-delete predicate. Retrieve
+    Tenant scope is *not* applied to reads here — task visibility is by
+    ``assignee_id`` (a row-level permission, not a tenant filter):
+    ``scope = TaskClauses.visible`` replaces the model's ``default_scope``,
+    which keeps guarding references to Task with the tenant EXISTS. Retrieve
     applies the same scope, so the predicate that filters listing also
     returns 404 from ``GET /tasks/{id}`` for tasks not assigned to the
     current user — and cascades through ``handle_update`` and
@@ -105,7 +76,7 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
     prefix = "/tasks"
     model = Task
     schema = TaskSchema
-    scope = task_visibility
+    scope = TaskClauses.visible
 
     async def delete_object(self, obj):
         """Decrement the parent project's story-point rollup before delete."""

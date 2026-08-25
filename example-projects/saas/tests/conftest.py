@@ -4,9 +4,9 @@ from contextlib import contextmanager
 from pathlib import Path
 
 import pytest
+from app.context import get_current_org_id, get_current_user_id
 from app.main import create_app
 from app.settings import Settings
-from app.views import get_current_org_id, get_current_user_id
 from sqlalchemy import make_url
 
 import fastapi_restly as fr
