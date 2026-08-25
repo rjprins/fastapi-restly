@@ -37,13 +37,14 @@ def test_default_scope_and_view_scope_over_http(client):
         name: Mapped[str]
         deleted: Mapped[bool] = mapped_column(default=False)
 
-    current_tenant = fr.context_param("tenant_id", int)
+    class Current(fr.ContextNamespace):
+        tenant_id: fr.ContextParam[int]
 
     class ScopeItemClauses(fr.ClauseNamespace):
         model = ScopeItem
 
         is_deleted = fr.where_clause(ScopeItem.deleted.is_(True))
-        owned_by_tenant = fr.where_clause(ScopeItem.tenant_id == current_tenant)
+        owned_by_tenant = fr.where_clause(ScopeItem.tenant_id == Current.tenant_id)
         visible = fr.all_of(owned_by_tenant, fr.none_of(is_deleted))
         trashed = fr.all_of(owned_by_tenant, is_deleted)
         default_scope = visible
@@ -54,7 +55,7 @@ def test_default_scope_and_view_scope_over_http(client):
         deleted: bool = False
 
     async def bind_tenant(tenant: Annotated[int, Header(alias="x-tenant-id")]):
-        with current_tenant.bind(tenant_id=tenant):
+        with Current.tenant_id.bind(tenant_id=tenant):
             yield
 
     @fr.include_view(client.app)
@@ -116,12 +117,13 @@ def test_unscoped_view_reads_past_the_default_scope(client):
         tenant_id: Mapped[int]
         name: Mapped[str]
 
-    current_tenant = fr.context_param("tenant_id", int)
+    class Current(fr.ContextNamespace):
+        tenant_id: fr.ContextParam[int]
 
     class ScopeDocClauses(fr.ClauseNamespace):
         model = ScopeDoc
 
-        owned_by_tenant = fr.where_clause(ScopeDoc.tenant_id == current_tenant)
+        owned_by_tenant = fr.where_clause(ScopeDoc.tenant_id == Current.tenant_id)
         default_scope = owned_by_tenant
 
     class ScopeDocSchema(fr.IDSchema):
@@ -129,7 +131,7 @@ def test_unscoped_view_reads_past_the_default_scope(client):
         name: str
 
     async def bind_tenant(tenant: Annotated[int, Header(alias="x-tenant-id")]):
-        with current_tenant.bind(tenant_id=tenant):
+        with Current.tenant_id.bind(tenant_id=tenant):
             yield
 
     @fr.include_view(client.app)
@@ -169,12 +171,13 @@ def test_reference_checks_apply_scopes_over_http(client):
         tenant_id: Mapped[int]
         active: Mapped[bool]
 
-    current_tenant = fr.context_param("tenant_id", int)
+    class Current(fr.ContextNamespace):
+        tenant_id: fr.ContextParam[int]
 
     class ScopeOwnerClauses(fr.ClauseNamespace):
         model = ScopeOwner
 
-        owned_by_tenant = fr.where_clause(ScopeOwner.tenant_id == current_tenant)
+        owned_by_tenant = fr.where_clause(ScopeOwner.tenant_id == Current.tenant_id)
         is_active = fr.where_clause(ScopeOwner.active.is_(True))
         default_scope = fr.all_of(owned_by_tenant, is_active)
 
@@ -202,7 +205,7 @@ def test_reference_checks_apply_scopes_over_http(client):
         ) = None
 
     async def bind_tenant(tenant: Annotated[int, Header(alias="x-tenant-id")]):
-        with current_tenant.bind(tenant_id=tenant):
+        with Current.tenant_id.bind(tenant_id=tenant):
             yield
 
     @fr.include_view(client.app)
@@ -259,12 +262,13 @@ def test_idref_resolution_applies_default_scope_over_http(client):
         tenant_id: Mapped[int]
         name: Mapped[str]
 
-    current_tenant = fr.context_param("tenant_id", int)
+    class Current(fr.ContextNamespace):
+        tenant_id: fr.ContextParam[int]
 
     class ScopeAuthorClauses(fr.ClauseNamespace):
         model = ScopeAuthor
 
-        default_scope = fr.where_clause(ScopeAuthor.tenant_id == current_tenant)
+        default_scope = fr.where_clause(ScopeAuthor.tenant_id == Current.tenant_id)
 
     class ScopeBook(fr.IDBase):
         title: Mapped[str]
@@ -279,7 +283,7 @@ def test_idref_resolution_applies_default_scope_over_http(client):
         author_id: fr.IDRef[ScopeAuthor]
 
     async def bind_tenant(tenant: Annotated[int, Header(alias="x-tenant-id")]):
-        with current_tenant.bind(tenant_id=tenant):
+        with Current.tenant_id.bind(tenant_id=tenant):
             yield
 
     @fr.include_view(client.app)
@@ -329,19 +333,20 @@ def test_async_bind_dependency_reaches_sync_endpoints(sync_db):
         tenant_id: Mapped[int]
         name: Mapped[str]
 
-    current_tenant = fr.context_param("tenant_id", int)
+    class Current(fr.ContextNamespace):
+        tenant_id: fr.ContextParam[int]
 
     class SyncScopedNoteClauses(fr.ClauseNamespace):
         model = SyncScopedNote
 
-        default_scope = fr.where_clause(SyncScopedNote.tenant_id == current_tenant)
+        default_scope = fr.where_clause(SyncScopedNote.tenant_id == Current.tenant_id)
 
     class SyncScopedNoteSchema(fr.IDSchema):
         tenant_id: int
         name: str
 
     async def bind_tenant(tenant: Annotated[int, Header(alias="x-tenant-id")]):
-        with current_tenant.bind(tenant_id=tenant):
+        with Current.tenant_id.bind(tenant_id=tenant):
             yield
 
     client = RestlyTestClient(FastAPI())
@@ -383,13 +388,14 @@ class SyncRow(_SyncBase):
     tenant_id: Mapped[int]
 
 
-_sync_tenant = fr.context_param("tenant_id", int)
+class _SyncContext(fr.ContextNamespace):
+    tenant_id: fr.ContextParam[int]
 
 
 class SyncRowClauses(fr.ClauseNamespace):
     model = SyncRow
 
-    default_scope = fr.where_clause(SyncRow.tenant_id == _sync_tenant)
+    default_scope = fr.where_clause(SyncRow.tenant_id == _SyncContext.tenant_id)
 
 
 class _SyncRowSchema(fr.IDSchema):
@@ -416,7 +422,7 @@ def sync_session():
 def test_sync_view_reads_through_default_scope(sync_session):
     view = _SyncRowView()
     view.session = sync_session
-    with _sync_tenant.bind(tenant_id=1):
+    with _SyncContext.tenant_id.bind(tenant_id=1):
         assert view.get_one(1).id == 1
         with pytest.raises(NotFound):
             view.get_one(2)
@@ -497,7 +503,7 @@ def test_idref_resolution_applies_default_scope_sync(sync_session):
     class _RefSchema(fr.BaseSchema):
         rows: list[fr.IDRef[SyncRow]]
 
-    with _sync_tenant.bind(tenant_id=1):
+    with _SyncContext.tenant_id.bind(tenant_id=1):
         resolved = _resolve_ids_to_sqlalchemy_objects(
             sync_session, _RefSchema(rows=[1])
         )
@@ -534,7 +540,7 @@ def _by_rank(stmt: Select) -> Select:
 class SyncRankedClauses(fr.ClauseNamespace):
     model = SyncRanked
 
-    owned_by_tenant = fr.where_clause(SyncRanked.tenant_id == _sync_tenant)
+    owned_by_tenant = fr.where_clause(SyncRanked.tenant_id == _SyncContext.tenant_id)
     by_rank = fr.transform_clause(_by_rank)  # material is fine; a scope is not
     default_scope = owned_by_tenant
 
@@ -576,7 +582,11 @@ def test_ref_exists_rejects_a_non_clause_scope():
     with pytest.raises(TypeError, match="where_clause"):
         fr.RefExists(SyncRow, scope=SyncRow.tenant_id == 1)
     with pytest.raises(TypeError, match="ContextParam"):
-        fr.RefExists(SyncRow, scope=fr.context_param("x"))
+
+        class _SlotContext(fr.ContextNamespace):
+            x: fr.ContextParam[int]
+
+        fr.RefExists(SyncRow, scope=_SlotContext.x)
     with pytest.raises(TypeError, match="WhereClause"):
         fr.RefExists(SyncRow, scope=fr.transform_clause(_by_rank))
     # None says nothing: a variable that happens to be None must not
@@ -602,11 +612,14 @@ def test_default_scope_must_be_a_where_clause():
             model = _Plain
             default_scope = fr.transform_clause(_by_rank)
 
+    class _ZContext(fr.ContextNamespace):
+        z: fr.ContextParam[int]
+
     with pytest.raises(TypeError, match="WhereClause"):
 
         class _SlotOnly(fr.ClauseNamespace):
             model = _Plain
-            default_scope = fr.context_param("z")
+            default_scope = _ZContext.z
 
     with pytest.raises(TypeError, match="UNSCOPED"):
 
@@ -632,7 +645,7 @@ def test_subclass_namespace_must_restate_default_scope():
 
     class AnimalClauses(fr.ClauseNamespace):
         model = Animal
-        default_scope = fr.where_clause(Animal.tenant_id == _sync_tenant)
+        default_scope = fr.where_clause(Animal.tenant_id == _SyncContext.tenant_id)
 
     assert _default_scope(Dog) is AnimalClauses.default_scope  # inherited
 
@@ -665,7 +678,7 @@ def test_post_hoc_default_scope_corruption_is_loud():
 
     class _RowClauses(fr.ClauseNamespace):
         model = _Row
-        default_scope = fr.where_clause(_Row.tenant_id == _sync_tenant)
+        default_scope = fr.where_clause(_Row.tenant_id == _SyncContext.tenant_id)
 
     _RowClauses.default_scope = _Row.tenant_id == 1  # forgot where_clause()
     with pytest.raises(TypeError, match="WhereClause"):
@@ -689,7 +702,7 @@ class SyncWeird(_SyncBase):
 class SyncWeirdClauses(fr.ClauseNamespace):
     model = SyncWeird
 
-    default_scope = fr.where_clause(SyncWeird.tenant_id == _sync_tenant)
+    default_scope = fr.where_clause(SyncWeird.tenant_id == _SyncContext.tenant_id)
 
 
 def test_scoped_resolution_uses_the_mapper_pk(sync_session):
@@ -699,11 +712,11 @@ def test_scoped_resolution_uses_the_mapper_pk(sync_session):
     class _WeirdSchema(fr.BaseSchema):
         thing: fr.IDSchema[SyncWeird]
 
-    with _sync_tenant.bind(tenant_id=1):
+    with _SyncContext.tenant_id.bind(tenant_id=1):
         resolved = _resolve_ids_to_sqlalchemy_objects(
             sync_session, _WeirdSchema(thing=7)
         )
         assert resolved["thing"].code == 7
-    with _sync_tenant.bind(tenant_id=2):
+    with _SyncContext.tenant_id.bind(tenant_id=2):
         with pytest.raises(NotFound, match="thing"):
             _resolve_ids_to_sqlalchemy_objects(sync_session, _WeirdSchema(thing=7))

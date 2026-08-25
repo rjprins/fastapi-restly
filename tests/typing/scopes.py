@@ -25,14 +25,15 @@ class Ticket(fr.IDBase):
     deleted_at: Mapped[datetime | None]
 
 
-current_tenant = fr.context_param("tenant_id", int)
+class Current(fr.ContextNamespace):
+    tenant_id: fr.ContextParam[int]
 
 
 class TicketClauses(fr.ClauseNamespace):
     model = Ticket
 
     is_deleted = fr.where_clause(Ticket.deleted_at.is_not(None))
-    owned_by_tenant = fr.where_clause(Ticket.tenant_id == current_tenant)
+    owned_by_tenant = fr.where_clause(Ticket.tenant_id == Current.tenant_id)
     visible = fr.all_of(owned_by_tenant, fr.none_of(is_deleted))
     trashed = fr.all_of(owned_by_tenant, is_deleted)
     default_scope = visible

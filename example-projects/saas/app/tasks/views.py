@@ -11,10 +11,9 @@ import fastapi_restly as fr
 
 from ..views import (
     AuditStampedMixin,
+    Current,
     SoftDeleteMixin,
     TenantBase,
-    current_user,
-    request_is_admin,
     soft_delete_scope,
 )
 from .models import Task, TaskPriority, TaskStatus, TaskType
@@ -23,8 +22,8 @@ from .schemas import TaskSchema
 
 @fr.where_clause
 def assigned_to_current_user(
-    user_id: Annotated[int | None, current_user],
-    admin: Annotated[bool, request_is_admin],
+    user_id: Annotated[int | None, Current.user_id],
+    admin: Annotated[bool, Current.is_admin],
 ) -> sa.ColumnElement[bool]:
     """Row-level permission: tasks assigned to the authenticated user.
 

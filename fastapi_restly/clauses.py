@@ -3,8 +3,9 @@
 A Clause carries a predicate ("where") and/or a statement transform
 ("transform"). Clause itself is abstract; each constructor names the
 kind it builds: where_clause() -> WhereClause, transform_clause() ->
-TransformClause, combine() -> CombinedClause, context_param() ->
-ContextParam. A CombinedClause always
+TransformClause, combine() -> CombinedClause. The fourth kind, a
+ContextParam value slot, is declared in a ContextNamespace
+(`name: ContextParam[T]`), not constructed. A CombinedClause always
 carries at least one transform; a bundle of only wheres is all_of's
 job. Functions passed to the constructors are wrapped with @contextual
 (see contextargs): parameters the caller does not supply are injected
@@ -52,15 +53,19 @@ from __future__ import annotations
 
 import functools as _functools
 import inspect as _inspect
+import sys as _sys
 from contextlib import ExitStack as _ExitStack
 from contextlib import contextmanager as _contextmanager
 from typing import Any as _Any
 from typing import Callable as _Callable
 from typing import ClassVar as _ClassVar
+from typing import Generic as _Generic
 from typing import Iterator as _Iterator
 from typing import Sequence as _Sequence
 from typing import TypeVar as _TypeVar
 from typing import final as _final
+from typing import get_args as _get_args
+from typing import get_origin as _get_origin
 from typing import overload as _overload
 
 from sqlalchemy import ColumnElement as _ColumnElement
@@ -93,6 +98,7 @@ __all__ = [
     "Clause",
     "ClauseNamespace",
     "CombinedClause",
+    "ContextNamespace",
     "ContextParam",
     "TransformClause",
     "WhereClause",
@@ -101,10 +107,11 @@ __all__ = [
     "apply_clauses",
     "combine",
     "none_of",
-    "context_param",
     "transform_clause",
     "where_clause",
 ]
+
+_T = _TypeVar("_T")
 
 
 class Clause:
@@ -312,6 +319,12 @@ class Clause:
         render(self, "", "")
         return "\n".join(lines)
 
+    @classmethod
+    def _blank(cls) -> _Self:
+        # internal construction path; ContextParam overrides it because its
+        # public __init__ deliberately raises
+        return cls()
+
     def alias(self, name: str | None = None) -> _Self:
         """An independent instance with its own context namespace.
 
@@ -326,7 +339,7 @@ class Clause:
                 "alias works on leaf clauses only; "
                 "rebuild composites from aliased leaves"
             )
-        result = type(self)()
+        result = type(self)._blank()
         result._children = self._children  # embedded slots stay shared by design
         result._condition = self._condition
         if self._where_fn is not None:
@@ -512,17 +525,32 @@ class CombinedClause(Clause):
     """A named bundle of wheres and transforms; always carries a transform."""
 
 
-class ContextParam(Clause):
+class ContextParam(Clause, _Generic[_T]):
     """A named value slot: no predicate, no transform, no SQL of its own.
 
-    One slot, three positions. Embedded in an expression
-    (``Item.tenant_id == current_tenant``) it becomes a placeholder,
-    filled with the bound value each time the clause resolves. As
-    ``Annotated`` metadata on a clause function's parameter it feeds
-    that parameter from the slot. Called, it returns the bound value
-    for Python-side use. Sharing is by identity: every clause that
+    Declared in a ContextNamespace (``tenant_id: ContextParam[UUID]``),
+    never constructed directly: a slot is pure name and identity, and the
+    namespace is its address. One slot, three positions. Embedded in an
+    expression (``Item.tenant_id == Current.tenant_id``) it becomes a
+    placeholder, filled with the bound value each time the clause
+    resolves. As ``Annotated`` metadata on a clause function's parameter
+    it feeds that parameter from the slot. Called, it returns the bound
+    value for Python-side use. Sharing is by identity: every clause that
     embeds or marks the same slot is served by a single bind().
     """
+
+    def __init__(self) -> None:
+        raise TypeError(
+            "a ContextParam is not constructed directly; declare it in a "
+            "ContextNamespace: `name: ContextParam[T]` in the class body"
+        )
+
+    @classmethod
+    def _blank(cls) -> _Self:
+        # the internal construction path around the teaching __init__
+        self = cls.__new__(cls)
+        Clause.__init__(self)
+        return self
 
     def __clause_element__(self) -> object:
         # SQLAlchemy's coercion protocol: the slot participates in
@@ -541,11 +569,126 @@ class ContextParam(Clause):
             return f"<ContextParam {names}, bound>"
         return f"<ContextParam {names}>"
 
-    def __call__(self, /, **binds: _Any) -> _Any:
+    def __call__(self, /, **binds: _Any) -> _T:
         """Resolve to the bound value; keyword arguments are an ephemeral bind()."""
         with self.bind(**binds):
-            assert self._param_fn is not None  # invariant: set by context_param()
+            assert self._param_fn is not None  # invariant: set at declaration
             return _teaching_call(self._param_fn)
+
+
+def _context_member_type(cls: type, name: str, annotation: _Any) -> _Any | None:
+    # tolerant per-member resolve, like the parameter markers: a stringified
+    # annotation (PEP 563) that names ContextParam is accepted with the type
+    # unresolved; anything that is not a ContextParam annotation raises
+    if isinstance(annotation, str):
+        module = _sys.modules.get(cls.__module__)
+        try:
+            annotation = eval(annotation, getattr(module, "__dict__", {}))  # noqa: S307
+        except Exception:
+            if "ContextParam" in annotation:
+                return None
+            raise TypeError(
+                f"{cls.__name__}.{name}: a ContextNamespace member is "
+                f"annotated `ContextParam[T]`; cannot resolve {annotation!r}"
+            ) from None
+    if _get_origin(annotation) is _ClassVar:
+        args = _get_args(annotation)
+        annotation = args[0] if args else annotation
+    if annotation is ContextParam:
+        return None
+    if _get_origin(annotation) is ContextParam:
+        args = _get_args(annotation)
+        return args[0] if args else None
+    raise TypeError(
+        f"{cls.__name__}.{name}: a ContextNamespace member is annotated "
+        f"`ContextParam[T]`, got {annotation!r}"
+    )
+
+
+class ContextNamespace:
+    """Declares the ContextParams of one context, one per annotation.
+
+    Subclass and annotate: each public annotation `name: ContextParam[T]`
+    materializes a ContextParam bound under `name`, so the attribute name
+    is the bind name and a typo fails at import. Assigning an existing
+    member adopts it (`tenant_id = Current.tenant_id`), so namespaces can
+    share one slot; helpers take a leading underscore. The conventional
+    app-wide subclass is named Current; a value with a smaller audience
+    gets a smaller namespace beside its consumers. Declaring here says
+    where a value lives, not where it is bound: binding stays at the
+    narrowest level that knows the value, and an unbound read still
+    raises.
+    """
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        annotations = cls.__dict__.get("__annotations__") or {}
+        for name, annotation in annotations.items():
+            if name.startswith("_"):
+                continue
+            existing = vars(cls).get(name)
+            if isinstance(existing, ContextParam):
+                continue  # annotated and adopted; the assignment wins
+            type_ = _context_member_type(cls, name, annotation)
+            setattr(cls, name, _context_param(name, type_))
+        for name, value in list(vars(cls).items()):
+            if name.startswith("_"):
+                continue
+            if not isinstance(value, ContextParam):
+                raise TypeError(
+                    f"{cls.__name__}.{name} is not a ContextParam; declare "
+                    "members by annotation (`name: ContextParam[T]`), adopt "
+                    "one by assignment, or prefix a helper with an underscore"
+                )
+
+    @classmethod
+    def _members(cls) -> dict[str, ContextParam[_Any]]:
+        members: dict[str, ContextParam[_Any]] = {}
+        for klass in reversed(cls.__mro__):
+            for name, value in vars(klass).items():
+                if isinstance(value, ContextParam):
+                    members[name] = value
+        return members
+
+    @classmethod
+    @_contextmanager
+    def bind(cls, /, **values: _Any):
+        """Bind member values for the duration of the with block.
+
+        Keys are member names; a name this namespace does not declare
+        raises. Equivalent to nesting each member's own bind().
+        """
+        members = cls._members()
+        unknown = sorted(set(values) - set(members))
+        if unknown:
+            raise TypeError(f"{cls.__name__} has no member(s): " + ", ".join(unknown))
+        with _ExitStack() as stack:
+            for name, value in values.items():
+                stack.enter_context(members[name].bind(**{name: value}))
+            yield
+
+    @classmethod
+    def explain(cls) -> str:
+        """Each member with its bound value and origin, or UNBOUND."""
+        lines = [cls.__name__]
+        for name, member in sorted(cls._members().items()):
+            fn = member._param_fn
+            bound = fn.bindings() if fn is not None else {}
+            if name in bound:
+                value, origin = bound[name]
+                try:
+                    shown = repr(value)
+                except Exception:
+                    shown = f"<unrepresentable {type(value).__name__}>"
+                if len(shown) > 60:
+                    shown = shown[:57] + "..."
+                suffix = f"   bound at {origin}" if origin else ""
+                lines.append(f"├─ {name} = {shown}{suffix}")
+            else:
+                lines.append(f"├─ {name}: UNBOUND")
+        if len(lines) > 1:
+            lines[-1] = "└─" + lines[-1][2:]
+        return "\n".join(lines)
 
 
 def _teaching_call(fn: _Contextual, *args):
@@ -765,18 +908,19 @@ def transform_clause(fn: _Callable[..., _Select[_Any]]) -> TransformClause:
     return clause
 
 
-def context_param(name: str, type_: type[_Any] | None = None) -> ContextParam:
+def _context_param(name: str, type_: _Any | None = None) -> ContextParam[_Any]:
     """A ContextParam holding one value, bound under `name`.
 
-    Calling the clause returns the bound value; an unbound call raises
-    TypeError naming the slot. The optional type lands in the slot's
-    synthesized signature, where introspection can read it.
+    The construction primitive behind ContextNamespace, deliberately not
+    public: a slot is pure name and identity, so it is declared where it
+    has an address. The optional type lands in the slot's synthesized
+    signature, where introspection can read it.
     """
 
     def fn(**values):
         return values[name]
 
-    fn.__name__ = fn.__qualname__ = f"context_param({name})"
+    fn.__name__ = fn.__qualname__ = f"ContextParam({name})"
     annotation = type_ if type_ is not None else _inspect.Parameter.empty
     setattr(
         fn,
@@ -789,7 +933,7 @@ def context_param(name: str, type_: type[_Any] | None = None) -> ContextParam:
             ]
         ),
     )
-    clause = ContextParam()
+    clause = ContextParam._blank()
     clause._param_fn = _contextual(fn)
     placeholder = _sqla_bindparam(name)
     placeholder._fr_param = clause  # tag for _embedded_slots

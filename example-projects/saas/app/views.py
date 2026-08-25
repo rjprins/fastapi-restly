@@ -71,12 +71,17 @@ def get_is_admin(request: fastapi.Request) -> bool:
     return bool(getattr(request.state, "is_admin", False))
 
 
-# Per-request context values the scope clauses read. The bind dependency
-# below broadcasts them once per request; the clauses branch on them.
-current_org = fr.context_param("org_id", int)
-current_user = fr.context_param("user_id", int)
-request_is_admin = fr.context_param("is_admin", bool)
-show_deleted = fr.context_param("include_deleted", bool)
+class Current(fr.ContextNamespace):
+    """Per-request context the scope clauses read.
+
+    The bind dependency below broadcasts these once per request; the
+    clauses branch on them. Member names are the bind names.
+    """
+
+    org_id: fr.ContextParam[int | None]
+    user_id: fr.ContextParam[int | None]
+    is_admin: fr.ContextParam[bool]
+    include_deleted: fr.ContextParam[bool]
 
 
 async def bind_request_context(
@@ -95,11 +100,11 @@ async def bind_request_context(
     include_deleted = (
         request.query_params.get("include_deleted", "false").lower() == "true"
     )
-    with (
-        current_org.bind(org_id=org_id),
-        current_user.bind(user_id=user_id),
-        request_is_admin.bind(is_admin=is_admin),
-        show_deleted.bind(include_deleted=include_deleted),
+    with Current.bind(
+        org_id=org_id,
+        user_id=user_id,
+        is_admin=is_admin,
+        include_deleted=include_deleted,
     ):
         yield
 
@@ -113,8 +118,8 @@ def tenant_scope(model: type[Any]) -> fr.WhereClause:
 
     @fr.where_clause
     def owned_by_tenant(
-        org_id: Annotated[int | None, current_org],
-        admin: Annotated[bool, request_is_admin],
+        org_id: Annotated[int | None, Current.org_id],
+        admin: Annotated[bool, Current.is_admin],
     ) -> sa.ColumnElement[bool]:
         if admin or org_id is None:
             return sa.true()
@@ -133,7 +138,7 @@ def soft_delete_scope(model: type[Any]) -> fr.WhereClause:
 
     @fr.where_clause
     def not_deleted(
-        include_deleted: Annotated[bool, show_deleted],
+        include_deleted: Annotated[bool, Current.include_deleted],
     ) -> sa.ColumnElement[bool]:
         return sa.true() if include_deleted else model.deleted_at.is_(None)
 

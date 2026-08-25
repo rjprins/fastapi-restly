@@ -22,11 +22,12 @@ class ProjectRead(fr.IDSchema[Project]):
     name: str
 
 
-current_tenant = fr.context_param("tenant_id", int)
+class Current(fr.ContextNamespace):
+    tenant_id: fr.ContextParam[int]
 
 
 async def bind_tenant(tenant_id: Annotated[int, Depends(current_tenant_id)]):
-    with current_tenant.bind(tenant_id=tenant_id):
+    with Current.bind(tenant_id=tenant_id):
         yield
 
 
@@ -37,7 +38,7 @@ class TenantScopedView(
     model = Project
     schema = ProjectRead
     dependencies = [Depends(bind_tenant)]
-    scope = fr.where_clause(Project.tenant_id == current_tenant)
+    scope = fr.where_clause(Project.tenant_id == Current.tenant_id)
 
 
 @fr.include_view(app)

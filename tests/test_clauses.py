@@ -15,11 +15,14 @@ from fastapi_restly.clauses import (
     any_of,
     apply_clauses,
     combine,
-    context_param,
     none_of,
     transform_clause,
     where_clause,
 )
+
+# This file unit-tests the slot primitive itself; consumer code declares
+# slots in a ContextNamespace (see test_context_namespace.py).
+from fastapi_restly.clauses import _context_param as context_param  # noqa: E402
 
 
 class Base(DeclarativeBase):

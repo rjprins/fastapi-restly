@@ -15,11 +15,11 @@ from fastapi_restly.clauses import (
     any_of,
     apply_clauses,
     combine,
-    context_param,
     none_of,
     transform_clause,
     where_clause,
 )
+from fastapi_restly.clauses import _context_param as context_param
 
 
 class Base(DeclarativeBase):

@@ -8,7 +8,8 @@ import pytest
 from sqlalchemy import ColumnElement, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
-from fastapi_restly.clauses import apply_clauses, context_param, where_clause
+from fastapi_restly.clauses import _context_param as context_param
+from fastapi_restly.clauses import apply_clauses, where_clause
 
 if TYPE_CHECKING:
     from decimal import Decimal  # a TYPE_CHECKING-only name, string at runtime

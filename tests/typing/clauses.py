@@ -2,7 +2,8 @@
 
 Covers the constructor-to-type symmetry (where_clause -> WhereClause,
 transform_clause -> TransformClause, combine -> CombinedClause,
-context_param -> ContextParam), the all_of overloads (pure operands narrow
+ContextNamespace declaration -> ContextParam[T]), the all_of overloads
+(pure operands narrow
 to WhereClause), the apply_clauses overloads per statement kind, the
 Model.C annotation pattern, and the WhereClause call form.
 
@@ -30,8 +31,12 @@ class Ticket(fr.IDBase):
     deleted_at: Mapped[datetime | None]
 
 
-current_tenant = fr.context_param("tenant_id", int)
-assert_type(current_tenant, fr.ContextParam)
+class Context(fr.ContextNamespace):
+    tenant_id: fr.ContextParam[int]
+
+
+assert_type(Context.tenant_id, fr.ContextParam[int])
+assert_type(Context.tenant_id(), int)
 
 
 @fr.where_clause
@@ -40,7 +45,7 @@ def in_period(start: datetime, end: datetime) -> ColumnElement[bool]:
 
 
 @fr.where_clause
-def marked(tid: Annotated[int, current_tenant]) -> ColumnElement[bool]:
+def marked(tid: Annotated[int, Context.tenant_id]) -> ColumnElement[bool]:
     return Ticket.tenant_id == tid
 
 
@@ -53,7 +58,7 @@ class TicketClauses(fr.ClauseNamespace):
     model = Ticket
 
     is_deleted = fr.where_clause(Ticket.deleted_at.is_not(None))
-    owned_by_tenant = fr.where_clause(Ticket.tenant_id == current_tenant)
+    owned_by_tenant = fr.where_clause(Ticket.tenant_id == Context.tenant_id)
     in_period = in_period
     marked = marked
     newest_first = newest_first
