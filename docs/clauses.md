@@ -463,11 +463,21 @@ Clauses declared separately do not share bindings, even when their
 functions accept the same parameter name; binding one leaves the other
 unbound, and both in one tree raise as ambiguous. When several clauses
 must follow one value, a tenant id filtering every model, declare the
-value once as a {class}`ContextParam <fastapi_restly.clauses.ContextParam>`:
+value once as a {class}`ContextParam <fastapi_restly.clauses.ContextParam>`
+member of a {class}`ContextNamespace <fastapi_restly.clauses.ContextNamespace>`:
 
 ```python
-current_tenant = fr.context_param("tenant_id", UUID)
+class Current(fr.ContextNamespace):
+    tenant_id: fr.ContextParam[UUID]
 ```
+
+The annotation is the whole declaration: the attribute name is the bind
+name, so a typo fails at import, and `Current.tenant_id` reads as what
+it is, the current context's tenant id. A ContextParam exists only as a
+namespace member; the conventional app-wide namespace is named
+`Current`, and a value with a smaller audience gets a smaller namespace
+beside its consumers. Declaring says where a value lives, not where it
+is bound.
 
 One slot, three positions. Embedded in an expression it becomes a
 placeholder, filled with the bound value each time the clause resolves;
@@ -476,7 +486,7 @@ the slot and wires it into binding:
 
 ```python
 def tenant_scoped(model) -> fr.WhereClause:
-    return fr.where_clause(model.tenant_id == current_tenant)
+    return fr.where_clause(model.tenant_id == Current.tenant_id)
 
 
 class ItemClauses(fr.ClauseNamespace):
@@ -501,7 +511,7 @@ from sqlalchemy import and_
 
 
 @fr.where_clause
-def visible_to_tenant(tid: Annotated[UUID, current_tenant]) -> ColumnElement[bool]:
+def visible_to_tenant(tid: Annotated[UUID, Current.tenant_id]) -> ColumnElement[bool]:
     return and_(Item.tenant_id == tid, Item.deleted_at.is_(None))
 ```
 
@@ -509,12 +519,13 @@ Called, the slot returns the bound value, for the cases where Python
 itself needs it, string formatting or arithmetic:
 
 ```python
-search_term = fr.context_param("term", str)
+class SearchContext(fr.ContextNamespace):
+    term: fr.ContextParam[str]
 
 
 @fr.where_clause
 def name_matches() -> ColumnElement[bool]:
-    return Item.name.ilike(f"%{search_term()}%")
+    return Item.name.ilike(f"%{SearchContext.term()}%")
 ```
 
 The calling form reads the value at that moment, so it requires the
@@ -527,14 +538,14 @@ raises `no clause accepts`, and only binding the slot directly works.
 Use the bare-condition or `Annotated` form for those clauses.
 
 Sharing is by identity: every clause that embeds or marks the same slot
-is served by a single bind, wherever it happens. One dependency covers
-every tenant-scoped model, present and future (illustrative):
-
-```python
-async def bind_tenant(tenant_id: TenantIdFromAuth):
-    with current_tenant.bind(tenant_id=tenant_id):
-        yield
-```
+is served by a single bind, wherever it happens; a second namespace can
+adopt a member by assignment (`tenant_id = Current.tenant_id`) and
+addresses the same slot. The namespace binds as a unit
+(`with Current.bind(tenant_id=tid, locale="nl"):`), and one binding
+covers every tenant-scoped model, present and future. In a FastAPI app
+the binding is a generated dependency; the Scopes guide's
+[Binding scope values](#binding-scope-values) section owns that
+integration.
 
 A ContextParam is not a predicate; `all_of` and the other boolean
 functions reject it. Two distinct slots under the same name in one
@@ -551,7 +562,7 @@ constructor names the kind it builds.
 | {class}`WhereClause <fastapi_restly.clauses.WhereClause>` | `where_clause`, `any_of`, `none_of`, all-where `all_of` | yes | yes | yes |
 | {class}`TransformClause <fastapi_restly.clauses.TransformClause>` | `transform_clause` | no | no | no |
 | {class}`CombinedClause <fastapi_restly.clauses.CombinedClause>` | `combine`, `all_of` with a transform-carrying operand | no | no | no |
-| {class}`ContextParam <fastapi_restly.clauses.ContextParam>` | `context_param` | yes, to the bound value | no | no |
+| {class}`ContextParam <fastapi_restly.clauses.ContextParam>` | a {class}`ContextNamespace <fastapi_restly.clauses.ContextNamespace>` member | yes, to the bound value | no | no |
 
 A `WhereClause` guarantees no transform anywhere in its tree, which is
 what makes the yes-column safe: OR, NOT, UPDATE, and DELETE all break

@@ -94,16 +94,19 @@ Copy them into your project as a starting point.
 
 The read half is a clause factory: one function builds the tenant predicate
 for any model with an ``organization_id`` column, branching on values a
-dependency binds once per request (see the SaaS example's
-``bind_request_context``):
+generated dependency (``Current.depends(...)``, see the SaaS example)
+binds once per request:
 
 ```python
 from typing import Annotated, Any
 import sqlalchemy as sa
 import fastapi_restly as fr
 
-current_org = fr.context_param("org_id", int)
-request_is_admin = fr.context_param("is_admin", bool)
+
+class Current(fr.ContextNamespace):
+    org_id: fr.ContextParam[int | None]
+    is_admin: fr.ContextParam[bool]
+    include_deleted: fr.ContextParam[bool]
 
 
 def tenant_scope(model: type[Any]) -> fr.WhereClause:
@@ -111,8 +114,8 @@ def tenant_scope(model: type[Any]) -> fr.WhereClause:
 
     @fr.where_clause
     def owned_by_tenant(
-        org_id: Annotated[int | None, current_org],
-        admin: Annotated[bool, request_is_admin],
+        org_id: Annotated[int | None, Current.org_id],
+        admin: Annotated[bool, Current.is_admin],
     ) -> sa.ColumnElement[bool]:
         if admin or org_id is None:
             return sa.true()
@@ -161,15 +164,13 @@ timestamp flip:
 ```python
 from datetime import datetime, timezone
 
-show_deleted = fr.context_param("include_deleted", bool)
-
 
 def soft_delete_scope(model: type[Any]) -> fr.WhereClause:
     """Rows of ``model`` not soft-deleted, unless ``?include_deleted=true``."""
 
     @fr.where_clause
     def not_deleted(
-        include_deleted: Annotated[bool, show_deleted],
+        include_deleted: Annotated[bool, Current.include_deleted],
     ) -> sa.ColumnElement[bool]:
         return sa.true() if include_deleted else model.deleted_at.is_(None)
 

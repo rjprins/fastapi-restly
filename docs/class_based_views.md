@@ -217,17 +217,13 @@ With a shared base view you express that once and inherit it:
 
 ```python
 import fastapi_restly as fr
-from fastapi import Depends
 
-current_tenant = fr.context_param("tenant_id", int)
-
-async def bind_tenant(user_id: int = Depends(get_current_user_id)):
-    with current_tenant.bind(tenant_id=await tenant_for(user_id)):
-        yield
+class Current(fr.ContextNamespace):
+    tenant_id: fr.ContextParam[int]
 
 class TenantBase(fr.AsyncRestView):
     """Internal base, never registered directly."""
-    dependencies = [Depends(bind_tenant)]
+    dependencies = [Current.depends(tenant_id=get_current_tenant_id)]
 
 
 @fr.include_view(app)
@@ -235,7 +231,7 @@ class InvoiceView(TenantBase):
     prefix = "/invoices"
     model = Invoice
     schema = InvoiceRead
-    scope = fr.where_clause(Invoice.tenant_id == current_tenant)
+    scope = fr.where_clause(Invoice.tenant_id == Current.tenant_id)
 
 
 @fr.include_view(app)
@@ -243,7 +239,7 @@ class CustomerView(TenantBase):
     prefix = "/customers"
     model = Customer
     schema = CustomerRead
-    scope = fr.where_clause(Customer.tenant_id == current_tenant)
+    scope = fr.where_clause(Customer.tenant_id == Current.tenant_id)
 ```
 
 The result is two views with one shared dependency and a declared filter on

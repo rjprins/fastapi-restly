@@ -85,22 +85,22 @@ To reject an update based on current state, override {meth}`update <fastapi_rest
 The common read customization is row visibility. {meth}`get_many <fastapi_restly.views.RestView.get_many>`, {meth}`count <fastapi_restly.views.RestView.count>`, and {meth}`get_one <fastapi_restly.views.RestView.get_one>` all apply the view's declared {attr}`scope <fastapi_restly.views.BaseRestView.scope>`, so one clause keeps listings, totals, single-row reads, updates, and deletes aligned. Here we restrict every read to the requesting user's own posts:
 
 ```python
-current_user = fr.context_param("user_id", int)
+class Current(fr.ContextNamespace):
+    user_id: fr.ContextParam[int]
 
-async def bind_user(request: fastapi.Request):
-    with current_user.bind(user_id=request.state.user_id):
-        yield
+def get_user_id(request: fastapi.Request) -> int:
+    return request.state.user_id
 
 @fr.include_view(app)
 class PostView(fr.AsyncRestView):
     prefix = "/posts"
     model = Post
     schema = PostRead
-    dependencies = [Depends(bind_user)]
-    scope = fr.where_clause(Post.author_id == current_user)
+    dependencies = [Current.depends(user_id=get_user_id)]
+    scope = fr.where_clause(Post.author_id == Current.user_id)
 ```
 
-The clause is declared once at module level; the dependency binds the per-request value. [Scopes](scopes.md) covers composing clauses and the model-wide `default_scope` form.
+The clause and the context are declared once at module level; the generated dependency binds the per-request value. [Scopes](scopes.md) covers composing clauses and the model-wide `default_scope` form.
 
 Read access has two halves, and they live in two different places:
 

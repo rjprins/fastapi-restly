@@ -12,16 +12,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Context-bound query clauses: declare reusable query fragments once and
   compose them with `fr.where_clause` / `fr.transform_clause`,
   `fr.all_of` / `fr.any_of` / `fr.none_of` / `fr.combine`. Per-request
-  values bind late via `Clause.bind()` or a `fr.context_param` slot shared
-  across models; `fr.apply_clauses` applies clauses to plain SQLAlchemy
-  statements, and `fr.ClauseNamespace` groups a model's clauses as
-  `Model.C`; ephemeral values pass as keywords to `fr.apply_clauses`
-  and the `select()`/`update()`/`delete()` shorthands. See the Query
-  Clauses guide.
+  values bind late via `Clause.bind()` or a `ContextParam` slot shared
+  across models, declared in a `fr.ContextNamespace`
+  (`name: ContextParam[T]`; the conventional app-wide subclass is named
+  `Current`, and the namespace binds and explains as a unit).
+  `fr.apply_clauses` applies clauses to plain SQLAlchemy statements, and
+  `fr.ClauseNamespace` groups a model's clauses as `Model.C`; ephemeral
+  values pass as keywords to `fr.apply_clauses` and the
+  `select()`/`update()`/`delete()` shorthands. See the Query Clauses
+  guide.
+- `ContextNamespace.depends()` and `ContextParam.depends()` generate the
+  FastAPI dependency that binds context per request: async underneath,
+  so the bind reaches async and `def` endpoints alike, and fed by your
+  own dependencies, so `app.dependency_overrides` keeps working.
 - Binding provenance: every bound clause value records the file and line
   that bound it; `Clause.explain()` renders the clause tree with each
-  node's bind names, values, and origins, and an active
-  `fr.context_param` repr names its bind site.
+  node's bind names, values, and origins, and an active `ContextParam`
+  repr names its bind site.
 - Scopes: a clause declared as `default_scope` on a model's
   `fr.ClauseNamespace` is applied to every view read (list, count,
   retrieve; a row outside it is 404) and to every reference check on the

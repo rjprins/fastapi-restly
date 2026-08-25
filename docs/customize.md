@@ -260,17 +260,18 @@ access into two independent concerns; each has its own override point:
 The following view scopes every read to rows owned by the requesting user:
 
 ```python
-current_user = fr.context_param("user_id", int)
+class Current(fr.ContextNamespace):
+    user_id: fr.ContextParam[int]
 
 @fr.include_view(app)
 class DocumentView(fr.AsyncRestView):
     prefix = "/documents"
     model = Document
     schema = DocumentRead
-    scope = fr.where_clause(Document.owner_id == current_user)
+    scope = fr.where_clause(Document.owner_id == Current.user_id)
 ```
 
-with a dependency binding ``user_id`` per request.
+with ``Current.depends(...)`` binding ``user_id`` per request.
 {meth}`get_many <fastapi_restly.views.RestView.get_many>` (list and count) and
 {meth}`get_one <fastapi_restly.views.RestView.get_one>` both apply the scope,
 so one declaration covers:

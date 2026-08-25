@@ -17,14 +17,15 @@ The examples below extend the models and the `ItemClauses` namespace from
 [Query Clauses](clauses.md), with a `tenant_id` bound per request:
 
 ```python
-current_tenant = fr.context_param("tenant_id", UUID)
+class Current(fr.ContextNamespace):
+    tenant_id: fr.ContextParam[UUID]
 
 
 class ItemClauses(fr.ClauseNamespace):
     model = Item
 
     is_deleted = fr.where_clause(Item.deleted_at.is_not(None))
-    owned_by_tenant = fr.where_clause(Item.tenant_id == current_tenant)
+    owned_by_tenant = fr.where_clause(Item.tenant_id == Current.tenant_id)
     visible = fr.all_of(owned_by_tenant, fr.none_of(is_deleted))
     trashed = fr.all_of(owned_by_tenant, is_deleted)
 
@@ -84,13 +85,11 @@ BaseClauses.default_scope`), declare its own, or opt out with
 definition, not a silent unscope, and so is `default_scope = None`,
 which says nothing.
 
-The tenant value is bound per request, in a dependency shared by the
-whole app; see [Binding scope values](#binding-scope-values):
+The tenant value is bound per request, by a generated dependency shared
+by the whole app; see [Binding scope values](#binding-scope-values):
 
 ```python
-async def bind_tenant(user: CurrentUserDep):
-    with current_tenant.bind(tenant_id=user.tenant_id):
-        yield
+app = FastAPI(dependencies=[Current.depends(tenant_id=get_tenant_id)])
 ```
 
 An unbound scope raises at request time, naming the missing value: a
@@ -156,15 +155,16 @@ bound value, which fails loudly when the value is missing and shows
 its decision in `explain()`:
 
 ```python
-is_admin = fr.context_param("is_admin", bool)
+class RoleContext(fr.ContextNamespace):
+    is_admin: fr.ContextParam[bool]
 
 @fr.where_clause
-def role_visibility(admin: Annotated[bool, is_admin]) -> ColumnElement[bool]:
+def role_visibility(admin: Annotated[bool, RoleContext.is_admin]) -> ColumnElement[bool]:
     return Item.C.owned_by_tenant() if admin else Item.C.visible()
 
 class ItemView(fr.AsyncRestView):
     ...
-    scope = role_visibility         # the dependency binds is_admin
+    scope = role_visibility         # a dependency binds RoleContext.is_admin
 ```
 
 A policy clause like this names a request-boundary value, so it lives
@@ -247,9 +247,25 @@ for relationship loading.
 ## Binding scope values
 
 Scopes are clauses, so binding works as described in
-[Query Clauses, Binding values](#binding-values): bind in a
-FastAPI dependency for request-wide values, and read
-`Clause.explain()` when a query filters unexpectedly. The scope's
-promise is structural: the framework guarantees the clause is applied
-and its values are bound, or the request fails loudly. That the bound
-value is the *right* tenant is the dependency's job; assert it there.
+[Query Clauses, Binding values](#binding-values). For request-wide
+values, {meth}`ContextNamespace.depends <fastapi_restly.clauses.ContextNamespace.depends>`
+generates the dependency: async underneath, so the bind lands in the
+request task, where async and `def` endpoints alike read it, and fed by
+your own dependencies, so `app.dependency_overrides` keeps working:
+
+```python
+app = FastAPI(dependencies=[
+    Current.depends(tenant_id=get_tenant_id, is_admin=get_is_admin),
+])
+```
+
+Attach it at the narrowest level that needs it: the app for values in
+every request, a router for a group, a view's `dependencies` list for
+one view;
+{meth}`ContextParam.depends <fastapi_restly.clauses.ContextParam.depends>`
+is the single-slot form. Read `Current.explain()` or
+`Clause.explain()` when a query filters unexpectedly; the origin names
+your `depends()` line. The scope's promise is structural: the framework
+guarantees the clause is applied and its values are bound, or the
+request fails loudly. That the bound value is the *right* tenant is the
+source dependency's job; assert it there.
