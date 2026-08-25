@@ -31,7 +31,6 @@ update every route::
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Annotated, Any, ClassVar
 
@@ -84,29 +83,20 @@ class Current(fr.ContextNamespace):
     include_deleted: fr.ContextParam[bool]
 
 
-async def bind_request_context(
-    request: fastapi.Request,
-    org_id: Annotated[int | None, fastapi.Depends(get_current_org_id)],
-    user_id: Annotated[int | None, fastapi.Depends(get_current_user_id)],
-    is_admin: Annotated[bool, fastapi.Depends(get_is_admin)],
-) -> AsyncIterator[None]:
-    """Bind auth and request context for the scope clauses.
+def get_include_deleted(request: fastapi.Request) -> bool:
+    """Whether ``?include_deleted=true`` asks to see soft-deleted rows."""
+    return request.query_params.get("include_deleted", "false").lower() == "true"
 
-    Runs on every TenantBase route (see ``TenantBase.dependencies``). The
-    sources are the auth dependencies themselves, so
-    ``app.dependency_overrides`` keeps working in tests. Must be an
-    ``async def`` generator: the bind has to land in the request's task.
-    """
-    include_deleted = (
-        request.query_params.get("include_deleted", "false").lower() == "true"
-    )
-    with Current.bind(
-        org_id=org_id,
-        user_id=user_id,
-        is_admin=is_admin,
-        include_deleted=include_deleted,
-    ):
-        yield
+
+# One generated dependency binds every Current member per request. The
+# sources are the auth dependencies themselves, so
+# ``app.dependency_overrides`` keeps working in tests.
+bind_request_context = Current.depends(
+    org_id=get_current_org_id,
+    user_id=get_current_user_id,
+    is_admin=get_is_admin,
+    include_deleted=get_include_deleted,
+)
 
 
 def tenant_scope(model: type[Any]) -> fr.WhereClause:
@@ -158,7 +148,7 @@ class TenantBase(fr.AsyncRestView):
     # Applied to every route registered by this view and all subclasses.
     dependencies: ClassVar[list[Any]] = [
         fastapi.Depends(check_api_key),
-        fastapi.Depends(bind_request_context),
+        bind_request_context,
     ]
     current_org_id: Annotated[int | None, fastapi.Depends(get_current_org_id)]
     current_user_id: Annotated[int | None, fastapi.Depends(get_current_user_id)]

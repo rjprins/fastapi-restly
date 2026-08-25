@@ -89,8 +89,10 @@ from sqlalchemy.sql.expression import Subquery as _Subquery
 from sqlalchemy.sql.visitors import iterate as _sqla_iterate
 from typing_extensions import Self as _Self
 
+from ._binding import _bind_dependency
 from ._contextargs import Contextual as _Contextual
 from ._contextargs import MissingContextValues as _MissingContextValues
+from ._contextargs import _caller_origin
 from ._contextargs import contextual as _contextual
 
 __all__ = [
@@ -575,6 +577,18 @@ class ContextParam(Clause, _Generic[_T]):
             assert self._param_fn is not None  # invariant: set at declaration
             return _teaching_call(self._param_fn)
 
+    def depends(self, source: _Any, /) -> _Any:
+        """A FastAPI dependency that binds this slot per request.
+
+        ``source`` is the dependency the value comes from: a callable, a
+        ``Depends(...)``, or an ``Annotated`` alias, so
+        ``app.dependency_overrides`` keeps working. The result drops into
+        a ``dependencies=[...]`` list at app, router, or view level, and
+        is an async dependency underneath: the bind lands in the request
+        task, where async and def endpoints alike read it.
+        """
+        return _bind_dependency([(self, source)], _caller_origin())
+
 
 def _context_member_type(cls: type, name: str, annotation: _Any) -> _Any | None:
     # tolerant per-member resolve, like the parameter markers: a stringified
@@ -666,6 +680,23 @@ class ContextNamespace:
             for name, value in values.items():
                 stack.enter_context(members[name].bind(**{name: value}))
             yield
+
+    @classmethod
+    def depends(cls, /, **sources: _Any) -> _Any:
+        """A FastAPI dependency that binds the named members per request.
+
+        Keyword names are member names; each value is the dependency the
+        member's value comes from (a callable, a ``Depends(...)``, or an
+        ``Annotated`` alias), so ``app.dependency_overrides`` keeps
+        working. One generated dependency binds them all; see
+        :meth:`ContextParam.depends` for the single-slot form.
+        """
+        members = cls._members()
+        unknown = sorted(set(sources) - set(members))
+        if unknown:
+            raise TypeError(f"{cls.__name__} has no member(s): " + ", ".join(unknown))
+        entries = [(members[name], source) for name, source in sources.items()]
+        return _bind_dependency(entries, _caller_origin())
 
     @classmethod
     def explain(cls) -> str:

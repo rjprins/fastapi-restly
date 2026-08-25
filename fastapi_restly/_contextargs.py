@@ -52,6 +52,13 @@ __all__ = ["Contextual", "MissingContextValues", "contextual"]
 _PACKAGE_DIR = os.path.dirname(__file__)
 _CONTEXTLIB_FILE = contextlib.__file__
 
+# Generated code (a bind dependency) binds from inside the package, where
+# the frame walk would land on framework internals; it announces the real
+# declaration site here instead.
+_origin_override: ContextVar[str | None] = ContextVar(
+    "fr_origin_override", default=None
+)
+
 
 def _caller_origin() -> str | None:
     """file:line (function) of the first frame outside this package.
@@ -219,7 +226,7 @@ def _make(
                     + ", ".join(sorted(unknown))
                 )
         # layer over any enclosing context; reset restores the outer layer
-        origin = _caller_origin()
+        origin = _origin_override.get() or _caller_origin()
         token = var.set({**var.get(), **values})
         origin_token = origins_var.set(
             {**origins_var.get(), **{key: origin for key in values}}

@@ -114,3 +114,81 @@ def test_explain_shows_values_origins_and_unbound_members():
     assert "tenant_id = 5" in rendered
     assert "test_context_namespace.py" in rendered  # the binding line
     assert "locale: UNBOUND" in rendered
+
+
+# ---------------------------------------------------------------------------
+# depends(): the generated bind dependency
+# ---------------------------------------------------------------------------
+
+
+def test_depends_binds_per_request_and_respects_overrides(client):
+    from sqlalchemy.orm import Mapped
+
+    class NsNote(fr.IDBase):
+        tenant_id: Mapped[int]
+        name: Mapped[str]
+
+    class Ctx(fr.ContextNamespace):
+        tenant_id: fr.ContextParam[int]
+
+    class NsNoteClauses(fr.ClauseNamespace):
+        model = NsNote
+
+        default_scope = fr.where_clause(NsNote.tenant_id == Ctx.tenant_id)
+
+    class NsNoteSchema(fr.IDSchema):
+        tenant_id: int
+        name: str
+
+    def get_tenant_id() -> int:
+        return 1
+
+    @fr.include_view(client.app)
+    class NsNoteView(fr.AsyncRestView):
+        prefix = "/ns-notes"
+        model = NsNote
+        schema = NsNoteSchema
+        dependencies = [Ctx.depends(tenant_id=get_tenant_id)]
+
+    from .conftest import create_tables
+
+    create_tables()
+
+    client.post("/ns-notes/", json={"tenant_id": 1, "name": "mine"})
+    client.post("/ns-notes/", json={"tenant_id": 2, "name": "theirs"})
+
+    listed = client.get("/ns-notes/").json()
+    assert [row["name"] for row in listed["data"]] == ["mine"]
+
+    # the sources are the caller's own dependencies, so overrides work
+    client.app.dependency_overrides[get_tenant_id] = lambda: 2
+    try:
+        listed = client.get("/ns-notes/").json()
+        assert [row["name"] for row in listed["data"]] == ["theirs"]
+    finally:
+        client.app.dependency_overrides.pop(get_tenant_id)
+
+
+def test_depends_rejects_an_unknown_member_and_a_non_dependency_source():
+    with pytest.raises(TypeError, match="no member"):
+        Context.depends(nope=lambda: 1)
+    with pytest.raises(TypeError, match="dependency"):
+        Context.tenant_id.depends(42)
+
+
+def test_depends_origin_names_the_declaration_line():
+    import asyncio
+
+    dependency = Context.tenant_id.depends(lambda: 11)  # <- the origin line
+
+    async def run():
+        agen = dependency.dependency(tenant_id=11)
+        await agen.__anext__()  # enter: the bind is now active
+        try:
+            _, origin = Context.tenant_id._param_fn.bindings()["tenant_id"]
+            assert origin is not None
+            assert "test_context_namespace.py" in origin
+        finally:
+            await agen.aclose()
+
+    asyncio.run(run())
