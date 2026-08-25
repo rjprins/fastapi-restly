@@ -7,7 +7,7 @@ clause plays, not a kind of clause; the material is a plain
 
 | Word | Who decides | What it is |
 |---|---|---|
-| **clause** | the declaration | a named, reusable query fragment: `Item.C.visible` |
+| **clause** | the declaration | a named, reusable query fragment: `ItemClauses.visible` |
 | **scope** | the server | the clause every read and every reference check applies |
 | **filter** | the client | what the request asks for through [query parameters](howto_query_modifiers.md) |
 
@@ -77,13 +77,13 @@ transform: a scope carrying one would filter view reads while reference
 checks could not see it. Ordering and other reshaping belong on the
 [view scope](#view-scope), which takes any clause.
 
-A namespace declared on a model *subclass* shadows the base model's
-namespace. If the base declares a `default_scope`, the subclass
-namespace must say what happens: reuse it (`default_scope =
-BaseClauses.default_scope`), declare its own, or opt out with
-`default_scope = fr.clauses.UNSCOPED`. Silence is an error at
-definition, not a silent unscope, and so is `default_scope = None`,
-which says nothing.
+A model *subclass* inherits the nearest declared `default_scope` along
+its MRO. A namespace on the subclass that says nothing about
+`default_scope` leaves the inherited scope in force; declaring one
+replaces it for that subclass, and the opt-out is explicit:
+`default_scope = fr.clauses.UNSCOPED`. A subclass can never drop the
+base scope by omission, and `default_scope = None` is rejected: it
+says nothing.
 
 The tenant value is bound per request, by a generated dependency shared
 by the whole app; see [Binding scope values](#binding-scope-values):
@@ -107,7 +107,7 @@ class ItemView(fr.AsyncRestView):
     prefix = "/items"
     model = Item
     schema = ItemRead
-    # no scope declared: reads apply Item.C.default_scope
+    # no scope declared: reads apply ItemClauses.default_scope
 
 
 @fr.include_view(app)
@@ -115,11 +115,11 @@ class TrashView(fr.AsyncRestView):
     prefix = "/trash"
     model = Item
     schema = ItemRead
-    scope = Item.C.trashed          # the deviating view declares
+    scope = ItemClauses.trashed          # the deviating view declares
 ```
 
 Declaring a scope **replaces** the default; it does not stack on it.
-`Item.C.trashed` is safe as a whole scope because it is composed from
+`ItemClauses.trashed` is safe as a whole scope because it is composed from
 the same `owned_by_tenant` leaf that `visible` contains; build every
 scope from the namespace's leaves and the tenant rule cannot fall out
 of a view by omission.
@@ -130,14 +130,14 @@ welcome there, unlike in `default_scope`:
 ```python
 class ItemView(fr.AsyncRestView):
     ...
-    scope = fr.combine(Item.C.visible, Item.C.newest_first)
+    scope = fr.combine(ItemClauses.visible, ItemClauses.newest_first)
 ```
 
 The explicit opt-out is `fr.clauses.UNSCOPED`: it reads past the model's
 `default_scope`, where `None` would fall back to it. Reserve it for a
 genuinely all-seeing view behind its own authorization; an "admin"
 view usually stays tenant-bound and widens (`scope =
-Item.C.owned_by_tenant` sees the trash too):
+ItemClauses.owned_by_tenant` sees the trash too):
 
 ```python
 @fr.include_view(admin_router)      # router with admin auth
@@ -160,7 +160,7 @@ class RoleContext(fr.ContextNamespace):
 
 @fr.where_clause
 def role_visibility(admin: Annotated[bool, RoleContext.is_admin]) -> ColumnElement[bool]:
-    return Item.C.owned_by_tenant() if admin else Item.C.visible()
+    return ItemClauses.owned_by_tenant() if admin else ItemClauses.visible()
 
 class ItemView(fr.AsyncRestView):
     ...
@@ -186,7 +186,7 @@ argument, with three states:
 class OrderCreate(fr.BaseSchema):
     item_id: fr.MustExist[int]                # default_scope of Item (FK-inferred)
 
-    restore_id: Annotated[int, fr.RefExists(Item, scope=Item.C.trashed)]
+    restore_id: Annotated[int, fr.RefExists(Item, scope=ItemClauses.trashed)]
 
     audit_item_id: Annotated[int, fr.RefExists(Item, scope=fr.clauses.UNSCOPED)]
 ```

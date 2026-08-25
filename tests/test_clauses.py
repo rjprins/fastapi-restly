@@ -612,13 +612,13 @@ class GadgetClauses(ClauseNamespace):
     visible = all_of(owned_by_tenant, none_of(is_deleted))
 
 
-def test_namespace_attaches_as_C():
-    assert Gadget.C is GadgetClauses
-    assert isinstance(Gadget.C.visible, WhereClause)
+def test_namespace_leaves_the_model_untouched():
+    assert not hasattr(Gadget, "C")
+    assert isinstance(GadgetClauses.visible, WhereClause)
 
 
 def test_namespace_clauses_work():
-    stmt = Gadget.C.visible.select(Gadget, tenant_id=7)
+    stmt = GadgetClauses.visible.select(Gadget, tenant_id=7)
     assert 7 in params_of(stmt).values()
     assert "deleted_at IS NULL" in str(stmt)
 
@@ -950,24 +950,27 @@ def test_dag_composition_binds_fast():
         pass
 
 
-def test_double_attach_with_non_class_C():
+def test_unrelated_C_attribute_does_not_collide():
     class Odd(Base):
         __tablename__ = "odd_c_attr"
         id: Mapped[int] = mapped_column(primary_key=True)
 
-    Odd.C = 5
-    with pytest.raises(TypeError, match="already has"):
+    Odd.C = 5  # unrelated user attribute; the registry ignores it
 
-        class OddClauses(ClauseNamespace):
-            model = Odd
-            anything = where_clause(Odd.id == 1)
+    class OddClauses(ClauseNamespace):
+        model = Odd
+        anything = where_clause(Odd.id == 1)
+
+    assert Odd.C == 5
+    assert isinstance(OddClauses.anything, WhereClause)
 
 
-def test_namespace_attaches_on_restly_idbase():
+def test_namespace_registers_on_restly_idbase():
     from sqlalchemy.orm import Mapped as M
     from sqlalchemy.orm import mapped_column as mc
 
     import fastapi_restly as fr
+    from fastapi_restly.clauses import _default_scope
 
     class Gizmo(fr.IDBase):
         __tablename__ = "gizmo_ns_test"
@@ -976,8 +979,10 @@ def test_namespace_attaches_on_restly_idbase():
     class GizmoClauses(ClauseNamespace):
         model = Gizmo
         owned = where_clause(Gizmo.tenant_id == 1)
+        default_scope = owned
 
-    assert Gizmo.C is GizmoClauses
+    assert not hasattr(Gizmo, "C")
+    assert _default_scope(Gizmo) is GizmoClauses.owned
 
 
 # --- self-revealing errors and reprs ---------------------------------------

@@ -54,6 +54,7 @@ from __future__ import annotations
 import functools as _functools
 import inspect as _inspect
 import sys as _sys
+import weakref as _weakref
 from contextlib import ExitStack as _ExitStack
 from contextlib import contextmanager as _contextmanager
 from typing import Any as _Any
@@ -399,9 +400,10 @@ class _Unscoped:
 
     One spelling for every escape, so `grep -rn UNSCOPED` surfaces each
     one: a view's `scope` (where `None` means "fall back to the model's
-    default"), a namespace's `default_scope` (where undeclared already
-    means UNSCOPED), and a `RefExists` scope (where `None` is rejected, so
-    a variable that happens to be None can never silently unscope).
+    default"), a namespace's `default_scope` (where undeclared defers to
+    a base model's namespace, or none), and a `RefExists` scope (where
+    `None` is rejected, so a variable that happens to be None can never
+    silently unscope).
     Deliberately not re-exported at the top level: the escape is spelled
     in full.
     """
@@ -413,18 +415,25 @@ class _Unscoped:
 UNSCOPED = _Unscoped()
 
 
+# model -> its ClauseNamespace; weak keys, so throwaway models (tests)
+# do not keep dead namespaces alive
+_NAMESPACES: _weakref.WeakKeyDictionary[
+    type[_DeclarativeBase], type[ClauseNamespace]
+] = _weakref.WeakKeyDictionary()
+
+
 class ClauseNamespace:
-    """Groups a model's clauses; attaches itself to the model as `C`.
+    """Groups a model's clauses under one named class.
 
     Subclass, declare `model = <mapped class>`, and put the clauses in
     the class body; earlier names are available to later compositions.
     On definition the namespace validates that every public attribute
     is a Clause (catching a bare SQLAlchemy expression that forgot its
-    where_clause() wrapper) and becomes reachable as Model.C. For typed
-    access, annotate the model under `if TYPE_CHECKING:` with
-    `C: ClassVar[type[TheNamespace]]`; the guard matters on dataclass
-    bases (MappedAsDataclass), whose annotation scan de-stringifies the
-    forward reference at class creation and raises NameError.
+    where_clause() wrapper) and registers itself for the model. Usage
+    is by class name (`ItemClauses.visible`): plain attribute access
+    that any type checker follows; the model class itself is never
+    touched. Define the namespace in the model's module, so importing
+    the model guarantees the registration ran.
 
     The name `default_scope` is reserved: a clause under that name is
     the scope every view read and every reference check on the model
@@ -432,10 +441,10 @@ class ClauseNamespace:
     must be a WhereClause: a reference check is an existence probe and
     cannot honor a transform, so ordering and joins stay on the view
     scope, and a join-dependent predicate is an EXISTS (.any()/.has()).
-    Undeclared means `default_scope = UNSCOPED`; that spelling is also
-    the explicit opt-out, required when a namespace on a model subclass
-    would otherwise silently drop a default_scope a base model's
-    namespace declares. `None` says nothing here and is rejected.
+    A model subclass inherits the nearest declared `default_scope`
+    along its MRO: a namespace that does not declare one leaves an
+    inherited scope in force, and `default_scope = UNSCOPED` is the
+    explicit opt-out. `None` says nothing here and is rejected.
     """
 
     model: _ClassVar[type[_DeclarativeBase]]
@@ -451,7 +460,7 @@ class ClauseNamespace:
                 continue
             if name == "default_scope":
                 if value is UNSCOPED:
-                    continue  # explicit opt-out; see the shadowing check below
+                    continue  # explicit opt-out of an inherited scope
                 if value is None:
                     raise TypeError(
                         f"{cls.__name__}.default_scope = None says nothing; "
@@ -473,54 +482,61 @@ class ClauseNamespace:
                 "ordering and joins belong on the view scope, and a "
                 "join-dependent predicate is an EXISTS (.any()/.has())"
             )
-        if "default_scope" not in vars(cls):
-            # a namespace on a model subclass shadows the base namespace;
-            # dropping an inherited default_scope must be said, not implied
-            for base in model.__mro__[1:]:
-                base_namespace = vars(base).get("C")
-                if isinstance(base_namespace, type) and issubclass(
-                    base_namespace, ClauseNamespace
-                ):
-                    base_scope = getattr(base_namespace, "default_scope", UNSCOPED)
-                    if isinstance(base_scope, WhereClause):
-                        raise TypeError(
-                            f"{cls.__name__} shadows {base_namespace.__name__}, "
-                            f"which declares a default_scope; declare one "
-                            f"(reuse it with default_scope = "
-                            f"{base_namespace.__name__}.default_scope) or opt "
-                            "out with default_scope = UNSCOPED"
-                        )
-        if "C" in vars(model):
-            existing = vars(model)["C"]
+        existing = _NAMESPACES.get(model)
+        if existing is not None:
             raise TypeError(
                 f"{model.__name__} already has a clause namespace: "
-                f"{getattr(existing, '__name__', repr(existing))}"
+                f"{existing.__name__}"
             )
-        setattr(model, "C", cls)
+        _NAMESPACES[model] = cls
+
+
+_NO_DECLARATION = object()
+
+
+def _declared_default_scope(namespace: type[ClauseNamespace]) -> _Any:
+    """The namespace's own `default_scope` declaration, or _NO_DECLARATION.
+
+    Looks above the ClauseNamespace base, so a namespace subclass keeps
+    its parent's declaration while the base's UNSCOPED class default
+    does not count as one.
+    """
+    for klass in namespace.__mro__:
+        if klass is ClauseNamespace:
+            return _NO_DECLARATION
+        if "default_scope" in vars(klass):
+            return vars(klass)["default_scope"]
+    return _NO_DECLARATION
 
 
 def _default_scope(model: type[_DeclarativeBase]) -> WhereClause | None:
-    """The model's declared `C.default_scope`, or None.
+    """The model's `default_scope`, or None for unscoped.
 
-    An unrelated `C` attribute (not a ClauseNamespace) yields None: the
-    model simply has no clause namespace. A `default_scope` that is not
-    a WhereClause raises: the namespace validation guarantees it at
-    class definition, so this only fires on a later assignment, which
-    must not silently weaken the model's scope.
+    Walks the model's MRO and applies the first registered namespace
+    that declares `default_scope` itself: a model subclass inherits the
+    base model's scope through namespaces that stay silent, and
+    UNSCOPED stops the walk as the explicit opt-out. A `default_scope`
+    that is not a WhereClause raises: the namespace validation
+    guarantees it at class definition, so this only fires on a later
+    assignment, which must not silently weaken the model's scope.
     """
-    namespace = getattr(model, "C", None)
-    if not (isinstance(namespace, type) and issubclass(namespace, ClauseNamespace)):
-        return None
-    scope = getattr(namespace, "default_scope", UNSCOPED)
-    if scope is UNSCOPED:
-        return None
-    if not isinstance(scope, WhereClause):
-        raise TypeError(
-            f"{namespace.__name__}.default_scope must be a WhereClause or "
-            "UNSCOPED; wrap a raw expression with where_clause(), and keep "
-            "ordering and joins on the view scope"
-        )
-    return scope
+    for klass in model.__mro__:
+        namespace = _NAMESPACES.get(klass)
+        if namespace is None:
+            continue
+        scope = _declared_default_scope(namespace)
+        if scope is _NO_DECLARATION:
+            continue  # no declaration here: keep walking the model MRO
+        if scope is UNSCOPED:
+            return None
+        if not isinstance(scope, WhereClause):
+            raise TypeError(
+                f"{namespace.__name__}.default_scope must be a WhereClause or "
+                "UNSCOPED; wrap a raw expression with where_clause(), and keep "
+                "ordering and joins on the view scope"
+            )
+        return scope
+    return None
 
 
 class CombinedClause(Clause):

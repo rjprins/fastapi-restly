@@ -17,8 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`name: ContextParam[T]`; the conventional app-wide subclass is named
   `Current`, and the namespace binds and explains as a unit).
   `fr.apply_clauses` applies clauses to plain SQLAlchemy statements, and
-  `fr.ClauseNamespace` groups a model's clauses as `Model.C`; ephemeral
-  values pass as keywords to `fr.apply_clauses` and the
+  `fr.ClauseNamespace` groups a model's clauses under one named class
+  (`ItemClauses.visible`); ephemeral values pass as keywords to
+  `fr.apply_clauses` and the
   `select()`/`update()`/`delete()` shorthands. See the Query Clauses
   guide.
 - `ContextNamespace.depends()` and `ContextParam.depends()` generate the

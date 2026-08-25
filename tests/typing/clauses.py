@@ -4,8 +4,8 @@ Covers the constructor-to-type symmetry (where_clause -> WhereClause,
 transform_clause -> TransformClause, combine -> CombinedClause,
 ContextNamespace declaration -> ContextParam[T]), the all_of overloads
 (pure operands narrow
-to WhereClause), the apply_clauses overloads per statement kind, the
-Model.C annotation pattern, and the WhereClause call form.
+to WhereClause), the apply_clauses overloads per statement kind,
+namespace access by class name, and the WhereClause call form.
 
 Parameterized clause functions live at module level: a ``def`` inside a
 class body is checked as a method, so its first parameter would be
@@ -13,7 +13,7 @@ reported against the class type.
 """
 
 from datetime import datetime
-from typing import TYPE_CHECKING, Annotated, Any, ClassVar
+from typing import Annotated, Any
 
 from sqlalchemy import ColumnElement, Delete, Select, Update, delete, select, update
 from sqlalchemy.orm import Mapped
@@ -23,9 +23,6 @@ import fastapi_restly as fr
 
 
 class Ticket(fr.IDBase):
-    if TYPE_CHECKING:
-        C: ClassVar[type["TicketClauses"]]
-
     tenant_id: Mapped[int]
     created_at: Mapped[datetime]
     deleted_at: Mapped[datetime | None]
@@ -84,34 +81,34 @@ assert_type(fr.all_of(bundle, TicketClauses.is_deleted), fr.Clause)
 
 # apply_clauses overloads per statement kind; the Select overload keeps
 # the precise statement type
-listing = fr.apply_clauses(select(Ticket), Ticket.C.visible)
+listing = fr.apply_clauses(select(Ticket), TicketClauses.visible)
 listing = listing.where(Ticket.tenant_id == 1).limit(1)
-assert_type(fr.apply_clauses(update(Ticket), Ticket.C.owned_by_tenant), Update)
-assert_type(fr.apply_clauses(delete(Ticket), Ticket.C.owned_by_tenant), Delete)
+assert_type(fr.apply_clauses(update(Ticket), TicketClauses.owned_by_tenant), Update)
+assert_type(fr.apply_clauses(delete(Ticket), TicketClauses.owned_by_tenant), Delete)
 
 # ephemeral binds keep the per-statement-kind dispatch; assign the
 # select() first: the inline nested call widens under bidirectional
 # inference
 _base = select(Ticket)
-bound = fr.apply_clauses(_base, Ticket.C.visible, tenant_id=1)
+bound = fr.apply_clauses(_base, TicketClauses.visible, tenant_id=1)
 bound = bound.limit(1)
 assert_type(
-    fr.apply_clauses(update(Ticket), Ticket.C.owned_by_tenant, tenant_id=1), Update
+    fr.apply_clauses(update(Ticket), TicketClauses.owned_by_tenant, tenant_id=1), Update
 )
 assert_type(
-    fr.apply_clauses(delete(Ticket), Ticket.C.owned_by_tenant, tenant_id=1), Delete
+    fr.apply_clauses(delete(Ticket), TicketClauses.owned_by_tenant, tenant_id=1), Delete
 )
 
 # the call form resolves to a ColumnElement usable in plain SQLAlchemy
-expr = Ticket.C.owned_by_tenant(tenant_id=1)
+expr = TicketClauses.owned_by_tenant(tenant_id=1)
 assert_type(expr, ColumnElement[bool])
-_stmt = select(Ticket).where(expr, Ticket.C.is_deleted())
+_stmt = select(Ticket).where(expr, TicketClauses.is_deleted())
 
 # statement methods chain as normal SQLAlchemy statements
-_chained = Ticket.C.visible.select(Ticket, tenant_id=1).where(Ticket.id == 1).limit(1)
+_chained = TicketClauses.visible.select(Ticket, tenant_id=1).where(Ticket.id == 1).limit(1)
 
 # select() takes any SQLAlchemy entities; exact row typing lives on the
 # apply_clauses path, which keeps the statement type select() produced
-_projected = Ticket.C.visible.select(Ticket.id, Ticket.created_at, tenant_id=1)
-_typed = fr.apply_clauses(select(Ticket.id, Ticket.created_at), Ticket.C.visible)
+_projected = TicketClauses.visible.select(Ticket.id, Ticket.created_at, tenant_id=1)
+_typed = fr.apply_clauses(select(Ticket.id, Ticket.created_at), TicketClauses.visible)
 _typed = _typed.where(Ticket.tenant_id == 1).limit(1)

@@ -1,14 +1,14 @@
 """Typing fixture: view scopes and scoped reference markers.
 
 Covers the ``scope`` class attribute (a ``Clause`` or ``fr.clauses.UNSCOPED``),
-the annotated ``Model.C`` access pattern feeding a view scope, and the
+namespace clauses feeding a view scope, and the
 three ``RefExists`` states on a schema field (defaulted,
 ``scope=<WhereClause>``, ``scope=UNSCOPED``) leaving the field a plain
 scalar.
 """
 
 from datetime import datetime
-from typing import TYPE_CHECKING, Annotated, ClassVar, cast
+from typing import TYPE_CHECKING, Annotated, cast
 
 from sqlalchemy.orm import Mapped
 from typing_extensions import assert_type
@@ -17,9 +17,6 @@ import fastapi_restly as fr
 
 
 class Ticket(fr.IDBase):
-    if TYPE_CHECKING:
-        C: ClassVar[type["TicketClauses"]]
-
     tenant_id: Mapped[int]
     assignee_id: Mapped[int]
     deleted_at: Mapped[datetime | None]
@@ -44,7 +41,7 @@ class TicketSchema(fr.IDSchema):
     # the three RefExists states; each leaves the field the pk scalar
     assignee_id: fr.MustExist[int, Ticket]
     reviewer_id: Annotated[int, fr.RefExists(Ticket)]
-    restore_id: Annotated[int, fr.RefExists(Ticket, scope=Ticket.C.trashed)]
+    restore_id: Annotated[int, fr.RefExists(Ticket, scope=TicketClauses.trashed)]
     audit_id: Annotated[int, fr.RefExists(Ticket, scope=fr.clauses.UNSCOPED)]
 
 
@@ -55,7 +52,7 @@ class TicketView(fr.AsyncRestView):
 
 
 class TrashView(TicketView):
-    scope = Ticket.C.trashed
+    scope = TicketClauses.trashed
 
 
 class AdminView(TicketView):

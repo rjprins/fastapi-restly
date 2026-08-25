@@ -1,6 +1,7 @@
 """The view scope and scoped reference checks.
 
-A model's ``C.default_scope`` arms every view read (list, retrieve, count)
+A model's declared ``default_scope`` arms every view read (list,
+retrieve, count)
 and every reference check on the model. A view's ``scope`` attribute
 replaces that default; ``fr.clauses.UNSCOPED`` opts out explicitly. Reference
 checks (``MustExist`` / ``RefExists`` / ``IDRef`` / ``IDSchema``) apply
@@ -71,7 +72,7 @@ def test_default_scope_and_view_scope_over_http(client):
         model = ScopeItem
         schema = ScopeItemSchema
         dependencies = [Depends(bind_tenant)]
-        scope = ScopeItem.C.trashed
+        scope = ScopeItemClauses.trashed
 
     create_tables()
 
@@ -628,7 +629,7 @@ def test_default_scope_must_be_a_where_clause():
             default_scope = None
 
 
-def test_subclass_namespace_must_restate_default_scope():
+def test_subclass_inherits_default_scope_along_the_mro():
     class Animal(_SyncBase):
         __tablename__ = "scope_sync_animal"
 
@@ -643,30 +644,41 @@ def test_subclass_namespace_must_restate_default_scope():
     class Cat(Animal):
         __mapper_args__ = {"polymorphic_identity": "cat"}
 
+    class Bird(Animal):
+        __mapper_args__ = {"polymorphic_identity": "bird"}
+
+    class Wolf(Dog):
+        __mapper_args__ = {"polymorphic_identity": "wolf"}
+
     class AnimalClauses(fr.ClauseNamespace):
         model = Animal
         default_scope = fr.where_clause(Animal.tenant_id == _SyncContext.tenant_id)
 
-    assert _default_scope(Dog) is AnimalClauses.default_scope  # inherited
+    # no namespace of its own: the base model's scope applies
+    assert _default_scope(Bird) is AnimalClauses.default_scope
 
-    # a shadowing namespace must say what happens to the inherited scope
-    with pytest.raises(TypeError, match="shadows"):
-
-        class _SilentDogClauses(fr.ClauseNamespace):
-            model = Dog
-            is_dog = fr.where_clause(Dog.kind == "dog")
-
+    # a namespace silent about default_scope leaves the inherited scope
+    # in force; a subclass can never drop the base scope by omission
     class DogClauses(fr.ClauseNamespace):
         model = Dog
-        default_scope = fr.clauses.UNSCOPED  # explicit opt-out
+        is_dog = fr.where_clause(Dog.kind == "dog")
 
-    assert _default_scope(Dog) is None
+    assert _default_scope(Dog) is AnimalClauses.default_scope
 
+    # the explicit opt-out
     class CatClauses(fr.ClauseNamespace):
         model = Cat
-        default_scope = AnimalClauses.default_scope  # explicit reuse
+        default_scope = fr.clauses.UNSCOPED
 
-    assert _default_scope(Cat) is AnimalClauses.default_scope
+    assert _default_scope(Cat) is None
+
+    # a namespace subclass keeps its parent namespace's declaration:
+    # CatClauses' UNSCOPED stops the walk before Animal's scope applies
+    class WolfClauses(CatClauses):
+        model = Wolf
+        is_wolf = fr.where_clause(Wolf.kind == "wolf")
+
+    assert _default_scope(Wolf) is None
 
 
 def test_post_hoc_default_scope_corruption_is_loud():

@@ -181,10 +181,10 @@ class RefExists:
     The field stays a plain scalar -- this only adds the check; it does not wrap
     the value or do any relationship routing.
 
-    The check applies the target model's ``C.default_scope``, like
+    The check applies the target model's ``default_scope``, like
     ``IDRef``/``IDSchema`` resolution: a reference to a row the scope hides
     is a miss. ``scope`` overrides that per field: a ``WhereClause`` checks
-    against that clause instead (``RefExists(Item, scope=Item.C.trashed)``
+    against that clause instead (``RefExists(Item, scope=ItemClauses.trashed)``
     for a restore target), and ``scope=fr.clauses.UNSCOPED`` checks
     unscoped, greppably; ``None`` is rejected. A model without a
     ``default_scope`` is checked unscoped, as before.
@@ -420,7 +420,7 @@ class IDRef(IDSchema[SQLAlchemyModel], Generic[SQLAlchemyModel]):
         author: IDRef[User]             # to-one relationship, flat id
         products: list[IDRef[Product]]  # serializes as [1, 2, 3]
 
-    Resolution applies the referenced model's ``C.default_scope``: a
+    Resolution applies the referenced model's ``default_scope``: a
     reference to a row the scope hides raises ``NotFound``, so a
     tenant scope declared once covers every reference to the model. A model
     without a ``default_scope`` resolves by bare primary key; gate visibility
@@ -480,7 +480,7 @@ else:
         Unlike ``IDRef``/``IDSchema`` this is **not** a wrapper: the field stays
         the pk scalar everywhere (wire, column, ``data.<field>``), plus a batched
         existence check on write (404 on a miss). The check applies the target
-        model's ``C.default_scope``; check against another clause, or none, by
+        model's ``default_scope``; check against another clause, or none, by
         writing the marker form ``Annotated[<pk>, RefExists(Model, scope=...)]``
         directly (see :class:`RefExists`).
         """
@@ -572,7 +572,7 @@ async def _async_resolve_ids_to_sqlalchemy_objects(
     keeps its validated wire shape (``IDRef[T]`` values, not ORM rows). The
     write path consumes the returned mapping.
 
-    The lookup applies the referenced model's ``C.default_scope``, so a
+    The lookup applies the referenced model's ``default_scope``, so a
     reference to a row the scope hides is ``NotFound``. A
     model without a ``default_scope`` resolves by bare primary key, as before;
     see the ``IDRef`` docstring.
@@ -645,7 +645,7 @@ def _resolve_ids_to_sqlalchemy_objects(
     keeps its validated wire shape (``IDRef[T]`` values, not ORM rows). The
     write path consumes the returned mapping.
 
-    The lookup applies the referenced model's ``C.default_scope``, so a
+    The lookup applies the referenced model's ``default_scope``, so a
     reference to a row the scope hides is ``NotFound``. A
     model without a ``default_scope`` resolves by bare primary key, as before;
     see the ``IDRef`` docstring.

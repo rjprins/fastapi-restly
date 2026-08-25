@@ -131,7 +131,7 @@ has_active_subscription = fr.where_clause(
 A model's clauses live in one
 {class}`fr.ClauseNamespace <fastapi_restly.clauses.ClauseNamespace>`
 subclass. Declare `model` in the class body; on definition the namespace
-attaches itself to the model as `Model.C`:
+validates itself and registers as the model's clause namespace:
 
 ```python
 class ItemClauses(fr.ClauseNamespace):
@@ -148,9 +148,11 @@ class ItemClauses(fr.ClauseNamespace):
 ```
 
 Earlier names in the class body are in scope for later compositions, as
-`visible` shows. Usage reads model-first: `Item.C.visible`,
-`Item.C.trashed`. The capital `C` holds a class; lowercase `.c` is
-SQLAlchemy's column namespace on `Table`.
+`visible` shows. Usage is by class name: `ItemClauses.visible`,
+`ItemClauses.trashed`, plain attribute access that any type checker
+follows. Name the namespace after the model, and define it in the
+model's module: importing the model then guarantees the namespace is
+registered.
 
 The namespace validates itself at definition time. A class without
 `model` raises. A public attribute that is not a clause raises, which
@@ -164,30 +166,6 @@ class ItemClauses(fr.ClauseNamespace):
 
 Helpers and constants are allowed with a leading underscore. A second
 namespace for the same model raises.
-
-The attachment happens at runtime, so a type checker needs an
-annotation on the model to see `Item.C`. Put it under
-`if TYPE_CHECKING:`:
-
-```python
-from typing import TYPE_CHECKING, ClassVar
-
-
-class Item(Base):
-    __tablename__ = "item"
-
-    if TYPE_CHECKING:
-        C: ClassVar[type["ItemClauses"]]   # filled by ItemClauses
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    ...
-```
-
-The guard is not optional style: on a dataclass base
-({class}`fr.IDBase <fastapi_restly.models.IDBase>`,
-{class}`fr.DataclassBase <fastapi_restly.models.DataclassBase>`) the
-annotation scan de-stringifies the forward reference at class creation
-and a bare annotation raises `NameError`.
 
 Name clauses as predicate phrases that read truthfully after WHERE:
 `owned_by_tenant`, `is_deleted`, `has_active_subscription`. Name
@@ -254,7 +232,7 @@ for a `Select`, applies their transforms:
 ```python
 from sqlalchemy import select
 
-stmt = fr.apply_clauses(select(Item), Item.C.visible, with_live_collection)
+stmt = fr.apply_clauses(select(Item), ItemClauses.visible, with_live_collection)
 ```
 
 Keyword arguments are an ephemeral bind: routed across all the given
@@ -263,7 +241,7 @@ over any ambient `bind()`. The statement is positional-only, so every
 keyword name stays free for binding:
 
 ```python
-stmt = fr.apply_clauses(select(Item), Item.C.visible, tenant_id=tenant_id)
+stmt = fr.apply_clauses(select(Item), ItemClauses.visible, tenant_id=tenant_id)
 ```
 
 Transforms are collected from the whole clause tree and each distinct
@@ -297,12 +275,12 @@ three are shorthand for `apply_clauses` on a fresh statement, with the
 same ephemeral bind as keyword arguments:
 
 ```python
-stmt = Item.C.visible.select(Item, tenant_id=tenant_id).where(Item.id == item_id)
+stmt = ItemClauses.visible.select(Item, tenant_id=tenant_id).where(Item.id == item_id)
 
-count = Item.C.visible.select(func.count(Item.id), tenant_id=tenant_id)
+count = ItemClauses.visible.select(func.count(Item.id), tenant_id=tenant_id)
 
 stmt = (
-    Item.C.trashed.update(Item, tenant_id=tenant_id)
+    ItemClauses.trashed.update(Item, tenant_id=tenant_id)
     .where(Item.id == item_id)
     .values(deleted_at=None)
 )
@@ -326,8 +304,8 @@ clause whose function accepts its name, so binding on a composite is
 equivalent to binding on the leaf itself:
 
 ```python
-with Item.C.visible.bind(tenant_id=tenant_id):
-    stmt = Item.C.visible.select(Item)
+with ItemClauses.visible.bind(tenant_id=tenant_id):
+    stmt = ItemClauses.visible.select(Item)
 ```
 
 Because routing targets the leaf, one bind reaches every composite that
@@ -339,7 +317,7 @@ request (illustrative):
 
 ```python
 async def bind_tenant(tenant_id: TenantIdFromAuth):
-    with Item.C.owned_by_tenant.bind(tenant_id=tenant_id):
+    with ItemClauses.owned_by_tenant.bind(tenant_id=tenant_id):
         yield
 
 
@@ -348,7 +326,7 @@ app = FastAPI(dependencies=[Depends(bind_tenant)])
 
 @app.get("/items")
 async def list_items(session: SessionDep) -> list[ItemOut]:
-    stmt = Item.C.visible.select(Item)   # tenant_id comes from the dependency
+    stmt = ItemClauses.visible.select(Item)   # tenant_id comes from the dependency
     return list((await session.scalars(stmt)).all())
 ```
 
@@ -361,7 +339,7 @@ bind instead:
 
 ```python
 for tenant_id in tenant_ids:
-    stmt = Item.C.trashed.delete(Item, tenant_id=tenant_id)
+    stmt = ItemClauses.trashed.delete(Item, tenant_id=tenant_id)
 ```
 
 Every binding records where it was made.
@@ -372,7 +350,7 @@ line that bound it, or UNBOUND. A subtree reached through several
 paths renders once and is marked shared after that.
 
 ```python
->>> Item.C.visible.explain()
+>>> ItemClauses.visible.explain()
 <WhereClause all_of binds: tenant_id>
 ├─ <WhereClause owned_by_tenant binds: tenant_id>
 │  └─ tenant_id = UUID('7f3a...')   bound at app/deps.py:23 (bind_tenant)
@@ -402,7 +380,7 @@ expression position: a hand-built `.where()`, a join condition, a CASE:
 ```python
 from sqlalchemy import and_, case, select
 
-stmt = select(Item).where(Item.C.is_deleted(), Item.deleted_at < cutoff)
+stmt = select(Item).where(ItemClauses.is_deleted(), Item.deleted_at < cutoff)
 
 collection_is_archived = fr.where_clause(Collection.archived_at.is_not(None))
 
@@ -411,14 +389,14 @@ stmt = stmt.join(
     and_(Collection.id == Item.collection_id, collection_is_archived()),
 )
 
-status = case((Item.C.is_deleted(), "trash"), else_="live")
+status = case((ItemClauses.is_deleted(), "trash"), else_="live")
 ```
 
-Keyword arguments are an ephemeral bind: `Item.C.owned_by_tenant(tenant_id=tid)`.
+Keyword arguments are an ephemeral bind: `ItemClauses.owned_by_tenant(tenant_id=tid)`.
 Only a `WhereClause` is callable; a clause that carries a transform has
 no expression form, and this path skips the table validation that
 `apply_clauses` performs. A clause is never a boolean:
-`if Item.C.is_deleted:` raises `TypeError` instead of always passing.
+`if ItemClauses.is_deleted:` raises `TypeError` instead of always passing.
 
 (clause-aliases)=
 ## One clause, two values
@@ -437,7 +415,7 @@ def in_period(start: datetime, end: datetime) -> ColumnElement[bool]:
 last_month = in_period.alias("last_month")
 
 report = fr.all_of(
-    Item.C.owned_by_tenant,
+    ItemClauses.owned_by_tenant,
     fr.any_of(in_period, last_month),
 )
 

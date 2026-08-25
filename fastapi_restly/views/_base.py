@@ -974,10 +974,11 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     model: ClassVar[type[DeclarativeBase]]
     #: The clause every read on this view applies: list, count, and retrieve
     #: (a row outside it is 404). ``None`` (the default) falls back to the
-    #: model's ``C.default_scope``; ``fr.clauses.UNSCOPED`` reads unscoped
-    #: despite that default. Declaring a scope replaces the default, it does
-    #: not stack on it; compose the replacement from the same leaves
-    #: (``Item.C.trashed`` containing the tenant clause ``visible`` contains).
+    #: model's declared ``default_scope``; ``fr.clauses.UNSCOPED`` reads
+    #: unscoped despite that default. Declaring a scope replaces the default,
+    #: it does not stack on it; compose the replacement from the same leaves
+    #: (``ItemClauses.trashed`` containing the tenant clause ``visible``
+    #: contains).
     #: See the Scopes guide.
     scope: ClassVar[Clause | _Unscoped | None] = None
     id_type: ClassVar[type[Any]] = int
@@ -1022,7 +1023,8 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
                 raise RestlyConfigurationError(
                     f"{cls.__name__} defines build_query{origin}, which is "
                     "removed and no longer called. Declare visibility as a "
-                    "clause: C.default_scope on the model, or the scope "
+                    "clause: default_scope on the model's ClauseNamespace, or the "
+                    "scope "
                     "attribute on the view; read-wide reshaping is a "
                     "transform clause on the view scope. See Migrating from "
                     "build_query in the Scopes guide."
@@ -1032,7 +1034,7 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         """The clause this view's reads apply, or None for unscoped.
 
         Resolution: :attr:`scope` when declared (``UNSCOPED`` meaning no
-        clause), the model's ``C.default_scope`` otherwise. A per-request
+        clause), the model's ``default_scope`` otherwise. A per-request
         *value* is bound around the request; a per-request *choice* is a
         clause function branching on a bound value (see the Scopes guide).
         """
