@@ -3,8 +3,8 @@
 ``TenantBase`` provides shared auth-context dependencies, tenant helpers, and
 transactional outbox emission. Read-side visibility lives next to each model:
 its ``ClauseNamespace`` (in the subject's ``models.py``) composes the
-``tenant_scope(Model)`` / ``soft_delete_scope(Model)`` predicates from
-``app.context`` into a ``default_scope``, and a view that should see
+``tenant_scope(Model)`` predicate from ``app.context`` and its own
+soft-delete rule into a ``default_scope``, and a view that should see
 something else declares its own ``scope``. ``TenantScopedMixin``,
 ``SoftDeleteMixin``, and ``AuditStampedMixin`` add the write-side behavior
 through cooperative ``super()`` chains: ``make_new_object`` /
@@ -118,9 +118,9 @@ class TenantScopedMixin:
 class SoftDeleteMixin:
     """Set ``deleted_at`` on deletion instead of removing the row.
 
-    The read-side counterpart is the ``not_deleted`` clause in the model's
-    namespace, applied through its ``default_scope``;
-    ``?include_deleted=true`` on list/get bypasses that filter. Assumes
+    The read-side counterpart lives in the model's namespace: the default
+    scope hides deleted rows unconditionally, and a trash view declares
+    the ``trashed`` scope as the explicit way to see them. Assumes
     ``self.model`` has a ``deleted_at`` column.
 
     Concrete views can still replace the DELETE route when they need a
@@ -130,10 +130,6 @@ class SoftDeleteMixin:
     # Required from the host class.
     if TYPE_CHECKING:
         session: AsyncSession
-
-    # Allow ``?include_deleted=true`` through the listing endpoint's
-    # unknown-query-param guard.
-    extra_query_params = ("include_deleted",)
 
     async def delete_object(self, obj: Any) -> None:
         if hasattr(obj, "deleted_at"):

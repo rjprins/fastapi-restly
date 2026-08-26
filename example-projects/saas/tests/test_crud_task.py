@@ -434,12 +434,12 @@ class TestSoftDelete:
         project_ids = [p["id"] for p in projects]
         assert project_id not in project_ids
 
-    def test_include_deleted_projects(self, client):
-        """Test that include_deleted=true shows deleted projects."""
+    def test_trash_view_shows_deleted_projects(self, client):
+        """Deleted projects appear on /projects/trash and nowhere else."""
         # Create org and projects
         response = client.post(
             "/organizations",
-            json={"name": "Include Deleted Org", "slug": "include-deleted-org"},
+            json={"name": "Trash View Org", "slug": "trash-view-org"},
         )
         org_id = response.json()["id"]
 
@@ -456,19 +456,52 @@ class TestSoftDelete:
         # Soft delete one
         client.delete(f"/projects/{deleted_id}", assert_status_code=200)
 
-        # List without include_deleted
+        # The default listing hides the deleted row
         response = client.get("/projects")
-        projects = response.json()["data"]
-        project_ids = [p["id"] for p in projects]
+        project_ids = [p["id"] for p in response.json()["data"]]
         assert active_id in project_ids
         assert deleted_id not in project_ids
 
-        # List with include_deleted=true
-        response = client.get("/projects?include_deleted=true")
-        projects = response.json()["data"]
-        project_ids = [p["id"] for p in projects]
-        assert active_id in project_ids
+        # The trash view is the explicit surface for deleted rows
+        response = client.get("/projects/trash")
+        project_ids = [p["id"] for p in response.json()["data"]]
         assert deleted_id in project_ids
+        assert active_id not in project_ids
+
+        # Retrieve follows the same split
+        client.get(f"/projects/{deleted_id}", assert_status_code=404)
+        response = client.get(f"/projects/trash/{deleted_id}")
+        assert response.json()["id"] == deleted_id
+
+    def test_query_params_cannot_widen_a_scope(self, client):
+        """The old ``?include_deleted=true`` toggle is gone.
+
+        The listing grammar rejects it as an unknown key, and on a write
+        it is ignored: the reference check keeps hiding the deleted
+        project either way.
+        """
+        response = client.post(
+            "/organizations",
+            json={"name": "No Widen Org", "slug": "no-widen-org"},
+        )
+        org_id = response.json()["id"]
+        response = client.post(
+            "/projects", json={"name": "Doomed", "organization_id": org_id}
+        )
+        project_id = response.json()["id"]
+        client.delete(f"/projects/{project_id}", assert_status_code=200)
+
+        client.get("/projects?include_deleted=true", assert_status_code=422)
+        client.post(
+            "/tasks",
+            json={"title": "T", "project_id": project_id},
+            assert_status_code=404,
+        )
+        client.post(
+            "/tasks?include_deleted=true",
+            json={"title": "T", "project_id": project_id},
+            assert_status_code=404,
+        )
 
     def test_restore_deleted_project(self, client):
         """Test restoring a soft-deleted project."""

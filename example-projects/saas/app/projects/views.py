@@ -395,6 +395,23 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
         return w.obj
 
 
+class ProjectTrashView(TenantBase):
+    """Deleted projects: the explicit surface for the trash.
+
+    ``scope = ProjectClauses.trashed`` composes the same ``owned_by_tenant``
+    leaf the default scope carries, so the trash stays tenant-bound. A
+    query parameter can never widen a scope; a different endpoint carries
+    the different scope. Read-only: restoring goes through
+    ``POST /projects/{id}/restore``.
+    """
+
+    prefix = "/projects/trash"
+    model = Project
+    schema = ProjectSchema
+    scope = ProjectClauses.trashed
+    exclude_routes = [fr.ViewRoute.CREATE, fr.ViewRoute.UPDATE, fr.ViewRoute.DELETE]
+
+
 class TaskCreateRequest(BaseModel):
     """Request body for creating a task via the nested /projects/{id}/tasks route."""
 

@@ -1,12 +1,12 @@
-"""Per-request context and the scope clauses that read it.
+"""Per-request context and the scope clause that reads it.
 
-``Current`` declares the request-bound values: org, user, the admin flag,
-and the ``include_deleted`` toggle. ``bind_request_context`` is the
-generated dependency that binds them once per request, fed by the auth
-sources themselves so ``app.dependency_overrides`` keeps working in tests.
-``tenant_scope`` and ``soft_delete_scope`` build the visibility predicates
-that read these values; each subject's ``ClauseNamespace`` (in its
-``models.py``) composes them into the model's ``default_scope``.
+``Current`` declares the request-bound identity facts: org, user, and the
+admin flag. ``bind_request_context`` is the generated dependency that
+binds them once per request, fed by the auth sources themselves so
+``app.dependency_overrides`` keeps working in tests. ``tenant_scope``
+builds the tenant predicate that reads these values; each subject's
+``ClauseNamespace`` (in its ``models.py``) composes it into the model's
+``default_scope``.
 """
 
 from __future__ import annotations
@@ -34,11 +34,6 @@ def get_is_admin(request: fastapi.Request) -> bool:
     return bool(getattr(request.state, "is_admin", False))
 
 
-def get_include_deleted(request: fastapi.Request) -> bool:
-    """Whether ``?include_deleted=true`` asks to see soft-deleted rows."""
-    return request.query_params.get("include_deleted", "false").lower() == "true"
-
-
 class Current(fr.ContextNamespace):
     """Per-request context the scope clauses read.
 
@@ -49,7 +44,6 @@ class Current(fr.ContextNamespace):
     org_id: fr.ContextParam[int | None]
     user_id: fr.ContextParam[int | None]
     is_admin: fr.ContextParam[bool]
-    include_deleted: fr.ContextParam[bool]
 
 
 # One generated dependency binds every Current member per request. The
@@ -59,7 +53,6 @@ bind_request_context = Current.depends(
     org_id=get_current_org_id,
     user_id=get_current_user_id,
     is_admin=get_is_admin,
-    include_deleted=get_include_deleted,
 )
 
 
@@ -79,18 +72,3 @@ def tenant_scope(model: type[Any]) -> fr.WhereClause:
         return model.organization_id == org_id
 
     return owned_by_tenant
-
-
-def soft_delete_scope(model: type[Any]) -> fr.WhereClause:
-    """Rows of ``model`` not soft-deleted, unless ``?include_deleted=true``.
-
-    Pair with ``SoftDeleteMixin`` (which sets ``deleted_at`` on delete) and
-    keep ``include_deleted`` in ``extra_query_params`` so the listing
-    endpoint accepts the toggle.
-    """
-
-    @fr.where_clause
-    def not_deleted() -> sa.ColumnElement[bool]:
-        return sa.true() if Current.include_deleted() else model.deleted_at.is_(None)
-
-    return not_deleted

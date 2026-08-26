@@ -107,7 +107,6 @@ class Current(fr.ContextNamespace):
     org_id: fr.ContextParam[int | None]
     user_id: fr.ContextParam[int | None]
     is_admin: fr.ContextParam[bool]
-    include_deleted: fr.ContextParam[bool]
 
 
 def tenant_scope(model: type[Any]) -> fr.WhereClause:
@@ -156,23 +155,24 @@ class (see the gotchas below).
 (soft-delete-mixin)=
 ### Soft delete: a scope clause plus a delete mixin
 
-The read half hides deleted rows unless the request asks for them
-(``?include_deleted=true``, bound from the query string by the same
-request-context dependency); the write half turns `delete` into a
-timestamp flip:
+The read half is one unconditional predicate in the model's namespace:
+the default scope hides deleted rows for every read and every reference
+check, and the trash is reachable only through an explicit surface, a
+view declaring `scope = ProjectClauses.trashed` (see
+[Scopes](#view-scope)). A query parameter can never widen a scope. The
+write half turns `delete` into a timestamp flip:
 
 ```python
 from datetime import datetime, timezone
 
 
-def soft_delete_scope(model: type[Any]) -> fr.WhereClause:
-    """Rows of ``model`` not soft-deleted, unless ``?include_deleted=true``."""
+class ProjectClauses(fr.ClauseNamespace):
+    model = Project
 
-    @fr.where_clause
-    def not_deleted() -> sa.ColumnElement[bool]:
-        return sa.true() if Current.include_deleted() else model.deleted_at.is_(None)
-
-    return not_deleted
+    owned_by_tenant = tenant_scope(Project)
+    is_deleted = fr.where_clause(Project.deleted_at.is_not(None))
+    trashed = fr.all_of(owned_by_tenant, is_deleted)
+    default_scope = fr.all_of(owned_by_tenant, fr.none_of(is_deleted))
 
 
 class SoftDeleteMixin:
@@ -183,9 +183,6 @@ class SoftDeleteMixin:
         session: AsyncSession
         model: type[DeclarativeBase]
         def save_object(self, obj: Any) -> Any: ...
-
-    # Let ``?include_deleted=true`` through the unknown-query-param guard.
-    extra_query_params = ("include_deleted",)
 
     async def delete(self, obj: Any) -> None:
         if hasattr(obj, "deleted_at"):
@@ -238,19 +235,12 @@ scoping). The read halves compose in the model's
 stacks the write-side mixins:
 
 ```python
-class ProjectClauses(fr.ClauseNamespace):
-    model = Project
-
-    owned_by_tenant = tenant_scope(Project)
-    not_deleted = soft_delete_scope(Project)
-    default_scope = fr.all_of(owned_by_tenant, not_deleted)
-
-
 @fr.include_view(app)
 class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, fr.AsyncRestView):
     prefix = "/projects"
     model = Project
     schema = ProjectRead
+    # no scope declared: reads apply ProjectClauses.default_scope
 ```
 
 {meth}`get_many <fastapi_restly.views.RestView.get_many>`,

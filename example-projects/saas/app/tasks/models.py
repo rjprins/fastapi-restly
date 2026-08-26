@@ -10,7 +10,7 @@ from sqlalchemy.types import TypeDecorator
 
 import fastapi_restly as fr
 
-from ..context import Current, soft_delete_scope
+from ..context import Current
 from ..projects.models import Project
 
 
@@ -173,7 +173,7 @@ class TaskClauses(fr.ClauseNamespace):
             return sa.true()
         return Task.assignee_id == user_id
 
-    not_deleted = soft_delete_scope(Task)
+    not_deleted = fr.where_clause(Task.deleted_at.is_(None))
 
     # The read rule TaskView declares; shared here so ProjectView's
     # /{id}/tasks route can never disagree with GET /tasks.

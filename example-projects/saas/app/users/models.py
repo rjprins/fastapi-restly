@@ -7,7 +7,7 @@ from sqlalchemy import ForeignKey, orm
 
 import fastapi_restly as fr
 
-from ..context import soft_delete_scope, tenant_scope
+from ..context import tenant_scope
 
 
 class UserRole(str, Enum):
@@ -77,5 +77,5 @@ class UserClauses(fr.ClauseNamespace):
     model = User
 
     owned_by_tenant = tenant_scope(User)
-    not_deleted = soft_delete_scope(User)
+    not_deleted = fr.where_clause(User.deleted_at.is_(None))
     default_scope = fr.all_of(owned_by_tenant, not_deleted)
