@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Annotated, Any
+from typing import Any
 
 import sqlalchemy as sa
 from sqlalchemy import ForeignKey, Integer, orm
@@ -147,10 +147,7 @@ class TaskClauses(fr.ClauseNamespace):
 
     @fr.where_clause
     @staticmethod
-    def in_current_org(
-        org_id: Annotated[int | None, Current.org_id],
-        admin: Annotated[bool, Current.is_admin],
-    ) -> sa.ColumnElement[bool]:
+    def in_current_org() -> sa.ColumnElement[bool]:
         """The task's project belongs to the caller's organization.
 
         Tasks reach their organization through the project, so the tenant
@@ -158,22 +155,21 @@ class TaskClauses(fr.ClauseNamespace):
         Admin requests, and requests without an org in context, see every
         task.
         """
-        if admin or org_id is None:
+        org_id = Current.org_id()
+        if Current.is_admin() or org_id is None:
             return sa.true()
         return Task.project.has(Project.organization_id == org_id)
 
     @fr.where_clause
     @staticmethod
-    def assigned_to_current_user(
-        user_id: Annotated[int | None, Current.user_id],
-        admin: Annotated[bool, Current.is_admin],
-    ) -> sa.ColumnElement[bool]:
+    def assigned_to_current_user() -> sa.ColumnElement[bool]:
         """Row-level permission: tasks assigned to the authenticated user.
 
         Admin requests, and requests without a user in context, see every
         task.
         """
-        if admin or user_id is None:
+        user_id = Current.user_id()
+        if Current.is_admin() or user_id is None:
             return sa.true()
         return Task.assignee_id == user_id
 

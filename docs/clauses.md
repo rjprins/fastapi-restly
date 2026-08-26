@@ -496,8 +496,9 @@ def visible_to_tenant(tid: Annotated[UUID, Current.tenant_id]) -> ColumnElement[
     return and_(Item.tenant_id == tid, Item.deleted_at.is_(None))
 ```
 
-Called, the slot returns the bound value, for the cases where Python
-itself needs it, string formatting or arithmetic:
+Called, the slot returns the bound value, for branching on it in the
+body and for the cases where Python itself needs it, string formatting
+or arithmetic:
 
 ```python
 class SearchContext(fr.ContextNamespace):
@@ -509,14 +510,17 @@ def name_matches() -> ColumnElement[bool]:
     return Item.name.ilike(f"%{SearchContext.term()}%")
 ```
 
-The calling form reads the value at that moment, so it requires the
-binding to be active while the clause resolves; the embedded and
-`Annotated` forms defer to resolve time and are wired into routing, so
-prefer them. A slot embedded in the expression a clause function
-returns does resolve, but the body is opaque at declaration, so
-routing cannot see the slot: binding through the clause or a tree
-raises `no clause accepts`, and only binding the slot directly works.
-Use the bare-condition or `Annotated` form for those clauses.
+The calling form keeps the clause's body opaque: routing cannot see a
+read inside a function, so binding through the clause or a tree raises
+`no clause accepts`, `explain()` lists nothing under the clause, and
+only the slot's own binding serves it (an unbound read still raises,
+naming the slot). A slot embedded in the expression a clause function
+returns is opaque the same way. That is the whole trade. An application
+that binds ambiently, one request-wide dependency covering every read,
+loses nothing to the calling form and gains its plainness; a clause
+that should take part in tree binding and ephemeral keywords, or show
+its reads in `explain()`, declares them with the embedded or
+`Annotated` form.
 
 Sharing is by identity: every clause that embeds or marks the same slot
 is served by a single bind, wherever it happens; a second namespace can

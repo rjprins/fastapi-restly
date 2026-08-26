@@ -93,12 +93,12 @@ Copy them into your project as a starting point.
 ### Tenant row scoping: a scope clause plus a stamping mixin
 
 The read half is a clause factory: one function builds the tenant predicate
-for any model with an ``organization_id`` column, branching on values a
-generated dependency (``Current.depends(...)``, see the SaaS example)
-binds once per request:
+for any model with an ``organization_id`` column. A called slot returns
+its bound value, so the clause branches on values a generated dependency
+(``Current.depends(...)``, see the SaaS example) binds once per request:
 
 ```python
-from typing import Annotated, Any
+from typing import Any
 import sqlalchemy as sa
 import fastapi_restly as fr
 
@@ -114,20 +114,18 @@ def tenant_scope(model: type[Any]) -> fr.WhereClause:
     """Rows of ``model`` owned by the authenticated organization."""
 
     @fr.where_clause
-    def owned_by_tenant(
-        org_id: Annotated[int | None, Current.org_id],
-        admin: Annotated[bool, Current.is_admin],
-    ) -> sa.ColumnElement[bool]:
-        if admin or org_id is None:
+    def owned_by_tenant() -> sa.ColumnElement[bool]:
+        # Read before the admin check: an unbound context stays a loud error.
+        org_id = Current.org_id()
+        if Current.is_admin() or org_id is None:
             return sa.true()
         return model.organization_id == org_id
 
     return owned_by_tenant
 ```
 
-The write half stays a mixin, stamping the same column cooperatively. A
-called slot returns its bound value, so the mixin reads the same
-`Current.org_id` the clause reads:
+The write half stays a mixin, stamping the same column cooperatively,
+reading the same `Current.org_id`:
 
 ```python
 import fastapi
@@ -171,10 +169,8 @@ def soft_delete_scope(model: type[Any]) -> fr.WhereClause:
     """Rows of ``model`` not soft-deleted, unless ``?include_deleted=true``."""
 
     @fr.where_clause
-    def not_deleted(
-        include_deleted: Annotated[bool, Current.include_deleted],
-    ) -> sa.ColumnElement[bool]:
-        return sa.true() if include_deleted else model.deleted_at.is_(None)
+    def not_deleted() -> sa.ColumnElement[bool]:
+        return sa.true() if Current.include_deleted() else model.deleted_at.is_(None)
 
     return not_deleted
 

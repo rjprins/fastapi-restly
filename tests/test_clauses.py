@@ -318,6 +318,23 @@ def test_call_uses_ambient_bind():
     assert "tenant_id" in str(expr)
 
 
+def test_body_read_clause_is_ambient_only():
+    """A slot called inside the body resolves ambiently; routing cannot see it."""
+    slot = context_param("body_tenant", int)
+
+    @where_clause
+    def body_read() -> ColumnElement[bool]:
+        return Item.tenant_id == slot()
+
+    with slot.bind(body_tenant=7):
+        stmt = body_read.select(Item)
+        assert 7 in params_of(stmt).values()
+
+    with pytest.raises(TypeError, match="no clause accepts"):
+        with body_read.bind(body_tenant=7):
+            pass
+
+
 def test_combined_clause_not_callable():
     bundle = combine(join_collection, collection_active)
     with pytest.raises(TypeError):

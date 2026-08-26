@@ -11,7 +11,7 @@ that read these values; each subject's ``ClauseNamespace`` (in its
 
 from __future__ import annotations
 
-from typing import Annotated, Any
+from typing import Any
 
 import fastapi
 import sqlalchemy as sa
@@ -71,11 +71,10 @@ def tenant_scope(model: type[Any]) -> fr.WhereClause:
     """
 
     @fr.where_clause
-    def owned_by_tenant(
-        org_id: Annotated[int | None, Current.org_id],
-        admin: Annotated[bool, Current.is_admin],
-    ) -> sa.ColumnElement[bool]:
-        if admin or org_id is None:
+    def owned_by_tenant() -> sa.ColumnElement[bool]:
+        # Read before the admin check: an unbound context stays a loud error.
+        org_id = Current.org_id()
+        if Current.is_admin() or org_id is None:
             return sa.true()
         return model.organization_id == org_id
 
@@ -91,9 +90,7 @@ def soft_delete_scope(model: type[Any]) -> fr.WhereClause:
     """
 
     @fr.where_clause
-    def not_deleted(
-        include_deleted: Annotated[bool, Current.include_deleted],
-    ) -> sa.ColumnElement[bool]:
-        return sa.true() if include_deleted else model.deleted_at.is_(None)
+    def not_deleted() -> sa.ColumnElement[bool]:
+        return sa.true() if Current.include_deleted() else model.deleted_at.is_(None)
 
     return not_deleted
