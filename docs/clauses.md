@@ -140,6 +140,7 @@ class ItemClauses(fr.ClauseNamespace):
     is_deleted = fr.where_clause(Item.deleted_at.is_not(None))
 
     @fr.where_clause
+    @staticmethod
     def owned_by_tenant(tenant_id: UUID) -> ColumnElement[bool]:
         return Item.tenant_id == tenant_id
 
@@ -148,7 +149,9 @@ class ItemClauses(fr.ClauseNamespace):
 ```
 
 Earlier names in the class body are in scope for later compositions, as
-`visible` shows. Usage is by class name: `ItemClauses.visible`,
+`visible` shows. The `@staticmethod` under the clause decorator is for
+the type checker, which reads a bare `def` in a class body as a method;
+`where_clause` unwraps it. Usage is by class name: `ItemClauses.visible`,
 `ItemClauses.trashed`, plain attribute access that any type checker
 follows. Name the namespace after the model, and define it in the
 model's module: importing the model then guarantees the namespace is

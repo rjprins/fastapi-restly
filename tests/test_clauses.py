@@ -623,6 +623,42 @@ def test_namespace_clauses_work():
     assert "deleted_at IS NULL" in str(stmt)
 
 
+def test_namespace_function_clause_with_staticmethod():
+    """The typed in-body spelling: the clause decorator over @staticmethod.
+
+    A type checker reads a bare def in a class body as a method and
+    checks its first parameter against the class; the staticmethod
+    marker suppresses that, and the clause constructors unwrap it.
+    """
+
+    class Gear(Base):
+        __tablename__ = "gear_staticmethod"
+        id: Mapped[int] = mapped_column(primary_key=True)
+        tenant_id: Mapped[int]
+
+    class GearClauses(ClauseNamespace):
+        model = Gear
+
+        @where_clause
+        @staticmethod
+        def owned_by_tenant(tenant_id: int) -> ColumnElement[bool]:
+            return Gear.tenant_id == tenant_id
+
+        @transform_clause
+        @staticmethod
+        def newest_first(stmt: Select) -> Select:
+            return stmt.order_by(Gear.id.desc())
+
+        visible = all_of(owned_by_tenant)
+
+    assert isinstance(GearClauses.owned_by_tenant, WhereClause)
+    assert isinstance(GearClauses.newest_first, TransformClause)
+    stmt = GearClauses.owned_by_tenant.select(Gear, tenant_id=7)
+    assert 7 in params_of(stmt).values()
+    ordered = apply_clauses(select(Gear), GearClauses.newest_first)
+    assert "ORDER BY" in str(ordered)
+
+
 def test_namespace_requires_model():
     with pytest.raises(TypeError, match="model"):
 

@@ -923,7 +923,13 @@ def where_clause(
     this clause. A function's parameters are filled from values bound
     via Clause.bind() each time the clause resolves; a parameter marked
     Annotated[T, slot] is fed from that slot instead.
+
+    In a ClauseNamespace body, stack this decorator over ``staticmethod``:
+    the marker keeps a type checker from reading the def as a method, and
+    is unwrapped here.
     """
+    if isinstance(condition, staticmethod):
+        condition = condition.__func__
     clause = WhereClause()
     if callable(condition):
         _validate_clause_fn(condition)
@@ -942,8 +948,11 @@ def transform_clause(fn: _Callable[..., _Select[_Any]]) -> TransformClause:
 
     The first parameter receives the statement; any further parameters
     are filled from values bound via Clause.bind(). A parameter marked
-    Annotated[T, slot] is fed from that ContextParam instead.
+    Annotated[T, slot] is fed from that ContextParam instead. Stacks over
+    ``staticmethod`` in a namespace body, like where_clause().
     """
+    if isinstance(fn, staticmethod):
+        fn = fn.__func__
     _validate_clause_fn(fn)
     wrapped, slots = _marker_slots(fn)
     clause = TransformClause()

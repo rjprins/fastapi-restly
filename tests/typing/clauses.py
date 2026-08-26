@@ -7,9 +7,10 @@ ContextNamespace declaration -> ContextParam[T]), the all_of overloads
 to WhereClause), the apply_clauses overloads per statement kind,
 namespace access by class name, and the WhereClause call form.
 
-Parameterized clause functions live at module level: a ``def`` inside a
-class body is checked as a method, so its first parameter would be
-reported against the class type.
+A parameterized clause function inside a class body stacks the clause
+decorator over ``@staticmethod``: a bare ``def`` there is checked as a
+method, with its first parameter reported against the class type. At
+module level no marker is needed.
 """
 
 from datetime import datetime
@@ -60,6 +61,17 @@ class TicketClauses(fr.ClauseNamespace):
     marked = marked
     newest_first = newest_first
 
+    # in-body function clauses: the clause decorator over @staticmethod
+    @fr.where_clause
+    @staticmethod
+    def since(cutoff: datetime) -> ColumnElement[bool]:
+        return Ticket.created_at >= cutoff
+
+    @fr.transform_clause
+    @staticmethod
+    def paged(stmt: Select[Any]) -> Select[Any]:
+        return stmt.limit(10)
+
     visible = fr.all_of(owned_by_tenant, fr.none_of(is_deleted))
 
 
@@ -67,6 +79,8 @@ class TicketClauses(fr.ClauseNamespace):
 assert_type(TicketClauses.is_deleted, fr.WhereClause)
 assert_type(TicketClauses.is_deleted.alias("aliased"), fr.WhereClause)
 assert_type(TicketClauses.newest_first, fr.TransformClause)
+assert_type(TicketClauses.since, fr.WhereClause)
+assert_type(TicketClauses.paged, fr.TransformClause)
 assert_type(
     fr.combine(TicketClauses.newest_first, TicketClauses.is_deleted), fr.CombinedClause
 )
