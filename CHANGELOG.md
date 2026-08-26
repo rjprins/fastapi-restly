@@ -48,8 +48,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `page` values above the SQL offset limit now return `422` instead of `500`.
 - Datetime query filters without an offset now use UTC for timezone-aware
   columns. Filters for `DateTime()` columns remain naive.
+
 ## [0.9.0] - 2026-08-13
 
 ### Added

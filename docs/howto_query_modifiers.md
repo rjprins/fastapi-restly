@@ -143,7 +143,9 @@ Pagination is controlled by the `page` and `page_size` parameters:
 GET /users?page=2&page_size=50
 ```
 
-`page` is 1-based. `page_size` must be `>= 1` and `<= max_page_size`
+`page` is 1-based and has no fixed upper bound. The combination must satisfy
+`(page - 1) * page_size <= 2**63 - 1`. A larger SQL offset is rejected with
+`422` before the query runs. `page_size` must be `>= 1` and `<= max_page_size`
 (default 1000). When the client omits `page_size`, the endpoint falls back to
 {attr}`default_page_size <fastapi_restly.views.BaseRestView.default_page_size>`
 (50). Tune both on the view class:

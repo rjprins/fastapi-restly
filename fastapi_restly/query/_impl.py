@@ -43,6 +43,10 @@ DEFAULT_PAGE_SIZE: int = 50
 #: Override per-view via :attr:`BaseRestView.max_page_size`.
 MAX_PAGE_SIZE = 1000
 
+#: Largest pagination offset accepted by supported SQL databases. SQLite and
+#: PostgreSQL bind ``OFFSET`` as a signed 64-bit integer.
+_MAX_PAGINATION_OFFSET = 2**63 - 1
+
 #: Reserved query-parameter names produced by the schema. Filter columns
 #: literally named one of these would shadow pagination/sort, which would
 #: silently break the endpoint contract. Treated as a hard error.
@@ -140,6 +144,19 @@ def _supports_range_operators(field: FieldInfo) -> bool:
     return False
 
 
+@pydantic.model_validator(mode="after")
+def _validate_pagination_offset(params: pydantic.BaseModel) -> pydantic.BaseModel:
+    page = cast(int, params.page)  # type: ignore[attr-defined]
+    page_size = cast(Optional[int], params.page_size)  # type: ignore[attr-defined]
+    if page_size is None:
+        return params
+    if page - 1 > _MAX_PAGINATION_OFFSET // page_size:
+        raise ValueError(
+            f"page and page_size produce an offset above {_MAX_PAGINATION_OFFSET}"
+        )
+    return params
+
+
 def create_list_params_schema(
     schema_cls: SchemaType,
     model: type[DeclarativeBase],
@@ -166,8 +183,9 @@ def create_list_params_schema(
 
     When ``paginated`` is true (the default), ``page`` and ``page_size`` are
     added and validated by Pydantic with bounds (``page >= 1``,
-    ``1 <= page_size <= max_page_size``); out-of-range values produce a standard
-    422 response from FastAPI. When it is false, no pagination parameters are
+    ``1 <= page_size <= max_page_size``). The resulting SQL offset must also fit
+    in a signed 64-bit integer. Out-of-range values produce a standard 422
+    response from FastAPI. When it is false, no pagination parameters are
     emitted at all -- the endpoint returns every matching row -- while sorting
     and filtering stay available.
 
@@ -327,7 +345,14 @@ def create_list_params_schema(
             )
 
     schema_name = "ListParams" + schema_cls.__name__
-    return pydantic.create_model(schema_name, **fields)  # type: ignore[call-overload]
+    validators = (
+        {"_validate_pagination_offset": _validate_pagination_offset}
+        if paginated
+        else {}
+    )
+    return pydantic.create_model(  # type: ignore[call-overload]
+        schema_name, __validators__=validators, **fields
+    )
 
 
 def apply_list_params(
