@@ -18,6 +18,7 @@ from ._base import (
     IdT,
     ListingResult,
     ModelT,
+    ReadScope,
     ResponseShape,
     SchemaT,
     UpdateSchemaT,
@@ -100,12 +101,16 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
     # Request handlers (authorize + commit bracket)
     # ====================================================================
 
-    def handle_get_many(self, query_params: Any) -> ListingResult[ModelT]:
+    def handle_get_many(
+        self, query_params: Any, *, scope: ReadScope = None
+    ) -> ListingResult[ModelT]:
         self.authorize(Action.GET_MANY)
-        return self.get_many(query_params)
+        with self._reading_through(scope):
+            return self.get_many(query_params)
 
-    def handle_get_one(self, id: IdT) -> ModelT:
-        obj = self.get_one(id)
+    def handle_get_one(self, id: IdT, *, scope: ReadScope = None) -> ModelT:
+        with self._reading_through(scope):
+            obj = self.get_one(id)
         self.authorize(Action.GET_ONE, obj=obj)
         return obj
 

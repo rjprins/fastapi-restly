@@ -163,6 +163,106 @@ def test_unscoped_view_reads_past_the_default_scope(client):
 
 
 # ---------------------------------------------------------------------------
+# a route names its own scope per read
+# ---------------------------------------------------------------------------
+
+
+def test_a_route_reads_through_its_own_scope(client):
+    """A custom route lists or loads another surface of the same model by
+    naming a scope on the read call; the view scope stays the default
+    for every other read, and the route's literal path wins over /{id}."""
+
+    class ScopeNote(fr.IDBase):
+        tenant_id: Mapped[int]
+        name: Mapped[str]
+        deleted: Mapped[bool] = mapped_column(default=False)
+
+    class Current(fr.ContextNamespace):
+        tenant_id: fr.ContextParam[int]
+
+    class ScopeNoteClauses(fr.ClauseNamespace):
+        model = ScopeNote
+
+        is_deleted = fr.where_clause(ScopeNote.deleted.is_(True))
+        owned_by_tenant = fr.where_clause(ScopeNote.tenant_id == Current.tenant_id)
+        visible = fr.all_of(owned_by_tenant, fr.none_of(is_deleted))
+        trashed = fr.all_of(owned_by_tenant, is_deleted)
+        default_scope = visible
+
+    class ScopeNoteSchema(fr.IDSchema):
+        tenant_id: int
+        name: str
+        deleted: bool = False
+
+    async def bind_tenant(tenant: Annotated[int, Header(alias="x-tenant-id")]):
+        with Current.tenant_id.bind(tenant_id=tenant):
+            yield
+
+    @fr.include_view(client.app)
+    class ScopeNoteView(fr.AsyncRestView):
+        prefix = "/scope-notes"
+        model = ScopeNote
+        schema = ScopeNoteSchema
+        dependencies = [Depends(bind_tenant)]
+
+        @fr.get("/trash")
+        async def trash(self):
+            result = await self.handle_get_many(
+                self.request.query_params, scope=ScopeNoteClauses.trashed
+            )
+            return self.to_response(result, fr.ResponseShape.LISTING)
+
+        @fr.get("/everything")
+        async def everything(self):
+            result = await self.handle_get_many(
+                self.request.query_params, scope=fr.clauses.UNSCOPED
+            )
+            return self.to_response(result, fr.ResponseShape.LISTING)
+
+        @fr.post("/{id}/restore")
+        async def restore(self, id: int):
+            note = await self.handle_get_one(id, scope=ScopeNoteClauses.trashed)
+            async with self.write_action("restore", obj=note):
+                note.deleted = False
+            return self.to_response(note)
+
+    create_tables()
+
+    t1 = {"x-tenant-id": "1"}
+    t2 = {"x-tenant-id": "2"}
+
+    def post(payload, headers):
+        return client.post("/scope-notes/", json=payload, headers=headers).json()
+
+    live = post({"tenant_id": 1, "name": "live"}, t1)
+    gone = post({"tenant_id": 1, "name": "gone", "deleted": True}, t1)
+    post({"tenant_id": 2, "name": "other", "deleted": True}, t2)
+
+    # the view's own reads still apply the default scope
+    assert [
+        r["name"] for r in client.get("/scope-notes/", headers=t1).json()["data"]
+    ] == ["live"]
+
+    # /trash is a route on the same view, not captured by /{id}, and reads
+    # the trash surface: own deleted rows only, with the page total
+    trash = client.get("/scope-notes/trash", headers=t1).json()
+    assert [r["name"] for r in trash["data"]] == ["gone"]
+    assert trash["total_count"] == 1
+
+    # the per-read escape is the same loud spelling as everywhere else
+    everything = client.get("/scope-notes/everything", headers=t1).json()
+    assert {r["name"] for r in everything["data"]} == {"live", "gone", "other"}
+
+    # restore loads through the trash surface: a live row is outside it
+    client.post(
+        f"/scope-notes/{live['id']}/restore", headers=t1, assert_status_code=404
+    )
+    restored = client.post(f"/scope-notes/{gone['id']}/restore", headers=t1).json()
+    assert restored["deleted"] is False
+    assert client.get(f"/scope-notes/{gone['id']}", headers=t1).json()["name"] == "gone"
+
+
+# ---------------------------------------------------------------------------
 # reference checks: default_scope, per-field override, explicit escape
 # ---------------------------------------------------------------------------
 
@@ -427,6 +527,57 @@ def test_sync_view_reads_through_default_scope(sync_session):
         assert view.get_one(1).id == 1
         with pytest.raises(NotFound):
             view.get_one(2)
+
+
+def test_sync_handlers_take_a_per_read_scope(sync_session):
+    view = _SyncRowView()
+    view.session = sync_session
+    with _SyncContext.tenant_id.bind(tenant_id=1):
+        # a clause replaces the view scope for that read only
+        other = fr.where_clause(SyncRow.tenant_id == 2)
+        assert view.handle_get_one(2, scope=other).id == 2
+        with pytest.raises(NotFound):
+            view.handle_get_one(1, scope=other)
+        assert view.handle_get_one(1).id == 1
+
+        # UNSCOPED reads past the default, in the one loud spelling
+        assert view.handle_get_one(2, scope=fr.clauses.UNSCOPED).id == 2
+        ids = {
+            r.id for r in view.handle_get_many({}, scope=fr.clauses.UNSCOPED).objects
+        }
+        assert ids == {1, 2}
+        assert {r.id for r in view.handle_get_many({}).objects} == {1}
+
+        # the per-read scope is gone once the call is, on error too
+        with pytest.raises(NotFound):
+            view.handle_get_one(3, scope=fr.clauses.UNSCOPED)
+        with pytest.raises(NotFound):
+            view.get_one(2)
+
+        # a raw expression is the same loud configuration error as on `scope`
+        with pytest.raises(RestlyConfigurationError, match="per-read scope"):
+            view.handle_get_one(1, scope=SyncRow.tenant_id == 2)  # type: ignore[arg-type]
+
+
+def test_per_read_scope_reaches_a_get_one_override(sync_session):
+    """The scope is set around the domain op, so an override of
+    ``get_one(self, id)`` keeps its signature and still reads the surface
+    the route asked for."""
+    seen: list[int] = []
+
+    class _Overriding(_SyncRowView):
+        def get_one(self, id):
+            obj = super().get_one(id)
+            seen.append(obj.id)
+            return obj
+
+    view = _Overriding()
+    view.session = sync_session
+    with _SyncContext.tenant_id.bind(tenant_id=1):
+        assert view.handle_get_one(2, scope=fr.clauses.UNSCOPED).id == 2
+        with pytest.raises(NotFound):
+            view.handle_get_one(2)
+    assert seen == [2]
 
 
 def test_unbound_scope_raises_the_teaching_error(sync_session):

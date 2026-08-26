@@ -44,6 +44,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   transform, so ordering and joins belong on the view scope.
   `fr.RefExists` and `fr.clauses.UNSCOPED` are now exported. See the
   Scopes guide.
+- A route names its own scope per read: `handle_get_many(query_params,
+  scope=...)` and `handle_get_one(id, scope=...)` replace the view scope
+  for that call, so a trash listing or a restore action is a custom
+  route on the same view instead of a second view class.
+  `fr.clauses.UNSCOPED` is the per-read opt-out, in the same spelling.
+  The scope is in force around the domain op, so a `get_one` / `get_many`
+  override keeps its signature and reads the surface the route asked for.
 - `restly new <name>` scaffolding command to create a project from scratch with
   optional database and alembic set up.
 - Pass `health="/health"` to `fr.configure()` to add a liveness endpoint that

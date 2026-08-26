@@ -18,6 +18,7 @@ from ._base import (
     IdT,
     ListingResult,
     ModelT,
+    ReadScope,
     ResponseShape,
     SchemaT,
     UpdateSchemaT,
@@ -106,17 +107,29 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     # Request handlers (authorize + commit bracket)
     # ====================================================================
 
-    async def handle_get_many(self, query_params: Any) -> ListingResult[ModelT]:
-        """List handler: ``authorize`` then the ``get_many`` domain op."""
-        await self.authorize(Action.GET_MANY)
-        return await self.get_many(query_params)
+    async def handle_get_many(
+        self, query_params: Any, *, scope: ReadScope = None
+    ) -> ListingResult[ModelT]:
+        """List handler: ``authorize`` then the ``get_many`` domain op.
 
-    async def handle_get_one(self, id: IdT) -> ModelT:
+        :param scope: a clause that replaces the view scope for this read,
+            so a custom route can list another surface of the same model
+            (a trash listing); ``fr.clauses.UNSCOPED`` reads past it.
+        """
+        await self.authorize(Action.GET_MANY)
+        with self._reading_through(scope):
+            return await self.get_many(query_params)
+
+    async def handle_get_one(self, id: IdT, *, scope: ReadScope = None) -> ModelT:
         """Retrieve handler: scoped load (404 by visibility) then read-auth.
 
         Reusable from custom actions as "load with scope + 404 + read-auth".
+
+        :param scope: a clause that replaces the view scope for this read,
+            so a restore route can load the row the view scope hides.
         """
-        obj = await self.get_one(id)
+        with self._reading_through(scope):
+            obj = await self.get_one(id)
         await self.authorize(Action.GET_ONE, obj=obj)
         return obj
 
@@ -167,9 +180,10 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         """Return the scoped, filtered, paginated page plus the total count.
 
         Routes through the view scope
-        (:attr:`~fastapi_restly.views.BaseRestView.scope`) +
-        :meth:`apply_query_params` (filter/sort/page) + :meth:`count`.
-        Auth-free; ``handle_get_many`` adds the ``authorize`` call.
+        (:attr:`~fastapi_restly.views.BaseRestView.scope`), or the scope
+        ``handle_get_many`` was asked for, + :meth:`apply_query_params`
+        (filter/sort/page) + :meth:`count`. Auth-free; ``handle_get_many``
+        adds the ``authorize`` call.
         """
         query = self._apply_scope(select(self.model))
         query = self.apply_query_params(query, query_params)
@@ -189,8 +203,9 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     async def get_one(self, id: IdT) -> ModelT:
         """Load one object through the view scope (scope + 404).
 
-        Auth-free: visibility comes from the scope, so a row outside it is a
-        clean 404 for every caller. ``handle_get_one`` adds read-auth.
+        Auth-free: visibility comes from the scope, or the scope
+        ``handle_get_one`` was asked for, so a row outside it is a clean
+        404 for every caller. ``handle_get_one`` adds read-auth.
         """
         pk_cols = sa_inspect(self.model).primary_key
         if len(pk_cols) != 1:

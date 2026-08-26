@@ -13,6 +13,7 @@ Provides default reading and writing functions on the database using
 SQLAlchemy models.
 """
 
+import contextlib
 import dataclasses
 import functools
 import inspect
@@ -49,6 +50,10 @@ from typing_extensions import TypeVar
 
 from .._exception_handlers import register_default_exception_handlers
 from ..clauses import UNSCOPED, Clause, _default_scope, _Unscoped, apply_clauses
+
+#: A per-read scope: ``None`` for the view's own, a clause that replaces it
+#: for that read, or ``fr.clauses.UNSCOPED``.
+ReadScope = Clause | _Unscoped | None
 from ..db._globals import _fr_globals
 from ..exc import RestlyConfigurationError, RestlyMisuseWarning
 from ..objects import snapshot as _object_snapshot
@@ -1053,11 +1058,39 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
             )
         return scope
 
+    # The per-read scope a handler was asked for, in force for that call
+    # only; None means the view scope. Instance state is per request: the
+    # view is instantiated by Depends(view_cls).
+    _read_scope: ReadScope = None
+
+    @contextlib.contextmanager
+    def _reading_through(self, scope: ReadScope) -> Iterator[None]:
+        # Set by handle_get_many/handle_get_one, read by _apply_scope, so a
+        # get_one/get_many override honors the route's scope without having
+        # to thread it through its own signature.
+        if scope is None:
+            yield
+            return
+        if scope is not UNSCOPED and not isinstance(scope, Clause):
+            raise RestlyConfigurationError(
+                f"{type(self).__name__}: a per-read scope must be a Clause or "
+                f"fr.clauses.UNSCOPED, got {type(scope).__name__}; wrap a raw "
+                "expression with where_clause()"
+            )
+        previous = self._read_scope
+        self._read_scope = scope
+        try:
+            yield
+        finally:
+            self._read_scope = previous
+
     def _apply_scope(self, query: Any) -> Any:
         # the framework verb behind every read; not an override point:
-        # declare the clause on `scope`, bind values around the request
-        scope = self._resolved_scope()
+        # declare the clause on `scope`, or name one per read from a route
+        scope = self._read_scope
         if scope is None:
+            scope = self._resolved_scope()
+        if not isinstance(scope, Clause):  # None or UNSCOPED
             return query
         return apply_clauses(query, scope)
 
