@@ -20,6 +20,7 @@ import fastapi
 
 import fastapi_restly as fr
 
+from ..context import Current
 from ..views import TenantBase
 from .models import Upload, UploadLine
 from .schemas import UploadLineSchema, UploadSchema
@@ -64,7 +65,7 @@ class UploadView(TenantBase):
             upload = Upload(
                 filename=file.filename,
                 organization_id=organization_id,
-                uploaded_by_id=self._current_user_id(),
+                uploaded_by_id=Current.user_id(),
             )
             self.session.add(upload)
 

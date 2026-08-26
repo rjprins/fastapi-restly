@@ -7,6 +7,7 @@ from pydantic import BaseModel
 import fastapi_restly as fr
 from fastapi_restly.objects import async_make_new_object, async_save_object
 
+from ..context import Current
 from ..views import TenantBase, TenantScopedMixin
 from .models import Label, TaskLabel
 from .schemas import LabelSchema, TaskLabelSchema
@@ -54,7 +55,7 @@ class TaskLabelView(TenantBase):
         """Stamp added_by_id from auth context if the client did not provide it."""
         obj = await super().make_new_object(schema_obj)
         if obj.added_by_id is None:
-            obj.added_by_id = self._current_user_id()
+            obj.added_by_id = Current.user_id()
         return obj
 
     @fr.post("/create-and-attach", response_model=TaskLabelSchema, status_code=201)
@@ -71,7 +72,7 @@ class TaskLabelView(TenantBase):
         to spell out by hand, and the aborted request rolls the flushed
         Label back with it.
         """
-        org_id = self._current_org_id()
+        org_id = Current.org_id()
         if org_id is None:
             raise HTTPException(400, "Cannot create labels without an org context")
 
@@ -94,6 +95,6 @@ class TaskLabelView(TenantBase):
             )
             # The free helper bypasses this view's make_new_object override.
             if task_label.added_by_id is None:
-                task_label.added_by_id = self._current_user_id()
+                task_label.added_by_id = Current.user_id()
             w.obj = await async_save_object(self.session, task_label)
         return w.obj

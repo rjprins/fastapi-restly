@@ -712,7 +712,7 @@ class TestSiblingCreation:
         task = client.post(
             "/tasks", json={"title": "T", "project_id": proj["id"]}
         ).json()
-        # No auth_context → _current_org_id() is None.
+        # No auth_context → Current.org_id() is None.
         client.post(
             "/task-labels/create-and-attach",
             json={"task_id": task["id"], "label_name": "no-org"},

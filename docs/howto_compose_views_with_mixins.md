@@ -105,6 +105,7 @@ import fastapi_restly as fr
 
 class Current(fr.ContextNamespace):
     org_id: fr.ContextParam[int | None]
+    user_id: fr.ContextParam[int | None]
     is_admin: fr.ContextParam[bool]
     include_deleted: fr.ContextParam[bool]
 
@@ -124,7 +125,9 @@ def tenant_scope(model: type[Any]) -> fr.WhereClause:
     return owned_by_tenant
 ```
 
-The write half stays a mixin, stamping the same column cooperatively:
+The write half stays a mixin, stamping the same column cooperatively. A
+called slot returns its bound value, so the mixin reads the same
+`Current.org_id` the clause reads:
 
 ```python
 import fastapi
@@ -140,11 +143,10 @@ class TenantScopedMixin:
         request: fastapi.Request
         session: AsyncSession
         model: type[DeclarativeBase]
-        def _current_org_id(self) -> int | None: ...
 
     async def make_new_object(self, schema_obj: Any) -> Any:
         obj = await super().make_new_object(schema_obj)  # type: ignore[misc]
-        org_id = self._current_org_id()
+        org_id = Current.org_id()
         if org_id is not None and hasattr(obj, "organization_id"):
             obj.organization_id = org_id
         return obj
@@ -206,29 +208,23 @@ bring a flipped row back, see
 
 ### `AuditStampedMixin`: record who created/updated each row
 
-`AuditStampedMixin` stamps `created_by_id` and `updated_by_id` from request
-state on every write:
+`AuditStampedMixin` stamps `created_by_id` and `updated_by_id` from the
+request context on every write:
 
 ```python
 class AuditStampedMixin:
-    """Stamp ``created_by_id`` / ``updated_by_id`` from request state."""
-
-    if TYPE_CHECKING:
-        request: fastapi.Request
-
-    def _current_user_id(self) -> int | None:
-        return getattr(self.request.state, "user_id", None)
+    """Stamp ``created_by_id`` / ``updated_by_id`` from ``Current``."""
 
     async def make_new_object(self, schema_obj: Any) -> Any:
         obj = await super().make_new_object(schema_obj)  # type: ignore[misc]
-        uid = self._current_user_id()
+        uid = Current.user_id()
         obj.created_by_id = uid
         obj.updated_by_id = uid
         return obj
 
     async def update_object(self, obj: Any, schema_obj: Any) -> Any:
         obj = await super().update_object(obj, schema_obj)  # type: ignore[misc]
-        obj.updated_by_id = self._current_user_id()
+        obj.updated_by_id = Current.user_id()
         return obj
 ```
 

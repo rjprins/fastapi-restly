@@ -10,6 +10,7 @@ from sqlalchemy.orm import selectinload
 
 import fastapi_restly as fr
 
+from ..context import Current
 from ..tasks.models import Task, TaskClauses, TaskPriority, TaskStatus, TaskType
 from ..tasks.schemas import TaskSchema
 from ..views import AuditStampedMixin, SoftDeleteMixin, TenantBase, TenantScopedMixin
@@ -117,7 +118,7 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
         Stand-in policy: only members of the same org. In production this
         would consult the user's role from request.state.
         """
-        org_id = self._current_org_id()
+        org_id = Current.org_id()
         return org_id is None or project.organization_id == org_id
 
     async def create(self, schema_obj):

@@ -32,15 +32,14 @@ update every route::
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Annotated, Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
 import fastapi
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import DeclarativeBase
 
 import fastapi_restly as fr
 
-from .context import bind_request_context, get_current_org_id, get_current_user_id
+from .context import Current, bind_request_context
 
 # Module level, not inside _emit(): Alembic reaches models through this graph.
 from .outbox import OutboxEvent
@@ -61,9 +60,8 @@ class TenantBase(fr.AsyncRestView):
 
     Subclasses inherit:
     - Router-level ``check_api_key`` dependency on every route
+    - ``bind_request_context``, so ``Current`` reads work in every route
     - ``save_object`` that calls through to super() then logs the write
-    - FastAPI dependencies for current user/org context
-    - ``_current_org_id()`` helper for tenant-scoped filtering
     """
 
     # Applied to every route registered by this view and all subclasses.
@@ -71,22 +69,6 @@ class TenantBase(fr.AsyncRestView):
         fastapi.Depends(check_api_key),
         bind_request_context,
     ]
-    current_org_id: Annotated[int | None, fastapi.Depends(get_current_org_id)]
-    current_user_id: Annotated[int | None, fastapi.Depends(get_current_user_id)]
-
-    def _current_org_id(self) -> int | None:
-        """Return the current tenant's org ID.
-
-        In production: set by auth middleware via ``request.state.org_id``.
-        In tests: controlled with ``app.dependency_overrides``.
-        Returns ``None`` when neither is set (all rows visible, no scoping).
-        """
-        return self.current_org_id
-
-    def _current_user_id(self) -> int | None:
-        """Return the current authenticated user ID."""
-        return self.current_user_id
-
     async def save_object(self, obj):
         """Flush and refresh, with a placeholder for audit side effects."""
         obj = await super().save_object(obj)
@@ -120,26 +102,14 @@ class TenantScopedMixin:
     """Stamp ``organization_id`` from auth context on writes.
 
     The read-side counterpart is the ``owned_by_tenant`` clause in the
-    model's namespace, applied through its ``default_scope``. Concrete
-    views inherit this before ``TenantBase`` so ``_current_org_id`` is
-    available via the cooperative chain.
-
-    Type stubs below describe what the mixin expects from its host class.
+    model's namespace, applied through its ``default_scope``; both halves
+    read the same ``Current.org_id``.
     """
-
-    # Required from the host class (TenantBase / AsyncRestView).
-    # Keep stubs under TYPE_CHECKING so runtime MRO uses the host implementation.
-    if TYPE_CHECKING:
-        request: fastapi.Request
-        session: AsyncSession
-        model: type[DeclarativeBase]
-
-        def _current_org_id(self) -> int | None: ...
 
     async def make_new_object(self, schema_obj: Any) -> Any:
         obj = await super().make_new_object(schema_obj)  # type: ignore[misc]
         # Admins get tenant-stamping when request context provides an org.
-        org_id = self._current_org_id()
+        org_id = Current.org_id()
         if org_id is not None and hasattr(obj, "organization_id"):
             obj.organization_id = org_id
         return obj
@@ -159,9 +129,7 @@ class SoftDeleteMixin:
 
     # Required from the host class.
     if TYPE_CHECKING:
-        request: fastapi.Request
         session: AsyncSession
-        model: type[DeclarativeBase]
 
     # Allow ``?include_deleted=true`` through the listing endpoint's
     # unknown-query-param guard.
@@ -176,23 +144,15 @@ class SoftDeleteMixin:
 
 
 class AuditStampedMixin:
-    """Stamp ``created_by_id`` and ``updated_by_id`` from request state.
+    """Stamp ``created_by_id`` and ``updated_by_id`` from ``Current``.
 
     Assumes the columns exist on ``self.model``. Stamps before flush in
     ``make_new_object`` and ``update_object``.
     """
 
-    # Required from the host class.
-    if TYPE_CHECKING:
-        request: fastapi.Request
-        current_user_id: int | None
-
-    def _current_user_id(self) -> int | None:
-        return self.current_user_id
-
     async def make_new_object(self, schema_obj: Any) -> Any:
         obj = await super().make_new_object(schema_obj)  # type: ignore[misc]
-        uid = self._current_user_id()
+        uid = Current.user_id()
         if hasattr(obj, "created_by_id") and obj.created_by_id is None:
             obj.created_by_id = uid
         if hasattr(obj, "updated_by_id"):
@@ -202,5 +162,5 @@ class AuditStampedMixin:
     async def update_object(self, obj: Any, schema_obj: Any) -> Any:
         obj = await super().update_object(obj, schema_obj)  # type: ignore[misc]
         if hasattr(obj, "updated_by_id"):
-            obj.updated_by_id = self._current_user_id()
+            obj.updated_by_id = Current.user_id()
         return obj

@@ -8,6 +8,7 @@ from pydantic import BaseModel
 import fastapi_restly as fr
 
 from ..auth import hash_password, verify_password
+from ..context import Current
 from ..views import AuditStampedMixin, SoftDeleteMixin, TenantBase, TenantScopedMixin
 from .models import User, UserRole
 from .schemas import UserFullSchema, UserPublicSchema, UserSchema
@@ -113,7 +114,7 @@ class UserView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantBase
     @fr.get("/me", response_model=UserSchema)
     async def get_current_user(self) -> Any:
         """Get current user's profile."""
-        user_id = self._current_user_id()
+        user_id = Current.user_id()
         if not user_id:
             raise HTTPException(status_code=404, detail="Current user not found")
         user = await self.handle_get_one(user_id)
@@ -129,7 +130,7 @@ class UserView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantBase
         commits via the bracket. Any future ``update`` override (validation,
         auditing) applies here automatically.
         """
-        user_id = self._current_user_id()
+        user_id = Current.user_id()
         if not user_id:
             raise HTTPException(status_code=404, detail="Current user not found")
         user = await self.handle_update(user_id, request)
