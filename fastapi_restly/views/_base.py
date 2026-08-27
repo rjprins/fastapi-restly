@@ -989,9 +989,9 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     scope: ClassVar[Clause | Unscoped | None] = None
     id_type: ClassVar[type[Any]] = int
     exclude_routes: ClassVar[Iterable[str | ViewRoute]] = ()
-    #: Extra query-parameter keys to allow on the listing endpoint beyond those
+    #: Extra query-parameter keys to allow on listing routes beyond those
     #: derived from the response schema. Use this when a view consumes a custom
-    #: parameter (e.g. ``?include_deleted=true`` on a soft-delete mixin). Without
+    #: parameter (e.g. ``?verbose=true`` read from ``self.request``). Without
     #: this, the strict unknown-key guard rejects the request with 422.
     extra_query_params: ClassVar[Iterable[str]] = ()
     #: Whether list endpoints paginate. ``True`` (the default) wraps the list in
@@ -1006,6 +1006,11 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     default_page_size: ClassVar[int] = DEFAULT_PAGE_SIZE
     #: Maximum ``page_size`` accepted on list endpoints. Above this returns 422.
     max_page_size: ClassVar[int] = MAX_PAGE_SIZE
+    #: The listing grammar (filter, sort, page) as a pydantic model, generated
+    #: from ``schema`` and ``model``. Any route method on the view that declares
+    #: a ``query_params`` parameter takes it: typed for FastAPI and OpenAPI, and
+    #: guarded against unknown keys like ``GET /``, so a custom listing (a
+    #: trash route naming its own scope) reads the same grammar.
     listing_param_schema: ClassVar[type[pydantic.BaseModel]]
 
     request: fastapi.Request
@@ -1139,6 +1144,9 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
 
     def _reject_unknown_query_params(self) -> None:
         """Reject any query-string key that isn't part of ``listing_param_schema``.
+
+        Runs before every route that declares ``query_params`` (see
+        :attr:`listing_param_schema`).
 
         FastAPI flattens ``Annotated[listing_param_schema, Query()]`` into named
         query parameters; unknown keys are silently ignored at that layer,
@@ -1349,6 +1357,24 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
             else Envelope[response_schema]
         )
 
+        # Every route that declares ``query_params`` takes the listing grammar:
+        # ``GET /`` and any custom listing alike, guarded the same way.
+        listing_params = Annotated[cls.listing_param_schema, fastapi.Query()]
+        for name, route in list(cls.__dict__.items()):
+            if not hasattr(route, "_api_route_args"):
+                continue
+            if "query_params" not in inspect.signature(route).parameters:
+                continue
+            if not getattr(route, "_fr_listing_guard", False):
+                route = _guard_listing_params(route)
+                setattr(cls, name, route)
+            if name != "get_many_endpoint":
+                _annotate(
+                    route,
+                    return_annotation=inspect.signature(route).return_annotation,
+                    query_params=listing_params,
+                )
+
         # The ``*_endpoint`` methods are defined on AsyncRestView/RestView
         # subclasses and may be excluded by ``exclude_routes``, so they aren't
         # visible on BaseRestView. ``getattr`` keeps pyright happy without
@@ -1357,7 +1383,7 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
             _annotate(
                 ep,
                 return_annotation=listing_response_annotation,
-                query_params=Annotated[cls.listing_param_schema, fastapi.Query()],
+                query_params=listing_params,
             )
         if (ep := getattr(cls, "get_one_endpoint", None)) is not None:
             _annotate(ep, return_annotation=response_schema, id=cls.id_type)
@@ -1375,6 +1401,34 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         if (ep := getattr(cls, "delete_endpoint", None)) is not None:
             _annotate(ep, return_annotation=fastapi.Response, id=cls.id_type)
         _exclude_routes(cls)
+
+
+def _guard_listing_params(route: Callable) -> Callable:
+    """Run the unknown-key guard before a route that takes ``query_params``.
+
+    A copy, like the parent-endpoint copies: ``functools.wraps`` carries the
+    route args and the signature, and the marker keeps a subclass's copy
+    from being wrapped twice.
+    """
+    if inspect.iscoroutinefunction(route):
+
+        @functools.wraps(route)
+        async def _async_guarded(self, *args, **kwargs):
+            self._reject_unknown_query_params()
+            return await route(self, *args, **kwargs)
+
+        guarded: Callable = _async_guarded
+    else:
+
+        @functools.wraps(route)
+        def _sync_guarded(self, *args, **kwargs):
+            self._reject_unknown_query_params()
+            return route(self, *args, **kwargs)
+
+        guarded = _sync_guarded
+
+    guarded._fr_listing_guard = True  # type: ignore[attr-defined]
+    return guarded
 
 
 def _exclude_routes(cls: type[BaseRestView[Any, Any, Any, Any, Any]]):

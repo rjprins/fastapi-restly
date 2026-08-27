@@ -57,7 +57,6 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         """``GET /`` endpoint method. Override ``get_many`` for domain
         logic, ``handle_get_many`` for orchestration, ``to_response`` for the
         response shape; replace this method only to change the HTTP contract."""
-        self._reject_unknown_query_params()
         result = self.handle_get_many(query_params)
         return self.to_response(result, ResponseShape.LISTING)
 

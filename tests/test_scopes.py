@@ -205,10 +205,11 @@ def test_a_route_reads_through_its_own_scope(client):
         schema = ScopeNoteSchema
         dependencies = [Depends(bind_tenant)]
 
+        # a route declaring `query_params` takes the listing grammar
         @fr.get("/trash")
-        async def trash(self):
+        async def trash(self, query_params):
             result = await self.handle_get_many(
-                self.request.query_params, scope=ScopeNoteClauses.trashed
+                query_params, scope=ScopeNoteClauses.trashed
             )
             return self.to_response(result, fr.ResponseShape.LISTING)
 
@@ -249,9 +250,35 @@ def test_a_route_reads_through_its_own_scope(client):
     assert [r["name"] for r in trash["data"]] == ["gone"]
     assert trash["total_count"] == 1
 
+    # the same filter, sort and page grammar as GET /, guarded the same way
+    post({"tenant_id": 1, "name": "also gone", "deleted": True}, t1)
+    filtered = client.get("/scope-notes/trash?name=gone", headers=t1).json()
+    assert [r["name"] for r in filtered["data"]] == ["gone"]
+    ordered = client.get("/scope-notes/trash?sort=-name", headers=t1).json()
+    assert [r["name"] for r in ordered["data"]] == ["gone", "also gone"]
+    paged = client.get("/scope-notes/trash?page_size=1", headers=t1).json()
+    assert paged["total_count"] == 2 and len(paged["data"]) == 1
+    response = client.get(
+        "/scope-notes/trash?bogus=1", headers=t1, assert_status_code=422
+    )
+    assert response.json()["detail"][0]["loc"] == ["query", "bogus"]
+    # and the grammar is in the contract
+    trash_params = {
+        p["name"]
+        for p in client.app.openapi()["paths"]["/scope-notes/trash"]["get"][
+            "parameters"
+        ]
+    }
+    assert {"name", "sort", "page", "page_size"} <= trash_params
+
     # the per-read escape is the same loud spelling as everywhere else
     everything = client.get("/scope-notes/everything", headers=t1).json()
-    assert {r["name"] for r in everything["data"]} == {"live", "gone", "other"}
+    assert {r["name"] for r in everything["data"]} == {
+        "live",
+        "gone",
+        "also gone",
+        "other",
+    }
 
     # restore loads through the trash surface: a live row is outside it
     client.post(
@@ -357,6 +384,71 @@ def test_a_base_class_stacks_a_floor_under_every_read(client):
 # ---------------------------------------------------------------------------
 # reference checks: default_scope, per-field override, explicit escape
 # ---------------------------------------------------------------------------
+
+
+def test_a_sync_route_takes_the_listing_grammar(sync_db):
+    """RestView parity: a def route declaring ``query_params`` is typed and
+    guarded like ``GET /``, and a subclass's copy of it is guarded once."""
+    engine, _make_session = sync_db
+    from fastapi import FastAPI
+
+    from fastapi_restly.testing import RestlyTestClient
+
+    class SyncListedNote(fr.IDBase):
+        name: Mapped[str]
+        deleted: Mapped[bool] = mapped_column(default=False)
+
+    class SyncListedNoteClauses(fr.ClauseNamespace):
+        model = SyncListedNote
+
+        is_deleted = fr.where_clause(SyncListedNote.deleted.is_(True))
+        default_scope = fr.none_of(is_deleted)
+
+    class SyncListedNoteSchema(fr.IDSchema):
+        name: str
+        deleted: bool = False
+
+    guard_calls: list[str] = []
+
+    client = RestlyTestClient(FastAPI())
+
+    class SyncListedNoteView(fr.RestView):
+        prefix = "/sync-listed"
+        model = SyncListedNote
+        schema = SyncListedNoteSchema
+
+        def _reject_unknown_query_params(self):
+            guard_calls.append(self.request.url.path)
+            super()._reject_unknown_query_params()
+
+        @fr.get("/trash")
+        def trash(self, query_params):
+            result = self.handle_get_many(
+                query_params, scope=SyncListedNoteClauses.is_deleted
+            )
+            return self.to_response(result, fr.ResponseShape.LISTING)
+
+    @fr.include_view(client.app)
+    class SyncListedNoteSubView(SyncListedNoteView):
+        pass
+
+    fr.DataclassBase.metadata.create_all(engine)
+
+    client.post("/sync-listed/", json={"name": "live"})
+    client.post("/sync-listed/", json={"name": "gone", "deleted": True})
+    client.post("/sync-listed/", json={"name": "also gone", "deleted": True})
+
+    assert [r["name"] for r in client.get("/sync-listed/").json()["data"]] == ["live"]
+    trash = client.get("/sync-listed/trash?sort=name").json()
+    assert [r["name"] for r in trash["data"]] == ["also gone", "gone"]
+    assert [
+        r["name"] for r in client.get("/sync-listed/trash?name=gone").json()["data"]
+    ] == ["gone"]
+    client.get("/sync-listed/trash?bogus=1", assert_status_code=422)
+    client.get("/sync-listed/?bogus=1", assert_status_code=422)
+    # one guard call per request, on the inherited copy too
+    assert guard_calls.count("/sync-listed/trash") == 3
+    assert guard_calls.count("/sync-listed/") == 2
 
 
 def test_reference_checks_apply_scopes_over_http(client):

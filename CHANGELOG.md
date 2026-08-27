@@ -66,6 +66,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   application floor composes the tenant clause into every subclass's
   `default_scope` there). Declaring `model` is what registers the
   namespace for the model.
+- Any route method on a view that declares a `query_params` parameter
+  takes the view's listing grammar: typed as the generated
+  `listing_param_schema` for FastAPI and OpenAPI, and guarded against
+  unknown keys like `GET /`. A custom listing (a trash route naming its
+  own scope) reads filters, sort and page the same way.
 - `restly new <name>` scaffolding command to create a project from scratch with
   optional database and alembic set up.
 - Pass `health="/health"` to `fr.configure()` to add a liveness endpoint that
