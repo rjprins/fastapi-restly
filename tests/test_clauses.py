@@ -4,7 +4,10 @@ import pytest
 from sqlalchemy import ColumnElement, ForeignKey, Select, delete, func, select, update
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
+# This file unit-tests the slot primitive itself; consumer code declares
+# slots in a ContextNamespace (see test_context_namespace.py).
 from fastapi_restly.clauses import (
+    _NAMESPACES,  # noqa: E402
     Clause,
     ClauseNamespace,
     CombinedClause,
@@ -19,9 +22,6 @@ from fastapi_restly.clauses import (
     transform_clause,
     where_clause,
 )
-
-# This file unit-tests the slot primitive itself; consumer code declares
-# slots in a ContextNamespace (see test_context_namespace.py).
 from fastapi_restly.clauses import _context_param as context_param  # noqa: E402
 
 
@@ -676,11 +676,13 @@ def test_namespace_function_clause_with_staticmethod():
     assert "ORDER BY" in str(ordered)
 
 
-def test_namespace_requires_model():
-    with pytest.raises(TypeError, match="model"):
+def test_namespace_without_model_is_a_plain_group():
+    # a clause needs no model: the namespace validates and registers nothing
+    class NoModelClauses(ClauseNamespace):
+        something = where_clause(Item.deleted_at.is_(None))
 
-        class NoModelClauses(ClauseNamespace):
-            something = where_clause(Item.deleted_at.is_(None))
+    assert isinstance(NoModelClauses.something, WhereClause)
+    assert NoModelClauses not in _NAMESPACES.values()
 
 
 def test_namespace_rejects_bare_expression():

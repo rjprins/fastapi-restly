@@ -60,6 +60,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   accepts `fr.clauses.UNSCOPED` and applies nothing for it, and the
   sentinel's type is public as `fr.clauses.Unscoped` for typing such an
   override.
+- `model` is optional on `fr.ClauseNamespace`: a namespace without one is
+  a plain group of clauses, or a base class whose `__init_subclass__`
+  shapes the namespaces that extend it (the reference-check half of an
+  application floor composes the tenant clause into every subclass's
+  `default_scope` there). Declaring `model` is what registers the
+  namespace for the model.
 - `restly new <name>` scaffolding command to create a project from scratch with
   optional database and alembic set up.
 - Pass `health="/health"` to `fr.configure()` to add a liveness endpoint that

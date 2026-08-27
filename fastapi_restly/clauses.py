@@ -427,17 +427,21 @@ _NAMESPACES: _weakref.WeakKeyDictionary[
 
 
 class ClauseNamespace:
-    """Groups a model's clauses under one named class.
+    """Groups clauses under one named class.
 
-    Subclass, declare `model = <mapped class>`, and put the clauses in
-    the class body; earlier names are available to later compositions.
-    On definition the namespace validates that every public attribute
-    is a Clause (catching a bare SQLAlchemy expression that forgot its
-    where_clause() wrapper) and registers itself for the model. Usage
+    Subclass and put the clauses in the class body; earlier names are
+    available to later compositions. On definition the namespace
+    validates that every public attribute is a Clause (catching a bare
+    SQLAlchemy expression that forgot its where_clause() wrapper). Usage
     is by class name (`ItemClauses.visible`): plain attribute access
-    that any type checker follows; the model class itself is never
-    touched. Define the namespace in the model's module, so importing
-    the model guarantees the registration ran.
+    that any type checker follows. A clause needs no model; a namespace
+    that declares `model = <mapped class>` is *the* namespace for that
+    model and registers itself, so its `default_scope` reaches the
+    model's reads and reference checks; the model class itself is never
+    touched. Define such a namespace in the model's module, so importing
+    the model guarantees the registration ran. A namespace without a
+    model is a plain group: shared clauses, or a base class whose
+    `__init_subclass__` shapes the namespaces that extend it.
 
     The name `default_scope` is reserved: a clause under that name is
     the scope every view read and every reference check on the model
@@ -457,8 +461,6 @@ class ClauseNamespace:
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
         model = cls.__dict__.get("model")
-        if model is None:
-            raise TypeError(f"{cls.__name__} must declare `model = <mapped class>`")
         for name, value in vars(cls).items():
             if name.startswith("_") or name == "model":
                 continue
@@ -486,6 +488,8 @@ class ClauseNamespace:
                 "ordering and joins belong on the view scope, and a "
                 "join-dependent predicate is an EXISTS (.any()/.has())"
             )
+        if model is None:
+            return  # a plain group of clauses, or a base: nothing to register
         existing = _NAMESPACES.get(model)
         if existing is not None:
             raise TypeError(

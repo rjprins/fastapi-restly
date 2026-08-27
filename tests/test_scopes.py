@@ -990,6 +990,71 @@ def test_subclass_inherits_default_scope_along_the_mro():
     assert _default_scope(Wolf) is None
 
 
+def test_a_namespace_without_a_model_is_a_plain_group():
+    """A clause needs no model: a namespace that declares none validates
+    its members and registers nothing."""
+
+    class Shared(fr.ClauseNamespace):
+        positive = fr.where_clause(SyncRow.id > 0)
+
+    assert isinstance(Shared.positive, fr.WhereClause)
+    with pytest.raises(TypeError, match="not a Clause"):
+
+        class Bad(fr.ClauseNamespace):
+            positive = SyncRow.id > 0
+
+
+def test_a_namespace_base_composes_a_floor_into_default_scope():
+    """The reference-check half of an application floor: a base namespace
+    stacks the tenant clause under whatever its subclasses declare, and
+    the registered default_scope is the composed clause."""
+
+    class TenantClauses(fr.ClauseNamespace):
+        def __init_subclass__(cls, **kwargs):
+            model = vars(cls).get("model")
+            if model is not None:
+                floor = fr.where_clause(model.tenant_id == _SyncContext.tenant_id)
+                declared = vars(cls).get("default_scope")
+                cls.default_scope = (
+                    floor if declared is None else fr.all_of(floor, declared)
+                )
+            super().__init_subclass__(**kwargs)
+
+    class FlooredRow(_SyncBase):
+        __tablename__ = "scope_sync_floored_row"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+        tenant_id: Mapped[int]
+        deleted: Mapped[bool] = mapped_column(default=False)
+
+    class FlooredRowClauses(TenantClauses):
+        model = FlooredRow
+        default_scope = fr.where_clause(FlooredRow.deleted.is_(False))
+
+    scope = _default_scope(FlooredRow)
+    assert scope is FlooredRowClauses.default_scope
+    with _SyncContext.tenant_id.bind(tenant_id=1):
+        rendered = str(scope.select(FlooredRow).whereclause)
+    assert "tenant_id = :tenant_id" in rendered
+    assert "deleted IS false" in rendered
+
+    # a base can also declare the default itself; a subclass with a model
+    # registers it, through the namespace MRO
+    class DefaultingBase(fr.ClauseNamespace):
+        default_scope = fr.where_clause(FlooredRow.deleted.is_(False))
+
+    class OtherRow(_SyncBase):
+        __tablename__ = "scope_sync_other_row"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+
+    class OtherRowClauses(DefaultingBase):
+        model = OtherRow
+
+    assert _default_scope(OtherRow) is DefaultingBase.default_scope
+    assert OtherRowClauses.default_scope is DefaultingBase.default_scope
+
+
 def test_post_hoc_default_scope_corruption_is_loud():
     class _Row(_SyncBase):
         __tablename__ = "scope_sync_corrupt"
