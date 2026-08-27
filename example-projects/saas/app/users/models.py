@@ -7,7 +7,7 @@ from sqlalchemy import ForeignKey, orm
 
 import fastapi_restly as fr
 
-from ..context import tenant_scope
+from ..context import TenantClauses
 
 
 class UserRole(str, Enum):
@@ -67,8 +67,8 @@ class User(fr.TimestampsMixin, fr.IDBase):
     )
 
 
-class UserClauses(fr.ClauseNamespace):
-    """User visibility: owned by the tenant and not soft-deleted.
+class UserClauses(TenantClauses):
+    """User visibility: not soft-deleted, under the tenant floor.
 
     ``default_scope`` also guards references, so a cross-tenant or deleted
     ``assignee_id`` on a task reads as "does not exist" (404).
@@ -76,6 +76,5 @@ class UserClauses(fr.ClauseNamespace):
 
     model = User
 
-    owned_by_tenant = tenant_scope(User)
-    not_deleted = fr.where_clause(User.deleted_at.is_(None))
-    default_scope = fr.all_of(owned_by_tenant, not_deleted)
+    is_deleted = fr.where_clause(User.deleted_at.is_not(None))
+    default_scope = fr.none_of(is_deleted)

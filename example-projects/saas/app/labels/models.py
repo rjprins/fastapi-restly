@@ -4,7 +4,7 @@ from sqlalchemy import ForeignKey, orm
 
 import fastapi_restly as fr
 
-from ..context import tenant_scope
+from ..context import TenantClauses
 
 
 class Label(fr.TimestampsMixin, fr.IDBase):
@@ -28,16 +28,13 @@ class Label(fr.TimestampsMixin, fr.IDBase):
     )
 
 
-class LabelClauses(fr.ClauseNamespace):
-    """Label visibility: owned by the tenant (labels have no soft delete).
+class LabelClauses(TenantClauses):
+    """Label visibility: the tenant floor alone (labels have no soft delete).
 
     ``default_scope`` also guards the ``label_id`` reference on TaskLabel.
     """
 
     model = Label
-
-    owned_by_tenant = tenant_scope(Label)
-    default_scope = owned_by_tenant
 
 
 class TaskLabel(fr.TimestampsMixin, fr.IDBase):

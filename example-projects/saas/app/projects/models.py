@@ -7,7 +7,7 @@ from sqlalchemy import ForeignKey, orm
 
 import fastapi_restly as fr
 
-from ..context import tenant_scope
+from ..context import TenantClauses
 
 
 class ProjectStatus(str, Enum):
@@ -60,20 +60,18 @@ class Project(fr.TimestampsMixin, fr.IDBase):
     )
 
 
-class ProjectClauses(fr.ClauseNamespace):
-    """Project visibility: owned by the tenant and not soft-deleted.
+class ProjectClauses(TenantClauses):
+    """Project visibility: not soft-deleted, under the tenant floor.
 
-    ``default_scope`` arms every view read and every reference to Project,
-    so a cross-tenant or deleted ``project_id`` on a write reads as "does
-    not exist" (404), unconditionally: no request can ask past it. The
-    deleted rows stay reachable through explicit scopes built from the
-    same tenant leaf: ``trashed`` on the trash view, ``owned_by_tenant``
-    alone in ``ProjectView.restore``.
+    ``TenantClauses`` composes ``owned_by_tenant`` under this
+    ``default_scope``, so every view read and every ``project_id``
+    reference sees the tenant's live projects: a cross-tenant or deleted
+    id on a write reads as "does not exist" (404). Deleted rows are
+    reachable only by a route that names ``is_deleted`` as its scope,
+    and the floor keeps that read tenant-bound too.
     """
 
     model = Project
 
-    owned_by_tenant = tenant_scope(Project)
     is_deleted = fr.where_clause(Project.deleted_at.is_not(None))
-    trashed = fr.all_of(owned_by_tenant, is_deleted)
-    default_scope = fr.all_of(owned_by_tenant, fr.none_of(is_deleted))
+    default_scope = fr.none_of(is_deleted)

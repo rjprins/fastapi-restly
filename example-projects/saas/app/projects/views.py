@@ -1,6 +1,7 @@
 """Project view."""
 
 import re
+from typing import Any
 
 import sqlalchemy as sa
 from fastapi import HTTPException
@@ -9,6 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 import fastapi_restly as fr
+from fastapi_restly.views import PaginatedEnvelope
 
 from ..context import Current
 from ..tasks.models import Task, TaskClauses, TaskPriority, TaskStatus, TaskType
@@ -45,9 +47,10 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
     """CRUD endpoints for projects.
 
     Read visibility is the model's ``default_scope`` (``ProjectClauses``):
-    tenant ownership AND not-soft-deleted, feeding listing, count,
-    retrieve, and every ``project_id`` reference alike. The
-    mixins add the write-side halves (left → right via MRO):
+    live projects under the tenant floor, feeding listing, count,
+    retrieve, and every ``project_id`` reference alike. The trash and
+    restore routes below name ``is_deleted`` as their own scope per read.
+    The mixins add the write-side halves (left → right via MRO):
     - ``SoftDeleteMixin`` — ``delete_object`` sets ``deleted_at`` instead of
       removing the row.
     - ``AuditStampedMixin`` — stamps ``created_by_id`` / ``updated_by_id``
@@ -214,20 +217,28 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
             await self.delete_object(project)
         return await self._decorate_project_response(project)
 
+    @fr.get("/trash", response_model=PaginatedEnvelope[ProjectSchema])
+    async def trash(self, query_params: Any) -> Any:
+        """The trash: deleted projects, read through ``is_deleted``.
+
+        A route that declares ``query_params`` takes the listing grammar
+        (filter, sort, page), and the scope named here replaces the
+        default for this read only; the tenant floor in
+        ``TenantBase.apply_scope`` holds underneath.
+        """
+        result = await self.handle_get_many(
+            query_params, scope=ProjectClauses.is_deleted
+        )
+        return self.to_response(result, fr.ResponseShape.LISTING)
+
     @fr.post("/{id}/restore", response_model=ProjectSchema)
     async def restore(self, id: int) -> Project:
         """Restore a soft-deleted project.
 
-        Reads through ``ProjectClauses.owned_by_tenant`` alone: the tenant
-        leaf of the default scope without ``not_deleted``, so the deleted
-        row is reachable while another tenant's still 404s.
+        Loads through ``is_deleted``: the trash is the surface this route
+        reads, so a live project, like another tenant's, is a 404 here.
         """
-        q = ProjectClauses.owned_by_tenant.select(Project).where(Project.id == id)
-        project = (await self.session.scalars(q)).one_or_none()
-        if project is None:
-            raise HTTPException(404, detail="Project not found")
-        if project.deleted_at is None:
-            raise HTTPException(status_code=400, detail="Project is not deleted")
+        project = await self.handle_get_one(id, scope=ProjectClauses.is_deleted)
 
         async with self.write_action("restore", obj=project):
             project.deleted_at = None
@@ -393,23 +404,6 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
                 project.total_story_points += task.story_points
             w.obj = await async_save_object(self.session, task)
         return w.obj
-
-
-class ProjectTrashView(TenantBase):
-    """Deleted projects: the explicit surface for the trash.
-
-    ``scope = ProjectClauses.trashed`` composes the same ``owned_by_tenant``
-    leaf the default scope carries, so the trash stays tenant-bound. A
-    query parameter can never widen a scope; a different endpoint carries
-    the different scope. Read-only: restoring goes through
-    ``POST /projects/{id}/restore``.
-    """
-
-    prefix = "/projects/trash"
-    model = Project
-    schema = ProjectSchema
-    scope = ProjectClauses.trashed
-    exclude_routes = [fr.ViewRoute.CREATE, fr.ViewRoute.UPDATE, fr.ViewRoute.DELETE]
 
 
 class TaskCreateRequest(BaseModel):

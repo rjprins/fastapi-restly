@@ -1,10 +1,13 @@
 """Task view."""
 
+from typing import Any
+
 import fastapi
 from fastapi import HTTPException
 from pydantic import BaseModel
 
 import fastapi_restly as fr
+from fastapi_restly.views import PaginatedEnvelope
 
 from ..views import AuditStampedMixin, SoftDeleteMixin, TenantBase
 from .models import Task, TaskClauses, TaskPriority, TaskStatus, TaskType
@@ -60,17 +63,15 @@ VALID_TRANSITIONS = {
 class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
     """CRUD endpoints for tasks.
 
-    Tenant scope is *not* applied to reads here — task visibility is by
-    ``assignee_id`` (a row-level permission, not a tenant filter):
-    ``scope = TaskClauses.visible`` replaces the model's ``default_scope``,
-    which keeps guarding references to Task with the tenant EXISTS. Retrieve
+    Task visibility is by ``assignee_id``, a row-level permission:
+    ``scope = TaskClauses.visible`` replaces the model's ``default_scope``
+    on this view's reads, while references to Task keep the default. The
+    tenant rule is not repeated here: ``TenantBase.apply_scope`` stacks
+    it under every read, this scope and the trash route's alike. Retrieve
     applies the same scope, so the predicate that filters listing also
     returns 404 from ``GET /tasks/{id}`` for tasks not assigned to the
-    current user — and cascades through ``handle_update`` and
+    current user, and cascades through ``handle_update`` and
     ``handle_delete`` (both load the row through ``get_one`` first).
-    Demonstrates that views with non-tenant-aligned access models still
-    benefit from the soft-delete + audit mixins, and that scope composition
-    is a la carte.
     """
 
     prefix = "/tasks"
@@ -228,6 +229,32 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
         async with self.write_action(action, obj=task):
             task.status = target_status
             task.version += 1
+            await self.save_object(task)
+        return task
+
+    @fr.get("/trash", response_model=PaginatedEnvelope[TaskSchema])
+    async def trash(self, query_params: Any) -> Any:
+        """The trash: deleted tasks assigned to the caller, with the listing grammar."""
+        result = await self.handle_get_many(query_params, scope=TaskClauses.trashed)
+        return self.to_response(result, fr.ResponseShape.LISTING)
+
+    @fr.post("/{id}/restore", response_model=TaskSchema)
+    async def restore(self, id: int) -> Task:
+        """Restore a soft-deleted task and put its story points back on the project.
+
+        Loads through ``trashed``, the surface the trash route reads, so a
+        live task is a 404 here.
+        """
+        from ..projects.models import Project
+
+        task = await self.handle_get_one(id, scope=TaskClauses.trashed)
+
+        async with self.write_action("restore", obj=task):
+            task.deleted_at = None
+            if task.story_points:
+                project = await self.session.get(Project, task.project_id)
+                if project is not None:
+                    project.total_story_points += task.story_points
             await self.save_object(task)
         return task
 

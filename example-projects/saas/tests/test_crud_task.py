@@ -434,14 +434,22 @@ class TestSoftDelete:
         project_ids = [p["id"] for p in projects]
         assert project_id not in project_ids
 
-    def test_trash_view_shows_deleted_projects(self, client):
-        """Deleted projects appear on /projects/trash and nowhere else."""
-        # Create org and projects
+    def test_trash_route_lists_deleted_projects(self, client, auth_context):
+        """Deleted projects appear on /projects/trash and nowhere else.
+
+        The trash is a route on the same view naming ``is_deleted`` as its
+        scope per read; it takes the listing grammar, and the tenant floor
+        in ``TenantBase.apply_scope`` keeps it tenant-bound.
+        """
         response = client.post(
-            "/organizations",
-            json={"name": "Trash View Org", "slug": "trash-view-org"},
+            "/organizations", json={"name": "Trash View Org", "slug": "trash-view-org"}
         )
         org_id = response.json()["id"]
+        response = client.post(
+            "/organizations",
+            json={"name": "Other Trash Org", "slug": "other-trash-org"},
+        )
+        other_org_id = response.json()["id"]
 
         response = client.post(
             "/projects", json={"name": "Active Project", "organization_id": org_id}
@@ -452,26 +460,49 @@ class TestSoftDelete:
             "/projects", json={"name": "Deleted Project", "organization_id": org_id}
         )
         deleted_id = response.json()["id"]
+        response = client.post(
+            "/projects", json={"name": "Deleted Too", "organization_id": org_id}
+        )
+        deleted_too_id = response.json()["id"]
 
-        # Soft delete one
+        # Soft delete two
         client.delete(f"/projects/{deleted_id}", assert_status_code=200)
+        client.delete(f"/projects/{deleted_too_id}", assert_status_code=200)
 
-        # The default listing hides the deleted row
+        # The default listing hides the deleted rows
         response = client.get("/projects")
         project_ids = [p["id"] for p in response.json()["data"]]
         assert active_id in project_ids
         assert deleted_id not in project_ids
 
-        # The trash view is the explicit surface for deleted rows
+        # The trash route is the explicit surface for deleted rows
         response = client.get("/projects/trash")
         project_ids = [p["id"] for p in response.json()["data"]]
         assert deleted_id in project_ids
+        assert deleted_too_id in project_ids
         assert active_id not in project_ids
 
-        # Retrieve follows the same split
+        # It reads the same grammar as GET /projects: filter, sort, page
+        response = client.get("/projects/trash?name=Deleted Too")
+        assert [p["id"] for p in response.json()["data"]] == [deleted_too_id]
+        response = client.get("/projects/trash?sort=-name&page_size=1")
+        page = response.json()
+        assert page["total_count"] == 2
+        assert [p["name"] for p in page["data"]] == ["Deleted Too"]
+        client.get("/projects/trash?bogus=1", assert_status_code=422)
+
+        # Retrieve follows the same split: the trash has no /{id} of its own
         client.get(f"/projects/{deleted_id}", assert_status_code=404)
-        response = client.get(f"/projects/trash/{deleted_id}")
-        assert response.json()["id"] == deleted_id
+
+        # The floor holds under the route's scope: another tenant's trash is
+        # not this tenant's
+        with auth_context(org_id=other_org_id):
+            response = client.get("/projects/trash")
+            assert response.json()["data"] == []
+            client.post(f"/projects/{deleted_id}/restore", assert_status_code=404)
+        with auth_context(org_id=org_id):
+            response = client.get("/projects/trash")
+            assert deleted_id in [p["id"] for p in response.json()["data"]]
 
     def test_query_params_cannot_widen_a_scope(self, client):
         """The old ``?include_deleted=true`` toggle is gone.
@@ -481,8 +512,7 @@ class TestSoftDelete:
         project either way.
         """
         response = client.post(
-            "/organizations",
-            json={"name": "No Widen Org", "slug": "no-widen-org"},
+            "/organizations", json={"name": "No Widen Org", "slug": "no-widen-org"}
         )
         org_id = response.json()["id"]
         response = client.post(
@@ -531,8 +561,8 @@ class TestSoftDelete:
         project_ids = [p["id"] for p in projects]
         assert project_id in project_ids
 
-    def test_restore_non_deleted_project_fails(self, client):
-        """Test that restoring a non-deleted project fails."""
+    def test_restore_non_deleted_project_is_not_found(self, client):
+        """Restore reads through the trash: a live project is outside it."""
         # Create org and project
         response = client.post(
             "/organizations",
@@ -545,10 +575,48 @@ class TestSoftDelete:
         )
         project_id = response.json()["id"]
 
-        # Try to restore non-deleted project
+        # A live project is not in the trash, so the restore target does not exist
+        client.post(f"/projects/{project_id}/restore", assert_status_code=404)
+
+    def test_trash_and_restore_task_rolls_story_points_back(self, client):
+        """Tasks have the same trash and restore routes; restoring a feature
+        puts its story points back on the project's roll-up."""
         response = client.post(
-            f"/projects/{project_id}/restore", assert_status_code=400
+            "/organizations", json={"name": "Task Trash Org", "slug": "task-trash-org"}
         )
+        org_id = response.json()["id"]
+        response = client.post(
+            "/projects", json={"name": "Task Trash Project", "organization_id": org_id}
+        )
+        project_id = response.json()["id"]
+        response = client.post(
+            "/tasks",
+            json={
+                "title": "Pointed feature",
+                "task_type": "feature",
+                "story_points": 5,
+                "project_id": project_id,
+            },
+        )
+        task_id = response.json()["id"]
+        assert client.get(f"/projects/{project_id}").json()["total_story_points"] == 5
+
+        client.delete(f"/tasks/{task_id}", assert_status_code=204)
+        assert client.get(f"/projects/{project_id}").json()["total_story_points"] == 0
+        client.get(f"/tasks/{task_id}", assert_status_code=404)
+        assert task_id not in [t["id"] for t in client.get("/tasks").json()["data"]]
+
+        trash = client.get("/tasks/trash?title=Pointed feature").json()
+        assert [t["id"] for t in trash["data"]] == [task_id]
+        client.get("/tasks/trash?bogus=1", assert_status_code=422)
+
+        restored = client.post(f"/tasks/{task_id}/restore").json()
+        assert restored["deleted_at"] is None
+        assert client.get(f"/projects/{project_id}").json()["total_story_points"] == 5
+        assert client.get(f"/tasks/{task_id}").json()["id"] == task_id
+        assert client.get("/tasks/trash").json()["data"] == []
+        # restored, so no longer a restore target
+        client.post(f"/tasks/{task_id}/restore", assert_status_code=404)
 
 
 class TestOptimisticLocking:

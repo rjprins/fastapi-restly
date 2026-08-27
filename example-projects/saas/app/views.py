@@ -1,11 +1,12 @@
 """Application-wide view foundation for the SaaS example.
 
-``TenantBase`` provides shared auth-context dependencies, tenant helpers, and
-transactional outbox emission. Read-side visibility lives next to each model:
-its ``ClauseNamespace`` (in the subject's ``models.py``) composes the
-``tenant_scope(Model)`` predicate from ``app.context`` and its own
-soft-delete rule into a ``default_scope``, and a view that should see
-something else declares its own ``scope``. ``TenantScopedMixin``,
+``TenantBase`` provides shared auth-context dependencies, the tenant floor
+on reads, and transactional outbox emission. Read-side visibility lives
+next to each model: its namespace (in the subject's ``models.py``)
+declares the soft-delete rule as ``default_scope``, and ``TenantClauses``
+from ``app.context`` puts the tenant clause under it; a view that should
+see something else declares its own ``scope``, and a route names one per
+read, with the floor holding underneath either. ``TenantScopedMixin``,
 ``SoftDeleteMixin``, and ``AuditStampedMixin`` add the write-side behavior
 through cooperative ``super()`` chains: ``make_new_object`` /
 ``update_object`` stamps, and soft deletion via ``delete_object``.
@@ -35,11 +36,12 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, ClassVar
 
 import fastapi
+import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import fastapi_restly as fr
 
-from .context import Current, bind_request_context
+from .context import Current, bind_request_context, tenant_rule
 
 # Module level, not inside _emit(): Alembic reaches models through this graph.
 from .outbox import OutboxEvent
@@ -61,6 +63,7 @@ class TenantBase(fr.AsyncRestView):
     Subclasses inherit:
     - Router-level ``check_api_key`` dependency on every route
     - ``bind_request_context``, so ``Current`` reads work in every route
+    - ``apply_scope`` that stacks the model's tenant rule under every read
     - ``save_object`` that calls through to super() then logs the write
     """
 
@@ -69,6 +72,23 @@ class TenantBase(fr.AsyncRestView):
         fastapi.Depends(check_api_key),
         bind_request_context,
     ]
+
+    def apply_scope(
+        self, query: sa.Select[Any], scope: fr.Clause | fr.clauses.Unscoped
+    ) -> sa.Select[Any]:
+        """Stack the model's tenant rule under whatever scope the read named.
+
+        The view half of the application floor (``TenantClauses`` is the
+        reference-check half): a view that declared its own ``scope`` and
+        a route that named one per read stay tenant-bound without saying
+        so. A default read carries the rule twice, from the namespace and
+        from here; the database does not mind.
+        """
+        floor = tenant_rule(self.model)
+        if floor is None:
+            return fr.apply_clauses(query, scope)
+        return fr.apply_clauses(query, floor, scope)
+
     async def save_object(self, obj):
         """Flush and refresh, with a placeholder for audit side effects."""
         obj = await super().save_object(obj)
@@ -101,9 +121,10 @@ class TenantBase(fr.AsyncRestView):
 class TenantScopedMixin:
     """Stamp ``organization_id`` from auth context on writes.
 
-    The read-side counterpart is the ``owned_by_tenant`` clause in the
-    model's namespace, applied through its ``default_scope``; both halves
-    read the same ``Current.org_id``.
+    The read-side counterpart is the ``owned_by_tenant`` clause
+    ``TenantClauses`` gives the model's namespace, applied through its
+    ``default_scope`` and under every read by ``TenantBase.apply_scope``;
+    both halves read the same ``Current.org_id``.
     """
 
     async def make_new_object(self, schema_obj: Any) -> Any:
@@ -119,9 +140,10 @@ class SoftDeleteMixin:
     """Set ``deleted_at`` on deletion instead of removing the row.
 
     The read-side counterpart lives in the model's namespace: the default
-    scope hides deleted rows unconditionally, and a trash view declares
-    the ``trashed`` scope as the explicit way to see them. Assumes
-    ``self.model`` has a ``deleted_at`` column.
+    scope hides deleted rows unconditionally, and a trash route on the
+    view names ``is_deleted`` as its own scope per read
+    (``handle_get_many(query_params, scope=...)``), restore likewise.
+    Assumes ``self.model`` has a ``deleted_at`` column.
 
     Concrete views can still replace the DELETE route when they need a
     different HTTP contract, such as ``200 + body``.

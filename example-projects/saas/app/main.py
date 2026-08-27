@@ -30,7 +30,7 @@ import fastapi_restly as fr
 from .countries.views import CountryView
 from .labels.views import LabelView, TaskLabelView
 from .organizations.views import OrganizationView
-from .projects.views import ProjectTrashView, ProjectView
+from .projects.views import ProjectView
 from .settings import Settings
 from .tasks.views import TaskView
 from .uploads.views import UploadView
@@ -41,9 +41,6 @@ from .users.views import UserView
 VIEWS = (
     OrganizationView,
     UserView,
-    # Trash before ProjectView: routes match in registration order, so
-    # /projects/{id} would otherwise capture the literal "trash".
-    ProjectTrashView,
     ProjectView,
     TaskView,
     LabelView,

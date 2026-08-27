@@ -10,7 +10,7 @@ from sqlalchemy.types import TypeDecorator
 
 import fastapi_restly as fr
 
-from ..context import Current
+from ..context import Current, TenantClauses
 from ..projects.models import Project
 
 
@@ -133,27 +133,28 @@ class Task(fr.TimestampsMixin, fr.IDBase):
     )
 
 
-class TaskClauses(fr.ClauseNamespace):
-    """Task visibility: two rules with two audiences.
+class TaskClauses(TenantClauses):
+    """Task visibility: the tenant floor, deletion, and assignment.
 
     ``default_scope`` guards references to Task (``parent_id``, a label
-    attach): the task must live in the caller's organization, reached
-    through its project with EXISTS. ``visible`` is the stricter read rule
-    ``TaskView`` declares as its ``scope``: assigned to the current user
-    and not soft-deleted.
+    attach): live tasks in the caller's organization. ``visible`` is the
+    stricter read rule ``TaskView`` declares as its ``scope``, ``trashed``
+    the surface its trash route names; the floor puts the tenant rule
+    under both.
     """
 
     model = Task
 
     @fr.where_clause
     @staticmethod
-    def in_current_org() -> sa.ColumnElement[bool]:
+    def owned_by_tenant() -> sa.ColumnElement[bool]:
         """The task's project belongs to the caller's organization.
 
         Tasks reach their organization through the project, so the tenant
-        rule is an EXISTS: the shape a reference-check scope must have.
-        Admin requests, and requests without an org in context, see every
-        task.
+        rule is declared here as an EXISTS instead of derived from a
+        column by ``TenantClauses``: the shape a reference-check scope
+        must have. Admin requests, and requests without an org in
+        context, see every task.
         """
         org_id = Current.org_id()
         if Current.is_admin() or org_id is None:
@@ -173,10 +174,11 @@ class TaskClauses(fr.ClauseNamespace):
             return sa.true()
         return Task.assignee_id == user_id
 
-    not_deleted = fr.where_clause(Task.deleted_at.is_(None))
+    is_deleted = fr.where_clause(Task.deleted_at.is_not(None))
 
     # The read rule TaskView declares; shared here so ProjectView's
     # /{id}/tasks route can never disagree with GET /tasks.
-    visible = fr.all_of(assigned_to_current_user, not_deleted)
+    visible = fr.all_of(assigned_to_current_user, fr.none_of(is_deleted))
+    trashed = fr.all_of(assigned_to_current_user, is_deleted)
 
-    default_scope = in_current_org
+    default_scope = fr.none_of(is_deleted)
