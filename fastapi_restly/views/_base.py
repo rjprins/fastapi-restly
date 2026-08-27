@@ -42,6 +42,7 @@ import fastapi
 import pydantic
 from fastapi import BackgroundTasks, Request, Response, WebSocket
 from fastapi.params import Depends as _DependsMarker
+from sqlalchemy import Select
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy import select as sa_select
 from sqlalchemy.orm import DeclarativeBase, selectinload
@@ -49,11 +50,11 @@ from starlette.datastructures import QueryParams
 from typing_extensions import TypeVar
 
 from .._exception_handlers import register_default_exception_handlers
-from ..clauses import UNSCOPED, Clause, _default_scope, _Unscoped, apply_clauses
+from ..clauses import UNSCOPED, Clause, Unscoped, _default_scope, apply_clauses
 
 #: A per-read scope: ``None`` for the view's own, a clause that replaces it
 #: for that read, or ``fr.clauses.UNSCOPED``.
-ReadScope = Clause | _Unscoped | None
+ReadScope = Clause | Unscoped | None
 from ..db._globals import _fr_globals
 from ..exc import RestlyConfigurationError, RestlyMisuseWarning
 from ..objects import snapshot as _object_snapshot
@@ -983,9 +984,9 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     #: unscoped despite that default. Declaring a scope replaces the default,
     #: it does not stack on it; compose the replacement from the same leaves
     #: (``ItemClauses.trashed`` containing the tenant clause ``visible``
-    #: contains).
-    #: See the Scopes guide.
-    scope: ClassVar[Clause | _Unscoped | None] = None
+    #: contains), or stack a floor under every read in a base class
+    #: through :meth:`apply_scope`. See the Scopes guide.
+    scope: ClassVar[Clause | Unscoped | None] = None
     id_type: ClassVar[type[Any]] = int
     exclude_routes: ClassVar[Iterable[str | ViewRoute]] = ()
     #: Extra query-parameter keys to allow on the listing endpoint beyond those
@@ -1084,14 +1085,30 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         finally:
             self._read_scope = previous
 
-    def _apply_scope(self, query: Any) -> Any:
-        # the framework verb behind every read; not an override point:
-        # declare the clause on `scope`, or name one per read from a route
-        scope = self._read_scope
+    def _apply_scope(self, query: Select[Any]) -> Select[Any]:
+        # resolve first, so apply_scope sees one settled answer: the scope
+        # the read was asked for, else the view's, with UNSCOPED for none
+        scope: Clause | Unscoped | None = self._read_scope
         if scope is None:
             scope = self._resolved_scope()
-        if not isinstance(scope, Clause):  # None or UNSCOPED
-            return query
+        if scope is None:
+            scope = UNSCOPED
+        return self.apply_scope(query, scope)
+
+    def apply_scope(self, query: Select[Any], scope: Clause | Unscoped) -> Select[Any]:
+        """Apply the read's scope to its base query; the seam under every read.
+
+        ``scope`` is already resolved: the one the route named on
+        ``handle_get_many`` / ``handle_get_one``, else the view's
+        :attr:`scope`, else the model's ``default_scope``, with
+        ``fr.clauses.UNSCOPED`` for none. The default applies it as is.
+        A base class overrides this to stack what must hold on every read
+        regardless of what was named, a tenant floor say, by handing
+        :func:`fr.apply_clauses <fastapi_restly.clauses.apply_clauses>`
+        the floor next to ``scope``; the scopes themselves keep replacing
+        each other. Reference checks do not pass through here: their floor
+        is composed into ``default_scope`` on the namespace side.
+        """
         return apply_clauses(query, scope)
 
     def get_relationship_loader_options(self) -> list[Any]:

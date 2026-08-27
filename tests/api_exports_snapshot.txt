@@ -64,6 +64,7 @@ fastapi_restly.clauses:
   - ContextParam
   - TransformClause
   - UNSCOPED
+  - Unscoped
   - WhereClause
   - all_of
   - annotations
@@ -170,6 +171,7 @@ fastapi_restly.views:
 submodule-only exports:
 fastapi_restly.clauses:
   - UNSCOPED
+  - Unscoped
   - annotations
 fastapi_restly.db:
   - async_create_all

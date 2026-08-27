@@ -26,10 +26,10 @@ from typing_extensions import TypeAliasType, TypeVar
 from ..clauses import (
     UNSCOPED,
     ContextParam,
+    Unscoped,
     WhereClause,
     _apply_where_half,
     _default_scope,
-    _Unscoped,
 )
 from ..exc import NotFound, RestlyConfigurationError
 
@@ -196,7 +196,7 @@ class RefExists:
     def __init__(
         self,
         model: type[DeclarativeBase] | type[_Infer],
-        scope: WhereClause | _Unscoped | _NotGiven = _NOT_GIVEN,
+        scope: WhereClause | Unscoped | _NotGiven = _NOT_GIVEN,
     ) -> None:
         if scope is None:
             raise TypeError(
@@ -209,7 +209,7 @@ class RefExists:
                 "RefExists scope cannot be a ContextParam; it carries a value, "
                 "not a predicate"
             )
-        if not isinstance(scope, (WhereClause, _Unscoped, _NotGiven)):
+        if not isinstance(scope, (WhereClause, Unscoped, _NotGiven)):
             # covers raw expressions and transform-carrying clauses alike:
             # an existence probe cannot honor a transform
             raise TypeError(

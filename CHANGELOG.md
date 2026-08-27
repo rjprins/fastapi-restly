@@ -51,6 +51,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `fr.clauses.UNSCOPED` is the per-read opt-out, in the same spelling.
   The scope is in force around the domain op, so a `get_one` / `get_many`
   override keeps its signature and reads the surface the route asked for.
+- `apply_scope(query, scope)` is the seam under every view read: it
+  receives the resolved scope (the route's, the view's, or the model
+  default, `fr.clauses.UNSCOPED` for none) and applies it. A base class
+  overrides it to stack what must hold on every read whatever was named,
+  a tenant floor say, by passing the floor to `fr.apply_clauses` next to
+  `scope`; scopes themselves keep replacing each other. `fr.apply_clauses`
+  accepts `fr.clauses.UNSCOPED` and applies nothing for it, and the
+  sentinel's type is public as `fr.clauses.Unscoped` for typing such an
+  override.
 - `restly new <name>` scaffolding command to create a project from scratch with
   optional database and alembic set up.
 - Pass `health="/health"` to `fr.configure()` to add a liveness endpoint that

@@ -98,6 +98,7 @@ from ._contextargs import contextual as _contextual
 
 __all__ = [
     "UNSCOPED",
+    "Unscoped",
     "Clause",
     "ClauseNamespace",
     "CombinedClause",
@@ -395,15 +396,18 @@ class TransformClause(Clause):
 
 
 @_final
-class _Unscoped:
+class Unscoped:
     """Sentinel scope: explicitly no scope, everywhere a scope can appear.
 
+    `UNSCOPED` is the one instance; the class is public so an override
+    of a scope seam can name the type (`Clause | Unscoped`).
     One spelling for every escape, so `grep -rn UNSCOPED` surfaces each
     one: a view's `scope` (where `None` means "fall back to the model's
     default"), a namespace's `default_scope` (where undeclared defers to
     a base model's namespace, or none), and a `RefExists` scope (where
     `None` is rejected, so a variable that happens to be None can never
-    silently unscope).
+    silently unscope). `apply_clauses()` accepts it and applies nothing
+    for it, so a scope seam can pass on what it was given.
     Deliberately not re-exported at the top level: the escape is spelled
     in full.
     """
@@ -412,7 +416,7 @@ class _Unscoped:
         return "fr.clauses.UNSCOPED"
 
 
-UNSCOPED = _Unscoped()
+UNSCOPED = Unscoped()
 
 
 # model -> its ClauseNamespace; weak keys, so throwaway models (tests)
@@ -448,7 +452,7 @@ class ClauseNamespace:
     """
 
     model: _ClassVar[type[_DeclarativeBase]]
-    default_scope: _ClassVar[WhereClause | _Unscoped] = UNSCOPED
+    default_scope: _ClassVar[WhereClause | Unscoped] = UNSCOPED
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
@@ -485,8 +489,7 @@ class ClauseNamespace:
         existing = _NAMESPACES.get(model)
         if existing is not None:
             raise TypeError(
-                f"{model.__name__} already has a clause namespace: "
-                f"{existing.__name__}"
+                f"{model.__name__} already has a clause namespace: {existing.__name__}"
             )
         _NAMESPACES[model] = cls
 
@@ -1195,16 +1198,18 @@ class _Forest(Clause):
 
 
 @_overload
-def apply_clauses(stmt: _SelectT, /, *clauses: Clause, **binds: _Any) -> _SelectT: ...
+def apply_clauses(
+    stmt: _SelectT, /, *clauses: Clause | Unscoped, **binds: _Any
+) -> _SelectT: ...
 @_overload
 def apply_clauses(
-    stmt: _Update, /, *clauses: WhereClause, **binds: _Any
+    stmt: _Update, /, *clauses: WhereClause | Unscoped, **binds: _Any
 ) -> _Update: ...
 @_overload
 def apply_clauses(
-    stmt: _Delete, /, *clauses: WhereClause, **binds: _Any
+    stmt: _Delete, /, *clauses: WhereClause | Unscoped, **binds: _Any
 ) -> _Delete: ...
-def apply_clauses(stmt, /, *clauses: Clause, **binds: _Any):
+def apply_clauses(stmt, /, *clauses: Clause | Unscoped, **binds: _Any):
     """Apply clauses to a statement built with plain SQLAlchemy.
 
     The bridge between the two worlds: build select()/update()/delete()
@@ -1212,19 +1217,21 @@ def apply_clauses(stmt, /, *clauses: Clause, **binds: _Any):
     transforms. UPDATE/DELETE cannot join, so a clause carrying a
     transform is rejected there. A where that references a table the
     statement does not select from is rejected too: the silent
-    alternative is a cartesian product.
+    alternative is a cartesian product. ``UNSCOPED`` among the clauses
+    applies nothing: a scope seam passes on what it was given.
 
     Keyword arguments are an ephemeral bind() routed across all the
     given clauses, layered over any ambient bind for the duration of
     the call. The statement is positional-only, so every keyword name
     stays free for binding.
     """
+    given = tuple(clause for clause in clauses if isinstance(clause, Clause))
     if binds:
         forest = _Forest()
-        forest._children = clauses
+        forest._children = given
         with forest.bind(**binds):
-            return apply_clauses(stmt, *clauses)
-    for clause in clauses:
+            return apply_clauses(stmt, *given)
+    for clause in given:
         if clause._where_fn is None and not _has_transform(clause):
             raise TypeError(
                 f"{clause!r} contributes no predicate and no transform; a "
@@ -1232,14 +1239,14 @@ def apply_clauses(stmt, /, *clauses: Clause, **binds: _Any):
                 "instead of applying it"
             )
     if isinstance(stmt, _Select):
-        stmt = _apply_transforms(stmt, clauses)
+        stmt = _apply_transforms(stmt, given)
     else:
         _require_no_transforms(
             "apply_clauses",
-            clauses,
+            given,
             f"{type(stmt).__name__.upper()} cannot join; use where-only clauses",
         )
-    wheres = _resolved_wheres(clauses, _seed_owners(stmt))
+    wheres = _resolved_wheres(given, _seed_owners(stmt))
     _guard_statement_tables(stmt, wheres)
     return stmt.where(*wheres)
 
