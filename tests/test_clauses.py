@@ -2,12 +2,14 @@ from datetime import datetime
 
 import pytest
 from sqlalchemy import ColumnElement, ForeignKey, Select, delete, func, select, update
+from sqlalchemy import false as sql_false
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 # This file unit-tests the slot primitive itself; consumer code declares
 # slots in a ContextNamespace (see test_context_namespace.py).
 from fastapi_restly.clauses import (
     _NAMESPACES,  # noqa: E402
+    UNSCOPED,
     Clause,
     ClauseNamespace,
     CombinedClause,
@@ -1213,3 +1215,86 @@ def test_nested_composition():
         stmt = apply_clauses(select(Item), q)
     s = str(stmt)
     assert "OR" in s and 3 in params_of(stmt).values()
+
+
+# --- UNSCOPED composition -------------------------------------------------
+
+
+@pytest.mark.parametrize("args", [(UNSCOPED,), (UNSCOPED, UNSCOPED)])
+def test_unscoped_all_and_any_preserve_the_sentinel(args):
+    assert all_of(*args) is UNSCOPED
+    assert any_of(*args) is UNSCOPED
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        (UNSCOPED, tenant_filter),
+        (tenant_filter, UNSCOPED),
+        (UNSCOPED, tenant_filter, UNSCOPED),
+    ],
+)
+def test_unscoped_all_returns_the_remaining_clause_with_its_binding(args):
+    clause = all_of(*args)
+    assert clause is tenant_filter
+    assert 7 in params_of(clause.select(Item, tenant_id=7)).values()
+
+
+@pytest.mark.parametrize("op", [any_of, none_of])
+@pytest.mark.parametrize("reverse", [False, True])
+def test_unscoped_or_and_not_do_not_resolve_an_unneeded_binding(op, reverse):
+    args = (tenant_filter, UNSCOPED) if reverse else (UNSCOPED, tenant_filter)
+    clause = op(*args)
+    if op is any_of:
+        assert clause is UNSCOPED
+    else:
+        assert isinstance(clause, WhereClause)
+        assert clause().compare(sql_false())
+
+
+def test_unscoped_none_alone_is_a_false_where_clause():
+    clause = none_of(UNSCOPED)
+    assert isinstance(clause, WhereClause)
+    assert clause().compare(sql_false())
+
+
+def test_unscoped_keeps_transforms_and_bindings_in_and_bundles():
+    joined = combine(UNSCOPED, join_collection, tenant_filter, collection_active)
+    assert all_of(UNSCOPED, joined) is joined
+    clause = all_of(UNSCOPED, joined, soft_deleted, UNSCOPED)
+    stmt = clause.select(Item, tenant_id=7)
+    assert str(stmt).count("JOIN collection") == 1
+    assert "archived_at IS NULL" in str(stmt)
+    assert "deleted_at IS NULL" in str(stmt)
+    assert 7 in params_of(stmt).values()
+
+
+def test_unscoped_does_not_supply_a_transform_to_combine():
+    for args in ((UNSCOPED,), (UNSCOPED, soft_deleted)):
+        with pytest.raises(TypeError, match="transform"):
+            combine(*args)
+
+
+@pytest.mark.parametrize("op", [all_of, any_of, none_of, combine])
+def test_unscoped_does_not_hide_invalid_composition_operands(op):
+    for invalid in (None, "not a clause", context_param("not_a_predicate")):
+        with pytest.raises(TypeError):
+            op(UNSCOPED, invalid)
+
+
+@pytest.mark.parametrize("op", [all_of, any_of, none_of])
+def test_unscoped_preserves_boolean_transform_guards(op):
+    with pytest.raises(TypeError, match="where"):
+        op(UNSCOPED, join_collection)
+    if op is not all_of:
+        with pytest.raises(TypeError, match="transform"):
+            op(UNSCOPED, combine(join_collection, collection_active))
+
+
+def test_unscoped_nested_composition_and_existing_statement_filter():
+    clause = all_of(any_of(UNSCOPED, tenant_filter), soft_deleted)
+    assert clause is soft_deleted
+    stmt = apply_clauses(select(Item).where(Item.id == 9), UNSCOPED, clause)
+    assert "item.id =" in str(stmt)
+    assert "deleted_at IS NULL" in str(stmt)
+    assert list(params_of(stmt).values()) == [9]

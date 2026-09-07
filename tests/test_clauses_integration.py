@@ -10,6 +10,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, rela
 from sqlalchemy.pool import StaticPool
 
 from fastapi_restly.clauses import (
+    UNSCOPED,
     ClauseNamespace,
     all_of,
     any_of,
@@ -286,3 +287,35 @@ def test_bind_resets_after_exception(engine):
             raise RuntimeError("boom")
     with pytest.raises(TypeError):
         ItemClauses.visible.select(Item)  # unbound again
+
+
+@pytest.mark.parametrize(
+    "op, expected", [(all_of, {2}), (any_of, {1, 2, 3, 4}), (none_of, set())]
+)
+@pytest.mark.parametrize("unscoped_first", [True, False])
+def test_unscoped_boolean_composition_returns_the_expected_rows(
+    engine, op, expected, unscoped_first
+):
+    args = (UNSCOPED, ItemClauses.is_deleted)
+    if not unscoped_first:
+        args = tuple(reversed(args))
+    scope = op(*args)
+    with Session(engine) as session:
+        assert ids(session, apply_clauses(select(Item), scope)) == expected
+
+
+def test_unscoped_combine_preserves_join_and_filter(engine):
+    scope = combine(UNSCOPED, ItemClauses.with_live_collection)
+    with Session(engine) as session:
+        assert ids(session, scope.select(Item)) == {1, 2, 3}
+
+
+def test_negated_unscoped_cannot_update_or_delete_rows(engine):
+    scope = none_of(UNSCOPED)
+    with Session(engine) as session:
+        updated = session.execute(scope.update(Item).values(name="changed"))
+        deleted = session.execute(scope.delete(Item))
+        assert updated.rowcount == 0
+        assert deleted.rowcount == 0
+        assert ids(session, select(Item)) == {1, 2, 3, 4}
+        session.rollback()

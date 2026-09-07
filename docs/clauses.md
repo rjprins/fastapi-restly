@@ -195,7 +195,7 @@ active_or_new = fr.any_of(has_active_subscription, recently_created)
 ```
 
 `none_of(a, b)` is NOT over the OR of its operands: true when none
-hold. All three require every operand to carry a where, and `any_of`
+hold. All three require their clause operands to carry a where, and `any_of`
 and `none_of` additionally reject operands that carry a transform. An
 inner join already removes rows, so OR or NOT over a join-dependent
 predicate changes which rows exist at all; the rejection message points
@@ -223,6 +223,65 @@ name signals that applying the clause changes the statement, not only
 the row filter. `combine` requires at least one transform-carrying
 operand; a bundle of only wheres is `all_of`'s job, and `combine`
 raises with that message.
+
+(unscoped-composition)=
+### Composing with `UNSCOPED`
+
+Use `fr.clauses.UNSCOPED` to express no restriction. In boolean
+composition it accepts every row, equivalent to SQL `TRUE`. It remains
+a separate sentinel, not a `Clause` or `WhereClause`.
+
+The composition functions accept this sentinel with the following rules.
+Here `C` is a predicate clause, and the argument order does not affect
+the result:
+
+| Expression | Result |
+|---|---|
+| `fr.all_of(UNSCOPED, C)` | `C` itself |
+| `fr.all_of(UNSCOPED)` | `UNSCOPED` itself |
+| `fr.all_of(UNSCOPED, UNSCOPED)` | `UNSCOPED` itself |
+| `fr.any_of(UNSCOPED, C)` | `UNSCOPED` itself |
+| `fr.any_of(UNSCOPED)` | `UNSCOPED` itself |
+| `fr.none_of(UNSCOPED, C)` | A `WhereClause` over `sqlalchemy.false()` |
+| `fr.none_of(UNSCOPED)` | A `WhereClause` over `sqlalchemy.false()` |
+
+`UNSCOPED` is a no-op in AND composition. It cannot be dropped from OR
+or NOT: every row OR published rows still means every row. NOT over
+that result matches no rows. The false clause works as a scope too:
+lists and counts are empty, and retrieve and reference checks return 404.
+
+`all_of` removes `UNSCOPED` arguments before composing the remaining
+clauses. With one clause left it returns that exact object, preserving
+its bindings and name. With none left it returns the sentinel. This
+lets a predicate extend a possibly unscoped default without branching:
+
+```python
+scope = fr.all_of(ItemClauses.default_scope, has_active_subscription)
+```
+
+The return type is `WhereClause` when a definite predicate is the first
+or second argument and the other arguments are predicates or `Unscoped`.
+Mixed argument lists outside those overloads use a safe union return
+type. `any_of` can return `Unscoped` when any argument may be unscoped.
+`none_of` always returns a `WhereClause`. Use `apply_clauses` for a
+result that may be the sentinel, which has no clause methods.
+
+`combine` ignores `UNSCOPED` and keeps the other predicates and
+transforms. At least one remaining operand must still carry a
+transform, so `combine(UNSCOPED)` raises. `all_of()`, `any_of()`, and
+`none_of()` with no arguments also continue to raise. Passing
+`UNSCOPED` explicitly counts as an argument.
+
+Other operands are validated even when `UNSCOPED` determines the whole
+result. A transform in `any_of` or `none_of`, or a raw expression or
+`ContextParam` in a boolean composition, still raises. Once validated,
+clauses discarded by OR or NOT simplification are not evaluated and
+need no bound values.
+
+`apply_clauses(stmt, UNSCOPED)` adds no restriction. Existing filters
+and transforms on `stmt` stay in place, and other supplied clauses
+still apply. `UNSCOPED` does not clear a statement that was already
+filtered.
 
 (applying-clauses)=
 ## Applying clauses to a statement
@@ -553,6 +612,9 @@ A `WhereClause` guarantees no transform anywhere in its tree, which is
 what makes the yes-column safe: OR, NOT, UPDATE, and DELETE all break
 in the presence of a join. The guarantees are enforced twice, in the
 signatures for type checkers and at runtime for everyone else.
+
+`UNSCOPED` is outside this hierarchy. `all_of` and `any_of` can also
+return that sentinel under the [composition rules](#unscoped-composition).
 
 ```{seealso}
 {doc}`api/clauses` lists every symbol with its signature.

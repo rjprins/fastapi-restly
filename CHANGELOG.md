@@ -22,6 +22,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `fr.apply_clauses` and the
   `select()`/`update()`/`delete()` shorthands. See the Query Clauses
   guide.
+- `fr.clauses.UNSCOPED` now composes as no restriction. `all_of` and
+  `combine` ignore it, `any_of` returns it, and `none_of` returns a
+  predicate matching no rows. `all_of` returns the sole remaining clause
+  unchanged, or the sentinel when all arguments are `UNSCOPED`.
+  Other operands still undergo validation. See the Query Clauses guide
+  for the full rules and return types.
 - `ContextNamespace.depends()` and `ContextParam.depends()` generate the
   FastAPI dependency that binds context per request: async underneath,
   so the bind reaches async and `def` endpoints alike, and fed by your

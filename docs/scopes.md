@@ -55,9 +55,18 @@ clause under that name is the scope for the model. The one line
 Every model namespace has a `default_scope`, and its default is
 `fr.clauses.UNSCOPED`: a model that declares none reads unscoped, and
 its reference checks are bare primary-key lookups. `UNSCOPED` is the one
-explicit unscoped spelling everywhere a scope can appear, so
-`grep -rn UNSCOPED` hands a security review every escape, view,
-namespace, and reference alike, in one command.
+explicit unscoped spelling everywhere a scope can appear. Searching for
+`UNSCOPED` finds where unscoping is requested directly. Follow variables
+and composed clauses to find the views and references that receive it.
+Composition can absorb or propagate the sentinel, so the search does
+not identify every resulting unscoped read.
+
+In clause composition, `UNSCOPED` means accepting every row: it is a
+no-op in `all_of`, makes `any_of` unscoped, and makes `none_of` match
+no rows. It contributes nothing to `combine` or `apply_clauses` and
+does not remove other filters on a statement. See the
+{ref}`full composition rules <unscoped-composition>` for object
+identity, return types, and validation.
 
 The scope guards reads *of* the model and references *to* it; it does
 not reach through relationships. A scoped model serialized inside

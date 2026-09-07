@@ -93,6 +93,41 @@ assert_type(fr.any_of(pure, TicketClauses.is_deleted), fr.WhereClause)
 bundle = fr.combine(TicketClauses.newest_first, TicketClauses.is_deleted)
 assert_type(fr.all_of(bundle, TicketClauses.is_deleted), fr.Clause)
 
+
+def unscoped_composition(
+    default: fr.WhereClause | fr.clauses.Unscoped,
+    other: fr.WhereClause | fr.clauses.Unscoped,
+) -> None:
+    # A definite predicate in either position absorbs possible unscoping.
+    assert_type(fr.all_of(default, pure), fr.WhereClause)
+    assert_type(fr.all_of(pure, default), fr.WhereClause)
+    assert_type(fr.all_of(default, pure, other), fr.WhereClause)
+    # Other mixed positions retain a safe union, even with a known predicate.
+    assert_type(fr.all_of(default, other, pure), fr.WhereClause | fr.clauses.Unscoped)
+    assert_type(fr.all_of(default), fr.WhereClause | fr.clauses.Unscoped)
+    assert_type(fr.all_of(default, other), fr.WhereClause | fr.clauses.Unscoped)
+    assert_type(fr.all_of(fr.clauses.UNSCOPED), fr.clauses.Unscoped)
+    assert_type(fr.any_of(fr.clauses.UNSCOPED), fr.clauses.Unscoped)
+    assert_type(fr.any_of(default, pure), fr.WhereClause | fr.clauses.Unscoped)
+    assert_type(fr.any_of(pure, default), fr.WhereClause | fr.clauses.Unscoped)
+    assert_type(fr.none_of(default, other), fr.WhereClause)
+    assert_type(fr.none_of(fr.clauses.UNSCOPED), fr.WhereClause)
+    assert_type(fr.all_of(default, bundle), fr.Clause | fr.clauses.Unscoped)
+    assert_type(fr.combine(default, newest_first), fr.CombinedClause)
+
+    # The motivating composition remains usable wherever a predicate is needed.
+    scoped = fr.all_of(default, pure)
+    assert_type(scoped(), ColumnElement[bool])
+    assert_type(scoped.update(Ticket), Update)
+    assert_type(fr.apply_clauses(delete(Ticket), scoped), Delete)
+    fr.RefExists(Ticket, scope=scoped)
+
+    # A variable-length list may contain only UNSCOPED.
+    predicates: list[fr.WhereClause | fr.clauses.Unscoped] = [default, other]
+    assert_type(fr.all_of(*predicates), fr.WhereClause | fr.clauses.Unscoped)
+    assert_type(fr.any_of(*predicates), fr.WhereClause | fr.clauses.Unscoped)
+
+
 # apply_clauses overloads per statement kind; the Select overload keeps
 # the precise statement type
 listing = fr.apply_clauses(select(Ticket), TicketClauses.visible)
@@ -119,7 +154,9 @@ assert_type(expr, ColumnElement[bool])
 _stmt = select(Ticket).where(expr, TicketClauses.is_deleted())
 
 # statement methods chain as normal SQLAlchemy statements
-_chained = TicketClauses.visible.select(Ticket, tenant_id=1).where(Ticket.id == 1).limit(1)
+_chained = (
+    TicketClauses.visible.select(Ticket, tenant_id=1).where(Ticket.id == 1).limit(1)
+)
 
 # select() takes any SQLAlchemy entities; exact row typing lives on the
 # apply_clauses path, which keeps the statement type select() produced

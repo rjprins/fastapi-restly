@@ -773,6 +773,73 @@ def test_apply_clauses_accepts_unscoped_as_nothing():
     assert str(stmt.whereclause) == "scope_sync_row.tenant_id = :tenant_id_1"
 
 
+@pytest.mark.parametrize("op", [fr.all_of, fr.any_of, fr.none_of])
+def test_composed_unscoped_controls_sync_reads_and_references(sync_session, op):
+    scope = op(fr.clauses.UNSCOPED)
+
+    class ComposedView(_SyncRowView):
+        pass
+
+    ComposedView.scope = scope
+    view = ComposedView()
+    view.session = sync_session
+
+    class RefSchema(fr.BaseSchema):
+        row_id: Annotated[int, fr.RefExists(SyncRow, scope=scope)]
+
+    listed = view.handle_get_many({})
+    if op is fr.none_of:
+        assert listed.objects == []
+        assert listed.total_count == 0
+        with pytest.raises(NotFound):
+            view.handle_get_one(1)
+        with pytest.raises(NotFound):
+            _check_ref_exists(sync_session, SyncRow, RefSchema(row_id=1))
+    else:
+        assert {row.id for row in listed.objects} == {1, 2}
+        assert listed.total_count == 2
+        assert view.handle_get_one(1).id == 1
+        _check_ref_exists(sync_session, SyncRow, RefSchema(row_id=1))
+
+
+def test_negated_unscoped_default_hides_async_reads_and_references(client):
+    class HiddenRow(fr.IDBase):
+        name: Mapped[str]
+
+    class HiddenRowClauses(fr.ClauseNamespace):
+        model = HiddenRow
+        default_scope = fr.none_of(fr.clauses.UNSCOPED)
+
+    class HiddenRowSchema(fr.IDSchema):
+        name: str
+
+    class RefRow(fr.IDBase):
+        target_id: Mapped[int] = mapped_column(ForeignKey(HiddenRow.id))
+
+    class RefRowSchema(fr.IDSchema):
+        target_id: fr.MustExist[int]
+
+    @fr.include_view(client.app)
+    class HiddenRowView(fr.AsyncRestView):
+        prefix = "/hidden-rows"
+        model = HiddenRow
+        schema = HiddenRowSchema
+
+    @fr.include_view(client.app)
+    class RefRowView(fr.AsyncRestView):
+        prefix = "/ref-rows"
+        model = RefRow
+        schema = RefRowSchema
+
+    create_tables()
+    row = client.post("/hidden-rows/", json={"name": "hidden"}).json()
+    listed = client.get("/hidden-rows/").json()
+    assert listed["data"] == []
+    assert listed["total_count"] == 0
+    client.get(f"/hidden-rows/{row['id']}", assert_status_code=404)
+    client.post("/ref-rows/", json={"target_id": row["id"]}, assert_status_code=404)
+
+
 def test_apply_scope_receives_the_resolved_scope(sync_session):
     """The seam sees one settled answer per read: the per-read scope, else
     the view's, else the model default, with UNSCOPED for none."""
