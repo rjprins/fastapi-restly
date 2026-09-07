@@ -119,8 +119,8 @@ class UserView(
     schema_create = UserCreate
     schema_update = UserUpdate
 
-    async def get_one(self, id: int) -> User:
-        return await super().get_one(id)
+    async def get_one(self, id: int, *, scope: fr.views.ReadScope = None) -> User:
+        return await super().get_one(id, scope=scope)
 
     async def create(self, schema_obj: UserCreate) -> User:
         return await super().create(schema_obj)

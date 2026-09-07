@@ -595,9 +595,9 @@ def test_react_admin_list_uses_handle_get_many_get_many_and_response_seams(clien
                 result.objects, result.total_count + 10, result.query_params
             )
 
-        async def get_many(self, query_params):
+        async def get_many(self, query_params, *, scope=None):
             events.append(("get_many", None))
-            return await super().get_many(query_params)
+            return await super().get_many(query_params, scope=scope)
 
         def to_response(self, obj_or_list, shape=fr.ResponseShape.SINGLE):
             events.append(("to_response", shape))
@@ -643,9 +643,9 @@ def test_sync_react_admin_list_uses_handle_get_many_get_many_and_response_seams(
                 result.objects, result.total_count + 10, result.query_params
             )
 
-        def get_many(self, query_params):
+        def get_many(self, query_params, *, scope=None):
             events.append(("get_many", None))
-            return super().get_many(query_params)
+            return super().get_many(query_params, scope=scope)
 
         def to_response(self, obj_or_list, shape=fr.ResponseShape.SINGLE):
             events.append(("to_response", shape))

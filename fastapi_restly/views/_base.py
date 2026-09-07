@@ -13,7 +13,6 @@ Provides default reading and writing functions on the database using
 SQLAlchemy models.
 """
 
-import contextlib
 import dataclasses
 import functools
 import inspect
@@ -1064,49 +1063,28 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
             )
         return scope
 
-    # The per-read scope a handler was asked for, in force for that call
-    # only; None means the view scope. Instance state is per request: the
-    # view is instantiated by Depends(view_cls).
-    _read_scope: ReadScope = None
-
-    @contextlib.contextmanager
-    def _reading_through(self, scope: ReadScope) -> Iterator[None]:
-        # Set by handle_get_many/handle_get_one, read by _apply_scope, so a
-        # get_one/get_many override honors the route's scope without having
-        # to thread it through its own signature.
+    def _apply_scope(self, query: Select[Any], scope: ReadScope) -> Select[Any]:
+        # resolve first, so apply_scope sees one settled answer: the scope
+        # the read was asked for, else the view's, with UNSCOPED for none
         if scope is None:
-            yield
-            return
-        if scope is not UNSCOPED and not isinstance(scope, Clause):
+            resolved = self._resolved_scope()
+            scope = UNSCOPED if resolved is None else resolved
+        elif scope is not UNSCOPED and not isinstance(scope, Clause):
             raise RestlyConfigurationError(
                 f"{type(self).__name__}: a per-read scope must be a Clause or "
                 f"fr.clauses.UNSCOPED, got {type(scope).__name__}; wrap a raw "
                 "expression with where_clause()"
             )
-        previous = self._read_scope
-        self._read_scope = scope
-        try:
-            yield
-        finally:
-            self._read_scope = previous
-
-    def _apply_scope(self, query: Select[Any]) -> Select[Any]:
-        # resolve first, so apply_scope sees one settled answer: the scope
-        # the read was asked for, else the view's, with UNSCOPED for none
-        scope: Clause | Unscoped | None = self._read_scope
-        if scope is None:
-            scope = self._resolved_scope()
-        if scope is None:
-            scope = UNSCOPED
         return self.apply_scope(query, scope)
 
     def apply_scope(self, query: Select[Any], scope: Clause | Unscoped) -> Select[Any]:
         """Apply the read's scope to its base query; the seam under every read.
 
-        ``scope`` is already resolved: the one the route named on
-        ``handle_get_many`` / ``handle_get_one``, else the view's
-        :attr:`scope`, else the model's ``default_scope``, with
-        ``fr.clauses.UNSCOPED`` for none. The default applies it as is.
+        ``scope`` is already resolved: the ``scope=`` the read was asked
+        for (on ``get_one`` / ``get_many``, or forwarded by the
+        handlers), else the view's :attr:`scope`, else the model's
+        ``default_scope``, with ``fr.clauses.UNSCOPED`` for none. The
+        default applies it as is.
         A base class overrides this to stack what must hold on every read
         regardless of what was named, a tenant floor say, by handing
         :func:`fr.apply_clauses <fastapi_restly.clauses.apply_clauses>`

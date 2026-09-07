@@ -104,12 +104,10 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         self, query_params: Any, *, scope: ReadScope = None
     ) -> ListingResult[ModelT]:
         self.authorize(Action.GET_MANY)
-        with self._reading_through(scope):
-            return self.get_many(query_params)
+        return self.get_many(query_params, scope=scope)
 
     def handle_get_one(self, id: IdT, *, scope: ReadScope = None) -> ModelT:
-        with self._reading_through(scope):
-            obj = self.get_one(id)
+        obj = self.get_one(id, scope=scope)
         self.authorize(Action.GET_ONE, obj=obj)
         return obj
 
@@ -150,8 +148,10 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
     # Domain operations (auth-free, commit-free) -- the common override point
     # ====================================================================
 
-    def get_many(self, query_params: Any) -> ListingResult[ModelT]:
-        query = self._apply_scope(select(self.model))
+    def get_many(
+        self, query_params: Any, *, scope: ReadScope = None
+    ) -> ListingResult[ModelT]:
+        query = self._apply_scope(select(self.model), scope)
         query = self.apply_query_params(query, query_params)
         total_count = self.count(query) if self.paginated else None
         loader_options = self.get_relationship_loader_options()
@@ -166,14 +166,14 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
             query_params=query_params,
         )
 
-    def get_one(self, id: IdT) -> ModelT:
+    def get_one(self, id: IdT, *, scope: ReadScope = None) -> ModelT:
         pk_cols = sa_inspect(self.model).primary_key
         if len(pk_cols) != 1:
             raise NotImplementedError(
                 f"{self.model.__name__} has a composite primary key; "
                 "override get_one to fetch it."
             )
-        query = self._apply_scope(select(self.model)).where(pk_cols[0] == id)
+        query = self._apply_scope(select(self.model), scope).where(pk_cols[0] == id)
         loader_options = self.get_relationship_loader_options()
         if loader_options:
             query = query.options(*loader_options)

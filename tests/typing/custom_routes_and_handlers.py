@@ -37,11 +37,14 @@ class WidgetView(fr.RestView[Widget, WidgetRead, WidgetInput, WidgetInput, int])
         return {"status": "ok"}
 
     # Domain operations (auth-free, commit-free) -- the common override point.
-    def get_many(self, query_params: Any) -> fr.ListingResult[Widget]:
-        return super().get_many(query_params)
+    # The handlers always forward ``scope=``, so an override declares it.
+    def get_many(
+        self, query_params: Any, *, scope: fr.views.ReadScope = None
+    ) -> fr.ListingResult[Widget]:
+        return super().get_many(query_params, scope=scope)
 
-    def get_one(self, id: int) -> Widget:
-        return super().get_one(id)
+    def get_one(self, id: int, *, scope: fr.views.ReadScope = None) -> Widget:
+        return super().get_one(id, scope=scope)
 
     def create(self, schema_obj: WidgetInput) -> Widget:
         return super().create(schema_obj)

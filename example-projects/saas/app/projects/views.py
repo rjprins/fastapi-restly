@@ -93,11 +93,13 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
         )
         return project
 
-    async def get_many(self, query_params) -> fr.ListingResult[Project]:
+    async def get_many(
+        self, query_params, *, scope: fr.views.ReadScope = None
+    ) -> fr.ListingResult[Project]:
         # The default scope enforces tenant + soft-delete filtering already.
         # Here we only do project-specific response decoration on each row
         # in the page.
-        result = await super().get_many(query_params)
+        result = await super().get_many(query_params, scope=scope)
         decorated = [
             await self._decorate_project_response(project) for project in result.objects
         ]
@@ -107,12 +109,12 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
             query_params=result.query_params,
         )
 
-    async def get_one(self, id: int):
+    async def get_one(self, id: int, *, scope: fr.views.ReadScope = None):
         # The default scope enforces tenant + soft-delete filtering already.
         # ``get_one`` is the auth-free load+scope+404 override point; we layer only
         # project-specific response decoration on top. ``handle_get_one``
         # (and therefore every read path) routes through here.
-        project = await super().get_one(id)
+        project = await super().get_one(id, scope=scope)
         return await self._decorate_project_response(project)
 
     def _can_edit(self, project: Project) -> bool:

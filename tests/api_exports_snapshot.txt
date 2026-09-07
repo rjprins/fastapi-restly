@@ -154,6 +154,7 @@ fastapi_restly.views:
   - ListingResult
   - PaginatedEnvelope
   - ReactAdminView
+  - ReadScope
   - ResponseShape
   - RestView
   - View
@@ -232,5 +233,6 @@ fastapi_restly.views:
   - BaseRestView
   - Envelope
   - PaginatedEnvelope
+  - ReadScope
   - async_run_write_action
   - run_write_action

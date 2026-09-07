@@ -216,11 +216,11 @@ For reusable soft-delete that also hides rows on read, see `SoftDeleteMixin` in 
 
 ### `get_one`: eager-load extra relationships
 
-The default {meth}`get_one <fastapi_restly.views.RestView.get_one>` loads through the view scope and schema-derived loader options. If one endpoint needs an extra relationship, delegate to ``super()`` so the scoped load and its 404 stay intact, then load the extra attribute explicitly:
+The default {meth}`get_one <fastapi_restly.views.RestView.get_one>` loads through the view scope and schema-derived loader options. If one endpoint needs an extra relationship, delegate to ``super()`` so the scoped load and its 404 stay intact, then load the extra attribute explicitly. An override declares the ``scope`` parameter and passes it on; the handlers always forward it:
 
 ```python
-    async def get_one(self, id):
-        obj = await super().get_one(id)   # scoped load + 404
+    async def get_one(self, id, *, scope=None):
+        obj = await super().get_one(id, scope=scope)   # scoped load + 404
         await obj.awaitable_attrs.audit_log
         return obj
 ```
@@ -235,8 +235,8 @@ instead; see [Relationship Loading and Async](howto_relationship_loading.md).
 For post-query decoration, override {meth}`get_many <fastapi_restly.views.RestView.get_many>` and delegate to `super()`. For filters, joins, or eager loading that apply to every read, prefer a clause on the view [scope](scopes.md).
 
 ```python
-    async def get_many(self, query_params):
-        result = await super().get_many(query_params)
+    async def get_many(self, query_params, *, scope=None):
+        result = await super().get_many(query_params, scope=scope)
         for obj in result.objects:
             obj._display_name = derive_display_name(obj)
         return result

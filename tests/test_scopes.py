@@ -732,7 +732,8 @@ def test_sync_handlers_take_a_per_read_scope(sync_session):
         assert ids == {1, 2}
         assert {r.id for r in view.handle_get_many({}).objects} == {1}
 
-        # the per-read scope is gone once the call is, on error too
+        # a scope override is one call's argument; the next read is back
+        # on the view scope, after an error too
         with pytest.raises(NotFound):
             view.handle_get_one(3, scope=fr.clauses.UNSCOPED)
         with pytest.raises(NotFound):
@@ -743,15 +744,29 @@ def test_sync_handlers_take_a_per_read_scope(sync_session):
             view.handle_get_one(1, scope=SyncRow.tenant_id == 2)  # type: ignore[arg-type]
 
 
-def test_per_read_scope_reaches_a_get_one_override(sync_session):
-    """The scope is set around the domain op, so an override of
-    ``get_one(self, id)`` keeps its signature and still reads the surface
-    the route asked for."""
+def test_domain_ops_take_a_scope_directly(sync_session):
+    """``get_one`` / ``get_many`` accept ``scope=`` themselves, so a custom
+    action can load another surface and make its own auth decision instead
+    of inheriting read-auth from ``handle_get_one``."""
+    view = _SyncRowView()
+    view.session = sync_session
+    with _SyncContext.tenant_id.bind(tenant_id=1):
+        other = fr.where_clause(SyncRow.tenant_id == 2)
+        assert view.get_one(2, scope=other).id == 2
+        with pytest.raises(NotFound):
+            view.get_one(1, scope=other)
+        ids = {r.id for r in view.get_many({}, scope=fr.clauses.UNSCOPED).objects}
+        assert ids == {1, 2}
+
+
+def test_per_read_scope_passes_through_a_get_one_override(sync_session):
+    """The handlers always forward ``scope=``, so an override declares the
+    parameter, passes it on, and reads the surface the route asked for."""
     seen: list[int] = []
 
     class _Overriding(_SyncRowView):
-        def get_one(self, id):
-            obj = super().get_one(id)
+        def get_one(self, id, *, scope=None):
+            obj = super().get_one(id, scope=scope)
             seen.append(obj.id)
             return obj
 
@@ -762,6 +777,21 @@ def test_per_read_scope_reaches_a_get_one_override(sync_session):
         with pytest.raises(NotFound):
             view.handle_get_one(2)
     assert seen == [2]
+
+
+def test_a_scope_unaware_get_one_override_fails_loudly(sync_session):
+    """An override without the ``scope`` parameter breaks on the first
+    handler read, not silently on the first route that names a scope."""
+
+    class _ScopeUnaware(_SyncRowView):
+        def get_one(self, id):
+            return super().get_one(id)
+
+    view = _ScopeUnaware()
+    view.session = sync_session
+    with _SyncContext.tenant_id.bind(tenant_id=1):
+        with pytest.raises(TypeError, match="scope"):
+            view.handle_get_one(1)
 
 
 def test_apply_clauses_accepts_unscoped_as_nothing():

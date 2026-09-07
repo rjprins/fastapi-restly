@@ -114,21 +114,23 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         :param scope: a clause that replaces the view scope for this read,
             so a custom route can list another surface of the same model
             (a trash listing); ``fr.clauses.UNSCOPED`` reads past it.
+            Forwarded to ``get_many``.
         """
         await self.authorize(Action.GET_MANY)
-        with self._reading_through(scope):
-            return await self.get_many(query_params)
+        return await self.get_many(query_params, scope=scope)
 
     async def handle_get_one(self, id: IdT, *, scope: ReadScope = None) -> ModelT:
         """Retrieve handler: scoped load (404 by visibility) then read-auth.
 
         Reusable from custom actions as "load with scope + 404 + read-auth".
+        For a load under a different auth decision (a restore action, say),
+        call ``get_one(id, scope=...)`` directly and authorize yourself.
 
         :param scope: a clause that replaces the view scope for this read,
             so a restore route can load the row the view scope hides.
+            Forwarded to ``get_one``.
         """
-        with self._reading_through(scope):
-            obj = await self.get_one(id)
+        obj = await self.get_one(id, scope=scope)
         await self.authorize(Action.GET_ONE, obj=obj)
         return obj
 
@@ -175,16 +177,20 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     # Domain operations (auth-free, commit-free) -- the common override point
     # ====================================================================
 
-    async def get_many(self, query_params: Any) -> ListingResult[ModelT]:
+    async def get_many(
+        self, query_params: Any, *, scope: ReadScope = None
+    ) -> ListingResult[ModelT]:
         """Return the scoped, filtered, paginated page plus the total count.
 
-        Routes through the view scope
-        (:attr:`~fastapi_restly.views.BaseRestView.scope`), or the scope
-        ``handle_get_many`` was asked for, + :meth:`apply_query_params`
-        (filter/sort/page) + :meth:`count`. Auth-free; ``handle_get_many``
-        adds the ``authorize`` call.
+        Routes through ``scope`` when given, else the view scope
+        (:attr:`~fastapi_restly.views.BaseRestView.scope`),
+        + :meth:`apply_query_params` (filter/sort/page) + :meth:`count`.
+        Auth-free; ``handle_get_many`` adds the ``authorize`` call.
+
+        The handlers always forward ``scope=``, so an override must
+        declare the parameter and pass it on to ``super()``.
         """
-        query = self._apply_scope(select(self.model))
+        query = self._apply_scope(select(self.model), scope)
         query = self.apply_query_params(query, query_params)
         total_count = (await self.count(query)) if self.paginated else None
         loader_options = self.get_relationship_loader_options()
@@ -199,12 +205,16 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
             query_params=query_params,
         )
 
-    async def get_one(self, id: IdT) -> ModelT:
-        """Load one object through the view scope (scope + 404).
+    async def get_one(self, id: IdT, *, scope: ReadScope = None) -> ModelT:
+        """Load one object through the scope (scope + 404).
 
-        Auth-free: visibility comes from the scope, or the scope
-        ``handle_get_one`` was asked for, so a row outside it is a clean
-        404 for every caller. ``handle_get_one`` adds read-auth.
+        Auth-free: visibility comes from ``scope`` when given, else the
+        view scope, so a row outside it is a clean 404 for every caller.
+        ``handle_get_one`` adds read-auth; a custom action that needs a
+        different auth decision calls this directly with its own scope.
+
+        The handlers always forward ``scope=``, so an override must
+        declare the parameter and pass it on to ``super()``.
         """
         pk_cols = sa_inspect(self.model).primary_key
         if len(pk_cols) != 1:
@@ -212,7 +222,7 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
                 f"{self.model.__name__} has a composite primary key; "
                 "override get_one to fetch it."
             )
-        query = self._apply_scope(select(self.model)).where(pk_cols[0] == id)
+        query = self._apply_scope(select(self.model), scope).where(pk_cols[0] == id)
         loader_options = self.get_relationship_loader_options()
         if loader_options:
             query = query.options(*loader_options)

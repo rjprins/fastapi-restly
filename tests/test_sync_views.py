@@ -538,17 +538,17 @@ def test_sync_rest_view_dispatches_to_handle_overrides(sync_db):
         model = DispatchWidget
         schema = WidgetSchema
 
-        def get_many(self, query_params):
+        def get_many(self, query_params, *, scope=None):
             call_log.append("listing")
-            return super().get_many(query_params)
+            return super().get_many(query_params, scope=scope)
 
         def to_listing_response(self, query_params, listing_result):
             call_log.append("to_listing_response")
             return super().to_listing_response(query_params, listing_result)
 
-        def get_one(self, id):
+        def get_one(self, id, *, scope=None):
             call_log.append("get")
-            return super().get_one(id)
+            return super().get_one(id, scope=scope)
 
         def create(self, schema_obj):
             call_log.append("create")
@@ -629,7 +629,7 @@ def test_sync_build_query_is_consulted_by_list_and_count(sync_db):
         assert results.total_count == 2
         assert all(g.active for g in results.objects)
 
-        scoped = view._apply_scope(sqlalchemy.select(Gadget))
+        scoped = view._apply_scope(sqlalchemy.select(Gadget), None)
         query = fr.query.apply_list_params({}, scoped, Gadget, GadgetSchema)
         total = view.count(query)
         assert total == 2
