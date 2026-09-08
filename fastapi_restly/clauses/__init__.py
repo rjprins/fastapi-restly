@@ -1,10 +1,8 @@
 """Composable, context-bound query clauses for SQLAlchemy."""
 
-from ._runtime import _NAMESPACES as _NAMESPACES
 from ._runtime import (
     UNSCOPED,
     Clause,
-    ClauseNamespace,
     CombinedClause,
     ContextNamespace,
     ContextParam,
@@ -21,7 +19,9 @@ from ._runtime import (
 )
 from ._runtime import _apply_where_half as _apply_where_half
 from ._runtime import _context_param as _context_param
-from ._runtime import _default_scope as _default_scope
+from ._scopes import _NAMESPACES as _NAMESPACES
+from ._scopes import ClauseNamespace
+from ._scopes import _default_scope as _default_scope
 
 __all__ = [
     "UNSCOPED",
