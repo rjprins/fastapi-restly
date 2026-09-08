@@ -817,8 +817,11 @@ def _ref_exists_query(
     items: list[tuple[str, Any]],
 ) -> Any:
     unique = list(dict.fromkeys(value for _, value in items))
-    pk_col = model.__mapper__.primary_key[0]
-    query = select(pk_col).where(pk_col.in_(unique))
+    mapper = model.__mapper__
+    # the mapped attribute, not the Core column: an ORM statement, so a
+    # session-level rule (with_loader_criteria) reaches this check too
+    pk = getattr(model, mapper.get_property_by_column(mapper.primary_key[0]).key)
+    query = select(pk).where(pk.in_(unique))
     if scope is not None:
         query = _apply_where_half(query, scope)
     return query

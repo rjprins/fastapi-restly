@@ -401,8 +401,9 @@ class TransformClause(Clause):
 class Unscoped:
     """Sentinel scope: explicitly no scope, everywhere a scope can appear.
 
-    `UNSCOPED` is the one instance; the class is public so an override
-    of a scope seam can name the type (`Clause | Unscoped`).
+    `UNSCOPED` is the one instance; the class is public so a `scope`
+    declaration or a `get_one` / `get_many` override can name the type
+    (`Clause | Unscoped`).
     The explicit spelling for a view's `scope` (where `None` means
     "fall back to the model's default"), a namespace's `default_scope`
     (where undeclared defers to

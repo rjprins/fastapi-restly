@@ -14,8 +14,15 @@ from typing import Annotated
 
 import pytest
 from fastapi import Depends, Header
-from sqlalchemy import ForeignKey, Select, create_engine, select
-from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
+from sqlalchemy import ForeignKey, Select, create_engine, event, select
+from sqlalchemy.orm import (
+    DeclarativeBase,
+    Mapped,
+    ORMExecuteState,
+    Session,
+    mapped_column,
+    with_loader_criteria,
+)
 
 import fastapi_restly as fr
 from fastapi_restly.clauses import _default_scope
@@ -289,16 +296,20 @@ def test_a_route_reads_through_its_own_scope(client):
     assert client.get(f"/scope-notes/{gone['id']}", headers=t1).json()["name"] == "gone"
 
 
-def test_a_base_class_stacks_a_floor_under_every_read(client):
-    """``apply_scope`` is the seam under every read. A base class that
-    stacks the tenant clause there keeps a view that opted out, and a
-    route that named its own scope, tenant-bound: the framework's scopes
-    replace each other, the application's floor holds."""
+def test_a_session_rule_holds_under_every_scope_and_reference_check(client):
+    """A rule that must hold whatever a view or a route named is not a
+    scope: a ``do_orm_execute`` listener adds it with SQLAlchemy's
+    ``with_loader_criteria``. Restly's reads and reference checks are ORM
+    statements, so the rule reaches a view that opted out, a route that
+    named its own scope, and a ``MustExist`` check alike."""
 
     class FloorNote(fr.IDBase):
         tenant_id: Mapped[int]
         name: Mapped[str]
         deleted: Mapped[bool] = mapped_column(default=False)
+
+    class FloorRef(fr.IDBase):
+        note_id: Mapped[int] = mapped_column(ForeignKey(FloorNote.id))
 
     class Current(fr.ContextNamespace):
         tenant_id: fr.ContextParam[int]
@@ -307,7 +318,6 @@ def test_a_base_class_stacks_a_floor_under_every_read(client):
         model = FloorNote
 
         is_deleted = fr.where_clause(FloorNote.deleted.is_(True))
-        owned_by_tenant = fr.where_clause(FloorNote.tenant_id == Current.tenant_id)
         default_scope = fr.none_of(is_deleted)
 
     class FloorNoteSchema(fr.IDSchema):
@@ -315,18 +325,27 @@ def test_a_base_class_stacks_a_floor_under_every_read(client):
         name: str
         deleted: bool = False
 
+    class FloorRefSchema(fr.IDSchema):
+        note_id: fr.MustExist[int, FloorNote]
+
     async def bind_tenant(tenant: Annotated[int, Header(alias="x-tenant-id")]):
         with Current.tenant_id.bind(tenant_id=tenant):
             yield
 
-    seen: list[object] = []
+    def restrict(state: ORMExecuteState) -> None:
+        if not state.is_select or state.is_column_load or state.is_relationship_load:
+            return
+        if not any(m.class_ is FloorNote for m in state.all_mappers):
+            return
+        tenant = Current.tenant_id()
+        state.statement = state.statement.options(
+            with_loader_criteria(
+                FloorNote, lambda cls: cls.tenant_id == tenant, include_aliases=True
+            )
+        )
 
     class TenantBase(fr.AsyncRestView):
         dependencies = [Depends(bind_tenant)]
-
-        def apply_scope(self, query, scope):
-            seen.append(scope)
-            return fr.apply_clauses(query, FloorNoteClauses.owned_by_tenant, scope)
 
     @fr.include_view(client.app)
     class FloorNoteView(TenantBase):
@@ -348,6 +367,12 @@ def test_a_base_class_stacks_a_floor_under_every_read(client):
         schema = FloorNoteSchema
         scope = fr.clauses.UNSCOPED
 
+    @fr.include_view(client.app)
+    class FloorRefView(TenantBase):
+        prefix = "/floor-refs"
+        model = FloorRef
+        schema = FloorRefSchema
+
     create_tables()
 
     t1 = {"x-tenant-id": "1"}
@@ -356,29 +381,42 @@ def test_a_base_class_stacks_a_floor_under_every_read(client):
     def post(payload, headers):
         return client.post("/floor-notes/", json=payload, headers=headers).json()
 
-    post({"tenant_id": 1, "name": "live"}, t1)
-    gone = post({"tenant_id": 1, "name": "gone", "deleted": True}, t1)
-    theirs = post({"tenant_id": 2, "name": "theirs", "deleted": True}, t2)
-
     names = lambda response: [r["name"] for r in response.json()["data"]]  # noqa: E731
 
-    # the default read: model default under the floor
-    assert names(client.get("/floor-notes/", headers=t1)) == ["live"]
-    assert seen[-1] is FloorNoteClauses.default_scope
+    event.listen(Session, "do_orm_execute", restrict)
+    try:
+        live = post({"tenant_id": 1, "name": "live"}, t1)
+        gone = post({"tenant_id": 1, "name": "gone", "deleted": True}, t1)
+        theirs = post({"tenant_id": 2, "name": "theirs", "deleted": True}, t2)
 
-    # a route's own scope replaces the default; the floor still holds
-    assert names(client.get("/floor-notes/trash", headers=t1)) == ["gone"]
-    assert names(client.get("/floor-notes/trash", headers=t2)) == ["theirs"]
-    assert seen[-1] is FloorNoteClauses.is_deleted
+        # the default read: the model default under the rule
+        assert names(client.get("/floor-notes/", headers=t1)) == ["live"]
 
-    # a view that opted out of the default scope is still tenant-bound
-    assert names(client.get("/all-floor-notes/", headers=t1)) == ["live", "gone"]
-    assert seen[-1] is fr.clauses.UNSCOPED
-    client.get(f"/all-floor-notes/{theirs['id']}", headers=t1, assert_status_code=404)
-    assert (
-        client.get(f"/all-floor-notes/{gone['id']}", headers=t1).json()["name"]
-        == "gone"
-    )
+        # a route's own scope replaces the default; the rule still holds
+        assert names(client.get("/floor-notes/trash", headers=t1)) == ["gone"]
+        assert names(client.get("/floor-notes/trash", headers=t2)) == ["theirs"]
+
+        # a view that opted out of the default scope is still tenant-bound
+        assert names(client.get("/all-floor-notes/", headers=t1)) == ["live", "gone"]
+        client.get(
+            f"/all-floor-notes/{theirs['id']}", headers=t1, assert_status_code=404
+        )
+        assert (
+            client.get(f"/all-floor-notes/{gone['id']}", headers=t1).json()["name"]
+            == "gone"
+        )
+
+        # the reference check is an ORM statement: the other tenant's row
+        # does not exist for a write
+        client.post("/floor-refs/", json={"note_id": live["id"]}, headers=t1)
+        client.post(
+            "/floor-refs/",
+            json={"note_id": live["id"]},
+            headers=t2,
+            assert_status_code=404,
+        )
+    finally:
+        event.remove(Session, "do_orm_execute", restrict)
 
 
 # ---------------------------------------------------------------------------
@@ -870,61 +908,78 @@ def test_negated_unscoped_default_hides_async_reads_and_references(client):
     client.post("/ref-rows/", json={"target_id": row["id"]}, assert_status_code=404)
 
 
-def test_apply_scope_receives_the_resolved_scope(sync_session):
-    """The seam sees one settled answer per read: the per-read scope, else
-    the view's, else the model default, with UNSCOPED for none."""
-    seen: list[object] = []
-
-    class _Recording(_SyncRowView):
-        def apply_scope(self, query, scope):
-            seen.append(scope)
-            return super().apply_scope(query, scope)
-
+def test_a_view_scope_replaces_the_default_and_a_per_read_scope_replaces_both(
+    sync_session,
+):
+    """Resolution per read: the per-read scope, else the view's, else the
+    model default, with UNSCOPED for none. Pinned by what each read returns."""
     other = fr.where_clause(SyncRow.tenant_id == 2)
 
-    class _Pinned(_Recording):
+    class _Pinned(_SyncRowView):
         scope = other
 
-    class _OptedOut(_Recording):
+    class _OptedOut(_SyncRowView):
         scope = fr.clauses.UNSCOPED
 
     with _SyncContext.tenant_id.bind(tenant_id=1):
         for view_cls, expected in [
-            (_Recording, SyncRowClauses.default_scope),
-            (_Pinned, other),
-            (_OptedOut, fr.clauses.UNSCOPED),
+            (_SyncRowView, {1}),  # the model default: the bound tenant
+            (_Pinned, {2}),  # the view's own scope replaces it
+            (_OptedOut, {1, 2}),  # UNSCOPED on the view reads past it
         ]:
             view = view_cls()
             view.session = sync_session
-            view.handle_get_many({})
-            assert seen[-1] is expected
-            view.handle_get_one(1, scope=fr.clauses.UNSCOPED)
-            assert seen[-1] is fr.clauses.UNSCOPED
-            view.handle_get_one(2, scope=other)
-            assert seen[-1] is other
+            assert {r.id for r in view.handle_get_many({}).objects} == expected
+            # a per-read scope replaces whatever the view resolved to
+            assert view.handle_get_one(2, scope=fr.clauses.UNSCOPED).id == 2
+            assert view.handle_get_one(2, scope=other).id == 2
+            with pytest.raises(NotFound):
+                view.handle_get_one(1, scope=other)
 
 
-def test_a_sync_base_class_stacks_a_floor_in_apply_scope(sync_session):
-    floor = fr.where_clause(SyncRow.tenant_id == _SyncContext.tenant_id)
+def test_a_sync_session_rule_holds_under_unscoped_reads_and_references(sync_session):
+    """The sync leg of the session rule: ``UNSCOPED`` on the view and per
+    read, and an explicitly unscoped reference check, all stay under it."""
 
-    class _Floored(_SyncRowView):
+    def restrict(state: ORMExecuteState) -> None:
+        if not state.is_select or state.is_column_load or state.is_relationship_load:
+            return
+        if not any(m.class_ is SyncRow for m in state.all_mappers):
+            return
+        tenant = _SyncContext.tenant_id()
+        state.statement = state.statement.options(
+            with_loader_criteria(
+                SyncRow, lambda cls: cls.tenant_id == tenant, include_aliases=True
+            )
+        )
+
+    class _OptedOut(_SyncRowView):
         scope = fr.clauses.UNSCOPED
 
-        def apply_scope(self, query, scope):
-            return fr.apply_clauses(query, floor, scope)
+    class RefSchema(fr.BaseSchema):
+        row_id: Annotated[int, fr.RefExists(SyncRow, scope=fr.clauses.UNSCOPED)]
 
-    view = _Floored()
+    view = _OptedOut()
     view.session = sync_session
-    with _SyncContext.tenant_id.bind(tenant_id=1):
-        # UNSCOPED on the view, UNSCOPED per read: the floor still holds
-        assert {r.id for r in view.handle_get_many({}).objects} == {1}
-        ids = {
-            r.id for r in view.handle_get_many({}, scope=fr.clauses.UNSCOPED).objects
-        }
-        assert ids == {1}
-        with pytest.raises(NotFound):
-            view.handle_get_one(2, scope=fr.where_clause(SyncRow.id == 2))
-        assert view.handle_get_one(1).id == 1
+    event.listen(Session, "do_orm_execute", restrict)
+    try:
+        with _SyncContext.tenant_id.bind(tenant_id=1):
+            # UNSCOPED on the view, UNSCOPED per read: the rule still holds
+            assert {r.id for r in view.handle_get_many({}).objects} == {1}
+            ids = {
+                r.id
+                for r in view.handle_get_many({}, scope=fr.clauses.UNSCOPED).objects
+            }
+            assert ids == {1}
+            with pytest.raises(NotFound):
+                view.handle_get_one(2, scope=fr.where_clause(SyncRow.id == 2))
+            assert view.handle_get_one(1).id == 1
+            # an explicitly unscoped reference check is under the rule too
+            _check_ref_exists(sync_session, SyncRow, RefSchema(row_id=1))
+            with pytest.raises(NotFound):
+                _check_ref_exists(sync_session, SyncRow, RefSchema(row_id=2))
+    finally:
+        event.remove(Session, "do_orm_execute", restrict)
 
 
 def test_unbound_scope_raises_the_teaching_error(sync_session):

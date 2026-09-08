@@ -133,6 +133,16 @@ the same `owned_by_tenant` leaf that `visible` contains; build every
 scope from the namespace's leaves and the tenant rule cannot fall out
 of a view by omission.
 
+A rule that must hold under every scope a view or a route can name is
+better not a scope at all. SQLAlchemy's
+[`with_loader_criteria`](https://docs.sqlalchemy.org/en/20/orm/queryguide/api.html#adding-global-where-on-criteria),
+added from a `do_orm_execute` listener, puts the predicate on every ORM
+`SELECT` that touches the class: view reads under any scope, reference
+checks, lazy loads and hand-written selects alike. Restly's reads and
+reference checks are ORM statements, so the rule reaches them. The
+[SaaS example](examples.md#saas) keeps its tenant rule there, in
+`app/models.py`, next to the column it restricts.
+
 A view scope is the query basis of its endpoints, so transforms are
 welcome there, unlike in `default_scope`:
 

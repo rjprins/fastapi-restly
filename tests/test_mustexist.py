@@ -21,7 +21,13 @@ import pytest
 from fastapi import HTTPException
 from sqlalchemy import ForeignKey, Uuid, event
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import (
+    Mapped,
+    ORMExecuteState,
+    Session,
+    mapped_column,
+    with_loader_criteria,
+)
 
 import fastapi_restly as fr
 from fastapi_restly.exc import RestlyConfigurationError
@@ -243,6 +249,93 @@ def test_sync_check_is_batched_one_query_per_model(sync_db):
             event.remove(engine, "before_cursor_execute", _record)
 
         assert len(post_selects) == 1
+
+
+def _restrict_to_tenant(model, tenant: int):
+    """A session rule the way an application adds one: SQLAlchemy's
+    ``with_loader_criteria`` from a ``do_orm_execute`` listener."""
+
+    def restrict(state: ORMExecuteState) -> None:
+        if state.is_select and any(m.class_ is model for m in state.all_mappers):
+            state.statement = state.statement.options(
+                with_loader_criteria(
+                    model, lambda cls: cls.tenant_id == tenant, include_aliases=True
+                )
+            )
+
+    return restrict
+
+
+def test_sync_check_is_an_orm_statement_so_a_session_rule_applies(sync_db):
+    """The check selects the mapped primary-key attribute, not the Core
+    column, so a ``with_loader_criteria`` rule reaches it like any read."""
+    engine, make_session = sync_db
+
+    class Post(fr.IDBase):
+        tenant_id: Mapped[int]
+
+    class Comment(fr.IDBase):
+        post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
+
+    class CommentSchema(fr.BaseSchema):
+        post_id: fr.MustExist[int]
+
+    fr.DataclassBase.metadata.create_all(engine)
+    restrict = _restrict_to_tenant(Post, tenant=1)
+
+    with make_session() as session:
+        ours, theirs = Post(tenant_id=1), Post(tenant_id=2)
+        session.add_all([ours, theirs])
+        session.flush()
+
+        event.listen(Session, "do_orm_execute", restrict)
+        try:
+            make_new_object(session, Comment, CommentSchema(post_id=ours.id))
+            with pytest.raises(HTTPException) as exc:
+                make_new_object(session, Comment, CommentSchema(post_id=theirs.id))
+            assert exc.value.status_code == 404
+        finally:
+            event.remove(Session, "do_orm_execute", restrict)
+
+
+def test_async_check_is_an_orm_statement_so_a_session_rule_applies():
+    async def run():
+        engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+        make_session = async_sessionmaker(bind=engine, expire_on_commit=False)
+
+        class Post(fr.IDBase):
+            tenant_id: Mapped[int]
+
+        class Comment(fr.IDBase):
+            post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
+
+        class CommentSchema(fr.BaseSchema):
+            post_id: fr.MustExist[int]
+
+        async with engine.begin() as conn:
+            await conn.run_sync(fr.DataclassBase.metadata.create_all)
+        restrict = _restrict_to_tenant(Post, tenant=1)
+
+        async with make_session() as session:
+            ours, theirs = Post(tenant_id=1), Post(tenant_id=2)
+            session.add_all([ours, theirs])
+            await session.flush()
+
+            event.listen(Session, "do_orm_execute", restrict)
+            try:
+                await async_make_new_object(
+                    session, Comment, CommentSchema(post_id=ours.id)
+                )
+                with pytest.raises(HTTPException) as exc:
+                    await async_make_new_object(
+                        session, Comment, CommentSchema(post_id=theirs.id)
+                    )
+                assert exc.value.status_code == 404
+            finally:
+                event.remove(Session, "do_orm_execute", restrict)
+        await engine.dispose()
+
+    asyncio.run(run())
 
 
 def test_sync_uuid_pk_existence_check(sync_db):

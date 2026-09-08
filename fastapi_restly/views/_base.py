@@ -988,8 +988,8 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     #: unscoped despite that default. Declaring a scope replaces the default,
     #: it does not stack on it; compose the replacement from the same leaves
     #: (``ItemClauses.trashed`` containing the tenant clause ``visible``
-    #: contains), or stack a floor under every read in a base class
-    #: through :meth:`apply_scope`. See the Scopes guide.
+    #: contains). A rule that must hold under every scope is a session-level
+    #: ``with_loader_criteria``, not a view concern. See the Scopes guide.
     scope: ClassVar[Clause | Unscoped | None] = None
     id_type: ClassVar[type[Any]] = int
     exclude_routes: ClassVar[Iterable[str | ViewRoute]] = ()
@@ -1097,8 +1097,8 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         return scope
 
     def _apply_scope(self, query: Select[Any], scope: ReadScope) -> Select[Any]:
-        # resolve first, so apply_scope sees one settled answer: the scope
-        # the read was asked for, else the view's, with UNSCOPED for none
+        # the scope the read was asked for, else the view's, else the model's
+        # default, with UNSCOPED for none; not an override point
         if scope is None:
             resolved = self._resolved_scope()
             scope = UNSCOPED if resolved is None else resolved
@@ -1108,23 +1108,6 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
                 f"fr.clauses.UNSCOPED, got {type(scope).__name__}; wrap a raw "
                 "expression with where_clause()"
             )
-        return self.apply_scope(query, scope)
-
-    def apply_scope(self, query: Select[Any], scope: Clause | Unscoped) -> Select[Any]:
-        """Apply the read's scope to its base query; the seam under every read.
-
-        ``scope`` is already resolved: the ``scope=`` the read was asked
-        for (on ``get_one`` / ``get_many``, or forwarded by the
-        handlers), else the view's :attr:`scope`, else the model's
-        ``default_scope``, with ``fr.clauses.UNSCOPED`` for none. The
-        default applies it as is.
-        A base class overrides this to stack what must hold on every read
-        regardless of what was named, a tenant floor say, by handing
-        :func:`fr.apply_clauses <fastapi_restly.clauses.apply_clauses>`
-        the floor next to ``scope``; the scopes themselves keep replacing
-        each other. Reference checks do not pass through here: their floor
-        is composed into ``default_scope`` on the namespace side.
-        """
         return apply_clauses(query, scope)
 
     def get_relationship_loader_options(self) -> list[Any]:

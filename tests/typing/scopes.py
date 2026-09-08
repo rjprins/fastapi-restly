@@ -8,9 +8,8 @@ scalar.
 """
 
 from datetime import datetime
-from typing import TYPE_CHECKING, Annotated, Any, cast
+from typing import TYPE_CHECKING, Annotated, cast
 
-from sqlalchemy import Select
 from sqlalchemy.orm import Mapped
 from typing_extensions import assert_type
 
@@ -58,15 +57,6 @@ class TrashView(TicketView):
 
 class AdminView(TicketView):
     scope = fr.clauses.UNSCOPED  # explicit opt-out; deviating views declare
-
-
-class TenantBase(fr.AsyncRestView):
-    # the seam under every read: a base class stacks a floor next to the
-    # resolved scope, which may be the UNSCOPED sentinel
-    def apply_scope(
-        self, query: Select[Any], scope: fr.Clause | fr.clauses.Unscoped
-    ) -> Select[Any]:
-        return fr.apply_clauses(query, TicketClauses.owned_by_tenant, scope)
 
 
 if TYPE_CHECKING:

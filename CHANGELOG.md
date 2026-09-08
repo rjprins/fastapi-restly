@@ -63,21 +63,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   override declares a `scope` parameter (typed `fr.views.ReadScope`,
   newly exported) and passes it on to `super()`; an override without it
   fails loudly instead of silently serving the wrong rows.
-- `apply_scope(query, scope)` is the seam under every view read: it
-  receives the resolved scope (the route's, the view's, or the model
-  default, `fr.clauses.UNSCOPED` for none) and applies it. A base class
-  overrides it to stack what must hold on every read whatever was named,
-  a tenant floor say, by passing the floor to `fr.apply_clauses` next to
-  `scope`; scopes themselves keep replacing each other. `fr.apply_clauses`
-  accepts `fr.clauses.UNSCOPED` and applies nothing for it, and the
-  sentinel's type is public as `fr.clauses.Unscoped` for typing such an
-  override.
+- `fr.apply_clauses` accepts `fr.clauses.UNSCOPED` and applies nothing
+  for it, and the sentinel's type is public as `fr.clauses.Unscoped` for
+  typing a `scope` declaration or a `get_one` / `get_many` override.
 - `model` is optional on `fr.ClauseNamespace`: a namespace without one is
   a plain group of clauses, or a base class whose `__init_subclass__`
-  shapes the namespaces that extend it (the reference-check half of an
-  application floor composes the tenant clause into every subclass's
-  `default_scope` there). Declaring `model` is what registers the
-  namespace for the model.
+  shapes the namespaces that extend it. Declaring `model` is what
+  registers the namespace for the model.
 - Any route method on a view that declares a `query_params` parameter
   takes the view's listing grammar: typed as the generated
   `listing_param_schema` for FastAPI and OpenAPI, and guarded against
@@ -153,6 +145,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Datetime query filters without an offset now use UTC for timezone-aware
   columns. Filters for `DateTime()` columns remain naive.
+- The scalar reference check (`MustExist`, `RefExists`) selects the mapped
+  primary-key attribute instead of the Core column, so it is an ORM
+  statement like every other read: a session-level rule added with
+  SQLAlchemy's `with_loader_criteria` now reaches reference checks too.
 ## [0.9.0] - 2026-08-13
 
 ### Added
