@@ -76,10 +76,10 @@ class UserView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantBase
         """Change a user's password.
 
         This is an action route because the payload differs from PATCH. The row
-        is loaded through ``handle_get_one`` and the mutation is committed by
-        ``write_action``.
+        is loaded through ``get_one`` and the mutation is gated and committed
+        by ``write_action``.
         """
-        user = await self.handle_get_one(id)
+        user = await self.get_one(id)
         if not verify_password(request.current_password, user.password):
             raise HTTPException(403, "Current password is incorrect")
         if not request.new_password:

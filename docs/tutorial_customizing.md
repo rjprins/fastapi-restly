@@ -205,7 +205,7 @@ delete  →  delete_object(obj)              # delete + flush (no commit)
 
 ## Custom routes
 
-Views are not limited to the default CRUD methods. Use {func}`@fr.get <fastapi_restly.views.get>`, {func}`@fr.post <fastapi_restly.views.post>`, {func}`@fr.patch <fastapi_restly.views.patch>`, {func}`@fr.put <fastapi_restly.views.put>`, or {func}`@fr.delete <fastapi_restly.views.delete>` to add endpoints. Reuse {meth}`handle_get_one <fastapi_restly.views.RestView.handle_get_one>` for a scoped load with read authorization, {meth}`get_one <fastapi_restly.views.RestView.get_one>` for a scoped load only, and `save_object` to persist.
+Views are not limited to the default CRUD methods. Use {func}`@fr.get <fastapi_restly.views.get>`, {func}`@fr.post <fastapi_restly.views.post>`, {func}`@fr.patch <fastapi_restly.views.patch>`, {func}`@fr.put <fastapi_restly.views.put>`, or {func}`@fr.delete <fastapi_restly.views.delete>` to add endpoints. Reuse {meth}`handle_get_one <fastapi_restly.views.RestView.handle_get_one>` for a scoped load with read authorization on a read route, {meth}`get_one <fastapi_restly.views.RestView.get_one>` for a scoped load only, and `save_object` to persist.
 
 All route decorator keyword arguments are passed through to FastAPI, so you configure class-based routes the same way you configure regular FastAPI routes: use `response_model=`, `status_code=`, `dependencies=`, `responses=`, and the other FastAPI route options as usual.
 
@@ -234,14 +234,14 @@ class PostView(fr.AsyncRestView):
 
 ### A state-change action
 
-Next we add a `publish` action. Load with {meth}`handle_get_one <fastapi_restly.views.RestView.handle_get_one>`, then use {meth}`write_action <fastapi_restly.views.RestView.write_action>` so authorization, snapshot, commit hooks, and commit stay in the framework bracket:
+Next we add a `publish` action. Load with {meth}`get_one <fastapi_restly.views.RestView.get_one>`, then use {meth}`write_action <fastapi_restly.views.RestView.write_action>` so authorization, snapshot, commit hooks, and commit stay in the framework bracket. The bracket authorizes `"publish"` itself, so the load carries no read gate; the built-in write handlers load the same way:
 
 ```python
 import fastapi
 
     @fr.post("/{id}/publish", status_code=200)
     async def publish(self, id: int):
-        post = await self.handle_get_one(id)
+        post = await self.get_one(id)
         if post.published:
             raise fastapi.HTTPException(409, "Already published")
         async with self.write_action("publish", obj=post):
@@ -257,7 +257,7 @@ If a custom action is just a create or update under another URL, call {meth}`han
 ```python
     @fr.post("/{id}/repost")
     async def repost(self, id: int, schema_obj: PostRead):
-        original = await self.handle_get_one(id)
+        original = await self.get_one(id)
         # ... derive a new payload from `original` ...
         return self.to_response(await self.handle_create(schema_obj))
 ```
@@ -455,7 +455,7 @@ class PostView(AuthoredBase):
 
     @fr.post("/{id}/publish", status_code=200)
     async def publish(self, id: int):
-        post = await self.handle_get_one(id)
+        post = await self.get_one(id)
         if post.published:
             raise fastapi.HTTPException(409, "Already published")
         async with self.write_action("publish", obj=post):

@@ -548,7 +548,7 @@ class UserView(fr.AsyncRestView):
 
 Use {func}`@fr.post <fastapi_restly.views.post>` (or {func}`@fr.patch <fastapi_restly.views.patch>`, {func}`@fr.delete <fastapi_restly.views.delete>`) for state-change actions such as archive, publish, or recalculate. Two shapes cover most actions.
 
-The first shape brackets the mutation with {meth}`write_action <fastapi_restly.views.RestView.write_action>`. Load the object with {meth}`handle_get_one(id) <fastapi_restly.views.RestView.handle_get_one>`, then run the mutation inside `self.write_action` under a custom action name:
+The first shape brackets the mutation with {meth}`write_action <fastapi_restly.views.RestView.write_action>`. Load the object with {meth}`get_one(id) <fastapi_restly.views.RestView.get_one>`, then run the mutation inside `self.write_action` under a custom action name; the bracket authorizes that action itself, the same way `handle_update` / `handle_delete` gate only their own action:
 
 ```python
 @fr.include_view(app)
@@ -559,7 +559,7 @@ class OrderView(fr.AsyncRestView):
 
     @fr.post("/{id}/archive", status_code=202)
     async def archive(self, id: int):
-        order = await self.handle_get_one(id)
+        order = await self.get_one(id)
         if order.archived:
             raise fastapi.HTTPException(409, "Already archived")
         async with self.write_action("archive", obj=order):

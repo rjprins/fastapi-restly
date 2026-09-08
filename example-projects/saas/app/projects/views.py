@@ -213,7 +213,7 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
         ``SoftDeleteMixin.delete_object`` performs the mutation. This route
         replaces the default 204 contract with ``200 + body``.
         """
-        project = await self.handle_get_one(id)
+        project = await self.get_one(id)
 
         async with self.write_action("delete", obj=project):
             await self.delete_object(project)
@@ -240,7 +240,7 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
         Loads through ``is_deleted``: the trash is the surface this route
         reads, so a live project, like another tenant's, is a 404 here.
         """
-        project = await self.handle_get_one(id, scope=ProjectClauses.is_deleted)
+        project = await self.get_one(id, scope=ProjectClauses.is_deleted)
 
         async with self.write_action("restore", obj=project):
             project.deleted_at = None
@@ -251,10 +251,10 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
     async def archive_project(self, id: int) -> Project:
         """Archive a project (prevents new task creation).
 
-        Loads through ``handle_get_one`` and commits the status change through
-        ``write_action("archive")``.
+        Loads through ``get_one``; ``write_action("archive")`` gates the
+        action and commits the status change.
         """
-        project = await self.handle_get_one(id)
+        project = await self.get_one(id)
         if project.status == ProjectStatus.ARCHIVED:
             raise HTTPException(status_code=400, detail="Project is already archived")
 
@@ -267,11 +267,11 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
     async def clone_project(self, id: int, request: CloneRequest) -> Project:
         """Clone a project with all its tasks.
 
-        ``handle_get_one`` performs the access check. A second query eager-loads
+        ``get_one`` performs the visibility check. A second query eager-loads
         tasks for copying.
         """
-        # Tenant + 404 + read-auth check.
-        await self.handle_get_one(id)
+        # Tenant scope + 404 visibility check.
+        await self.get_one(id)
 
         query = (
             select(Project).where(Project.id == id).options(selectinload(Project.tasks))
@@ -385,7 +385,7 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
         """
         from fastapi_restly.objects import async_save_object
 
-        project = await self.handle_get_one(id)
+        project = await self.get_one(id)
         if project.status == ProjectStatus.ARCHIVED:
             raise HTTPException(
                 status_code=400, detail="Cannot create tasks in an archived project"

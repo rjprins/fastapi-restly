@@ -215,8 +215,8 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
                 f"Invalid task transition definition: {source_status.value} -> {target_status.value}"
             )
 
-        # Load with scope + 404 + read-auth.
-        task = await self.handle_get_one(id)
+        # Scoped load + 404; ``write_action`` below gates the action.
+        task = await self.get_one(id)
         if task.status != source_status:
             raise HTTPException(
                 status_code=400,
@@ -247,7 +247,7 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
         """
         from ..projects.models import Project
 
-        task = await self.handle_get_one(id, scope=TaskClauses.trashed)
+        task = await self.get_one(id, scope=TaskClauses.trashed)
 
         async with self.write_action("restore", obj=task):
             task.deleted_at = None
@@ -339,8 +339,8 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
     async def bulk_delete(self, request: BulkDeleteRequest) -> BulkResult:
         """Delete multiple tasks by IDs.
 
-        Each id loads through ``handle_get_one`` for row visibility, then runs in
-        a savepoint. One final commit persists successful deletes.
+        Each id loads through the scoped ``get_one`` (404 by visibility) and
+        runs in a savepoint. One final commit persists successful deletes.
         """
         success = 0
         failed = 0
@@ -349,11 +349,10 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
         for task_id in request.ids:
             try:
                 async with self.session.begin_nested():
-                    task = await self.handle_get_one(task_id)
-                    # handle_get_one gates "get_one"; the delete action needs
-                    # its own gate (the business delete is auth-free).
+                    task = await self.get_one(task_id)
+                    # ``delete`` is auth-free; gate each row like ``handle_delete``.
                     await self.authorize("delete", obj=task)
-                    await self.delete_object(task)
+                    await self.delete(task)
                 success += 1
             except HTTPException as exc:
                 failed += 1

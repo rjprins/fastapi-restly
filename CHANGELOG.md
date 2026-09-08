@@ -54,9 +54,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `get_many(query_params, scope=...)` replace the view scope for that
   call, and `handle_get_many` / `handle_get_one` take and forward
   `scope=`, so a trash listing or a restore action is a custom route on
-  the same view instead of a second view class. A custom action that
-  needs its own auth decision calls `get_one(id, scope=...)` directly
-  instead of inheriting read-auth from `handle_get_one`.
+  the same view instead of a second view class. A custom write action
+  loads with `get_one(id, scope=...)` and gates its own action, as
+  `handle_update` / `handle_delete` do; `handle_get_one` is the loader
+  for custom read routes.
   `fr.clauses.UNSCOPED` is the per-read opt-out, in the same spelling.
   The handlers always forward the argument, so a `get_one` / `get_many`
   override declares a `scope` parameter (typed `fr.views.ReadScope`,

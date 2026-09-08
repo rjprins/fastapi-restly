@@ -122,9 +122,10 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     async def handle_get_one(self, id: IdT, *, scope: ReadScope = None) -> ModelT:
         """Retrieve handler: scoped load (404 by visibility) then read-auth.
 
-        Reusable from custom actions as "load with scope + 404 + read-auth".
-        For a load under a different auth decision (a restore action, say),
-        call ``get_one(id, scope=...)`` directly and authorize yourself.
+        Reusable from a custom read route as "load with scope + 404 +
+        read-auth". A write action instead loads with ``get_one(id,
+        scope=...)`` and gates only its own action, the way
+        ``handle_update`` and ``handle_delete`` do.
 
         :param scope: a clause that replaces the view scope for this read,
             so a restore route can load the row the view scope hides.
