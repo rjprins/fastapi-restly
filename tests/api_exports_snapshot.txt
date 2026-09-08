@@ -67,7 +67,6 @@ fastapi_restly.clauses:
   - Unscoped
   - WhereClause
   - all_of
-  - annotations
   - any_of
   - apply_clauses
   - combine
@@ -173,7 +172,6 @@ submodule-only exports:
 fastapi_restly.clauses:
   - UNSCOPED
   - Unscoped
-  - annotations
 fastapi_restly.db:
   - async_create_all
   - create_all
