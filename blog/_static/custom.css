@@ -28,6 +28,10 @@
     .bd-header .navbar-header-items {
         min-width: 0;
     }
+
+    .bd-header ul.bd-navbar-elements > li.nav-item > .nav-link {
+        white-space: nowrap;
+    }
 }
 
 @media (min-width: 84rem) {
