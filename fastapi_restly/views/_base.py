@@ -49,7 +49,8 @@ from starlette.datastructures import QueryParams
 from typing_extensions import TypeVar
 
 from .._exception_handlers import register_default_exception_handlers
-from ..clauses import UNSCOPED, Clause, Unscoped, _default_scope, apply_clauses
+from ..clauses import UNSCOPED, Clause, Unscoped, apply_clauses
+from ..clauses._scopes import _default_scope
 
 #: A per-read scope: ``None`` for the view's own, a clause that replaces it
 #: for that read, or ``fr.clauses.UNSCOPED``.

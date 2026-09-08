@@ -23,13 +23,9 @@ from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm.session import Session as SA_Session
 from typing_extensions import TypeAliasType, TypeVar
 
-from ..clauses import (
-    ContextParam,
-    Unscoped,
-    WhereClause,
-    _apply_where_half,
-    _default_scope,
-)
+from ..clauses import ContextParam, Unscoped, WhereClause
+from ..clauses._runtime import _apply_where_half
+from ..clauses._scopes import _default_scope
 from ..exc import NotFound, RestlyConfigurationError
 
 

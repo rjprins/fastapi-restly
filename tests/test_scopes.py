@@ -25,7 +25,7 @@ from sqlalchemy.orm import (
 )
 
 import fastapi_restly as fr
-from fastapi_restly.clauses import _default_scope
+from fastapi_restly.clauses._scopes import _default_scope
 from fastapi_restly.exc import NotFound, RestlyConfigurationError
 from fastapi_restly.schemas._base import (
     _check_ref_exists,

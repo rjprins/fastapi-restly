@@ -1,91 +1,36 @@
-"""Composable, context-bound query clauses for SQLAlchemy.
-
-A Clause carries a predicate ("where") and/or a statement transform
-("transform"). Clause itself is abstract; each constructor names the
-kind it builds: where_clause() -> WhereClause, transform_clause() ->
-TransformClause, combine() -> CombinedClause. The fourth kind, a
-ContextParam value slot, is declared in a ContextNamespace
-(`name: ContextParam[T]`), not constructed. A CombinedClause always
-carries at least one transform; a bundle of only wheres is all_of's
-job. Functions passed to the constructors are wrapped with @contextual
-(see contextargs): parameters the caller does not supply are injected
-from values bound via Clause.bind().
-
-A WhereClause is also callable: calling it (optionally with an
-ephemeral bind as keyword arguments) returns the raw ColumnElement,
-for use inside plain SQLAlchemy: join conditions, CASE expressions,
-a hand-built .where(). Note that this bypasses apply_clauses' table
-validation: raw SQLAlchemy land, raw SQLAlchemy rules.
-
-Composites built with all_of/any_of/none_of/combine keep their operands
-as children, and Clause.bind() routes each value down the tree to the
-leaf that accepts it. Binding on a composite is therefore equivalent to
-binding on the leaf itself:
-
-    visible = all_of(owned_by_tenant, none_of(is_deleted))
-
-    with visible.bind(tenant_id=tid):          # same as
-    with owned_by_tenant.bind(tenant_id=tid):  # this
-
-Routing is strict: a value nobody accepts raises, and a value accepted
-by more than one distinct contextual instance raises too; that only
-happens with aliases or an accidental name collision, and in both cases
-binding on the leaf directly is the unambiguous fix. The same leaf
-reached through several branches is fine and binds once.
-
-Statement construction stays plain SQLAlchemy: build select()/update()/
-delete() as usual and pass the result through apply_clauses(), the
-bridge between the two worlds. The Clause.select/.update/.delete
-methods are shorthand for the common single-clause path; select()
-takes the same entities SQLAlchemy's select() takes. Wherever a
-clause resolves, keyword arguments are an ephemeral bind: the
-shorthand methods and apply_clauses alike, with no signature
-reserving a keyword name. apply_clauses collects transforms
-from the whole clause tree, each distinct transform applied once, so a
-join carried inside an all_of or combine is never lost. any_of and
-none_of reject operands that carry a transform: OR/NOT over an
-inner-join-dependent predicate silently changes which rows exist at
-all. Express such conditions as EXISTS (relationship .any()/.has())
-in a plain where.
-"""
+"""Runtime representation and statement application for query clauses."""
 
 from __future__ import annotations
 
-from contextlib import ExitStack as _ExitStack
-from contextlib import contextmanager as _contextmanager
-from typing import Any as _Any
-from typing import Generic as _Generic
-from typing import Iterator as _Iterator
-from typing import Sequence as _Sequence
-from typing import TypeVar as _TypeVar
-from typing import final as _final
-from typing import overload as _overload
+from contextlib import ExitStack, contextmanager
+from typing import Any, Generic, Iterator, Sequence, TypeVar, final, overload
 
-from sqlalchemy import ColumnElement as _ColumnElement
-from sqlalchemy import Delete as _Delete
-from sqlalchemy import Select as _Select
-from sqlalchemy import Update as _Update
-from sqlalchemy import bindparam as _sqla_bindparam
-from sqlalchemy import delete as _sqla_delete
-from sqlalchemy import select as _sqla_select
-from sqlalchemy import update as _sqla_update
-from sqlalchemy.orm import DeclarativeBase as _DeclarativeBase
-from sqlalchemy.sql.expression import BindParameter as _BindParameter
-from sqlalchemy.sql.expression import ColumnClause as _ColumnClause
-from sqlalchemy.sql.expression import Join as _Join
-from sqlalchemy.sql.expression import ScalarSelect as _ScalarSelect
-from sqlalchemy.sql.expression import SelectBase as _SelectBase
-from sqlalchemy.sql.expression import Subquery as _Subquery
-from sqlalchemy.sql.visitors import ExternallyTraversible as _ExternallyTraversible
-from sqlalchemy.sql.visitors import iterate as _sqla_iterate
-from typing_extensions import Self as _Self
+from sqlalchemy import (
+    ColumnElement,
+    Delete,
+    Select,
+    Update,
+    bindparam,
+    delete,
+    select,
+    update,
+)
+from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.sql.expression import (
+    BindParameter,
+    ColumnClause,
+    Join,
+    ScalarSelect,
+    SelectBase,
+    Subquery,
+)
+from sqlalchemy.sql.visitors import ExternallyTraversible, iterate
+from typing_extensions import Self
 
 from .._binding import _bind_dependency
-from .._contextargs import Contextual as _Contextual
-from .._contextargs import MissingContextValues as _MissingContextValues
-from .._contextargs import _caller_origin
+from .._contextargs import Contextual, MissingContextValues, _caller_origin
 
-_T = _TypeVar("_T")
+_T = TypeVar("_T")
 
 
 class Clause:
@@ -101,11 +46,11 @@ class Clause:
                 "Clause is abstract; build via where_clause/transform_clause/"
                 "combine or the composites"
             )
-        self._where_fn: _Contextual | None = None
-        self._transform_fn: _Contextual | None = None
-        self._param_fn: _Contextual | None = None
-        self._placeholder: _BindParameter | None = None
-        self._condition: _ColumnElement[bool] | None = None
+        self._where_fn: Contextual | None = None
+        self._transform_fn: Contextual | None = None
+        self._param_fn: Contextual | None = None
+        self._placeholder: BindParameter | None = None
+        self._condition: ColumnElement[bool] | None = None
         # context names routable to the transform: its accepted names
         # minus the statement parameter, which is never a context value
         self._transform_routable: frozenset[str] | None = None
@@ -116,7 +61,7 @@ class Clause:
         # is a query fragment, not an answer
         raise TypeError("a Clause is not a boolean; apply it to a query instead")
 
-    def _own_routing(self) -> _Iterator[tuple[_Contextual, frozenset[str] | None]]:
+    def _own_routing(self) -> Iterator[tuple[Contextual, frozenset[str] | None]]:
         if self._where_fn is not None:
             yield self._where_fn, self._where_fn.accepted
         if self._transform_fn is not None:
@@ -126,7 +71,7 @@ class Clause:
 
     def _routing(
         self, _seen: set[int] | None = None
-    ) -> _Iterator[tuple[_Contextual, frozenset[str] | None]]:
+    ) -> Iterator[tuple[Contextual, frozenset[str] | None]]:
         # visited-set: shared subtrees walk once, not once per path
         seen = set() if _seen is None else _seen
         if id(self) in seen:
@@ -136,7 +81,7 @@ class Clause:
         for child in self._children:
             yield from child._routing(seen)
 
-    def _transforms(self, _seen: set[int] | None = None) -> _Iterator[_Contextual]:
+    def _transforms(self, _seen: set[int] | None = None) -> Iterator[Contextual]:
         seen = set() if _seen is None else _seen
         if id(self) in seen:
             return
@@ -146,8 +91,8 @@ class Clause:
         for child in self._children:
             yield from child._transforms(seen)
 
-    @_contextmanager
-    def bind(self, /, **values: _Any):
+    @contextmanager
+    def bind(self, /, **values: Any):
         """Bind values for the duration of the with block.
 
         Each value is routed to the one leaf in this tree whose function
@@ -159,7 +104,7 @@ class Clause:
         """
         # deduplicate on instance: the same leaf reached through several
         # branches (a shared owned_by_tenant, say) binds once
-        pairs: list[tuple[_Contextual, frozenset[str] | None]] = []
+        pairs: list[tuple[Contextual, frozenset[str] | None]] = []
         seen: set[int] = set()
         for fn, routable in self._routing():
             if id(fn) not in seen:
@@ -185,14 +130,14 @@ class Clause:
                     "bind it on each leaf directly"
                 )
 
-        with _ExitStack() as stack:
+        with ExitStack() as stack:
             for fn, _ in pairs:
                 subset = {k: v for k, v in values.items() if claims[k][0] is fn}
                 if subset:
                     stack.enter_context(fn.context(**subset))
             yield
 
-    def select(self, /, *entities: _Any, **binds: _Any) -> _Select[_Any]:
+    def select(self, /, *entities: Any, **binds: Any) -> Select[Any]:
         """``sqlalchemy.select(*entities)`` with this clause applied.
 
         Positional arguments are exactly SQLAlchemy's: mapped classes,
@@ -206,7 +151,7 @@ class Clause:
         Select[Any] under bidirectional inference.
         """
         with self.bind(**binds):
-            return apply_clauses(_sqla_select(*entities), self)
+            return apply_clauses(select(*entities), self)
 
     def __repr__(self) -> str:
         fn = self._where_fn or self._transform_fn or self._param_fn
@@ -294,12 +239,12 @@ class Clause:
         return "\n".join(lines)
 
     @classmethod
-    def _blank(cls) -> _Self:
+    def _blank(cls) -> Self:
         # internal construction path; ContextParam overrides it because its
         # public __init__ deliberately raises
         return cls()
 
-    def alias(self, name: str | None = None) -> _Self:
+    def alias(self, name: str | None = None) -> Self:
         """An independent instance with its own context namespace.
 
         Leaf-only: which leaves of a composite should share bindings and
@@ -324,7 +269,7 @@ class Clause:
         if self._param_fn is not None:
             result._param_fn = self._param_fn.alias(name)
             assert self._placeholder is not None
-            placeholder = _sqla_bindparam(self._placeholder.key)
+            placeholder = bindparam(self._placeholder.key)
             placeholder._fr_param = result  # type: ignore[attr-defined]
             result._placeholder = placeholder
         return result
@@ -338,7 +283,7 @@ class WhereClause(Clause):
     for use inside plain SQLAlchemy expressions.
     """
 
-    def __call__(self, /, **binds: _Any) -> _ColumnElement[bool]:
+    def __call__(self, /, **binds: Any) -> ColumnElement[bool]:
         """Resolve to the raw ColumnElement, for plain SQLAlchemy use.
 
         Keyword arguments are an ephemeral bind(). The result drops into
@@ -350,22 +295,22 @@ class WhereClause(Clause):
         assert result is not None  # invariant: a WhereClause always has a where
         return result
 
-    def update(self, model: type[_DeclarativeBase], /, **binds: _Any) -> _Update:
+    def update(self, model: type[DeclarativeBase], /, **binds: Any) -> Update:
         """UPDATE on model with this clause applied; see select()."""
         with self.bind(**binds):
-            return apply_clauses(_sqla_update(model), self)
+            return apply_clauses(update(model), self)
 
-    def delete(self, model: type[_DeclarativeBase], /, **binds: _Any) -> _Delete:
+    def delete(self, model: type[DeclarativeBase], /, **binds: Any) -> Delete:
         """DELETE on model with this clause applied; see select()."""
         with self.bind(**binds):
-            return apply_clauses(_sqla_delete(model), self)
+            return apply_clauses(delete(model), self)
 
 
 class TransformClause(Clause):
     """Only reshapes the statement: joins, ordering, limits."""
 
 
-@_final
+@final
 class Unscoped:
     """Sentinel scope: explicitly no scope, everywhere a scope can appear.
 
@@ -401,7 +346,7 @@ class CombinedClause(Clause):
     """A named bundle of wheres and transforms; always carries a transform."""
 
 
-class ContextParam(Clause, _Generic[_T]):
+class ContextParam(Clause, Generic[_T]):
     """A named value slot: no predicate, no transform, no SQL of its own.
 
     Declared in a ContextNamespace (``tenant_id: ContextParam[UUID]``),
@@ -422,7 +367,7 @@ class ContextParam(Clause, _Generic[_T]):
         )
 
     @classmethod
-    def _blank(cls) -> _Self:
+    def _blank(cls) -> Self:
         # the internal construction path around the teaching __init__
         self = cls.__new__(cls)
         Clause.__init__(self)
@@ -445,13 +390,13 @@ class ContextParam(Clause, _Generic[_T]):
             return f"<ContextParam {names}, bound>"
         return f"<ContextParam {names}>"
 
-    def __call__(self, /, **binds: _Any) -> _T:
+    def __call__(self, /, **binds: Any) -> _T:
         """Resolve to the bound value; keyword arguments are an ephemeral bind()."""
         with self.bind(**binds):
             assert self._param_fn is not None  # invariant: set at declaration
             return _teaching_call(self._param_fn)
 
-    def depends(self, source: _Any, /) -> _Any:
+    def depends(self, source: Any, /) -> Any:
         """A FastAPI dependency that binds this slot per request.
 
         ``source`` is the dependency the value comes from: a callable, a
@@ -464,10 +409,10 @@ class ContextParam(Clause, _Generic[_T]):
         return _bind_dependency([(self, source)], _caller_origin())
 
 
-def _teaching_call(fn: _Contextual, *args):
+def _teaching_call(fn: Contextual, *args):
     try:
         return fn.context_call(*args)
-    except _MissingContextValues as error:
+    except MissingContextValues as error:
         first = error.names[0]
         raise TypeError(
             f"{error.label} is missing bound values for: "
@@ -497,8 +442,8 @@ _HANDWRITTEN = object()  # owners-entry for a user-written bindparam
 
 
 def _fill_slots(
-    expr: _ColumnElement[bool], owners: dict[str, object] | None = None
-) -> _ColumnElement[bool]:
+    expr: ColumnElement[bool], owners: dict[str, object] | None = None
+) -> ColumnElement[bool]:
     """Replace embedded slot placeholders with their bound values.
 
     `owners` maps bindparam key -> owning namespace (the slot's
@@ -541,7 +486,7 @@ def _fill_slots(
                 assert slot._param_fn is not None
                 values[key] = _teaching_call(slot._param_fn)
             continue
-        if isinstance(el, _BindParameter) and not el.unique:
+        if isinstance(el, BindParameter) and not el.unique:
             claim(el.key, _HANDWRITTEN)
         stack.extend(el.get_children())
     return expr.params(values) if values else expr
@@ -549,13 +494,13 @@ def _fill_slots(
 
 def _resolve_where(
     clause: Clause, owners: dict[str, object] | None = None
-) -> _ColumnElement[bool] | None:
+) -> ColumnElement[bool] | None:
     if clause._where_fn is None:
         return None
     return _fill_slots(_teaching_call(clause._where_fn), owners)
 
 
-def _resolve_carried_where(clause: Clause) -> _ColumnElement[bool]:
+def _resolve_carried_where(clause: Clause) -> ColumnElement[bool]:
     # for combinators, which validate every operand carries a where first
     where = _resolve_where(clause)
     assert where is not None
@@ -584,7 +529,7 @@ def _require_no_transforms(name: str, clauses: tuple[Clause, ...], why: str) -> 
         raise TypeError(f"{name} cannot include transform clauses; {why}")
 
 
-def _apply_transforms(stmt: _Select[_Any], clauses: _Sequence[Clause]) -> _Select[_Any]:
+def _apply_transforms(stmt: Select[Any], clauses: Sequence[Clause]) -> Select[Any]:
     # whole-tree collection, each distinct transform applied once: a join
     # carried inside a composite is never lost, a shared join never doubled
     seen: set[int] = set()
@@ -596,14 +541,14 @@ def _apply_transforms(stmt: _Select[_Any], clauses: _Sequence[Clause]) -> _Selec
     return stmt
 
 
-def _seed_owners(stmt: _ExternallyTraversible) -> dict[str, object]:
+def _seed_owners(stmt: ExternallyTraversible) -> dict[str, object]:
     # SQLAlchemy's bind-key space is per statement, so ownership must be
     # too: binds the statement already carries (earlier apply_clauses
     # layers, hand-written bindparams) claim their keys before any
     # clause of this call fills a slot
     owners: dict[str, object] = {}
-    for el in _sqla_iterate(stmt):
-        if isinstance(el, _BindParameter) and not el.unique:
+    for el in iterate(stmt):
+        if isinstance(el, BindParameter) and not el.unique:
             slot = getattr(el, "_fr_param", None)
             owners.setdefault(
                 el.key, slot._param_fn if slot is not None else _HANDWRITTEN
@@ -612,8 +557,8 @@ def _seed_owners(stmt: _ExternallyTraversible) -> dict[str, object]:
 
 
 def _resolved_wheres(
-    clauses: _Sequence[Clause], owners: dict[str, object] | None = None
-) -> list[_ColumnElement[bool]]:
+    clauses: Sequence[Clause], owners: dict[str, object] | None = None
+) -> list[ColumnElement[bool]]:
     if owners is None:
         owners = {}
     return [w for w in (_resolve_where(c, owners) for c in clauses) if w is not None]
@@ -633,7 +578,7 @@ def _table_name(table) -> str:
     return f"{id(metadata)}:{name}" if metadata is not None else name
 
 
-def _expression_tables(expr: _ColumnElement) -> set[str]:
+def _expression_tables(expr: ColumnElement) -> set[str]:
     # tables the expression references at its outer level; self-contained
     # subqueries (EXISTS, IN (SELECT ...)) bring their own FROMs and are
     # skipped
@@ -641,9 +586,9 @@ def _expression_tables(expr: _ColumnElement) -> set[str]:
     stack: list = [expr]
     while stack:
         el = stack.pop()
-        if isinstance(el, (_SelectBase, _ScalarSelect, _Subquery)):
+        if isinstance(el, (SelectBase, ScalarSelect, Subquery)):
             continue
-        if isinstance(el, _ColumnClause):
+        if isinstance(el, ColumnClause):
             if el.table is not None:
                 names.add(_table_name(el.table))
             continue
@@ -651,21 +596,21 @@ def _expression_tables(expr: _ColumnElement) -> set[str]:
     return names
 
 
-def _statement_tables(stmt: _Select[_Any] | _Update | _Delete) -> set[str]:
+def _statement_tables(stmt: Select[Any] | Update | Delete) -> set[str]:
     froms: list = (
-        list(stmt.get_final_froms()) if isinstance(stmt, _Select) else [stmt.table]
+        list(stmt.get_final_froms()) if isinstance(stmt, Select) else [stmt.table]
     )
     names: set[str] = set()
     while froms:
         el = froms.pop()
-        if isinstance(el, _Join):
+        if isinstance(el, Join):
             froms.extend([el.left, el.right])
         else:
             names.add(_table_name(el))
     return names
 
 
-_SelectT = _TypeVar("_SelectT", bound=_Select[_Any])
+_SelectT = TypeVar("_SelectT", bound=Select[Any])
 
 
 class _Forest(Clause):
@@ -673,19 +618,19 @@ class _Forest(Clause):
     ephemeral bind routes across them with Clause.bind()'s rules."""
 
 
-@_overload
+@overload
 def apply_clauses(
-    stmt: _SelectT, /, *clauses: Clause | Unscoped, **binds: _Any
+    stmt: _SelectT, /, *clauses: Clause | Unscoped, **binds: Any
 ) -> _SelectT: ...
-@_overload
+@overload
 def apply_clauses(
-    stmt: _Update, /, *clauses: WhereClause | Unscoped, **binds: _Any
-) -> _Update: ...
-@_overload
+    stmt: Update, /, *clauses: WhereClause | Unscoped, **binds: Any
+) -> Update: ...
+@overload
 def apply_clauses(
-    stmt: _Delete, /, *clauses: WhereClause | Unscoped, **binds: _Any
-) -> _Delete: ...
-def apply_clauses(stmt, /, *clauses: Clause | Unscoped, **binds: _Any):
+    stmt: Delete, /, *clauses: WhereClause | Unscoped, **binds: Any
+) -> Delete: ...
+def apply_clauses(stmt, /, *clauses: Clause | Unscoped, **binds: Any):
     """Apply clauses to a statement built with plain SQLAlchemy.
 
     The bridge between the two worlds: build select()/update()/delete()
@@ -714,7 +659,7 @@ def apply_clauses(stmt, /, *clauses: Clause | Unscoped, **binds: _Any):
                 "ContextParam carries a value: embed it in an expression "
                 "instead of applying it"
             )
-    if isinstance(stmt, _Select):
+    if isinstance(stmt, Select):
         stmt = _apply_transforms(stmt, given)
     else:
         _require_no_transforms(
@@ -728,7 +673,7 @@ def apply_clauses(stmt, /, *clauses: Clause | Unscoped, **binds: _Any):
 
 
 def _guard_statement_tables(
-    stmt: _Select[_Any] | _Update | _Delete, wheres: _Sequence[_ColumnElement[bool]]
+    stmt: Select[Any] | Update | Delete, wheres: Sequence[ColumnElement[bool]]
 ) -> None:
     available = _statement_tables(stmt)
     for where in wheres:

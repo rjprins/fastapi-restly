@@ -20,7 +20,7 @@ from fastapi_restly.clauses import (
     transform_clause,
     where_clause,
 )
-from fastapi_restly.clauses import _context_param as context_param
+from fastapi_restly.clauses._declarations import _context_param as context_param
 
 
 class Base(DeclarativeBase):

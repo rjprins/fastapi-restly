@@ -8,7 +8,6 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 # This file unit-tests the slot primitive itself; consumer code declares
 # slots in a ContextNamespace (see test_context_namespace.py).
 from fastapi_restly.clauses import (
-    _NAMESPACES,  # noqa: E402
     UNSCOPED,
     Clause,
     ClauseNamespace,
@@ -24,7 +23,10 @@ from fastapi_restly.clauses import (
     transform_clause,
     where_clause,
 )
-from fastapi_restly.clauses import _context_param as context_param  # noqa: E402
+from fastapi_restly.clauses._declarations import (  # noqa: E402
+    _context_param as context_param,
+)
+from fastapi_restly.clauses._scopes import _NAMESPACES  # noqa: E402
 
 
 class Base(DeclarativeBase):
@@ -1033,7 +1035,7 @@ def test_namespace_registers_on_restly_idbase():
     from sqlalchemy.orm import mapped_column as mc
 
     import fastapi_restly as fr
-    from fastapi_restly.clauses import _default_scope
+    from fastapi_restly.clauses._scopes import _default_scope
 
     class Gizmo(fr.IDBase):
         __tablename__ = "gizmo_ns_test"
