@@ -556,6 +556,12 @@ def test_apply_clauses_bind_stays_strict():
         apply_clauses(select(Item), tenant_id=7)
 
 
+@pytest.mark.parametrize("invalid", [None, "not a clause", object()])
+def test_apply_clauses_rejects_invalid_clause_operands(invalid):
+    with pytest.raises(TypeError, match="accepts only clauses or UNSCOPED"):
+        apply_clauses(select(Item), UNSCOPED, invalid)
+
+
 def test_apply_clauses_ambiguous_bind_raises():
     @where_clause
     def f1(limit: int) -> ColumnElement[bool]:

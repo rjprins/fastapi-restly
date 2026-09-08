@@ -1302,7 +1302,7 @@ def apply_clauses(stmt, /, *clauses: Clause | Unscoped, **binds: _Any):
     the call. The statement is positional-only, so every keyword name
     stays free for binding.
     """
-    given = tuple(clause for clause in clauses if isinstance(clause, Clause))
+    given = _without_unscoped("apply_clauses", clauses)
     if binds:
         forest = _Forest()
         forest._children = given
