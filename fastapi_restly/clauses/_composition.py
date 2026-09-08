@@ -7,6 +7,7 @@ from typing import overload
 from sqlalchemy import ColumnElement, and_, false, not_, or_
 
 from .._contextargs import contextual
+from ._declarations import where_clause
 from ._runtime import (
     UNSCOPED,
     Clause,
@@ -18,7 +19,6 @@ from ._runtime import (
     _require_no_transforms,
     _resolve_carried_where,
     _without_unscoped,
-    where_clause,
 )
 
 __all__ = ["all_of", "any_of", "combine", "none_of"]

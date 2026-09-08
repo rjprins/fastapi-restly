@@ -1,21 +1,19 @@
 """Composable, context-bound query clauses for SQLAlchemy."""
 
 from ._composition import all_of, any_of, combine, none_of
+from ._declarations import ContextNamespace, transform_clause, where_clause
+from ._declarations import _context_param as _context_param
 from ._runtime import (
     UNSCOPED,
     Clause,
     CombinedClause,
-    ContextNamespace,
     ContextParam,
     TransformClause,
     Unscoped,
     WhereClause,
     apply_clauses,
-    transform_clause,
-    where_clause,
 )
 from ._runtime import _apply_where_half as _apply_where_half
-from ._runtime import _context_param as _context_param
 from ._scopes import _NAMESPACES as _NAMESPACES
 from ._scopes import ClauseNamespace
 from ._scopes import _default_scope as _default_scope
