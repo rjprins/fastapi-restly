@@ -24,7 +24,6 @@ from sqlalchemy.orm.session import Session as SA_Session
 from typing_extensions import TypeAliasType, TypeVar
 
 from ..clauses import (
-    UNSCOPED,
     ContextParam,
     Unscoped,
     WhereClause,
@@ -764,7 +763,7 @@ def _effective_ref_scope(
     ``default_scope`` otherwise."""
     if isinstance(marker.scope, _NotGiven):
         return _default_scope(model)
-    if marker.scope is UNSCOPED:
+    if isinstance(marker.scope, Unscoped):
         return None
     return marker.scope
 

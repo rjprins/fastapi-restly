@@ -188,9 +188,8 @@ def _make(
         # direct calls never inject; the signature stays honest
         return func(*args, **kwargs)
 
-    if inspect.iscoroutinefunction(func) and hasattr(inspect, "markcoroutinefunction"):
-        # wrapper is sync but returns func's coroutine; keep introspection
-        # honest (the marker exists on Python 3.12+ only)
+    if inspect.iscoroutinefunction(func) and sys.version_info >= (3, 12):
+        # wrapper is sync but returns func's coroutine; keep introspection honest
         inspect.markcoroutinefunction(wrapper)
 
     def context_call(*args: Any, **kwargs: Any) -> R:

@@ -88,6 +88,7 @@ from sqlalchemy.sql.expression import Join as _Join
 from sqlalchemy.sql.expression import ScalarSelect as _ScalarSelect
 from sqlalchemy.sql.expression import SelectBase as _SelectBase
 from sqlalchemy.sql.expression import Subquery as _Subquery
+from sqlalchemy.sql.visitors import ExternallyTraversible as _ExternallyTraversible
 from sqlalchemy.sql.visitors import iterate as _sqla_iterate
 from typing_extensions import Self as _Self
 
@@ -844,6 +845,13 @@ def _resolve_where(
     return _fill_slots(_teaching_call(clause._where_fn), owners)
 
 
+def _resolve_carried_where(clause: Clause) -> _ColumnElement[bool]:
+    # for combinators, which validate every operand carries a where first
+    where = _resolve_where(clause)
+    assert where is not None
+    return where
+
+
 def _has_transform(clause: Clause) -> bool:
     return any(True for _ in clause._transforms())
 
@@ -882,8 +890,9 @@ def _marker_slots(fn: _Callable) -> tuple[_Callable, tuple[ContextParam, ...]]:
     raw = getattr(fn, "__annotations__", {})
     globalns = getattr(fn, "__globals__", {})
     localns: dict[str, object] = {}
-    if getattr(fn, "__closure__", None):
-        for cell_name, cell in zip(fn.__code__.co_freevars, fn.__closure__):
+    closure = getattr(fn, "__closure__", None)
+    if closure:
+        for cell_name, cell in zip(fn.__code__.co_freevars, closure):
             try:
                 localns[cell_name] = cell.cell_contents
             except ValueError:  # empty cell
@@ -1007,7 +1016,7 @@ def _context_param(name: str, type_: _Any | None = None) -> ContextParam[_Any]:
     clause = ContextParam._blank()
     clause._param_fn = _contextual(fn)
     placeholder = _sqla_bindparam(name)
-    placeholder._fr_param = clause  # tag for _embedded_slots
+    setattr(placeholder, "_fr_param", clause)  # tag for _embedded_slots
     clause._placeholder = placeholder
     return clause
 
@@ -1075,7 +1084,7 @@ def all_of(*clauses: Clause | Unscoped) -> Clause | Unscoped:
         return given[0]
 
     def fn() -> _ColumnElement[bool]:
-        return _sqla_and(*(_resolve_where(c) for c in given))
+        return _sqla_and(*(_resolve_carried_where(c) for c in given))
 
     fn.__name__ = fn.__qualname__ = "all_of"
     if any(_has_transform(c) for c in given):
@@ -1112,7 +1121,7 @@ def any_of(*clauses: WhereClause | Unscoped) -> WhereClause | Unscoped:
     )
     if len(given) != len(clauses):
         return UNSCOPED
-    fn = lambda: _sqla_or(*(_resolve_where(c) for c in given))  # noqa: E731
+    fn = lambda: _sqla_or(*(_resolve_carried_where(c) for c in given))  # noqa: E731
     fn.__name__ = fn.__qualname__ = "any_of"
     result = where_clause(fn)
     result._children = given
@@ -1136,7 +1145,7 @@ def none_of(*clauses: WhereClause | Unscoped) -> WhereClause:
     )
     if len(given) != len(clauses):
         return where_clause(_sqla_false())
-    fn = lambda: _sqla_not(_sqla_or(*(_resolve_where(c) for c in given)))  # noqa: E731
+    fn = lambda: _sqla_not(_sqla_or(*(_resolve_carried_where(c) for c in given)))  # noqa: E731
     fn.__name__ = fn.__qualname__ = "none_of"
     result = where_clause(fn)
     result._children = given
@@ -1168,7 +1177,7 @@ def combine(*clauses: Clause | Unscoped) -> CombinedClause:
     result = CombinedClause()
     wheres = [c for c in given if c._where_fn is not None]
     if wheres:
-        fn = lambda: _sqla_and(*(_resolve_where(c) for c in wheres))  # noqa: E731
+        fn = lambda: _sqla_and(*(_resolve_carried_where(c) for c in wheres))  # noqa: E731
         fn.__name__ = fn.__qualname__ = "combine"
         result._where_fn = _contextual(fn)
     result._children = given
@@ -1187,7 +1196,7 @@ def _apply_transforms(stmt: _Select[_Any], clauses: _Sequence[Clause]) -> _Selec
     return stmt
 
 
-def _seed_owners(stmt: object) -> dict[str, object]:
+def _seed_owners(stmt: _ExternallyTraversible) -> dict[str, object]:
     # SQLAlchemy's bind-key space is per statement, so ownership must be
     # too: binds the statement already carries (earlier apply_clauses
     # layers, hand-written bindparams) claim their keys before any
