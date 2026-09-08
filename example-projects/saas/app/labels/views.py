@@ -1,13 +1,11 @@
 """Label and TaskLabel views."""
 
 import sqlalchemy as sa
-from fastapi import HTTPException
 from pydantic import BaseModel
 
 import fastapi_restly as fr
 from fastapi_restly.objects import async_make_new_object, async_save_object
 
-from ..context import Current
 from ..views import TenantBase
 from .models import Label, TaskLabel
 from .schemas import LabelSchema, TaskLabelSchema
@@ -45,7 +43,7 @@ class TaskLabelView(TenantBase):
     """CRUD for task-label associations.
 
     ``added_by_id`` is stamped by its column's insert default from
-    ``Current.user_id`` when the client leaves it out, on every write path.
+    ``Current.user_id`` on every write path; the schema marks it read-only.
     """
 
     prefix = "/task-labels"
@@ -58,6 +56,8 @@ class TaskLabelView(TenantBase):
     ) -> TaskLabelSchema:
         """Sibling-creation: build a Label *and* a TaskLabel in one request.
 
+        The Label lands in the organization the request acts in:
+        ``organization_id`` is the model's stamp, not an argument here.
         The Label is flushed first so its id can pass the TaskLabel schema's
         ``MustExist`` checks. Those checks run inside each target model's
         ``default_scope``, so a ``task_id`` from another organization reads
@@ -66,16 +66,10 @@ class TaskLabelView(TenantBase):
         to spell out by hand, and the aborted request rolls the flushed
         Label back with it.
         """
-        org_id = Current.org_id()
-        if org_id is None:
-            raise HTTPException(400, "Cannot create labels without an org context")
-
         # Commit the Label + TaskLabel pair atomically.
         async with self.write_action("create", data=request) as w:
             # 1) Build Label and flush so its PK exists for the existence check.
-            label = Label(
-                name=request.label_name, color=request.color, organization_id=org_id
-            )
+            label = Label(name=request.label_name, color=request.color)
             self.session.add(label)
             await self.session.flush()  # <-- existence check needs the PK to exist
 

@@ -23,7 +23,8 @@ class ProjectSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
     description: str = ""
     status: ProjectStatus = ProjectStatus.ACTIVE
     deleted_at: datetime | None = None
-    organization_id: int
+    # The tenant stamp: from the request context, never from the body.
+    organization_id: fr.ReadOnly[int]
 
     # Server-stamped — readonly so PATCH bodies can't spoof them.
     created_by_id: fr.ReadOnly[int | None] = None

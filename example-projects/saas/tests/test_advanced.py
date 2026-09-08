@@ -1,20 +1,15 @@
 """Cross-resource and framework-feature tests — reporting, validation patterns, tenant isolation, and row/field-level permissions."""
 
+from app.users.roles import UserRole
+
 
 class TestReportingEndpoints:
     """Test reporting/stats endpoints."""
 
     def test_project_stats(self, client):
         """Test GET /projects/{id}/stats returns correct counts."""
-        # Create org and project
-        response = client.post(
-            "/organizations", json={"name": "Stats Test Org", "slug": "stats-test-org"}
-        )
-        org_id = response.json()["id"]
-
-        response = client.post(
-            "/projects", json={"name": "Stats Project", "organization_id": org_id}
-        )
+        # Create project
+        response = client.post("/projects", json={"name": "Stats Project"})
         project_id = response.json()["id"]
 
         # Add tasks with different statuses
@@ -59,16 +54,8 @@ class TestReportingEndpoints:
 
     def test_project_stats_empty(self, client):
         """Test stats for project with no tasks."""
-        # Create org and project
-        response = client.post(
-            "/organizations",
-            json={"name": "Empty Stats Org", "slug": "empty-stats-org"},
-        )
-        org_id = response.json()["id"]
-
-        response = client.post(
-            "/projects", json={"name": "Empty Stats Project", "organization_id": org_id}
-        )
+        # Create project
+        response = client.post("/projects", json={"name": "Empty Stats Project"})
         project_id = response.json()["id"]
 
         # Get stats
@@ -84,16 +71,8 @@ class TestConditionalValidation:
 
     def test_bug_without_severity_fails(self, client):
         """Test that creating a bug without severity fails validation."""
-        # Create org and project
-        response = client.post(
-            "/organizations",
-            json={"name": "Conditional Val Org", "slug": "conditional-val-org"},
-        )
-        org_id = response.json()["id"]
-
-        response = client.post(
-            "/projects", json={"name": "Conditional Project", "organization_id": org_id}
-        )
+        # Create project
+        response = client.post("/projects", json={"name": "Conditional Project"})
         project_id = response.json()["id"]
 
         # Try to create bug without severity - should fail
@@ -116,17 +95,8 @@ class TestConditionalValidation:
 
     def test_bug_with_severity_succeeds(self, client):
         """Test that creating a bug with severity succeeds."""
-        # Create org and project
-        response = client.post(
-            "/organizations",
-            json={"name": "Bug Severity Org", "slug": "bug-severity-org"},
-        )
-        org_id = response.json()["id"]
-
-        response = client.post(
-            "/projects",
-            json={"name": "Bug Severity Project", "organization_id": org_id},
-        )
+        # Create project
+        response = client.post("/projects", json={"name": "Bug Severity Project"})
         project_id = response.json()["id"]
 
         # Create bug with severity - should succeed
@@ -146,17 +116,8 @@ class TestConditionalValidation:
 
     def test_feature_without_severity_succeeds(self, client):
         """Test that features don't require severity."""
-        # Create org and project
-        response = client.post(
-            "/organizations",
-            json={"name": "Feature No Sev Org", "slug": "feature-no-sev-org"},
-        )
-        org_id = response.json()["id"]
-
-        response = client.post(
-            "/projects",
-            json={"name": "Feature No Sev Project", "organization_id": org_id},
-        )
+        # Create project
+        response = client.post("/projects", json={"name": "Feature No Sev Project"})
         project_id = response.json()["id"]
 
         # Create feature without severity - should succeed (severity is bug-only)
@@ -175,16 +136,8 @@ class TestConditionalValidation:
 
     def test_regular_task_without_severity_succeeds(self, client):
         """Test that regular tasks don't require severity."""
-        # Create org and project
-        response = client.post(
-            "/organizations",
-            json={"name": "Task No Sev Org", "slug": "task-no-sev-org"},
-        )
-        org_id = response.json()["id"]
-
-        response = client.post(
-            "/projects", json={"name": "Task No Sev Project", "organization_id": org_id}
-        )
+        # Create project
+        response = client.post("/projects", json={"name": "Task No Sev Project"})
         project_id = response.json()["id"]
 
         # Create regular task without severity - should succeed
@@ -203,76 +156,65 @@ class TestConditionalValidation:
 
 
 class TestCrossResourceValidation:
-    """Test cross-resource validation (assignee must be in same org as project)."""
+    """Cross-resource validation: the assignee must be in the project's org.
 
-    def test_create_task_with_assignee_from_different_org_fails(self, client):
+    For a tenant's user the tenant floor would settle this anyway (another
+    organization's user is not a reference that exists); the rule in
+    ``TaskView._validate_cross_resource`` runs first and is what stops an
+    admin, whose reads cross tenants.
+    """
+
+    def test_create_task_with_assignee_from_different_org_fails(
+        self, client, new_tenant
+    ):
         """Test that creating a task with assignee from different org fails."""
-        # Create two organizations
-        response = client.post(
-            "/organizations",
-            json={"name": "Cross Res Org 1", "slug": "cross-res-org-1"},
-        )
-        org1_id = response.json()["id"]
+        beta = new_tenant("beta")
+        project_id = client.post("/projects", json={"name": "Acme Project"}).json()[
+            "id"
+        ]
 
-        response = client.post(
-            "/organizations",
-            json={"name": "Cross Res Org 2", "slug": "cross-res-org-2"},
-        )
-        org2_id = response.json()["id"]
-
-        # Create user in org 2
-        response = client.post(
-            "/users",
-            json={
-                "email": "user@org2.com",
-                "name": "Org 2 User",
-                "organization_id": org2_id,
-            },
-        )
-        user_from_org2 = response.json()["id"]
-
-        # Create project in org 1
-        response = client.post(
-            "/projects", json={"name": "Org 1 Project", "organization_id": org1_id}
-        )
-        project_in_org1 = response.json()["id"]
-
-        # Try to create task in org1 project with assignee from org2 - should fail
         response = client.post(
             "/tasks",
             json={
                 "title": "Cross-org assignment",
-                "project_id": project_in_org1,
-                "assignee_id": user_from_org2,
+                "project_id": project_id,
+                "assignee_id": beta.user_id,
             },
             assert_status_code=422,
         )
-        error = response.json()
-        assert "same organization" in error["detail"]
+        assert "same organization" in response.json()["detail"]
+
+    def test_admin_cannot_assign_across_organizations(
+        self, client, new_tenant, as_admin, actor
+    ):
+        """The admin sees both users; the rule still refuses the assignment."""
+        beta = new_tenant("beta")
+        project_id = client.post("/projects", json={"name": "Acme Project"}).json()[
+            "id"
+        ]
+
+        with as_admin(actor.org_id):
+            response = client.post(
+                "/tasks",
+                json={
+                    "title": "Cross-org assignment",
+                    "project_id": project_id,
+                    "assignee_id": beta.user_id,
+                },
+                assert_status_code=422,
+            )
+        assert "same organization" in response.json()["detail"]
 
     def test_create_task_with_assignee_from_same_org_succeeds(self, client):
         """Test that creating a task with assignee from same org succeeds."""
-        # Create organization
-        response = client.post(
-            "/organizations", json={"name": "Same Org Test", "slug": "same-org-test"}
-        )
-        org_id = response.json()["id"]
-
         # Create user in org
         response = client.post(
-            "/users",
-            json={
-                "email": "user@sameorg.com",
-                "name": "Same Org User",
-                "organization_id": org_id,
-            },
+            "/users", json={"email": "user@sameorg.com", "name": "Same Org User"}
         )
         user_id = response.json()["id"]
 
         # Create project in org
-        response = client.post(
-            "/projects", json={"name": "Same Org Project", "organization_id": org_id}
-        )
+        response = client.post("/projects", json={"name": "Same Org Project"})
         project_id = response.json()["id"]
 
         # Create task with same-org assignee - should succeed
@@ -288,53 +230,22 @@ class TestCrossResourceValidation:
 
         assert task["assignee_id"] == user_id
 
-    def test_update_task_assignee_to_different_org_fails(self, client):
+    def test_update_task_assignee_to_different_org_fails(self, client, new_tenant):
         """Test that updating assignee to user from different org fails."""
-        # Create two organizations
-        response = client.post(
-            "/organizations",
-            json={"name": "Update Cross Org 1", "slug": "update-cross-org-1"},
-        )
-        org1_id = response.json()["id"]
+        beta = new_tenant("beta")
+        project_id = client.post("/projects", json={"name": "Acme Project"}).json()[
+            "id"
+        ]
+        task_id = client.post(
+            "/tasks", json={"title": "Unassigned task", "project_id": project_id}
+        ).json()["id"]
 
-        response = client.post(
-            "/organizations",
-            json={"name": "Update Cross Org 2", "slug": "update-cross-org-2"},
-        )
-        org2_id = response.json()["id"]
-
-        # Create user in org 2
-        response = client.post(
-            "/users",
-            json={
-                "email": "other@org2.com",
-                "name": "Other Org User",
-                "organization_id": org2_id,
-            },
-        )
-        user_from_org2 = response.json()["id"]
-
-        # Create project in org 1
-        response = client.post(
-            "/projects",
-            json={"name": "Update Org 1 Project", "organization_id": org1_id},
-        )
-        project_in_org1 = response.json()["id"]
-
-        # Create task without assignee
-        response = client.post(
-            "/tasks", json={"title": "Unassigned task", "project_id": project_in_org1}
-        )
-        task_id = response.json()["id"]
-
-        # Try to update assignee to user from different org - should fail
         response = client.patch(
             f"/tasks/{task_id}",
-            json={"assignee_id": user_from_org2},
+            json={"assignee_id": beta.user_id},
             assert_status_code=422,
         )
-        error = response.json()
-        assert "same organization" in error["detail"]
+        assert "same organization" in response.json()["detail"]
 
 
 class TestDifferentSchemasPerOperation:
@@ -417,393 +328,209 @@ class TestDifferentSchemasPerOperation:
 
 
 class TestTenantIsolation:
-    """Test tenant isolation (org scoping) for projects."""
+    """Tenant isolation: a request reads the organization it acts in."""
 
-    def test_tenant_isolation_filters_list(self, client, auth_context):
-        """Test that the list (get_many) read scope filters by current org when set."""
-        # Create two orgs
-        response = client.post(
-            "/organizations", json={"name": "Tenant Org 1", "slug": "tenant-org-1"}
-        )
-        org1_id = response.json()["id"]
+    def test_tenant_isolation_filters_list(self, client, new_tenant, auth_context):
+        """The list (get_many) read scope filters by the acting organization."""
+        beta = new_tenant("beta")
+        acme_project_id = client.post(
+            "/projects", json={"name": "Acme Project"}
+        ).json()["id"]
+        with beta.acting():
+            beta_project_id = client.post(
+                "/projects", json={"name": "Beta Project"}
+            ).json()["id"]
 
-        response = client.post(
-            "/organizations", json={"name": "Tenant Org 2", "slug": "tenant-org-2"}
-        )
-        org2_id = response.json()["id"]
+        # Acme's user sees Acme's project only
+        ids = [p["id"] for p in client.get("/projects").json()["data"]]
+        assert acme_project_id in ids
+        assert beta_project_id not in ids
 
-        # Create project in each org
-        response = client.post(
-            "/projects", json={"name": "Org 1 Project", "organization_id": org1_id}
-        )
-        org1_project_id = response.json()["id"]
+        # Beta's user, Beta's
+        with beta.acting():
+            ids = [p["id"] for p in client.get("/projects").json()["data"]]
+        assert beta_project_id in ids
+        assert acme_project_id not in ids
 
-        response = client.post(
-            "/projects", json={"name": "Org 2 Project", "organization_id": org2_id}
-        )
-        org2_project_id = response.json()["id"]
+        # An admin's reads cross tenants
+        with auth_context(is_admin=True):
+            ids = [p["id"] for p in client.get("/projects").json()["data"]]
+        assert {acme_project_id, beta_project_id} <= set(ids)
 
-        # Without tenant isolation, both projects visible
-        response = client.get("/projects")
-        all_projects = response.json()["data"]
-        all_ids = [p["id"] for p in all_projects]
-        assert org1_project_id in all_ids
-        assert org2_project_id in all_ids
-
-        # With tenant isolation for org1, only org1 projects visible
-        with auth_context(org_id=org1_id):
-            response = client.get("/projects")
-            filtered_projects = response.json()["data"]
-            filtered_ids = [p["id"] for p in filtered_projects]
-            assert org1_project_id in filtered_ids
-            assert org2_project_id not in filtered_ids
-
-    def test_tenant_isolation_blocks_get_other_org(self, client, auth_context):
+    def test_tenant_isolation_blocks_get_other_org(self, client, new_tenant):
         """Test that get_one returns 404 for other org's resources."""
-        # Create two orgs
-        response = client.post(
-            "/organizations",
-            json={"name": "Get Tenant Org 1", "slug": "get-tenant-org-1"},
-        )
-        org1_id = response.json()["id"]
+        beta = new_tenant("beta")
+        with beta.acting():
+            beta_project_id = client.post(
+                "/projects", json={"name": "Beta Secret Project"}
+            ).json()["id"]
 
-        response = client.post(
-            "/organizations",
-            json={"name": "Get Tenant Org 2", "slug": "get-tenant-org-2"},
-        )
-        org2_id = response.json()["id"]
+        client.get(f"/projects/{beta_project_id}", assert_status_code=404)
 
-        # Create project in org2
-        response = client.post(
-            "/projects",
-            json={"name": "Org 2 Secret Project", "organization_id": org2_id},
-        )
-        org2_project_id = response.json()["id"]
-
-        # With tenant isolation for org1, can't access org2's project
-        with auth_context(org_id=org1_id):
-            response = client.get(
-                f"/projects/{org2_project_id}", assert_status_code=404
-            )
-
-    def test_tenant_isolation_allows_own_org(self, client, auth_context):
+    def test_tenant_isolation_allows_own_org(self, client):
         """Test that get_one allows access to own org's resources."""
-        # Create org
-        response = client.post(
-            "/organizations", json={"name": "Own Tenant Org", "slug": "own-tenant-org"}
-        )
-        org_id = response.json()["id"]
+        project_id = client.post("/projects", json={"name": "Own Org Project"}).json()[
+            "id"
+        ]
 
-        # Create project in org
-        response = client.post(
-            "/projects", json={"name": "Own Org Project", "organization_id": org_id}
-        )
-        project_id = response.json()["id"]
+        project = client.get(f"/projects/{project_id}").json()
+        assert project["id"] == project_id
 
-        # With tenant isolation for same org, can access project
-        with auth_context(org_id=org_id):
-            response = client.get(f"/projects/{project_id}")
-            project = response.json()
-            assert project["id"] == project_id
+    def test_rows_land_in_the_acting_organization(self, client, actor, new_tenant):
+        """``organization_id`` is a stamp: a body naming another tenant is ignored."""
+        beta = new_tenant("beta")
+
+        project = client.post(
+            "/projects", json={"name": "Stamped", "organization_id": beta.org_id}
+        ).json()
+        user = client.post(
+            "/users",
+            json={
+                "email": "new@acme.test",
+                "name": "New",
+                "organization_id": beta.org_id,
+            },
+        ).json()
+        label = client.post(
+            "/labels", json={"name": "stamped", "organization_id": beta.org_id}
+        ).json()
+
+        assert project["organization_id"] == actor.org_id
+        assert user["organization_id"] == actor.org_id
+        assert label["organization_id"] == actor.org_id
 
 
 class TestRowLevelPermissions:
-    """Test row-level permissions (filter results by user permissions)."""
+    """Row-level permissions: a member sees the tasks assigned to them.
 
-    def test_row_level_filters_task_list(self, client, auth_context):
-        """Test that the list (get_many) read scope filters tasks by current user."""
-        # Create org, users, and project
-        response = client.post(
-            "/organizations", json={"name": "Row Level Org", "slug": "row-level-org"}
-        )
-        org_id = response.json()["id"]
+    The acting owner sees the organization's tasks; these tests act as the
+    members they create to exercise the restriction.
+    """
 
-        response = client.post(
-            "/users",
-            json={
-                "email": "user1@row.com",
-                "name": "User 1",
-                "organization_id": org_id,
-            },
-        )
-        user1_id = response.json()["id"]
-
-        response = client.post(
-            "/users",
-            json={
-                "email": "user2@row.com",
-                "name": "User 2",
-                "organization_id": org_id,
-            },
-        )
-        user2_id = response.json()["id"]
-
-        response = client.post(
-            "/projects", json={"name": "Row Level Project", "organization_id": org_id}
-        )
-        project_id = response.json()["id"]
-
-        # Create tasks assigned to different users
-        response = client.post(
+    def _two_members_two_tasks(self, client):
+        user1_id = client.post(
+            "/users", json={"email": "user1@row.com", "name": "User 1"}
+        ).json()["id"]
+        user2_id = client.post(
+            "/users", json={"email": "user2@row.com", "name": "User 2"}
+        ).json()["id"]
+        project_id = client.post(
+            "/projects", json={"name": "Row Level Project"}
+        ).json()["id"]
+        user1_task_id = client.post(
             "/tasks",
             json={
                 "title": "User 1 Task",
                 "project_id": project_id,
                 "assignee_id": user1_id,
             },
-        )
-        user1_task_id = response.json()["id"]
-
-        response = client.post(
+        ).json()["id"]
+        user2_task_id = client.post(
             "/tasks",
             json={
                 "title": "User 2 Task",
                 "project_id": project_id,
                 "assignee_id": user2_id,
             },
-        )
-        user2_task_id = response.json()["id"]
+        ).json()["id"]
+        return user1_id, user2_id, user1_task_id, user2_task_id
 
-        # Without row-level permissions, all tasks visible
-        response = client.get("/tasks")
-        all_tasks = response.json()["data"]
-        all_ids = [t["id"] for t in all_tasks]
+    def test_row_level_filters_task_list(self, client, auth_context):
+        """The list (get_many) read scope filters tasks by the acting member."""
+        user1_id, _user2_id, user1_task_id, user2_task_id = self._two_members_two_tasks(
+            client
+        )
+
+        # The owner sees every task of the organization
+        all_ids = [t["id"] for t in client.get("/tasks").json()["data"]]
         assert user1_task_id in all_ids
         assert user2_task_id in all_ids
 
-        # With row-level permissions for user1, only user1's tasks visible
-        with auth_context(user_id=user1_id):
-            response = client.get("/tasks")
-            filtered_tasks = response.json()["data"]
-            filtered_ids = [t["id"] for t in filtered_tasks]
-            assert user1_task_id in filtered_ids
-            assert user2_task_id not in filtered_ids
+        # A member sees only the tasks assigned to them
+        with auth_context(user_id=user1_id, role=UserRole.MEMBER):
+            filtered_ids = [t["id"] for t in client.get("/tasks").json()["data"]]
+        assert user1_task_id in filtered_ids
+        assert user2_task_id not in filtered_ids
 
     def test_row_level_blocks_get_other_user_task(self, client, auth_context):
         """Test that get_one returns 404 for other user's tasks."""
-        # Create org, users, and project
-        response = client.post(
-            "/organizations",
-            json={"name": "Get Row Level Org", "slug": "get-row-level-org"},
+        user1_id, _user2_id, _user1_task_id, user2_task_id = (
+            self._two_members_two_tasks(client)
         )
-        org_id = response.json()["id"]
 
-        response = client.post(
-            "/users",
-            json={
-                "email": "getuser1@row.com",
-                "name": "Get User 1",
-                "organization_id": org_id,
-            },
-        )
-        user1_id = response.json()["id"]
-
-        response = client.post(
-            "/users",
-            json={
-                "email": "getuser2@row.com",
-                "name": "Get User 2",
-                "organization_id": org_id,
-            },
-        )
-        user2_id = response.json()["id"]
-
-        response = client.post(
-            "/projects", json={"name": "Get Row Project", "organization_id": org_id}
-        )
-        project_id = response.json()["id"]
-
-        # Create task assigned to user2
-        response = client.post(
-            "/tasks",
-            json={
-                "title": "User 2 Only Task",
-                "project_id": project_id,
-                "assignee_id": user2_id,
-            },
-        )
-        user2_task_id = response.json()["id"]
-
-        # User1 cannot access user2's task
-        with auth_context(user_id=user1_id):
-            response = client.get(f"/tasks/{user2_task_id}", assert_status_code=404)
+        with auth_context(user_id=user1_id, role=UserRole.MEMBER):
+            client.get(f"/tasks/{user2_task_id}", assert_status_code=404)
 
     def test_row_level_allows_own_task(self, client, auth_context):
         """Test that get_one allows access to user's own tasks."""
-        # Create org, user, and project
-        response = client.post(
-            "/organizations", json={"name": "Own Task Org", "slug": "own-task-org"}
+        user1_id, _user2_id, user1_task_id, _user2_task_id = (
+            self._two_members_two_tasks(client)
         )
-        org_id = response.json()["id"]
 
-        response = client.post(
-            "/users",
-            json={
-                "email": "ownuser@row.com",
-                "name": "Own User",
-                "organization_id": org_id,
-            },
+        with auth_context(user_id=user1_id, role=UserRole.MEMBER):
+            task = client.get(f"/tasks/{user1_task_id}").json()
+        assert task["id"] == user1_task_id
+
+    def test_other_roles_see_the_organizations_tasks(self, client, auth_context):
+        """The restriction is the member's: HR, like the owner, sees them all."""
+        _user1_id, _user2_id, user1_task_id, user2_task_id = (
+            self._two_members_two_tasks(client)
         )
-        user_id = response.json()["id"]
+        hr_id = client.post(
+            "/users", json={"email": "hr@row.com", "name": "HR", "role": "hr"}
+        ).json()["id"]
 
-        response = client.post(
-            "/projects", json={"name": "Own Task Project", "organization_id": org_id}
-        )
-        project_id = response.json()["id"]
-
-        # Create task assigned to user
-        response = client.post(
-            "/tasks",
-            json={
-                "title": "My Own Task",
-                "project_id": project_id,
-                "assignee_id": user_id,
-            },
-        )
-        task_id = response.json()["id"]
-
-        # User can access own task
-        with auth_context(user_id=user_id):
-            response = client.get(f"/tasks/{task_id}")
-            task = response.json()
-            assert task["id"] == task_id
+        with auth_context(user_id=hr_id, role=UserRole.HR):
+            ids = {t["id"] for t in client.get("/tasks").json()["data"]}
+        assert {user1_task_id, user2_task_id} <= ids
 
 
 class TestFieldLevelPermissions:
-    """Test field-level permissions (different response fields based on role)."""
+    """Field-level permissions: the response schema follows ``Current.role``."""
 
-    def test_hr_can_see_salary(self, client):
-        """Test that HR role can see salary field."""
-        import app.users.views as user_view
-        from app.users.models import UserRole
-
-        # Create org and user with salary
-        response = client.post(
-            "/organizations",
-            json={"name": "Field Level Org", "slug": "field-level-org"},
-        )
-        org_id = response.json()["id"]
-
+    def _user_with_salary(self, client, salary: int) -> int:
         response = client.post(
             "/users",
             json={
-                "email": "employee@field.com",
+                "email": f"paid{salary}@field.com",
                 "name": "Employee",
-                "organization_id": org_id,
-                "salary": 75000,
+                "salary": salary,
             },
         )
-        user_id = response.json()["id"]
+        return response.json()["id"]
 
-        # Set current role to HR
-        user_view._TEST_USER_ROLE = UserRole.HR
-        try:
-            response = client.get(f"/users/{user_id}/with-permissions")
-            user = response.json()
+    def test_hr_can_see_salary(self, client, auth_context):
+        """Test that HR role can see salary field."""
+        user_id = self._user_with_salary(client, 75000)
 
-            # HR can see salary
-            assert "salary" in user
-            assert user["salary"] == 75000
-        finally:
-            user_view._TEST_USER_ROLE = None  # Reset
+        with auth_context(role=UserRole.HR):
+            user = client.get(f"/users/{user_id}/with-permissions").json()
 
-    def test_member_cannot_see_salary(self, client):
+        assert user["salary"] == 75000
+
+    def test_member_cannot_see_salary(self, client, auth_context):
         """Test that member role cannot see salary field."""
-        import app.users.views as user_view
-        from app.users.models import UserRole
+        user_id = self._user_with_salary(client, 90000)
 
-        # Create org and user with salary
-        response = client.post(
-            "/organizations",
-            json={"name": "Member Field Org", "slug": "member-field-org"},
-        )
-        org_id = response.json()["id"]
+        with auth_context(role=UserRole.MEMBER):
+            user = client.get(f"/users/{user_id}/with-permissions").json()
 
-        response = client.post(
-            "/users",
-            json={
-                "email": "salary@field.com",
-                "name": "Salary User",
-                "organization_id": org_id,
-                "salary": 90000,
-            },
-        )
-        user_id = response.json()["id"]
-
-        # Set current role to MEMBER
-        user_view._TEST_USER_ROLE = UserRole.MEMBER
-        try:
-            response = client.get(f"/users/{user_id}/with-permissions")
-            user = response.json()
-
-            # Member cannot see salary (not in public schema)
-            assert "salary" not in user
-        finally:
-            user_view._TEST_USER_ROLE = None  # Reset
+        # Member cannot see salary (not in public schema)
+        assert "salary" not in user
 
     def test_owner_can_see_salary(self, client):
-        """Test that owner role can also see salary field."""
-        import app.users.views as user_view
-        from app.users.models import UserRole
+        """Test that the owner role can also see salary field; the client acts as one."""
+        user_id = self._user_with_salary(client, 100000)
 
-        # Create org and user with salary
-        response = client.post(
-            "/organizations",
-            json={"name": "Owner Field Org", "slug": "owner-field-org"},
-        )
-        org_id = response.json()["id"]
+        user = client.get(f"/users/{user_id}/with-permissions").json()
 
-        response = client.post(
-            "/users",
-            json={
-                "email": "owner-view@field.com",
-                "name": "Owner View User",
-                "organization_id": org_id,
-                "salary": 100000,
-            },
-        )
-        user_id = response.json()["id"]
+        assert user["salary"] == 100000
 
-        # Set current role to OWNER
-        user_view._TEST_USER_ROLE = UserRole.OWNER
-        try:
-            response = client.get(f"/users/{user_id}/with-permissions")
-            user = response.json()
+    def test_org_admin_cannot_see_salary(self, client, auth_context):
+        """Test that an organization admin does not see salary; that is HR's."""
+        user_id = self._user_with_salary(client, 80000)
 
-            # Owner can see salary
-            assert "salary" in user
-            assert user["salary"] == 100000
-        finally:
-            user_view._TEST_USER_ROLE = None  # Reset
+        with auth_context(role=UserRole.ADMIN):
+            user = client.get(f"/users/{user_id}/with-permissions").json()
 
-    def test_no_role_cannot_see_salary(self, client):
-        """Test that without a role set, salary is hidden."""
-        import app.users.views as user_view
-
-        # Create org and user with salary
-        response = client.post(
-            "/organizations", json={"name": "No Role Org", "slug": "no-role-org"}
-        )
-        org_id = response.json()["id"]
-
-        response = client.post(
-            "/users",
-            json={
-                "email": "norole@field.com",
-                "name": "No Role User",
-                "organization_id": org_id,
-                "salary": 80000,
-            },
-        )
-        user_id = response.json()["id"]
-
-        # Ensure no role is set
-        user_view._TEST_USER_ROLE = None
-        try:
-            response = client.get(f"/users/{user_id}/with-permissions")
-            user = response.json()
-
-            # No role means no salary access
-            assert "salary" not in user
-        finally:
-            user_view._TEST_USER_ROLE = None  # Reset
+        assert "salary" not in user

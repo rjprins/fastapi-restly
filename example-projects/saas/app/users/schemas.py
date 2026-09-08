@@ -19,14 +19,15 @@ class UserSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
 
     Soft-delete + audit fields are ReadOnly so they appear in responses
     (e.g. ``deleted_at`` after a soft delete) but PATCH bodies can't spoof
-    them.
+    them. So is ``organization_id``, the tenant stamp: a user is created in
+    the organization the request acts in, never in one the body names.
     """
 
     email: str
     name: str
     password: fr.WriteOnly[str] = ""
     role: UserRole = UserRole.MEMBER
-    organization_id: int
+    organization_id: fr.ReadOnly[int]
     # Sensitive field - only visible to HR (see UserView.get_user_with_field_permissions)
     salary: int | None = None
 

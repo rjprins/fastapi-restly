@@ -63,14 +63,15 @@ VALID_TRANSITIONS = {
 class TaskView(SoftDeleteMixin, TenantBase):
     """CRUD endpoints for tasks.
 
-    Task visibility is by ``assignee_id``, a row-level permission:
+    Task visibility is a row-level permission (a member sees their own
+    assignments, other roles the organization's tasks):
     ``scope = TaskClauses.visible`` replaces the model's ``default_scope``
     on this view's reads, while references to Task keep the default. The
     tenant rule is not repeated here: ``TenantBase.apply_scope`` stacks
     it under every read, this scope and the trash route's alike. Retrieve
     applies the same scope, so the predicate that filters listing also
-    returns 404 from ``GET /tasks/{id}`` for tasks not assigned to the
-    current user, and cascades through ``handle_update`` and
+    returns 404 from ``GET /tasks/{id}`` for a task a member is not
+    assigned to, and cascades through ``handle_update`` and
     ``handle_delete`` (both load the row through ``get_one`` first).
     """
 
@@ -234,7 +235,7 @@ class TaskView(SoftDeleteMixin, TenantBase):
 
     @fr.get("/trash", response_model=PaginatedEnvelope[TaskSchema])
     async def trash(self, query_params: Any) -> Any:
-        """The trash: deleted tasks assigned to the caller, with the listing grammar."""
+        """The trash: deleted tasks the caller may see, with the listing grammar."""
         result = await self.handle_get_many(query_params, scope=TaskClauses.trashed)
         return self.to_response(result, fr.ResponseShape.LISTING)
 

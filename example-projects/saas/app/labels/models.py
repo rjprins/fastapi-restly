@@ -44,9 +44,9 @@ class TaskLabel(fr.TimestampsMixin, fr.IDBase):
     # Foreign keys
     task_id: orm.Mapped[int] = orm.mapped_column(ForeignKey("task.id"))
     label_id: orm.Mapped[int] = orm.mapped_column(ForeignKey("label.id"))
-    # Stamped from context when the client leaves it out; a given value wins.
+    # Stamped from context like the audit columns: not a constructor argument.
     added_by_id: orm.Mapped[int | None] = orm.mapped_column(
-        ForeignKey("user.id"), default=None, insert_default=lambda: Current.user_id()
+        ForeignKey("user.id"), init=False, insert_default=lambda: Current.user_id()
     )
 
     # Relationships

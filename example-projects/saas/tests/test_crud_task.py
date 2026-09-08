@@ -6,15 +6,8 @@ class TestTaskCRUD:
 
     def test_create_task(self, client):
         """Test creating a task."""
-        # Create org and project
-        response = client.post(
-            "/organizations", json={"name": "Task Test Org", "slug": "task-test-org"}
-        )
-        org_id = response.json()["id"]
-
-        response = client.post(
-            "/projects", json={"name": "Task Project", "organization_id": org_id}
-        )
+        # Create project
+        response = client.post("/projects", json={"name": "Task Project"})
         project_id = response.json()["id"]
 
         # Create task
@@ -34,26 +27,13 @@ class TestTaskCRUD:
 
     def test_assign_task(self, client):
         """Test assigning a task to a user."""
-        # Create org, user, project
+        # Create user, project
         response = client.post(
-            "/organizations",
-            json={"name": "Assign Test Org", "slug": "assign-test-org"},
-        )
-        org_id = response.json()["id"]
-
-        response = client.post(
-            "/users",
-            json={
-                "email": "assignee@example.com",
-                "name": "Assignee",
-                "organization_id": org_id,
-            },
+            "/users", json={"email": "assignee@example.com", "name": "Assignee"}
         )
         user_id = response.json()["id"]
 
-        response = client.post(
-            "/projects", json={"name": "Assign Project", "organization_id": org_id}
-        )
+        response = client.post("/projects", json={"name": "Assign Project"})
         project_id = response.json()["id"]
 
         # Create task with assignee
@@ -71,16 +51,8 @@ class TestTaskCRUD:
 
     def test_update_task_status(self, client):
         """Test updating task status."""
-        # Create org and project
-        response = client.post(
-            "/organizations",
-            json={"name": "Status Test Org", "slug": "status-test-org"},
-        )
-        org_id = response.json()["id"]
-
-        response = client.post(
-            "/projects", json={"name": "Status Project", "organization_id": org_id}
-        )
+        # Create project
+        response = client.post("/projects", json={"name": "Status Project"})
         project_id = response.json()["id"]
 
         # Create task
@@ -99,16 +71,8 @@ class TestTaskCRUD:
 
     def test_set_task_priority(self, client):
         """Test setting task priority."""
-        # Create org and project
-        response = client.post(
-            "/organizations",
-            json={"name": "Priority Test Org", "slug": "priority-test-org"},
-        )
-        org_id = response.json()["id"]
-
-        response = client.post(
-            "/projects", json={"name": "Priority Project", "organization_id": org_id}
-        )
+        # Create project
+        response = client.post("/projects", json={"name": "Priority Project"})
         project_id = response.json()["id"]
 
         # Create high priority task
@@ -126,16 +90,8 @@ class TestTaskCRUD:
 
     def test_create_subtask(self, client):
         """Test creating a subtask (self-referential relationship)."""
-        # Create org and project
-        response = client.post(
-            "/organizations",
-            json={"name": "Subtask Test Org", "slug": "subtask-test-org"},
-        )
-        org_id = response.json()["id"]
-
-        response = client.post(
-            "/projects", json={"name": "Subtask Project", "organization_id": org_id}
-        )
+        # Create project
+        response = client.post("/projects", json={"name": "Subtask Project"})
         project_id = response.json()["id"]
 
         # Create parent task
@@ -160,16 +116,8 @@ class TestTaskCRUD:
 
     def test_get_subtask_with_parent(self, client):
         """Test retrieving a subtask shows parent_id."""
-        # Create org and project
-        response = client.post(
-            "/organizations",
-            json={"name": "Get Subtask Org", "slug": "get-subtask-org"},
-        )
-        org_id = response.json()["id"]
-
-        response = client.post(
-            "/projects", json={"name": "Get Subtask Project", "organization_id": org_id}
-        )
+        # Create project
+        response = client.post("/projects", json={"name": "Get Subtask Project"})
         project_id = response.json()["id"]
 
         # Create parent task
@@ -198,15 +146,8 @@ class TestPolymorphicTasks:
 
     def test_create_bug_task(self, client):
         """Test creating a bug with bug-specific fields."""
-        # Create org and project
-        response = client.post(
-            "/organizations", json={"name": "Bug Test Org", "slug": "bug-test-org"}
-        )
-        org_id = response.json()["id"]
-
-        response = client.post(
-            "/projects", json={"name": "Bug Project", "organization_id": org_id}
-        )
+        # Create project
+        response = client.post("/projects", json={"name": "Bug Project"})
         project_id = response.json()["id"]
 
         # Create bug
@@ -229,16 +170,8 @@ class TestPolymorphicTasks:
 
     def test_create_feature_task(self, client):
         """Test creating a feature with feature-specific fields."""
-        # Create org and project
-        response = client.post(
-            "/organizations",
-            json={"name": "Feature Test Org", "slug": "feature-test-org"},
-        )
-        org_id = response.json()["id"]
-
-        response = client.post(
-            "/projects", json={"name": "Feature Project", "organization_id": org_id}
-        )
+        # Create project
+        response = client.post("/projects", json={"name": "Feature Project"})
         project_id = response.json()["id"]
 
         # Create feature
@@ -264,16 +197,8 @@ class TestPolymorphicTasks:
 
     def test_filter_by_task_type(self, client):
         """Test filtering tasks by type."""
-        # Create org and project
-        response = client.post(
-            "/organizations",
-            json={"name": "Type Filter Org", "slug": "type-filter-org"},
-        )
-        org_id = response.json()["id"]
-
-        response = client.post(
-            "/projects", json={"name": "Type Filter Project", "organization_id": org_id}
-        )
+        # Create project
+        response = client.post("/projects", json={"name": "Type Filter Project"})
         project_id = response.json()["id"]
 
         # Create tasks of different types (bugs require severity for create, but not for filtering)
@@ -313,16 +238,8 @@ class TestBulkOperations:
 
     def test_bulk_create_tasks(self, client):
         """Test creating multiple tasks at once."""
-        # Create org and project
-        response = client.post(
-            "/organizations",
-            json={"name": "Bulk Create Org", "slug": "bulk-create-org"},
-        )
-        org_id = response.json()["id"]
-
-        response = client.post(
-            "/projects", json={"name": "Bulk Project", "organization_id": org_id}
-        )
+        # Create project
+        response = client.post("/projects", json={"name": "Bulk Project"})
         project_id = response.json()["id"]
 
         # Bulk create tasks
@@ -343,16 +260,8 @@ class TestBulkOperations:
 
     def test_bulk_delete_tasks(self, client):
         """Test deleting multiple tasks at once."""
-        # Create org, project, and tasks
-        response = client.post(
-            "/organizations",
-            json={"name": "Bulk Delete Org", "slug": "bulk-delete-org"},
-        )
-        org_id = response.json()["id"]
-
-        response = client.post(
-            "/projects", json={"name": "Bulk Delete Project", "organization_id": org_id}
-        )
+        # Create project and tasks
+        response = client.post("/projects", json={"name": "Bulk Delete Project"})
         project_id = response.json()["id"]
 
         # Create tasks individually
@@ -376,17 +285,8 @@ class TestBulkOperations:
 
     def test_bulk_delete_partial_failure(self, client):
         """Test bulk delete with some invalid IDs."""
-        # Create org, project, and one task
-        response = client.post(
-            "/organizations",
-            json={"name": "Bulk Partial Org", "slug": "bulk-partial-org"},
-        )
-        org_id = response.json()["id"]
-
-        response = client.post(
-            "/projects",
-            json={"name": "Bulk Partial Project", "organization_id": org_id},
-        )
+        # Create project and one task
+        response = client.post("/projects", json={"name": "Bulk Partial Project"})
         project_id = response.json()["id"]
 
         response = client.post(
@@ -410,16 +310,8 @@ class TestSoftDelete:
 
     def test_soft_delete_project(self, client):
         """Test that DELETE soft-deletes instead of hard delete."""
-        # Create org and project
-        response = client.post(
-            "/organizations",
-            json={"name": "Soft Delete Org", "slug": "soft-delete-org"},
-        )
-        org_id = response.json()["id"]
-
-        response = client.post(
-            "/projects", json={"name": "To Soft Delete", "organization_id": org_id}
-        )
+        # Create project
+        response = client.post("/projects", json={"name": "To Soft Delete"})
         project_id = response.json()["id"]
 
         # Soft delete (returns 200 with body, not 204)
@@ -434,35 +326,21 @@ class TestSoftDelete:
         project_ids = [p["id"] for p in projects]
         assert project_id not in project_ids
 
-    def test_trash_route_lists_deleted_projects(self, client, auth_context):
+    def test_trash_route_lists_deleted_projects(self, client, new_tenant):
         """Deleted projects appear on /projects/trash and nowhere else.
 
         The trash is a route on the same view naming ``is_deleted`` as its
         scope per read; it takes the listing grammar, and the tenant floor
         in ``TenantBase.apply_scope`` keeps it tenant-bound.
         """
-        response = client.post(
-            "/organizations", json={"name": "Trash View Org", "slug": "trash-view-org"}
-        )
-        org_id = response.json()["id"]
-        response = client.post(
-            "/organizations",
-            json={"name": "Other Trash Org", "slug": "other-trash-org"},
-        )
-        other_org_id = response.json()["id"]
+        beta = new_tenant("beta")
 
-        response = client.post(
-            "/projects", json={"name": "Active Project", "organization_id": org_id}
-        )
+        response = client.post("/projects", json={"name": "Active Project"})
         active_id = response.json()["id"]
 
-        response = client.post(
-            "/projects", json={"name": "Deleted Project", "organization_id": org_id}
-        )
+        response = client.post("/projects", json={"name": "Deleted Project"})
         deleted_id = response.json()["id"]
-        response = client.post(
-            "/projects", json={"name": "Deleted Too", "organization_id": org_id}
-        )
+        response = client.post("/projects", json={"name": "Deleted Too"})
         deleted_too_id = response.json()["id"]
 
         # Soft delete two
@@ -496,13 +374,12 @@ class TestSoftDelete:
 
         # The floor holds under the route's scope: another tenant's trash is
         # not this tenant's
-        with auth_context(org_id=other_org_id):
+        with beta.acting():
             response = client.get("/projects/trash")
             assert response.json()["data"] == []
             client.post(f"/projects/{deleted_id}/restore", assert_status_code=404)
-        with auth_context(org_id=org_id):
-            response = client.get("/projects/trash")
-            assert deleted_id in [p["id"] for p in response.json()["data"]]
+        response = client.get("/projects/trash")
+        assert deleted_id in [p["id"] for p in response.json()["data"]]
 
     def test_query_params_cannot_widen_a_scope(self, client):
         """The old ``?include_deleted=true`` toggle is gone.
@@ -511,13 +388,7 @@ class TestSoftDelete:
         it is ignored: the reference check keeps hiding the deleted
         project either way.
         """
-        response = client.post(
-            "/organizations", json={"name": "No Widen Org", "slug": "no-widen-org"}
-        )
-        org_id = response.json()["id"]
-        response = client.post(
-            "/projects", json={"name": "Doomed", "organization_id": org_id}
-        )
+        response = client.post("/projects", json={"name": "Doomed"})
         project_id = response.json()["id"]
         client.delete(f"/projects/{project_id}", assert_status_code=200)
 
@@ -535,15 +406,8 @@ class TestSoftDelete:
 
     def test_restore_deleted_project(self, client):
         """Test restoring a soft-deleted project."""
-        # Create org and project
-        response = client.post(
-            "/organizations", json={"name": "Restore Org", "slug": "restore-org"}
-        )
-        org_id = response.json()["id"]
-
-        response = client.post(
-            "/projects", json={"name": "To Restore", "organization_id": org_id}
-        )
+        # Create project
+        response = client.post("/projects", json={"name": "To Restore"})
         project_id = response.json()["id"]
 
         # Soft delete
@@ -563,16 +427,8 @@ class TestSoftDelete:
 
     def test_restore_non_deleted_project_is_not_found(self, client):
         """Restore reads through the trash: a live project is outside it."""
-        # Create org and project
-        response = client.post(
-            "/organizations",
-            json={"name": "Restore Fail Org", "slug": "restore-fail-org"},
-        )
-        org_id = response.json()["id"]
-
-        response = client.post(
-            "/projects", json={"name": "Not Deleted", "organization_id": org_id}
-        )
+        # Create project
+        response = client.post("/projects", json={"name": "Not Deleted"})
         project_id = response.json()["id"]
 
         # A live project is not in the trash, so the restore target does not exist
@@ -581,13 +437,7 @@ class TestSoftDelete:
     def test_trash_and_restore_task_rolls_story_points_back(self, client):
         """Tasks have the same trash and restore routes; restoring a feature
         puts its story points back on the project's roll-up."""
-        response = client.post(
-            "/organizations", json={"name": "Task Trash Org", "slug": "task-trash-org"}
-        )
-        org_id = response.json()["id"]
-        response = client.post(
-            "/projects", json={"name": "Task Trash Project", "organization_id": org_id}
-        )
+        response = client.post("/projects", json={"name": "Task Trash Project"})
         project_id = response.json()["id"]
         response = client.post(
             "/tasks",
@@ -624,16 +474,8 @@ class TestOptimisticLocking:
 
     def test_update_with_correct_version(self, client):
         """Test that update works with correct version."""
-        # Create org, project, and task
-        response = client.post(
-            "/organizations",
-            json={"name": "Version Test Org", "slug": "version-test-org"},
-        )
-        org_id = response.json()["id"]
-
-        response = client.post(
-            "/projects", json={"name": "Version Project", "organization_id": org_id}
-        )
+        # Create project and task
+        response = client.post("/projects", json={"name": "Version Project"})
         project_id = response.json()["id"]
 
         response = client.post(
@@ -654,16 +496,8 @@ class TestOptimisticLocking:
 
     def test_update_with_wrong_version_fails(self, client):
         """Test that update fails with wrong version (409 Conflict)."""
-        # Create org, project, and task
-        response = client.post(
-            "/organizations",
-            json={"name": "Conflict Test Org", "slug": "conflict-test-org"},
-        )
-        org_id = response.json()["id"]
-
-        response = client.post(
-            "/projects", json={"name": "Conflict Project", "organization_id": org_id}
-        )
+        # Create project and task
+        response = client.post("/projects", json={"name": "Conflict Project"})
         project_id = response.json()["id"]
 
         response = client.post(
@@ -682,15 +516,8 @@ class TestOptimisticLocking:
 
     def test_update_without_version_works(self, client):
         """Test that update without version skips optimistic locking check."""
-        # Create org, project, and task
-        response = client.post(
-            "/organizations", json={"name": "No Version Org", "slug": "no-version-org"}
-        )
-        org_id = response.json()["id"]
-
-        response = client.post(
-            "/projects", json={"name": "No Version Project", "organization_id": org_id}
-        )
+        # Create project and task
+        response = client.post("/projects", json={"name": "No Version Project"})
         project_id = response.json()["id"]
 
         response = client.post(
@@ -713,16 +540,7 @@ class TestComputedFields:
 
     def test_project_response_includes_task_rollups(self, client):
         """Test that ProjectSchema response-only rollups are populated."""
-        response = client.post(
-            "/organizations",
-            json={"name": "Response Rollup Org", "slug": "response-rollup-org"},
-        )
-        org_id = response.json()["id"]
-
-        response = client.post(
-            "/projects",
-            json={"name": "Response Rollup Project", "organization_id": org_id},
-        )
+        response = client.post("/projects", json={"name": "Response Rollup Project"})
         project_id = response.json()["id"]
 
         client.post(
@@ -742,16 +560,8 @@ class TestComputedFields:
 
     def test_project_stats_computed_fields(self, client):
         """Test that /projects/{id}/stats returns computed metrics."""
-        # Create org and project
-        response = client.post(
-            "/organizations",
-            json={"name": "Computed Test Org", "slug": "computed-test-org"},
-        )
-        org_id = response.json()["id"]
-
-        response = client.post(
-            "/projects", json={"name": "Computed Project", "organization_id": org_id}
-        )
+        # Create project
+        response = client.post("/projects", json={"name": "Computed Project"})
         project_id = response.json()["id"]
 
         # Add tasks with different statuses
@@ -782,16 +592,8 @@ class TestComputedFields:
 
     def test_project_stats_empty(self, client):
         """Test computed fields with no tasks."""
-        # Create org and project
-        response = client.post(
-            "/organizations",
-            json={"name": "Empty Computed Org", "slug": "empty-computed-org"},
-        )
-        org_id = response.json()["id"]
-
-        response = client.post(
-            "/projects", json={"name": "Empty Project", "organization_id": org_id}
-        )
+        # Create project
+        response = client.post("/projects", json={"name": "Empty Project"})
         project_id = response.json()["id"]
 
         # Get stats - should have zero counts
@@ -807,16 +609,8 @@ class TestTaskWorkflow:
 
     def test_start_task(self, client):
         """Test POST /tasks/{id}/start moves task from TODO to IN_PROGRESS."""
-        # Create org, project, and task
-        response = client.post(
-            "/organizations",
-            json={"name": "Workflow Test Org", "slug": "workflow-test-org"},
-        )
-        org_id = response.json()["id"]
-
-        response = client.post(
-            "/projects", json={"name": "Workflow Project", "organization_id": org_id}
-        )
+        # Create project and task
+        response = client.post("/projects", json={"name": "Workflow Project"})
         project_id = response.json()["id"]
 
         response = client.post(
@@ -836,16 +630,8 @@ class TestTaskWorkflow:
 
     def test_complete_task(self, client):
         """Test POST /tasks/{id}/complete moves task from IN_PROGRESS to DONE."""
-        # Create org, project, and task
-        response = client.post(
-            "/organizations",
-            json={"name": "Complete Test Org", "slug": "complete-test-org"},
-        )
-        org_id = response.json()["id"]
-
-        response = client.post(
-            "/projects", json={"name": "Complete Project", "organization_id": org_id}
-        )
+        # Create project and task
+        response = client.post("/projects", json={"name": "Complete Project"})
         project_id = response.json()["id"]
 
         # Create task and start it
@@ -866,16 +652,8 @@ class TestTaskWorkflow:
 
     def test_reopen_task(self, client):
         """Test POST /tasks/{id}/reopen moves task from DONE to IN_PROGRESS."""
-        # Create org, project, and task
-        response = client.post(
-            "/organizations",
-            json={"name": "Reopen Test Org", "slug": "reopen-test-org"},
-        )
-        org_id = response.json()["id"]
-
-        response = client.post(
-            "/projects", json={"name": "Reopen Project", "organization_id": org_id}
-        )
+        # Create project and task
+        response = client.post("/projects", json={"name": "Reopen Project"})
         project_id = response.json()["id"]
 
         # Create task, start it, and complete it
@@ -896,17 +674,8 @@ class TestTaskWorkflow:
 
     def test_start_task_invalid_status_fails(self, client):
         """Test that starting a task not in TODO status fails."""
-        # Create org, project, and task
-        response = client.post(
-            "/organizations",
-            json={"name": "Invalid Start Org", "slug": "invalid-start-org"},
-        )
-        org_id = response.json()["id"]
-
-        response = client.post(
-            "/projects",
-            json={"name": "Invalid Start Project", "organization_id": org_id},
-        )
+        # Create project and task
+        response = client.post("/projects", json={"name": "Invalid Start Project"})
         project_id = response.json()["id"]
 
         response = client.post(
@@ -924,17 +693,8 @@ class TestTaskWorkflow:
 
     def test_complete_task_invalid_status_fails(self, client):
         """Test that completing a task not in IN_PROGRESS status fails."""
-        # Create org, project, and task
-        response = client.post(
-            "/organizations",
-            json={"name": "Invalid Complete Org", "slug": "invalid-complete-org"},
-        )
-        org_id = response.json()["id"]
-
-        response = client.post(
-            "/projects",
-            json={"name": "Invalid Complete Project", "organization_id": org_id},
-        )
+        # Create project and task
+        response = client.post("/projects", json={"name": "Invalid Complete Project"})
         project_id = response.json()["id"]
 
         response = client.post(
@@ -949,17 +709,8 @@ class TestTaskWorkflow:
 
     def test_reopen_task_invalid_status_fails(self, client):
         """Test that reopening a task not in DONE status fails."""
-        # Create org, project, and task
-        response = client.post(
-            "/organizations",
-            json={"name": "Invalid Reopen Org", "slug": "invalid-reopen-org"},
-        )
-        org_id = response.json()["id"]
-
-        response = client.post(
-            "/projects",
-            json={"name": "Invalid Reopen Project", "organization_id": org_id},
-        )
+        # Create project and task
+        response = client.post("/projects", json={"name": "Invalid Reopen Project"})
         project_id = response.json()["id"]
 
         response = client.post(

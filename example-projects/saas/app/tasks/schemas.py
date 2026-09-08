@@ -36,7 +36,7 @@ class TaskSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
     # Optimistic locking
     version: int = 1
 
-    # Stamped server-side by SoftDeleteMixin / AuditStampedMixin on TaskView.
+    # Stamped server-side by the model mixins (app.models).
     deleted_at: fr.ReadOnly[datetime | None] = None
     created_by_id: fr.ReadOnly[int | None] = None
     updated_by_id: fr.ReadOnly[int | None] = None

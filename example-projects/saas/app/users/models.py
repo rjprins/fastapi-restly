@@ -1,22 +1,12 @@
 """User model with organization membership and role."""
 
-from enum import Enum
-
 from sqlalchemy import orm
 
 import fastapi_restly as fr
 
 from ..context import TenantClauses
 from ..models import AuditStamped, SoftDeletable, TenantOwned
-
-
-class UserRole(str, Enum):
-    """User roles within an organization."""
-
-    OWNER = "owner"
-    ADMIN = "admin"
-    MEMBER = "member"
-    HR = "hr"  # Can see salary information
+from .roles import UserRole
 
 
 class User(TenantOwned, AuditStamped, SoftDeletable, fr.TimestampsMixin, fr.IDBase):

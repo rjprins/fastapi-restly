@@ -27,8 +27,14 @@ service needs.
 - **Migration-owned schema.** The app never calls `async_create_all()`.
   `alembic/` contains an async environment and the initial schema migration.
 - **Migration-backed fixtures.** Restly runs `alembic upgrade head` against the
-  test database before the suite. The migration seeds the read-only country
-  lookup used by the tests.
+  test database before the suite. The migrations seed the read-only country
+  lookup and the platform admin the tests sign in through.
+- **One identity per request.** Every request to a tenant route acts as one
+  user in one organization; `app/context.py` answers 401 without one, and
+  the tenant and audit columns are stamped from that identity on the model.
+  The admin is a conditional on the same context, not a second route tree,
+  and the first admin is seeded by a migration because nobody exists yet to
+  create it through the API.
 - **Subject-first organization.** Each resource package keeps its SQLAlchemy
   model, Pydantic schemas, and Restly views together. Application-wide concerns
   remain in specifically named top-level modules. Importing `app/main.py` is
@@ -107,6 +113,10 @@ documentation is at <http://127.0.0.1:8000/docs>.
 The application startup does not create tables. Run `alembic upgrade head`
 after starting a fresh database and whenever a deployment includes new
 migrations.
+
+The auth check in `app/views.py` is a placeholder: nothing sets the identity
+on `request.state`, so the tenant routes answer 401 until you wire real
+authentication. The organization and country routes take no identity.
 
 ## Work with migrations
 

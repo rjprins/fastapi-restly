@@ -13,9 +13,6 @@ from ..views import SoftDeleteMixin, TenantBase
 from .models import User, UserRole
 from .schemas import UserFullSchema, UserPublicSchema, UserSchema
 
-# Set by tests to simulate field-level permissions without real auth middleware.
-_TEST_USER_ROLE: "UserRole | None" = None
-
 
 class UpdateMeRequest(BaseModel):
     """Request body for updating current user's profile."""
@@ -52,17 +49,8 @@ class UserView(SoftDeleteMixin, TenantBase):
     schema = UserSchema
     # No scope declared: reads apply UserClauses.default_scope.
 
-    def _current_user_role(self) -> UserRole | None:
-        """Return the current user's role.
-
-        In production: set by auth middleware via ``request.state.user_role``.
-        In tests: controlled via the module-level ``_TEST_USER_ROLE`` variable.
-        """
-        return getattr(self.request.state, "user_role", None) or _TEST_USER_ROLE
-
     def _can_see_salary(self) -> bool:
-        role = self._current_user_role()
-        return role in (UserRole.HR, UserRole.OWNER)
+        return Current.role() in (UserRole.HR, UserRole.OWNER)
 
     async def create(self, schema_obj):
         """Hash the password before saving the new row."""
@@ -114,10 +102,7 @@ class UserView(SoftDeleteMixin, TenantBase):
     @fr.get("/me", response_model=UserSchema)
     async def get_current_user(self) -> Any:
         """Get current user's profile."""
-        user_id = Current.user_id()
-        if not user_id:
-            raise HTTPException(status_code=404, detail="Current user not found")
-        user = await self.handle_get_one(user_id)
+        user = await self.handle_get_one(Current.user_id())
         return self.to_response_schema(user)
 
     @fr.patch("/me", response_model=UserSchema)
@@ -130,8 +115,5 @@ class UserView(SoftDeleteMixin, TenantBase):
         commits via the bracket. Any future ``update`` override (validation,
         auditing) applies here automatically.
         """
-        user_id = Current.user_id()
-        if not user_id:
-            raise HTTPException(status_code=404, detail="Current user not found")
-        user = await self.handle_update(user_id, request)
+        user = await self.handle_update(Current.user_id(), request)
         return self.to_response_schema(user)

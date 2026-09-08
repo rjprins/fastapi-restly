@@ -12,6 +12,7 @@ import fastapi_restly as fr
 from ..context import Current, TenantClauses
 from ..models import AuditStamped, SoftDeletable
 from ..projects.models import Project
+from ..users.roles import UserRole
 
 
 class IntEnumType(TypeDecorator):
@@ -143,26 +144,24 @@ class TaskClauses(TenantClauses):
         Tasks reach their organization through the project, so the tenant
         rule is declared here as an EXISTS instead of derived from a
         column by ``TenantClauses``: the shape a reference-check scope
-        must have. Admin requests, and requests without an org in
-        context, see every task.
+        must have. Admin requests see every task.
         """
-        org_id = Current.org_id()
-        if Current.is_admin() or org_id is None:
+        if Current.is_admin():
             return sa.true()
-        return Task.project.has(Project.organization_id == org_id)
+        return Task.project.has(Project.organization_id == Current.org_id())
 
     @fr.where_clause
     @staticmethod
     def assigned_to_current_user() -> sa.ColumnElement[bool]:
-        """Row-level permission: tasks assigned to the authenticated user.
+        """Row-level permission: a member sees the tasks assigned to them.
 
-        Admin requests, and requests without a user in context, see every
-        task.
+        Every other role sees the organization's tasks, and an admin every
+        task: the role is the conditional here, the way ``is_admin`` is
+        for the tenant rule.
         """
-        user_id = Current.user_id()
-        if Current.is_admin() or user_id is None:
+        if Current.is_admin() or Current.role() != UserRole.MEMBER:
             return sa.true()
-        return Task.assignee_id == user_id
+        return Task.assignee_id == Current.user_id()
 
     is_deleted = fr.where_clause(Task.deleted_at.is_not(None))
 

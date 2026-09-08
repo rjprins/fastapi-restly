@@ -88,7 +88,10 @@ Copy them into your project as a starting point.
 The read half is a clause factory: one function builds the tenant predicate
 for any model with an ``organization_id`` column. A called slot returns
 its bound value, so the clause branches on values a generated dependency
-(``Current.depends(...)``, see the SaaS example) binds once per request:
+(``Current.depends(...)``, see the SaaS example) binds once per request.
+The values are never `None`: a request without an authenticated identity is
+refused by the dependency's sources (401) before any clause runs, and the
+admin is a conditional, not an absent value:
 
 ```python
 from typing import Any
@@ -97,58 +100,53 @@ import fastapi_restly as fr
 
 
 class Current(fr.ContextNamespace):
-    org_id: fr.ContextParam[int | None]
-    user_id: fr.ContextParam[int | None]
+    org_id: fr.ContextParam[int]
+    user_id: fr.ContextParam[int]
     is_admin: fr.ContextParam[bool]
 
 
 def tenant_scope(model: type[Any]) -> fr.WhereClause:
-    """Rows of ``model`` owned by the authenticated organization."""
+    """Rows of ``model`` owned by the organization the request acts in."""
 
     @fr.where_clause
     def owned_by_tenant() -> sa.ColumnElement[bool]:
-        # Read before the admin check: an unbound context stays a loud error.
-        org_id = Current.org_id()
-        if Current.is_admin() or org_id is None:
+        if Current.is_admin():
             return sa.true()
-        return model.organization_id == org_id
+        return model.organization_id == Current.org_id()
 
     return owned_by_tenant
 ```
 
-The write half is the column itself, on a model mixin. The tenant is stamped
-at construction rather than at flush, through an `init` listener, so a verb
-that reads it before saving (a slug probe scoped to the organization) already
-sees the stamped value:
+The write half is the column itself, on a model mixin. The tenant is not a
+constructor argument and not a payload field: `init=False` keeps it out of
+the constructor, `fr.ReadOnly` on the schema keeps it out of the body, and
+the insert default stamps it at flush from the same slot the clause reads:
 
 ```python
 from sqlalchemy import ForeignKey, orm
 
 
 class TenantOwned(orm.MappedAsDataclass, kw_only=True):
-    """The tenant column, stamped from context at construction."""
+    """The tenant column: the organization the request acts in."""
 
     organization_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("organization.id")
+        ForeignKey("organization.id"),
+        init=False,
+        insert_default=lambda: Current.org_id(),
     )
-
-
-@sa.event.listens_for(TenantOwned, "init", propagate=True)
-def _stamp_tenant(target, args, kwargs) -> None:
-    org_id = Current.org_id()
-    if org_id is not None:
-        kwargs["organization_id"] = org_id
 
 
 class Project(TenantOwned, fr.TimestampsMixin, fr.IDBase):
     name: orm.Mapped[str]
 ```
 
-With an organization in context the stamp wins over whatever the payload
-said; without one, the caller's value stands, which is the admin path in the
-example. A namespace base can derive the read clause from the same column,
-so a model declares its tenancy once (see `TenantClauses` in the SaaS
-example's `context.py`).
+A row lands in the organization the request acts in, whoever builds it. An
+admin writing into another tenant acts as that tenant: the auth layer binds
+the acted-as organization, and the stamp follows. A verb that needs the
+value before the flush reads `Current.org_id()` itself, as the example's
+slug probe does. A namespace base can derive the read clause from the same
+column, so a model declares its tenancy once (see `TenantClauses` in the
+SaaS example's `context.py`).
 
 (soft-delete-mixin)=
 ### Soft delete: a scope clause plus a delete mixin
@@ -206,11 +204,11 @@ bring a flipped row back, see
 ```python
 class AuditStamped(orm.MappedAsDataclass, kw_only=True):
     created_by_id: orm.Mapped[int | None] = orm.mapped_column(
-        ForeignKey("user.id"), default=None, insert_default=lambda: Current.user_id()
+        ForeignKey("user.id"), init=False, insert_default=lambda: Current.user_id()
     )
     updated_by_id: orm.Mapped[int | None] = orm.mapped_column(
         ForeignKey("user.id"),
-        default=None,
+        init=False,
         insert_default=lambda: Current.user_id(),
         onupdate=lambda: Current.user_id(),
     )
@@ -218,12 +216,15 @@ class AuditStamped(orm.MappedAsDataclass, kw_only=True):
 
 On a dataclass base `default` is the constructor default, so the insert-time
 callable goes in `insert_default`; `onupdate` fires on every UPDATE that
-changes the row. A payload value wins over a default, so keep these fields
-`fr.ReadOnly` on the schema.
+changes the row. Keep these fields `fr.ReadOnly` on the schema: with
+`init=False` a body value would otherwise reach the constructor and fail
+loudly there.
 
 The lambdas call the slot: a `ContextParam` resolves when called, and an
-unbound context raises rather than stamping `None`. A worker or a seed script
-binds context around its writes:
+unbound context raises rather than stamping `None`. The columns stay
+nullable for one row: the first user has no creator and comes from a
+migration, which writes through its own table objects and fires no ORM
+default. A worker or a seed script binds context around its writes:
 
 ```python
 with Current.bind(org_id=7, user_id=1, is_admin=False):

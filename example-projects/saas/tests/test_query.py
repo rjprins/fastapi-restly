@@ -4,37 +4,25 @@ import uuid
 
 
 def setup_test_data(client):
-    """Create test data for query tests."""
+    """Create test data for query tests, in the acting organization."""
     # Use unique suffix to avoid conflicts between tests
     unique = str(uuid.uuid4())[:8]
 
-    # Create org
-    response = client.post(
-        "/organizations",
-        json={"name": f"Query Test Org {unique}", "slug": f"query-test-org-{unique}"},
-    )
-    org_id = response.json()["id"]
-
     # Create users
     users = []
-    for i, (name, role) in enumerate(
-        [("Alice", "admin"), ("Bob", "member"), ("Charlie", "member")]
-    ):
+    for name, role in [("Anna", "admin"), ("Bob", "member"), ("Charlie", "member")]:
         response = client.post(
             "/users",
             json={
                 "email": f"{name.lower()}-{unique}@example.com",
                 "name": name,
                 "role": role,
-                "organization_id": org_id,
             },
         )
         users.append(response.json())
 
     # Create project
-    response = client.post(
-        "/projects", json={"name": "Query Project", "organization_id": org_id}
-    )
+    response = client.post("/projects", json={"name": "Query Project"})
     project_id = response.json()["id"]
 
     # Create tasks with different statuses and priorities
@@ -60,7 +48,7 @@ def setup_test_data(client):
         )
         tasks.append(response.json())
 
-    return {"org_id": org_id, "users": users, "project_id": project_id, "tasks": tasks}
+    return {"users": users, "project_id": project_id, "tasks": tasks}
 
 
 class TestFiltering:
@@ -191,26 +179,9 @@ class TestLabelFiltering:
     """Filter and sort behaviour against ``LabelView``."""
 
     def _setup_labels(self, client):
-        unique = str(uuid.uuid4())[:8]
-        response = client.post(
-            "/organizations",
-            json={"name": f"Label Org {unique}", "slug": f"label-org-{unique}"},
-        )
-        org_id = response.json()["id"]
-
-        client.post(
-            "/labels",
-            json={"name": "urgent", "color": "#ff0000", "organization_id": org_id},
-        )
-        client.post(
-            "/labels",
-            json={"name": "feature", "color": "#00ff00", "organization_id": org_id},
-        )
-        client.post(
-            "/labels",
-            json={"name": "bug", "color": "#0000ff", "organization_id": org_id},
-        )
-        return org_id
+        client.post("/labels", json={"name": "urgent", "color": "#ff0000"})
+        client.post("/labels", json={"name": "feature", "color": "#00ff00"})
+        client.post("/labels", json={"name": "bug", "color": "#0000ff"})
 
     def test_filter_by_name(self, client):
         """Filter: ?name=urgent returns only labels named 'urgent'."""
@@ -241,32 +212,19 @@ class TestLabelFiltering:
 
         assert len(labels) <= 2
 
-    def test_filter_composes_with_tenant_scope(self, client, auth_context):
-        """LabelView's filters compose with the tenant stamp."""
-        org1 = client.post(
-            "/organizations",
-            json={"name": "Scoped Labels 1", "slug": "scoped-labels-1"},
-        ).json()
-        org2 = client.post(
-            "/organizations",
-            json={"name": "Scoped Labels 2", "slug": "scoped-labels-2"},
-        ).json()
+    def test_filter_composes_with_tenant_scope(self, client, new_tenant):
+        """LabelView's filters compose with the tenant floor."""
+        beta = new_tenant("beta")
+        label1 = client.post("/labels", json={"name": "shared", "color": "#ff0000"})
+        with beta.acting():
+            label2 = client.post("/labels", json={"name": "shared", "color": "#00ff00"})
 
-        label1 = client.post(
-            "/labels",
-            json={"name": "shared", "color": "#ff0000", "organization_id": org1["id"]},
-        ).json()
-        label2 = client.post(
-            "/labels",
-            json={"name": "shared", "color": "#00ff00", "organization_id": org2["id"]},
-        ).json()
+        labels = client.get("/labels?name=shared").json()["data"]
+        assert [label["id"] for label in labels] == [label1.json()["id"]]
 
-        with auth_context(org_id=org1["id"]):
-            response = client.get("/labels?name=shared")
-            labels = response.json()["data"]
-
-        assert [label["id"] for label in labels] == [label1["id"]]
-        assert label2["id"] not in {label["id"] for label in labels}
+        with beta.acting():
+            labels = client.get("/labels?name=shared").json()["data"]
+        assert [label["id"] for label in labels] == [label2.json()["id"]]
 
 
 class TestPaginationEnvelope:
@@ -274,17 +232,8 @@ class TestPaginationEnvelope:
 
     def test_project_list_returns_pagination_envelope(self, client):
         """Project list response wraps rows in the default pagination envelope."""
-        unique = str(uuid.uuid4())[:8]
-        response = client.post(
-            "/organizations",
-            json={"name": f"Pag Org {unique}", "slug": f"pag-org-{unique}"},
-        )
-        org_id = response.json()["id"]
-
         for i in range(3):
-            client.post(
-                "/projects", json={"name": f"Project {i}", "organization_id": org_id}
-            )
+            client.post("/projects", json={"name": f"Project {i}"})
 
         response = client.get("/projects")
         data = response.json()

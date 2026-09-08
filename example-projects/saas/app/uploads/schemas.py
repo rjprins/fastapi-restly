@@ -24,7 +24,8 @@ class UploadSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
     """
 
     filename: str
-    organization_id: int
-    uploaded_by_id: int | None = None
+    # Stamped from the request context, never from a body.
+    organization_id: fr.ReadOnly[int]
+    uploaded_by_id: fr.ReadOnly[int | None] = None
     completed_at: datetime | None = None
     line_count: int = 0

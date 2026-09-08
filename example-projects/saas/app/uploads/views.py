@@ -2,7 +2,8 @@
 
 The multipart upload flow:
 
-1. Build the parent ``Upload`` row from form fields.
+1. Build the parent ``Upload`` row from the file; the tenant and the
+   uploader are the model's stamps from ``Current``.
 2. ``await self.session.flush()`` — populates ``upload.id`` from the
    autoincrement so we can use it as a foreign key on the lines.
 3. Mutate: parse the file, attach related ``UploadLine`` rows, set the
@@ -20,7 +21,6 @@ import fastapi
 
 import fastapi_restly as fr
 
-from ..context import Current
 from ..views import TenantBase
 from .models import Upload, UploadLine
 from .schemas import UploadLineSchema, UploadSchema
@@ -43,7 +43,6 @@ class UploadView(TenantBase):
     async def upload_csv(
         self,
         file: fastapi.UploadFile = fastapi.File(...),  # noqa: B008 — fastapi style
-        organization_id: int = fastapi.Form(...),  # noqa: B008
     ) -> Upload:
         """Parse a CSV file and create an Upload + UploadLine rows.
 
@@ -61,12 +60,9 @@ class UploadView(TenantBase):
 
         # Commit the parent, lines, and outbox event together.
         async with self.write_action("create") as w:
-            # 1) Build the parent directly from multipart form fields.
-            upload = Upload(
-                filename=file.filename,
-                organization_id=organization_id,
-                uploaded_by_id=Current.user_id(),
-            )
+            # 1) Build the parent; organization_id and uploaded_by_id are the
+            #    model's stamps, filled at the flush below.
+            upload = Upload(filename=file.filename)
             self.session.add(upload)
 
             # 2) Early flush: get upload.id before creating child rows.

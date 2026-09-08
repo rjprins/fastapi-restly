@@ -1,7 +1,11 @@
 """Application-wide view foundation for the SaaS example.
 
 ``TenantBase`` provides shared auth-context dependencies, the tenant floor
-on reads, and transactional outbox emission. Structural fields live on
+on reads, and transactional outbox emission. A request without an
+authenticated identity does not reach a ``TenantBase`` route (the context
+sources answer 401), so every tenant read and write acts as one user in
+one organization; the plain views (organizations, countries) take no
+identity. Structural fields live on
 the models: a subject's ``models.py`` mixes in ``TenantOwned``,
 ``AuditStamped``, or ``SoftDeletable`` from ``app.models``, which stamp
 ``organization_id`` and the audit ids from ``Current`` on every write
@@ -49,9 +53,12 @@ from .outbox import OutboxEvent
 def check_api_key(request: fastapi.Request) -> None:
     """Placeholder auth check.
 
-    In production, validate a JWT or API key from the Authorization header.
-    Raise ``fastapi.HTTPException(401)`` if the token is missing or invalid.
-    This dependency runs before every route on every TenantBase subclass.
+    In production, validate a JWT or API key from the Authorization header
+    and set ``request.state.org_id``, ``user_id``, ``user_role`` and
+    ``is_admin`` from it; the sources in ``app.context`` read them and
+    answer 401 when they are missing. An admin acting in another tenant
+    gets that tenant as ``org_id`` (from an act-as header, say). This
+    dependency runs before every route on every TenantBase subclass.
     """
     pass  # Always passes in this example; replace with real auth logic
 
@@ -61,7 +68,8 @@ class TenantBase(fr.AsyncRestView):
 
     Subclasses inherit:
     - Router-level ``check_api_key`` dependency on every route
-    - ``bind_request_context``, so ``Current`` reads work in every route
+    - ``bind_request_context``, so ``Current`` reads work in every route and
+      a request without an identity is a 401
     - ``apply_scope`` that stacks the model's tenant rule under every read
     - ``before_action_commit`` with a placeholder for audit side effects
     """

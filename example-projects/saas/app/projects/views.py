@@ -118,27 +118,26 @@ class ProjectView(SoftDeleteMixin, TenantBase):
     def _can_edit(self, project: Project) -> bool:
         """Whether the current user may edit this project.
 
-        Stand-in policy: only members of the same org. In production this
-        would consult the user's role from request.state.
+        Stand-in policy: the project's own organization, and admins. In
+        production this would consult ``Current.role`` as well.
         """
-        org_id = Current.org_id()
-        return org_id is None or project.organization_id == org_id
+        return Current.is_admin() or project.organization_id == Current.org_id()
 
     async def create(self, schema_obj):
         """Slug derivation + outbox emit.
 
         Overrides the *bare* business ``create`` verb: auth-free and
         commit-free. ``organization_id`` and the audit stamps are the
-        model's business (``app.models``): the tenant is stamped when
-        ``Project`` is constructed inside ``make_new_object``, so the slug
-        probe below already sees it. We only do the project-specific bits:
+        model's business (``app.models``), stamped at flush; the slug probe
+        needs the organization before that, so it reads ``Current.org_id()``
+        itself. We only do the project-specific bits:
         the slug uniqueness probe and the outbox event. The outbox row is
         added to the session here and the ``handle_create`` commit bracket
         persists it atomically with the project write.
         """
         project = await self.make_new_object(schema_obj)
         project.slug = await self._unique_slug(
-            project.slug or _slugify(project.name), project.organization_id
+            project.slug or _slugify(project.name), Current.org_id()
         )
         project = await self.save_object(project)
         self._emit(
@@ -155,16 +154,11 @@ class ProjectView(SoftDeleteMixin, TenantBase):
         method, and finally commits via the bracket. Audit-stamping
         (``updated_by_id``) is the column's ``onupdate`` (``AuditStamped`` in
         ``app.models``). This method only contains the project-specific
-        immutable-organization guard, slug, and transition-event logic. The
-        status-changed outbox row is added to the session and the
-        ``handle_update`` commit bracket persists it atomically.
+        slug and transition-event logic; ``organization_id`` is read-only on
+        the schema, so no body can move a project. The status-changed
+        outbox row is added to the session and the ``handle_update`` commit
+        bracket persists it atomically.
         """
-        # organization_id is immutable after creation.
-        new_org = getattr(schema_obj, "organization_id", None)
-        if new_org is not None and new_org != obj.organization_id:
-            raise HTTPException(
-                400, "Cannot move a project to a different organization"
-            )
         old_name, old_status = obj.name, obj.status
         project = await self.update_object(obj, schema_obj)
         if project.name != old_name and not getattr(schema_obj, "slug", None):
@@ -276,7 +270,6 @@ class ProjectView(SoftDeleteMixin, TenantBase):
             name=request.new_name or f"{original.name} (Copy)",
             description=original.description,
             status=ProjectStatus.ACTIVE,
-            organization_id=original.organization_id,
         )
         new_project = await self.handle_create(new_schema)
 

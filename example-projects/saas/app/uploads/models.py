@@ -3,7 +3,7 @@
 The multipart upload route needs ``Upload.id`` before it can insert
 ``UploadLine`` rows. The flow is::
 
-    upload = self.make_new_object(schema)
+    upload = Upload(filename=...)
     await self.session.flush()        # populate upload.id
     upload.lines = [
         UploadLine(upload_id=upload.id, ...) for row in parsed_rows
@@ -19,14 +19,16 @@ from sqlalchemy import ForeignKey, orm
 
 import fastapi_restly as fr
 
+from ..context import Current, TenantClauses
+from ..models import TenantOwned
 
-class Upload(fr.TimestampsMixin, fr.IDBase):
+
+class Upload(TenantOwned, fr.TimestampsMixin, fr.IDBase):
     """Parent row for a batch of imported lines."""
 
     filename: orm.Mapped[str]
-    organization_id: orm.Mapped[int] = orm.mapped_column(ForeignKey("organization.id"))
     uploaded_by_id: orm.Mapped[int | None] = orm.mapped_column(
-        ForeignKey("user.id"), default=None
+        ForeignKey("user.id"), init=False, insert_default=lambda: Current.user_id()
     )
     completed_at: orm.Mapped[datetime | None] = orm.mapped_column(default=None)
     line_count: orm.Mapped[int] = orm.mapped_column(default=0)
@@ -34,6 +36,12 @@ class Upload(fr.TimestampsMixin, fr.IDBase):
     lines: orm.Mapped[list["UploadLine"]] = orm.relationship(
         back_populates="upload", default_factory=list, cascade="all, delete-orphan"
     )
+
+
+class UploadClauses(TenantClauses):
+    """Upload visibility: the tenant floor alone."""
+
+    model = Upload
 
 
 class UploadLine(fr.TimestampsMixin, fr.IDBase):
