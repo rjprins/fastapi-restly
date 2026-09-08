@@ -20,7 +20,9 @@ or `asyncpg`/`psycopg` for PostgreSQL. Test tooling lives in its own extra; see
 
 ## Create an app
 
-A first application fits in one file, `main.py`:
+`restly new myapp` generates a complete project; see
+[Generate it](#restly-new). This guide builds one by hand instead, starting from
+a single file, `main.py`:
 
 ```python
 from contextlib import asynccontextmanager
@@ -102,9 +104,10 @@ The `fastapi dev` command comes from the `standard` extra; the dev server is
 not for production. Then open `http://127.0.0.1:8000/docs` or
 `http://127.0.0.1:8000/openapi.json`.
 
-## Use the generated endpoints
+## Use the CRUD routes
 
-Registering `UserView` with `prefix = "/users"` generated five endpoints:
+`UserView` inherits five endpoint methods from `AsyncRestView`. Registering it
+with `prefix = "/users"` exposes these routes:
 
 - `GET /users`
 - `POST /users`
@@ -142,9 +145,9 @@ default `data` envelope:
 }
 ```
 
-Update semantics are `PATCH` (partial update); see
-[Generated REST Endpoints](api_reference.md#generated-rest-endpoints) for the
-full contract. Filter lists with query parameters, for example
+Update semantics are `PATCH` (partial update). See
+[Default CRUD Routes](api_reference.md#default-crud-routes) for the full
+contract. Filter lists with query parameters, for example
 `GET /users?name=Jane`. See [Filter, Sort, and Paginate Lists](howto_query_modifiers.md).
 
 ## Add an explicit schema (optional)
@@ -179,10 +182,11 @@ compares the two.
 
 Keep the one-file layout while the application is small. Once it holds several
 resources, give each one a package with its own `models.py`, `schemas.py`, and
-`views.py`, and register them all from a single `api.py`.
+`views.py`, and register them all from a `VIEWS` tuple in `main.py`.
 [Structure a Project](howto_project_structure.md) covers the full layout, the
 import direction it depends on, and which modules to add only once they earn
-their place.
+their place. Generating a project with `restly new` and moving this code into it
+is a reasonable way to make the move.
 
 ## Test quickly
 
@@ -202,11 +206,18 @@ For test isolation (rolling back test data between tests), see the
 
 ## Next steps
 
-Continue with the **[Tutorial](tutorial.md)**, which builds a complete
-multi-model API step by step. The pages below go deeper into individual topics:
+[Build a Blog API](tutorial.md) adds a related model, explicit schemas,
+filtering, and broader tests. [Customize the Blog
+API](tutorial_customizing.md) then adds overrides, custom routes,
+authorization, and shared base classes.
 
-- [Class-Based Views](class_based_views.md): what makes the views subclassable,
-  and when to use {class}`View <fastapi_restly.views.View>`, {class}`RestView <fastapi_restly.views.RestView>`, or a plain FastAPI route.
+Use these pages for individual topics:
+
+- [Using RestView](rest_views.md): the default CRUD contract, view
+  configuration, and the map from common changes to their owning guides.
+- [Views](class_based_views.md): when to use a generic
+  {class}`View <fastapi_restly.views.View>` or a plain FastAPI route, and how
+  view registration and inheritance work.
 - Already have a FastAPI app? [Use Restly in an Existing Project](howto_existing_project.md)
   shows how Restly adopts per resource, beside your current routes.
 - [Filter, Sort, and Paginate Lists](howto_query_modifiers.md)

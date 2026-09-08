@@ -9,7 +9,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="noindex, follow">
 
-    <title>Getting Started &#8212; FastAPI-Restly 0.9.0 documentation</title>
+    <title>Getting Started &#8212; FastAPI-Restly 0.10.0 documentation</title>
   
   
   
@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=6821e04d" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=e2851362" />
   
   <!-- So that users can add custom icons -->
   <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=39bb1c6d"></script>
+    <script src="_static/documentation_options.js?v=82662543"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -62,12 +62,12 @@
     <link rel="author" title="About these documents" href="about.html" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Tutorial" href="tutorial_overview.html" />
+    <link rel="next" title="Build a Blog API" href="tutorial.html" />
     <link rel="prev" title="FastAPI-Restly" href="index.html" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.9" />
+  <meta name="docsearch:version" content="0.10" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -168,7 +168,7 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="tutorial_overview.html">
+  <a class="nav-link nav-internal" href="tutorial.html">
     Tutorial
   </a>
 </li>
@@ -176,14 +176,7 @@
 
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="class_based_views.html">
-    Views
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="customize.html">
-    Customize
+    CRUD Views
   </a>
 </li>
 
@@ -196,22 +189,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="examples.html">
-    Examples
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="api_reference.html">
     API
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="about.html">
-    About
   </a>
 </li>
 
@@ -222,6 +201,30 @@
   </a>
 </li>
 
+            <li class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button"
+                data-bs-toggle="dropdown" aria-expanded="false"
+                aria-controls="pst-nav-more-links">
+                    More
+                </button>
+                <ul id="pst-nav-more-links" class="dropdown-menu">
+                    
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="about.html">
+    About
+  </a>
+</li>
+
+                </ul>
+            </li>
+            
   </ul>
 </nav></div>
       
@@ -339,7 +342,7 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="tutorial_overview.html">
+  <a class="nav-link nav-internal" href="tutorial.html">
     Tutorial
   </a>
 </li>
@@ -347,14 +350,7 @@
 
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="class_based_views.html">
-    Views
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="customize.html">
-    Customize
+    CRUD Views
   </a>
 </li>
 
@@ -367,13 +363,6 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="examples.html">
-    Examples
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="api_reference.html">
     API
   </a>
@@ -381,15 +370,22 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="about.html">
-    About
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
   </a>
 </li>
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
-    Blog
+  <a class="nav-link nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="about.html">
+    About
   </a>
 </li>
 
@@ -531,7 +527,9 @@ or <code class="docutils literal notranslate"><span class="pre">asyncpg</span></
 </section>
 <section id="create-an-app">
 <h2>Create an app<a class="headerlink" href="#create-an-app" title="Link to this heading">#</a></h2>
-<p>A first application fits in one file, <code class="docutils literal notranslate"><span class="pre">main.py</span></code>:</p>
+<p><code class="docutils literal notranslate"><span class="pre">restly</span> <span class="pre">new</span> <span class="pre">myapp</span></code> generates a complete project; see
+<a class="reference internal" href="howto_project_structure.html#restly-new"><span class="std std-ref">Generate it</span></a>. This guide builds one by hand instead, starting from
+a single file, <code class="docutils literal notranslate"><span class="pre">main.py</span></code>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">contextlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">asynccontextmanager</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
@@ -583,7 +581,7 @@ while SQLite returns naive datetime values. Declare
 stores a timezone-free wall-clock value.</p></li>
 <li><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a> and <a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a> expect a single primary-key column; for
 composite-key tables, see
-<a class="reference internal" href="class_based_views.html#the-view-hierarchy"><span class="std std-ref">the view hierarchy</span></a>.</p></li>
+<a class="reference internal" href="class_based_views.html#id1"><span class="std std-ref">the view hierarchy</span></a>.</p></li>
 <li><p>With no manual schema, FastAPI-Restly auto-generates <code class="docutils literal notranslate"><span class="pre">UserRead</span></code>, <code class="docutils literal notranslate"><span class="pre">UserCreate</span></code>,
 and <code class="docutils literal notranslate"><span class="pre">UserUpdate</span></code> from your model; see
 <a class="reference internal" href="technical_details.html#id1"><span class="std std-ref">Auto-Generated Schemas</span></a>.</p></li>
@@ -609,9 +607,10 @@ minimal validation rules.</p>
 not for production. Then open <code class="docutils literal notranslate"><span class="pre">http://127.0.0.1:8000/docs</span></code> or
 <code class="docutils literal notranslate"><span class="pre">http://127.0.0.1:8000/openapi.json</span></code>.</p>
 </section>
-<section id="use-the-generated-endpoints">
-<h2>Use the generated endpoints<a class="headerlink" href="#use-the-generated-endpoints" title="Link to this heading">#</a></h2>
-<p>Registering <code class="docutils literal notranslate"><span class="pre">UserView</span></code> with <code class="docutils literal notranslate"><span class="pre">prefix</span> <span class="pre">=</span> <span class="pre">&quot;/users&quot;</span></code> generated five endpoints:</p>
+<section id="use-the-crud-routes">
+<h2>Use the CRUD routes<a class="headerlink" href="#use-the-crud-routes" title="Link to this heading">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">UserView</span></code> inherits five endpoint methods from <code class="docutils literal notranslate"><span class="pre">AsyncRestView</span></code>. Registering it
+with <code class="docutils literal notranslate"><span class="pre">prefix</span> <span class="pre">=</span> <span class="pre">&quot;/users&quot;</span></code> exposes these routes:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/users</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/users</span></code></p></li>
@@ -643,9 +642,9 @@ default <code class="docutils literal notranslate"><span class="pre">data</span>
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>Update semantics are <code class="docutils literal notranslate"><span class="pre">PATCH</span></code> (partial update); see
-<a class="reference internal" href="api_reference.html#generated-rest-endpoints"><span class="std std-ref">Generated REST Endpoints</span></a> for the
-full contract. Filter lists with query parameters, for example
+<p>Update semantics are <code class="docutils literal notranslate"><span class="pre">PATCH</span></code> (partial update). See
+<a class="reference internal" href="api_reference.html#id1"><span class="std std-ref">Default CRUD Routes</span></a> for the full
+contract. Filter lists with query parameters, for example
 <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/users?name=Jane</span></code>. See <a class="reference internal" href="howto_query_modifiers.html"><span class="std std-doc">Filter, Sort, and Paginate Lists</span></a>.</p>
 </section>
 <section id="add-an-explicit-schema-optional">
@@ -677,10 +676,11 @@ compares the two.</p>
 <h2>Grow beyond one file<a class="headerlink" href="#grow-beyond-one-file" title="Link to this heading">#</a></h2>
 <p>Keep the one-file layout while the application is small. Once it holds several
 resources, give each one a package with its own <code class="docutils literal notranslate"><span class="pre">models.py</span></code>, <code class="docutils literal notranslate"><span class="pre">schemas.py</span></code>, and
-<code class="docutils literal notranslate"><span class="pre">views.py</span></code>, and register them all from a single <code class="docutils literal notranslate"><span class="pre">api.py</span></code>.
+<code class="docutils literal notranslate"><span class="pre">views.py</span></code>, and register them all from a <code class="docutils literal notranslate"><span class="pre">VIEWS</span></code> tuple in <code class="docutils literal notranslate"><span class="pre">main.py</span></code>.
 <a class="reference internal" href="howto_project_structure.html"><span class="std std-doc">Structure a Project</span></a> covers the full layout, the
 import direction it depends on, and which modules to add only once they earn
-their place.</p>
+their place. Generating a project with <code class="docutils literal notranslate"><span class="pre">restly</span> <span class="pre">new</span></code> and moving this code into it
+is a reasonable way to make the move.</p>
 </section>
 <section id="test-quickly">
 <h2>Test quickly<a class="headerlink" href="#test-quickly" title="Link to this heading">#</a></h2>
@@ -698,11 +698,17 @@ their place.</p>
 </section>
 <section id="next-steps">
 <h2>Next steps<a class="headerlink" href="#next-steps" title="Link to this heading">#</a></h2>
-<p>Continue with the <strong><a class="reference internal" href="tutorial.html"><span class="std std-doc">Tutorial</span></a></strong>, which builds a complete
-multi-model API step by step. The pages below go deeper into individual topics:</p>
+<p><a class="reference internal" href="tutorial.html"><span class="std std-doc">Build a Blog API</span></a> adds a related model, explicit schemas,
+filtering, and broader tests. <a class="reference internal" href="tutorial_customizing.html"><span class="std std-doc">Customize the Blog
+API</span></a> then adds overrides, custom routes,
+authorization, and shared base classes.</p>
+<p>Use these pages for individual topics:</p>
 <ul class="simple">
-<li><p><a class="reference internal" href="class_based_views.html"><span class="std std-doc">Class-Based Views</span></a>: what makes the views subclassable,
-and when to use <a class="reference internal" href="api/views.html#fastapi_restly.views.View" title="fastapi_restly.views.View"><code class="xref py py-class docutils literal notranslate"><span class="pre">View</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a>, or a plain FastAPI route.</p></li>
+<li><p><a class="reference internal" href="rest_views.html"><span class="std std-doc">Using RestView</span></a>: the default CRUD contract, view
+configuration, and the map from common changes to their owning guides.</p></li>
+<li><p><a class="reference internal" href="class_based_views.html"><span class="std std-doc">Views</span></a>: when to use a generic
+<a class="reference internal" href="api/views.html#fastapi_restly.views.View" title="fastapi_restly.views.View"><code class="xref py py-class docutils literal notranslate"><span class="pre">View</span></code></a> or a plain FastAPI route, and how
+view registration and inheritance work.</p></li>
 <li><p>Already have a FastAPI app? <a class="reference internal" href="howto_existing_project.html"><span class="std std-doc">Use Restly in an Existing Project</span></a>
 shows how Restly adopts per resource, beside your current routes.</p></li>
 <li><p><a class="reference internal" href="howto_query_modifiers.html"><span class="std std-doc">Filter, Sort, and Paginate Lists</span></a></p></li>
@@ -732,11 +738,11 @@ shows how Restly adopts per resource, beside your current routes.</p></li>
       </div>
     </a>
     <a class="right-next"
-       href="tutorial_overview.html"
+       href="tutorial.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Tutorial</p>
+        <p class="prev-next-title">Build a Blog API</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -765,7 +771,7 @@ shows how Restly adopts per resource, beside your current routes.</p></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#run-the-app">Run the app</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#use-the-generated-endpoints">Use the generated endpoints</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#use-the-crud-routes">Use the CRUD routes</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#add-an-explicit-schema-optional">Add an explicit schema (optional)</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#grow-beyond-one-file">Grow beyond one file</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#test-quickly">Test quickly</a></li>

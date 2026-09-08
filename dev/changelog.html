@@ -9,7 +9,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="noindex, follow">
 
-    <title>Changelog &#8212; FastAPI-Restly 0.9.0 documentation</title>
+    <title>Changelog &#8212; FastAPI-Restly 0.10.0 documentation</title>
   
   
   
@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=6821e04d" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=e2851362" />
   
   <!-- So that users can add custom icons -->
   <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=39bb1c6d"></script>
+    <script src="_static/documentation_options.js?v=82662543"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -62,12 +62,12 @@
     <link rel="author" title="About these documents" href="about.html" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="About FastAPI-Restly" href="about.html" />
+    <link rel="next" title="Examples" href="examples.html" />
     <link rel="prev" title="Technical Details" href="technical_details.html" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.9" />
+  <meta name="docsearch:version" content="0.10" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -168,7 +168,7 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="tutorial_overview.html">
+  <a class="nav-link nav-internal" href="tutorial.html">
     Tutorial
   </a>
 </li>
@@ -176,14 +176,7 @@
 
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="class_based_views.html">
-    Views
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="customize.html">
-    Customize
+    CRUD Views
   </a>
 </li>
 
@@ -191,13 +184,6 @@
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="user_guide.html">
     How-To
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="examples.html">
-    Examples
   </a>
 </li>
 
@@ -210,18 +196,35 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="about.html">
-    About
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
     Blog
   </a>
 </li>
 
+            <li class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button"
+                data-bs-toggle="dropdown" aria-expanded="false"
+                aria-controls="pst-nav-more-links">
+                    More
+                </button>
+                <ul id="pst-nav-more-links" class="dropdown-menu">
+                    
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="about.html">
+    About
+  </a>
+</li>
+
+                </ul>
+            </li>
+            
   </ul>
 </nav></div>
       
@@ -339,7 +342,7 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="tutorial_overview.html">
+  <a class="nav-link nav-internal" href="tutorial.html">
     Tutorial
   </a>
 </li>
@@ -347,14 +350,7 @@
 
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="class_based_views.html">
-    Views
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="customize.html">
-    Customize
+    CRUD Views
   </a>
 </li>
 
@@ -362,13 +358,6 @@
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="user_guide.html">
     How-To
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="examples.html">
-    Examples
   </a>
 </li>
 
@@ -381,15 +370,22 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="about.html">
-    About
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
   </a>
 </li>
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
-    Blog
+  <a class="nav-link nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="about.html">
+    About
   </a>
 </li>
 
@@ -548,106 +544,51 @@ and this project adheres to <a class="reference external" href="https://semver.o
 <section id="added">
 <h3>Added<a class="headerlink" href="#added" title="Link to this heading">#</a></h3>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">fr.configure(app,</span> <span class="pre">health=&quot;/health&quot;)</span></code> mounts a liveness endpoint at that
-path, answering <code class="docutils literal notranslate"><span class="pre">200</span></code> with <code class="docutils literal notranslate"><span class="pre">{&quot;status&quot;:</span> <span class="pre">&quot;ok&quot;}</span></code> and appearing in the OpenAPI
-schema. It makes no database round-trip; readiness stays a route of your own.
-There is no such route unless you name a path, and a route your application
-already has at that path is left in place. Passing <code class="docutils literal notranslate"><span class="pre">health</span></code> without an <code class="docutils literal notranslate"><span class="pre">app</span></code>,
-or a path without a leading slash, raises <code class="docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">fr.utils.CurrentSettingsMixin</span></code> gives a <code class="docutils literal notranslate"><span class="pre">pydantic-settings</span></code> class one shared
-instance through <code class="docutils literal notranslate"><span class="pre">Settings.current</span></code>, built the first time it is read rather
-than at import, with <code class="docutils literal notranslate"><span class="pre">Settings.use(...)</span></code> to install an explicit one. A test
-suite builds its own settings with the env file disabled and installs them
-before calling the application factory, so importing the application never
-requires a configured environment.</p></li>
-<li><p>A production-shaped SaaS example with separate PostgreSQL development and
-test services, Pydantic settings, an application-owned asyncpg engine, async
-Alembic migrations, migration-seeded fixtures, and migration-backed tests.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">restly</span> <span class="pre">new</span> <span class="pre">&lt;name&gt;</span></code> scaffolding command to create a project from scratch with
+optional database and alembic set up.</p></li>
+<li><p>Pass <code class="docutils literal notranslate"><span class="pre">health=&quot;/health&quot;</span></code> to <code class="docutils literal notranslate"><span class="pre">fr.configure()</span></code> to add a liveness endpoint that
+returns <code class="docutils literal notranslate"><span class="pre">200</span></code> with <code class="docutils literal notranslate"><span class="pre">{&quot;status&quot;:</span> <span class="pre">&quot;ok&quot;}</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">fr.utils.CurrentSettingsMixin</span></code> adds a lazily initialized
+<code class="docutils literal notranslate"><span class="pre">Settings.current</span></code> instance to a Pydantic settings class. Call
+<code class="docutils literal notranslate"><span class="pre">Settings.use(...)</span></code> to install explicit settings.</p></li>
 </ul>
 </section>
 <section id="changed">
 <h3>Changed<a class="headerlink" href="#changed" title="Link to this heading">#</a></h3>
 <ul>
-<li><p>Engines that <code class="docutils literal notranslate"><span class="pre">fr.configure()</span></code> builds from a <code class="docutils literal notranslate"><span class="pre">database_url</span></code> or
-<code class="docutils literal notranslate"><span class="pre">async_database_url</span></code> now get defaults suited to running under a web server.
-In-memory SQLite uses <code class="docutils literal notranslate"><span class="pre">StaticPool</span></code> with <code class="docutils literal notranslate"><span class="pre">check_same_thread=False</span></code>, because an
-in-memory database lives inside its connection and the previous default
-opened one connection, and therefore one empty database, per thread; a <code class="docutils literal notranslate"><span class="pre">def</span></code>
-endpoint reading from FastAPI’s thread pool could not see rows written during
-setup. Every SQLite connection now sets <code class="docutils literal notranslate"><span class="pre">PRAGMA</span> <span class="pre">foreign_keys=ON</span></code>, which SQLite
-leaves off, so declared foreign keys are enforced, <code class="docutils literal notranslate"><span class="pre">ondelete</span></code> fires, and an
-invalid reference raises <code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code> and is translated to a 409 rather
-than being stored. PostgreSQL engines get <code class="docutils literal notranslate"><span class="pre">pool_pre_ping=True</span></code> and
-<code class="docutils literal notranslate"><span class="pre">pool_recycle=1800</span></code>. Pool sizing is unchanged: Restly sets neither
-<code class="docutils literal notranslate"><span class="pre">pool_size</span></code> nor <code class="docutils literal notranslate"><span class="pre">max_overflow</span></code>.</p>
-<p>Every one of these is connection state, which is the line they stop at:
-Restly configures the connections it opens and does not modify the database
-they reach. <code class="docutils literal notranslate"><span class="pre">PRAGMA</span> <span class="pre">journal_mode=WAL</span></code> is deliberately not set for that
-reason, since journal mode is written into the database file and outlives the
-process that set it. <a class="reference external" href="https://www.fastapi-restly.org/technical_details.html#engine-defaults">Engine
-Defaults</a>
-shows how to enable it yourself.</p>
-<p>These defaults apply only to engines Restly builds. An <code class="docutils literal notranslate"><span class="pre">engine</span></code>,
-<code class="docutils literal notranslate"><span class="pre">async_engine</span></code>, <code class="docutils literal notranslate"><span class="pre">make_session</span></code>, <code class="docutils literal notranslate"><span class="pre">async_make_session</span></code> or session generator you
-pass in is used exactly as given, so constructing the engine yourself remains
-the way to decline any of them.</p>
-</li>
-<li><p>The documentation now recommends organizing an application by subject rather
-than by code type: each resource gets a package holding its <code class="docutils literal notranslate"><span class="pre">models.py</span></code>,
-<code class="docutils literal notranslate"><span class="pre">schemas.py</span></code>, and <code class="docutils literal notranslate"><span class="pre">views.py</span></code>, and one <code class="docutils literal notranslate"><span class="pre">api.py</span></code> registers every view. Alembic
-and test setup read the schema by importing <code class="docutils literal notranslate"><span class="pre">main.py</span></code>, which reaches every
-view and so every model. A factory that builds nothing at import time is what
-makes that free, so a module-level application belongs in its own <code class="docutils literal notranslate"><span class="pre">asgi.py</span></code>. The new guide
-“Structure a Project” owns the layout, and the SaaS example follows it.</p></li>
-<li><p>The documentation now recommends building applications with a <code class="docutils literal notranslate"><span class="pre">create_app()</span></code>
-factory and reaching settings through <code class="docutils literal notranslate"><span class="pre">Settings.current</span></code> rather than an
-instance built at import. The test suite installs the settings it built, with
-the env file disabled, and then calls the factory, instead of mutating
-<code class="docutils literal notranslate"><span class="pre">DATABASE_URL</span></code> before importing the application, which stays documented as
-the fallback. Keeping settings out of module import is what lets Alembic and
-the suite import the application without a configured environment. The SaaS
-example follows the pattern. Run it with <code class="docutils literal notranslate"><span class="pre">uvicorn</span> <span class="pre">app.asgi:app</span></code>.</p></li>
-<li><p>Custom <code class="docutils literal notranslate"><span class="pre">RestView</span></code> collection routes declared at <code class="docutils literal notranslate"><span class="pre">&quot;/&quot;</span></code> now use the no-slash
-path as their OpenAPI form and keep the trailing-slash path as a hidden
-compatibility alias, matching generated list and create routes.</p></li>
-<li><p>Plain <code class="docutils literal notranslate"><span class="pre">Mapped[datetime]</span></code> annotations now map to
-<code class="docutils literal notranslate"><span class="pre">DateTime(timezone=True)</span></code> by default, so PostgreSQL enforces UTC-instant
-semantics with <code class="docutils literal notranslate"><span class="pre">timestamptz</span></code>. <code class="docutils literal notranslate"><span class="pre">TimestampsMixin</span></code> uses the same timezone-aware
-mapping. On PostgreSQL, timestamps in API responses now include the UTC
-offset, for example <code class="docutils literal notranslate"><span class="pre">+00:00</span></code>, instead of serializing as naive values.</p>
+<li><p>Engines created by <code class="docutils literal notranslate"><span class="pre">fr.configure()</span></code> now share one connection across threads
+for in-memory SQLite. SQLite foreign-key constraints are now enforced, so
+invalid references return 409 instead of being stored. Fix callers and tests
+that write invalid references. PostgreSQL engines now check connections and
+recycle them after 30 minutes. Pass your own engine or session factory to
+control these settings.</p></li>
+<li><p>Custom <code class="docutils literal notranslate"><span class="pre">RestView</span></code> collection routes declared at <code class="docutils literal notranslate"><span class="pre">&quot;/&quot;</span></code> now use the path
+without a trailing slash in OpenAPI. The trailing-slash path remains as a
+hidden compatibility alias.</p></li>
+<li><p>Plain <code class="docutils literal notranslate"><span class="pre">Mapped[datetime]</span></code> annotations and <code class="docutils literal notranslate"><span class="pre">TimestampsMixin</span></code> now use
+<code class="docutils literal notranslate"><span class="pre">DateTime(timezone=True)</span></code>. PostgreSQL responses include the UTC offset.</p>
 <p>Existing PostgreSQL databases must migrate every affected
-<code class="docutils literal notranslate"><span class="pre">timestamp</span> <span class="pre">without</span> <span class="pre">time</span> <span class="pre">zone</span></code> column, including columns declared with a plain
-<code class="docutils literal notranslate"><span class="pre">Mapped[datetime]</span></code>. If existing naive values represent UTC, use an explicit
-conversion such as:</p>
+<code class="docutils literal notranslate"><span class="pre">timestamp</span> <span class="pre">without</span> <span class="pre">time</span> <span class="pre">zone</span></code> column. Review generated Alembic migrations
+before applying them. A bare type change interprets existing values in the
+server’s timezone and can shift them. If existing naive values represent UTC,
+convert them explicitly:</p>
 <div class="highlight-sql notranslate"><div class="highlight"><pre><span></span><span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">example</span>
 <span class="w">  </span><span class="k">ALTER</span><span class="w"> </span><span class="k">COLUMN</span><span class="w"> </span><span class="n">created_at</span><span class="w"> </span><span class="k">TYPE</span><span class="w"> </span><span class="n">timestamptz</span>
 <span class="w">  </span><span class="k">USING</span><span class="w"> </span><span class="n">created_at</span><span class="w"> </span><span class="k">AT</span><span class="w"> </span><span class="k">TIME</span><span class="w"> </span><span class="k">ZONE</span><span class="w"> </span><span class="s1">&#39;UTC&#39;</span><span class="p">;</span>
 </pre></div>
 </div>
-<p>A bare type alteration can reinterpret stored values in the server’s local
-timezone and shift them. Review generated Alembic migrations before applying
-them. To retain naive wall-clock semantics for a specific column, opt out
-explicitly with <code class="docutils literal notranslate"><span class="pre">mapped_column(DateTime())</span></code>.</p>
+<p>Use <code class="docutils literal notranslate"><span class="pre">mapped_column(DateTime())</span></code> on columns that must retain naive wall-clock
+values.</p>
 </li>
 </ul>
 </section>
 <section id="fixed">
 <h3>Fixed<a class="headerlink" href="#fixed" title="Link to this heading">#</a></h3>
 <ul class="simple">
-<li><p>Datetime query filters without an explicit offset are interpreted as UTC for
-timezone-aware columns, preventing host-local timezone shifts with asyncpg.
-Filters for columns explicitly declared with <code class="docutils literal notranslate"><span class="pre">DateTime()</span></code> remain naive.</p></li>
-<li><p>New or migrated PostgreSQL schemas now accept the UTC-aware values produced
-by <code class="docutils literal notranslate"><span class="pre">TimestampsMixin</span></code> when using asyncpg. SQLite does not preserve timezone
-information and continues to return naive datetime values.</p></li>
-<li><p>References to <code class="docutils literal notranslate"><span class="pre">fr.configure()</span></code> and <code class="docutils literal notranslate"><span class="pre">fr.snapshot()</span></code> in the API reference are
-links again rather than plain text. The documentation build now runs in
-Sphinx’s nitpicky mode, which fails on a cross-reference whose target does
-not exist instead of rendering it as text.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">create_list_params_schema()</span></code> and <code class="docutils literal notranslate"><span class="pre">create_schema_from_model()</span></code> show a
-parameter table in the API reference. Their arguments were written in a
-docstring style Sphinx does not parse here, so they rendered as one
-paragraph of running text.</p></li>
+<li><p>Generated projects now require the release that provides the scaffolded APIs.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">page</span></code> values above the SQL offset limit now return <code class="docutils literal notranslate"><span class="pre">422</span></code> instead of <code class="docutils literal notranslate"><span class="pre">500</span></code>.</p></li>
+<li><p>Datetime query filters without an offset now use UTC for timezone-aware
+columns. Filters for <code class="docutils literal notranslate"><span class="pre">DateTime()</span></code> columns remain naive.</p></li>
 </ul>
 </section>
 </section>
@@ -1181,11 +1122,11 @@ the pytest plugin path is <code class="docutils literal notranslate"><span class
       </div>
     </a>
     <a class="right-next"
-       href="about.html"
+       href="examples.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">About FastAPI-Restly</p>
+        <p class="prev-next-title">Examples</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>

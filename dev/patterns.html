@@ -9,7 +9,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="noindex, follow">
 
-    <title>Patterns &#8212; FastAPI-Restly 0.9.0 documentation</title>
+    <title>Patterns &#8212; FastAPI-Restly 0.10.0 documentation</title>
   
   
   
@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=6821e04d" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=e2851362" />
   
   <!-- So that users can add custom icons -->
   <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=39bb1c6d"></script>
+    <script src="_static/documentation_options.js?v=82662543"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -67,7 +67,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.9" />
+  <meta name="docsearch:version" content="0.10" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -168,7 +168,7 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="tutorial_overview.html">
+  <a class="nav-link nav-internal" href="tutorial.html">
     Tutorial
   </a>
 </li>
@@ -176,14 +176,7 @@
 
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="class_based_views.html">
-    Views
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="customize.html">
-    Customize
+    CRUD Views
   </a>
 </li>
 
@@ -196,22 +189,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="examples.html">
-    Examples
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="api_reference.html">
     API
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="about.html">
-    About
   </a>
 </li>
 
@@ -222,6 +201,30 @@
   </a>
 </li>
 
+            <li class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button"
+                data-bs-toggle="dropdown" aria-expanded="false"
+                aria-controls="pst-nav-more-links">
+                    More
+                </button>
+                <ul id="pst-nav-more-links" class="dropdown-menu">
+                    
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="about.html">
+    About
+  </a>
+</li>
+
+                </ul>
+            </li>
+            
   </ul>
 </nav></div>
       
@@ -339,7 +342,7 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="tutorial_overview.html">
+  <a class="nav-link nav-internal" href="tutorial.html">
     Tutorial
   </a>
 </li>
@@ -347,14 +350,7 @@
 
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="class_based_views.html">
-    Views
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="customize.html">
-    Customize
+    CRUD Views
   </a>
 </li>
 
@@ -367,13 +363,6 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="examples.html">
-    Examples
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="api_reference.html">
     API
   </a>
@@ -381,15 +370,22 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="about.html">
-    About
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
   </a>
 </li>
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
-    Blog
+  <a class="nav-link nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="about.html">
+    About
   </a>
 </li>
 
@@ -457,8 +453,8 @@
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="howto_project_structure.html">Structure a Project</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_existing_project.html">Use Restly in an Existing Project</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_project_structure.html">Structure a Project</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_custom_schema.html">Custom Schemas and Field Types</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys and Relationships</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_response_schema.html">Response Envelopes and List Metadata</a></li>
@@ -583,7 +579,7 @@ read path:</p>
 <a class="reference internal" href="howto_query_modifiers.html#foreign-key-filtering"><span class="std std-ref">foreign-key filtering</span></a>, is
 documented in <a class="reference internal" href="howto_query_modifiers.html"><span class="std std-doc">Filter, Sort, and Paginate Lists</span></a>;
 custom routes are covered in
-<a class="reference internal" href="customize.html"><span class="std std-doc">Customize RestView</span></a>.</p>
+<a class="reference internal" href="customize.html"><span class="std std-doc">Customizing RestView</span></a>.</p>
 </section>
 <section id="a-different-schema-for-the-list-endpoint">
 <h2>A different schema for the list endpoint<a class="headerlink" href="#a-different-schema-for-the-list-endpoint" title="Link to this heading">#</a></h2>
@@ -616,7 +612,7 @@ Filtering, sorting, and pagination parameters keep working:</p>
 <section id="restore-a-soft-deleted-row">
 <h2>Restore a soft-deleted row<a class="headerlink" href="#restore-a-soft-deleted-row" title="Link to this heading">#</a></h2>
 <p>Soft delete hides rows in <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.build_query" title="fastapi_restly.views.RestView.build_query"><code class="xref py py-meth docutils literal notranslate"><span class="pre">build_query</span></code></a>,
-so every generated read returns 404 for them, including the read your restore
+so every default read returns 404 for them, including the read your restore
 action needs. The restore route therefore makes a deliberately unscoped
 query, then mutates inside <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.write_action" title="fastapi_restly.views.RestView.write_action"><code class="xref py py-meth docutils literal notranslate"><span class="pre">write_action</span></code></a>
 so that authorization and the commit bracket still run:</p>
@@ -645,7 +641,7 @@ so that authorization and the commit bracket still run:</p>
 </pre></div>
 </div>
 <p>Soft delete itself is covered as a one-off override in
-<a class="reference internal" href="customize.html#delete-soft-delete-instead-of-removing-the-row"><span class="std std-ref">Customize RestView</span></a>
+<a class="reference internal" href="customize.html#delete-soft-delete-instead-of-removing-the-row"><span class="std std-ref">Customizing RestView</span></a>
 and as a reusable mixin in
 <a class="reference internal" href="howto_compose_views_with_mixins.html#softdeletemixin-hide-deleted-rows"><span class="std std-ref">Compose Views with Mixins</span></a>,
 which also discusses the admin bypass.</p>
@@ -676,32 +672,30 @@ handlers, so a bare <code class="docutils literal notranslate"><span class="pre"
 </div>
 <p>For <em>outbound</em> webhooks (calling someone else after a write), use the
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.after_commit" title="fastapi_restly.views.RestView.after_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">after_commit</span></code></a> hook
-instead; see <a class="reference internal" href="customize.html"><span class="std std-doc">Customize RestView</span></a>.</p>
+instead. See <a class="reference internal" href="customize.html"><span class="std std-doc">Customizing RestView</span></a>.</p>
 <p>The decision between <code class="docutils literal notranslate"><span class="pre">View</span></code> and <code class="docutils literal notranslate"><span class="pre">RestView</span></code> is covered in
-<a class="reference internal" href="class_based_views.html#when-to-use-view-directly"><span class="std std-ref">When to use <code class="docutils literal notranslate"><span class="pre">View</span></code> directly</span></a>.</p>
+<a class="reference internal" href="class_based_views.html#id3"><span class="std std-ref">When to use <code class="docutils literal notranslate"><span class="pre">View</span></code> directly</span></a>.</p>
 </section>
 <section id="an-app-wide-base-view">
 <h2>An app-wide base view<a class="headerlink" href="#an-app-wide-base-view" title="Link to this heading">#</a></h2>
 <p>Declare <code class="docutils literal notranslate"><span class="pre">session</span></code>, <code class="docutils literal notranslate"><span class="pre">current_user</span></code>, and the rest of your request context once
 on a bare <a class="reference internal" href="api/views.html#fastapi_restly.views.View" title="fastapi_restly.views.View"><code class="xref py py-class docutils literal notranslate"><span class="pre">View</span></code></a> base; every endpoint group
-(CRUD or not) subclasses it and reads from <code class="docutils literal notranslate"><span class="pre">self</span></code>. This pattern is owned by
-<a class="reference internal" href="class_based_views.html#one-base-view-for-the-whole-app"><span class="std std-ref">One base view for the whole app</span></a>
-in Class-Based Views.</p>
+(CRUD or not) subclasses it and reads from <code class="docutils literal notranslate"><span class="pre">self</span></code>. <a class="reference internal" href="class_based_views.html#one-base-view-for-the-whole-app"><span class="std std-ref">One base view for the whole
+app</span></a> owns this pattern.</p>
 </section>
 <section id="login-and-other-auth-flows">
 <h2>Login and other auth flows<a class="headerlink" href="#login-and-other-auth-flows" title="Link to this heading">#</a></h2>
 <p>An <code class="docutils literal notranslate"><span class="pre">AuthView</span></code> with <code class="docutils literal notranslate"><span class="pre">/login</span></code>, <code class="docutils literal notranslate"><span class="pre">/refresh</span></code>, and <code class="docutils literal notranslate"><span class="pre">/logout</span></code> routes is the worked
 example in
-<a class="reference internal" href="class_based_views.html#when-to-use-view-directly"><span class="std std-ref">When to use <code class="docutils literal notranslate"><span class="pre">View</span></code> directly</span></a>,
+<a class="reference internal" href="class_based_views.html#id3"><span class="std std-ref">When to use <code class="docutils literal notranslate"><span class="pre">View</span></code> directly</span></a>,
 which owns this pattern.</p>
 </section>
 <section id="custom-action-routes-post-id-publish">
 <h2>Custom action routes (<code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/{id}/publish</span></code>)<a class="headerlink" href="#custom-action-routes-post-id-publish" title="Link to this heading">#</a></h2>
 <p>Reuse <code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code> when the action is CRUD under another URL; use
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.write_action" title="fastapi_restly.views.RestView.write_action"><code class="xref py py-meth docutils literal notranslate"><span class="pre">write_action(&quot;publish&quot;,</span> <span class="pre">...)</span></code></a>
-when the action has its own identity. The full walkthrough is
-<a class="reference internal" href="customize.html#add-a-custom-action-route"><span class="std std-ref">Add a custom action route</span></a>
-in Customize RestView, which owns this pattern.</p>
+when the action has its own identity. <a class="reference internal" href="customize.html#add-a-custom-action-route"><span class="std std-ref">Add a custom action
+route</span></a> provides the full walkthrough.</p>
 </section>
 <section id="tenant-scoping">
 <h2>Tenant scoping<a class="headerlink" href="#tenant-scoping" title="Link to this heading">#</a></h2>

@@ -9,7 +9,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="noindex, follow">
 
-    <title>Customize RestView &#8212; FastAPI-Restly 0.9.0 documentation</title>
+    <title>Customizing RestView &#8212; FastAPI-Restly 0.10.0 documentation</title>
   
   
   
@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=6821e04d" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=e2851362" />
   
   <!-- So that users can add custom icons -->
   <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=39bb1c6d"></script>
+    <script src="_static/documentation_options.js?v=82662543"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -63,11 +63,11 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="How-To Guides" href="user_guide.html" />
-    <link rel="prev" title="Class-Based Views" href="class_based_views.html" />
+    <link rel="prev" title="Using RestView" href="rest_views.html" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.9" />
+  <meta name="docsearch:version" content="0.10" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -168,22 +168,15 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="tutorial_overview.html">
+  <a class="nav-link nav-internal" href="tutorial.html">
     Tutorial
   </a>
 </li>
 
 
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="class_based_views.html">
-    Views
-  </a>
-</li>
-
-
 <li class="nav-item current active">
-  <a class="nav-link nav-internal" href="#">
-    Customize
+  <a class="nav-link nav-internal" href="class_based_views.html">
+    CRUD Views
   </a>
 </li>
 
@@ -196,22 +189,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="examples.html">
-    Examples
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="api_reference.html">
     API
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="about.html">
-    About
   </a>
 </li>
 
@@ -222,6 +201,30 @@
   </a>
 </li>
 
+            <li class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button"
+                data-bs-toggle="dropdown" aria-expanded="false"
+                aria-controls="pst-nav-more-links">
+                    More
+                </button>
+                <ul id="pst-nav-more-links" class="dropdown-menu">
+                    
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="about.html">
+    About
+  </a>
+</li>
+
+                </ul>
+            </li>
+            
   </ul>
 </nav></div>
       
@@ -339,22 +342,15 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="tutorial_overview.html">
+  <a class="nav-link nav-internal" href="tutorial.html">
     Tutorial
   </a>
 </li>
 
 
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="class_based_views.html">
-    Views
-  </a>
-</li>
-
-
 <li class="nav-item current active">
-  <a class="nav-link nav-internal" href="#">
-    Customize
+  <a class="nav-link nav-internal" href="class_based_views.html">
+    CRUD Views
   </a>
 </li>
 
@@ -367,13 +363,6 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="examples.html">
-    Examples
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="api_reference.html">
     API
   </a>
@@ -381,15 +370,22 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="about.html">
-    About
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
   </a>
 </li>
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
-    Blog
+  <a class="nav-link nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="about.html">
+    About
   </a>
 </li>
 
@@ -456,7 +452,11 @@
 <nav class="bd-docs-nav bd-links"
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
-  <div class="bd-toc-item navbar-nav"></div>
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="rest_views.html">Using RestView</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Customizing RestView</a></li>
+</ul>
+</div>
 </nav></div>
     </div>
   
@@ -495,7 +495,10 @@
         <i class="fa-solid fa-home"></i>
       </a>
     </li>
-    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Customize RestView</span></li>
+    
+    <li class="breadcrumb-item"><a href="class_based_views.html" class="nav-link">Views &amp; CRUD</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Customizing RestView</span></li>
   </ul>
 </nav>
 </div>
@@ -512,23 +515,24 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="customize-restview">
-<h1>Customize RestView<a class="headerlink" href="#customize-restview" title="Link to this heading">#</a></h1>
+  <section id="customizing-restview">
+<h1>Customizing RestView<a class="headerlink" href="#customizing-restview" title="Link to this heading">#</a></h1>
 <p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a> and <a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a> define complete CRUD
 endpoints. Because views are class-based, a subclass changes an endpoint’s
 behavior by overriding the method that controls it: stamp a field server-side,
 archive instead of delete, or scope every read to the current tenant. This page
 first explains how each view handles a request, then works through the
 override points and recipes that follow from that structure.</p>
-<p>This page covers the CRUD behavior defined by <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a> and <a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a>.
-A plain <a class="reference internal" href="api/views.html#fastapi_restly.views.View" title="fastapi_restly.views.View"><code class="xref py py-class docutils literal notranslate"><span class="pre">View</span></code></a> defines no CRUD endpoints.
-<a class="reference internal" href="class_based_views.html"><span class="std std-doc">Class-Based Views</span></a> covers the class mechanics shared by
+<p><a class="reference internal" href="rest_views.html"><span class="std std-doc">Using RestView</span></a> covers the default CRUD contract
+and its class configuration. This page starts where those defaults stop. A
+plain <a class="reference internal" href="api/views.html#fastapi_restly.views.View" title="fastapi_restly.views.View"><code class="xref py py-class docutils literal notranslate"><span class="pre">View</span></code></a> defines no CRUD endpoints.
+<a class="reference internal" href="class_based_views.html"><span class="std std-doc">Views</span></a> covers the class mechanics shared by
 all views.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>To <em>add</em> routes rather than change existing ones, declare a method with
 <a class="reference internal" href="api/views.html#fastapi_restly.views.get" title="fastapi_restly.views.get"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;fr.get</span></code></a> or <a class="reference internal" href="api/views.html#fastapi_restly.views.post" title="fastapi_restly.views.post"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;fr.post</span></code></a>,
-<a class="reference internal" href="class_based_views.html#what-is-a-class-based-view"><span class="std std-ref">as on any view</span></a>; recipes
+<a class="reference internal" href="class_based_views.html#what-is-a-class-based-view"><span class="std std-ref">as on any view</span></a>. Recipes
 are in <a class="reference internal" href="#add-a-custom-read-route">Add a custom read route</a> and
 <a class="reference internal" href="#add-a-custom-action-route">Add a custom action route</a> below.</p>
 </div>
@@ -1162,12 +1166,12 @@ validation), <a class="reference internal" href="api/schemas.html#fastapi_restly
 </tbody>
 </table>
 </div>
-<p>Any class-level <code class="docutils literal notranslate"><span class="pre">Annotated</span></code> dependency you declare on the view (for example a current user) is also injected and available as an instance attribute; see <a class="reference internal" href="class_based_views.html#dependency-injection-on-class-attributes"><span class="std std-ref">Dependency injection on class attributes</span></a>.</p>
+<p>Any class-level <code class="docutils literal notranslate"><span class="pre">Annotated</span></code> dependency you declare on the view (for example a current user) is also injected and available as an instance attribute; see <a class="reference internal" href="class_based_views.html#id2"><span class="std std-ref">Dependency injection on class attributes</span></a>.</p>
 </section>
 <section id="see-also">
 <h2>See also<a class="headerlink" href="#see-also" title="Link to this heading">#</a></h2>
 <ul class="simple">
-<li><p><a class="reference internal" href="class_based_views.html"><span class="std std-doc">Class-Based Views</span></a>: why subclassable views make all
+<li><p><a class="reference internal" href="class_based_views.html"><span class="std std-doc">Views</span></a>: why subclassable views make all
 of this possible.</p></li>
 <li><p><a class="reference internal" href="howto_compose_views_with_mixins.html"><span class="std std-doc">Compose Views with Mixins</span></a>: structural
 stamping and scoping through cooperative mixins.</p></li>
@@ -1188,12 +1192,12 @@ classified method list.</p></li>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="class_based_views.html"
+       href="rest_views.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Class-Based Views</p>
+        <p class="prev-next-title">Using RestView</p>
       </div>
     </a>
     <a class="right-next"

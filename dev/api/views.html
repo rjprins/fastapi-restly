@@ -9,7 +9,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="noindex, follow">
 
-    <title>Views API &#8212; FastAPI-Restly 0.9.0 documentation</title>
+    <title>Views API &#8212; FastAPI-Restly 0.10.0 documentation</title>
   
   
   
@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=6821e04d" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=e2851362" />
   
   <!-- So that users can add custom icons -->
   <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=39bb1c6d"></script>
+    <script src="../_static/documentation_options.js?v=82662543"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -67,7 +67,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.9" />
+  <meta name="docsearch:version" content="0.10" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -168,7 +168,7 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../tutorial_overview.html">
+  <a class="nav-link nav-internal" href="../tutorial.html">
     Tutorial
   </a>
 </li>
@@ -176,14 +176,7 @@
 
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="../class_based_views.html">
-    Views
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="../customize.html">
-    Customize
+    CRUD Views
   </a>
 </li>
 
@@ -191,13 +184,6 @@
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="../user_guide.html">
     How-To
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="../examples.html">
-    Examples
   </a>
 </li>
 
@@ -210,18 +196,35 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../about.html">
-    About
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
     Blog
   </a>
 </li>
 
+            <li class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button"
+                data-bs-toggle="dropdown" aria-expanded="false"
+                aria-controls="pst-nav-more-links">
+                    More
+                </button>
+                <ul id="pst-nav-more-links" class="dropdown-menu">
+                    
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="../examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="../about.html">
+    About
+  </a>
+</li>
+
+                </ul>
+            </li>
+            
   </ul>
 </nav></div>
       
@@ -339,7 +342,7 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../tutorial_overview.html">
+  <a class="nav-link nav-internal" href="../tutorial.html">
     Tutorial
   </a>
 </li>
@@ -347,14 +350,7 @@
 
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="../class_based_views.html">
-    Views
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="../customize.html">
-    Customize
+    CRUD Views
   </a>
 </li>
 
@@ -362,13 +358,6 @@
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="../user_guide.html">
     How-To
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="../examples.html">
-    Examples
   </a>
 </li>
 
@@ -381,15 +370,22 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../about.html">
-    About
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
   </a>
 </li>
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
-    Blog
+  <a class="nav-link nav-internal" href="../examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../about.html">
+    About
   </a>
 </li>
 
@@ -538,11 +534,11 @@
                   
   <section id="views-api">
 <h1>Views API<a class="headerlink" href="#views-api" title="Link to this heading">#</a></h1>
-<p><code class="docutils literal notranslate"><span class="pre">fastapi_restly.views</span></code> implements the class-based view layer: <code class="docutils literal notranslate"><span class="pre">RestView</span></code>
-and <code class="docutils literal notranslate"><span class="pre">AsyncRestView</span></code> generate CRUD endpoints from a model, <code class="docutils literal notranslate"><span class="pre">View</span></code> is the
-bare primitive for hand-written endpoint groups, and <code class="docutils literal notranslate"><span class="pre">include_view()</span></code>
-registers either on a FastAPI app.</p>
-<p id="module-fastapi_restly.views">Class-based views: generated CRUD plus explicit override tiers.</p>
+<p><code class="docutils literal notranslate"><span class="pre">fastapi_restly.views</span></code> implements the class-based view layer. <code class="docutils literal notranslate"><span class="pre">RestView</span></code>
+and <code class="docutils literal notranslate"><span class="pre">AsyncRestView</span></code> define CRUD endpoint methods for a model. <code class="docutils literal notranslate"><span class="pre">View</span></code> is the
+bare primitive for hand-written endpoint groups. <code class="docutils literal notranslate"><span class="pre">include_view()</span></code> registers
+either on a FastAPI app.</p>
+<p id="module-fastapi_restly.views">Class-based views with default CRUD methods and explicit override tiers.</p>
 <p>Every CRUD verb on <code class="docutils literal notranslate"><span class="pre">RestView</span></code> / <code class="docutils literal notranslate"><span class="pre">AsyncRestView</span></code> exists at three tiers —
 name the tier that owns your change and override one method:</p>
 <ol class="arabic simple">
@@ -629,7 +625,7 @@ Basic usage:</p>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Foo</span>
 </pre></div>
 </div>
-<p>Each verb is three tiers (see “Customize RestView” in the docs):</p>
+<p>Each verb is three tiers (see “Customizing RestView” in the docs):</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">&lt;verb&gt;_endpoint</span></code> — the endpoint method. Owns the HTTP signature,
 <code class="docutils literal notranslate"><span class="pre">response_model</span></code>, and <code class="docutils literal notranslate"><span class="pre">to_response</span></code>. Rarely overridden.</p></li>
@@ -1126,7 +1122,7 @@ Basic usage:</p>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Foo</span>
 </pre></div>
 </div>
-<p>Each verb is three tiers (see “Customize RestView” in the docs): the
+<p>Each verb is three tiers (see “Customizing RestView” in the docs): the
 endpoint method <code class="docutils literal notranslate"><span class="pre">&lt;verb&gt;_endpoint</span></code>, the handler <code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code>
 (authorize + commit bracket), and the bare verb <code class="docutils literal notranslate"><span class="pre">&lt;verb&gt;</span></code> (the domain
 operation – the common override point).</p>
@@ -1336,7 +1332,7 @@ grouped non-CRUD endpoints (auth flows, custom RPC routes, etc.).</p>
 <dt class="sig sig-object py" id="fastapi_restly.views.ViewRoute">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.views.</span></span><span class="sig-name descname"><span class="pre">ViewRoute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fastapi_restly.views.ViewRoute" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/enum.html#enum.Enum" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></a></p>
-<p>Generated CRUD routes that can be referenced by view options.</p>
+<p>Default CRUD route names that can be referenced by view options.</p>
 <p>Values are the route-shell method names so <code class="docutils literal notranslate"><span class="pre">exclude_routes</span></code> can drop them.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.views.ViewRoute.CREATE">
@@ -1457,8 +1453,8 @@ The path and api_route_kwargs are passed into APIRouter.add_api_route(), see for
 
 <div class="admonition seealso">
 <p class="admonition-title">See also</p>
-<p><a class="reference internal" href="../class_based_views.html"><span class="doc">Class-Based Views</span></a> introduces the class-based view concept and
-hierarchy, and <a class="reference internal" href="../customize.html"><span class="doc">Customize RestView</span></a> explains the three-tier override model
+<p><a class="reference internal" href="../class_based_views.html"><span class="doc">Views &amp; CRUD</span></a> introduces the class-based view concept and
+hierarchy, and <a class="reference internal" href="../customize.html"><span class="doc">Customizing RestView</span></a> explains the three-tier override model
 and collects the task-shaped override recipes.</p>
 </div>
 </section>

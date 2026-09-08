@@ -101,7 +101,7 @@ the exact registration contract is in
 
 ## See also
 
-- [Customize RestView](customize.md): where {meth}`authorize <fastapi_restly.views.RestView.authorize>` and the
+- [Customizing RestView](customize.md): where {meth}`authorize <fastapi_restly.views.RestView.authorize>` and the
   business methods sit; a raised exception skips the commit bracket.
 - [Filter, Sort, and Paginate Lists](howto_query_modifiers.md): the
   parameter grammar whose violations produce the 422/400 split.

@@ -256,7 +256,7 @@ class TenantScopedMixin:
 ```
 
 The same applies to typed *attribute* annotations. Marker-based DI (see
-[Class-Based Views](class_based_views.md#dependency-injection-on-class-attributes))
+[Views](class_based_views.md#dependency-injection-on-class-attributes))
 means a plain `model: type[DeclarativeBase]` annotation no longer
 shadows DI wiring, but it can still shadow inherited attribute lookups
 in some setups. `if TYPE_CHECKING:` is the safe wrapper for both.
@@ -299,9 +299,9 @@ allow/deny decisions such as "only managers may create" belong in
 
 ## Cross-references
 
-- [Customize RestView](customize.md): the three tiers,
+- [Customizing RestView](customize.md): the three tiers,
   single-base overrides, and the call chain.
-- [Class-Based Views](class_based_views.md#dependency-injection-on-class-attributes):
+- [Views](class_based_views.md#dependency-injection-on-class-attributes):
   the marker-based DI rule that makes mixin type stubs safe.
 - [Share Behaviour with Base Views](howto_inheritance.md): single-base
   shared logic, the simpler cousin to mixin composition.

@@ -1,8 +1,13 @@
 # ![](_static/fr-monogram.svg) FastAPI-Restly
 
-FastAPI-Restly (`fr`) is a REST framework for FastAPI, backed by SQLAlchemy 2.0
-and Pydantic v2. Views are real Python classes: share behavior with inheritance
-and mixins, and override the one operation you need.
+FastAPI-Restly (`fr`) is a REST framework for FastAPI, using SQLAlchemy 2.0 and
+Pydantic v2. Views are real Python classes that support inheritance and mixins.
+Designed for customization.
+
+> **Status:** {{ release }}, a public beta after
+> [four years of internal use](about.md). Expect small breaking changes in
+> deeper extension points on the way to `1.0.0`; see the
+> [changelog](changelog.md).
 
 With FastAPI-Restly imported as `fr`, a CRUD resource is four lines once `app`
 and `User` exist:
@@ -14,14 +19,8 @@ class UserView(fr.AsyncRestView):
     model = User  # SQLAlchemy model
 ```
 
-`UserView` inherits five CRUD endpoint methods from {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>`.
-{func}`include_view <fastapi_restly.views.include_view>` registers them under
-`/users`.
-
-> **Status:** {{ release }}, a public beta after
-> [four years of internal use](about.md). Expect small breaking changes in
-> deeper extension points on the way to `1.0.0`; see the
-> [changelog](changelog.md).
+See [Using RestView](rest_views.md) for the full guide and [Customizing
+RestView](customize.md) for how you can change it.
 
 ## Quick Start
 
@@ -100,7 +99,7 @@ first test.
 
 ## Features
 
-- **[Generated REST endpoints](api_reference.md#generated-rest-endpoints)**: GET, POST, PATCH, DELETE with minimal boilerplate
+- **[Default CRUD routes](api_reference.md#default-crud-routes)**: GET, POST, PATCH, DELETE with minimal boilerplate
 - **[True class-based views](class_based_views.md)**: inheritance, mixins, and method overrides
 - **[Explicit override points](customize.md)**: every CRUD verb split into endpoint method, handler, and business method
 - **[React Admin ready](howto_react_admin.md)**: `AsyncReactAdminView` speaks `ra-data-simple-rest`
@@ -120,24 +119,25 @@ first test.
 :link: getting_started
 :link-type: doc
 
-Fast path from zero to a working REST API.
+Build a working REST API, then continue with a two-model blog API.
 :::
 
-:::{grid-item-card} Tutorial
-:link: tutorial_overview
-:link-type: doc
-
-Build a complete blog API in two parts: generated CRUD, then customization.
-:::
-
-:::{grid-item-card} Class-Based Views
+:::{grid-item-card} Views
 :link: class_based_views
 :link-type: doc
 
-How subclassable views make the override model work.
+Choose a view type, then learn how registration, dependencies, and inheritance
+work.
 :::
 
-:::{grid-item-card} Customize RestView
+:::{grid-item-card} Using RestView
+:link: rest_views
+:link-type: doc
+
+Define a model-backed CRUD resource and understand its default contract.
+:::
+
+:::{grid-item-card} Customizing RestView
 :link: customize
 :link-type: doc
 
@@ -163,7 +163,7 @@ Complete sample applications from a tiny API to a production-shaped service.
 :link: api_reference
 :link-type: doc
 
-Generated endpoints, all public symbols, query parameters, and autodoc.
+Default CRUD routes, all public symbols, query parameters, and autodoc.
 :::
 
 :::{grid-item-card} About
@@ -186,11 +186,11 @@ Production engine config, Alembic migrations, and an ASGI checklist.
 :hidden:
 
 getting_started
-Tutorial <tutorial_overview>
-Views <class_based_views>
-Customize <customize>
+Tutorial <tutorial>
+CRUD Views <class_based_views>
 How-To <user_guide>
-examples
 API <api_reference>
+Blog <https://www.fastapi-restly.org/blog/>
+examples
 About <about>
 ```

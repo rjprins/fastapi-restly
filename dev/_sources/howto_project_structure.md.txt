@@ -6,6 +6,30 @@ modules that Python can import will work. This page describes the layout we
 recommend anyway, so that a growing application does not have to invent one,
 and explains what each part of it buys you.
 
+(restly-new)=
+
+## Generate it
+
+`restly new` writes the layout below, with a `users` resource, a test suite,
+and the settings and schema wiring:
+
+```bash
+pip install fastapi-restly
+restly new myapp
+```
+
+The name names the project: the directory, `pyproject.toml`, and the databases.
+The package inside is always `app`, so `from app.settings import Settings` is
+the same line in every Restly project.
+
+Three choices, each a flag, each asked for on a terminal when you leave it out:
+
+| | default | alternative |
+|---|---|---|
+| Views and driver | `--async` | `--sync` |
+| Database | `--postgres`, with a `compose.yaml` | `--sqlite` |
+| Schema | `--alembic` | `--create-all`, built at startup and in tests |
+
 ## Start with one file
 
 A single module is the right shape for a first resource.
@@ -23,10 +47,9 @@ Give each resource a package, and name the modules inside it after the kind of
 code they hold:
 
 ```text
-myapp/
-├── main.py                 # Application factory and lifespan
+app/
+├── main.py                 # Application factory, VIEWS, and lifespan
 ├── asgi.py                 # app = create_app(), the deployment entrypoint
-├── api.py                  # View registration
 ├── settings.py             # Pydantic settings
 ├── views.py                # Shared base view and mixins
 ├── users/
@@ -41,21 +64,8 @@ myapp/
     └── views.py
 ```
 
-The alternative is to organize by type first: a top-level `models/`,
-`schemas/`, and `views/` package, each holding one module per resource. That
-layout is common and it works, but it scatters every change across three
-directories.
-
-Subject-first suits Restly in particular. A view names its model, names its
-schema, and carries the overrides for both, so the three modules are one unit
-of work: adding a field touches the model, the schema, and usually a business
-method, and all three sit in the same directory. Type-first organization is
-the better fit for Restly's own source, where `models`, `schemas`, and `views`
-really are separate subsystems, and the worse fit for an application, where
-they are three views of one resource.
-
-Name each package after the route segment it serves, so `users/` serves
-`/users`.
+Subject or domain first, code type second, once the application is large
+enough for the choice to matter.
 
 ## Keep imports pointing one way
 
@@ -74,78 +84,62 @@ subject to reach one class.
 
 ## Compose in one place
 
-Restly has no autodiscovery. Nothing scans your package for views or models,
-which is why the layout above registers them in one place instead. The
-tradeoff is deliberate: your `create_app()` stays yours, and the set of
-registered views is something you can read rather than infer.
-
-`api.py` registers every view on the application:
+Restly has no autodiscovery: nothing scans your package for views or models, so
+the layout registers them itself. That one place is a `VIEWS` tuple in
+`main.py`, which the factory registers after
+{func}`fr.configure(app, ...) <fastapi_restly.db.configure>`:
 
 ```python
-# myapp/api.py
+# app/main.py
 import fastapi_restly as fr
 from fastapi import FastAPI
 
+from .settings import Settings
 from .tasks.views import TaskView
 from .users.views import UserView
 
+VIEWS = (TaskView, UserView)
 
-def register_views(app: FastAPI) -> None:
-    for view in (TaskView, UserView):
+
+def create_app() -> FastAPI:
+    settings = Settings.current
+    app = FastAPI()
+    fr.configure(app, async_database_url=settings.database_url, health="/health")
+    for view in VIEWS:
         fr.include_view(app, view)
+    return app
 ```
 
-The factory then calls it after
-{func}`fr.configure(app, ...) <fastapi_restly.db.configure>`, as shown in
-[A production `main.py` template](#production-main-template).
+[A production `main.py` template](#production-main-template) adds the engine and
+the lifespan that disposes it.
 
-Subject-first layouts leave one question open, which the rest of this section
-settles: which module has seen every model. Start with where the models are
-collected. Most applications never declare a declarative base of their own.
-Models inherit
-{class}`fr.IDBase <fastapi_restly.models.IDBase>` or
-{class}`fr.DataclassBase <fastapi_restly.models.DataclassBase>`, and because
-`IDBase` subclasses `DataclassBase` they share one `MetaData`, so the
-application schema is `fr.DataclassBase.metadata`. Declare your own base only
-when you need different mapping defaults, put it in a root `models.py`, and use
-it wherever this page names `fr.DataclassBase`.
+That tuple also decides which module has seen every model, since each view
+imports its own. A declarative base holds the models that have been imported
+and nothing else, and `IDBase` subclasses `DataclassBase`, so
+`fr.DataclassBase.metadata` is the whole schema once `main.py` has been
+imported. On your own base, see
+[Use Your Own DeclarativeBase Models](howto_existing_project.md#use-your-own-declarativebase-models).
 
-A base describes the models that have been imported and nothing else, so the
-layout needs one module that has imported all of them. That module is
-`main.py`. It reaches `api.py`, which reaches every view, and each view imports
-its model. Nothing else should have to be named: `main.py` is the one module
-every application has, so tools can rely on it without knowing how the rest is
-arranged.
-
-This works only because the factory keeps `main.py` free of side effects.
-Importing it defines `create_app()` and builds nothing, so a test suite can
-name its own database rather than setting environment variables before its
-imports. Never put `app = create_app()` at module level there: with settings
-that have no defaults, importing the module would then require a configured
-environment, and the test suite is the first thing to break. The application
-object belongs in `asgi.py`, which only the server imports; see
-[Running the app](deploying.md#running-the-app).
-
-`alembic/env.py` imports it before reading `target_metadata`:
+`alembic/env.py` relies on exactly that:
 
 ```python
 # alembic/env.py
 import fastapi_restly as fr
-import myapp.main  # noqa: F401  (imports every view, and each view its model)
+import app.main  # noqa: F401  (imports every view, and each view its model)
 
 target_metadata = fr.DataclassBase.metadata
 ```
 
-A `conftest.py` that asks `configure_tests()` to run `create_all` needs the
-same coverage and usually has it already, since the app it passes was built by
-the factory. Import `myapp.main` there too when the suite reaches for a base
-without building an application first.
+This works only because importing `main.py` builds nothing. Never put
+`app = create_app()` at module level there: with settings that have no
+defaults, importing the module would require a configured environment, and the
+test suite is the first thing to break. The application object belongs in
+`asgi.py`, which only the server imports; see
+[Running the app](deploying.md#running-the-app).
 
-That leaves models no view reaches, such as an outbox or audit table. Import
-those at module level wherever the application uses them, rather than inside a
-function, so they stay on the same graph. A model nothing in the application
-uses, written only by a worker or a script, goes in `api.py` beside the views,
-which keeps every such import in one place.
+A model no view reaches, such as an outbox or audit table, is not on that
+graph. Import it at module level wherever the application uses it, or in
+`main.py` beside `VIEWS` when only a worker or a script does.
 Getting it wrong is not silent: `alembic check` compares metadata against the
 database and reports a missing model as a dropped table, so run it in CI. See
 [Migrations with Alembic](deploying.md#migrations-with-alembic) and
@@ -155,10 +149,11 @@ database and reports a missing model as a dropped table, so run it in CI. See
 
 Behavior common to every view belongs in a root `views.py`: the base class your
 views inherit from, plus any mixins. The subject packages hold concrete views,
-and the root module holds the foundation they are built on.
+and the root module holds the foundation they are built on. Add it once a second
+view wants the same behavior, which is why a generated project does not have one.
 
 ```python
-# myapp/users/views.py
+# app/users/views.py
 from ..views import TenantBase, SoftDeleteMixin
 
 from .models import User
@@ -188,6 +183,10 @@ request, such as work shared with a background worker.
 
 The same applies to `dependencies.py`, `constants.py`, and `exceptions.py`
 inside a subject. Each is worth having once it holds more than one item.
+
+At the package root, move `VIEWS` and its registration loop into an `api.py`
+exposing `register_views(app)` once `main.py` grows crowded; `main.py` imports
+it, so it still reaches every model.
 
 Keep application-wide concerns in top-level modules named for what they do,
 such as `auth.py`, `settings.py`, or `outbox.py`, and promote one to a package

@@ -4,6 +4,15 @@ The repository includes complete applications under `example-projects/`. They
 show different levels of Restly adoption, from a tiny resource to a
 production-shaped service with shared view foundations and custom behavior.
 
+## Starter
+
+[example-projects/starter](https://github.com/rjprins/fastapi-restly/tree/main/example-projects/starter)
+is exactly what [`restly new myapp`](#restly-new) writes with its default
+answers: async views, PostgreSQL, and Alembic. Read it to see the prescribed
+layout at its smallest; a check in CI keeps it identical to the generator's
+output. It depends on the released framework rather than this checkout, so
+local changes to Restly do not appear in it.
+
 ## Blog
 
 [example-projects/blog](https://github.com/rjprins/fastapi-restly/tree/main/example-projects/blog)
@@ -41,7 +50,7 @@ The routes below highlight the patterns involved:
 | Route | Pattern it demonstrates |
 |---|---|
 | `POST /tasks/{id}/start` / `complete` / `reopen` | State transitions via {meth}`write_action <fastapi_restly.views.RestView.write_action>` on a {class}`RestView <fastapi_restly.views.RestView>` |
-| `POST /tasks/bulk`, `/tasks/bulk-delete`, `/tasks/import-csv` | Bulk endpoints beside generated CRUD |
+| `POST /tasks/bulk`, `/tasks/bulk-delete`, `/tasks/import-csv` | Bulk endpoints beside the default CRUD routes |
 | `POST /uploads` + `GET /uploads/{id}/lines` | A file-upload flow with a custom create bracket |
 | `POST /task-labels/create-and-attach` | Two rows committed through one `write_action` block |
 | `POST /users/{id}/change-password`, `GET /users/me` | Account actions and a non-resource read |
@@ -49,7 +58,7 @@ The routes below highlight the patterns involved:
 These patterns are covered in
 [Compose Views with Mixins](howto_compose_views_with_mixins.md),
 [Share Behaviour with Base Views](howto_inheritance.md),
-[Customize RestView](customize.md), and
+[Customizing RestView](customize.md), and
 [Patterns](patterns.md).
 
 ## Running them
@@ -61,4 +70,4 @@ The SaaS example also needs PostgreSQL. Its README includes the complete
 Compose, migration, application, and test commands.
 
 To build one of these yourself, start with
-[Getting Started](getting_started.md) and the [Tutorial](tutorial.md).
+[Getting Started](getting_started.md) and [Build a Blog API](tutorial.md).

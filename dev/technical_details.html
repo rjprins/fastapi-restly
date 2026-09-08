@@ -9,7 +9,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="noindex, follow">
 
-    <title>Technical Details &#8212; FastAPI-Restly 0.9.0 documentation</title>
+    <title>Technical Details &#8212; FastAPI-Restly 0.10.0 documentation</title>
   
   
   
@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=6821e04d" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=e2851362" />
   
   <!-- So that users can add custom icons -->
   <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=39bb1c6d"></script>
+    <script src="_static/documentation_options.js?v=82662543"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -67,7 +67,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.9" />
+  <meta name="docsearch:version" content="0.10" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -168,7 +168,7 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="tutorial_overview.html">
+  <a class="nav-link nav-internal" href="tutorial.html">
     Tutorial
   </a>
 </li>
@@ -176,14 +176,7 @@
 
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="class_based_views.html">
-    Views
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="customize.html">
-    Customize
+    CRUD Views
   </a>
 </li>
 
@@ -191,13 +184,6 @@
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="user_guide.html">
     How-To
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="examples.html">
-    Examples
   </a>
 </li>
 
@@ -210,18 +196,35 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="about.html">
-    About
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
     Blog
   </a>
 </li>
 
+            <li class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button"
+                data-bs-toggle="dropdown" aria-expanded="false"
+                aria-controls="pst-nav-more-links">
+                    More
+                </button>
+                <ul id="pst-nav-more-links" class="dropdown-menu">
+                    
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="about.html">
+    About
+  </a>
+</li>
+
+                </ul>
+            </li>
+            
   </ul>
 </nav></div>
       
@@ -339,7 +342,7 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="tutorial_overview.html">
+  <a class="nav-link nav-internal" href="tutorial.html">
     Tutorial
   </a>
 </li>
@@ -347,14 +350,7 @@
 
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="class_based_views.html">
-    Views
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="customize.html">
-    Customize
+    CRUD Views
   </a>
 </li>
 
@@ -362,13 +358,6 @@
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="user_guide.html">
     How-To
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="examples.html">
-    Examples
   </a>
 </li>
 
@@ -381,15 +370,22 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="about.html">
-    About
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
   </a>
 </li>
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
-    Blog
+  <a class="nav-link nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="about.html">
+    About
   </a>
 </li>
 
@@ -727,25 +723,13 @@ Custom write routes can use the same bracket with
 changes, Restly warns with <a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyUncommittedChangesWarning" title="fastapi_restly.exc.RestlyUncommittedChangesWarning"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyUncommittedChangesWarning</span></code></a> by default.
 <a class="reference internal" href="howto_existing_project.html#provide-your-own-session-generator"><span class="std std-ref">Custom session generators</span></a>
 control construction and cleanup, not commit ownership.</p>
-<p>Both views expose several class variables that affect endpoint registration and
-runtime behaviour:</p>
-<ul class="simple">
-<li><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema" title="fastapi_restly.views.BaseRestView.schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema</span></code></a> holds the Pydantic schema class; it is auto-generated if absent.</p></li>
-<li><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_create" title="fastapi_restly.views.BaseRestView.schema_create"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_create</span></code></a> and <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_update" title="fastapi_restly.views.BaseRestView.schema_update"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_update</span></code></a> are derived from <code class="docutils literal notranslate"><span class="pre">schema</span></code> if not declared.</p></li>
-<li><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.model" title="fastapi_restly.views.BaseRestView.model"><code class="xref py py-attr docutils literal notranslate"><span class="pre">model</span></code></a> names the SQLAlchemy model class.</p></li>
-<li><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.id_type" title="fastapi_restly.views.BaseRestView.id_type"><code class="xref py py-attr docutils literal notranslate"><span class="pre">id_type</span></code></a> sets the Python type of the scalar <code class="docutils literal notranslate"><span class="pre">{id}</span></code> path parameter (default <code class="docutils literal notranslate"><span class="pre">int</span></code>).
-Composite primary keys are outside the generated CRUD route contract; use
-<a class="reference internal" href="api/views.html#fastapi_restly.views.View" title="fastapi_restly.views.View"><code class="xref py py-class docutils literal notranslate"><span class="pre">View</span></code></a> directly when a resource needs a multi-part identity.</p></li>
-<li><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.exclude_routes" title="fastapi_restly.views.BaseRestView.exclude_routes"><code class="xref py py-attr docutils literal notranslate"><span class="pre">exclude_routes</span></code></a> is an iterable of route names to suppress (e.g.
-<code class="docutils literal notranslate"><span class="pre">exclude_routes</span> <span class="pre">=</span> <span class="pre">[fr.ViewRoute.DELETE]</span></code>). Route-name strings such as
-<code class="docutils literal notranslate"><span class="pre">&quot;delete&quot;</span></code> are also accepted. Routes listed here have their
-<code class="docutils literal notranslate"><span class="pre">_api_route_args</span></code> marker removed during <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.before_include_view" title="fastapi_restly.views.BaseRestView.before_include_view"><code class="xref py py-meth docutils literal notranslate"><span class="pre">before_include_view()</span></code></a> so FastAPI
-never registers them.</p></li>
-<li><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.paginated" title="fastapi_restly.views.BaseRestView.paginated"><code class="xref py py-attr docutils literal notranslate"><span class="pre">paginated</span></code></a> (default <code class="docutils literal notranslate"><span class="pre">True</span></code>) makes the <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many_endpoint" title="fastapi_restly.views.RestView.get_many_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many_endpoint</span></code></a> route
-return a <a class="reference internal" href="howto_response_schema.html#the-list-envelope"><span class="std std-ref">paginated <code class="docutils literal notranslate"><span class="pre">data</span></code> envelope</span></a>
-with <code class="docutils literal notranslate"><span class="pre">total_count</span></code>, <code class="docutils literal notranslate"><span class="pre">page</span></code>, <code class="docutils literal notranslate"><span class="pre">page_size</span></code>, and <code class="docutils literal notranslate"><span class="pre">total_pages</span></code>. Set it to <code class="docutils literal notranslate"><span class="pre">False</span></code>
-to return every row in a plain <code class="docutils literal notranslate"><span class="pre">data</span></code> envelope.</p></li>
-</ul>
+<p><a class="reference internal" href="rest_views.html"><span class="std std-doc">Using RestView</span></a> owns the user-facing model, schema,
+identity, route, and list configuration. At registration,
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.before_include_view" title="fastapi_restly.views.BaseRestView.before_include_view"><code class="xref py py-meth docutils literal notranslate"><span class="pre">before_include_view()</span></code></a>
+turns that configuration into FastAPI signatures. It derives missing schemas,
+constructs the list query-parameter schema, sets the endpoint annotations, and
+removes the route marker for each exclusion. An exclusion may use a
+<code class="docutils literal notranslate"><span class="pre">ViewRoute</span></code> value or its endpoint-method string, such as <code class="docutils literal notranslate"><span class="pre">&quot;delete_endpoint&quot;</span></code>.</p>
 </section>
 <section id="include-view">
 <h3>include_view()<a class="headerlink" href="#include-view" title="Link to this heading">#</a></h3>
@@ -756,8 +740,8 @@ your <code class="docutils literal notranslate"><span class="pre">FastAPI</span>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">MyView</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>This keeps imports predictable: importing <code class="docutils literal notranslate"><span class="pre">myapp.users.views</span></code> defines
-<code class="docutils literal notranslate"><span class="pre">UserView</span></code>, while <code class="docutils literal notranslate"><span class="pre">myapp.api</span></code> decides which app or router receives it. See
+<p>This keeps imports predictable: importing <code class="docutils literal notranslate"><span class="pre">app.users.views</span></code> defines
+<code class="docutils literal notranslate"><span class="pre">UserView</span></code>, while <code class="docutils literal notranslate"><span class="pre">app.main</span></code> decides which app or router receives it. See
 <a class="reference internal" href="howto_project_structure.html"><span class="std std-doc">Structure a Project</span></a> for the layout this assumes.
 For small apps and examples, <code class="docutils literal notranslate"><span class="pre">include_view()</span></code> also works as a decorator:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
@@ -774,7 +758,7 @@ attach an <code class="docutils literal notranslate"><span class="pre">APIRouter
 <p>Every CRUD verb is split into an endpoint method (<code class="docutils literal notranslate"><span class="pre">&lt;verb&gt;_endpoint</span></code>), a
 handler (<code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code>), and a business method (<code class="docutils literal notranslate"><span class="pre">&lt;verb&gt;</span></code>); the model and the
 override decision table live in
-<a class="reference internal" href="customize.html"><span class="std std-doc">Customize RestView</span></a>.</p>
+<a class="reference internal" href="customize.html"><span class="std std-doc">Customizing RestView</span></a>.</p>
 <p>The implementation detail worth knowing here is that the endpoint method calls
 <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_response" title="fastapi_restly.views.BaseRestView.to_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_response(obj,</span> <span class="pre">shape)</span></code></a>, the single response method, which delegates to
 <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_response_schema" title="fastapi_restly.views.BaseRestView.to_response_schema"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_response_schema(obj)</span></code></a> for the per-object serialization
@@ -973,6 +957,11 @@ without awaiting. Note that Starlette runs <code class="docutils literal notrans
 handlers only when the application was built without a <code class="docutils literal notranslate"><span class="pre">lifespan</span></code> argument, so
 disposal belongs in the lifespan itself rather than in a handler appended to
 <code class="docutils literal notranslate"><span class="pre">app.router</span></code>.</p>
+<p>An application that disposes its engine in the lifespan cannot be tested against
+an in-memory SQLite database. Restly’s test clients run the ASGI lifespan, so the
+disposal happens at the end of every test. An in-memory database lives inside its
+connection, so closing it discards the schema and the next test finds no tables.
+Point the suite at a file database instead.</p>
 <p>Reconfiguring Restly in a running process abandons the previous pool rather than
 closing it. CPython reclaims it once the garbage collector reaches the cycle the
 engine sits in, which is why a test suite that reconfigures per test can hold

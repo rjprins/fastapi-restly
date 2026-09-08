@@ -9,7 +9,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="noindex, follow">
 
-    <title>Deploying &#8212; FastAPI-Restly 0.9.0 documentation</title>
+    <title>Deploying &#8212; FastAPI-Restly 0.10.0 documentation</title>
   
   
   
@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=6821e04d" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=e2851362" />
   
   <!-- So that users can add custom icons -->
   <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=39bb1c6d"></script>
+    <script src="_static/documentation_options.js?v=82662543"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -62,12 +62,12 @@
     <link rel="author" title="About these documents" href="about.html" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Examples" href="examples.html" />
+    <link rel="next" title="API Reference" href="api_reference.html" />
     <link rel="prev" title="Test APIs with RestlyTestClient and Fixtures" href="howto_testing.html" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.9" />
+  <meta name="docsearch:version" content="0.10" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -168,7 +168,7 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="tutorial_overview.html">
+  <a class="nav-link nav-internal" href="tutorial.html">
     Tutorial
   </a>
 </li>
@@ -176,14 +176,7 @@
 
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="class_based_views.html">
-    Views
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="customize.html">
-    Customize
+    CRUD Views
   </a>
 </li>
 
@@ -196,22 +189,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="examples.html">
-    Examples
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="api_reference.html">
     API
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="about.html">
-    About
   </a>
 </li>
 
@@ -222,6 +201,30 @@
   </a>
 </li>
 
+            <li class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button"
+                data-bs-toggle="dropdown" aria-expanded="false"
+                aria-controls="pst-nav-more-links">
+                    More
+                </button>
+                <ul id="pst-nav-more-links" class="dropdown-menu">
+                    
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="about.html">
+    About
+  </a>
+</li>
+
+                </ul>
+            </li>
+            
   </ul>
 </nav></div>
       
@@ -339,7 +342,7 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="tutorial_overview.html">
+  <a class="nav-link nav-internal" href="tutorial.html">
     Tutorial
   </a>
 </li>
@@ -347,14 +350,7 @@
 
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="class_based_views.html">
-    Views
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="customize.html">
-    Customize
+    CRUD Views
   </a>
 </li>
 
@@ -367,13 +363,6 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="examples.html">
-    Examples
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="api_reference.html">
     API
   </a>
@@ -381,15 +370,22 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="about.html">
-    About
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
   </a>
 </li>
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
-    Blog
+  <a class="nav-link nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="about.html">
+    About
   </a>
 </li>
 
@@ -457,8 +453,8 @@
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="howto_project_structure.html">Structure a Project</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_existing_project.html">Use Restly in an Existing Project</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_project_structure.html">Structure a Project</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_custom_schema.html">Custom Schemas and Field Types</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys and Relationships</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_response_schema.html">Response Envelopes and List Metadata</a></li>
@@ -593,7 +589,7 @@ which reaches every view, and each view imports its model. Because the factory
 builds nothing at import time, this costs the imports and nothing else:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># alembic/env.py</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">myapp.main</span>  <span class="c1"># noqa: F401  (imports every view, and each view its model)</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">app.main</span>  <span class="c1"># noqa: F401  (imports every view, and each view its model)</span>
 
 <span class="n">target_metadata</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">DataclassBase</span><span class="o">.</span><span class="n">metadata</span>
 </pre></div>
@@ -640,8 +636,11 @@ application factory:</p>
 <span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">FastAPI</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.ext.asyncio</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_async_engine</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">.api</span><span class="w"> </span><span class="kn">import</span> <span class="n">register_views</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.settings</span><span class="w"> </span><span class="kn">import</span> <span class="n">Settings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.tasks.views</span><span class="w"> </span><span class="kn">import</span> <span class="n">TaskView</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.users.views</span><span class="w"> </span><span class="kn">import</span> <span class="n">UserView</span>
+
+<span class="n">VIEWS</span> <span class="o">=</span> <span class="p">(</span><span class="n">TaskView</span><span class="p">,</span> <span class="n">UserView</span><span class="p">)</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">create_app</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">FastAPI</span><span class="p">:</span>
@@ -662,7 +661,8 @@ application factory:</p>
 
     <span class="n">app</span> <span class="o">=</span> <span class="n">FastAPI</span><span class="p">(</span><span class="n">lifespan</span><span class="o">=</span><span class="n">lifespan</span><span class="p">)</span>
     <span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">async_engine</span><span class="o">=</span><span class="n">engine</span><span class="p">,</span> <span class="n">health</span><span class="o">=</span><span class="s2">&quot;/health&quot;</span><span class="p">)</span>
-    <span class="n">register_views</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">view</span> <span class="ow">in</span> <span class="n">VIEWS</span><span class="p">:</span>
+        <span class="n">fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">view</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">app</span>
 </pre></div>
 </div>
@@ -672,8 +672,8 @@ application factory:</p>
 the engine is built when <code class="docutils literal notranslate"><span class="pre">create_app()</span></code> runs, so a test suite can install its
 own settings first and call the same factory. See
 <a class="reference internal" href="howto_testing.html"><span class="std std-doc">Test APIs with RestlyTestClient and Fixtures</span></a>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">register_views(app)</span></code> keeps view definitions free of registration side
-effects and makes <code class="docutils literal notranslate"><span class="pre">api.py</span></code> the one application composition boundary; see
+<li><p>The <code class="docutils literal notranslate"><span class="pre">VIEWS</span></code> tuple keeps view definitions free of registration side effects
+and makes <code class="docutils literal notranslate"><span class="pre">main.py</span></code> the one application composition boundary; see
 <a class="reference internal" href="howto_project_structure.html"><span class="std std-doc">Structure a Project</span></a>.</p></li>
 <li><p><a class="reference internal" href="api/db.html#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.configure(app,</span> <span class="pre">...)</span></code></a> installs the default exception handlers
 (currently the translator that turns <code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code> into a 409 response;
@@ -696,22 +696,22 @@ configures from a URL instead reaches its engine through
 See <a class="reference external" href="https://fastapi.tiangolo.com/deployment/">FastAPI’s deployment docs</a>
 for the full picture, including TLS, reverse proxies, and Docker.</p>
 <p>A minimal invocation runs the factory directly:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uvicorn<span class="w"> </span><span class="s2">&quot;myapp.main:create_app&quot;</span><span class="w"> </span>--factory<span class="w"> </span>--host<span class="w"> </span><span class="m">0</span>.0.0.0<span class="w"> </span>--port<span class="w"> </span><span class="m">8000</span><span class="w"> </span>--workers<span class="w"> </span><span class="m">4</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uvicorn<span class="w"> </span><span class="s2">&quot;app.main:create_app&quot;</span><span class="w"> </span>--factory<span class="w"> </span>--host<span class="w"> </span><span class="m">0</span>.0.0.0<span class="w"> </span>--port<span class="w"> </span><span class="m">8000</span><span class="w"> </span>--workers<span class="w"> </span><span class="m">4</span>
 </pre></div>
 </div>
 <p>When your platform expects an application object rather than a factory, put it
 in its own module and leave <code class="docutils literal notranslate"><span class="pre">main.py</span></code> alone:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># myapp/asgi.py</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># app/asgi.py</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.main</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_app</span>
 
 <span class="n">app</span> <span class="o">=</span> <span class="n">create_app</span><span class="p">()</span>
 </pre></div>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">uvicorn</span> <span class="pre">myapp.asgi:app</span></code> then works, while <code class="docutils literal notranslate"><span class="pre">main.py</span></code> stays free to import. The
+<p><code class="docutils literal notranslate"><span class="pre">uvicorn</span> <span class="pre">app.asgi:app</span></code> then works, while <code class="docutils literal notranslate"><span class="pre">main.py</span></code> stays free to import. The
 FastAPI CLI cannot call a factory, so name that module for it and
 <code class="docutils literal notranslate"><span class="pre">fastapi</span> <span class="pre">dev</span></code> and <code class="docutils literal notranslate"><span class="pre">fastapi</span> <span class="pre">run</span></code> work too:</p>
 <div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[tool.fastapi]</span>
-<span class="n">entrypoint</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;myapp.asgi:app&quot;</span>
+<span class="n">entrypoint</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;app.asgi:app&quot;</span>
 </pre></div>
 </div>
 <p>Do not put <code class="docutils literal notranslate"><span class="pre">app</span> <span class="pre">=</span> <span class="pre">create_app()</span></code> at the bottom of <code class="docutils literal notranslate"><span class="pre">main.py</span></code> instead: with
@@ -782,11 +782,11 @@ application-owned async engine, migrations, and migration-backed tests.</p></li>
       </div>
     </a>
     <a class="right-next"
-       href="examples.html"
+       href="api_reference.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Examples</p>
+        <p class="prev-next-title">API Reference</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>

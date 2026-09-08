@@ -9,7 +9,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="noindex, follow">
 
-    <title>Examples &#8212; FastAPI-Restly 0.9.0 documentation</title>
+    <title>Examples &#8212; FastAPI-Restly 0.10.0 documentation</title>
   
   
   
@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=6821e04d" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=e2851362" />
   
   <!-- So that users can add custom icons -->
   <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=39bb1c6d"></script>
+    <script src="_static/documentation_options.js?v=82662543"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -62,12 +62,12 @@
     <link rel="author" title="About these documents" href="about.html" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="API Reference" href="api_reference.html" />
-    <link rel="prev" title="Deploying" href="deploying.html" />
+    <link rel="next" title="About FastAPI-Restly" href="about.html" />
+    <link rel="prev" title="Changelog" href="changelog.html" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.9" />
+  <meta name="docsearch:version" content="0.10" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -168,7 +168,7 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="tutorial_overview.html">
+  <a class="nav-link nav-internal" href="tutorial.html">
     Tutorial
   </a>
 </li>
@@ -176,14 +176,7 @@
 
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="class_based_views.html">
-    Views
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="customize.html">
-    Customize
+    CRUD Views
   </a>
 </li>
 
@@ -191,13 +184,6 @@
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="user_guide.html">
     How-To
-  </a>
-</li>
-
-
-<li class="nav-item current active">
-  <a class="nav-link nav-internal" href="#">
-    Examples
   </a>
 </li>
 
@@ -210,18 +196,35 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="about.html">
-    About
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
     Blog
   </a>
 </li>
 
+            <li class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button"
+                data-bs-toggle="dropdown" aria-expanded="false"
+                aria-controls="pst-nav-more-links">
+                    More
+                </button>
+                <ul id="pst-nav-more-links" class="dropdown-menu">
+                    
+<li class=" current active">
+  <a class="nav-link dropdown-item nav-internal" href="#">
+    Examples
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="about.html">
+    About
+  </a>
+</li>
+
+                </ul>
+            </li>
+            
   </ul>
 </nav></div>
       
@@ -339,7 +342,7 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="tutorial_overview.html">
+  <a class="nav-link nav-internal" href="tutorial.html">
     Tutorial
   </a>
 </li>
@@ -347,14 +350,7 @@
 
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="class_based_views.html">
-    Views
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="customize.html">
-    Customize
+    CRUD Views
   </a>
 </li>
 
@@ -362,13 +358,6 @@
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="user_guide.html">
     How-To
-  </a>
-</li>
-
-
-<li class="nav-item current active">
-  <a class="nav-link nav-internal" href="#">
-    Examples
   </a>
 </li>
 
@@ -381,15 +370,22 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="about.html">
-    About
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="#">
+    Examples
   </a>
 </li>
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
-    Blog
+  <a class="nav-link nav-internal" href="about.html">
+    About
   </a>
 </li>
 
@@ -517,6 +513,15 @@
 <p>The repository includes complete applications under <code class="docutils literal notranslate"><span class="pre">example-projects/</span></code>. They
 show different levels of Restly adoption, from a tiny resource to a
 production-shaped service with shared view foundations and custom behavior.</p>
+<section id="starter">
+<h2>Starter<a class="headerlink" href="#starter" title="Link to this heading">#</a></h2>
+<p><a class="reference external" href="https://github.com/rjprins/fastapi-restly/tree/main/example-projects/starter">example-projects/starter</a>
+is exactly what <a class="reference internal" href="howto_project_structure.html#restly-new"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">restly</span> <span class="pre">new</span> <span class="pre">myapp</span></code></span></a> writes with its default
+answers: async views, PostgreSQL, and Alembic. Read it to see the prescribed
+layout at its smallest; a check in CI keeps it identical to the generator’s
+output. It depends on the released framework rather than this checkout, so
+local changes to Restly do not appear in it.</p>
+</section>
 <section id="blog">
 <h2>Blog<a class="headerlink" href="#blog" title="Link to this heading">#</a></h2>
 <p><a class="reference external" href="https://github.com/rjprins/fastapi-restly/tree/main/example-projects/blog">example-projects/blog</a>
@@ -561,7 +566,7 @@ The routes below highlight the patterns involved:</p>
 <td><p>State transitions via <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.write_action" title="fastapi_restly.views.RestView.write_action"><code class="xref py py-meth docutils literal notranslate"><span class="pre">write_action</span></code></a> on a <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/tasks/bulk</span></code>, <code class="docutils literal notranslate"><span class="pre">/tasks/bulk-delete</span></code>, <code class="docutils literal notranslate"><span class="pre">/tasks/import-csv</span></code></p></td>
-<td><p>Bulk endpoints beside generated CRUD</p></td>
+<td><p>Bulk endpoints beside the default CRUD routes</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/uploads</span></code> + <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/uploads/{id}/lines</span></code></p></td>
 <td><p>A file-upload flow with a custom create bracket</p></td>
@@ -578,7 +583,7 @@ The routes below highlight the patterns involved:</p>
 <p>These patterns are covered in
 <a class="reference internal" href="howto_compose_views_with_mixins.html"><span class="std std-doc">Compose Views with Mixins</span></a>,
 <a class="reference internal" href="howto_inheritance.html"><span class="std std-doc">Share Behaviour with Base Views</span></a>,
-<a class="reference internal" href="customize.html"><span class="std std-doc">Customize RestView</span></a>, and
+<a class="reference internal" href="customize.html"><span class="std std-doc">Customizing RestView</span></a>, and
 <a class="reference internal" href="patterns.html"><span class="std std-doc">Patterns</span></a>.</p>
 </section>
 <section id="running-them">
@@ -588,7 +593,7 @@ commands in its README (linked above).</p>
 <p>The SaaS example also needs PostgreSQL. Its README includes the complete
 Compose, migration, application, and test commands.</p>
 <p>To build one of these yourself, start with
-<a class="reference internal" href="getting_started.html"><span class="std std-doc">Getting Started</span></a> and the <a class="reference internal" href="tutorial.html"><span class="std std-doc">Tutorial</span></a>.</p>
+<a class="reference internal" href="getting_started.html"><span class="std std-doc">Getting Started</span></a> and <a class="reference internal" href="tutorial.html"><span class="std std-doc">Build a Blog API</span></a>.</p>
 </section>
 </section>
 
@@ -603,20 +608,20 @@ Compose, migration, application, and test commands.</p>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="deploying.html"
+       href="changelog.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Deploying</p>
+        <p class="prev-next-title">Changelog</p>
       </div>
     </a>
     <a class="right-next"
-       href="api_reference.html"
+       href="about.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">API Reference</p>
+        <p class="prev-next-title">About FastAPI-Restly</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -639,6 +644,7 @@ Compose, migration, application, and test commands.</p>
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#starter">Starter</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#blog">Blog</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#shop">Shop</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#saas">SaaS</a></li>

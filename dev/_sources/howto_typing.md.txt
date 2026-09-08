@@ -240,7 +240,7 @@ projects that want it.
 
 - [View Method Surface](api_reference.md#view-method-surface): the typed
   methods this page parameterizes, with tier classification.
-- [Customize RestView](customize.md): the override recipes
+- [Customizing RestView](customize.md): the override recipes
   these signatures apply to.
 - [Work with Foreign Keys and Relationships](howto_relationship_idschema.md):
   runtime semantics of

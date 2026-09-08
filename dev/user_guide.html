@@ -9,7 +9,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="noindex, follow">
 
-    <title>How-To Guides &#8212; FastAPI-Restly 0.9.0 documentation</title>
+    <title>How-To Guides &#8212; FastAPI-Restly 0.10.0 documentation</title>
   
   
   
@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=6821e04d" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=e2851362" />
   
   <!-- So that users can add custom icons -->
   <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=39bb1c6d"></script>
+    <script src="_static/documentation_options.js?v=82662543"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -62,12 +62,12 @@
     <link rel="author" title="About these documents" href="about.html" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Structure a Project" href="howto_project_structure.html" />
-    <link rel="prev" title="Customize RestView" href="customize.html" />
+    <link rel="next" title="Use Restly in an Existing Project" href="howto_existing_project.html" />
+    <link rel="prev" title="Customizing RestView" href="customize.html" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.9" />
+  <meta name="docsearch:version" content="0.10" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -168,7 +168,7 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="tutorial_overview.html">
+  <a class="nav-link nav-internal" href="tutorial.html">
     Tutorial
   </a>
 </li>
@@ -176,14 +176,7 @@
 
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="class_based_views.html">
-    Views
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="customize.html">
-    Customize
+    CRUD Views
   </a>
 </li>
 
@@ -196,22 +189,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="examples.html">
-    Examples
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="api_reference.html">
     API
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="about.html">
-    About
   </a>
 </li>
 
@@ -222,6 +201,30 @@
   </a>
 </li>
 
+            <li class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button"
+                data-bs-toggle="dropdown" aria-expanded="false"
+                aria-controls="pst-nav-more-links">
+                    More
+                </button>
+                <ul id="pst-nav-more-links" class="dropdown-menu">
+                    
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="about.html">
+    About
+  </a>
+</li>
+
+                </ul>
+            </li>
+            
   </ul>
 </nav></div>
       
@@ -339,7 +342,7 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="tutorial_overview.html">
+  <a class="nav-link nav-internal" href="tutorial.html">
     Tutorial
   </a>
 </li>
@@ -347,14 +350,7 @@
 
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="class_based_views.html">
-    Views
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="customize.html">
-    Customize
+    CRUD Views
   </a>
 </li>
 
@@ -367,13 +363,6 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="examples.html">
-    Examples
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="api_reference.html">
     API
   </a>
@@ -381,15 +370,22 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="about.html">
-    About
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
   </a>
 </li>
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
-    Blog
+  <a class="nav-link nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="about.html">
+    About
   </a>
 </li>
 
@@ -457,8 +453,8 @@
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="howto_project_structure.html">Structure a Project</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_existing_project.html">Use Restly in an Existing Project</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_project_structure.html">Structure a Project</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_custom_schema.html">Custom Schemas and Field Types</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys and Relationships</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_response_schema.html">Response Envelopes and List Metadata</a></li>
@@ -534,8 +530,10 @@
 <h1>How-To Guides<a class="headerlink" href="#how-to-guides" title="Link to this heading">#</a></h1>
 <p>These guides are task-focused: each one shows how to accomplish a specific
 goal with FastAPI-Restly. If you are new to the framework, start with
-<a class="reference internal" href="getting_started.html"><span class="std std-doc">Getting Started</span></a>, then the <a class="reference internal" href="tutorial.html"><span class="std std-doc">Tutorial</span></a>, and
-come back here when you have a concrete task.</p>
+<a class="reference internal" href="getting_started.html"><span class="std std-doc">Getting Started</span></a>, read <a class="reference internal" href="rest_views.html"><span class="std std-doc">Using RestView</span></a> for
+the default CRUD contract, then use <a class="reference internal" href="tutorial.html"><span class="std std-doc">Build a Blog API</span></a> for a
+complete multi-model example. Come back here
+when you have a concrete task.</p>
 <section id="adopting-and-modeling">
 <h2>Adopting and Modeling<a class="headerlink" href="#adopting-and-modeling" title="Link to this heading">#</a></h2>
 <p>These guides cover bringing Restly into a codebase and defining the models and
@@ -546,20 +544,20 @@ schemas it works from.</p>
 <div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
 <div class="sd-card-body docutils">
 <div class="sd-card-title sd-font-weight-bold docutils">
-Structure a Project</div>
-<p class="sd-card-text">Lay out a growing application by subject, keep imports pointing one way, and
-compose views and models from one place each.</p>
+Use Restly in an Existing Project</div>
+<p class="sd-card-text">Adopt Restly beside existing FastAPI routes, then wire it into your sessions and models.</p>
 </div>
-<a class="sd-stretched-link sd-hide-link-text reference internal" href="howto_project_structure.html"><span class="doc">Structure a Project</span></a></div>
+<a class="sd-stretched-link sd-hide-link-text reference internal" href="howto_existing_project.html"><span class="doc">Use Restly in an Existing Project</span></a></div>
 </div>
 <div class="sd-col sd-d-flex-row docutils">
 <div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
 <div class="sd-card-body docutils">
 <div class="sd-card-title sd-font-weight-bold docutils">
-Use Restly in an Existing Project</div>
-<p class="sd-card-text">Adopt Restly beside existing FastAPI routes, then wire it into your sessions and models.</p>
+Structure a Project</div>
+<p class="sd-card-text">Lay out a growing application by subject, keep imports pointing one way, and
+compose views and models from one place each.</p>
 </div>
-<a class="sd-stretched-link sd-hide-link-text reference internal" href="howto_existing_project.html"><span class="doc">Use Restly in an Existing Project</span></a></div>
+<a class="sd-stretched-link sd-hide-link-text reference internal" href="howto_project_structure.html"><span class="doc">Structure a Project</span></a></div>
 </div>
 <div class="sd-col sd-d-flex-row docutils">
 <div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
@@ -632,7 +630,7 @@ split, and app-wide error envelopes (problem+json).</p>
 </section>
 <section id="customizing-views">
 <h2>Customizing Views<a class="headerlink" href="#customizing-views" title="Link to this heading">#</a></h2>
-<p>These guides change what the generated views do, from overriding a single
+<p>These guides change what CRUD views do, from overriding a single
 method to sharing behaviour across many views.</p>
 <div class="sd-container-fluid sd-sphinx-override sd-mb-4 docutils">
 <div class="sd-row sd-row-cols-1 sd-row-cols-xs-1 sd-row-cols-sm-2 sd-row-cols-md-2 sd-row-cols-lg-2 sd-g-3 sd-g-xs-3 sd-g-sm-3 sd-g-md-3 sd-g-lg-3 docutils">
@@ -651,11 +649,12 @@ flows, custom actions, and tenant scoping.</p>
 <div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
 <div class="sd-card-body docutils">
 <div class="sd-card-title sd-font-weight-bold docutils">
-Customize RestView</div>
+Customizing RestView</div>
 <p class="sd-card-text">Override the business methods (<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create" title="fastapi_restly.views.RestView.create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.update" title="fastapi_restly.views.RestView.update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">update</span></code></a>, …), the handlers,
-or the endpoint methods, and add custom routes alongside generated CRUD.</p>
+or the endpoint methods, and add custom routes alongside the default CRUD
+routes.</p>
 </div>
-<a class="sd-stretched-link sd-hide-link-text reference internal" href="customize.html"><span class="doc">Customize RestView</span></a></div>
+<a class="sd-stretched-link sd-hide-link-text reference internal" href="customize.html"><span class="doc">Customizing RestView</span></a></div>
 </div>
 <div class="sd-col sd-d-flex-row docutils">
 <div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
@@ -711,7 +710,7 @@ React Admin Integration</div>
 <div class="sd-card-title sd-font-weight-bold docutils">
 Customize the OpenAPI Schema</div>
 <p class="sd-card-text">Set per-view tags and responses, add metadata to custom routes, replace a
-generated route’s documented contract, and use <code class="docutils literal notranslate"><span class="pre">x-resource-ref</span></code>.</p>
+default CRUD route’s documented contract, and use <code class="docutils literal notranslate"><span class="pre">x-resource-ref</span></code>.</p>
 </div>
 <a class="sd-stretched-link sd-hide-link-text reference internal" href="howto_openapi.html"><span class="doc">Customize the OpenAPI Schema</span></a></div>
 </div>
@@ -758,15 +757,15 @@ checklist.</p>
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Customize RestView</p>
+        <p class="prev-next-title">Customizing RestView</p>
       </div>
     </a>
     <a class="right-next"
-       href="howto_project_structure.html"
+       href="howto_existing_project.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Structure a Project</p>
+        <p class="prev-next-title">Use Restly in an Existing Project</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>

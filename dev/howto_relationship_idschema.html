@@ -9,7 +9,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="noindex, follow">
 
-    <title>Work with Foreign Keys and Relationships &#8212; FastAPI-Restly 0.9.0 documentation</title>
+    <title>Work with Foreign Keys and Relationships &#8212; FastAPI-Restly 0.10.0 documentation</title>
   
   
   
@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=6821e04d" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=e2851362" />
   
   <!-- So that users can add custom icons -->
   <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=39bb1c6d"></script>
+    <script src="_static/documentation_options.js?v=82662543"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -67,7 +67,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.9" />
+  <meta name="docsearch:version" content="0.10" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -168,7 +168,7 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="tutorial_overview.html">
+  <a class="nav-link nav-internal" href="tutorial.html">
     Tutorial
   </a>
 </li>
@@ -176,14 +176,7 @@
 
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="class_based_views.html">
-    Views
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="customize.html">
-    Customize
+    CRUD Views
   </a>
 </li>
 
@@ -196,22 +189,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="examples.html">
-    Examples
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="api_reference.html">
     API
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="about.html">
-    About
   </a>
 </li>
 
@@ -222,6 +201,30 @@
   </a>
 </li>
 
+            <li class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button"
+                data-bs-toggle="dropdown" aria-expanded="false"
+                aria-controls="pst-nav-more-links">
+                    More
+                </button>
+                <ul id="pst-nav-more-links" class="dropdown-menu">
+                    
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="about.html">
+    About
+  </a>
+</li>
+
+                </ul>
+            </li>
+            
   </ul>
 </nav></div>
       
@@ -339,7 +342,7 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="tutorial_overview.html">
+  <a class="nav-link nav-internal" href="tutorial.html">
     Tutorial
   </a>
 </li>
@@ -347,14 +350,7 @@
 
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="class_based_views.html">
-    Views
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="customize.html">
-    Customize
+    CRUD Views
   </a>
 </li>
 
@@ -367,13 +363,6 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="examples.html">
-    Examples
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="api_reference.html">
     API
   </a>
@@ -381,15 +370,22 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="about.html">
-    About
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
   </a>
 </li>
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
-    Blog
+  <a class="nav-link nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="about.html">
+    About
   </a>
 </li>
 
@@ -457,8 +453,8 @@
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="howto_project_structure.html">Structure a Project</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_existing_project.html">Use Restly in an Existing Project</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_project_structure.html">Structure a Project</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_custom_schema.html">Custom Schemas and Field Types</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Work with Foreign Keys and Relationships</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_response_schema.html">Response Envelopes and List Metadata</a></li>
@@ -870,7 +866,7 @@ with Restly is covered in
 </section>
 <section id="reference-fields-in-custom-routes">
 <span id="idref-custom-routes"></span><h2>Reference fields in custom routes<a class="headerlink" href="#reference-fields-in-custom-routes" title="Link to this heading">#</a></h2>
-<p>Generated <code class="docutils literal notranslate"><span class="pre">POST</span></code> and <code class="docutils literal notranslate"><span class="pre">PATCH</span></code> routes validate the body before Restly calls
+<p>The default <code class="docutils literal notranslate"><span class="pre">POST</span></code> and <code class="docutils literal notranslate"><span class="pre">PATCH</span></code> routes validate the body before Restly calls
 <code class="docutils literal notranslate"><span class="pre">make_new_object()</span></code> or <code class="docutils literal notranslate"><span class="pre">update_object()</span></code>, so reference fields are already in the
 right shape. A <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">MustExist</span></code></a> field is a
 plain id; <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDRef[Model]</span></code></a> and
@@ -936,7 +932,7 @@ view governs it. References are a <em>policy</em> concern, and they are gated in
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.authorize" title="fastapi_restly.views.RestView.authorize"><code class="xref py py-meth docutils literal notranslate"><span class="pre">authorize</span></code></a> /
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.before_commit" title="fastapi_restly.views.RestView.before_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">before_commit</span></code></a> like any
 other write-path authorization; both hooks are described in
-<a class="reference internal" href="customize.html#authorize-gate-the-action"><span class="std std-ref">Customize RestView</span></a>.</p>
+<a class="reference internal" href="customize.html#authorize-gate-the-action"><span class="std std-ref">Customizing RestView</span></a>.</p>
 <p>Gate in <code class="docutils literal notranslate"><span class="pre">authorize</span></code>, where <code class="docutils literal notranslate"><span class="pre">data</span></code> carries the write-side value before
 resolution. For a <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">MustExist</span></code></a> field,
 <code class="docutils literal notranslate"><span class="pre">data.author_id</span></code> is the requested id. For
@@ -967,7 +963,7 @@ fetch and is the standard policy seam.</p>
 <ul class="simple">
 <li><p><a class="reference internal" href="howto_relationship_loading.html"><span class="std std-doc">Relationship Loading and Async</span></a>: how these
 relationship fields load for responses, and <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code> fixes on async.</p></li>
-<li><p><a class="reference internal" href="tutorial.html"><span class="std std-doc">Tutorial</span></a>: reference fields in the blog build, in context.</p></li>
+<li><p><a class="reference internal" href="tutorial.html"><span class="std std-doc">Build a Blog API</span></a>: reference fields in the blog build, in context.</p></li>
 <li><p><a class="reference internal" href="howto_custom_schema.html"><span class="std std-doc">Custom Schemas and Field Types</span></a>: the schema bases
 and field markers these compose with.</p></li>
 <li><p><a class="reference internal" href="api_reference.html"><span class="std std-doc">API Reference</span></a>: <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">MustExist</span></code></a> / <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDRef</span></code></a> / <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDSchema</span></code></a> signatures and the

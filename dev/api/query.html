@@ -9,7 +9,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="noindex, follow">
 
-    <title>Query API &#8212; FastAPI-Restly 0.9.0 documentation</title>
+    <title>Query API &#8212; FastAPI-Restly 0.10.0 documentation</title>
   
   
   
@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=6821e04d" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=e2851362" />
   
   <!-- So that users can add custom icons -->
   <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=39bb1c6d"></script>
+    <script src="../_static/documentation_options.js?v=82662543"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -67,7 +67,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.9" />
+  <meta name="docsearch:version" content="0.10" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -168,7 +168,7 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../tutorial_overview.html">
+  <a class="nav-link nav-internal" href="../tutorial.html">
     Tutorial
   </a>
 </li>
@@ -176,14 +176,7 @@
 
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="../class_based_views.html">
-    Views
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="../customize.html">
-    Customize
+    CRUD Views
   </a>
 </li>
 
@@ -191,13 +184,6 @@
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="../user_guide.html">
     How-To
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="../examples.html">
-    Examples
   </a>
 </li>
 
@@ -210,18 +196,35 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../about.html">
-    About
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
     Blog
   </a>
 </li>
 
+            <li class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button"
+                data-bs-toggle="dropdown" aria-expanded="false"
+                aria-controls="pst-nav-more-links">
+                    More
+                </button>
+                <ul id="pst-nav-more-links" class="dropdown-menu">
+                    
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="../examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="../about.html">
+    About
+  </a>
+</li>
+
+                </ul>
+            </li>
+            
   </ul>
 </nav></div>
       
@@ -339,7 +342,7 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../tutorial_overview.html">
+  <a class="nav-link nav-internal" href="../tutorial.html">
     Tutorial
   </a>
 </li>
@@ -347,14 +350,7 @@
 
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="../class_based_views.html">
-    Views
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="../customize.html">
-    Customize
+    CRUD Views
   </a>
 </li>
 
@@ -362,13 +358,6 @@
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="../user_guide.html">
     How-To
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="../examples.html">
-    Examples
   </a>
 </li>
 
@@ -381,15 +370,22 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../about.html">
-    About
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
   </a>
 </li>
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
-    Blog
+  <a class="nav-link nav-internal" href="../examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../about.html">
+    About
   </a>
 </li>
 
@@ -548,9 +544,8 @@ validated parameters to a SQLAlchemy select.</p>
 <dd><p>Apply pagination, sorting, and filtering on a SQL query using validated
 list-endpoint query parameters.</p>
 <p><code class="docutils literal notranslate"><span class="pre">params</span></code> is normally an instance of the schema returned by
-<a class="reference internal" href="#fastapi_restly.query.create_list_params_schema" title="fastapi_restly.query.create_list_params_schema"><code class="xref py py-func docutils literal notranslate"><span class="pre">create_list_params_schema()</span></code></a>. The generated FastAPI endpoints
-always pass a validated instance, so pagination/filter bounds have
-already been checked.</p>
+<a class="reference internal" href="#fastapi_restly.query.create_list_params_schema" title="fastapi_restly.query.create_list_params_schema"><code class="xref py py-func docutils literal notranslate"><span class="pre">create_list_params_schema()</span></code></a>. The default list endpoints always pass a
+validated instance, so pagination/filter bounds have already been checked.</p>
 <p>A raw <code class="xref py py-class docutils literal notranslate"><span class="pre">QueryParams</span></code> is also accepted
 for callers that build the query parameters programmatically.
 <strong>Raw inputs bypass schema validation</strong> — the caller is responsible
@@ -591,8 +586,9 @@ generate only <code class="docutils literal notranslate"><span class="pre">__isn
 so every other operator would fail at request time.</p>
 <p>When <code class="docutils literal notranslate"><span class="pre">paginated</span></code> is true (the default), <code class="docutils literal notranslate"><span class="pre">page</span></code> and <code class="docutils literal notranslate"><span class="pre">page_size</span></code> are
 added and validated by Pydantic with bounds (<code class="docutils literal notranslate"><span class="pre">page</span> <span class="pre">&gt;=</span> <span class="pre">1</span></code>,
-<code class="docutils literal notranslate"><span class="pre">1</span> <span class="pre">&lt;=</span> <span class="pre">page_size</span> <span class="pre">&lt;=</span> <span class="pre">max_page_size</span></code>); out-of-range values produce a standard
-422 response from FastAPI. When it is false, no pagination parameters are
+<code class="docutils literal notranslate"><span class="pre">1</span> <span class="pre">&lt;=</span> <span class="pre">page_size</span> <span class="pre">&lt;=</span> <span class="pre">max_page_size</span></code>). The resulting SQL offset must also fit
+in a signed 64-bit integer. Out-of-range values produce a standard 422
+response from FastAPI. When it is false, no pagination parameters are
 emitted at all – the endpoint returns every matching row – while sorting
 and filtering stay available.</p>
 <dl class="field-list simple">

@@ -2,8 +2,10 @@
 
 These guides are task-focused: each one shows how to accomplish a specific
 goal with FastAPI-Restly. If you are new to the framework, start with
-[Getting Started](getting_started.md), then the [Tutorial](tutorial.md), and
-come back here when you have a concrete task.
+[Getting Started](getting_started.md), read [Using RestView](rest_views.md) for
+the default CRUD contract, then use [Build a Blog API](tutorial.md) for a
+complete multi-model example. Come back here
+when you have a concrete task.
 
 ## Adopting and Modeling
 
@@ -13,19 +15,19 @@ schemas it works from.
 ::::{grid} 1 2 2 2
 :gutter: 3
 
+:::{grid-item-card} Use Restly in an Existing Project
+:link: howto_existing_project
+:link-type: doc
+
+Adopt Restly beside existing FastAPI routes, then wire it into your sessions and models.
+:::
+
 :::{grid-item-card} Structure a Project
 :link: howto_project_structure
 :link-type: doc
 
 Lay out a growing application by subject, keep imports pointing one way, and
 compose views and models from one place each.
-:::
-
-:::{grid-item-card} Use Restly in an Existing Project
-:link: howto_existing_project
-:link-type: doc
-
-Adopt Restly beside existing FastAPI routes, then wire it into your sessions and models.
 :::
 
 :::{grid-item-card} Custom Schemas and Field Types
@@ -87,7 +89,7 @@ split, and app-wide error envelopes (problem+json).
 
 ## Customizing Views
 
-These guides change what the generated views do, from overriding a single
+These guides change what CRUD views do, from overriding a single
 method to sharing behaviour across many views.
 
 ::::{grid} 1 2 2 2
@@ -102,12 +104,13 @@ different list schema, restoring soft-deleted rows, webhook receivers, login
 flows, custom actions, and tenant scoping.
 :::
 
-:::{grid-item-card} Customize RestView
+:::{grid-item-card} Customizing RestView
 :link: customize
 :link-type: doc
 
 Override the business methods ({meth}`create <fastapi_restly.views.RestView.create>`, {meth}`update <fastapi_restly.views.RestView.update>`, ...), the handlers,
-or the endpoint methods, and add custom routes alongside generated CRUD.
+or the endpoint methods, and add custom routes alongside the default CRUD
+routes.
 :::
 
 :::{grid-item-card} Share Behaviour with Base Views
@@ -156,7 +159,7 @@ Use {class}`AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>` to g
 :link-type: doc
 
 Set per-view tags and responses, add metadata to custom routes, replace a
-generated route's documented contract, and use `x-resource-ref`.
+default CRUD route's documented contract, and use `x-resource-ref`.
 :::
 
 :::{grid-item-card} Test APIs with RestlyTestClient and Fixtures
@@ -181,8 +184,8 @@ checklist.
 :maxdepth: 1
 :hidden:
 
-howto_project_structure
 howto_existing_project
+howto_project_structure
 howto_custom_schema
 howto_relationship_idschema
 howto_response_schema

@@ -157,24 +157,13 @@ changes, Restly warns with {class}`RestlyUncommittedChangesWarning <fastapi_rest
 [Custom session generators](howto_existing_project.md#provide-your-own-session-generator)
 control construction and cleanup, not commit ownership.
 
-Both views expose several class variables that affect endpoint registration and
-runtime behaviour:
-
-- {attr}`schema <fastapi_restly.views.BaseRestView.schema>` holds the Pydantic schema class; it is auto-generated if absent.
-- {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` and {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>` are derived from `schema` if not declared.
-- {attr}`model <fastapi_restly.views.BaseRestView.model>` names the SQLAlchemy model class.
-- {attr}`id_type <fastapi_restly.views.BaseRestView.id_type>` sets the Python type of the scalar `{id}` path parameter (default `int`).
-  Composite primary keys are outside the generated CRUD route contract; use
-  {class}`View <fastapi_restly.views.View>` directly when a resource needs a multi-part identity.
-- {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>` is an iterable of route names to suppress (e.g.
-  `exclude_routes = [fr.ViewRoute.DELETE]`). Route-name strings such as
-  `"delete"` are also accepted. Routes listed here have their
-  `_api_route_args` marker removed during {meth}`before_include_view() <fastapi_restly.views.BaseRestView.before_include_view>` so FastAPI
-  never registers them.
-- {attr}`paginated <fastapi_restly.views.BaseRestView.paginated>` (default `True`) makes the {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>` route
-  return a [paginated `data` envelope](howto_response_schema.md#the-list-envelope)
-  with `total_count`, `page`, `page_size`, and `total_pages`. Set it to `False`
-  to return every row in a plain `data` envelope.
+[Using RestView](rest_views.md) owns the user-facing model, schema,
+identity, route, and list configuration. At registration,
+{meth}`before_include_view() <fastapi_restly.views.BaseRestView.before_include_view>`
+turns that configuration into FastAPI signatures. It derives missing schemas,
+constructs the list query-parameter schema, sets the endpoint annotations, and
+removes the route marker for each exclusion. An exclusion may use a
+`ViewRoute` value or its endpoint-method string, such as `"delete_endpoint"`.
 
 ### include_view()
 
@@ -187,8 +176,8 @@ your `FastAPI` app or `APIRouter`:
 fr.include_view(app, MyView)
 ```
 
-This keeps imports predictable: importing `myapp.users.views` defines
-`UserView`, while `myapp.api` decides which app or router receives it. See
+This keeps imports predictable: importing `app.users.views` defines
+`UserView`, while `app.main` decides which app or router receives it. See
 [Structure a Project](howto_project_structure.md) for the layout this assumes.
 For small apps and examples, `include_view()` also works as a decorator:
 
@@ -207,7 +196,7 @@ attach an `APIRouter` to the parent app/router.
 Every CRUD verb is split into an endpoint method (`<verb>_endpoint`), a
 handler (`handle_<verb>`), and a business method (`<verb>`); the model and the
 override decision table live in
-[Customize RestView](customize.md).
+[Customizing RestView](customize.md).
 
 The implementation detail worth knowing here is that the endpoint method calls
 {meth}`to_response(obj, shape) <fastapi_restly.views.BaseRestView.to_response>`, the single response method, which delegates to
@@ -411,6 +400,12 @@ without awaiting. Note that Starlette runs `on_startup` and `on_shutdown`
 handlers only when the application was built without a `lifespan` argument, so
 disposal belongs in the lifespan itself rather than in a handler appended to
 `app.router`.
+
+An application that disposes its engine in the lifespan cannot be tested against
+an in-memory SQLite database. Restly's test clients run the ASGI lifespan, so the
+disposal happens at the end of every test. An in-memory database lives inside its
+connection, so closing it discards the schema and the next test finds no tables.
+Point the suite at a file database instead.
 
 Reconfiguring Restly in a running process abandons the previous pool rather than
 closing it. CPython reclaims it once the garbage collector reaches the cycle the
