@@ -146,8 +146,8 @@ class ResponseShape(str, Enum):
 
 
 class Action:
-    """Canonical CRUD action names passed to ``authorize`` / ``before_commit``
-    / ``after_commit``.
+    """Canonical CRUD action names passed to ``authorize`` / ``before_action_commit``
+    / ``after_action_commit``.
 
     This is a constants class, not an ``Enum``: custom actions and mixins add
     their own names. Use constants for typo checking at import time.
@@ -1255,7 +1255,7 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
 
     def snapshot(self, obj: Any) -> dict[str, Any]:
         """Frozen capture of an object's already-loaded column values, passed as
-        ``old`` to ``before_commit`` / ``after_commit`` for dirty detection.
+        ``old`` to ``before_action_commit`` / ``after_action_commit`` for dirty detection.
         Override to change what ``old`` captures (e.g. include a relationship's
         prior state); the default delegates to
         :func:`~fastapi_restly.objects.snapshot`.
@@ -1583,7 +1583,7 @@ def _warn_on_misuse(view_cls: type[View]) -> None:
                 f"{name}.{attr} calls session.commit() directly. The framework "
                 f"owns the commit: reuse handle_<verb>(), or bracket the "
                 f"mutation with write_action('<action>', ...) so authorize / "
-                f"before_commit / after_commit run.",
+                f"before_action_commit / after_action_commit run.",
                 RestlyMisuseWarning,
                 stacklevel=5,
             )

@@ -545,7 +545,7 @@ def test_awaitable_attrs_reaches_a_relationship_the_schema_never_names(client):
         schema = DocRead
         schema_create = DocCreate
 
-        async def after_commit(self, action, new: Any, old=None) -> None:
+        async def after_action_commit(self, action, new: Any, old=None) -> None:
             with pytest.raises(MissingGreenlet):
                 _ = new.notes
             seen["notes"] = [n.body for n in await new.awaitable_attrs.notes]

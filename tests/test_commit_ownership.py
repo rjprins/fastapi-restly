@@ -2,7 +2,7 @@
 
 `handle_<verb>` owns the only commit for a write request; the request-session
 dependency no longer commits on response. So an ORM mutation made inside
-`after_commit` (which runs *after* the durable write) must NOT be persisted by
+`after_action_commit` (which runs *after* the durable write) must NOT be persisted by
 a second commit -- it is discarded when the session closes.
 """
 
@@ -36,8 +36,8 @@ def test_after_commit_orm_mutation_is_not_persisted(client):
         model = Note
         schema = NoteSchema
 
-        async def after_commit(self, action, new, old=None):
-            # A mistaken ORM write in after_commit must not become durable.
+        async def after_action_commit(self, action, new, old=None):
+            # A mistaken ORM write in after_action_commit must not become durable.
             if new is not None:
                 new.body = "stray-write-in-after-commit"
 
@@ -46,7 +46,7 @@ def test_after_commit_orm_mutation_is_not_persisted(client):
     created = client.post("/notes/", json={"title": "t", "body": ""}).json()
     note_id = created["id"]
 
-    # A fresh request reads the committed state: the stray after_commit write
+    # A fresh request reads the committed state: the stray after_action_commit write
     # was never committed, so it is gone (before the fix, a second dependency
     # commit would have persisted it).
     fetched = client.get(f"/notes/{note_id}").json()

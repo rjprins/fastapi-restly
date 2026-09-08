@@ -45,7 +45,7 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     * ``<verb>_endpoint`` — the endpoint method. Owns the HTTP signature,
       ``response_model``, and ``to_response``. Rarely overridden.
     * ``handle_<verb>`` — the handler. Owns ``authorize`` and the
-      commit bracket (``before_commit`` -> commit -> ``after_commit``); returns
+      commit bracket (``before_action_commit`` -> commit -> ``after_action_commit``); returns
       the domain object. Reuse from custom actions to get the bracket.
     * ``<verb>`` (``get_many`` / ``get_one`` / ``create`` / ``update`` /
       ``delete``) — the domain operation. Auth-free, commit-free; the common
@@ -345,14 +345,14 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         scope, not here.
         """
 
-    async def before_commit(
+    async def before_action_commit(
         self, action: str, new: ModelT | None, old: dict[str, Any] | None = None
     ) -> None:
         """In-transaction side effect (outbox rows, audit rows), committed
         atomically with the write. ``old`` is the pre-mutation snapshot dict.
         """
 
-    async def after_commit(
+    async def after_action_commit(
         self, action: str, new: ModelT | None, old: dict[str, Any] | None = None
     ) -> None:
         """Post-commit side effect (email, webhook, cache invalidation). ``old``
@@ -362,5 +362,5 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         ``new`` or the database here is NOT persisted. A mutation to ``new`` also
         leaks into this request's response (which serializes ``new`` after this
         hook) while being silently discarded from storage -- do the mutation in
-        the business method or ``before_commit`` instead.
+        the business method or ``before_action_commit`` instead.
         """

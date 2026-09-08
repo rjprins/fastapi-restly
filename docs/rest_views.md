@@ -168,7 +168,7 @@ Change the layer that owns the behavior instead of rewriting the entire route:
 | Stamp or transform data during create or update | Override the business method or cooperative object builder in [Customizing RestView](customize.md) |
 | Hide rows from every read | Declare a [scope](scopes.md): `default_scope` on the model, or `scope` on the view |
 | Permit or reject an action | Override {meth}`authorize() <fastapi_restly.views.AsyncRestView.authorize>` |
-| Run an atomic side effect or a post-commit action | Override `before_commit()` or `after_commit()` |
+| Run an atomic side effect or a post-commit action | Override `before_action_commit()` or `after_action_commit()` |
 | Change status, headers, request parameters, or response model | Replace the endpoint method |
 | Add a path that is not part of CRUD | Add a method with `@fr.get`, `@fr.post`, or another route decorator |
 | Share behavior across resources | Use a [base view](howto_inheritance.md) or [cooperative mixins](howto_compose_views_with_mixins.md) |

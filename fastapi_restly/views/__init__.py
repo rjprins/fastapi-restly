@@ -7,7 +7,7 @@ name the tier that owns your change and override one method:
    signature, ``response_model``, and ``to_response``. Replace only to change
    the HTTP contract.
 2. ``handle_<verb>`` — the handler: runs ``authorize`` and the commit
-   bracket (``before_commit`` -> commit -> ``after_commit``). Override for
+   bracket (``before_action_commit`` -> commit -> ``after_action_commit``). Override for
    orchestration or timing.
 3. ``<verb>`` (``get_many``, ``get_one``, ``create``, ``update``, ``delete``)
    — the business method: the domain operation, auth-free and commit-free. The

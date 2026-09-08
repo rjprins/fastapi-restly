@@ -1,8 +1,8 @@
 """Tests for the ``write_action`` context manager (custom write actions).
 
 ``async with self.write_action(action, *, obj, data)`` runs the full request
-bracket -- authorize -> snapshot -> (your inline body) -> before_commit -> commit
--> after_commit. For an in-place action you ignore the yielded handle; for a
+bracket -- authorize -> snapshot -> (your inline body) -> before_action_commit -> commit
+-> after_action_commit. For an in-place action you ignore the yielded handle; for a
 create-shaped action you deposit the new object on ``w.obj`` and read it back.
 """
 
@@ -55,12 +55,12 @@ def _publish_view(client, **attrs):
 def test_in_place_action_persists_and_brackets(client):
     events: dict = {}
 
-    async def after_commit(self, action, new, old=None):
+    async def after_action_commit(self, action, new, old=None):
         events["action"] = action
         events["old"] = old["published"] if old else None
         events["new"] = new.published if new is not None else None
 
-    _publish_view(client, after_commit=after_commit)
+    _publish_view(client, after_action_commit=after_action_commit)
 
     doc = client.post("/docs/", json={"title": "t", "published": False}).json()
     client.post(f"/docs/{doc['id']}/publish")
@@ -84,19 +84,19 @@ def test_authorize_rejects_before_the_write(client):
 
 
 def test_failure_in_block_rolls_back_and_skips_hooks(client):
-    after_commits: list[str] = []
+    after_action_commits: list[str] = []
 
-    async def after_commit(self, action, new, old=None):
-        after_commits.append(action)
+    async def after_action_commit(self, action, new, old=None):
+        after_action_commits.append(action)
 
-    _publish_view(client, after_commit=after_commit)
+    _publish_view(client, after_action_commit=after_action_commit)
 
     doc = client.post("/docs/", json={"title": "t", "published": False}).json()
-    after_commits.clear()  # ignore the create's after_commit
+    after_action_commits.clear()  # ignore the create's after_action_commit
     client.post(f"/docs/{doc['id']}/boom", assert_status_code=409)
 
     assert client.get(f"/docs/{doc['id']}").json()["published"] is False  # rolled back
-    assert after_commits == []  # commit + after_commit never ran
+    assert after_action_commits == []  # commit + after_action_commit never ran
 
 
 def test_create_shaped_action_returns_via_handle(client):
@@ -180,7 +180,7 @@ def test_explicit_no_object_write_is_allowed(client):
         model = Widget
         schema = WidgetSchema
 
-        async def after_commit(self, action, new, old=None):
+        async def after_action_commit(self, action, new, old=None):
             seen["action"] = action
             seen["new"] = new
 

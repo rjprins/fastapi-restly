@@ -73,7 +73,7 @@ class NotifyBase(fr.RestView):
         return obj
 ```
 
-Every subclass of `NotifyBase` now fires `notify_created` after commit. For most post-commit side effects, prefer {meth}`after_commit <fastapi_restly.views.RestView.after_commit>` (see [transaction hooks](customize.md#transaction-hooks-before_commit--after_commit)); use a handler override when control flow must change.
+Every subclass of `NotifyBase` now fires `notify_created` after commit. For most post-commit side effects, prefer {meth}`after_action_commit <fastapi_restly.views.RestView.after_action_commit>` (see [transaction hooks](customize.md#transaction-hooks-before_action_commit--after_action_commit)); use a handler override when control flow must change.
 
 ## Inherit a shared dependency
 

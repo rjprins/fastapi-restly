@@ -40,7 +40,7 @@ class OrganizationView(fr.AsyncRestView):
 
         Calls ``handle_create`` (not the bare ``create``) so this custom route
         runs the full request handler: ``authorize`` plus the commit bracket
-        (``before_commit`` -> commit -> ``after_commit``). The default create
+        (``before_action_commit`` -> commit -> ``after_action_commit``). The default create
         endpoint method does the same thing. This method adds the header.
         """
         org = await self.handle_create(schema_obj)

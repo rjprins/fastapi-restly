@@ -155,7 +155,7 @@ class PaymentWebhookView(fr.View):
 ```
 
 For *outbound* webhooks (calling someone else after a write), use the
-{meth}`after_commit <fastapi_restly.views.RestView.after_commit>` hook
+{meth}`after_action_commit <fastapi_restly.views.RestView.after_action_commit>` hook
 instead. See [Customizing RestView](customize.md).
 
 The decision between `View` and `RestView` is covered in

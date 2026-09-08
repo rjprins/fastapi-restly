@@ -424,7 +424,7 @@ class IDRef(IDSchema[SQLAlchemyModel], Generic[SQLAlchemyModel]):
     tenant scope declared once covers every reference to the model. A model
     without a ``default_scope`` resolves by bare primary key; gate visibility
     there in ``authorize`` (``data.<field>.id`` is the requested id, before
-    resolution) or ``before_commit`` (the resolved row is on the built
+    resolution) or ``before_action_commit`` (the resolved row is on the built
     object). See the Foreign Keys and Relationships how-to, "Visibility and
     Multi-Tenancy".
     """

@@ -60,7 +60,7 @@ extra query (slower, but it works), while async sessions raise
 ## Eager-load something the schema does not name
 
 Sometimes you want a relationship loaded that is not part of the response, to
-feed a `@property`, an `after_commit` hook, or just to avoid an N+1 in a custom
+feed a `@property`, an `after_action_commit` hook, or just to avoid an N+1 in a custom
 read. Override
 {meth}`get_relationship_loader_options() <fastapi_restly.views.BaseRestView.get_relationship_loader_options>`
 and append to it:
@@ -97,14 +97,14 @@ it only when that difference does not matter.
 
 Loader options follow the relationships a schema *names*. Code that reaches
 past that set runs in plain async context and hits the same wall: an
-`after_commit` hook, a custom business method, or a `@property` that walks a
+`after_action_commit` hook, a custom business method, or a `@property` that walks a
 relationship nothing else loads. Restly's declarative base
 ({class}`fr.DataclassBase <fastapi_restly.models.DataclassBase>`) mixes in
 SQLAlchemy's [`AsyncAttrs`](https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html#sqlalchemy.ext.asyncio.AsyncAttrs),
 so any such attribute can be awaited explicitly:
 
 ```python
-async def after_commit(self, action, new, old=None):
+async def after_action_commit(self, action, new, old=None):
     for comment in await new.awaitable_attrs.comments:
         notify(comment)
 ```

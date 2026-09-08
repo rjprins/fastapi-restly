@@ -417,7 +417,7 @@ A model **without** a `default_scope` resolves by bare primary key
 (`session.get(User, id)`): tenant, soft-delete, and row-level visibility
 checks are then your responsibility. Gate them in
 {meth}`authorize <fastapi_restly.views.RestView.authorize>` /
-{meth}`before_commit <fastapi_restly.views.RestView.before_commit>` like any
+{meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>` like any
 other write-path authorization; both hooks are described in
 [Customizing RestView](customize.md#authorize-gate-the-action).
 
@@ -443,7 +443,7 @@ class ArticleView(fr.AsyncRestView):
 ```
 
 The resolved ORM object is not available in `authorize`; resolution runs later
-in the business method. If you need the resolved row, check in `before_commit`,
+in the business method. If you need the resolved row, check in `before_action_commit`,
 where the built object carries it (for example `new.author.org_id`). Prefer
 `authorize` when the requested id is enough: it rejects before the unscoped
 fetch and is the standard policy seam.

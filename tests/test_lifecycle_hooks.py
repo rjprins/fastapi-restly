@@ -1,8 +1,8 @@
 """Tests for the handle-design transaction bracket.
 
-Covers ``snapshot`` -> ``before_commit`` -> commit -> ``after_commit``: that
-``old`` is the pre-mutation snapshot, that ``after_commit`` runs after the write
-is durable, and that a ``before_commit`` failure aborts the write (it runs
+Covers ``snapshot`` -> ``before_action_commit`` -> commit -> ``after_action_commit``: that
+``old`` is the pre-mutation snapshot, that ``after_action_commit`` runs after the write
+is durable, and that a ``before_action_commit`` failure aborts the write (it runs
 *inside* the transaction).
 """
 
@@ -14,7 +14,7 @@ from .conftest import create_tables
 
 
 def test_snapshot_is_pre_mutation_old_in_after_commit(client):
-    """``after_commit`` receives ``old`` = the pre-update snapshot while the
+    """``after_action_commit`` receives ``old`` = the pre-update snapshot while the
     object itself already reflects the new state."""
 
     class Doc(fr.IDBase):
@@ -31,7 +31,7 @@ def test_snapshot_is_pre_mutation_old_in_after_commit(client):
         model = Doc
         schema = DocSchema
 
-        async def after_commit(self, action, new, old=None):
+        async def after_action_commit(self, action, new, old=None):
             captured["action"] = action
             captured["old"] = old
             captured["new_title"] = new.title if new is not None else None
@@ -47,7 +47,7 @@ def test_snapshot_is_pre_mutation_old_in_after_commit(client):
 
 
 def test_before_commit_failure_aborts_the_write(client):
-    """``before_commit`` runs inside the transaction: raising there discards the
+    """``before_action_commit`` runs inside the transaction: raising there discards the
     in-flight write (nothing is committed)."""
 
     class Doc(fr.IDBase):
@@ -62,7 +62,7 @@ def test_before_commit_failure_aborts_the_write(client):
         model = Doc
         schema = DocSchema
 
-        async def before_commit(self, action, new, old=None):
+        async def before_action_commit(self, action, new, old=None):
             # An in-transaction guard (e.g. a uniqueness/outbox check) that
             # rejects the write. Runs before the commit, so the write aborts.
             raise fr.exc.Conflict("duplicate outbox entry")
@@ -71,5 +71,5 @@ def test_before_commit_failure_aborts_the_write(client):
 
     client.post("/docs/", json={"title": "v1"}, assert_status_code=409)
 
-    # The failed before_commit means the create was never committed.
+    # The failed before_action_commit means the create was never committed.
     assert client.get("/docs/").json()["data"] == []

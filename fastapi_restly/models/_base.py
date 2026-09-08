@@ -80,7 +80,7 @@ class DataclassBase(
     reached from plain async code -- ``await obj.awaitable_attrs.items`` --
     where a bare ``obj.items`` would raise ``MissingGreenlet``. Views eager-load
     what the response schema names, so this is for the code that runs outside
-    that: an ``after_commit`` hook, a custom business method.
+    that: an ``after_action_commit`` hook, a custom business method.
     """
 
     type_annotation_map = {

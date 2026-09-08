@@ -267,12 +267,12 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         the scope.
         """
 
-    def before_commit(
+    def before_action_commit(
         self, action: str, new: ModelT | None, old: dict[str, Any] | None = None
     ) -> None:
         """In-transaction side effect (outbox/audit), atomic with the write."""
 
-    def after_commit(
+    def after_action_commit(
         self, action: str, new: ModelT | None, old: dict[str, Any] | None = None
     ) -> None:
         """Post-commit side effect (email, webhook, cache).
@@ -280,5 +280,5 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         For *external* effects only: the write is already durable, so mutating
         ``new`` or the database here is NOT persisted (and a mutation to ``new``
         leaks into this request's response while being discarded from storage).
-        Do the mutation in the business method or ``before_commit`` instead.
+        Do the mutation in the business method or ``before_action_commit`` instead.
         """

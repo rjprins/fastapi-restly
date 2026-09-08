@@ -1,7 +1,7 @@
 """Shared write lifecycle.
 
 Every write follows the same sequence: authorize, snapshot, mutate,
-before_commit, commit, after_commit. ``write_action`` exposes the sequence as a
+before_action_commit, commit, after_action_commit. ``write_action`` exposes the sequence as a
 context manager for custom actions. ``run_write_action`` and
 ``async_run_write_action`` are the thunk form used by CRUD handlers.
 """
@@ -50,8 +50,12 @@ class AsyncWriteHost(Protocol):
         self, action: str, obj: Any = None, data: Any = None
     ) -> None: ...
     def snapshot(self, obj: Any) -> dict[str, Any]: ...
-    async def before_commit(self, action: str, new: Any, old: Any = None) -> None: ...
-    async def after_commit(self, action: str, new: Any, old: Any = None) -> None: ...
+    async def before_action_commit(
+        self, action: str, new: Any, old: Any = None
+    ) -> None: ...
+    async def after_action_commit(
+        self, action: str, new: Any, old: Any = None
+    ) -> None: ...
 
 
 class WriteHost(Protocol):
@@ -61,8 +65,8 @@ class WriteHost(Protocol):
 
     def authorize(self, action: str, obj: Any = None, data: Any = None) -> None: ...
     def snapshot(self, obj: Any) -> dict[str, Any]: ...
-    def before_commit(self, action: str, new: Any, old: Any = None) -> None: ...
-    def after_commit(self, action: str, new: Any, old: Any = None) -> None: ...
+    def before_action_commit(self, action: str, new: Any, old: Any = None) -> None: ...
+    def after_action_commit(self, action: str, new: Any, old: Any = None) -> None: ...
 
 
 @contextlib.asynccontextmanager
@@ -80,9 +84,9 @@ async def async_write_action(
     handle = _WriteHandle(obj)
     yield handle
     _require_deposited_obj(action, handle)
-    await host.before_commit(action, new=handle.obj, old=old)
+    await host.before_action_commit(action, new=handle.obj, old=old)
     await host.session.commit()
-    await host.after_commit(action, new=handle.obj, old=old)
+    await host.after_action_commit(action, new=handle.obj, old=old)
 
 
 @contextlib.contextmanager
@@ -96,9 +100,9 @@ def sync_write_action(
     handle = _WriteHandle(obj)
     yield handle
     _require_deposited_obj(action, handle)
-    host.before_commit(action, new=handle.obj, old=old)
+    host.before_action_commit(action, new=handle.obj, old=old)
     host.session.commit()
-    host.after_commit(action, new=handle.obj, old=old)
+    host.after_action_commit(action, new=handle.obj, old=old)
 
 
 async def async_run_write_action(

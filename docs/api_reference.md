@@ -194,7 +194,7 @@ the model and the decision table live in
 Alongside the tiers are the declared read [scope](scopes.md) (the
 `scope` class attribute) and cross-cutting **override points**
 (`apply_query_params`, `count`, `authorize`,
-`before_commit` / `after_commit`, `to_response`,
+`before_action_commit` / `after_action_commit`, `to_response`,
 `get_relationship_loader_options`, `snapshot`) and **domain
 utilities** that you call rather than override (`make_new_object`,
 `update_object`, `save_object`, `delete_object`). `make_new_object` /
@@ -214,7 +214,7 @@ On `AsyncRestView` every method below is `async`; the signatures are otherwise i
 | Request handler | {meth}`handle_create <fastapi_restly.views.RestView.handle_create>` | `(schema_obj)` | `Model` | Authorize, run `create`, then the commit bracket. |
 | Request handler | {meth}`handle_update <fastapi_restly.views.RestView.handle_update>` | `(id, schema_obj)` | `Model` | Load, authorize, snapshot, run `update`, then the commit bracket. |
 | Request handler | {meth}`handle_delete <fastapi_restly.views.RestView.handle_delete>` | `(id)` | `None` | Load, authorize, snapshot, run `delete`, then the commit bracket. |
-| Custom-action bracket | {meth}`write_action <fastapi_restly.views.RestView.write_action>` | `(action, *, obj=None, data=None)` | context manager | Entered as `async with self.write_action("publish", obj=...):`, it runs the full bracket around your inline mutation: authorize and snapshot on enter; `before_commit`, commit, and `after_commit` on exit. Use it for a custom write *action* that is not a plain create/update/delete; deposit a create's new object on the yielded handle's `.obj`. The implementation is shared with the CRUD handlers via the self-free `run_write_action` (in `fastapi_restly.views`). |
+| Custom-action bracket | {meth}`write_action <fastapi_restly.views.RestView.write_action>` | `(action, *, obj=None, data=None)` | context manager | Entered as `async with self.write_action("publish", obj=...):`, it runs the full bracket around your inline mutation: authorize and snapshot on enter; `before_action_commit`, commit, and `after_action_commit` on exit. Use it for a custom write *action* that is not a plain create/update/delete; deposit a create's new object on the yielded handle's `.obj`. The implementation is shared with the CRUD handlers via the self-free `run_write_action` (in `fastapi_restly.views`). |
 | Business method | {meth}`get_many <fastapi_restly.views.RestView.get_many>` | `(query_params, *, scope=None)` | `ListingResult[Model]` | Scoped and filtered listing via `scope` when given, else the view scope, + `apply_query_params`. Paginated views return one page plus a total count; unpaginated views return every matching row with `total_count=None` and skip `count`. Auth-free. The handlers always forward `scope=`, so an override declares the parameter and passes it on. |
 | Business method | {meth}`get_one <fastapi_restly.views.RestView.get_one>` | `(id, *, scope=None)` | `Model` | Load one row through `scope` when given, else the view scope, or raise `fr.exc.NotFound`. Visibility comes from the scope, so a hidden row is a clean 404 for every caller. Auth-free. The handlers always forward `scope=`, so an override declares the parameter and passes it on. |
 | Business method | {meth}`create <fastapi_restly.views.RestView.create>` | `(schema_obj)` | `Model` | Build a new object and save it. Commit-free: the usual create override point. |
@@ -224,8 +224,8 @@ On `AsyncRestView` every method below is `async`; the signatures are otherwise i
 | Override point | {meth}`apply_query_params <fastapi_restly.views.RestView.apply_query_params>` | `(query, query_params)` | `sqlalchemy.Select` | Apply URL filter/sort/pagination to `query`. Override for a non-default URL grammar. |
 | Override point | {meth}`count <fastapi_restly.views.RestView.count>` | `(query)` | `int` | Total for a paginated list: receives the same params-applied query and strips `ORDER BY`, `LIMIT`, and `OFFSET` before counting. Unpaginated views skip it. Override for estimated counts on huge tables. |
 | Override point | {meth}`authorize <fastapi_restly.views.RestView.authorize>` | `(action, obj=None, data=None)` | `None` | Gate a verb. A no-op by default; override to enforce policy and raise `fr.exc.Forbidden` / `fr.exc.NotFound` to reject. Row *visibility* belongs in the scope. |
-| Override point | {meth}`before_commit <fastapi_restly.views.RestView.before_commit>` | `(action, new, old=None)` | `None` | In-transaction side effect (outbox/audit rows), atomic with the write. `old` is the pre-mutation snapshot dict. |
-| Override point | {meth}`after_commit <fastapi_restly.views.RestView.after_commit>` | `(action, new, old=None)` | `None` | Post-commit side effect (email, webhook, cache invalidation). `old` enables dirty detection. |
+| Override point | {meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>` | `(action, new, old=None)` | `None` | In-transaction side effect (outbox/audit rows), atomic with the write. `old` is the pre-mutation snapshot dict. |
+| Override point | {meth}`after_action_commit <fastapi_restly.views.RestView.after_action_commit>` | `(action, new, old=None)` | `None` | Post-commit side effect (email, webhook, cache invalidation). `old` enables dirty detection. |
 | Override point | {meth}`to_response <fastapi_restly.views.BaseRestView.to_response>` | `(obj_or_list, shape=ResponseShape.SINGLE)` | response payload | The single wire-level response method, called by the endpoint methods with the wire `ResponseShape` (`SINGLE` / `LISTING` / `EMPTY`), not the write action. Override for envelopes or custom status codes; for a per-verb HTTP contract change, override that verb's endpoint method. |
 | Override point | {meth}`snapshot <fastapi_restly.views.BaseRestView.snapshot>` | `(obj)` | `dict[str, Any]` | Frozen capture of an object's column values at load time, passed as `old` to the commit hooks. |
 | Override point | {meth}`get_relationship_loader_options <fastapi_restly.views.BaseRestView.get_relationship_loader_options>` | `()` | `list[Any]` | Loader options (`selectinload(...)`) for the relationships the response schema names, applied on reads (`get_one` / `get_many`) and on the write-response reload in `save_object`. Override to eager-load relationships the schema does not name on both paths; see [Relationship Loading and Async](howto_relationship_loading.md). |
@@ -313,7 +313,7 @@ Pass `warn_on_misuse=True` to enable opt-in registration-time misuse warnings (`
 
 For multiple databases, use FastAPI and SQLAlchemy directly: add a custom dependency on a view, or pass a custom session generator to `fr.configure(...)`. Restly does not provide a public multi-context or multi-engine API. See [Use a custom session dependency on one view](howto_existing_project.md#use-a-custom-session-dependency-on-one-view).
 
-Restly's write handlers own the commit: each runs `before_commit`, then the commit, then `after_commit` around domain logic. Session dependencies do **not** commit on response; they roll back and close on exit.
+Restly's write handlers own the commit: each runs `before_action_commit`, then the commit, then `after_action_commit` around domain logic. Session dependencies do **not** commit on response; they roll back and close on exit.
 
 A **custom write route** should use `self.write_action(...)` or reuse a
 `handle_<verb>`. See [Customizing RestView](customize.md). Commit manually only

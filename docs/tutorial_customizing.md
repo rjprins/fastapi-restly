@@ -22,7 +22,7 @@ inward, the tiers are:
 <verb>_endpoint   the endpoint method: the @route, the FastAPI
                   signature/response_model, and to_response. Rarely overridden.
 handle_<verb>     the handler: runs authorize and the commit bracket
-                  (before_commit → commit → after_commit), returns the domain
+                  (before_action_commit → commit → after_action_commit), returns the domain
                   object. Override to change orchestration/timing.
 <verb>            the business method: the domain operation (build/apply/save).
                   Auth-free and commit-free. The usual override point.
@@ -38,7 +38,7 @@ POST /     → create_endpoint(schema_obj)     # endpoint method
 
 Two facts make this layout safe to override:
 
-- **The handler owns the commit.** `handle_<verb>` runs {meth}`before_commit <fastapi_restly.views.RestView.before_commit>`, then `commit`, then {meth}`after_commit <fastapi_restly.views.RestView.after_commit>` around the business method.
+- **The handler owns the commit.** `handle_<verb>` runs {meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>`, then `commit`, then {meth}`after_action_commit <fastapi_restly.views.RestView.after_action_commit>` around the business method.
 - **The business method never commits.** `create` / `update` / `delete` build, apply, and flush. The handler commits later.
 
 Inside every method, `self.session` is the live database session and `self.request` is the FastAPI `Request` object.
@@ -141,28 +141,28 @@ One tier up from the business method sits the handler. `handle_<verb>` owns {met
 ```
 handle_create  →  authorize("create", data=schema_obj)
                →  create(schema_obj)
-               →  before_commit → commit → after_commit
+               →  before_action_commit → commit → after_action_commit
 
 handle_update  →  get_one(id)                     # loads through the scope
                →  authorize("update", obj, data=schema_obj)
                →  update(obj, schema_obj)
-               →  before_commit → commit → after_commit
+               →  before_action_commit → commit → after_action_commit
 
 handle_delete  →  get_one(id)
                →  authorize("delete", obj)
                →  delete(obj)
-               →  before_commit → commit → after_commit
+               →  before_action_commit → commit → after_action_commit
 ```
 
 The transaction hooks are the usual reason to drop to this tier:
 
-- {meth}`before_commit(action, new, old=None) <fastapi_restly.views.RestView.before_commit>` runs an in-transaction side effect (an outbox row, an audit row) that commits atomically with the write.
-- {meth}`after_commit(action, new, old=None) <fastapi_restly.views.RestView.after_commit>` runs a post-commit side effect (an email, a webhook, a cache invalidation) only after the write is durable.
+- {meth}`before_action_commit(action, new, old=None) <fastapi_restly.views.RestView.before_action_commit>` runs an in-transaction side effect (an outbox row, an audit row) that commits atomically with the write.
+- {meth}`after_action_commit(action, new, old=None) <fastapi_restly.views.RestView.after_action_commit>` runs a post-commit side effect (an email, a webhook, a cache invalidation) only after the write is durable.
 
 Both receive `old`, the pre-mutation snapshot produced by {meth}`snapshot(obj) <fastapi_restly.views.BaseRestView.snapshot>`, so you can fire only on a real change:
 
 ```python
-    async def after_commit(self, action, new, old=None):
+    async def after_action_commit(self, action, new, old=None):
         if action == "update" and old["published"] != new.published:
             await notify_subscribers(new.id)
 ```

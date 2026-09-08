@@ -44,8 +44,8 @@ it only when the contract itself must change.
 
 The **handler**, `handle_<verb>`, owns the request logic in between. It runs
 {meth}`authorize <fastapi_restly.views.RestView.authorize>`, calls the business method, and, on writes, closes with the
-**commit bracket**: {meth}`before_commit <fastapi_restly.views.RestView.before_commit>`, then the commit itself, then
-{meth}`after_commit <fastapi_restly.views.RestView.after_commit>`. It returns the domain object, so custom routes can
+**commit bracket**: {meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>`, then the commit itself, then
+{meth}`after_action_commit <fastapi_restly.views.RestView.after_action_commit>`. It returns the domain object, so custom routes can
 reuse it; only the delete handler returns nothing. Override it to change
 orchestration or timing without re-declaring the route.
 
@@ -100,19 +100,19 @@ POST /
             ├─ create(schema_obj)              # business method (your override point)
             │    ├─ make_new_object(schema_obj)   # override to stamp extra fields
             │    └─ save_object(obj)              # flush + refresh (no commit)
-            ├─ before_commit("create", new=obj)
+            ├─ before_action_commit("create", new=obj)
             ├─ commit                             # the framework owns this
-            └─ after_commit("create", new=obj)    # runs after durability
+            └─ after_action_commit("create", new=obj)    # runs after durability
        └─ to_response(obj)                     # back in the endpoint method
 ```
 
 {meth}`update <fastapi_restly.views.RestView.update>` and {meth}`delete <fastapi_restly.views.RestView.delete>` follow the same shape. Their handlers first load the row
 through {meth}`get_one <fastapi_restly.views.RestView.get_one>` (so they 404 on a hidden row), authorize against the loaded
 row, and take a {meth}`snapshot(obj) <fastapi_restly.views.BaseRestView.snapshot>` as `old`; then the business method runs,
-followed by the same bracket of {meth}`before_commit <fastapi_restly.views.RestView.before_commit>`, commit, and
-{meth}`after_commit <fastapi_restly.views.RestView.after_commit>`, with both `new` and `old` available for dirty detection.
+followed by the same bracket of {meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>`, commit, and
+{meth}`after_action_commit <fastapi_restly.views.RestView.after_action_commit>`, with both `new` and `old` available for dirty detection.
 Recipes for these hooks are collected in
-[Transaction hooks](#transaction-hooks-before_commit--after_commit).
+[Transaction hooks](#transaction-hooks-before_action_commit--after_action_commit).
 
 ## Request lifecycle: a read (`get_one`)
 
@@ -154,8 +154,8 @@ The table below maps the change you want to make to the method that owns it:
 | The list total                          | {meth}`count <fastapi_restly.views.RestView.count>`                           | read extension point   |
 | Authorization / policy                  | {meth}`authorize <fastapi_restly.views.RestView.authorize>` (override to gate)    | handler hook           |
 | Server-stamped fields (audit/tenant)    | `make_new_object` / `update_object` (override cooperatively) | cooperative stamping  |
-| In-transaction side effects             | {meth}`before_commit <fastapi_restly.views.RestView.before_commit>`                   | transaction hook       |
-| Post-commit side effects (email/webhook)| {meth}`after_commit <fastapi_restly.views.RestView.after_commit>`                    | transaction hook       |
+| In-transaction side effects             | {meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>`                   | transaction hook       |
+| Post-commit side effects (email/webhook)| {meth}`after_action_commit <fastapi_restly.views.RestView.after_action_commit>`                    | transaction hook       |
 | The response shape                      | {meth}`to_response <fastapi_restly.views.BaseRestView.to_response>`                     | response boundary      |
 
 Start at the business method. Move to `handle_<verb>` only when timing or
@@ -322,7 +322,7 @@ For server-controlled field stamps, prefer `make_new_object` / `update_object` b
     async def handle_delete(self, id):
         obj = await self.get_one(id)
         # write_action runs the same bracket the default handle_delete uses:
-        # authorize("delete", obj), snapshot, the body, then before/after_commit.
+        # authorize("delete", obj), snapshot, the body, then the commit bracket.
         async with self.write_action("delete", obj=obj):
             obj.status = "pending_deletion"
             await self.save_object(obj)
@@ -331,17 +331,17 @@ For server-controlled field stamps, prefer `make_new_object` / `update_object` b
 
 The endpoint method stays untouched, while the handler controls the write bracket.
 
-### Transaction hooks: `before_commit` / `after_commit`
+### Transaction hooks: `before_action_commit` / `after_action_commit`
 
 For most timing needs, use the hooks instead of overriding the handler:
 
-- {meth}`before_commit(action, new, old=None) <fastapi_restly.views.RestView.before_commit>` runs inside the transaction and is committed atomically with the write. Use it for outbox rows or audit rows.
-- {meth}`after_commit(action, new, old=None) <fastapi_restly.views.RestView.after_commit>` runs after the write is durable. Use it for email, webhooks, or cache invalidation.
+- {meth}`before_action_commit(action, new, old=None) <fastapi_restly.views.RestView.before_action_commit>` runs inside the transaction and is committed atomically with the write. Use it for outbox rows or audit rows.
+- {meth}`after_action_commit(action, new, old=None) <fastapi_restly.views.RestView.after_action_commit>` runs after the write is durable. Use it for email, webhooks, or cache invalidation.
 
 `old` is a snapshot dict of the object's column values before the mutation (see {meth}`snapshot <fastapi_restly.views.BaseRestView.snapshot>`), which enables dirty detection:
 
 ```python
-    async def after_commit(self, action, new, old=None):
+    async def after_action_commit(self, action, new, old=None):
         if action == "update" and old["status"] != new.status:
             await notify_status_change(new.id, new.status)
 ```

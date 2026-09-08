@@ -46,7 +46,7 @@ def _setup_async_database_connection(
             "request, so the commit expires every loaded attribute on the "
             "object the response is built from. Reading one back then happens in "
             "plain async context, where SQLAlchemy raises MissingGreenlet: always "
-            "in the response serializer, and earlier too if an after_commit hook "
+            "in the response serializer, and earlier too if an after_action_commit hook "
             "reads the committed object. Pass expire_on_commit=False to your "
             "async_sessionmaker.",
             stacklevel=3,
@@ -131,7 +131,7 @@ def configure(
     declines all of this.
 
     Restly owns the commit: the CRUD handlers and ``write_action`` run
-    ``before_commit`` -> commit -> ``after_commit`` around your domain logic. A
+    ``before_action_commit`` -> commit -> ``after_action_commit`` around your domain logic. A
     custom session generator constructs, yields, and cleans up, and must not
     commit. A custom write route brackets its mutation with ``write_action(...)``
     or commits the session itself.

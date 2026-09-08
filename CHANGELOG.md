@@ -119,6 +119,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   Use `mapped_column(DateTime())` on columns that must retain naive wall-clock
   values.
+- Renamed the `RestView` / `AsyncRestView` transaction hooks `before_commit`
+  and `after_commit` to `before_action_commit` and `after_action_commit`: they
+  bracket a Restly write action, and the old names collided with SQLAlchemy's
+  `before_commit` / `after_commit` session events. Rename your overrides.
 
 ### Removed
 

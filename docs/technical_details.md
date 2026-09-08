@@ -150,7 +150,7 @@ difference is that the async variant uses `await` in its process methods.
 `AsyncSessionDep` and `SessionDep` use Restly's built-in session generators.
 Those generators yield a SQLAlchemy session and manage lifecycle: rollback and
 close on exit. They do **not** commit on response. `handle_<verb>` owns the
-commit and runs {meth}`before_commit <fastapi_restly.views.RestView.before_commit>`, then the commit itself, then {meth}`after_commit <fastapi_restly.views.RestView.after_commit>` around domain logic.
+commit and runs {meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>`, then the commit itself, then {meth}`after_action_commit <fastapi_restly.views.RestView.after_action_commit>` around domain logic.
 Custom write routes can use the same bracket with
 `async with self.write_action(action, ...)`. If a request ends with uncommitted
 changes, Restly warns with {class}`RestlyUncommittedChangesWarning <fastapi_restly.exc.RestlyUncommittedChangesWarning>` by default.
@@ -220,7 +220,7 @@ Nested schemas serve two different roles in Restly today:
   its value.
 
   Loader options follow relationships the schema *names*. Code that reaches
-  past that set -- an `after_commit` hook, a custom business method, a
+  past that set -- an `after_action_commit` hook, a custom business method, a
   `@property` walking a relationship nothing else loads -- runs in plain async
   context, where a bare attribute access raises `MissingGreenlet`. Restly's
   declarative base mixes in SQLAlchemy's `AsyncAttrs` for exactly that case, so
@@ -426,7 +426,7 @@ sets a few SQLAlchemy session options intentionally:
 `expire_on_commit=False` is used for both sync and async sessions so ORM
 objects remain readable after a route commits. Restly's write handlers commit
 inside the request, and the response-schema conversion reads attributes from the
-committed object afterwards (as does an `after_commit` hook that inspects it).
+committed object afterwards (as does an `after_action_commit` hook that inspects it).
 With `expire_on_commit=True` the commit expires those attributes, so each such
 read becomes an implicit database read: in async code it raises
 `MissingGreenlet`, because the serializer -- and any such hook -- runs in plain
