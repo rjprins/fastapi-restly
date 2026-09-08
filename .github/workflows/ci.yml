@@ -419,7 +419,7 @@ jobs:
           ./.venv/bin/restly new demo --sqlite --create-all --yes
           ./.venv/bin/restly new prod --postgres --alembic --async --yes
           ./.venv/bin/restly new legacy --postgres --alembic --sync --yes
-          test -f demo/demo/main.py
+          test -f demo/app/main.py
           test -f demo/tests/conftest.py
           test -f demo/.gitignore
           test -f prod/compose.yaml
