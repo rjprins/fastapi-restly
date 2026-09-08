@@ -1,7 +1,7 @@
 """Application-wide view foundation for the SaaS example.
 
-``TenantBase`` provides shared auth-context dependencies, the tenant floor
-on reads, and transactional outbox emission. A request without an
+``TenantBase`` provides shared auth-context dependencies and transactional
+outbox emission. A request without an
 authenticated identity does not reach a ``TenantBase`` route (the context
 sources answer 401), so every tenant read and write acts as one user in
 one organization; the plain views (organizations, countries) take no
@@ -9,11 +9,12 @@ identity. Structural fields live on
 the models: a subject's ``models.py`` mixes in ``TenantOwned``,
 ``AuditStamped``, or ``SoftDeletable`` from ``app.models``, which stamp
 ``organization_id`` and the audit ids from ``Current`` on every write
-path, and its namespace declares the soft-delete rule as
-``default_scope`` with ``TenantClauses`` from ``app.context`` putting the
-tenant clause under it. A view that should see something else declares
-its own ``scope``, and a route names one per read, with the floor holding
-underneath either. The one write-side mixin left here is
+path; a session listener there restricts every read of a tenant-owned
+class to the same organization, so the namespaces declare only the
+soft-delete rule as ``default_scope``. A view that should see something
+else declares its own ``scope``, and a route names one per read; the
+tenant restriction holds underneath either. The one write-side mixin
+left here is
 ``SoftDeleteMixin``: ``delete`` flips ``deleted_at`` instead of removing
 the row. Concrete subject views import the foundation and the mixin from
 this root module; the context values and the scope factories live in
@@ -39,12 +40,11 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, ClassVar
 
 import fastapi
-import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import fastapi_restly as fr
 
-from .context import bind_request_context, tenant_rule
+from .context import bind_request_context
 
 # Module level, not inside _emit(): Alembic reaches models through this graph.
 from .outbox import OutboxEvent
@@ -70,7 +70,6 @@ class TenantBase(fr.AsyncRestView):
     - Router-level ``check_api_key`` dependency on every route
     - ``bind_request_context``, so ``Current`` reads work in every route and
       a request without an identity is a 401
-    - ``apply_scope`` that stacks the model's tenant rule under every read
     - ``before_action_commit`` with a placeholder for audit side effects
     """
 
@@ -79,22 +78,6 @@ class TenantBase(fr.AsyncRestView):
         fastapi.Depends(check_api_key),
         bind_request_context,
     ]
-
-    def apply_scope(
-        self, query: sa.Select[Any], scope: fr.Clause | fr.clauses.Unscoped
-    ) -> sa.Select[Any]:
-        """Stack the model's tenant rule under whatever scope the read named.
-
-        The view half of the application floor (``TenantClauses`` is the
-        reference-check half): a view that declared its own ``scope`` and
-        a route that named one per read stay tenant-bound without saying
-        so. A default read carries the rule twice, from the namespace and
-        from here; the database does not mind.
-        """
-        floor = tenant_rule(self.model)
-        if floor is None:
-            return fr.apply_clauses(query, scope)
-        return fr.apply_clauses(query, floor, scope)
 
     async def before_action_commit(
         self, action: str, new: Any, old: Any = None

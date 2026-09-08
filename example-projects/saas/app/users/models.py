@@ -4,7 +4,6 @@ from sqlalchemy import orm
 
 import fastapi_restly as fr
 
-from ..context import TenantClauses
 from ..models import AuditStamped, SoftDeletable, TenantOwned
 from .roles import UserRole
 
@@ -43,8 +42,8 @@ class User(TenantOwned, AuditStamped, SoftDeletable, fr.TimestampsMixin, fr.IDBa
     )
 
 
-class UserClauses(TenantClauses):
-    """User visibility: not soft-deleted, under the tenant floor.
+class UserClauses(fr.ClauseNamespace):
+    """User visibility: not soft-deleted; the tenant restriction is the listener's.
 
     ``default_scope`` also guards references, so a cross-tenant or deleted
     ``assignee_id`` on a task reads as "does not exist" (404).

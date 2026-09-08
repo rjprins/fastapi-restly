@@ -83,19 +83,22 @@ and the view mixin in
 Copy them into your project as a starting point.
 
 (tenant-row-scoping)=
-### Tenant row scoping: a scope clause plus a stamped column
+### Tenant row scoping: a session rule plus a stamped column
 
-The read half is a clause factory: one function builds the tenant predicate
-for any model with an ``organization_id`` column. A called slot returns
-its bound value, so the clause branches on values a generated dependency
-(``Current.depends(...)``, see the SaaS example) binds once per request.
-The values are never `None`: a request without an authenticated identity is
-refused by the dependency's sources (401) before any clause runs, and the
-admin is a conditional, not an absent value:
+The tenant rule is not a scope. It must hold under every scope a view or a
+route can name, and for every reference check, so it lives at the session
+level, where SQLAlchemy already provides it: a `do_orm_execute` listener
+adds a
+[`with_loader_criteria`](https://docs.sqlalchemy.org/en/20/orm/queryguide/api.html#adding-global-where-on-criteria)
+option to every ORM `SELECT` that touches a tenant-owned class. The values
+it reads come from a generated dependency (`Current.depends(...)`, see the
+SaaS example) that binds them once per request, and they are never `None`:
+a request without an authenticated identity is refused by the dependency's
+sources (401), and the admin is a conditional, not an absent value.
 
 ```python
-from typing import Any
 import sqlalchemy as sa
+from sqlalchemy import ForeignKey, orm
 import fastapi_restly as fr
 
 
@@ -103,27 +106,6 @@ class Current(fr.ContextNamespace):
     org_id: fr.ContextParam[int]
     user_id: fr.ContextParam[int]
     is_admin: fr.ContextParam[bool]
-
-
-def tenant_scope(model: type[Any]) -> fr.WhereClause:
-    """Rows of ``model`` owned by the organization the request acts in."""
-
-    @fr.where_clause
-    def owned_by_tenant() -> sa.ColumnElement[bool]:
-        if Current.is_admin():
-            return sa.true()
-        return model.organization_id == Current.org_id()
-
-    return owned_by_tenant
-```
-
-The write half is the column itself, on a model mixin. The tenant is not a
-constructor argument and not a payload field: `init=False` keeps it out of
-the constructor, `fr.ReadOnly` on the schema keeps it out of the body, and
-the insert default stamps it at flush from the same slot the clause reads:
-
-```python
-from sqlalchemy import ForeignKey, orm
 
 
 class TenantOwned(orm.MappedAsDataclass, kw_only=True):
@@ -136,17 +118,43 @@ class TenantOwned(orm.MappedAsDataclass, kw_only=True):
     )
 
 
+@sa.event.listens_for(orm.Session, "do_orm_execute")
+def _restrict_tenant_rows(state: orm.ORMExecuteState) -> None:
+    if not state.is_select or state.is_column_load or state.is_relationship_load:
+        return
+    if not any(issubclass(m.class_, TenantOwned) for m in state.all_mappers):
+        return  # a statement without a tenant-owned class needs no identity
+    if Current.is_admin():
+        return
+    org_id = Current.org_id()
+    state.statement = state.statement.options(
+        orm.with_loader_criteria(
+            TenantOwned, lambda cls: cls.organization_id == org_id, include_aliases=True
+        )
+    )
+
+
 class Project(TenantOwned, fr.TimestampsMixin, fr.IDBase):
     name: orm.Mapped[str]
 ```
 
-A row lands in the organization the request acts in, whoever builds it. An
-admin writing into another tenant acts as that tenant: the auth layer binds
-the acted-as organization, and the stamp follows. A verb that needs the
-value before the flush reads `Current.org_id()` itself, as the example's
-slug probe does. A namespace base can derive the read clause from the same
-column, so a model declares its tenancy once (see `TenantClauses` in the
-SaaS example's `context.py`).
+The column is the write half. The tenant is not a constructor argument and
+not a payload field: `init=False` keeps it out of the constructor,
+`fr.ReadOnly` on the schema keeps it out of the body, and the insert
+default stamps it at flush from the same slot the listener reads. A row
+lands in the organization the request acts in, whoever builds it; an admin
+writing into another tenant acts as that tenant, and the stamp follows. A
+verb that needs the value before the flush reads `Current.org_id()`
+itself, as the example's slug probe does.
+
+The listener's guard matters. Column and relationship loads inherit the
+criteria of the statement that loaded their parent, and a statement that
+touches no tenant-owned class must not read the identity, or a plain
+lookup view would fail unbound. Outside a request nothing is bound and a
+tenant read raises; a script or a test binds an identity with
+`Current.bind(...)` rather than reading unscoped by accident. A model that
+reaches its tenant through a relationship (the example's `Task`, through
+its project) registers a second listener with an `EXISTS`.
 
 (soft-delete-mixin)=
 ### Soft delete: a scope clause plus a delete mixin
@@ -171,10 +179,8 @@ class SoftDeletable(orm.MappedAsDataclass, kw_only=True):
 class ProjectClauses(fr.ClauseNamespace):
     model = Project
 
-    owned_by_tenant = tenant_scope(Project)
     is_deleted = fr.where_clause(Project.deleted_at.is_not(None))
-    trashed = fr.all_of(owned_by_tenant, is_deleted)
-    default_scope = fr.all_of(owned_by_tenant, fr.none_of(is_deleted))
+    default_scope = fr.none_of(is_deleted)  # the tenant rule is the session's
 
 
 class SoftDeleteMixin:
@@ -312,12 +318,13 @@ it.
 
 ## Admin bypass: runtime flag, not a parallel view tree
 
-The ``admin`` branch in ``tenant_scope`` points at a broader decision. Admin
-endpoints often do not need a parallel view hierarchy; a bound per-request
-flag lets each scope clause skip its filter, and a missing binding fails
-loudly. This keeps the route tree simple, but every scope clause must
-consult the flag. A parallel admin view tree (a second view with its own
-``scope``) gives class-time guarantees at the cost of more classes.
+The ``is_admin`` conditional in the tenant listener points at a broader
+decision. Admin endpoints often do not need a parallel view hierarchy; a
+bound per-request flag lets a rule skip its filter, and a missing binding
+fails loudly. This keeps the route tree simple, but every rule that should
+widen for an admin must consult the flag. A parallel admin view tree (a
+second view with its own ``scope``) gives class-time guarantees at the
+cost of more classes.
 
 Read scope is *visibility*, not *policy*. Rows outside the
 [scope](scopes.md) return 404;

@@ -25,6 +25,7 @@ from pathlib import Path
 
 import pytest
 from app.context import (
+    Current,
     get_current_org_id,
     get_current_role,
     get_current_user_id,
@@ -121,18 +122,36 @@ def _bind(
     role: UserRole | None = None,
     is_admin: bool | None = None,
 ) -> Iterator[None]:
-    """Override the named auth sources for a block; the others stay as they are."""
+    """Act as the named identity facts for a block; the others stay as they are.
+
+    Two bindings: the auth sources, for requests the client makes, and
+    ``Current`` itself, for the test body's own reads. A direct SELECT over
+    a tenant-owned class goes through the same listener a request does,
+    so a test inspects the database as the identity it acts as.
+    """
+    sources = {
+        get_current_org_id: org_id,
+        get_current_user_id: user_id,
+        get_current_role: role,
+        get_is_admin: is_admin,
+    }
+    values = {
+        name: value
+        for name, value in (
+            ("org_id", org_id),
+            ("user_id", user_id),
+            ("role", role),
+            ("is_admin", is_admin),
+        )
+        if value is not None
+    }
     previous = app.dependency_overrides.copy()
-    if org_id is not None:
-        app.dependency_overrides[get_current_org_id] = lambda: org_id
-    if user_id is not None:
-        app.dependency_overrides[get_current_user_id] = lambda: user_id
-    if role is not None:
-        app.dependency_overrides[get_current_role] = lambda: role
-    if is_admin is not None:
-        app.dependency_overrides[get_is_admin] = lambda: is_admin
+    for source, value in sources.items():
+        if value is not None:
+            app.dependency_overrides[source] = lambda value=value: value
     try:
-        yield
+        with Current.bind(**values):
+            yield
     finally:
         app.dependency_overrides.clear()
         app.dependency_overrides.update(previous)
@@ -145,28 +164,20 @@ def _as_admin(org_id: int) -> Iterator[None]:
     )
 
 
-def _sign_in(identity: Tenant) -> None:
-    """Make ``identity`` the caller for the rest of the test."""
-    app.dependency_overrides[get_current_org_id] = lambda: identity.org_id
-    app.dependency_overrides[get_current_user_id] = lambda: identity.user_id
-    app.dependency_overrides[get_current_role] = lambda: identity.role
-    app.dependency_overrides[get_is_admin] = lambda: identity.is_admin
-
-
 _ACME = {"name": "Acme", "slug": "acme"}
 _ALICE = {"email": "alice@acme.test", "name": "Alice", "role": "owner"}
 
 
 @pytest.fixture
-def actor(restly_client: RestlyTestClient) -> Tenant:
+def actor(restly_client: RestlyTestClient) -> Iterator[Tenant]:
     """Alice, owner of Acme: the identity ``client`` acts as."""
     org = restly_client.post("/organizations", json=_ACME).json()
     # The first user of an organization is created by the admin acting in it.
     with _as_admin(org["id"]):
         alice = restly_client.post("/users", json=_ALICE).json()
     identity = Tenant(org_id=org["id"], user_id=alice["id"])
-    _sign_in(identity)
-    return identity
+    with identity.acting():
+        yield identity
 
 
 @pytest.fixture
@@ -176,14 +187,23 @@ def client(restly_client: RestlyTestClient, actor: Tenant) -> RestlyTestClient:
 
 
 @pytest.fixture
-async def async_actor(restly_async_client: AsyncRestlyTestClient) -> Tenant:
-    """``actor`` for tests on the async client."""
+async def _async_identity(restly_async_client: AsyncRestlyTestClient) -> Tenant:
     org = (await restly_async_client.post("/organizations", json=_ACME)).json()
     with _as_admin(org["id"]):
         alice = (await restly_async_client.post("/users", json=_ALICE)).json()
-    identity = Tenant(org_id=org["id"], user_id=alice["id"])
-    _sign_in(identity)
-    return identity
+    return Tenant(org_id=org["id"], user_id=alice["id"])
+
+
+@pytest.fixture
+def async_actor(_async_identity: Tenant) -> Iterator[Tenant]:
+    """``actor`` for tests on the async client.
+
+    Bound from a sync fixture: the test coroutine copies the fixture's
+    context when its task starts, which an async fixture's task would not
+    share.
+    """
+    with _async_identity.acting():
+        yield _async_identity
 
 
 @pytest.fixture

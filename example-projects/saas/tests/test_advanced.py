@@ -158,31 +158,31 @@ class TestConditionalValidation:
 class TestCrossResourceValidation:
     """Cross-resource validation: the assignee must be in the project's org.
 
-    For a tenant's user the tenant floor would settle this anyway (another
-    organization's user is not a reference that exists); the rule in
-    ``TaskView._validate_cross_resource`` runs first and is what stops an
-    admin, whose reads cross tenants.
+    For a tenant's user the tenant restriction settles it: another
+    organization's user is not a row that exists, so the reference check
+    answers 404 and the rule in ``TaskView._validate_cross_resource``
+    never sees the user. The rule is what stops an admin, whose reads
+    cross tenants.
     """
 
-    def test_create_task_with_assignee_from_different_org_fails(
+    def test_assignee_from_another_org_does_not_exist_for_a_tenant(
         self, client, new_tenant
     ):
-        """Test that creating a task with assignee from different org fails."""
+        """The other organization's user is not a reference that exists."""
         beta = new_tenant("beta")
         project_id = client.post("/projects", json={"name": "Acme Project"}).json()[
             "id"
         ]
 
-        response = client.post(
+        client.post(
             "/tasks",
             json={
                 "title": "Cross-org assignment",
                 "project_id": project_id,
                 "assignee_id": beta.user_id,
             },
-            assert_status_code=422,
+            assert_status_code=404,
         )
-        assert "same organization" in response.json()["detail"]
 
     def test_admin_cannot_assign_across_organizations(
         self, client, new_tenant, as_admin, actor
@@ -230,8 +230,8 @@ class TestCrossResourceValidation:
 
         assert task["assignee_id"] == user_id
 
-    def test_update_task_assignee_to_different_org_fails(self, client, new_tenant):
-        """Test that updating assignee to user from different org fails."""
+    def test_update_task_assignee_to_another_org_is_not_found(self, client, new_tenant):
+        """On update too, the other organization's user does not exist."""
         beta = new_tenant("beta")
         project_id = client.post("/projects", json={"name": "Acme Project"}).json()[
             "id"
@@ -240,12 +240,11 @@ class TestCrossResourceValidation:
             "/tasks", json={"title": "Unassigned task", "project_id": project_id}
         ).json()["id"]
 
-        response = client.patch(
+        client.patch(
             f"/tasks/{task_id}",
             json={"assignee_id": beta.user_id},
-            assert_status_code=422,
+            assert_status_code=404,
         )
-        assert "same organization" in response.json()["detail"]
 
 
 class TestDifferentSchemasPerOperation:

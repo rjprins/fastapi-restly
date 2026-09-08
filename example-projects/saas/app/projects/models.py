@@ -6,7 +6,6 @@ from sqlalchemy import orm
 
 import fastapi_restly as fr
 
-from ..context import TenantClauses
 from ..models import AuditStamped, SoftDeletable, TenantOwned
 
 
@@ -47,15 +46,15 @@ class Project(TenantOwned, AuditStamped, SoftDeletable, fr.TimestampsMixin, fr.I
     )
 
 
-class ProjectClauses(TenantClauses):
-    """Project visibility: not soft-deleted, under the tenant floor.
+class ProjectClauses(fr.ClauseNamespace):
+    """Project visibility: not soft-deleted.
 
-    ``TenantClauses`` composes ``owned_by_tenant`` under this
-    ``default_scope``, so every view read and every ``project_id``
-    reference sees the tenant's live projects: a cross-tenant or deleted
-    id on a write reads as "does not exist" (404). Deleted rows are
-    reachable only by a route that names ``is_deleted`` as its scope,
-    and the floor keeps that read tenant-bound too.
+    The tenant restriction is not spelled here: the listener in
+    ``app.models`` adds it to every SELECT over a ``TenantOwned`` class,
+    so a view read, a ``project_id`` reference check and the trash route
+    all see one organization. A cross-tenant or deleted id on a write
+    reads as "does not exist" (404). Deleted rows are reachable only by a
+    route that names ``is_deleted`` as its scope.
     """
 
     model = Project

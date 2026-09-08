@@ -9,8 +9,8 @@ from sqlalchemy.types import TypeDecorator
 
 import fastapi_restly as fr
 
-from ..context import Current, TenantClauses
-from ..models import AuditStamped, SoftDeletable
+from ..context import Current
+from ..models import AuditStamped, SoftDeletable, tenant_org_for
 from ..projects.models import Project
 from ..users.roles import UserRole
 
@@ -124,31 +124,31 @@ class Task(AuditStamped, SoftDeletable, fr.TimestampsMixin, fr.IDBase):
     )
 
 
-class TaskClauses(TenantClauses):
-    """Task visibility: the tenant floor, deletion, and assignment.
+@sa.event.listens_for(orm.Session, "do_orm_execute")
+def _restrict_tasks_to_tenant(state: orm.ORMExecuteState) -> None:
+    # Task has no organization_id: its tenant is its project's. The same
+    # listener shape as TenantOwned's in app.models, with an EXISTS.
+    org_id = tenant_org_for(state, Task)
+    if org_id is not None:
+        state.statement = state.statement.options(
+            orm.with_loader_criteria(
+                Task,
+                Task.project.has(Project.organization_id == org_id),
+                include_aliases=True,
+            )
+        )
+
+
+class TaskClauses(fr.ClauseNamespace):
+    """Task visibility: deletion and assignment; the tenant restriction is the listener's.
 
     ``default_scope`` guards references to Task (``parent_id``, a label
-    attach): live tasks in the caller's organization. ``visible`` is the
-    stricter read rule ``TaskView`` declares as its ``scope``, ``trashed``
-    the surface its trash route names; the floor puts the tenant rule
-    under both.
+    attach): live tasks, in the caller's organization by the listener.
+    ``visible`` is the stricter read rule ``TaskView`` declares as its
+    ``scope``, ``trashed`` the surface its trash route names.
     """
 
     model = Task
-
-    @fr.where_clause
-    @staticmethod
-    def owned_by_tenant() -> sa.ColumnElement[bool]:
-        """The task's project belongs to the caller's organization.
-
-        Tasks reach their organization through the project, so the tenant
-        rule is declared here as an EXISTS instead of derived from a
-        column by ``TenantClauses``: the shape a reference-check scope
-        must have. Admin requests see every task.
-        """
-        if Current.is_admin():
-            return sa.true()
-        return Task.project.has(Project.organization_id == Current.org_id())
 
     @fr.where_clause
     @staticmethod

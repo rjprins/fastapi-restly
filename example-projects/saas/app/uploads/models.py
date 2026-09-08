@@ -19,7 +19,7 @@ from sqlalchemy import ForeignKey, orm
 
 import fastapi_restly as fr
 
-from ..context import Current, TenantClauses
+from ..context import Current
 from ..models import TenantOwned
 
 
@@ -36,12 +36,6 @@ class Upload(TenantOwned, fr.TimestampsMixin, fr.IDBase):
     lines: orm.Mapped[list["UploadLine"]] = orm.relationship(
         back_populates="upload", default_factory=list, cascade="all, delete-orphan"
     )
-
-
-class UploadClauses(TenantClauses):
-    """Upload visibility: the tenant floor alone."""
-
-    model = Upload
 
 
 class UploadLine(fr.TimestampsMixin, fr.IDBase):
