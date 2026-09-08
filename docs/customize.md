@@ -375,14 +375,13 @@ See SQLAlchemy's [mapper events documentation](https://docs.sqlalchemy.org/en/20
 
 ## Domain utilities: call, don't override
 
-The business methods are built from a handful of low-level utilities. Call these from your {meth}`create <fastapi_restly.views.RestView.create>` / {meth}`update <fastapi_restly.views.RestView.update>` / {meth}`delete <fastapi_restly.views.RestView.delete>` overrides. `save_object` and `delete_object` are never the override point; `make_new_object` and `update_object` are overridden only for [cooperative field stamping](#cooperative-field-stamping-override-make_new_object--update_object), and called everywhere else.
+The business methods are built from a handful of low-level utilities. Call these from your {meth}`create <fastapi_restly.views.RestView.create>` / {meth}`update <fastapi_restly.views.RestView.update>` overrides. `save_object` is never the override point; `make_new_object` and `update_object` are overridden only for [cooperative field stamping](#cooperative-field-stamping-override-make_new_object--update_object), and called everywhere else.
 
 | Method | What it does |
 |---|---|
 | `self.make_new_object(schema_obj)` | Constructs a new ORM object from the schema and adds it to the session; the cooperative override point for create-time field stamping. Does not flush. |
 | `self.update_object(obj, schema_obj)` | Applies writable fields onto an existing object; the cooperative override point for update-time field stamping. Does not flush. |
 | `self.save_object(obj)` | Flushes and refreshes `obj` from the database. Does not commit. |
-| `self.delete_object(obj)` | Removes `obj` and flushes. Does not commit. |
 
 The same operations are available as free functions for use outside a view (scripts, workers, services): {func}`fr.objects.async_make_new_object <fastapi_restly.objects.async_make_new_object>`, {func}`async_update_object <fastapi_restly.objects.async_update_object>`, {func}`async_save_object <fastapi_restly.objects.async_save_object>`, {func}`async_delete_object <fastapi_restly.objects.async_delete_object>`, plus their sync counterparts. See [Advanced Object Helpers](api_reference.md#advanced-object-helpers).
 

@@ -196,7 +196,13 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         return self.save_object(obj)
 
     def delete(self, obj: ModelT) -> None:
-        self.delete_object(obj)
+        """Remove ``obj`` and flush. Does not commit: ``handle_delete`` does.
+
+        Override (on the view or on a soft-delete mixin) to flip a timestamp
+        instead of removing the row, without calling ``super()``. A raw row
+        delete elsewhere is ``fr.objects.delete_object(self.session, obj)``.
+        """
+        object_delete_object(self.session, obj)
 
     # ====================================================================
     # Read seams
@@ -250,9 +256,6 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
             # joinedload against a collection, which fans the row set out.
             self.session.scalars(statement).unique().all()
         return obj
-
-    def delete_object(self, obj: ModelT) -> None:
-        object_delete_object(self.session, obj)
 
     # ====================================================================
     # Request-logic seams (authorize + transaction hooks)

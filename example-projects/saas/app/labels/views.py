@@ -33,12 +33,12 @@ class LabelView(TenantScopedMixin, TenantBase):
     model = Label
     schema = LabelSchema
 
-    async def delete_object(self, obj):
+    async def delete(self, obj):
         """Remove task-label associations before deleting the label."""
         await self.session.execute(
             sa.delete(TaskLabel).where(TaskLabel.label_id == obj.id)
         )
-        await super().delete_object(obj)
+        await super().delete(obj)
 
 
 class TaskLabelView(TenantBase):

@@ -1039,6 +1039,18 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
                     "transform clause on the view scope. See Migrating from "
                     "build_query in the Scopes guide."
                 )
+        # delete_object is removed; a stale soft-delete override would be
+        # silently dead code, and a dead soft delete is a hard delete
+        for klass in cls.__mro__:
+            if "delete_object" in vars(klass):
+                origin = "" if klass is cls else f" (from {klass.__name__})"
+                raise RestlyConfigurationError(
+                    f"{cls.__name__} defines delete_object{origin}, which is "
+                    "removed and no longer called. Override delete instead: a "
+                    "soft delete flips a timestamp there. A raw row delete is "
+                    "fr.objects.delete_object / async_delete_object on "
+                    "self.session."
+                )
 
     def _resolved_scope(self) -> Clause | None:
         """The clause this view's reads apply, or None for unscoped.

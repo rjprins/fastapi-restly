@@ -79,15 +79,15 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
     schema = TaskSchema
     scope = TaskClauses.visible
 
-    async def delete_object(self, obj):
-        """Decrement the parent project's story-point rollup before delete."""
+    async def delete(self, obj):
+        """Decrement the parent project's story-point rollup, then soft delete."""
         from ..projects.models import Project
 
         if obj.story_points:
             project = await self.session.get(Project, obj.project_id)
             if project is not None:
                 project.total_story_points -= obj.story_points
-        await super().delete_object(obj)
+        await super().delete(obj)
 
     async def _validate_cross_resource(self, data: dict) -> None:
         """Validate cross-resource constraints (assignee must be in same org as project)."""

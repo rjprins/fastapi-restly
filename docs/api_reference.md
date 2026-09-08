@@ -197,7 +197,7 @@ Alongside the tiers are the declared read [scope](scopes.md) (the
 `before_action_commit` / `after_action_commit`, `to_response`,
 `get_relationship_loader_options`, `snapshot`) and **domain
 utilities** that you call rather than override (`make_new_object`,
-`update_object`, `save_object`, `delete_object`). `make_new_object` /
+`update_object`, `save_object`). `make_new_object` /
 `update_object` are also the cooperative override point for field stamps.
 
 On `AsyncRestView` every method below is `async`; the signatures are otherwise identical.
@@ -234,7 +234,6 @@ On `AsyncRestView` every method below is `async`; the signatures are otherwise i
 | Domain utility | `make_new_object` | `(schema_obj)` | `Model` | Build and stage a new object without flushing. The cooperative override point for stamping extra fields on create: call `super()`, then mutate the returned object. |
 | Domain utility | `update_object` | `(obj, schema_obj)` | `Model` | Apply writable fields without flushing. The cooperative override point for stamping extra fields on update: call `super()`, then mutate the returned object. |
 | Domain utility | `save_object` | `(obj)` | `Model` | Flush and refresh a staged object, then eager-load the relationships the response schema names (via `get_relationship_loader_options`). Does not commit; `handle_<verb>` owns the commit. |
-| Domain utility | `delete_object` | `(obj)` | `None` | Delete and flush an existing object. Does not commit. |
 
 Internal methods prefixed with `_`, such as `_reject_unknown_query_params`, are implementation details even though they are visible on instances.
 

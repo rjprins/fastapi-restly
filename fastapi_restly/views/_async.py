@@ -250,10 +250,13 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         return await self.save_object(obj)
 
     async def delete(self, obj: ModelT) -> None:
-        """Delete ``obj``. Override (e.g. on a soft-delete mixin) to flip a
-        timestamp instead of removing the row.
+        """Remove ``obj`` and flush. Does not commit: ``handle_delete`` does.
+
+        Override (on the view or on a soft-delete mixin) to flip a timestamp
+        instead of removing the row, without calling ``super()``. A raw row
+        delete elsewhere is ``fr.objects.async_delete_object(self.session, obj)``.
         """
-        await self.delete_object(obj)
+        await object_async_delete_object(self.session, obj)
 
     # ====================================================================
     # Read seams
@@ -322,10 +325,6 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
             # joinedload against a collection, which fans the row set out.
             (await self.session.scalars(statement)).unique().all()
         return obj
-
-    async def delete_object(self, obj: ModelT) -> None:
-        """Remove ``obj`` from the session and flush. Does not commit."""
-        await object_async_delete_object(self.session, obj)
 
     # ====================================================================
     # Request-logic seams (authorize + transaction hooks)

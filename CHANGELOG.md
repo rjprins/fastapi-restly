@@ -133,6 +133,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   fails at class definition with a migration pointer, because a dead
   visibility override must not sit silently. See "Migrating from
   build_query" in the Scopes guide.
+- `RestView.delete_object` / `AsyncRestView.delete_object`. The `delete`
+  business method removes the row and flushes itself; override `delete` for
+  a soft delete, which is what every `delete_object` override was. A view
+  class that still defines `delete_object`, itself or through a mixin, fails
+  at class definition with a migration pointer, because a dead soft-delete
+  override would hard-delete silently. A raw row delete outside the verb is
+  `fr.objects.delete_object` / `fr.objects.async_delete_object`.
 
 ### Fixed
 

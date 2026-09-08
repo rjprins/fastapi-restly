@@ -9,7 +9,7 @@ see something else declares its own ``scope``, and a route names one per
 read, with the floor holding underneath either. ``TenantScopedMixin``,
 ``SoftDeleteMixin``, and ``AuditStampedMixin`` add the write-side behavior
 through cooperative ``super()`` chains: ``make_new_object`` /
-``update_object`` stamps, and soft deletion via ``delete_object``.
+``update_object`` stamps, and soft deletion as a ``delete`` override.
 
 The mixins run before ``save_object``, only stamp data, and compose linearly
 so combinations work without ordering surprises. Concrete subject views
@@ -153,12 +153,9 @@ class SoftDeleteMixin:
     if TYPE_CHECKING:
         session: AsyncSession
 
-    async def delete_object(self, obj: Any) -> None:
-        if hasattr(obj, "deleted_at"):
-            obj.deleted_at = datetime.now(timezone.utc)
-            await self.session.flush()
-            return
-        await super().delete_object(obj)  # type: ignore[misc]
+    async def delete(self, obj: Any) -> None:
+        obj.deleted_at = datetime.now(timezone.utc)
+        await self.session.flush()
 
 
 class AuditStampedMixin:

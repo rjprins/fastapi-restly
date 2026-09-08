@@ -51,7 +51,7 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
     retrieve, and every ``project_id`` reference alike. The trash and
     restore routes below name ``is_deleted`` as their own scope per read.
     The mixins add the write-side halves (left → right via MRO):
-    - ``SoftDeleteMixin`` — ``delete_object`` sets ``deleted_at`` instead of
+    - ``SoftDeleteMixin`` — ``delete`` sets ``deleted_at`` instead of
       removing the row.
     - ``AuditStampedMixin`` — stamps ``created_by_id`` / ``updated_by_id``
       via ``make_new_object`` / ``update_object`` before flush.
@@ -210,13 +210,13 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
     async def soft_delete(self, id: int) -> Project:
         """Soft delete: sets deleted_at instead of removing the row.
 
-        ``SoftDeleteMixin.delete_object`` performs the mutation. This route
+        ``SoftDeleteMixin.delete`` performs the mutation. This route
         replaces the default 204 contract with ``200 + body``.
         """
         project = await self.get_one(id)
 
         async with self.write_action("delete", obj=project):
-            await self.delete_object(project)
+            await self.delete(project)
         return await self._decorate_project_response(project)
 
     @fr.get("/trash", response_model=PaginatedEnvelope[ProjectSchema])

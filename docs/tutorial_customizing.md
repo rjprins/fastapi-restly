@@ -123,7 +123,7 @@ class PostView(fr.AsyncRestView):
     async def delete(self, obj):
         obj.deleted_at = datetime.now(timezone.utc)
         await self.session.flush()
-        # Do NOT call super() / delete_object; that would remove the row.
+        # Do NOT call super(); that would remove the row.
 ```
 
 `DELETE /posts/{id}` now marks the row instead of removing it.
@@ -189,7 +189,7 @@ The `create` override earlier stamped a field at creation time only. For fields 
 
 ## Object utilities
 
-The business methods are built from a small set of object utilities. `save_object` and `delete_object` you only ever call; `make_new_object` and `update_object` you call as well, but they double as the cooperative override points from the previous section:
+The business methods are built from a small set of object utilities. `save_object` you only ever call; `make_new_object` and `update_object` you call as well, but they double as the cooperative override points from the previous section:
 
 ```
 create  →  make_new_object(schema_obj)   # build ORM object (override point for stamping)
@@ -198,7 +198,7 @@ create  →  make_new_object(schema_obj)   # build ORM object (override point fo
 update  →  update_object(obj, schema_obj)  # apply payload (override point for stamping)
         →  save_object(obj)
 
-delete  →  delete_object(obj)              # delete + flush (no commit)
+delete  →  removes the row + flush         # no utility: override delete itself for a soft delete
 ```
 
 `make_new_object` and `update_object` do not flush. `save_object` flushes, refreshes, and eager-loads the relationships the response schema names, but does *not* commit. The same operations are available as free functions for services and workers; the free `save_object` has no view to read a schema from, so it flushes and refreshes only.

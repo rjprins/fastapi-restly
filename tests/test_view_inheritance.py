@@ -267,14 +267,14 @@ def test_inherit_paginated(sync_db):
 
 
 # ---------------------------------------------------------------------------
-# 6. Inherited soft-delete via delete_object override
+# 6. Inherited soft-delete via a delete override
 # ---------------------------------------------------------------------------
 
 
-def test_inherit_soft_delete_via_delete_object(sync_db):
+def test_inherit_soft_delete_via_delete(sync_db):
     """
-    A delete_object override on a base class (e.g. soft-delete) is inherited
-    by all subclasses without repeating the implementation.
+    A delete override on a base class (e.g. soft-delete) is inherited by all
+    subclasses without repeating the implementation.
     """
     engine, _ = sync_db
 
@@ -290,7 +290,7 @@ def test_inherit_soft_delete_via_delete_object(sync_db):
         model = Record
         schema = RecordSchema
 
-        def delete_object(self, obj):
+        def delete(self, obj):
             obj.deleted = True
             self.session.flush()
 
