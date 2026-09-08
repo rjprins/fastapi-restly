@@ -1,4 +1,4 @@
-from typing import Any, cast
+from typing import Any, cast, final
 
 import sqlalchemy
 from sqlalchemy import func, select
@@ -283,34 +283,47 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         return int(await self.session.scalar(count_query) or 0)
 
     # ====================================================================
-    # Domain utilities (call from `create`/`update`; not override seams)
+    # Domain utilities (final: call from a verb override, never override)
     # ====================================================================
 
+    @final
     async def make_new_object(self, schema_obj: CreateSchemaT) -> ModelT:
         """Construct a new ORM object from ``schema_obj`` and add it to the
-        session. Does not flush -- :meth:`save_object` does. Override
-        cooperatively (call ``super()``, then mutate the returned object) to
-        stamp structural fields like an audit id or a tenant id; see the SaaS
-        example mixins.
+        session. Does not flush -- :meth:`save_object` does.
+
+        Final: the view-bound spelling of
+        ``fr.objects.async_make_new_object``, passing the view's model and
+        response schema (the schema carries the read-only markers). A
+        server-stamped field (an audit id, a tenant id) is a column default
+        on the model, which covers every write path; a value derived from
+        the payload goes in a ``create`` override, after this call.
         """
         model_cls = cast(type[ModelT], self.model)
         return await object_async_make_new_object(
             self.session, model_cls, schema_obj, self.schema
         )
 
+    @final
     async def update_object(self, obj: ModelT, schema_obj: UpdateSchemaT) -> ModelT:
         """Apply writable fields from ``schema_obj`` to ``obj``. Does not flush.
-        Override cooperatively (same shape as :meth:`make_new_object`) to stamp
-        structural fields such as ``updated_by``.
+
+        Final, like :meth:`make_new_object`: an ``updated_by`` stamp is the
+        column's ``onupdate`` on the model; payload-derived values go in an
+        ``update`` override, after this call.
         """
         return await object_async_update_object(
             self.session, obj, schema_obj, self.schema
         )
 
+    @final
     async def save_object(self, obj: ModelT) -> ModelT:
         """Flush the session and refresh ``obj`` from the database, eager-loading
         the relationships the response schema names. Does not commit --
         ``handle_<verb>`` owns the commit.
+
+        Final: a side effect per write belongs in ``before_action_commit`` /
+        ``after_action_commit`` (or a session event, to see the bulk paths
+        too), and the reload strategy is ``get_relationship_loader_options``.
 
         The refresh leaves relationships unloaded, so without the eager load the
         serializer would reach them one lazy query at a time -- which on an async

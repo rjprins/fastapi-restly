@@ -958,6 +958,11 @@ def delete(path: str, **api_route_kwargs: Any) -> Callable[..., Any]:
     return route(path, **api_route_kwargs)
 
 
+# Callable from a verb override, never overridden. The framework's own view
+# classes define them; anything else in the MRO that does is a mistake.
+_FINAL_DOMAIN_UTILITIES = ("make_new_object", "update_object", "save_object")
+
+
 class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT]):
     """
     Base class for RestView implementations.
@@ -1051,6 +1056,22 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
                     "fr.objects.delete_object / async_delete_object on "
                     "self.session."
                 )
+        # the domain utilities are final: a stamp hooked there only covered
+        # the verbs, and a definition here would shadow the framework's
+        for klass in cls.__mro__:
+            if klass.__module__.startswith("fastapi_restly."):
+                continue
+            for name in _FINAL_DOMAIN_UTILITIES:
+                if name in vars(klass):
+                    origin = "" if klass is cls else f" (from {klass.__name__})"
+                    raise RestlyConfigurationError(
+                        f"{cls.__name__} defines {name}{origin}, which is a "
+                        "final domain utility, not a seam. Stamp a "
+                        "server-controlled field with a column default on the "
+                        "model (it then covers every write path); put "
+                        "payload-derived logic in the create / update verb; "
+                        "put a per-write side effect in before_action_commit."
+                    )
 
     def _resolved_scope(self) -> Clause | None:
         """The clause this view's reads apply, or None for unscoped.

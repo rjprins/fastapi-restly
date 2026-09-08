@@ -15,7 +15,10 @@ name the tier that owns your change and override one method:
 
 Cross-cutting seams: ``scope`` (read visibility), ``authorize`` (policy),
 ``apply_query_params`` (URL grammar), ``to_response`` (wire shape),
-``write_action`` (custom write brackets). ``View`` is the bare class-based
+``write_action`` (custom write brackets). Under the verbs sit the final
+domain utilities (``make_new_object``, ``update_object``, ``save_object``):
+call them from a verb override, never override them; a server-stamped
+field is a column default on the model. ``View`` is the bare class-based
 primitive for non-CRUD endpoint groups (auth flows, webhooks, RPC).
 """
 

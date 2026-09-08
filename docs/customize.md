@@ -98,7 +98,7 @@ POST /
        └─ handle_create(schema_obj)           # handler
             ├─ authorize("create", data=schema_obj)
             ├─ create(schema_obj)              # business method (your override point)
-            │    ├─ make_new_object(schema_obj)   # override to stamp extra fields
+            │    ├─ make_new_object(schema_obj)   # build the ORM object (final)
             │    └─ save_object(obj)              # flush + refresh (no commit)
             ├─ before_action_commit("create", new=obj)
             ├─ commit                             # the framework owns this
@@ -153,7 +153,7 @@ The table below maps the change you want to make to the method that owns it:
 | Filter / sort / pagination grammar      | {meth}`apply_query_params <fastapi_restly.views.RestView.apply_query_params>`              | read extension point   |
 | The list total                          | {meth}`count <fastapi_restly.views.RestView.count>`                           | read extension point   |
 | Authorization / policy                  | {meth}`authorize <fastapi_restly.views.RestView.authorize>` (override to gate)    | handler hook           |
-| Server-stamped fields (audit/tenant)    | `make_new_object` / `update_object` (override cooperatively) | cooperative stamping  |
+| Server-stamped fields (audit/tenant)    | a column default on the model ([below](#server-stamped-fields-column-defaults-on-the-model)) | model layer            |
 | In-transaction side effects             | {meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>`                   | transaction hook       |
 | Post-commit side effects (email/webhook)| {meth}`after_action_commit <fastapi_restly.views.RestView.after_action_commit>`                    | transaction hook       |
 | The response shape                      | {meth}`to_response <fastapi_restly.views.BaseRestView.to_response>`                     | response boundary      |
@@ -316,7 +316,7 @@ Visibility belongs in the [scope](scopes.md), not here: raising from `authorize`
 
 Use `handle_<verb>` to change orchestration: transaction handling, side-effect timing, or the authorize/load order. The handler owns {meth}`authorize <fastapi_restly.views.RestView.authorize>` and the commit bracket.
 
-For server-controlled field stamps, prefer `make_new_object` / `update_object` below. Use a handler override when the bracket itself must change:
+For server-controlled field stamps, see [column defaults](#server-stamped-fields-column-defaults-on-the-model) below. Use a handler override when the bracket itself must change:
 
 ```python
     async def handle_delete(self, id):
@@ -346,20 +346,21 @@ For most timing needs, use the hooks instead of overriding the handler:
             await notify_status_change(new.id, new.status)
 ```
 
-### Cooperative field stamping: override `make_new_object` / `update_object`
+### Server-stamped fields: column defaults on the model
 
-For server-controlled field stamps, override `make_new_object` / `update_object` cooperatively: call `super()`, mutate, and return. This composes cleanly through mixins:
+A field the server owns (an audit id, a tenant id) is a column default that reads a bound {class}`fr.ContextNamespace <fastapi_restly.clauses.ContextNamespace>` slot. It fires on every write path, whichever view or helper built the row, so nothing on the view has to run:
 
 ```python
-    async def make_new_object(self, schema_obj):
-        obj = await super().make_new_object(schema_obj)
-        obj.tenant_id = self.request.state.tenant_id  # stamp the constructed object
-        return obj
+class Article(fr.TimestampsMixin, fr.IDBase):
+    title: Mapped[str]
+    created_by_id: Mapped[int | None] = mapped_column(
+        ForeignKey("user.id"), default=None, insert_default=lambda: Current.user_id()
+    )
 ```
 
-See [Compose Views with Mixins](howto_compose_views_with_mixins.md) for when to use structural stamping versus per-view business logic.
+A payload value wins over a default, so keep the field `fr.ReadOnly` on the schema. Stamping from the view instead, in `create`, only covers that verb: a `create` override does not call `super()`, and the free `fr.objects` helpers never see the view. See [Compose Views with Mixins](howto_compose_views_with_mixins.md) for the tenant, audit, and soft-delete pieces the SaaS example ships.
 
-When the derivation should fire on every insert regardless of which view created the row (audit stamps, slug derivation, denormalised counters), prefer a SQLAlchemy `before_insert` mapper event listener instead:
+A derivation that needs more than a value, a slug from the title or a denormalised counter, is a SQLAlchemy `before_insert` mapper event on the same model:
 
 ```python
 from sqlalchemy import event
@@ -375,13 +376,13 @@ See SQLAlchemy's [mapper events documentation](https://docs.sqlalchemy.org/en/20
 
 ## Domain utilities: call, don't override
 
-The business methods are built from a handful of low-level utilities. Call these from your {meth}`create <fastapi_restly.views.RestView.create>` / {meth}`update <fastapi_restly.views.RestView.update>` overrides. `save_object` is never the override point; `make_new_object` and `update_object` are overridden only for [cooperative field stamping](#cooperative-field-stamping-override-make_new_object--update_object), and called everywhere else.
+The business methods are built from three utilities. Call them from your {meth}`create <fastapi_restly.views.RestView.create>` / {meth}`update <fastapi_restly.views.RestView.update>` overrides; they are final, and a view class that defines one, itself or through a mixin, fails at class definition. A server-stamped field is a [column default on the model](#server-stamped-fields-column-defaults-on-the-model); a per-write side effect is a [transaction hook](#transaction-hooks-before_action_commit--after_action_commit).
 
 | Method | What it does |
 |---|---|
-| `self.make_new_object(schema_obj)` | Constructs a new ORM object from the schema and adds it to the session; the cooperative override point for create-time field stamping. Does not flush. |
-| `self.update_object(obj, schema_obj)` | Applies writable fields onto an existing object; the cooperative override point for update-time field stamping. Does not flush. |
-| `self.save_object(obj)` | Flushes and refreshes `obj` from the database. Does not commit. |
+| `self.make_new_object(schema_obj)` | Constructs a new ORM object from the schema, resolving references and skipping read-only fields (it passes the view's response schema, which carries the markers), and adds it to the session. Does not flush. |
+| `self.update_object(obj, schema_obj)` | Applies writable fields onto an existing object, resolving references. Does not flush. |
+| `self.save_object(obj)` | Flushes and refreshes `obj`, then eager-loads the relationships the response schema names. Does not commit. |
 
 The same operations are available as free functions for use outside a view (scripts, workers, services): {func}`fr.objects.async_make_new_object <fastapi_restly.objects.async_make_new_object>`, {func}`async_update_object <fastapi_restly.objects.async_update_object>`, {func}`async_save_object <fastapi_restly.objects.async_save_object>`, {func}`async_delete_object <fastapi_restly.objects.async_delete_object>`, plus their sync counterparts. See [Advanced Object Helpers](api_reference.md#advanced-object-helpers).
 

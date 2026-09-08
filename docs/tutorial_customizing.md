@@ -64,7 +64,7 @@ class PostView(fr.AsyncRestView):
         return await self.save_object(obj)
 ```
 
-`make_new_object` builds the ORM instance. `save_object` flushes and refreshes it, then eager-loads the relationships the response schema names, but does not commit. For fields stamped on both create and update, override `make_new_object` / `update_object` instead; see [Stamping extra fields](#stamping-extra-fields).
+`make_new_object` builds the ORM instance. `save_object` flushes and refreshes it, then eager-loads the relationships the response schema names, but does not commit. For a field stamped on every write, see [Stamping extra fields](#stamping-extra-fields).
 
 ### update: validate before saving
 
@@ -171,31 +171,37 @@ The hooks cover most timing needs. Override `handle_<verb>` only when the operat
 
 ## Stamping extra fields
 
-The `create` override earlier stamped a field at creation time only. For fields stamped on both create and update, override `make_new_object` / `update_object` cooperatively: call `super()`, mutate, and return. Base classes and mixins then compose cleanly:
+The `create` override earlier stamped a field in the verb, which covers that verb only. A field the server owns on every write, created or updated by any view, helper, or script, is a column default on the model, reading a per-request context slot:
 
 ```python
-    async def make_new_object(self, schema_obj):
-        obj = await super().make_new_object(schema_obj)
-        obj.created_by = self.request.state.user_id   # stamp the constructed object
-        return obj
+class Current(fr.ContextNamespace):
+    user_id: fr.ContextParam[int | None]
 
-    async def update_object(self, obj, schema_obj):
-        obj = await super().update_object(obj, schema_obj)
-        obj.updated_by = self.request.state.user_id
-        return obj
+
+class Post(fr.TimestampsMixin, fr.IDBase):
+    title: Mapped[str]
+    created_by_id: Mapped[int | None] = mapped_column(
+        ForeignKey("user.id"), default=None, insert_default=lambda: Current.user_id()
+    )
+    updated_by_id: Mapped[int | None] = mapped_column(
+        ForeignKey("user.id"),
+        default=None,
+        insert_default=lambda: Current.user_id(),
+        onupdate=lambda: Current.user_id(),
+    )
 ```
 
-`make_new_object` builds the ORM object; `update_object` applies the payload. Override them for structural stamps without touching the business method.
+A `Current.depends(user_id=...)` entry in the view's `dependencies` binds the slot per request. Mark the fields `fr.ReadOnly` on the schema, so no payload value competes with the default. [Compose Views with Mixins](howto_compose_views_with_mixins.md) has the tenant and soft-delete pieces.
 
 ## Object utilities
 
-The business methods are built from a small set of object utilities. `save_object` you only ever call; `make_new_object` and `update_object` you call as well, but they double as the cooperative override points from the previous section:
+The business methods are built from a small set of object utilities that you call, never override:
 
 ```
-create  →  make_new_object(schema_obj)   # build ORM object (override point for stamping)
+create  →  make_new_object(schema_obj)   # build ORM object (no flush)
         →  save_object(obj)              # flush + refresh + eager-load (no commit)
 
-update  →  update_object(obj, schema_obj)  # apply payload (override point for stamping)
+update  →  update_object(obj, schema_obj)  # apply payload (no flush)
         →  save_object(obj)
 
 delete  →  removes the row + flush         # no utility: override delete itself for a soft delete

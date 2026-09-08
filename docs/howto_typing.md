@@ -85,8 +85,7 @@ the business methods, so those benefit most:
 It also sharpens the handlers ({meth}`handle_create <fastapi_restly.views.RestView.handle_create>`,
 {meth}`handle_update <fastapi_restly.views.RestView.handle_update>`,
 {meth}`handle_get_one <fastapi_restly.views.RestView.handle_get_one>`, and so
-on) and the cooperative stamping methods (`make_new_object`, `update_object`)
-when you override them.
+on) when you override them.
 
 Without view generics, these methods still work, but their types are broader.
 With view generics, your editor can infer the concrete model, schema, and id

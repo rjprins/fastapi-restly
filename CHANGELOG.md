@@ -123,6 +123,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and `after_commit` to `before_action_commit` and `after_action_commit`: they
   bracket a Restly write action, and the old names collided with SQLAlchemy's
   `before_commit` / `after_commit` session events. Rename your overrides.
+- `make_new_object`, `update_object`, and `save_object` on `RestView` /
+  `AsyncRestView` are final: call them from a verb override, never override
+  them. A view class that defines one, itself or through a mixin, fails at
+  class definition with a migration pointer. The former "cooperative
+  stamping" override point only covered the CRUD verbs; a server-stamped
+  field is a column default on the model (`insert_default=` /
+  `onupdate=` reading a `ContextNamespace` slot), which covers every write
+  path. Docs and the SaaS example follow.
 
 ### Removed
 

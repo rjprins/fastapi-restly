@@ -195,10 +195,10 @@ Alongside the tiers are the declared read [scope](scopes.md) (the
 `scope` class attribute) and cross-cutting **override points**
 (`apply_query_params`, `count`, `authorize`,
 `before_action_commit` / `after_action_commit`, `to_response`,
-`get_relationship_loader_options`, `snapshot`) and **domain
+`get_relationship_loader_options`, `snapshot`) and final **domain
 utilities** that you call rather than override (`make_new_object`,
-`update_object`, `save_object`). `make_new_object` /
-`update_object` are also the cooperative override point for field stamps.
+`update_object`, `save_object`); a view class that defines one fails at
+class definition.
 
 On `AsyncRestView` every method below is `async`; the signatures are otherwise identical.
 
@@ -231,9 +231,9 @@ On `AsyncRestView` every method below is `async`; the signatures are otherwise i
 | Override point | {meth}`get_relationship_loader_options <fastapi_restly.views.BaseRestView.get_relationship_loader_options>` | `()` | `list[Any]` | Loader options (`selectinload(...)`) for the relationships the response schema names, applied on reads (`get_one` / `get_many`) and on the write-response reload in `save_object`. Override to eager-load relationships the schema does not name on both paths; see [Relationship Loading and Async](howto_relationship_loading.md). |
 | Helper | {meth}`to_response_schema <fastapi_restly.views.BaseRestView.to_response_schema>` | `(obj)` | response schema | Validate and serialize an ORM object with Restly's alias/reference/write-only handling. Override for custom projections or an intentional `model_construct()` fast path. |
 | Helper | {meth}`to_listing_response <fastapi_restly.views.BaseRestView.to_listing_response>` | `(query_params, listing_result)` | list response body | Serialize a `ListingResult` into the list HTTP response body: the `data` envelope, with pagination metadata when `paginated`. Overriding this reshapes the body only; a non-envelope shape (bare array) also needs `get_many_endpoint` replaced with a matching `response_model`. |
-| Domain utility | `make_new_object` | `(schema_obj)` | `Model` | Build and stage a new object without flushing. The cooperative override point for stamping extra fields on create: call `super()`, then mutate the returned object. |
-| Domain utility | `update_object` | `(obj, schema_obj)` | `Model` | Apply writable fields without flushing. The cooperative override point for stamping extra fields on update: call `super()`, then mutate the returned object. |
-| Domain utility | `save_object` | `(obj)` | `Model` | Flush and refresh a staged object, then eager-load the relationships the response schema names (via `get_relationship_loader_options`). Does not commit; `handle_<verb>` owns the commit. |
+| Domain utility | `make_new_object` | `(schema_obj)` | `Model` | Build and stage a new object without flushing, resolving references and skipping read-only fields. Final. |
+| Domain utility | `update_object` | `(obj, schema_obj)` | `Model` | Apply writable fields without flushing, resolving references. Final. |
+| Domain utility | `save_object` | `(obj)` | `Model` | Flush and refresh a staged object, then eager-load the relationships the response schema names (via `get_relationship_loader_options`). Does not commit; `handle_<verb>` owns the commit. Final. |
 
 Internal methods prefixed with `_`, such as `_reject_unknown_query_params`, are implementation details even though they are visible on instances.
 
