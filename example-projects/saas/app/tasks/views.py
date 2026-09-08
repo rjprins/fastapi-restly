@@ -339,8 +339,10 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
     async def bulk_delete(self, request: BulkDeleteRequest) -> BulkResult:
         """Delete multiple tasks by IDs.
 
-        Each id loads through the scoped ``get_one`` (404 by visibility) and
-        runs in a savepoint. One final commit persists successful deletes.
+        Each id uses the business ``delete`` verb, the way ``bulk_create``
+        uses ``create``: the scoped ``get_one`` (404 by visibility) and the
+        ``delete`` gate run first, then the write runs in a savepoint. One
+        final commit persists successful deletes.
         """
         success = 0
         failed = 0
@@ -348,19 +350,19 @@ class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
 
         for task_id in request.ids:
             try:
+                task = await self.get_one(task_id)
+                # ``delete`` is auth-free; gate each row like ``handle_delete``.
+                await self.authorize("delete", obj=task)
                 async with self.session.begin_nested():
-                    task = await self.get_one(task_id)
-                    # ``delete`` is auth-free; gate each row like ``handle_delete``.
-                    await self.authorize("delete", obj=task)
                     await self.delete(task)
                 success += 1
+            except fr.exc.NotFound:
+                failed += 1
+                errors.append(f"Task {task_id} not found")
             except HTTPException as exc:
                 failed += 1
-                if exc.status_code == 404:
-                    errors.append(f"Task {task_id} not found")
-                else:
-                    errors.append(f"Failed to delete task {task_id}: {exc.detail}")
-            except Exception as e:  # noqa: BLE001
+                errors.append(f"Failed to delete task {task_id}: {exc.detail}")
+            except Exception as e:  # noqa: BLE001 — surface per-row error
                 failed += 1
                 errors.append(f"Failed to delete task {task_id}: {e!s}")
 
