@@ -9,7 +9,7 @@ from pydantic import BaseModel
 import fastapi_restly as fr
 from fastapi_restly.views import PaginatedEnvelope
 
-from ..views import AuditStampedMixin, SoftDeleteMixin, TenantBase
+from ..views import SoftDeleteMixin, TenantBase
 from .models import Task, TaskClauses, TaskPriority, TaskStatus, TaskType
 from .schemas import TaskSchema
 
@@ -60,7 +60,7 @@ VALID_TRANSITIONS = {
 }
 
 
-class TaskView(SoftDeleteMixin, AuditStampedMixin, TenantBase):
+class TaskView(SoftDeleteMixin, TenantBase):
     """CRUD endpoints for tasks.
 
     Task visibility is by ``assignee_id``, a row-level permission:

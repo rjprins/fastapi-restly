@@ -4,10 +4,11 @@ from sqlalchemy import ForeignKey, orm
 
 import fastapi_restly as fr
 
-from ..context import TenantClauses
+from ..context import Current, TenantClauses
+from ..models import TenantOwned
 
 
-class Label(fr.TimestampsMixin, fr.IDBase):
+class Label(TenantOwned, fr.TimestampsMixin, fr.IDBase):
     """
     Labels that can be applied to tasks.
     Organization-scoped.
@@ -15,9 +16,6 @@ class Label(fr.TimestampsMixin, fr.IDBase):
 
     name: orm.Mapped[str]
     color: orm.Mapped[str] = orm.mapped_column(default="#808080")
-
-    # Foreign keys
-    organization_id: orm.Mapped[int] = orm.mapped_column(ForeignKey("organization.id"))
 
     # Relationships
     organization: orm.Mapped["Organization"] = orm.relationship(  # noqa: F821
@@ -46,8 +44,9 @@ class TaskLabel(fr.TimestampsMixin, fr.IDBase):
     # Foreign keys
     task_id: orm.Mapped[int] = orm.mapped_column(ForeignKey("task.id"))
     label_id: orm.Mapped[int] = orm.mapped_column(ForeignKey("label.id"))
+    # Stamped from context when the client leaves it out; a given value wins.
     added_by_id: orm.Mapped[int | None] = orm.mapped_column(
-        ForeignKey("user.id"), default=None
+        ForeignKey("user.id"), default=None, insert_default=lambda: Current.user_id()
     )
 
     # Relationships

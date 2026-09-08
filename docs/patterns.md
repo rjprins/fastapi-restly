@@ -184,8 +184,8 @@ route](customize.md#add-a-custom-action-route) provides the full walkthrough.
 
 ## Tenant scoping
 
-A tenant clause on the view [scope](scopes.md) filters every read, and a
-`TenantScopedMixin` stamps writes cooperatively; the pattern is owned by
-[tenant row scoping in Compose Views with Mixins](#tenant-row-scoping).
+A tenant clause in the model's [default scope](scopes.md) filters every read,
+and the model stamps its tenant column on every write; the pattern is owned
+by [tenant row scoping in Compose Views with Mixins](#tenant-row-scoping).
 The single-base-class variant is in
 [Share Behaviour with Base Views](howto_inheritance.md).

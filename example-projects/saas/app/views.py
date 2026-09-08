@@ -1,20 +1,19 @@
 """Application-wide view foundation for the SaaS example.
 
 ``TenantBase`` provides shared auth-context dependencies, the tenant floor
-on reads, and transactional outbox emission. Read-side visibility lives
-next to each model: its namespace (in the subject's ``models.py``)
-declares the soft-delete rule as ``default_scope``, and ``TenantClauses``
-from ``app.context`` puts the tenant clause under it; a view that should
-see something else declares its own ``scope``, and a route names one per
-read, with the floor holding underneath either. ``TenantScopedMixin``,
-``SoftDeleteMixin``, and ``AuditStampedMixin`` add the write-side behavior
-through cooperative ``super()`` chains: ``make_new_object`` /
-``update_object`` stamps, and soft deletion as a ``delete`` override.
-
-The mixins run before ``save_object``, only stamp data, and compose linearly
-so combinations work without ordering surprises. Concrete subject views
-import the foundation and the mixins from this root module; the context
-values and the scope factories live in ``app.context``.
+on reads, and transactional outbox emission. Structural fields live on
+the models: a subject's ``models.py`` mixes in ``TenantOwned``,
+``AuditStamped``, or ``SoftDeletable`` from ``app.models``, which stamp
+``organization_id`` and the audit ids from ``Current`` on every write
+path, and its namespace declares the soft-delete rule as
+``default_scope`` with ``TenantClauses`` from ``app.context`` putting the
+tenant clause under it. A view that should see something else declares
+its own ``scope``, and a route names one per read, with the floor holding
+underneath either. The one write-side mixin left here is
+``SoftDeleteMixin``: ``delete`` flips ``deleted_at`` instead of removing
+the row. Concrete subject views import the foundation and the mixin from
+this root module; the context values and the scope factories live in
+``app.context``.
 
 Inheritance and prefix concatenation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -41,7 +40,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import fastapi_restly as fr
 
-from .context import Current, bind_request_context, tenant_rule
+from .context import bind_request_context, tenant_rule
 
 # Module level, not inside _emit(): Alembic reaches models through this graph.
 from .outbox import OutboxEvent
@@ -64,7 +63,7 @@ class TenantBase(fr.AsyncRestView):
     - Router-level ``check_api_key`` dependency on every route
     - ``bind_request_context``, so ``Current`` reads work in every route
     - ``apply_scope`` that stacks the model's tenant rule under every read
-    - ``save_object`` that calls through to super() then logs the write
+    - ``before_action_commit`` with a placeholder for audit side effects
     """
 
     # Applied to every route registered by this view and all subclasses.
@@ -89,12 +88,16 @@ class TenantBase(fr.AsyncRestView):
             return fr.apply_clauses(query, scope)
         return fr.apply_clauses(query, floor, scope)
 
-    async def save_object(self, obj):
-        """Flush and refresh, with a placeholder for audit side effects."""
-        obj = await super().save_object(obj)
-        # In production: publish to an audit log or event bus.
-        # await audit_bus.emit("saved", model=type(obj).__name__, id=obj.id)
-        return obj
+    async def before_action_commit(
+        self, action: str, new: Any, old: Any = None
+    ) -> None:
+        """Placeholder for an audit row, committed atomically with the write.
+
+        The bulk routes own their commit and skip this bracket; an audit
+        that must see every flush is a session ``after_flush`` listener.
+        """
+        # In production: self.session.add(AuditRow(action=action, ...)), or
+        # publish to an event bus from after_action_commit once durable.
 
     def _emit(
         self, event_type: str, aggregate: Any, payload: dict[str, Any] | None = None
@@ -118,24 +121,6 @@ class TenantBase(fr.AsyncRestView):
         )
 
 
-class TenantScopedMixin:
-    """Stamp ``organization_id`` from auth context on writes.
-
-    The read-side counterpart is the ``owned_by_tenant`` clause
-    ``TenantClauses`` gives the model's namespace, applied through its
-    ``default_scope`` and under every read by ``TenantBase.apply_scope``;
-    both halves read the same ``Current.org_id``.
-    """
-
-    async def make_new_object(self, schema_obj: Any) -> Any:
-        obj = await super().make_new_object(schema_obj)  # type: ignore[misc]
-        # Admins get tenant-stamping when request context provides an org.
-        org_id = Current.org_id()
-        if org_id is not None and hasattr(obj, "organization_id"):
-            obj.organization_id = org_id
-        return obj
-
-
 class SoftDeleteMixin:
     """Set ``deleted_at`` on deletion instead of removing the row.
 
@@ -143,7 +128,8 @@ class SoftDeleteMixin:
     scope hides deleted rows unconditionally, and a trash route on the
     view names ``is_deleted`` as its own scope per read
     (``handle_get_many(query_params, scope=...)``), restore likewise.
-    Assumes ``self.model`` has a ``deleted_at`` column.
+    For views of a ``SoftDeletable`` model (``app.models``): the column is
+    there because the model said so, so there is nothing to guard.
 
     Concrete views can still replace the DELETE route when they need a
     different HTTP contract, such as ``200 + body``.
@@ -156,26 +142,3 @@ class SoftDeleteMixin:
     async def delete(self, obj: Any) -> None:
         obj.deleted_at = datetime.now(timezone.utc)
         await self.session.flush()
-
-
-class AuditStampedMixin:
-    """Stamp ``created_by_id`` and ``updated_by_id`` from ``Current``.
-
-    Assumes the columns exist on ``self.model``. Stamps before flush in
-    ``make_new_object`` and ``update_object``.
-    """
-
-    async def make_new_object(self, schema_obj: Any) -> Any:
-        obj = await super().make_new_object(schema_obj)  # type: ignore[misc]
-        uid = Current.user_id()
-        if hasattr(obj, "created_by_id") and obj.created_by_id is None:
-            obj.created_by_id = uid
-        if hasattr(obj, "updated_by_id"):
-            obj.updated_by_id = uid
-        return obj
-
-    async def update_object(self, obj: Any, schema_obj: Any) -> Any:
-        obj = await super().update_object(obj, schema_obj)  # type: ignore[misc]
-        if hasattr(obj, "updated_by_id"):
-            obj.updated_by_id = Current.user_id()
-        return obj

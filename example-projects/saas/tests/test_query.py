@@ -242,7 +242,7 @@ class TestLabelFiltering:
         assert len(labels) <= 2
 
     def test_filter_composes_with_tenant_scope(self, client, auth_context):
-        """LabelView's filters compose with TenantScopedMixin."""
+        """LabelView's filters compose with the tenant stamp."""
         org1 = client.post(
             "/organizations",
             json={"name": "Scoped Labels 1", "slug": "scoped-labels-1"},

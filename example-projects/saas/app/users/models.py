@@ -1,13 +1,13 @@
 """User model with organization membership and role."""
 
-from datetime import datetime
 from enum import Enum
 
-from sqlalchemy import ForeignKey, orm
+from sqlalchemy import orm
 
 import fastapi_restly as fr
 
 from ..context import TenantClauses
+from ..models import AuditStamped, SoftDeletable, TenantOwned
 
 
 class UserRole(str, Enum):
@@ -19,7 +19,7 @@ class UserRole(str, Enum):
     HR = "hr"  # Can see salary information
 
 
-class User(fr.TimestampsMixin, fr.IDBase):
+class User(TenantOwned, AuditStamped, SoftDeletable, fr.TimestampsMixin, fr.IDBase):
     """
     User belongs to an organization and has a role.
     Users can be assigned to tasks.
@@ -33,26 +33,12 @@ class User(fr.TimestampsMixin, fr.IDBase):
     email: orm.Mapped[str] = orm.mapped_column(unique=True)
     name: orm.Mapped[str]
 
-    # Foreign keys
-    organization_id: orm.Mapped[int] = orm.mapped_column(ForeignKey("organization.id"))
-
     # Stores the hashed password (see UserView.create). The wire-format field
     # shares the name; create swaps plaintext for digest before flush.
     password: orm.Mapped[str] = orm.mapped_column(default="")
     role: orm.Mapped[UserRole] = orm.mapped_column(default=UserRole.MEMBER)
     # Sensitive field - only visible to HR role
     salary: orm.Mapped[int | None] = orm.mapped_column(default=None)
-
-    # Soft-delete + audit columns picked up by the SoftDeleteMixin and
-    # AuditStampedMixin on UserView. Filling them is the mixin's job —
-    # neither this model nor the view body needs to know.
-    deleted_at: orm.Mapped[datetime | None] = orm.mapped_column(default=None)
-    created_by_id: orm.Mapped[int | None] = orm.mapped_column(
-        ForeignKey("user.id"), default=None
-    )
-    updated_by_id: orm.Mapped[int | None] = orm.mapped_column(
-        ForeignKey("user.id"), default=None
-    )
 
     # Relationships
     organization: orm.Mapped["Organization"] = orm.relationship(  # noqa: F821
@@ -62,7 +48,7 @@ class User(fr.TimestampsMixin, fr.IDBase):
         back_populates="assignee",
         default_factory=list,
         # Pinned to assignee_id because Task now also has created_by_id /
-        # updated_by_id FKs to user.id from AuditStampedMixin's columns.
+        # updated_by_id FKs to user.id from AuditStamped's columns.
         foreign_keys="Task.assignee_id",
     )
 

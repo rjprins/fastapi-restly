@@ -2,53 +2,45 @@
 
 Some concerns belong on many views: tenant scoping, soft delete, audit stamps,
 permission filters. They are structural, not business logic: they stamp
-server-controlled fields or filter reads. The read side is declared as
-[scope](scopes.md) clauses; the write side layers through Python mixins with
-cooperative `super()` calls. This guide covers the pattern, when to use it,
-and two gotchas.
+server-controlled fields or filter reads. Both halves of a structural field
+hang off the model that declares the column. The read filter is a
+[scope](scopes.md) clause in the model's namespace, and the write stamp is the
+column's default. A view mixin carries the one structural concern that is a
+verb, soft delete. This guide covers where each piece goes, the three pieces
+the SaaS example ships, and two gotchas.
 
-## The structural seams
+## Where structural concerns live
 
-Three seams carry almost all structural concerns:
-
-- The view {attr}`scope <fastapi_restly.views.BaseRestView.scope>` is the
-  unified read filter. List, count, and retrieve all apply it, so one
-  declared clause filters every read; clauses compose with
+- **Read filters** are clauses. The model namespace's
+  [default scope](#default-scope) covers every read and every reference
+  check, and a view {attr}`scope <fastapi_restly.views.BaseRestView.scope>`
+  replaces it for that view. Clauses compose with
   {func}`fr.all_of <fastapi_restly.clauses.all_of>`.
-- `make_new_object` and `update_object` perform
-  [cooperative field stamping](customize.md#cooperative-field-stamping-override-make_new_object--update_object).
-  Each calls `super()` to get the constructed object, mutates the
-  server-controlled fields it owns, and returns the object. Mixins layer
-  by chaining `super()`, each stamping its own fields on the way out.
-- The {meth}`delete <fastapi_restly.views.RestView.delete>` business method is
-  overridden to replace a physical delete with a flag flip (soft delete).
+- **Server-stamped fields** are column defaults on the model, reading a
+  `fr.ContextNamespace` slot when the row is written. A default fires on every
+  write path: the view verbs, a custom route that builds the object by hand,
+  the free `fr.objects` helpers, a bulk route. Nothing on the view has to run.
+- **Soft delete** is a verb, so it is a view mixin overriding
+  {meth}`delete <fastapi_restly.views.RestView.delete>`.
 
-Do not use these for per-view application logic. Keep per-view logic in the
-business method: hash passwords, derive slugs, update rollups, and dispatch
-resource-specific events in {meth}`create <fastapi_restly.views.RestView.create>` /
+Keep per-view logic in the business method: hash passwords, derive slugs,
+update rollups, and dispatch resource-specific events in
+{meth}`create <fastapi_restly.views.RestView.create>` /
 {meth}`update <fastapi_restly.views.RestView.update>`, as described in
 [Override the business methods](customize.md#override-the-business-methods).
+The discriminating question is whether the value depends on the request
+payload. A field that only reads request context (the auth user id, the tenant
+id) is structural and belongs on the model. A value computed from schema
+fields, as in `hash_password(schema.password)` or
+`slugify(schema.name) + uniqueness_probe`, belongs in a per-view `create` /
+`update` override.
 
-Use mixins for the structural concerns instead: audit stamps, tenant ids,
-soft-delete read filters, and soft-delete mutation are all good examples.
-These compose because:
-
-- `make_new_object` and `update_object` mutate the object *after* the
-  schema's own writes are applied, so they compose cleanly and never
-  fight the schema's writes.
-- They run inside the commit-free business method, before the handler commits.
-- They only stamp and scope; they do not compute business values from
-  schema inputs.
-- They compose linearly via cooperative `super()` calls, so combinations
-  work without ordering surprises.
-
-The discriminating question is whether the override depends on schema-derived
-business inputs. If it only reads request context (the auth user id, tenant
-id, or request flags) and writes server-controlled fields, it is structural
-and belongs in a mixin. If it reads schema fields and computes values from
-them, as in `hash_password(schema.password)` or
-`slugify(schema.name) + uniqueness_probe`, write a per-view `create` /
-`update` override from scratch.
+Why not stamp from a view mixin? `create` and `update` are overridden from
+scratch: a `create` that hashes a password does not call `super()`, so a
+stamp hooked on the verb is silently skipped by every view that overrides it.
+The object utilities under the verbs (`make_new_object`, `update_object`,
+`save_object`) are not override points either, and a stamp there would still
+miss a hand-built object and the free helpers. The column covers all of them.
 
 ### Reusing logic outside the view
 
@@ -82,15 +74,16 @@ with a bare session.
 
 Do not extract early. Wait until there is a second caller.
 
-## Three reusable mixins
+## Three structural pieces
 
-The [SaaS example](examples.md#saas) ships three structural mixins of this
-kind in
-[`views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/views.py).
+The [SaaS example](examples.md#saas) ships the model mixins in
+[`app/models.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/models.py)
+and the view mixin in
+[`app/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/views.py).
 Copy them into your project as a starting point.
 
 (tenant-row-scoping)=
-### Tenant row scoping: a scope clause plus a stamping mixin
+### Tenant row scoping: a scope clause plus a stamped column
 
 The read half is a clause factory: one function builds the tenant predicate
 for any model with an ``organization_id`` column. A called slot returns
@@ -123,34 +116,39 @@ def tenant_scope(model: type[Any]) -> fr.WhereClause:
     return owned_by_tenant
 ```
 
-The write half stays a mixin, stamping the same column cooperatively,
-reading the same `Current.org_id`:
+The write half is the column itself, on a model mixin. The tenant is stamped
+at construction rather than at flush, through an `init` listener, so a verb
+that reads it before saving (a slug probe scoped to the organization) already
+sees the stamped value:
 
 ```python
-import fastapi
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import DeclarativeBase
-from typing import TYPE_CHECKING
+from sqlalchemy import ForeignKey, orm
 
 
-class TenantScopedMixin:
-    """Stamp ``organization_id`` from auth context on writes."""
+class TenantOwned(orm.MappedAsDataclass, kw_only=True):
+    """The tenant column, stamped from context at construction."""
 
-    if TYPE_CHECKING:
-        request: fastapi.Request
-        session: AsyncSession
-        model: type[DeclarativeBase]
+    organization_id: orm.Mapped[int] = orm.mapped_column(
+        ForeignKey("organization.id")
+    )
 
-    async def make_new_object(self, schema_obj: Any) -> Any:
-        obj = await super().make_new_object(schema_obj)  # type: ignore[misc]
-        org_id = Current.org_id()
-        if org_id is not None and hasattr(obj, "organization_id"):
-            obj.organization_id = org_id
-        return obj
+
+@sa.event.listens_for(TenantOwned, "init", propagate=True)
+def _stamp_tenant(target, args, kwargs) -> None:
+    org_id = Current.org_id()
+    if org_id is not None:
+        kwargs["organization_id"] = org_id
+
+
+class Project(TenantOwned, fr.TimestampsMixin, fr.IDBase):
+    name: orm.Mapped[str]
 ```
 
-The `if TYPE_CHECKING:` block declares what the mixin expects from its host
-class (see the gotchas below).
+With an organization in context the stamp wins over whatever the payload
+said; without one, the caller's value stands, which is the admin path in the
+example. A namespace base can derive the read clause from the same column,
+so a model declares its tenancy once (see `TenantClauses` in the SaaS
+example's `context.py`).
 
 (soft-delete-mixin)=
 ### Soft delete: a scope clause plus a delete mixin
@@ -164,6 +162,12 @@ write half turns `delete` into a timestamp flip:
 
 ```python
 from datetime import datetime, timezone
+from typing import TYPE_CHECKING
+from sqlalchemy.ext.asyncio import AsyncSession
+
+
+class SoftDeletable(orm.MappedAsDataclass, kw_only=True):
+    deleted_at: orm.Mapped[datetime | None] = orm.mapped_column(default=None)
 
 
 class ProjectClauses(fr.ClauseNamespace):
@@ -179,64 +183,66 @@ class SoftDeleteMixin:
     """``delete`` flips ``deleted_at`` instead of removing the row."""
 
     if TYPE_CHECKING:
-        request: fastapi.Request
         session: AsyncSession
-        model: type[DeclarativeBase]
-        def save_object(self, obj: Any) -> Any: ...
 
     async def delete(self, obj: Any) -> None:
-        if hasattr(obj, "deleted_at"):
-            obj.deleted_at = datetime.now(timezone.utc)
-            await self.save_object(obj)
-            return
-        await super().delete(obj)  # type: ignore[misc]
+        obj.deleted_at = datetime.now(timezone.utc)
+        await self.session.flush()
 ```
 
-The soft-delete flip overrides the {meth}`delete <fastapi_restly.views.RestView.delete>`
+No `hasattr` guard and no fallback to `super()`: the mixin goes on views of
+`SoftDeletable` models, and the column is there because the model said so.
+The flip overrides the {meth}`delete <fastapi_restly.views.RestView.delete>`
 business method, not the handler.
 {meth}`handle_delete <fastapi_restly.views.RestView.handle_delete>` still
 loads, authorizes, and commits; the mixin only changes what "delete" does. To
 bring a flipped row back, see
 [Restore a soft-deleted row](patterns.md#restore-a-soft-deleted-row).
 
-### `AuditStampedMixin`: record who created/updated each row
+### Audit stamps: two column defaults
 
-`AuditStampedMixin` stamps `created_by_id` and `updated_by_id` from the
-request context on every write:
+`created_by_id` and `updated_by_id` are the plain case, a default per column:
 
 ```python
-class AuditStampedMixin:
-    """Stamp ``created_by_id`` / ``updated_by_id`` from ``Current``."""
-
-    async def make_new_object(self, schema_obj: Any) -> Any:
-        obj = await super().make_new_object(schema_obj)  # type: ignore[misc]
-        uid = Current.user_id()
-        obj.created_by_id = uid
-        obj.updated_by_id = uid
-        return obj
-
-    async def update_object(self, obj: Any, schema_obj: Any) -> Any:
-        obj = await super().update_object(obj, schema_obj)  # type: ignore[misc]
-        obj.updated_by_id = Current.user_id()
-        return obj
+class AuditStamped(orm.MappedAsDataclass, kw_only=True):
+    created_by_id: orm.Mapped[int | None] = orm.mapped_column(
+        ForeignKey("user.id"), default=None, insert_default=lambda: Current.user_id()
+    )
+    updated_by_id: orm.Mapped[int | None] = orm.mapped_column(
+        ForeignKey("user.id"),
+        default=None,
+        insert_default=lambda: Current.user_id(),
+        onupdate=lambda: Current.user_id(),
+    )
 ```
 
-Each mixin calls `super()`, stamps its fields, and returns the object. By then
-the schema's writes are already applied, so stamps do not collide with input
-fields.
+On a dataclass base `default` is the constructor default, so the insert-time
+callable goes in `insert_default`; `onupdate` fires on every UPDATE that
+changes the row. A payload value wins over a default, so keep these fields
+`fr.ReadOnly` on the schema.
 
-## Composing mixins on a view
-
-The mixins layer through cooperative `super()` calls, and order matters only
-for short-circuit behaviour (for example `_is_admin()` skipping tenant
-scoping). The read halves compose in the model's
-[clause namespace](#clause-namespaces) as its
-[default scope](#default-scope), so a typical project view only
-stacks the write-side mixins:
+The lambdas call the slot: a `ContextParam` resolves when called, and an
+unbound context raises rather than stamping `None`. A worker or a seed script
+binds context around its writes:
 
 ```python
+with Current.bind(org_id=7, user_id=1, is_admin=False):
+    session.add(Project(name="Imported"))
+    await session.flush()
+```
+
+## Composing on a view
+
+The model declares what it is, and both halves follow. A view stacks only
+the verb mixin:
+
+```python
+class Project(TenantOwned, AuditStamped, SoftDeletable, fr.TimestampsMixin, fr.IDBase):
+    name: orm.Mapped[str]
+
+
 @fr.include_view(app)
-class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, fr.AsyncRestView):
+class ProjectView(SoftDeleteMixin, fr.AsyncRestView):
     prefix = "/projects"
     model = Project
     schema = ProjectRead
@@ -248,7 +254,7 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, fr.Asyn
 {meth}`get_one <fastapi_restly.views.RestView.get_one>` all apply the
 default scope, so tenant and soft-delete filters cover listings, totals,
 single-row reads, updates, and deletes, and every reference to Project
-checks it too; the mixins add the write halves.
+checks it too; the columns stamp themselves on every write.
 
 ## Two ergonomic gotchas
 
@@ -262,7 +268,7 @@ those as plain class members shadows the host's implementation via the MRO:
 
 ```python
 # WRONG: this real method body shadows the host's _current_org_id.
-class TenantScopedMixin:
+class SoftDeleteMixin:
     def _current_org_id(self) -> int | None:
         ...  # a stub body is still a real method
 ```
@@ -271,7 +277,7 @@ Wrap the stubs in `if TYPE_CHECKING:` so pyright sees them but Python
 does not add them to the runtime class:
 
 ```python
-class TenantScopedMixin:
+class SoftDeleteMixin:
     if TYPE_CHECKING:
         def _current_org_id(self) -> int | None: ...
 ```
@@ -284,18 +290,18 @@ in some setups. `if TYPE_CHECKING:` is the safe wrapper for both.
 
 ### 2. Multiple FK columns to the same table need explicit `foreign_keys=`
 
-`AuditStampedMixin` adds `created_by_id` and `updated_by_id` columns,
+`AuditStamped` adds `created_by_id` and `updated_by_id` columns,
 both pointing at `User`. If the model already has another FK to `User`
 (say, `assignee_id` on `Task`), SQLAlchemy cannot disambiguate the
 existing relationship and raises `AmbiguousForeignKeysError`. Pin the
 relationship explicitly:
 
 ```python
-class Task(fr.TimestampsMixin, fr.IDBase):
+class Task(AuditStamped, fr.TimestampsMixin, fr.IDBase):
     assignee_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
     assignee: Mapped[User] = relationship(foreign_keys="Task.assignee_id")
 
-    # Audit columns from AuditStampedMixin add two more FKs to user.id.
+    # Audit columns from AuditStamped add two more FKs to user.id.
     # Without foreign_keys="...", the assignee relationship is ambiguous.
 ```
 

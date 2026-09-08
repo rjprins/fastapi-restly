@@ -661,6 +661,6 @@ Any class-level `Annotated` dependency you declare on the view (for example a cu
 - [Views](class_based_views.md): why subclassable views make all
   of this possible.
 - [Compose Views with Mixins](howto_compose_views_with_mixins.md): structural
-  stamping and scoping through cooperative mixins.
+  fields on the model, soft delete as a view mixin.
 - [View Method Surface](api_reference.md#view-method-surface): the complete
   classified method list.

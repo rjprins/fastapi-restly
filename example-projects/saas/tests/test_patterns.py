@@ -617,18 +617,14 @@ class TestSiblingCreation:
             # row, the resolver isn't returning a stale cached one.
             assert r1.json()["label_id"] != r2.json()["label_id"]
 
-    def test_async_make_new_object_skips_view_overrides(self, client, auth_context):
-        """Insight worth pinning: the *free function* async_make_new_object
-        does NOT go through ``self.make_new_object`` on TaskLabelView, so
-        the ``added_by_id`` stamp (which is in the view's bound override)
-        is bypassed. Verified by confirming added_by_id stays None unless
-        the route explicitly sets it. If we wanted the stamp, we'd need
-        to either call ``self.make_new_object`` from a TaskLabelView
-        instance (we're not in one — we're in TaskLabelView itself but
-        building a TaskLabel via the *free* helper), or apply the stamp
-        manually in the custom route."""
-        from app.labels import views as label_module
+    def test_added_by_is_stamped_by_the_column_default(self, client, auth_context):
+        """The stamp lives on the column, so the free helper gets it too.
 
+        ``create_and_attach`` builds the TaskLabel with the free
+        ``async_make_new_object``, which runs no view code at all; the
+        ``added_by_id`` insert default still fires from ``Current.user_id``,
+        and stays None when no user is in context.
+        """
         _org_id, override_auth = self._ctx(client, auth_context)
         with override_auth:
             proj = client.post(
@@ -637,20 +633,27 @@ class TestSiblingCreation:
             task = client.post(
                 "/tasks", json={"title": "Sib T", "project_id": proj["id"]}
             ).json()
+            user = client.post(
+                "/users",
+                json={
+                    "email": "stamp@example.com",
+                    "name": "S",
+                    "organization_id": _org_id,
+                },
+            ).json()
             response = client.post(
                 "/task-labels/create-and-attach",
-                json={"task_id": task["id"], "label_name": "no-stamp"},
+                json={"task_id": task["id"], "label_name": "no-user"},
             )
             assert response.status_code == 201
-            # The route explicitly stamps added_by_id from request.state
-            # — without that explicit step, async_make_new_object alone
-            # wouldn't have stamped it. The test confirms the route's
-            # explicit stamp is what keeps the value in sync.
-            tl = response.json()
-            # added_by_id is None because the test client doesn't set
-            # request.state.user_id; the route handles None gracefully.
-            assert tl["added_by_id"] is None
-            del label_module  # silence unused
+            assert response.json()["added_by_id"] is None
+        with auth_context(org_id=_org_id, user_id=user["id"]):
+            response = client.post(
+                "/task-labels/create-and-attach",
+                json={"task_id": task["id"], "label_name": "stamped"},
+            )
+            assert response.status_code == 201
+            assert response.json()["added_by_id"] == user["id"]
 
     def test_create_and_attach_rejects_cross_tenant_task(self, client, auth_context):
         """A task in another org must not be attachable from the caller's org.

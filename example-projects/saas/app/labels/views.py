@@ -8,7 +8,7 @@ import fastapi_restly as fr
 from fastapi_restly.objects import async_make_new_object, async_save_object
 
 from ..context import Current
-from ..views import TenantBase, TenantScopedMixin
+from ..views import TenantBase
 from .models import Label, TaskLabel
 from .schemas import LabelSchema, TaskLabelSchema
 
@@ -21,12 +21,12 @@ class CreateAndAttachLabelRequest(BaseModel):
     color: str = "#808080"
 
 
-class LabelView(TenantScopedMixin, TenantBase):
+class LabelView(TenantBase):
     """CRUD for labels (organization-scoped).
 
     ``LabelClauses.default_scope`` filters reads to the organization;
-    ``TenantScopedMixin`` stamps ``organization_id`` on writes. This class
-    only adds the cascade-on-delete.
+    ``Label`` stamps ``organization_id`` on writes itself (``TenantOwned``
+    in ``app.models``). This class only adds the cascade-on-delete.
     """
 
     prefix = "/labels"
@@ -44,19 +44,13 @@ class LabelView(TenantScopedMixin, TenantBase):
 class TaskLabelView(TenantBase):
     """CRUD for task-label associations.
 
-    ``make_new_object`` stamps ``added_by_id`` from auth context.
+    ``added_by_id`` is stamped by its column's insert default from
+    ``Current.user_id`` when the client leaves it out, on every write path.
     """
 
     prefix = "/task-labels"
     model = TaskLabel
     schema = TaskLabelSchema
-
-    async def make_new_object(self, schema_obj):
-        """Stamp added_by_id from auth context if the client did not provide it."""
-        obj = await super().make_new_object(schema_obj)
-        if obj.added_by_id is None:
-            obj.added_by_id = Current.user_id()
-        return obj
 
     @fr.post("/create-and-attach", response_model=TaskLabelSchema, status_code=201)
     async def create_and_attach(
@@ -93,8 +87,5 @@ class TaskLabelView(TenantBase):
             task_label = await async_make_new_object(
                 self.session, TaskLabel, link_schema
             )
-            # The free helper bypasses this view's make_new_object override.
-            if task_label.added_by_id is None:
-                task_label.added_by_id = Current.user_id()
             w.obj = await async_save_object(self.session, task_label)
         return w.obj

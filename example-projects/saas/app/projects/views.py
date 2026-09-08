@@ -15,7 +15,7 @@ from fastapi_restly.views import PaginatedEnvelope
 from ..context import Current
 from ..tasks.models import Task, TaskClauses, TaskPriority, TaskStatus, TaskType
 from ..tasks.schemas import TaskSchema
-from ..views import AuditStampedMixin, SoftDeleteMixin, TenantBase, TenantScopedMixin
+from ..views import SoftDeleteMixin, TenantBase
 from .models import Project, ProjectClauses, ProjectStatus
 from .schemas import ProjectSchema
 
@@ -43,22 +43,20 @@ class ProjectStats(BaseModel):
     completion_percent: float
 
 
-class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantBase):
+class ProjectView(SoftDeleteMixin, TenantBase):
     """CRUD endpoints for projects.
 
     Read visibility is the model's ``default_scope`` (``ProjectClauses``):
     live projects under the tenant floor, feeding listing, count,
     retrieve, and every ``project_id`` reference alike. The trash and
     restore routes below name ``is_deleted`` as their own scope per read.
-    The mixins add the write-side halves (left → right via MRO):
-    - ``SoftDeleteMixin`` — ``delete`` sets ``deleted_at`` instead of
-      removing the row.
-    - ``AuditStampedMixin`` — stamps ``created_by_id`` / ``updated_by_id``
-      via ``make_new_object`` / ``update_object`` before flush.
-    - ``TenantScopedMixin`` — stamps ``organization_id`` on writes from auth
-      context.
-    - ``TenantBase`` — auth + context-bind deps, audit ``save_object``
-      override point, ``_emit`` outbox helper.
+    The write side is structural too: ``Project`` mixes in
+    ``TenantOwned``, ``AuditStamped``, and ``SoftDeletable`` (see
+    ``app.models``), so ``organization_id`` and the audit ids are stamped
+    from ``Current`` on every write path, and ``SoftDeleteMixin`` turns
+    ``delete`` into a ``deleted_at`` flip. ``TenantBase`` adds the auth
+    and context-bind deps, the tenant floor on reads, and the ``_emit``
+    outbox helper.
 
     This view keeps project-specific logic: slug derivation, response
     decoration, update immutability, and project-level events.
@@ -127,16 +125,16 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
         return org_id is None or project.organization_id == org_id
 
     async def create(self, schema_obj):
-        """Slug derivation + outbox emit on top of the mixin chain.
+        """Slug derivation + outbox emit.
 
         Overrides the *bare* business ``create`` verb: auth-free and
-        commit-free. ``self.make_new_object`` runs through
-        ``AuditStampedMixin`` (stamps created_by/updated_by) and
-        ``TenantScopedMixin`` (stamps organization_id) — neither lives in this
-        method. We only do the project-specific bits: slug uniqueness probe and
-        the outbox event. The outbox row is added to the session here and the
-        ``handle_create`` commit bracket persists it atomically with the
-        project write.
+        commit-free. ``organization_id`` and the audit stamps are the
+        model's business (``app.models``): the tenant is stamped when
+        ``Project`` is constructed inside ``make_new_object``, so the slug
+        probe below already sees it. We only do the project-specific bits:
+        the slug uniqueness probe and the outbox event. The outbox row is
+        added to the session here and the ``handle_create`` commit bracket
+        persists it atomically with the project write.
         """
         project = await self.make_new_object(schema_obj)
         project.slug = await self._unique_slug(
@@ -155,11 +153,18 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
         already-loaded ``obj``: ``handle_update`` loads it through ``get_one``
         (tenant-scope + soft-delete + 404), runs ``authorize``, then calls this
         method, and finally commits via the bracket. Audit-stamping
-        (``updated_by_id``) is provided by ``AuditStampedMixin.update_object``.
-        This method only contains the project-specific slug + transition-event
-        logic. The status-changed outbox row is added to the session and the
+        (``updated_by_id``) is the column's ``onupdate`` (``AuditStamped`` in
+        ``app.models``). This method only contains the project-specific
+        immutable-organization guard, slug, and transition-event logic. The
+        status-changed outbox row is added to the session and the
         ``handle_update`` commit bracket persists it atomically.
         """
+        # organization_id is immutable after creation.
+        new_org = getattr(schema_obj, "organization_id", None)
+        if new_org is not None and new_org != obj.organization_id:
+            raise HTTPException(
+                400, "Cannot move a project to a different organization"
+            )
         old_name, old_status = obj.name, obj.status
         project = await self.update_object(obj, schema_obj)
         if project.name != old_name and not getattr(schema_obj, "slug", None):
@@ -192,19 +197,6 @@ class ProjectView(SoftDeleteMixin, AuditStampedMixin, TenantScopedMixin, TenantB
                 return candidate
             n += 1
             candidate = f"{base}-{n}"
-
-    async def update_object(self, obj, schema_obj):
-        """Reject any attempt to move a project to a different organization.
-
-        The guard lives here because ``organization_id`` is immutable after
-        creation.
-        """
-        new_org = getattr(schema_obj, "organization_id", None)
-        if new_org is not None and new_org != obj.organization_id:
-            raise HTTPException(
-                400, "Cannot move a project to a different organization"
-            )
-        return await super().update_object(obj, schema_obj)
 
     @fr.delete("/{id}", status_code=200, response_model=ProjectSchema)
     async def soft_delete(self, id: int) -> Project:

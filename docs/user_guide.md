@@ -141,8 +141,8 @@ access control across multiple views.
 :link: howto_compose_views_with_mixins
 :link-type: doc
 
-Layer cross-cutting concerns (tenant scoping, soft delete, audit stamping)
-through cooperative mixins.
+Put cross-cutting concerns (tenant scoping, soft delete, audit stamping)
+where they belong: structural fields on the model, verbs on view mixins.
 :::
 
 :::{grid-item-card} Use Type Annotations

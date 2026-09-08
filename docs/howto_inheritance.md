@@ -212,4 +212,4 @@ Mixins](howto_compose_views_with_mixins.md).
 The patterns above build on two neighbouring pages:
 
 - [Customizing RestView](customize.md) covers the three-tier model and the call chain.
-- [Compose Views with Mixins](howto_compose_views_with_mixins.md) covers layering structural concerns cooperatively; it is the richer cousin to single-base inheritance.
+- [Compose Views with Mixins](howto_compose_views_with_mixins.md) covers structural concerns on the model and verb mixins on the view; it is the richer cousin to single-base inheritance.
