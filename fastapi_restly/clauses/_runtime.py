@@ -72,12 +72,8 @@ from sqlalchemy import ColumnElement as _ColumnElement
 from sqlalchemy import Delete as _Delete
 from sqlalchemy import Select as _Select
 from sqlalchemy import Update as _Update
-from sqlalchemy import and_ as _sqla_and
 from sqlalchemy import bindparam as _sqla_bindparam
 from sqlalchemy import delete as _sqla_delete
-from sqlalchemy import false as _sqla_false
-from sqlalchemy import not_ as _sqla_not
-from sqlalchemy import or_ as _sqla_or
 from sqlalchemy import select as _sqla_select
 from sqlalchemy import update as _sqla_update
 from sqlalchemy.orm import DeclarativeBase as _DeclarativeBase
@@ -907,154 +903,9 @@ def _without_unscoped(
     return tuple(given)
 
 
-def _require_wheres(
-    name: str, clauses: tuple[Clause | Unscoped, ...]
-) -> tuple[Clause, ...]:
-    if not clauses:
-        raise TypeError(f"{name}() requires at least one clause")
-    given = _without_unscoped(name, clauses)
-    if any(c._where_fn is None for c in given):
-        raise TypeError(f"{name} combines only clauses with a where")
-    return given
-
-
 def _require_no_transforms(name: str, clauses: tuple[Clause, ...], why: str) -> None:
     if any(_has_transform(c) for c in clauses):
         raise TypeError(f"{name} cannot include transform clauses; {why}")
-
-
-@_overload
-def all_of(*clauses: WhereClause) -> WhereClause: ...
-@_overload
-def all_of(*clauses: Clause) -> Clause: ...
-@_overload
-def all_of(first: WhereClause, /, *clauses: WhereClause | Unscoped) -> WhereClause: ...
-@_overload
-def all_of(
-    first: WhereClause | Unscoped,
-    second: WhereClause,
-    /,
-    *clauses: WhereClause | Unscoped,
-) -> WhereClause: ...
-@_overload
-def all_of(*clauses: Unscoped) -> Unscoped: ...
-@_overload
-def all_of(*clauses: WhereClause | Unscoped) -> WhereClause | Unscoped: ...
-@_overload
-def all_of(*clauses: Clause | Unscoped) -> Clause | Unscoped: ...
-def all_of(*clauses: Clause | Unscoped) -> Clause | Unscoped:
-    """AND the operands' predicates.
-
-    UNSCOPED is a no-op. Every other operand must carry a where, and its
-    transforms travel along. One remaining operand is returned unchanged,
-    and none returns UNSCOPED. Otherwise returns a WhereClause when every
-    remaining operand is one. Calling with no arguments raises.
-    """
-    given = _require_wheres("all_of", clauses)
-    if not given:
-        return UNSCOPED
-    if len(given) == 1:
-        return given[0]
-
-    def fn() -> _ColumnElement[bool]:
-        return _sqla_and(*(_resolve_carried_where(c) for c in given))
-
-    fn.__name__ = fn.__qualname__ = "all_of"
-    if any(_has_transform(c) for c in given):
-        result: Clause = CombinedClause()
-        result._where_fn = _contextual(fn)
-    else:
-        result = where_clause(fn)
-    result._children = given
-    return result
-
-
-@_overload
-def any_of(*clauses: WhereClause) -> WhereClause: ...
-@_overload
-def any_of(*clauses: Unscoped) -> Unscoped: ...
-@_overload
-def any_of(*clauses: WhereClause | Unscoped) -> WhereClause | Unscoped: ...
-def any_of(*clauses: WhereClause | Unscoped) -> WhereClause | Unscoped:
-    """OR the operands' predicates.
-
-    UNSCOPED accepts every row, so any UNSCOPED operand returns the sentinel.
-    Other operands are validated before this simplification and are not
-    resolved if the result is UNSCOPED. Calling with no arguments raises.
-    Other operands must be WhereClauses: OR over a predicate that depends on
-    an inner join changes which rows exist at all. Express such a
-    condition as EXISTS, via relationship .any()/.has(), in a where.
-    """
-    given = _require_wheres("any_of", clauses)
-    _require_no_transforms(
-        "any_of",
-        given,
-        "an inner join already removes rows, breaking OR semantics; "
-        "express the joined condition as EXISTS via .any()/.has() in a where",
-    )
-    if len(given) != len(clauses):
-        return UNSCOPED
-    fn = lambda: _sqla_or(*(_resolve_carried_where(c) for c in given))  # noqa: E731
-    fn.__name__ = fn.__qualname__ = "any_of"
-    result = where_clause(fn)
-    result._children = given
-    return result
-
-
-def none_of(*clauses: WhereClause | Unscoped) -> WhereClause:
-    """True when none of the operands' predicates hold.
-
-    NOT over the OR of all operands. An UNSCOPED operand returns a
-    WhereClause over SQL false(), matching no rows. Other operands are
-    validated but not resolved in that case. Operand rules as for any_of.
-    """
-    # none_of(a, b) means: not a and not b, NOT over the OR of all operands
-    given = _require_wheres("none_of", clauses)
-    _require_no_transforms(
-        "none_of",
-        given,
-        "an inner join already removes rows, breaking NOT semantics; "
-        "express the joined condition as EXISTS via .any()/.has() in a where",
-    )
-    if len(given) != len(clauses):
-        return where_clause(_sqla_false())
-    fn = lambda: _sqla_not(_sqla_or(*(_resolve_carried_where(c) for c in given)))  # noqa: E731
-    fn.__name__ = fn.__qualname__ = "none_of"
-    result = where_clause(fn)
-    result._children = given
-    return result
-
-
-def combine(*clauses: Clause | Unscoped) -> CombinedClause:
-    """Bundle the wheres and transforms of several clauses under one name.
-
-    Not boolean logic: it gives a transform+where combination its own
-    name instead of mutating an existing Clause (which may already be
-    reused elsewhere). Wheres are AND-ed; transforms stay on the
-    children, where apply_clauses finds them. At least one operand must
-    carry a transform. UNSCOPED is ignored and does not supply a transform.
-    A bundle of only wheres is all_of's job.
-    """
-    given = _without_unscoped("combine", clauses)
-    for clause in given:
-        if isinstance(clause, ContextParam):
-            raise TypeError(
-                "combine cannot bundle a ContextParam; embed the slot in an "
-                "expression instead"
-            )
-    if not any(_has_transform(c) for c in given):
-        raise TypeError(
-            "combine requires at least one transform-carrying clause; "
-            "a bundle of only wheres is all_of's job"
-        )
-    result = CombinedClause()
-    wheres = [c for c in given if c._where_fn is not None]
-    if wheres:
-        fn = lambda: _sqla_and(*(_resolve_carried_where(c) for c in wheres))  # noqa: E731
-        fn.__name__ = fn.__qualname__ = "combine"
-        result._where_fn = _contextual(fn)
-    result._children = given
-    return result
 
 
 def _apply_transforms(stmt: _Select[_Any], clauses: _Sequence[Clause]) -> _Select[_Any]:

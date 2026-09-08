@@ -1,5 +1,6 @@
 """Composable, context-bound query clauses for SQLAlchemy."""
 
+from ._composition import all_of, any_of, combine, none_of
 from ._runtime import (
     UNSCOPED,
     Clause,
@@ -9,11 +10,7 @@ from ._runtime import (
     TransformClause,
     Unscoped,
     WhereClause,
-    all_of,
-    any_of,
     apply_clauses,
-    combine,
-    none_of,
     transform_clause,
     where_clause,
 )
