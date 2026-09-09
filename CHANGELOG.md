@@ -149,6 +149,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   primary-key attribute instead of the Core column, so it is an ORM
   statement like every other read: a session-level rule added with
   SQLAlchemy's `with_loader_criteria` now reaches reference checks too.
+- `save_object` no longer expires related objects through the
+  `refresh-expire` cascade; `cascade="all"` is safe under `AsyncSession`.
 ## [0.9.0] - 2026-08-13
 
 ### Added

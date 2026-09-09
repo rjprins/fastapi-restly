@@ -5,6 +5,7 @@ import pydantic as _pydantic
 from sqlalchemy.ext.asyncio import AsyncSession as _AsyncSession
 from sqlalchemy.orm import DeclarativeBase as _DeclarativeBase
 from sqlalchemy.orm import Session as _Session
+from sqlalchemy.orm import object_mapper as _object_mapper
 
 from .schemas._base import (
     _async_check_ref_exists,
@@ -69,10 +70,41 @@ def update_object(
     return obj
 
 
+def _refresh_plan(obj: object) -> tuple[list[str], list[str]]:
+    """What ``save_object`` expires and what it reloads, by attribute name.
+
+    Naming the attributes keeps the refresh on ``obj`` itself: a plain
+    ``session.refresh(obj)`` runs the ``refresh-expire`` cascade, which
+    expires every related object behind a ``cascade="all"`` relationship
+    without reloading it, and under ``AsyncSession`` the next attribute
+    access on one of those raises ``MissingGreenlet``. The end state of
+    ``obj`` is the one a plain refresh leaves: columns reloaded, eager
+    relationships reloaded, lazy relationships unloaded (so a changed foreign
+    key is never served from a stale relationship), deferred columns
+    untouched.
+    """
+    mapper = _object_mapper(obj)
+    columns = [attr.key for attr in mapper.column_attrs if not attr.deferred]
+    eager = [
+        rel.key
+        for rel in mapper.relationships
+        if rel.lazy in ("selectin", "joined", "subquery", "immediate")
+    ]
+    expire = [rel.key for rel in mapper.relationships]
+    return expire, columns + eager
+
+
 def save_object(session: _Session, obj: _T) -> _T:
-    """Flush the session and refresh ``obj`` from the database."""
+    """Flush the session and refresh ``obj`` from the database.
+
+    The refresh names ``obj``'s own attributes, so it does not cascade into
+    related objects; see :func:`_refresh_plan`.
+    """
     session.flush()
-    session.refresh(obj)
+    expire, reload = _refresh_plan(obj)
+    if expire:
+        session.expire(obj, expire)
+    session.refresh(obj, reload)
     return obj
 
 
@@ -148,7 +180,10 @@ async def async_update_object(
 async def async_save_object(session: _AsyncSession, obj: _T) -> _T:
     """Async equivalent of :func:`save_object`."""
     await session.flush()
-    await session.refresh(obj)
+    expire, reload = _refresh_plan(obj)
+    if expire:
+        session.expire(obj, expire)
+    await session.refresh(obj, reload)
     return obj
 
 
