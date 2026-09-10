@@ -1162,21 +1162,9 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         listing_schema = getattr(self, "listing_param_schema", None)
         if listing_schema is None:
             return
-        allowed = set(listing_schema.model_fields) | set(self.extra_query_params)
-        sent = set(request.query_params.keys())
-        unknown = sent - allowed
-        if not unknown:
-            return
-        detail = [
-            {
-                "type": "extra_forbidden",
-                "loc": ["query", key],
-                "msg": f"Unknown query parameter {key!r}",
-                "input": request.query_params.get(key),
-            }
-            for key in sorted(unknown)
-        ]
-        raise fastapi.HTTPException(status_code=422, detail=detail)
+        reject_unknown_query_keys(
+            request, set(listing_schema.model_fields) | set(self.extra_query_params)
+        )
 
     def to_response_schema(self, obj: ModelT | SchemaT) -> SchemaT:
         """Serialize an ORM object to the configured response schema.
@@ -1396,6 +1384,28 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         if (ep := getattr(cls, "delete_endpoint", None)) is not None:
             _annotate(ep, return_annotation=fastapi.Response, id=cls.id_type)
         _exclude_routes(cls)
+
+
+def reject_unknown_query_keys(request: fastapi.Request, allowed: set[str]) -> None:
+    """Raise a 422 naming every query key that is not in ``allowed``.
+
+    The dialect decides what is allowed (the listing grammar for the default
+    one, ``sort``/``range``/``filter`` for react-admin); the envelope is the
+    same either way, and mirrors FastAPI's own validation shape.
+    """
+    unknown = set(request.query_params.keys()) - allowed
+    if not unknown:
+        return
+    detail = [
+        {
+            "type": "extra_forbidden",
+            "loc": ["query", key],
+            "msg": f"Unknown query parameter {key!r}",
+            "input": request.query_params.get(key),
+        }
+        for key in sorted(unknown)
+    ]
+    raise fastapi.HTTPException(status_code=422, detail=detail)
 
 
 def _guard_listing_params(route: Callable) -> Callable:

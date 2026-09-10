@@ -157,6 +157,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the model config still apply.
 - The listing tiebreak orders by the model's primary key whatever its
   name, and by every column of a composite key; it was `id` or nothing.
+- React-admin views reject unknown query keys with 422, like every other
+  listing route. `sort`, `range` and `filter` are the whole contract there,
+  so the standard dialect's `page` and per-field filters are unknown keys
+  too; `extra_query_params` widens it.
 ## [0.9.0] - 2026-08-13
 
 ### Added

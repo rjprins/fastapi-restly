@@ -219,6 +219,61 @@ def test_react_admin_unknown_filter_field_returns_400(client):
     )
 
 
+def test_react_admin_unknown_query_key_returns_422(client):
+    """A typo would otherwise widen the result set silently, which is the
+    hazard the default dialect's guard exists for."""
+    _setup_async_item_view(client)
+
+    response = client.get("/items/", params={"nmae": "Foo"}, assert_status_code=422)
+
+    detail = response.json()["detail"]
+    assert [entry["loc"] for entry in detail] == [["query", "nmae"]]
+    assert detail[0]["type"] == "extra_forbidden"
+
+
+def test_react_admin_rejects_the_default_dialects_keys(client):
+    """``page`` and the per-field filters belong to the standard grammar. This
+    dialect ignores them, so they are rejected rather than silently dropped."""
+    _setup_async_item_view(client)
+
+    client.get("/items/", params={"page": "2"}, assert_status_code=422)
+    client.get("/items/", params={"name": "Foo"}, assert_status_code=422)
+
+
+def test_react_admin_contract_keys_are_accepted(client):
+    _setup_async_item_view(client)
+    client.post("/items/", json={"name": "Foo", "price": 1.0})
+
+    body = client.get(
+        "/items/",
+        params={"sort": '["name","ASC"]', "range": "[0,9]", "filter": '{"name":"Foo"}'},
+    ).json()
+
+    assert [row["name"] for row in body] == ["Foo"]
+
+
+def test_react_admin_extra_query_params_widens_the_guard(client):
+    """The same escape hatch as the default dialect."""
+
+    class Verbose(fr.IDBase):
+        name: Mapped[str]
+
+    class VerboseSchema(fr.IDSchema):
+        name: str
+
+    @fr.include_view(client.app)
+    class VerboseView(fr.AsyncReactAdminView):
+        prefix = "/verbose"
+        model = Verbose
+        schema = VerboseSchema
+        extra_query_params = ("verbose",)
+
+    create_tables()
+
+    client.get("/verbose/", params={"verbose": "true"})
+    client.get("/verbose/", params={"chatty": "true"}, assert_status_code=422)
+
+
 def test_react_admin_sort_wrong_shape_returns_400(client):
     """Valid JSON that is not a 2-element ``[field, direction]`` array is rejected."""
     _setup_async_item_view(client)
@@ -454,6 +509,25 @@ def test_sync_react_admin_unknown_filter_field_returns_400(sync_client):
     sync_client.get(
         "/items/", params={"filter": '{"nonexistent":"value"}'}, assert_status_code=400
     )
+
+
+def test_sync_react_admin_unknown_query_key_returns_422(sync_client):
+    _setup_sync_item_view(sync_client)
+
+    response = sync_client.get(
+        "/items/", params={"nmae": "Foo"}, assert_status_code=422
+    )
+
+    detail = response.json()["detail"]
+    assert [entry["loc"] for entry in detail] == [["query", "nmae"]]
+    assert detail[0]["type"] == "extra_forbidden"
+
+
+def test_sync_react_admin_rejects_the_default_dialects_keys(sync_client):
+    _setup_sync_item_view(sync_client)
+
+    sync_client.get("/items/", params={"page": "2"}, assert_status_code=422)
+    sync_client.get("/items/", params={"name": "Foo"}, assert_status_code=422)
 
 
 def test_sync_react_admin_put_endpoint_updates_resource(sync_client):

@@ -10,6 +10,7 @@ Implements the ra-data-simple-rest wire contract for list:
 """
 
 import json
+from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Any, ClassVar, Protocol, Sequence, cast
 
@@ -21,7 +22,14 @@ from sqlalchemy.orm import DeclarativeBase, RelationshipProperty
 from ..exc import BadQueryParam
 from ..query._shared import _append_pk_tiebreak
 from ._async import AsyncRestView
-from ._base import ListingResult, ResponseShape, _annotate, get, put
+from ._base import (
+    ListingResult,
+    ResponseShape,
+    _annotate,
+    get,
+    put,
+    reject_unknown_query_keys,
+)
 from ._sync import RestView
 
 #: Default page size used when the react-admin client does not send a `range`
@@ -239,6 +247,7 @@ class _ReactAdminViewProtocol(Protocol):
     id_type: ClassVar[type[Any]]
     default_page_size: ClassVar[int]
     paginated: ClassVar[bool]
+    extra_query_params: ClassVar[Iterable[str]]
     get_many_endpoint: ClassVar[Any]
     put: ClassVar[Any]
 
@@ -272,9 +281,38 @@ class _ReactAdminMixin:
         """Return the unit string used in the Content-Range header."""
         return "items"
 
-    def _parse_react_admin_params(self) -> _ReactAdminListParams:
-        """Parse sort, range, and filter from the current request query string."""
+    #: The whole react-admin query contract. The listing grammar's own keys
+    #: (``page``, ``page_size``, per-field filters) are not part of this
+    #: dialect, so they are unknown keys here like any other typo.
+    react_admin_query_params: ClassVar[frozenset[str]] = frozenset(
+        {"sort", "range", "filter"}
+    )
+
+    def _reject_unknown_query_params(self) -> None:
+        """Reject any query key outside the react-admin contract.
+
+        Overrides the default listing guard: this dialect takes three
+        JSON-encoded keys, not the schema-derived grammar, so the inherited
+        allow-list would wave through ``?page=2`` while still missing a typo.
+        ``extra_query_params`` widens this the same way it widens the default.
+        """
         view = cast(_ReactAdminViewProtocol, self)
+        request = getattr(view, "request", None)
+        if request is None:
+            return
+        reject_unknown_query_keys(
+            request, set(self.react_admin_query_params) | set(view.extra_query_params)
+        )
+
+    def _parse_react_admin_params(self) -> _ReactAdminListParams:
+        """Parse sort, range, and filter from the current request query string.
+
+        The unknown-key guard runs here rather than through the registration
+        wrapper: the react-admin list endpoint declares no ``query_params``
+        argument, so nothing else would run it.
+        """
+        view = cast(_ReactAdminViewProtocol, self)
+        self._reject_unknown_query_params()
         return self._coerce_react_admin_params(view.request.query_params)
 
     def _coerce_react_admin_params(self, params: Any) -> _ReactAdminListParams:

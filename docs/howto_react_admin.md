@@ -87,6 +87,11 @@ The list endpoint reads react-admin's three JSON-encoded query parameters:
 | `range` | JSON `[start, end]` (inclusive) | `range=[0,24]` |
 | `filter` | JSON object | `filter={"name":"foo"}` or `filter={"id":[1,2,3]}` |
 
+Those three are the whole contract. Any other query key is rejected with a
+422, so a typo cannot widen the result set unnoticed; the standard dialect's
+`page`, `page_size` and per-field filters are unknown keys here too. Declare
+`extra_query_params` on the view for a key it reads itself.
+
 The response body is a plain JSON array, and the `Content-Range` header
 carries the total:
 
