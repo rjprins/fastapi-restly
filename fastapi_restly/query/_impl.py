@@ -28,7 +28,7 @@ from starlette.datastructures import QueryParams
 
 from ..exc import BadQueryParam
 from ..schemas._base import IDRef, IDSchema, _unwrap_optional_annotation
-from ._shared import _escape_like_value
+from ._shared import _append_pk_tiebreak, _escape_like_value
 
 SchemaType = type[pydantic.BaseModel]
 
@@ -424,15 +424,10 @@ def _apply_sorting(
     model: type[DeclarativeBase],
     schema_cls: SchemaType,
 ) -> Select[Any]:
-    id_column = getattr(model, "id", None)
-    sort_string = query_params.get("sort")
-    if not sort_string:
-        if id_column is not None:
-            return select_query.order_by(id_column)
-        return select_query
-
-    sorted_on_pk = False
-    for column_name in sort_string.split(","):
+    sorted_on: list[InstrumentedAttribute[Any]] = []
+    for column_name in (query_params.get("sort") or "").split(","):
+        if not column_name:
+            continue
         order = sqlalchemy.asc
         if column_name.startswith("-"):
             order = sqlalchemy.desc
@@ -441,17 +436,8 @@ def _apply_sorting(
         for join in joins:
             select_query = select_query.join(join)
         select_query = select_query.order_by(order(column))
-        if column is id_column:
-            sorted_on_pk = True
-    # Append the primary key (the conventional ``id``) as a final tiebreaker so
-    # pagination stays deterministic when the user sorts on a non-unique column
-    # -- without it, equal-valued rows can be skipped or repeated across pages.
-    # Skipped when the user already sorts by the PK. Models without a single
-    # ``id`` primary key (composite/custom) get no tiebreaker, matching the
-    # no-sort path and the framework's wider single-``id`` assumption.
-    if id_column is not None and not sorted_on_pk:
-        select_query = select_query.order_by(id_column)
-    return select_query
+        sorted_on.append(column)
+    return _append_pk_tiebreak(select_query, model, sorted_on)
 
 
 def _iter_fields_including_nested(

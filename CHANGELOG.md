@@ -155,6 +155,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   cross-field `model_validator` (or a frozen schema) on the view schema no
   longer turns a legal filter into a 400. Field validators, constraints and
   the model config still apply.
+- The listing tiebreak orders by the model's primary key whatever its
+  name, and by every column of a composite key; it was `id` or nothing.
 ## [0.9.0] - 2026-08-13
 
 ### Added

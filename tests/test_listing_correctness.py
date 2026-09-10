@@ -18,6 +18,7 @@ Covers two list-endpoint bugs:
   trigger is a collection JOIN in a scope transform, as exercised here.)
 """
 
+import pydantic
 import sqlalchemy
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
@@ -80,6 +81,81 @@ def test_react_admin_sort_by_pk_is_not_duplicated():
         sqlalchemy.select(_Book), _Book, _BookSchema, ("id", "ASC"), 0, 9, {}
     )
     assert _order_by_sql(out).count(".id") == 1
+
+
+class _Code(fr.DataclassBase):
+    """A primary key that is not called ``id``."""
+
+    __tablename__ = "lc_codes"
+    code: Mapped[str] = mapped_column(primary_key=True)
+    status: Mapped[str]
+
+
+class _CodeSchema(pydantic.BaseModel):
+    code: str
+    status: str
+
+
+class _Pair(fr.DataclassBase):
+    """A composite primary key."""
+
+    __tablename__ = "lc_pairs"
+    a: Mapped[int] = mapped_column(primary_key=True)
+    b: Mapped[int] = mapped_column(primary_key=True)
+    status: Mapped[str]
+
+
+class _PairSchema(pydantic.BaseModel):
+    a: int
+    b: int
+    status: str
+
+
+def test_standard_default_order_is_the_primary_key_whatever_its_name():
+    out = _apply_sorting(QueryParams(""), sqlalchemy.select(_Code), _Code, _CodeSchema)
+    assert _order_by_sql(out).strip() == "lc_codes.code"
+
+
+def test_standard_sort_appends_a_primary_key_not_called_id():
+    out = _apply_sorting(
+        QueryParams("sort=status"), sqlalchemy.select(_Code), _Code, _CodeSchema
+    )
+    order_by = _order_by_sql(out)
+    assert order_by.rindex("lc_codes.code") > order_by.rindex("lc_codes.status")
+    out = _apply_sorting(
+        QueryParams("sort=code"), sqlalchemy.select(_Code), _Code, _CodeSchema
+    )
+    assert _order_by_sql(out).count("lc_codes.code") == 1
+
+
+def test_standard_sort_appends_every_column_of_a_composite_key():
+    out = _apply_sorting(
+        QueryParams("sort=status"), sqlalchemy.select(_Pair), _Pair, _PairSchema
+    )
+    assert _order_by_sql(out).strip() == "lc_pairs.status ASC, lc_pairs.a, lc_pairs.b"
+    out = _apply_sorting(
+        QueryParams("sort=-b"), sqlalchemy.select(_Pair), _Pair, _PairSchema
+    )
+    assert _order_by_sql(out).strip() == "lc_pairs.b DESC, lc_pairs.a"
+
+
+def test_react_admin_sort_appends_a_primary_key_not_called_id():
+    out = apply_react_admin_query(
+        sqlalchemy.select(_Code), _Code, _CodeSchema, ("status", "ASC"), 0, 9, {}
+    )
+    order_by = _order_by_sql(out)
+    assert order_by.rindex("lc_codes.code") > order_by.rindex("lc_codes.status")
+    out = apply_react_admin_query(
+        sqlalchemy.select(_Code), _Code, _CodeSchema, None, 0, 9, {}
+    )
+    assert _order_by_sql(out).split("LIMIT")[0].strip() == "lc_codes.code"
+
+
+def test_react_admin_sort_appends_every_column_of_a_composite_key():
+    out = apply_react_admin_query(
+        sqlalchemy.select(_Pair), _Pair, _PairSchema, ("b", "DESC"), 0, 9, {}
+    )
+    assert _order_by_sql(out).split("LIMIT")[0].strip() == "lc_pairs.b DESC, lc_pairs.a"
 
 
 # ---------------------------------------------------------------------------

@@ -19,6 +19,7 @@ import sqlalchemy
 from sqlalchemy.orm import DeclarativeBase, RelationshipProperty
 
 from ..exc import BadQueryParam
+from ..query._shared import _append_pk_tiebreak
 from ._async import AsyncRestView
 from ._base import ListingResult, ResponseShape, _annotate, get, put
 from ._sync import RestView
@@ -212,18 +213,14 @@ def apply_react_admin_query(
     """
     query = _apply_react_admin_filters(query, model, schema_cls, filters)
 
-    id_col = getattr(model, "id", None)
+    sorted_on = []
     if sort:
         field, direction = sort
         col = _resolve_column(model, schema_cls, field)
         order_fn = sqlalchemy.desc if direction == "DESC" else sqlalchemy.asc
         query = query.order_by(order_fn(col))
-        # Append the PK as a final tiebreaker so pagination is deterministic on
-        # a non-unique sort column (mirrors _apply_sorting in query/_impl.py).
-        if id_col is not None and col is not id_col:
-            query = query.order_by(id_col)
-    elif id_col is not None:
-        query = query.order_by(id_col)
+        sorted_on.append(col)
+    query = _append_pk_tiebreak(query, model, sorted_on)
 
     query = query.limit(end - start + 1).offset(start)
     return query
