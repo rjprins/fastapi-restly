@@ -41,6 +41,7 @@ import fastapi
 import pydantic
 from fastapi import BackgroundTasks, Request, Response, WebSocket
 from fastapi.params import Depends as _DependsMarker
+from sqlalchemy import JSON as _JSONType
 from sqlalchemy import Select
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy import select as sa_select
@@ -299,6 +300,45 @@ def _is_mapped_column(model_cls: type[DeclarativeBase], field_name: str) -> bool
     except Exception:
         return False
     return field_name in mapper.columns
+
+
+def _is_json_column(model_cls: type[DeclarativeBase], field_name: str) -> bool:
+    """True if ``field_name`` maps to a plain ``JSON`` column (``JSONB`` too).
+
+    A ``TypeDecorator`` over ``JSON`` is not a ``JSON`` instance and so is not
+    one: it has its own bind processor, which may well want the object as it
+    stands.
+    """
+    try:
+        mapper = sa_inspect(model_cls)
+    except Exception:
+        return False
+    column = mapper.columns.get(field_name)
+    return column is not None and isinstance(column.type, _JSONType)
+
+
+def _json_ready(model_cls: type[DeclarativeBase], field_name: str, value: Any) -> Any:
+    """Dump pydantic models on their way into a JSON column.
+
+    A schema field typed as a nested model validates to a model instance, and
+    a JSON column binds through ``json.dumps``, which cannot take one. Restly
+    owns the schema-to-model translation, so it does the dump here rather than
+    letting the driver fail at flush with the model in the bind parameters.
+    """
+    if isinstance(value, pydantic.BaseModel):
+        dumped: Any = value.model_dump(mode="json")
+    elif isinstance(value, list | tuple) and any(
+        isinstance(item, pydantic.BaseModel) for item in value
+    ):
+        dumped = [
+            item.model_dump(mode="json")
+            if isinstance(item, pydantic.BaseModel)
+            else item
+            for item in value
+        ]
+    else:
+        return value
+    return dumped if _is_json_column(model_cls, field_name) else value
 
 
 def _add_assignment(target: dict[str, Any], field_name: str | None, value: Any) -> None:
@@ -581,6 +621,7 @@ def build_create_plan(
             _add_resolved_reference_to_create_plan(plan, model_cls, field_name, value)
             continue
 
+        value = _json_ready(model_cls, field_name, value)
         if _accepts_init_kwarg(model_cls, field_name):
             plan.kwargs[field_name] = value
         elif _has_model_attr(model_cls, field_name):
@@ -651,7 +692,7 @@ def apply_update_to_object(
         ):
             _apply_resolved_reference_update(obj, field_name, value)
             continue
-        setattr(obj, field_name, value)
+        setattr(obj, field_name, _json_ready(type(obj), field_name, value))
 
 
 def _get_nested_schema_annotation(annotation: Any) -> type[pydantic.BaseModel] | None:

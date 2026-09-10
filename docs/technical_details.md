@@ -129,6 +129,13 @@ already understood by Pydantic) are returned unchanged:
 
 Any type not in this table raises `TypeError` at schema-generation time. For
 custom column types, declare an explicit schema and bypass auto-generation.
+A `JSON` column maps to a bare `dict`, which validates nothing. To give the
+document a shape, declare an explicit schema and type the field as a nested
+Pydantic model. Restly dumps that model to plain JSON on the way into the
+column and the response schema validates it back on the way out, so the shape
+is checked at both ends and the column still holds ordinary JSON. A
+`TypeDecorator` of your own receives the model itself, as its bind processor
+expects.
 
 ## View Classes and Registration
 

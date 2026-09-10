@@ -1,0 +1,203 @@
+"""A JSON column whose shape is declared as a nested pydantic model.
+
+Typing the schema field as a nested model is how a document column gets a
+validated shape on the way in. The value then arrives at the ORM as a model
+instance, and a ``JSON`` column binds through ``json.dumps``, which cannot
+take one: the write used to fail at flush with the model sitting in the bind
+parameters. Restly owns the schema-to-model translation, so it dumps the model
+to plain JSON there.
+
+A ``TypeDecorator`` over ``JSON`` is left alone: it has its own bind
+processor, and may well want the object as it stands.
+"""
+
+import json
+from collections.abc import Iterator
+from typing import Any
+
+import pydantic
+import pytest
+import sqlalchemy
+from fastapi import FastAPI
+from sqlalchemy.orm import Mapped, mapped_column
+
+import fastapi_restly as fr
+from fastapi_restly.db._globals import _fr_globals
+from fastapi_restly.testing._client import RestlyTestClient
+
+from .conftest import create_tables
+
+
+@pytest.fixture
+def sync_client(sync_db) -> Iterator[RestlyTestClient]:
+    app = FastAPI()
+    yield RestlyTestClient(app)
+
+
+class Address(pydantic.BaseModel):
+    street: str
+    number: int = 0
+
+
+def _define_model(name: str, table: str):
+    return type(
+        name,
+        (fr.IDBase,),
+        {
+            "__tablename__": table,
+            "__annotations__": {
+                "title": Mapped[str],
+                "address": Mapped[dict],
+                "history": Mapped[list],
+            },
+            "address": mapped_column(sqlalchemy.JSON),
+            "history": mapped_column(sqlalchemy.JSON, insert_default=list),
+        },
+    )
+
+
+class DocSchema(fr.IDSchema):
+    title: str
+    address: Address
+    history: list[Address] = []
+
+
+def test_create_stores_a_nested_model_as_plain_json(client):
+    Doc = _define_model("AsyncDoc", "jcd_async_docs")
+
+    @fr.include_view(client.app)
+    class DocView(fr.AsyncRestView):
+        prefix = "/docs"
+        model = Doc
+        schema = DocSchema
+
+    create_tables()
+
+    body = client.post(
+        "/docs",
+        json={
+            "title": "t",
+            "address": {"street": "Main", "number": 4},
+            "history": [{"street": "Old"}],
+        },
+    ).json()
+
+    assert body["address"] == {"street": "Main", "number": 4}
+    assert body["history"] == [{"street": "Old", "number": 0}]
+    assert client.get("/docs/1").json() == body
+
+
+def test_update_replaces_the_document(client):
+    Doc = _define_model("AsyncPatchDoc", "jcd_async_patch_docs")
+
+    @fr.include_view(client.app)
+    class DocView(fr.AsyncRestView):
+        prefix = "/docs"
+        model = Doc
+        schema = DocSchema
+
+    create_tables()
+    client.post("/docs", json={"title": "t", "address": {"street": "Main"}})
+
+    body = client.patch("/docs/1", json={"address": {"street": "Side", "number": 9}})
+
+    assert body.json()["address"] == {"street": "Side", "number": 9}
+
+
+def test_sync_create_stores_a_nested_model_as_plain_json(sync_client):
+    """Parity: both variants share the schema-to-model translation."""
+    Doc = _define_model("SyncDoc", "jcd_sync_docs")
+
+    @fr.include_view(sync_client.app)
+    class DocView(fr.RestView):
+        prefix = "/docs"
+        model = Doc
+        schema = DocSchema
+
+    fr.DataclassBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
+
+    body = sync_client.post(
+        "/docs", json={"title": "t", "address": {"street": "Main", "number": 4}}
+    ).json()
+
+    assert body["address"] == {"street": "Main", "number": 4}
+
+
+def test_the_stored_value_is_a_dict_not_a_model(sync_client):
+    """Asserted on the row, not the response: the response would look right
+    either way, because the response schema re-validates a dict back into the
+    nested model."""
+    Doc = _define_model("StoredDoc", "jcd_stored_docs")
+
+    @fr.include_view(sync_client.app)
+    class DocView(fr.RestView):
+        prefix = "/docs"
+        model = Doc
+        schema = DocSchema
+
+    fr.DataclassBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
+    sync_client.post(
+        "/docs",
+        json={
+            "title": "t",
+            "address": {"street": "Main"},
+            "history": [{"street": "O"}],
+        },
+    )
+
+    with fr.open_session() as session:
+        row = session.get(Doc, 1)
+        assert isinstance(row.address, dict)
+        assert row.history == [{"street": "O", "number": 0}]
+
+
+class _PydanticAddress(sqlalchemy.types.TypeDecorator):
+    """A column type that wants the model itself, not a dict."""
+
+    impl = sqlalchemy.JSON
+    cache_ok = True
+
+    def process_bind_param(self, value: Any, dialect: Any) -> Any:
+        if value is None:
+            return None
+        assert isinstance(value, Address), f"expected a model, got {type(value)}"
+        return json.loads(value.model_dump_json())
+
+    def process_result_value(self, value: Any, dialect: Any) -> Any:
+        return value
+
+
+def test_a_type_decorator_still_receives_the_model(sync_client):
+    class Decorated(fr.IDBase):
+        __tablename__ = "jcd_decorated"
+        address: Mapped[Address] = mapped_column(_PydanticAddress)
+
+    class DecoratedSchema(fr.IDSchema):
+        address: Address
+
+    @fr.include_view(sync_client.app)
+    class DecoratedView(fr.RestView):
+        prefix = "/decorated"
+        model = Decorated
+        schema = DecoratedSchema
+
+    fr.DataclassBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
+
+    body = sync_client.post(
+        "/decorated", json={"address": {"street": "Main", "number": 2}}
+    ).json()
+
+    assert body["address"] == {"street": "Main", "number": 2}
+
+
+def test_the_free_object_helpers_dump_too(sync_client):
+    """``fr.objects.make_new_object`` shares the translation, so a script
+    writing outside a view gets the same value."""
+    Doc = _define_model("HelperDoc", "jcd_helper_docs")
+    fr.DataclassBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
+
+    with fr.open_session() as session:
+        obj = fr.objects.make_new_object(
+            session, Doc, DocSchema(id=1, title="t", address=Address(street="Main"))
+        )
+        assert isinstance(obj.address, dict)

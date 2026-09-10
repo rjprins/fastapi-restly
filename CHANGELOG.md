@@ -161,6 +161,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   listing route. `sort`, `range` and `filter` are the whole contract there,
   so the standard dialect's `page` and per-field filters are unknown keys
   too; `extra_query_params` widens it.
+- A schema field typed as a nested Pydantic model now writes to a `JSON`
+  column: the model is dumped to plain JSON instead of reaching the driver
+  as an object and failing at flush. A `TypeDecorator` over `JSON` still
+  receives the model.
 ## [0.9.0] - 2026-08-13
 
 ### Added
