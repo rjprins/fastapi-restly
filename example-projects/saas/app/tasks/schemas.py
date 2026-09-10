@@ -12,8 +12,8 @@ from .models import Task, TaskPriority, TaskStatus, TaskType
 class TaskSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
     """Schema for Task model.
 
-    Conditional validation lives in TaskView.create/update because schema
-    validators also run for query filtering.
+    Conditional validation lives in TaskView.create/update: on update the
+    rule needs the stored row, which a schema validator cannot see.
     """
 
     title: str

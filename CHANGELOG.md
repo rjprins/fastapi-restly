@@ -151,6 +151,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   SQLAlchemy's `with_loader_criteria` now reaches reference checks too.
 - `save_object` no longer expires related objects through the
   `refresh-expire` cascade; `cascade="all"` is safe under `AsyncSession`.
+- Query filter values are validated against the field alone, so a
+  cross-field `model_validator` (or a frozen schema) on the view schema no
+  longer turns a legal filter into a 400. Field validators, constraints and
+  the model config still apply.
 ## [0.9.0] - 2026-08-13
 
 ### Added

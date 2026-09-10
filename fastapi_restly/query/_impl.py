@@ -19,6 +19,7 @@ import pydantic
 import sqlalchemy
 from pydantic import Field
 from pydantic.fields import FieldInfo
+from pydantic_core import SchemaValidator
 from sqlalchemy import ColumnElement, Select
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm.attributes import InstrumentedAttribute
@@ -655,17 +656,46 @@ def _parse_value(schema_cls: SchemaType, column_name: str, value: str) -> Any:
         raise BadQueryParam(f"Invalid attribute in URL query: {column_name}")
 
     try:
-        obj = schema_cls.__pydantic_validator__.validate_assignment(
-            schema_cls.model_construct(), field_name, value
-        )
-        result = getattr(obj, field_name)
-        # An IDRef[T] FK field validates to an IDRef object; the SQL bind value
-        # is its scalar id, not the reference wrapper (which cannot bind).
-        if isinstance(result, IDSchema):
-            return result.id
-        return result
+        result = _field_validator(schema_cls, field_name).validate_python(value)
     except Exception:
         raise BadQueryParam(f"Invalid attribute in URL query: {column_name}")
+    # An IDRef[T] FK field validates to an IDRef object; the SQL bind value
+    # is its scalar id, not the reference wrapper (which cannot bind).
+    if isinstance(result, IDSchema):
+        return result.id
+    return result
+
+
+@functools.cache
+def _field_validator(schema_cls: SchemaType, field_name: str) -> SchemaValidator:
+    """A validator for one field of ``schema_cls``, cut from the model's core
+    schema.
+
+    Field validators, constraints and the model config apply; model validators
+    do not. A filter value is one column, so a cross-field rule has nothing to
+    compare against and would only reject legal filters (as validating through
+    ``validate_assignment`` on a ``model_construct()`` skeleton did).
+    """
+    core: Any = schema_cls.__pydantic_core_schema__
+    definitions = core.get("definitions") if core.get("type") == "definitions" else None
+    config = None
+    node: Any = core
+    while node is not None and node.get("type") != "model-fields":
+        if node.get("type") == "model" and config is None:
+            config = node.get("config")
+        node = node.get("schema")
+    if node is None:
+        raise LookupError(f"{schema_cls.__name__} has no model-fields core schema")
+    field_schema: Any = node["fields"][field_name]["schema"]
+    if definitions:
+        # A field typed with a class the schema uses more than once is a
+        # definition-ref; it validates only next to the definitions.
+        field_schema = {
+            "type": "definitions",
+            "schema": field_schema,
+            "definitions": definitions,
+        }
+    return SchemaValidator(field_schema, config)
 
 
 def _get_nested_schema(field: FieldInfo | None) -> SchemaType | None:
