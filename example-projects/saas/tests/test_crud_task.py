@@ -330,8 +330,8 @@ class TestSoftDelete:
         """Deleted projects appear on /projects/trash and nowhere else.
 
         The trash is a route on the same view naming ``is_deleted`` as its
-        scope per read; it takes the listing grammar, and the tenant floor
-        in ``TenantBase.apply_scope`` keeps it tenant-bound.
+        scope per read; it takes the listing grammar, and the tenant
+        listener in ``app.models`` keeps it tenant-bound.
         """
         beta = new_tenant("beta")
 
