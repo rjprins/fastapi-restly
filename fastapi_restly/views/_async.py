@@ -1,3 +1,4 @@
+from contextlib import AbstractAsyncContextManager
 from typing import Any, cast, final
 
 import sqlalchemy
@@ -27,7 +28,12 @@ from ._base import (
     patch,
     post,
 )
-from ._lifecycle import _UNSET, async_run_write_action, async_write_action
+from ._lifecycle import (
+    _UNSET,
+    _async_defer_write_action_commit,
+    async_run_write_action,
+    async_write_action,
+)
 
 
 class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT]):
@@ -149,9 +155,36 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
                 w.obj = await self.make_new_object(req)
 
         Pass ``obj=None`` for writes with no single object. Exceptions skip the
-        commit.
+        commit. Inside :meth:`defer_write_action_commit`, the outermost block
+        owns the commit and the after-hooks.
         """
         return async_write_action(self, action, obj=obj, data=data)
+
+    def defer_write_action_commit(self) -> AbstractAsyncContextManager[None]:
+        """Commit the session once after the outermost block succeeds.
+
+        ``write_action`` and the write handlers still authorize, snapshot,
+        mutate, and run ``before_action_commit``. They flush their changes and
+        queue ``after_action_commit`` until this block commits::
+
+            async with self.defer_write_action_commit():
+                for schema_obj in items:
+                    await self.handle_create(schema_obj)
+
+        Nested blocks on the same session share the commit. An exception
+        escaping any block aborts it, including when an enclosing block catches
+        that exception. Rollback belongs to the session owner. For partial
+        success, put ``session.begin_nested()`` around each inner commit bracket
+        and catch the row exception outside its savepoint.
+
+        After-hooks run in queue order and stop on the first exception. ``new``
+        is the live object after all writes, while ``old`` is each action's
+        snapshot. Direct ``session.commit()`` calls are not deferred.
+
+        Sync actions can join through ``AsyncSession.run_sync()``. Their hooks
+        use the same bridge. Async actions require an async outermost block.
+        """
+        return _async_defer_write_action_commit(self.session)
 
     async def handle_create(self, schema_obj: CreateSchemaT) -> ModelT:
         return await async_run_write_action(

@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `RestView.defer_write_action_commit()` and its async counterpart group write
+  actions under one session commit. Each action keeps its authorization and
+  before-hook. After-hooks run after the outermost block commits and are
+  discarded for rolled-back work.
 - Context-bound query clauses: declare reusable query fragments once and
   compose them with `fr.where_clause` / `fr.transform_clause`,
   `fr.all_of` / `fr.any_of` / `fr.none_of` / `fr.combine`. Per-request

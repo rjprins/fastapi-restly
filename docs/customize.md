@@ -595,6 +595,43 @@ bracket instead, deposit the new object on the yielded handle:
 
 Internally, `write_action` and the CRUD handlers share {func}`run_write_action <fastapi_restly.views.run_write_action>`.
 
+(defer-write-action-commit)=
+### Commit several writes together
+
+Use {meth}`defer_write_action_commit() <fastapi_restly.views.AsyncRestView.defer_write_action_commit>`
+when several handlers or custom actions should share one commit:
+
+```python
+    @fr.post("/bulk", status_code=201)
+    async def bulk_create(self, items: list[OrderCreate]):
+        async with self.defer_write_action_commit():
+            orders = [await self.handle_create(item) for item in items]
+        return [self.to_response(order) for order in orders]
+```
+
+Each action still authorizes, snapshots, mutates, and runs
+`before_action_commit`. It then flushes and queues `after_action_commit`.
+The outermost block commits the session once, including writes to related
+models, then runs the queued hooks in order. On `fr.RestView`, use `with`
+and synchronous handlers under the same method name.
+
+Nested blocks share the commit when their views share a session. An exception
+escaping any block discards its shared queue and prevents that commit, even if
+an enclosing block catches the exception. The session owner still handles
+rollback. Direct `session.commit()` calls are not deferred.
+
+For partial success, put SQLAlchemy's `session.begin_nested()` **outside** each
+inner `write_action` or handler and catch the row exception outside its
+savepoint. This keeps the row and its before-hook writes together. Rolled-back
+actions lose their queued after-hooks.
+
+After-hooks stop on the first exception, when the writes are already committed.
+Each receives its own `old` snapshot, but `new` is the live object and includes
+later changes made in the block.
+
+Sync actions called through SQLAlchemy's `AsyncSession.run_sync()` can join an
+async block. Async actions require an async outermost block.
+
 ### Relationship references in custom routes
 
 When a custom route constructs schemas itself (`model_construct()` skips

@@ -1,3 +1,4 @@
+from contextlib import AbstractContextManager
 from typing import Any, cast, final
 
 import sqlalchemy
@@ -27,7 +28,12 @@ from ._base import (
     patch,
     post,
 )
-from ._lifecycle import _UNSET, run_write_action, sync_write_action
+from ._lifecycle import (
+    _UNSET,
+    _defer_write_action_commit,
+    run_write_action,
+    sync_write_action,
+)
 
 
 class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT]):
@@ -121,9 +127,26 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
 
         For create-shaped actions, omit ``obj`` and set ``w.obj`` before exit.
         Pass ``obj=None`` for writes with no single object. Exceptions skip the
-        commit.
+        commit. Inside :meth:`defer_write_action_commit`, the outermost block
+        owns the commit and the after-hooks.
         """
         return sync_write_action(self, action, obj=obj, data=data)
+
+    def defer_write_action_commit(self) -> AbstractContextManager[None]:
+        """Commit the session once after the outermost block succeeds.
+
+        Sync counterpart of :meth:`AsyncRestView.defer_write_action_commit`::
+
+            with self.defer_write_action_commit():
+                for schema_obj in items:
+                    self.handle_create(schema_obj)
+
+        Nested blocks on the same session share the commit. Exceptions abort
+        the block without rolling back the session. The write handlers and
+        ``write_action`` defer their commit and after-hooks. Direct
+        ``session.commit()`` calls are not deferred.
+        """
+        return _defer_write_action_commit(self.session)
 
     def handle_create(self, schema_obj: CreateSchemaT) -> ModelT:
         return run_write_action(
