@@ -127,6 +127,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   field is a column default on the model (`insert_default=` /
   `onupdate=` reading a `ContextNamespace` slot), which covers every write
   path. Docs and the SaaS example follow.
+- `handle_get_many`, `handle_get_one`, `handle_create`, `handle_update`, and
+  `handle_delete` on `RestView` / `AsyncRestView` are final: call them from a
+  custom route, never override them. A view class that defines one, itself or
+  through a mixin, fails at class definition with a message naming the seam
+  that owns the change: domain logic belongs in the business method, a gate in
+  `authorize`, a side effect in `before_action_commit` /
+  `after_action_commit`, the HTTP contract in `<verb>_endpoint`, and several
+  writes under one commit in `defer_write_action_commit()`. Every generated
+  CRUD route therefore runs `authorize` and the commit bracket, and no view
+  can drop either by accident. Docs follow.
 
 ### Removed
 

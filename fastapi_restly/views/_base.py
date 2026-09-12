@@ -1004,6 +1004,36 @@ def delete(path: str, **api_route_kwargs: Any) -> Callable[..., Any]:
 # classes define them; anything else in the MRO that does is a mistake.
 _FINAL_DOMAIN_UTILITIES = ("make_new_object", "update_object", "save_object")
 
+# Callable from a custom route, never overridden. Every generated CRUD route
+# then runs ``authorize`` and, on writes, the commit bracket.
+_FINAL_HANDLERS = (
+    "handle_get_many",
+    "handle_get_one",
+    "handle_create",
+    "handle_update",
+    "handle_delete",
+)
+_WRITE_VERBS = ("create", "update", "delete")
+
+
+def _final_handler_message(view_name: str, name: str, origin: str) -> str:
+    """What a subclass that defines ``name`` is told to use instead."""
+    verb = name.removeprefix("handle_")
+    message = (
+        f"{view_name} defines {name}{origin}, which is a final handler, not "
+        f"a seam: it is the tier a custom route calls. Put domain logic in "
+        f"the {verb} business method, a gate in authorize, "
+    )
+    if verb in _WRITE_VERBS:
+        message += "a side effect in before_action_commit or after_action_commit, "
+    message += f"and the HTTP contract in {verb}_endpoint."
+    if verb in _WRITE_VERBS:
+        message += (
+            f" To put several writes in one commit, call {name} inside "
+            "defer_write_action_commit()."
+        )
+    return message
+
 
 class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT]):
     """
@@ -1113,6 +1143,18 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
                         "model (it then covers every write path); put "
                         "payload-derived logic in the create / update verb; "
                         "put a per-write side effect in before_action_commit."
+                    )
+        # the handlers are final: an override re-implements the load,
+        # authorize and commit order to reach something another seam gives
+        # directly, and a generated route could then skip either
+        for klass in cls.__mro__:
+            if klass.__module__.startswith("fastapi_restly."):
+                continue
+            for name in _FINAL_HANDLERS:
+                if name in vars(klass):
+                    origin = "" if klass is cls else f" (from {klass.__name__})"
+                    raise RestlyConfigurationError(
+                        _final_handler_message(cls.__name__, name, origin)
                     )
 
     def _resolved_scope(self) -> Clause | None:
@@ -1625,9 +1667,9 @@ def _warn_on_misuse(view_cls: type[View]) -> None:
             warnings.warn(
                 f"{name} overrides the endpoint method '{endpoint}'. Override "
                 f"an endpoint method only to change the HTTP contract. For "
-                f"domain logic override the bare verb '{verb}'; for "
-                f"orchestration 'handle_{verb}'; for the response shape "
-                f"'to_response'.",
+                f"domain logic override the bare verb '{verb}'; for a gate "
+                f"'authorize'; for the response shape 'to_response'. Call "
+                f"'handle_{verb}' from the replacement to keep the bracket.",
                 RestlyMisuseWarning,
                 stacklevel=5,
             )
