@@ -644,9 +644,13 @@ def test_react_admin_list_respects_build_query_scope(client):
     assert resp.headers["Content-Range"].endswith("/1")  # total respects scope
 
 
-def test_react_admin_list_uses_handle_get_many_get_many_and_response_seams(client):
+def test_react_admin_list_runs_the_handler_domain_and_response_seams(client):
     """React Admin list is still an endpoint-method replacement: it should delegate
-    through the standard handler, domain method, and response chokepoint."""
+    through the standard handler, domain method, and response chokepoint.
+
+    The handler is final, so its run is observed through the ``authorize``
+    call it owns, and the total it carries is observed through ``count``.
+    """
 
     events: list[tuple[str, object | None]] = []
 
@@ -662,16 +666,17 @@ def test_react_admin_list_uses_handle_get_many_get_many_and_response_seams(clien
         model = SeamItem
         schema = SeamItemSchema
 
-        async def handle_get_many(self, query_params):
-            events.append(("handle_get_many", None))
-            result = await super().handle_get_many(query_params)
-            return fr.ListingResult(
-                result.objects, result.total_count + 10, result.query_params
-            )
+        async def authorize(self, action, obj=None, data=None):
+            events.append(("authorize", action))
+            await super().authorize(action, obj, data)
 
         async def get_many(self, query_params, *, scope=None):
             events.append(("get_many", None))
             return await super().get_many(query_params, scope=scope)
+
+        async def count(self, query):
+            events.append(("count", None))
+            return (await super().count(query)) + 10
 
         def to_response(self, obj_or_list, shape=fr.ResponseShape.SINGLE):
             events.append(("to_response", shape))
@@ -684,18 +689,19 @@ def test_react_admin_list_uses_handle_get_many_get_many_and_response_seams(clien
     response = client.get("/seam-items/")
 
     assert [name for name, _ in events] == [
-        "handle_get_many",
+        "authorize",
         "get_many",
+        "count",
         "to_response",
     ]
+    assert events[0] == ("authorize", "get_many")
     assert events[-1] == ("to_response", fr.ResponseShape.LISTING)
     assert response.json()[0]["name"] == "a"
+    # the header reports the total the domain method put in the ListingResult
     assert response.headers["Content-Range"].endswith("/11")
 
 
-def test_sync_react_admin_list_uses_handle_get_many_get_many_and_response_seams(
-    sync_client,
-):
+def test_sync_react_admin_list_runs_the_handler_domain_and_response_seams(sync_client):
     events: list[tuple[str, object | None]] = []
 
     class SyncSeamItem(fr.IDBase):
@@ -710,16 +716,17 @@ def test_sync_react_admin_list_uses_handle_get_many_get_many_and_response_seams(
         model = SyncSeamItem
         schema = SyncSeamItemSchema
 
-        def handle_get_many(self, query_params):
-            events.append(("handle_get_many", None))
-            result = super().handle_get_many(query_params)
-            return fr.ListingResult(
-                result.objects, result.total_count + 10, result.query_params
-            )
+        def authorize(self, action, obj=None, data=None):
+            events.append(("authorize", action))
+            super().authorize(action, obj, data)
 
         def get_many(self, query_params, *, scope=None):
             events.append(("get_many", None))
             return super().get_many(query_params, scope=scope)
+
+        def count(self, query):
+            events.append(("count", None))
+            return super().count(query) + 10
 
         def to_response(self, obj_or_list, shape=fr.ResponseShape.SINGLE):
             events.append(("to_response", shape))
@@ -732,10 +739,12 @@ def test_sync_react_admin_list_uses_handle_get_many_get_many_and_response_seams(
     response = sync_client.get("/sync-seam-items/")
 
     assert [name for name, _ in events] == [
-        "handle_get_many",
+        "authorize",
         "get_many",
+        "count",
         "to_response",
     ]
+    assert events[0] == ("authorize", "get_many")
     assert events[-1] == ("to_response", fr.ResponseShape.LISTING)
     assert response.json()[0]["name"] == "a"
     assert response.headers["Content-Range"].endswith("/11")

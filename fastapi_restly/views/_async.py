@@ -48,13 +48,14 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
 
     Each verb is three tiers (see "Customizing RestView" in the docs):
 
-    * ``<verb>_endpoint`` — the endpoint method. Owns the HTTP signature,
+    * ``<verb>_endpoint``: the endpoint method. Owns the HTTP signature,
       ``response_model``, and ``to_response``. Rarely overridden.
-    * ``handle_<verb>`` — the handler. Owns ``authorize`` and the
-      commit bracket (``before_action_commit`` -> commit -> ``after_action_commit``); returns
-      the domain object. Reuse from custom actions to get the bracket.
+    * ``handle_<verb>``: the handler. Owns ``authorize`` and the commit
+      bracket (``before_action_commit`` -> commit -> ``after_action_commit``);
+      returns the domain object. Final: call it from a custom route to get
+      the bracket, never override it.
     * ``<verb>`` (``get_many`` / ``get_one`` / ``create`` / ``update`` /
-      ``delete``) — the domain operation. Auth-free, commit-free; the common
+      ``delete``): the domain operation. Auth-free, commit-free; the common
       override point (hash a password, derive a slug, ...).
     """
 
@@ -67,17 +68,16 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     @get("/")
     async def get_many_endpoint(self, query_params: Any) -> Any:
         """``GET /`` endpoint method. Override ``get_many`` for domain
-        logic, ``handle_get_many`` for orchestration, ``to_response`` for the
-        response shape; replace this method only to change the HTTP contract."""
+        logic, ``to_response`` for the response shape; replace this method only
+        to change the HTTP contract."""
         result = await self.handle_get_many(query_params)
         return self.to_response(result, ResponseShape.LISTING)
 
     @get("/{id}")
     async def get_one_endpoint(self, id: Any) -> Any:
         """``GET /{id}`` endpoint method. Override ``get_one`` for domain
-        logic (visibility lives in the scope), ``handle_get_one`` for
-        orchestration, ``to_response`` for the response shape; replace this
-        method only to change the HTTP contract."""
+        logic (visibility lives in the scope), ``to_response`` for the response
+        shape; replace this method only to change the HTTP contract."""
         obj = await self.handle_get_one(id)
         return self.to_response(obj)
 
@@ -85,37 +85,39 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     async def create_endpoint(self, schema_obj: Any) -> Any:
         """``POST /`` endpoint method. Override ``create`` for domain
         logic (it is commit-free; the handler owns the commit),
-        ``handle_create`` for orchestration, ``to_response`` for the response
-        shape; replace this method only to change the HTTP contract."""
+        ``to_response`` for the response shape; replace this method only to
+        change the HTTP contract."""
         obj = await self.handle_create(schema_obj)
         return self.to_response(obj)
 
     @patch("/{id}")
     async def update_endpoint(self, id: Any, schema_obj: Any) -> Any:
         """``PATCH /{id}`` endpoint method. Override ``update`` for
-        domain logic, ``handle_update`` for orchestration, ``to_response`` for
-        the response shape; replace this method only to change the HTTP
-        contract."""
+        domain logic, ``to_response`` for the response shape; replace this
+        method only to change the HTTP contract."""
         obj = await self.handle_update(id, schema_obj)
         return self.to_response(obj)
 
     @delete("/{id}")
     async def delete_endpoint(self, id: Any) -> Any:
         """``DELETE /{id}`` endpoint method. Override ``delete`` for
-        domain logic (e.g. soft delete), ``handle_delete`` for orchestration;
-        replace this method only to change the HTTP contract (e.g. return the
-        deleted object instead of 204)."""
+        domain logic (e.g. soft delete); replace this method only to change the
+        HTTP contract (e.g. return the deleted object instead of 204)."""
         await self.handle_delete(id)
         return self.to_response(None, ResponseShape.EMPTY)
 
     # ====================================================================
-    # Request handlers (authorize + commit bracket)
+    # Request handlers (final: call from a custom route, never override)
     # ====================================================================
 
+    @final
     async def handle_get_many(
         self, query_params: Any, *, scope: ReadScope = None
     ) -> ListingResult[ModelT]:
         """List handler: ``authorize`` then the ``get_many`` domain op.
+
+        Final, like every handler: override ``get_many`` for the query and
+        ``authorize`` for the gate. Call it from a custom listing route.
 
         :param scope: a clause that replaces the view scope for this read,
             so a custom route can list another surface of the same model
@@ -125,10 +127,12 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         await self.authorize(Action.GET_MANY)
         return await self.get_many(query_params, scope=scope)
 
+    @final
     async def handle_get_one(self, id: IdT, *, scope: ReadScope = None) -> ModelT:
         """Retrieve handler: scoped load (404 by visibility) then read-auth.
 
-        Reusable from a custom read route as "load with scope + 404 +
+        Final: override ``get_one`` for the load and ``authorize`` for the
+        gate. Call it from a custom read route as "load with scope + 404 +
         read-auth". A write action instead loads with ``get_one(id,
         scope=...)`` and gates only its own action, the way
         ``handle_update`` and ``handle_delete`` do.
@@ -186,21 +190,27 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         """
         return _async_shared_write_action_commit(self.session)
 
+    @final
     async def handle_create(self, schema_obj: CreateSchemaT) -> ModelT:
-        """Run create through the commit bracket and return its model.
+        """Create handler: ``authorize``, the ``create`` domain op, commit bracket.
 
-        Inside :meth:`shared_write_action_commit`, this returns after the flush
-        but before the commit and ``after_action_commit``.
+        Final: override ``create`` for the domain change, ``authorize`` for
+        the gate, and ``before_action_commit`` / ``after_action_commit`` for
+        side effects. Call it from a custom create route, and from inside
+        ``shared_write_action_commit()`` to share one commit with other
+        writes; it then returns after the flush, before the commit.
         """
         return await async_run_write_action(
             self, Action.CREATE, data=schema_obj, mutate=lambda: self.create(schema_obj)
         )
 
+    @final
     async def handle_update(self, id: IdT, schema_obj: UpdateSchemaT) -> ModelT:
-        """Run update through the commit bracket and return its model.
+        """Update handler: scoped load, then ``update`` in the commit bracket.
 
-        Inside :meth:`shared_write_action_commit`, this returns after the flush
-        but before the commit and ``after_action_commit``.
+        Final, like :meth:`handle_create`: ``update`` receives the loaded
+        object, so the load, the 404, and ``authorize`` stay here. Inside
+        ``shared_write_action_commit()`` it returns before the commit.
         """
         obj = await self.get_one(id)
         return await async_run_write_action(
@@ -211,11 +221,14 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
             mutate=lambda: self.update(obj, schema_obj),
         )
 
+    @final
     async def handle_delete(self, id: IdT) -> None:
-        """Run delete through the commit bracket.
+        """Delete handler: scoped load, then ``delete`` in the commit bracket.
 
-        Inside :meth:`shared_write_action_commit`, this returns after the flush
-        but before the commit and ``after_action_commit``.
+        Final, like :meth:`handle_create`: a soft delete flips a timestamp in
+        ``delete``, and an off-request follow-up runs in
+        ``after_action_commit``. Inside ``shared_write_action_commit()`` both
+        run when the outermost block exits.
         """
         obj = await self.get_one(id)
         await async_run_write_action(

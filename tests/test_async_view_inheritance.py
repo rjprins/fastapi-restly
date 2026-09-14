@@ -49,14 +49,14 @@ def _model_and_schema():
         ),
         ("get_many", lambda c: c.get("/items/")),
         (
-            "handle_update",
+            "update",
             lambda c: (
                 c.post("/items/", json={"name": "x"}, assert_status_code=201),
                 c.patch("/items/1", json={"name": "y"}),
             )[-1],
         ),
         (
-            "handle_delete",
+            "delete",
             lambda c: (
                 c.post("/items/", json={"name": "x"}, assert_status_code=201),
                 c.delete("/items/1", assert_status_code=204),
@@ -72,7 +72,7 @@ def test_async_super_chain_three_level_mro(
 
     Verifies cooperative ``await super().<hook>(...)`` traverses the full MRO
     under the framework's endpoint-rewriting registration path, for every
-    handle-design hook (business methods and handlers alike).
+    business method. The handlers are final, so they are called, not chained.
     """
     Item, ItemSchema = _model_and_schema()
 

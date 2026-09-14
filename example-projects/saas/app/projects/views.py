@@ -55,8 +55,8 @@ class ProjectView(SoftDeleteMixin, TenantBase):
     ``app.models``), so ``organization_id`` and the audit ids are stamped
     from ``Current`` on every write path, and ``SoftDeleteMixin`` turns
     ``delete`` into a ``deleted_at`` flip. ``TenantBase`` adds the auth
-    and context-bind deps, the tenant floor on reads, and the ``_emit``
-    outbox helper.
+    and context-bind deps and the ``_emit`` outbox helper; the tenant
+    floor on reads is the session listener in ``app.models``.
 
     This view keeps project-specific logic: slug derivation, response
     decoration, update immutability, and project-level events.
@@ -211,8 +211,8 @@ class ProjectView(SoftDeleteMixin, TenantBase):
 
         A route that declares ``query_params`` takes the listing grammar
         (filter, sort, page), and the scope named here replaces the
-        default for this read only; the tenant floor in
-        ``TenantBase.apply_scope`` holds underneath.
+        default for this read only; the tenant listener in ``app.models``
+        holds underneath.
         """
         result = await self.handle_get_many(
             query_params, scope=ProjectClauses.is_deleted
