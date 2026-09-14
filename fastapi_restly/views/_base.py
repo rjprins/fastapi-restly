@@ -89,7 +89,7 @@ DataT = TypeVar("DataT")
 
 
 class Envelope(pydantic.BaseModel, Generic[DataT]):
-    """List response wrapper -- ``{"data": [...]}``.
+    """List response wrapper: ``{"data": [...]}``.
 
     The response shape for an unpaginated view. A paginated view uses
     :class:`PaginatedEnvelope`, which adds the pagination metadata.
@@ -99,7 +99,7 @@ class Envelope(pydantic.BaseModel, Generic[DataT]):
 
 
 class PaginatedEnvelope(Envelope[DataT]):
-    """Paginated list response -- ``data`` plus pagination metadata."""
+    """Paginated list response: ``data`` plus pagination metadata."""
 
     total_count: int
     page: int
@@ -265,7 +265,7 @@ def _relationship_name_for_fk(
 
     Given a scalar FK column's attribute name, return the single many-to-one
     relationship that uses it as its local column, or ``None`` when there is no
-    such relationship or more than one (ambiguous -- don't guess a pairing).
+    such relationship or more than one (ambiguous, so no pairing is guessed).
     This is how a FK reference field finds its partner relationship without
     relying on the ``<relation>_id`` naming convention.
     """
@@ -512,7 +512,7 @@ def _add_resolved_reference_to_create_plan(
 
         # A required-init FK column must be constructed, not post-assigned, or
         # the dataclass __init__ rejects the missing kwarg. Pass its id at
-        # construction -- alongside the relationship object when that too is an
+        # construction: alongside the relationship object when that too is an
         # init kwarg (consistent ids), or instead of it when it isn't.
         if fk_name and _requires_init_kwarg(model_cls, fk_name):
             plan.kwargs[fk_name] = ref.id
@@ -1184,7 +1184,7 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         """The SELECT that makes ``obj`` serializable, or ``None`` if it already is.
 
         Called by ``save_object`` *after* the flush and refresh, because the
-        refresh is itself what leaves relationships unloaded -- asking earlier
+        refresh is itself what leaves relationships unloaded; asking earlier
         would see a value the refresh is about to discard.
         """
         if _schema_relationships_are_loaded(obj, self.model, self.schema):
@@ -1239,7 +1239,7 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         # Build a payload of raw attribute values keyed by schema field name;
         # re-validating it below serializes each field through its own type. The
         # response schema's ``from_attributes`` config resolves nested schemas and
-        # reference types (IDRef/IDSchema) straight from the ORM rows -- no
+        # reference types (IDRef/IDSchema) straight from the ORM rows, with no
         # view-layer special-casing. Alias rendering happens when FastAPI
         # serializes the response model.
         payload: dict[str, Any] = {}
@@ -1275,7 +1275,7 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     ) -> Any:
         """Serialize a :class:`ListingResult` into the list response body.
 
-        The default shape is the ``{"data": [...]}`` envelope -- with pagination
+        The default shape is the ``{"data": [...]}`` envelope, with pagination
         metadata (``total_count`` / ``page`` / ``page_size`` / ``total_pages``)
         when :attr:`paginated` is true. This builds the body only; the route's
         ``response_model`` is fixed from :attr:`paginated` separately. For a bare
@@ -1348,7 +1348,7 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
 
         # A paginated view always caps at ``default_page_size``, so it must be a
         # usable size. Reject ``None`` (the pre-envelope "no cap" idiom) and
-        # out-of-range values at registration -- otherwise ``None`` would 500 at
+        # out-of-range values at registration; otherwise ``None`` would 500 at
         # request time and ``0`` would silently return empty pages. Point the
         # author at the real "don't paginate" switch.
         if cls.paginated and (
@@ -1385,7 +1385,7 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
             )
 
         # WriteOnly fields are excluded from responses by ``exclude=True`` on the
-        # marker (recursively, and from the OpenAPI response schema -- FastAPI's
+        # marker (recursively, and from the OpenAPI response schema, since FastAPI's
         # serialization-mode schema drops them), so the response_model can be the
         # full schema.
         response_schema = cls.schema
@@ -1629,7 +1629,7 @@ def _exclude_routes(cls: type[BaseRestView[Any, Any, Any, Any, Any]]):
         # satisfied: a subclass that inherits ``exclude_routes`` from a parent
         # which already excluded the route never receives a routable copy, so
         # there is nothing to strip. The name is still a genuine route elsewhere
-        # in the lineage -- only raise when it is no route at all (a typo, or the
+        # in the lineage; only raise when it is no route at all (a typo, or the
         # business method name instead of the ``*_endpoint`` route name).
         if not _is_route_name_in_lineage(cls, method_name):
             raise AttributeError(f"{method_name!r} is not a route on {cls.__name__}")
@@ -1639,7 +1639,7 @@ def _is_route_name_in_lineage(
     cls: type[BaseRestView[Any, Any, Any, Any, Any]], method_name: str
 ) -> bool:
     """True if any class in ``cls``'s MRO defines a routable endpoint of this
-    name -- so the name is a real route that may merely be already-excluded here.
+    name, so the name is a real route that may merely be already-excluded here.
     """
     return any(
         hasattr(klass.__dict__.get(method_name), "_api_route_args")
@@ -1821,7 +1821,7 @@ def _warn_on_misuse(view_cls: type[View]) -> None:
                 stacklevel=5,
             )
 
-    # 4. A reference type (IDRef/IDSchema) whose name is a scalar FK column --
+    # 4. A reference type (IDRef/IDSchema) whose name is a scalar FK column:
     # the ``post_id: IDRef[Post]`` mistake, where ``data.post_id`` becomes a
     # wrapper instead of the plain id.
     _warn_scalar_named_reference_fields(view_cls)
@@ -1830,7 +1830,7 @@ def _warn_on_misuse(view_cls: type[View]) -> None:
 def _warn_scalar_named_reference_fields(view_cls: type[View]) -> None:
     """Flag an ``IDRef``/``IDSchema`` field whose name is a scalar foreign-key
     column: ``post_id: IDRef[Post]`` makes ``data.post_id`` a reference wrapper
-    instead of the plain id. Steer to ``fr.MustExist[pk, Model]``. Best-effort --
+    instead of the plain id. Steer to ``fr.MustExist[pk, Model]``. Best-effort:
     lints only an explicitly-declared ``schema`` against the view's ``model``,
     and never a relationship-named or list reference (those names aren't columns).
     """
@@ -1848,7 +1848,7 @@ def _warn_scalar_named_reference_fields(view_cls: type[View]) -> None:
             continue
         column = mapper.columns.get(field_name)
         if column is None or not column.foreign_keys:
-            continue  # relationship-named or non-FK column -- legitimate
+            continue  # a relationship-named or non-FK column is legitimate
         origin, target = origin_target
         ref_name = origin.__name__
         target_name = target.__name__ if target is not None else "Model"
