@@ -600,3 +600,69 @@ def test_async_scope_is_consulted_by_list_and_count():
         await engine.dispose()
 
     asyncio.run(run())
+
+
+def test_get_one_takes_a_predicate_in_place_of_the_id():
+    """The primary key is the default criterion, and a SQLAlchemy boolean
+    expression replaces it: a natural key loads through the same scope,
+    loader options and 404, and the write handlers reach it too."""
+
+    class Doc(fr.IDBase):
+        slug: Mapped[str]
+        title: Mapped[str]
+
+    class DocSchema(fr.IDSchema):
+        slug: str
+        title: str
+
+    class DocUpdate(fr.BaseSchema):
+        title: str
+
+    class DocView(fr.AsyncRestView):
+        prefix = "/docs"
+        model = Doc
+        schema = DocSchema
+        schema_update = DocUpdate
+
+    async def run():
+        engine, make_session = _make_engine_and_session()
+        async with engine.begin() as conn:
+            await conn.run_sync(fr.DataclassBase.metadata.create_all)
+
+        async with make_session() as session:
+            session.add_all(
+                [Doc(slug="alpha", title="Alpha"), Doc(slug="beta", title="Beta")]
+            )
+            await session.flush()
+
+            view = DocView()
+            view.session = session
+
+            # the natural key reaches the row the primary key reaches
+            by_slug = await view.get_one(Doc.slug == "alpha")
+            assert by_slug.title == "Alpha"
+            assert (await view.get_one(by_slug.id)).id == by_slug.id
+
+            # a miss is the same 404, and the criterion is not echoed back
+            with pytest.raises(fr.exc.NotFound) as missing:
+                await view.get_one(Doc.slug == "nope")
+            assert missing.value.detail == "Doc was not found"
+
+            # an ambiguous criterion is a bug in the criterion, not a
+            # silently-served first row
+            with pytest.raises(sqlalchemy.exc.MultipleResultsFound):
+                await view.get_one(Doc.id > 0)
+
+            # the write handlers take the same identity, bracket and all
+            updated = await view.handle_update(
+                Doc.slug == "alpha", DocUpdate(title="Renamed")
+            )
+            assert updated.title == "Renamed"
+
+            await view.handle_delete(Doc.slug == "beta")
+            with pytest.raises(fr.exc.NotFound):
+                await view.get_one(Doc.slug == "beta")
+
+        await engine.dispose()
+
+    asyncio.run(run())

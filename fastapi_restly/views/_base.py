@@ -42,7 +42,7 @@ import pydantic
 from fastapi import BackgroundTasks, Request, Response, WebSocket
 from fastapi.params import Depends as _DependsMarker
 from sqlalchemy import JSON as _JSONType
-from sqlalchemy import Select
+from sqlalchemy import ColumnElement, Select
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy import select as sa_select
 from sqlalchemy.orm import DeclarativeBase, selectinload
@@ -1480,6 +1480,50 @@ def _checked_scope(scope: Any, label: str, what: str) -> Clause | Unscoped:
         f"{label}: {what} must be a Clause or fr.clauses.UNSCOPED, got "
         f"{type(scope).__name__}; wrap a raw expression with where_clause()"
     )
+
+
+def _identity_criterion(
+    model_cls: type[DeclarativeBase], id: Any
+) -> ColumnElement[bool]:
+    """The predicate that picks the one row ``get_one`` loads.
+
+    The primary key is the default: ``get_one(5)`` means ``pk == 5``. A
+    SQLAlchemy boolean expression replaces that default, so a natural-key
+    route loads through the same scope, loader options and 404, and a
+    composite key is addressable at all. The criterion narrows inside the
+    scope; only ``scope=`` replaces what the view can see.
+    """
+    if isinstance(id, ColumnElement):
+        return id
+    if isinstance(id, Clause):
+        raise TypeError(
+            f"{model_cls.__name__}: a Clause is a scope, not a row identity. "
+            "Call it for its expression (ItemClauses.by_slug(slug=...)), or "
+            "pass it as scope= to replace the view scope for this read."
+        )
+    if type(id) is bool:
+        # ``obj.slug == slug`` on a loaded object is a Python bool, and
+        # SQLAlchemy renders it as WHERE true, which matches the whole scope
+        raise TypeError(
+            f"{model_cls.__name__}: got a bool, not an id or a SQL expression. "
+            "A comparison on an instance attribute is a bool; compare the "
+            "column instead (Model.slug == slug)."
+        )
+    pk_cols = sa_inspect(model_cls).primary_key
+    if len(pk_cols) != 1:
+        raise NotImplementedError(
+            f"{model_cls.__name__} has a composite primary key, so an id does "
+            "not name one row; pass a predicate instead, e.g. "
+            "get_one(sqlalchemy.and_(Model.a == a, Model.b == b))."
+        )
+    return pk_cols[0] == id
+
+
+def _not_found_message(model_cls: type[DeclarativeBase], id: Any) -> str:
+    # a predicate is not echoed: the 404 body is no place for SQL
+    if isinstance(id, ColumnElement):
+        return f"{model_cls.__name__} was not found"
+    return f"{model_cls.__name__} with id {id!r} was not found"
 
 
 def reject_unknown_query_keys(request: fastapi.Request, allowed: set[str]) -> None:

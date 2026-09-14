@@ -633,3 +633,128 @@ def test_sync_build_query_is_consulted_by_list_and_count(sync_db):
         query = fr.query.apply_list_params({}, scoped, Gadget, GadgetSchema)
         total = view.count(query)
         assert total == 2
+
+
+def test_a_natural_key_route_is_handle_get_one_with_a_predicate(sync_db):
+    """``GET /pages/by-slug/{slug}`` is the retrieve path under another
+    key: the same scope, 404 and read-auth as ``GET /{id}``."""
+    engine, _make_session = sync_db
+
+    class Page(fr.IDBase):
+        slug: Mapped[str]
+        title: Mapped[str]
+
+    class PageSchema(fr.IDSchema):
+        slug: str
+        title: str
+
+    app = FastAPI()
+
+    @fr.include_view(app)
+    class PageView(fr.RestView):
+        prefix = "/pages"
+        model = Page
+        schema = PageSchema
+
+        @fr.get("/by-slug/{slug}")
+        def get_by_slug(self, slug: str) -> PageSchema:
+            return self.to_response(self.handle_get_one(Page.slug == slug))
+
+        def authorize(self, action, obj=None, data=None):
+            if obj is not None and obj.slug == "secret":
+                raise fr.exc.Forbidden("not yours")
+
+    fr.DataclassBase.metadata.create_all(engine)
+
+    client = RestlyTestClient(app)
+    client.post("/pages/", json={"slug": "alpha", "title": "Alpha"})
+    client.post("/pages/", json={"slug": "secret", "title": "Secret"})
+
+    assert client.get("/pages/by-slug/alpha").json()["title"] == "Alpha"
+
+    # a miss is a 404 whose body does not echo the criterion
+    response = client.get("/pages/by-slug/nope", assert_status_code=404)
+    assert response.json() == {"detail": "Page was not found"}
+
+    # the handler runs read-auth on this path like it does on GET /{id}
+    client.get("/pages/by-slug/secret", assert_status_code=403)
+
+
+def test_get_one_rejects_an_identity_that_is_neither_id_nor_expression(sync_db):
+    """A Python bool renders as ``WHERE true`` and a Clause is a scope, so
+    both are refused rather than quietly matching the wrong row."""
+    engine, make_session = sync_db
+
+    class Note(fr.IDBase):
+        slug: Mapped[str]
+
+    class NoteSchema(fr.IDSchema):
+        slug: str
+
+    class NoteClauses(fr.ClauseNamespace):
+        model = Note
+
+        is_alpha = fr.where_clause(Note.slug == "alpha")
+
+    class NoteView(fr.RestView):
+        prefix = "/notes"
+        model = Note
+        schema = NoteSchema
+
+    fr.DataclassBase.metadata.create_all(engine)
+
+    with make_session() as session:
+        session.add(Note(slug="alpha"))
+        session.flush()
+
+        view = NoteView()
+        view.session = session
+
+        note = view.get_one(Note.slug == "alpha")
+        # the mistake this guards: a comparison on the loaded object
+        with pytest.raises(TypeError, match="bool"):
+            view.get_one(note.slug == "alpha")
+        with pytest.raises(TypeError, match="scope="):
+            view.get_one(NoteClauses.is_alpha)  # type: ignore[arg-type]
+        # called, the same clause is an expression like any other
+        assert view.get_one(NoteClauses.is_alpha()).id == note.id
+
+
+def test_a_composite_primary_key_is_addressable_by_predicate(sync_db):
+    """An id cannot name a row under a composite key, so ``get_one`` says
+    so and points at the predicate form, which works there."""
+    import sqlalchemy
+
+    engine, make_session = sync_db
+
+    class Pair(fr.DataclassBase):
+        __tablename__ = "pair"
+
+        a: Mapped[int] = mapped_column(primary_key=True)
+        b: Mapped[int] = mapped_column(primary_key=True)
+        note: Mapped[str]
+
+    class PairSchema(fr.BaseSchema):
+        a: int
+        b: int
+        note: str
+
+    class PairView(fr.RestView):
+        prefix = "/pairs"
+        model = Pair
+        schema = PairSchema
+
+    fr.DataclassBase.metadata.create_all(engine)
+
+    with make_session() as session:
+        session.add_all([Pair(a=1, b=2, note="first"), Pair(a=1, b=3, note="second")])
+        session.flush()
+
+        view = PairView()
+        view.session = session
+
+        with pytest.raises(NotImplementedError, match="composite primary key"):
+            view.get_one(1)
+
+        found = view.get_one(sqlalchemy.and_(Pair.a == 1, Pair.b == 3))
+        assert found.note == "second"

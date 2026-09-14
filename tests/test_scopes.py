@@ -1200,6 +1200,29 @@ def test_scope_resolution_falls_back_from_view_to_model_to_unscoped():
     assert fr.resolve_scope(_Bare) is fr.clauses.UNSCOPED
 
 
+def test_a_criterion_narrows_inside_the_scope_and_cannot_widen_it(sync_session):
+    """``get_one`` takes a predicate in place of the id. It is ANDed under
+    the resolved scope, so it addresses another key inside what the view
+    sees and never past it; only ``scope=`` changes what that is."""
+    view = _SyncRowView()
+    view.session = sync_session
+    with _SyncContext.tenant_id.bind(tenant_id=1):
+        # the natural-key shape: another column, the same scope and 404
+        assert view.get_one(SyncRow.tenant_id == 1).id == 1
+
+        # row 2 is another tenant's: naming it directly is still a 404
+        with pytest.raises(NotFound):
+            view.get_one(SyncRow.id == 2)
+
+        # only scope= reaches it, and the criterion still narrows inside
+        assert view.get_one(SyncRow.id == 2, scope=fr.clauses.UNSCOPED).id == 2
+        with pytest.raises(NotFound):
+            view.get_one(SyncRow.id == 3, scope=fr.clauses.UNSCOPED)
+
+        # the handler adds read-auth on the predicate path like any other
+        assert view.handle_get_one(SyncRow.id == 1).id == 1
+
+
 def test_resolve_scope_rejects_a_target_that_is_neither_view_nor_model():
     with pytest.raises(TypeError, match="RestView"):
         fr.resolve_scope(SyncRowClauses)  # type: ignore[call-overload]

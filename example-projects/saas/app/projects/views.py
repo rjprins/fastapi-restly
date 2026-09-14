@@ -107,7 +107,9 @@ class ProjectView(SoftDeleteMixin, TenantBase):
             query_params=result.query_params,
         )
 
-    async def get_one(self, id: int, *, scope: fr.views.ReadScope = None):
+    async def get_one(
+        self, id: int | sa.ColumnElement[bool], *, scope: fr.views.ReadScope = None
+    ):
         # The default scope enforces tenant + soft-delete filtering already.
         # ``get_one`` is the auth-free load+scope+404 override point; we layer only
         # project-specific response decoration on top. ``handle_get_one``
