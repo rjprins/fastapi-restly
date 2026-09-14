@@ -46,7 +46,8 @@ service needs.
   OpenAPI, templates, and contract tests, for example `POST /tasks`.
 - **Real application patterns.** Tenant isolation, permissions, relationships,
   custom actions, query modifiers, multipart uploads, optimistic locking,
-  soft deletion, and transactional outbox writes are all covered.
+  soft deletion, shared commits for bulk and multi-model writes, per-row
+  savepoints, and transactional outbox writes are all covered.
 
 ## Project layout
 

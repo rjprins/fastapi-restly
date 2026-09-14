@@ -31,7 +31,7 @@ owning one kind of concern.
 ```
 POST /
   └─ create_endpoint(...)    1. the endpoint method: the HTTP contract
-       └─ handle_create(...) 2. the handler: authorization and the commit
+       └─ handle_create(...) 2. the handler: authorization and commit bracket
             └─ create(...)   3. the business method: the domain change
 ```
 
@@ -47,13 +47,16 @@ The **handler**, `handle_<verb>`, owns the request logic in between. It runs
 **commit bracket**: {meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>`, then the commit itself, then
 {meth}`after_action_commit <fastapi_restly.views.RestView.after_action_commit>`. It returns the domain object, so custom routes can
 reuse it; only the delete handler returns nothing. Override it to change
-orchestration or timing without re-declaring the route.
+orchestration or timing without re-declaring the route. The handler normally
+owns the commit. To move it to an outer block, see
+[Commit several writes together](#shared-write-action-commit).
 
 The **business method** is the bare verb: {meth}`create <fastapi_restly.views.RestView.create>`, {meth}`update <fastapi_restly.views.RestView.update>`,
 {meth}`delete <fastapi_restly.views.RestView.delete>`, {meth}`get_one <fastapi_restly.views.RestView.get_one>`, or {meth}`get_many <fastapi_restly.views.RestView.get_many>`. It makes the domain change:
 build, apply, save. It is deliberately auth-free and commit-free, which is
 what makes it the usual override point: your code runs with authorization
-already checked and with the commit still owned by the handler.
+already checked and with the commit still owned by the surrounding commit
+bracket.
 
 The method names are regular across all five verbs, so `update_endpoint`
 calls `handle_update`, which calls `update`, and so on. The worked example
@@ -61,7 +64,7 @@ below leans on the commit split in particular.
 
 ## Worked example: hash a password on create
 
-Hashing a password is domain logic, so it belongs in {meth}`create <fastapi_restly.views.RestView.create>`. The handler
+Hashing a password is domain logic, so it belongs in {meth}`create <fastapi_restly.views.RestView.create>`. The surrounding commit bracket
 commits after this method returns:
 
 ```python
@@ -610,6 +613,22 @@ when several handlers or custom actions should share that commit:
             orders = [await self.handle_create(item) for item in items]
         return [self.to_response(order) for order in orders]
 ```
+
+The block can also combine a handler with related model writes. This is useful
+when one logical operation spans more than one model:
+
+```python
+    async with self.shared_write_action_commit():
+        project = await self.handle_create(project_data)
+        self.session.add_all(
+            Task(project_id=project.id, title=task.title)
+            for task in source_tasks
+        )
+    return self.to_response(project)
+```
+
+The new project, its before-hook writes, and the copied tasks commit together.
+If any part fails, none of them commit.
 
 Each action still authorizes, snapshots, mutates, and runs
 `before_action_commit`. It then flushes and returns while its changes remain

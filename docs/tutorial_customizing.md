@@ -36,10 +36,11 @@ POST /     → create_endpoint(schema_obj)     # endpoint method
            → create(schema_obj)              # build + save, no commit
 ```
 
-Two facts make this layout safe to override:
+Three facts make this layout safe to override:
 
-- **The handler owns the commit.** `handle_<verb>` runs {meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>`, then `commit`, then {meth}`after_action_commit <fastapi_restly.views.RestView.after_action_commit>` around the business method.
-- **The business method never commits.** `create` / `update` / `delete` build, apply, and flush. The handler commits later.
+- **The handler normally owns the commit.** `handle_<verb>` runs {meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>`, then `commit`, then {meth}`after_action_commit <fastapi_restly.views.RestView.after_action_commit>` around the business method.
+- **The business method never commits.** `create` / `update` / `delete` build, apply, and flush. The surrounding commit bracket commits later.
+- **Several handlers can share one commit.** Inside {ref}`shared_write_action_commit() <shared-write-action-commit>`, a handler returns after its flush. The outermost block commits and runs the queued after-hooks.
 
 Inside every method, `self.session` is the live database session and `self.request` is the FastAPI `Request` object.
 
@@ -129,14 +130,14 @@ class PostView(fr.AsyncRestView):
 `DELETE /posts/{id}` now marks the row instead of removing it.
 {meth}`delete_endpoint <fastapi_restly.views.RestView.delete_endpoint>` still
 returns 204, and {meth}`handle_delete <fastapi_restly.views.RestView.handle_delete>`
-still commits. Pair this with a scope clause that hides deleted rows. The canonical recipe lives in [Customizing
+still runs the commit bracket. Pair this with a scope clause that hides deleted rows. The canonical recipe lives in [Customizing
 RestView](customize.md#delete-soft-delete-instead-of-removing-the-row). The
 reusable mixin version is in [Compose Views with
 Mixins](howto_compose_views_with_mixins.md).
 
 ## Tier 2: the handler (orchestration and timing)
 
-One tier up from the business method sits the handler. `handle_<verb>` owns {meth}`authorize <fastapi_restly.views.RestView.authorize>` and the commit bracket; override it to change *orchestration or timing* without re-declaring the route. The defaults look like this:
+One tier up from the business method sits the handler. `handle_<verb>` owns {meth}`authorize <fastapi_restly.views.RestView.authorize>` and the commit bracket. Override it to change *orchestration or timing* without re-declaring the route. Outside a shared commit block, the defaults look like this:
 
 ```
 handle_create  →  authorize("create", data=schema_obj)

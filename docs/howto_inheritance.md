@@ -60,20 +60,23 @@ class OrderView(AuditBase):
 
 `OrderView.create` runs first and delegates to `AuditBase.create`, which in turn delegates to {meth}`RestView.create <fastapi_restly.views.RestView.create>`; all three layers run in order.
 
-## Share an orchestration override
+## Share post-commit behavior
 
-When shared behaviour is about *timing*, override the handler instead of the business method. This keeps the endpoint method unchanged:
+When shared behaviour should happen only after a durable write, override the
+after-hook on the base class:
 
 ```python
 class NotifyBase(fr.RestView):
-    def handle_create(self, schema_obj):
-        obj = super().handle_create(schema_obj)
-        # super().handle_create has already committed, so the row is durable.
-        notify_created(obj)
-        return obj
+    def after_action_commit(self, action, new, old=None):
+        if action == "create":
+            notify_created(new)
 ```
 
-Every subclass of `NotifyBase` now fires `notify_created` after commit. For most post-commit side effects, prefer {meth}`after_action_commit <fastapi_restly.views.RestView.after_action_commit>` (see [transaction hooks](customize.md#transaction-hooks-before_action_commit--after_action_commit)); use a handler override when control flow must change.
+Every subclass of `NotifyBase` now fires `notify_created` after the write is
+durable. This remains true when a custom endpoint uses
+{ref}`shared_write_action_commit() <shared-write-action-commit>`, which
+queues the hook until the outermost block commits. Override a handler only
+when the orchestration or timing of the commit bracket itself must change.
 
 ## Inherit a shared dependency
 

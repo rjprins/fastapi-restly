@@ -67,8 +67,8 @@ class UserView(fr.AsyncRestView):
         return await self.save_object(user)
 ```
 
-`create` is commit-free, so the handler commits the password hash with the
-row. The view methods `make_new_object` and `save_object` wrap the free
+`create` is commit-free, so the surrounding commit bracket persists the
+password hash with the row. The view methods `make_new_object` and `save_object` wrap the free
 functions in `fastapi_restly.objects`; import the free functions for workers
 with a bare session.
 

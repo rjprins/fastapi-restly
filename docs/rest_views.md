@@ -127,9 +127,13 @@ and Paginate Lists](howto_query_modifiers.md) defines the complete query
 grammar. [Response Envelopes and List Metadata](howto_response_schema.md)
 defines the default containers and how to replace them.
 
-Missing or hidden rows return `404`. The default create, update, and delete
-handlers run authorization, call the business method, run the commit hooks,
-and commit before returning the response. Reads do not commit.
+Missing or hidden rows return `404`. On the default endpoints, the create,
+update, and delete handlers run authorization, call the business method, run
+the commit hooks, and commit before the response is built. A custom endpoint
+can group several handlers under one
+{meth}`shared_write_action_commit() <fastapi_restly.views.AsyncRestView.shared_write_action_commit>`
+block. The outermost block then owns the commit and after-hooks. Reads do not
+commit.
 
 :::{important}
 Restly does not authenticate requests or impose an authorization policy.
@@ -169,6 +173,7 @@ Change the layer that owns the behavior instead of rewriting the entire route:
 | Hide rows from every read | Declare a [scope](scopes.md): `default_scope` on the model, or `scope` on the view |
 | Permit or reject an action | Override {meth}`authorize() <fastapi_restly.views.AsyncRestView.authorize>` |
 | Run an atomic side effect or a post-commit action | Override `before_action_commit()` or `after_action_commit()` |
+| Commit several handlers or custom actions together | Wrap them in {ref}`shared_write_action_commit() <shared-write-action-commit>` |
 | Change status, headers, request parameters, or response model | Replace the endpoint method |
 | Add a path that is not part of CRUD | Add a method with `@fr.get`, `@fr.post`, or another route decorator |
 | Share behavior across resources | Use a [base view](howto_inheritance.md) or [mixins](howto_compose_views_with_mixins.md) |
