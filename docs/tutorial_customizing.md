@@ -137,7 +137,7 @@ Mixins](howto_compose_views_with_mixins.md).
 
 ## Tier 2: the handler (orchestration and timing)
 
-One tier up from the business method sits the handler. `handle_<verb>` owns {meth}`authorize <fastapi_restly.views.RestView.authorize>` and the commit bracket. Override it to change *orchestration or timing* without re-declaring the route. Outside a shared commit block, the defaults look like this:
+One tier up from the business method sits the handler. `handle_<verb>` owns {meth}`authorize <fastapi_restly.views.RestView.authorize>` and the commit bracket. The handler is final. Call it from a custom route to reuse that behavior. Put side-effect timing in `before_action_commit` or `after_action_commit`, and use `shared_write_action_commit()` when several writes need one commit. Outside a shared commit block, the defaults look like this:
 
 ```
 handle_create  →  authorize("create", data=schema_obj)

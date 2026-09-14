@@ -75,8 +75,8 @@ class NotifyBase(fr.RestView):
 Every subclass of `NotifyBase` now fires `notify_created` after the write is
 durable. This remains true when a custom endpoint uses
 {ref}`shared_write_action_commit() <shared-write-action-commit>`, which
-queues the hook until the outermost block commits. Override a handler only
-when the orchestration or timing of the commit bracket itself must change.
+queues the hook until the outermost block commits. The handler is final. A
+custom route can call it, but a subclass cannot override it.
 
 ## Inherit a shared dependency
 
