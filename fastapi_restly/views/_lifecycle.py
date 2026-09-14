@@ -14,6 +14,7 @@ from functools import partial
 from typing import Any, Protocol, TypeVar
 
 from sqlalchemy import event
+from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session, SessionTransaction
 
@@ -164,11 +165,13 @@ async def _async_shared_write_action_commit(
 ) -> AsyncIterator[None]:
     """Commit once after the outermost block, then await its surviving hooks."""
     pending: tuple[_QueuedAfterHook, ...] = ()
-    with _join_shared_write_action_commit(session.sync_session, asynchronous=True) as owner:
+    with _join_shared_write_action_commit(
+        session.sync_session, asynchronous=True
+    ) as owner:
         yield
         if owner.depth == 1:
             owner.require_active()
-            await session.commit()
+            await _async_commit_shared_write_actions(session, owner)
             pending = tuple(owner.pending)
 
     # Drop the owner before hooks run, so no hook can join a finished commit.
@@ -189,7 +192,7 @@ def _shared_write_action_commit(session: Session) -> Iterator[None]:
         yield
         if owner.depth == 1:
             owner.require_active()
-            session.commit()
+            _commit_shared_write_actions(session, owner)
             pending = tuple(owner.pending)
 
     for entry in pending:
@@ -204,6 +207,8 @@ class _QueuedAfterHook:
     callback: Callable[[], Any]
     transaction: SessionTransaction | None
     asynchronous: bool
+    new: Any
+    loaded_attributes: frozenset[str]
 
 
 @dataclass
@@ -211,6 +216,7 @@ class _SharedWriteActionCommit:
     asynchronous: bool = False
     depth: int = 0
     aborted: bool = False
+    committing: bool = False
     pending: list[_QueuedAfterHook] = field(default_factory=list)
 
     def require_active(self, *, asynchronous: bool = False) -> None:
@@ -242,11 +248,57 @@ class _SharedWriteActionCommit:
         self.require_active(asynchronous=asynchronous)
         self.pending.append(
             _QueuedAfterHook(
-                partial(host.after_action_commit, action, new=new, old=old),
-                session.get_nested_transaction() or session.get_transaction(),
-                asynchronous,
+                callback=partial(host.after_action_commit, action, new=new, old=old),
+                transaction=(
+                    session.get_nested_transaction() or session.get_transaction()
+                ),
+                asynchronous=asynchronous,
+                new=new,
+                loaded_attributes=_loaded_orm_attributes(new),
             )
         )
+
+
+def _loaded_orm_attributes(obj: Any) -> frozenset[str]:
+    state = sa_inspect(obj, raiseerr=False)
+    if state is None:
+        return frozenset()
+    return frozenset(state.dict).intersection(state.mapper.attrs.keys())
+
+
+def _expired_hook_attributes(entry: _QueuedAfterHook) -> frozenset[str]:
+    state = sa_inspect(entry.new, raiseerr=False)
+    if state is None or not state.persistent:
+        return frozenset()
+    return entry.loaded_attributes.intersection(state.expired_attributes)
+
+
+async def _async_commit_shared_write_actions(
+    session: AsyncSession, owner: _SharedWriteActionCommit
+) -> None:
+    for entry in owner.pending:
+        expired = _expired_hook_attributes(entry)
+        if expired:
+            await session.refresh(entry.new, attribute_names=expired)
+    owner.committing = True
+    try:
+        await session.commit()
+    finally:
+        owner.committing = False
+
+
+def _commit_shared_write_actions(
+    session: Session, owner: _SharedWriteActionCommit
+) -> None:
+    for entry in owner.pending:
+        expired = _expired_hook_attributes(entry)
+        if expired:
+            session.refresh(entry.new, attribute_names=expired)
+    owner.committing = True
+    try:
+        session.commit()
+    finally:
+        owner.committing = False
 
 
 def _shared_write_action_commit_owner(
@@ -263,6 +315,8 @@ def _join_shared_write_action_commit(
     if owner is None:
         owner = _SharedWriteActionCommit(asynchronous=asynchronous)
         event.listen(session, "after_soft_rollback", _discard_rolled_back_hooks)
+        event.listen(session, "after_transaction_end", _abort_ended_transaction)
+        event.listen(session, "before_commit", _reject_direct_commit)
         session.info[_SHARED_WRITE_ACTION_COMMIT_KEY] = owner
     owner.depth += 1
     try:
@@ -276,7 +330,26 @@ def _join_shared_write_action_commit(
         if owner.depth == 0:
             session.info.pop(_SHARED_WRITE_ACTION_COMMIT_KEY, None)
             event.remove(session, "after_soft_rollback", _discard_rolled_back_hooks)
+            event.remove(session, "after_transaction_end", _abort_ended_transaction)
+            event.remove(session, "before_commit", _reject_direct_commit)
             owner.pending.clear()
+
+
+def _reject_direct_commit(session: Session) -> None:
+    owner = _shared_write_action_commit_owner(session)
+    if owner is None or owner.committing or session.in_nested_transaction():
+        return
+    owner.abort()
+    raise RuntimeError(
+        "session.commit() cannot be called inside shared_write_action_commit(). "
+        "The outermost block owns the commit."
+    )
+
+
+def _abort_ended_transaction(session: Session, transaction: SessionTransaction) -> None:
+    owner = _shared_write_action_commit_owner(session)
+    if owner is not None and not owner.committing and transaction.parent is None:
+        owner.abort()
 
 
 def _discard_rolled_back_hooks(

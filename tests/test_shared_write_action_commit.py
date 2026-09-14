@@ -420,6 +420,82 @@ async def test_root_rollback_aborts_the_deferred_commit(writes):
     assert await _names(writes, writes.audit) == []
 
 
+@pytest.mark.parametrize("inside_savepoint", [False, True])
+async def test_direct_session_commit_is_rejected(writes, inside_savepoint):
+    with pytest.raises(RuntimeError, match="owns the commit"):
+        async with _enter(writes.view.shared_write_action_commit()):
+            await _call(writes.view.handle_create(writes.schema(name="pending")))
+            if inside_savepoint:
+                await _call(writes.session.begin_nested())
+            await _call(writes.session.commit())
+
+    assert ("commit", None) not in writes.events
+    assert writes.after_calls == []
+    assert await _names(writes, writes.model) == []
+    await _call(writes.session.rollback())
+
+
+async def test_closing_the_session_aborts_the_shared_commit(writes):
+    with pytest.raises(RuntimeError, match="was aborted"):
+        async with _enter(writes.view.shared_write_action_commit()):
+            await _call(writes.view.handle_create(writes.schema(name="discarded")))
+            await _call(writes.session.close())
+
+    assert ("commit", None) not in writes.events
+    assert writes.after_calls == []
+    assert await _names(writes, writes.model) == []
+
+
+async def test_savepoint_rollback_keeps_surviving_hook_objects_readable(
+    writes, monkeypatch
+):
+    names = []
+
+    def remember_name(action, new, old=None):
+        names.append(new.name)
+
+    _replace_hook(writes, monkeypatch, "after_action_commit", remember_name)
+    async with _enter(writes.view.shared_write_action_commit()):
+        obj = await _call(writes.view.handle_create(writes.schema(name="survivor")))
+        with pytest.raises(ValueError, match="discard update"):
+            async with _enter(writes.session.begin_nested()):
+                async with _enter(writes.view.write_action("rename", obj=obj)):
+                    obj.name = "discarded"
+                raise ValueError("discard update")
+
+    assert names == ["survivor"]
+    assert await _names(writes, writes.model) == ["survivor"]
+
+
+async def test_failed_block_after_released_savepoint_still_warns(writes):
+    _arm_uncommitted_warning(writes.session)
+
+    with pytest.raises(ValueError, match="abort after row"):
+        async with _enter(writes.view.shared_write_action_commit()):
+            async with _enter(writes.session.begin_nested()):
+                await _call(
+                    writes.view.handle_create(writes.schema(name="uncommitted"))
+                )
+            raise ValueError("abort after row")
+
+    with pytest.warns(fr.exc.RestlyUncommittedChangesWarning):
+        _warn_if_uncommitted(writes.session)
+    await _call(writes.session.rollback())
+
+
+async def test_rolled_back_savepoint_without_other_writes_does_not_warn(writes):
+    _arm_uncommitted_warning(writes.session)
+
+    with pytest.raises(ValueError, match="discard row"):
+        async with _enter(writes.session.begin_nested()):
+            writes.session.add(writes.model(name="discarded"))
+            await _call(writes.session.flush())
+            raise ValueError("discard row")
+
+    _warn_if_uncommitted(writes.session)  # Warnings are errors in this suite.
+    await _call(writes.session.rollback())
+
+
 async def test_after_hook_failure_leaves_writes_durable_and_stops_queue(
     writes, monkeypatch
 ):

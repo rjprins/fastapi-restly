@@ -598,8 +598,10 @@ Internally, `write_action` and the CRUD handlers share {func}`run_write_action <
 (shared-write-action-commit)=
 ### Commit several writes together
 
-Use {meth}`shared_write_action_commit() <fastapi_restly.views.AsyncRestView.shared_write_action_commit>`
-when several handlers or custom actions should share one commit:
+The outermost
+{meth}`shared_write_action_commit() <fastapi_restly.views.AsyncRestView.shared_write_action_commit>`
+block commits once, then the queued `after_action_commit` hooks run. Use it
+when several handlers or custom actions should share that commit:
 
 ```python
     @fr.post("/bulk", status_code=201)
@@ -610,27 +612,36 @@ when several handlers or custom actions should share one commit:
 ```
 
 Each action still authorizes, snapshots, mutates, and runs
-`before_action_commit`. It then flushes and queues `after_action_commit`.
-The outermost block commits the session once, including writes to related
-models, then runs the queued hooks in order. On `fr.RestView`, use `with`
-and synchronous handlers under the same method name.
+`before_action_commit`. It then flushes and returns while its changes remain
+uncommitted. Its `after_action_commit` has not run yet. Build responses and run
+code that depends on an after-hook after the outer block, as in the example.
+On `fr.RestView`, use `with` and synchronous handlers under the same method
+name.
 
 Nested blocks share the commit when their views share a session. An exception
-escaping any block discards its shared queue and prevents that commit, even if
-an enclosing block catches the exception. The session owner still handles
-rollback. Direct `session.commit()` calls are not deferred.
+escaping a deferred-commit block discards its shared queue and prevents that
+commit, even if an enclosing deferred-commit block catches the exception. The
+session owner still handles rollback. A direct `session.commit()` inside the
+block raises `RuntimeError` because the outermost block owns the commit.
 
 For partial success, put SQLAlchemy's `session.begin_nested()` **outside** each
-inner `write_action` or handler and catch the row exception outside its
-savepoint. This keeps the row and its before-hook writes together. Rolled-back
-actions lose their queued after-hooks.
+inner commit bracket and catch the row exception outside its savepoint:
 
-After-hooks stop on the first exception, when the writes are already committed.
-Each receives its own `old` snapshot, but `new` is the live object and includes
-later changes made in the block.
+```python
+    from sqlalchemy.exc import IntegrityError
 
-Sync actions called through SQLAlchemy's `AsyncSession.run_sync()` can join an
-async block. Async actions require an async outermost block.
+    async with self.shared_write_action_commit():
+        for item in items:
+            try:
+                async with self.session.begin_nested():
+                    await self.handle_create(item)
+            except IntegrityError:
+                continue
+```
+
+The savepoint contains the row's mutation and before-hook writes, so a failed
+row rolls both back. Its queued after-hook is discarded. Surviving after-hooks
+run in order after the shared commit and stop on the first exception.
 
 ### Relationship references in custom routes
 

@@ -156,8 +156,14 @@ difference is that the async variant uses `await` in its process methods.
 
 `AsyncSessionDep` and `SessionDep` use Restly's built-in session generators.
 Those generators yield a SQLAlchemy session and manage lifecycle: rollback and
-close on exit. They do **not** commit on response. `handle_<verb>` owns the
-commit and runs {meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>`, then the commit itself, then {meth}`after_action_commit <fastapi_restly.views.RestView.after_action_commit>` around domain logic.
+close on exit. They do **not** commit on response. `handle_<verb>` normally owns
+the commit and runs
+{meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>`,
+then the commit itself, then
+{meth}`after_action_commit <fastapi_restly.views.RestView.after_action_commit>`
+around domain logic. Inside `shared_write_action_commit`, the outermost block
+owns the commit and handlers return after flush, before the commit and
+after-hook.
 Custom write routes can use the same bracket with
 `async with self.write_action(action, ...)`. Several brackets can share a commit
 with [shared_write_action_commit()](#shared-write-action-commit).

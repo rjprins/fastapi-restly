@@ -62,3 +62,18 @@ class WidgetView(fr.RestView[Widget, WidgetRead, WidgetInput, WidgetInput, int])
 
     def handle_delete(self, id: int) -> None:
         super().handle_delete(id)
+
+
+def create_widgets_together(view: WidgetView, items: list[WidgetInput]) -> list[Widget]:
+    with view.shared_write_action_commit():
+        widgets = [view.handle_create(item) for item in items]
+    return widgets
+
+
+async def async_create_widgets_together(
+    view: fr.AsyncRestView[Widget, WidgetRead, WidgetInput, WidgetInput, int],
+    items: list[WidgetInput],
+) -> list[Widget]:
+    async with view.shared_write_action_commit():
+        widgets = [await view.handle_create(item) for item in items]
+    return widgets

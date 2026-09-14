@@ -128,12 +128,13 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         For create-shaped actions, omit ``obj`` and set ``w.obj`` before exit.
         Pass ``obj=None`` for writes with no single object. Exceptions skip the
         commit. Inside :meth:`shared_write_action_commit`, the outermost block
-        owns the commit and the after-hooks.
+        owns the commit and the after-hooks, so this bracket returns after its
+        flush but before either one.
         """
         return sync_write_action(self, action, obj=obj, data=data)
 
     def shared_write_action_commit(self) -> AbstractContextManager[None]:
-        """Commit the session once after the outermost block succeeds.
+        """Share one commit across write actions on this session.
 
         Sync counterpart of :meth:`AsyncRestView.shared_write_action_commit`::
 
@@ -141,19 +142,35 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
                 for schema_obj in items:
                     self.handle_create(schema_obj)
 
-        Nested blocks on the same session share the commit. Exceptions abort
-        the block without rolling back the session. The write handlers and
-        ``write_action`` defer their commit and after-hooks. Direct
-        ``session.commit()`` calls are not deferred.
+        The outermost block commits once, then runs the queued after-hooks.
+        Write handlers return after their flush inside the block, before the
+        commit and after-hooks. Serialize their objects and run code that
+        depends on an after-hook only after the block exits.
+
+        Nested blocks on the same session share the commit. An exception
+        escaping a deferred-commit block aborts the shared commit, including
+        when an enclosing deferred-commit block catches it. Rollback belongs
+        to the session owner. Direct ``session.commit()`` calls raise
+        ``RuntimeError``.
         """
         return _shared_write_action_commit(self.session)
 
     def handle_create(self, schema_obj: CreateSchemaT) -> ModelT:
+        """Run create through the commit bracket and return its model.
+
+        Inside :meth:`shared_write_action_commit`, this returns after the flush
+        but before the commit and ``after_action_commit``.
+        """
         return run_write_action(
             self, Action.CREATE, data=schema_obj, mutate=lambda: self.create(schema_obj)
         )
 
     def handle_update(self, id: IdT, schema_obj: UpdateSchemaT) -> ModelT:
+        """Run update through the commit bracket and return its model.
+
+        Inside :meth:`shared_write_action_commit`, this returns after the flush
+        but before the commit and ``after_action_commit``.
+        """
         obj = self.get_one(id)
         return run_write_action(
             self,
@@ -164,6 +181,11 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         )
 
     def handle_delete(self, id: IdT) -> None:
+        """Run delete through the commit bracket.
+
+        Inside :meth:`shared_write_action_commit`, this returns after the flush
+        but before the commit and ``after_action_commit``.
+        """
         obj = self.get_one(id)
         run_write_action(self, Action.DELETE, obj=obj, mutate=lambda: self.delete(obj))
 

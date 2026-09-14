@@ -156,42 +156,52 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
 
         Pass ``obj=None`` for writes with no single object. Exceptions skip the
         commit. Inside :meth:`shared_write_action_commit`, the outermost block
-        owns the commit and the after-hooks.
+        owns the commit and the after-hooks, so this bracket returns after its
+        flush but before either one.
         """
         return async_write_action(self, action, obj=obj, data=data)
 
     def shared_write_action_commit(self) -> AbstractAsyncContextManager[None]:
-        """Commit the session once after the outermost block succeeds.
+        """Share one commit across write actions on this session.
 
-        ``write_action`` and the write handlers still authorize, snapshot,
-        mutate, and run ``before_action_commit``. They flush their changes and
-        queue ``after_action_commit`` until this block commits::
+        The outermost block commits once, then runs the queued
+        ``after_action_commit`` hooks. ``write_action`` and the write handlers
+        still authorize, snapshot, mutate, run ``before_action_commit``, and
+        flush. They return uncommitted objects inside the block::
 
             async with self.shared_write_action_commit():
                 for schema_obj in items:
                     await self.handle_create(schema_obj)
 
-        Nested blocks on the same session share the commit. An exception
-        escaping any block aborts it, including when an enclosing block catches
-        that exception. Rollback belongs to the session owner. For partial
-        success, put ``session.begin_nested()`` around each inner commit bracket
-        and catch the row exception outside its savepoint.
+        Serialize returned objects and run code that depends on an after-hook
+        only after the block exits. Nested blocks on the same session share the
+        commit. An exception escaping a deferred-commit block aborts the shared
+        commit, including when an enclosing deferred-commit block catches that
+        exception. Rollback belongs to the session owner.
 
         After-hooks run in queue order and stop on the first exception. ``new``
         is the live object after all writes, while ``old`` is each action's
-        snapshot. Direct ``session.commit()`` calls are not deferred.
-
-        Sync actions can join through ``AsyncSession.run_sync()``. Their hooks
-        use the same bridge. Async actions require an async outermost block.
+        snapshot. Direct ``session.commit()`` calls raise ``RuntimeError``.
+        Async actions require an async outermost block.
         """
         return _async_shared_write_action_commit(self.session)
 
     async def handle_create(self, schema_obj: CreateSchemaT) -> ModelT:
+        """Run create through the commit bracket and return its model.
+
+        Inside :meth:`shared_write_action_commit`, this returns after the flush
+        but before the commit and ``after_action_commit``.
+        """
         return await async_run_write_action(
             self, Action.CREATE, data=schema_obj, mutate=lambda: self.create(schema_obj)
         )
 
     async def handle_update(self, id: IdT, schema_obj: UpdateSchemaT) -> ModelT:
+        """Run update through the commit bracket and return its model.
+
+        Inside :meth:`shared_write_action_commit`, this returns after the flush
+        but before the commit and ``after_action_commit``.
+        """
         obj = await self.get_one(id)
         return await async_run_write_action(
             self,
@@ -202,6 +212,11 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         )
 
     async def handle_delete(self, id: IdT) -> None:
+        """Run delete through the commit bracket.
+
+        Inside :meth:`shared_write_action_commit`, this returns after the flush
+        but before the commit and ``after_action_commit``.
+        """
         obj = await self.get_one(id)
         await async_run_write_action(
             self, Action.DELETE, obj=obj, mutate=lambda: self.delete(obj)
