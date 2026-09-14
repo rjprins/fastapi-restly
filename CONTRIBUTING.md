@@ -76,9 +76,13 @@ make docs-serve
   prose mentions of Restly objects should be clickable, SQLAlchemy-style.
   External objects resolve via intersphinx (python / sqlalchemy / pydantic /
   fastapi).
-- Link to a section on another page through an explicit MyST target
-  (`(name)=` above the heading, `[text](#name)` to link) — heading-slug
-  fragments (`file.md#some-heading`) break silently when headings change.
+- Link to a section on another page through an explicit MyST target: put
+  `(name)=` above the heading and link with `[text](#name)`, with no
+  filename. The two anchor forms are not interchangeable: `file.md#x`
+  resolves auto-generated heading slugs only (`myst_heading_anchors = 3`),
+  so it cannot reach a `(name)=` target, and it breaks whenever the
+  heading is reworded. Both mistakes fail the build: `nitpicky = True`
+  plus `-W` turns an unresolved link or role into an error.
 - Code examples in docs should be runnable as shown (or clearly marked
   illustrative); the landing-page teaser, tutorial listing, and Patterns
   entries are executed during review — keep them that way.
