@@ -48,10 +48,20 @@ class ProjectView(fr.AsyncRestView):
     @fr.get("/{id}/tasks", response_model=list[TaskRead])
     async def list_tasks(self, id: int):
         project = await self.handle_get_one(id)  # scoping, 404, and read-auth
-        query = sa.select(Task).where(Task.project_id == project.id)
+        query = fr.apply_clauses(
+            sa.select(Task).where(Task.project_id == project.id),
+            fr.resolve_scope(TaskView),  # the child's own visibility
+        )
         tasks = (await self.session.scalars(query)).all()
         return [TaskRead.model_validate(t, from_attributes=True) for t in tasks]
 ```
+
+The parent's read path covers the project: scope, 404, read-auth. It says
+nothing about the tasks, so the child rows need the child's visibility, and
+{func}`fr.resolve_scope <fastapi_restly.views.resolve_scope>` takes it from
+`TaskView` rather than repeating the clause here. Without it this listing
+returns rows `GET /tasks` hides, such as another member's or a soft-deleted
+one. See [Reading the resolved scope](scopes.md).
 
 The filter grammar, including
 [foreign-key filtering](howto_query_modifiers.md#foreign-key-filtering), is

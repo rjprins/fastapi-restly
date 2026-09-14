@@ -544,6 +544,24 @@ class UserView(fr.AsyncRestView):
 
 `get_one` / `handle_get_one` return the raw ORM object, so you can access all model attributes directly.
 
+(natural-key-route)=
+### Look a row up by another key
+
+`id` is the primary key by default, and a SQLAlchemy boolean expression replaces it. Everything else about the load is unchanged: the view's [scope](scopes.md), the schema's loader options, and the same 404.
+
+```python
+    @fr.get("/by-email/{email}")
+    async def get_by_email(self, email: str) -> UserRead:
+        user = await self.handle_get_one(User.email == email)
+        return self.to_response(user)
+```
+
+Combine columns with `sqlalchemy.and_(...)`. That is also how a model with a composite primary key is addressed, since an id cannot name one of its rows; passing one raises `NotImplementedError`.
+
+The criterion narrows inside the scope and never past it, so a row the view hides stays a 404 under any key, and {attr}`scope <fastapi_restly.views.BaseRestView.scope>` remains the only way to change what the view sees. More than one match raises SQLAlchemy's `MultipleResultsFound` instead of serving the first row: an ambiguous key is a bug in the criterion.
+
+{meth}`handle_update <fastapi_restly.views.RestView.handle_update>` and {meth}`handle_delete <fastapi_restly.views.RestView.handle_delete>` take the same identity, so `PATCH /users/by-email/{email}` runs the full commit bracket against the row that criterion picks.
+
 ## Add a custom action route
 
 Use {func}`@fr.post <fastapi_restly.views.post>` (or {func}`@fr.patch <fastapi_restly.views.patch>`, {func}`@fr.delete <fastapi_restly.views.delete>`) for state-change actions such as archive, publish, or recalculate. Two shapes cover most actions.

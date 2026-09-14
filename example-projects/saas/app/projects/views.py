@@ -13,8 +13,9 @@ import fastapi_restly as fr
 from fastapi_restly.views import PaginatedEnvelope
 
 from ..context import Current
-from ..tasks.models import Task, TaskClauses, TaskPriority, TaskStatus, TaskType
+from ..tasks.models import Task, TaskPriority, TaskStatus, TaskType
 from ..tasks.schemas import TaskSchema
+from ..tasks.views import TaskView
 from ..views import SoftDeleteMixin, TenantBase
 from .models import Project, ProjectClauses, ProjectStatus
 from .schemas import ProjectSchema
@@ -31,6 +32,18 @@ class CloneRequest(BaseModel):
 
     new_name: str | None = None
     include_tasks: bool = True
+
+
+class ProjectPatchRequest(BaseModel):
+    """Request body for the by-slug update: the fields a PATCH may write.
+
+    Only the fields the client sends are applied, so an omitted field
+    keeps its stored value.
+    """
+
+    name: str | None = None
+    description: str | None = None
+    status: ProjectStatus | None = None
 
 
 class ProjectStats(BaseModel):
@@ -107,7 +120,9 @@ class ProjectView(SoftDeleteMixin, TenantBase):
             query_params=result.query_params,
         )
 
-    async def get_one(self, id: int, *, scope: fr.views.ReadScope = None):
+    async def get_one(
+        self, id: int | sa.ColumnElement[bool], *, scope: fr.views.ReadScope = None
+    ):
         # The default scope enforces tenant + soft-delete filtering already.
         # ``get_one`` is the auth-free load+scope+404 override point; we layer only
         # project-specific response decoration on top. ``handle_get_one``
@@ -297,6 +312,36 @@ class ProjectView(SoftDeleteMixin, TenantBase):
 
         return await self._decorate_project_response(new_project)
 
+    @fr.get("/by-slug/{slug}", response_model=ProjectSchema)
+    async def get_by_slug(self, slug: str) -> Project:
+        """Retrieve by the natural key instead of the id.
+
+        ``handle_get_one`` takes a predicate in place of the id, so this
+        route is ``GET /{id}`` under another key: the same scope, the same
+        404, the same read-auth, and ``get_one``'s response decoration.
+        The key is (organization, slug), not the slug alone: slugs are
+        unique inside an organization, and an admin reads across tenants,
+        so a bare slug could match a row per tenant.
+        """
+        return await self.handle_get_one(self._by_slug(slug))
+
+    @fr.patch("/by-slug/{slug}", response_model=ProjectSchema)
+    async def update_by_slug(self, slug: str, request: ProjectPatchRequest) -> Project:
+        """Update by the natural key, through the standard commit bracket.
+
+        ``handle_update`` takes the same predicate, so this loads,
+        authorizes, snapshots, runs the ``update`` verb (slug regeneration
+        and the status event included) and commits, exactly as
+        ``PATCH /{id}`` does.
+        """
+        return await self.handle_update(self._by_slug(slug), request)
+
+    def _by_slug(self, slug: str) -> sa.ColumnElement[bool]:
+        """The natural key: a slug is unique inside one organization."""
+        return sa.and_(
+            Project.slug == slug, Project.organization_id == Current.org_id()
+        )
+
     @fr.get("/{id}/stats", response_model=ProjectStats)
     async def get_project_stats(self, id: int) -> ProjectStats:
         """Get task statistics for a project."""
@@ -340,18 +385,22 @@ class ProjectView(SoftDeleteMixin, TenantBase):
 
     @fr.get("/{id}/tasks", response_model=list[TaskSchema])
     async def list_project_tasks(self, id: int) -> list[Task]:
-        """List tasks for a specific project, honouring task visibility rules.
+        """List one project's tasks, through TaskView's own visibility.
 
-        Applies ``TaskClauses.visible`` — the same scope ``TaskView``
-        declares — so ``GET /projects/{id}/tasks`` and ``GET /tasks/`` can
-        never disagree about which tasks exist for the caller. Tenant
-        scoping is implicit: ``self.handle_get_one(id)`` already verified
-        the project is visible to the caller, and tasks are project-bound.
+        ``fr.resolve_scope(TaskView)`` returns the scope that view's reads
+        apply, so ``GET /projects/{id}/tasks`` and ``GET /tasks`` cannot
+        disagree about which tasks exist for the caller: a member sees the
+        tasks assigned to them on both. Naming ``TaskClauses.visible``
+        here instead would copy the rule, and the copy would drift the day
+        ``TaskView`` declares a different one. The tenant floor is the
+        listener in ``tasks/models``, and ``handle_get_one`` has already
+        checked the project itself.
         """
         await self.handle_get_one(id)
-        q = TaskClauses.visible.select(Task).where(Task.project_id == id)
-        result = await self.session.scalars(q)
-        return list(result.all())
+        query = fr.apply_clauses(
+            select(Task).where(Task.project_id == id), fr.resolve_scope(TaskView)
+        )
+        return list((await self.session.scalars(query)).all())
 
     @fr.post("/{id}/tasks", response_model=TaskSchema, status_code=201)
     async def create_project_task(self, id: int, request: "TaskCreateRequest") -> Task:

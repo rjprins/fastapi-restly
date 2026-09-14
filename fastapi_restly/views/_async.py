@@ -2,8 +2,7 @@ from contextlib import AbstractAsyncContextManager
 from typing import Any, cast, final
 
 import sqlalchemy
-from sqlalchemy import func, select
-from sqlalchemy import inspect as sa_inspect
+from sqlalchemy import ColumnElement, func, select
 
 from ..db import AsyncSessionDep
 from ..exc import NotFound
@@ -23,6 +22,8 @@ from ._base import (
     ResponseShape,
     SchemaT,
     UpdateSchemaT,
+    _identity_criterion,
+    _not_found_message,
     delete,
     get,
     patch,
@@ -128,7 +129,9 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         return await self.get_many(query_params, scope=scope)
 
     @final
-    async def handle_get_one(self, id: IdT, *, scope: ReadScope = None) -> ModelT:
+    async def handle_get_one(
+        self, id: IdT | ColumnElement[bool], *, scope: ReadScope = None
+    ) -> ModelT:
         """Retrieve handler: scoped load (404 by visibility) then read-auth.
 
         Final: override ``get_one`` for the load and ``authorize`` for the
@@ -137,6 +140,9 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         scope=...)`` and gates only its own action, the way
         ``handle_update`` and ``handle_delete`` do.
 
+        :param id: the primary key, or a SQLAlchemy boolean expression
+            that picks the row instead, so a natural-key route is this
+            handler with ``Item.slug == slug``. Forwarded to ``get_one``.
         :param scope: a clause that replaces the view scope for this read,
             so a restore route can load the row the view scope hides.
             Forwarded to ``get_one``.
@@ -205,7 +211,9 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         )
 
     @final
-    async def handle_update(self, id: IdT, schema_obj: UpdateSchemaT) -> ModelT:
+    async def handle_update(
+        self, id: IdT | ColumnElement[bool], schema_obj: UpdateSchemaT
+    ) -> ModelT:
         """Update handler: scoped load, then ``update`` in the commit bracket.
 
         Final, like :meth:`handle_create`: ``update`` receives the loaded
@@ -222,7 +230,7 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         )
 
     @final
-    async def handle_delete(self, id: IdT) -> None:
+    async def handle_delete(self, id: IdT | ColumnElement[bool]) -> None:
         """Delete handler: scoped load, then ``delete`` in the commit bracket.
 
         Final, like :meth:`handle_create`: a soft delete flips a timestamp in
@@ -267,7 +275,9 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
             query_params=query_params,
         )
 
-    async def get_one(self, id: IdT, *, scope: ReadScope = None) -> ModelT:
+    async def get_one(
+        self, id: IdT | ColumnElement[bool], *, scope: ReadScope = None
+    ) -> ModelT:
         """Load one object through the scope (scope + 404).
 
         Auth-free: visibility comes from ``scope`` when given, else the
@@ -275,27 +285,30 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         ``handle_get_one`` adds read-auth; a custom action that needs a
         different auth decision calls this directly with its own scope.
 
+        ``id`` is the primary key by default. A SQLAlchemy boolean
+        expression takes its place to load by any other key
+        (``get_one(Item.slug == slug)``), through the same scope, loader
+        options and 404, and to address a composite key at all. A
+        criterion narrows inside the scope; ``scope=`` is what replaces
+        the scope. More than one match raises SQLAlchemy's
+        ``MultipleResultsFound`` rather than serving the first row: an
+        ambiguous key is a bug in the criterion.
+
         The handlers always forward ``scope=``, so an override must
         declare the parameter and pass it on to ``super()``.
         """
-        pk_cols = sa_inspect(self.model).primary_key
-        if len(pk_cols) != 1:
-            raise NotImplementedError(
-                f"{self.model.__name__} has a composite primary key; "
-                "override get_one to fetch it."
-            )
-        query = self._apply_scope(select(self.model), scope).where(pk_cols[0] == id)
+        query = self._apply_scope(select(self.model), scope).where(
+            _identity_criterion(self.model, id)
+        )
         loader_options = self.get_relationship_loader_options()
         if loader_options:
             query = query.options(*loader_options)
-        # unique(): parity with get_many. SQLAlchemy documents unique() as
-        # required for joined eager loads against collections; only .all()
-        # currently enforces it, but the shared loader seam accepts a
-        # joinedload-to-many, so both read paths follow the documented
-        # contract rather than an enforcement detail.
-        obj = (await self.session.scalars(query)).unique().first()
+        # unique(): the public loader-options seam may return a joined eager
+        # load against a collection, and that row fan-out would otherwise
+        # read as several matches for one entity.
+        obj = (await self.session.scalars(query)).unique().one_or_none()
         if obj is None:
-            raise NotFound(f"{self.model.__name__} with id {id!r} was not found")
+            raise NotFound(_not_found_message(self.model, id))
         return cast(ModelT, obj)
 
     async def create(self, schema_obj: CreateSchemaT) -> ModelT:

@@ -2,8 +2,7 @@ from contextlib import AbstractContextManager
 from typing import Any, cast, final
 
 import sqlalchemy
-from sqlalchemy import func, select
-from sqlalchemy import inspect as sa_inspect
+from sqlalchemy import ColumnElement, func, select
 
 from ..db import SessionDep
 from ..exc import NotFound
@@ -23,6 +22,8 @@ from ._base import (
     ResponseShape,
     SchemaT,
     UpdateSchemaT,
+    _identity_criterion,
+    _not_found_message,
     delete,
     get,
     patch,
@@ -121,7 +122,9 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         return self.get_many(query_params, scope=scope)
 
     @final
-    def handle_get_one(self, id: IdT, *, scope: ReadScope = None) -> ModelT:
+    def handle_get_one(
+        self, id: IdT | ColumnElement[bool], *, scope: ReadScope = None
+    ) -> ModelT:
         """Retrieve handler: scoped load (404 by visibility) then read-auth.
 
         Sync counterpart of :meth:`AsyncRestView.handle_get_one`. Final:
@@ -131,6 +134,9 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         scope=...)`` and gates only its own action, the way ``handle_update``
         and ``handle_delete`` do.
 
+        :param id: the primary key, or a SQLAlchemy boolean expression
+            that picks the row instead, so a natural-key route is this
+            handler with ``Item.slug == slug``. Forwarded to ``get_one``.
         :param scope: a clause that replaces the view scope for this read,
             so a restore route can load the row the view scope hides.
             Forwarded to ``get_one``.
@@ -192,7 +198,9 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         )
 
     @final
-    def handle_update(self, id: IdT, schema_obj: UpdateSchemaT) -> ModelT:
+    def handle_update(
+        self, id: IdT | ColumnElement[bool], schema_obj: UpdateSchemaT
+    ) -> ModelT:
         """Update handler: scoped load, then ``update`` in the commit bracket.
 
         Final, like :meth:`handle_create`: ``update`` receives the loaded
@@ -209,7 +217,7 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         )
 
     @final
-    def handle_delete(self, id: IdT) -> None:
+    def handle_delete(self, id: IdT | ColumnElement[bool]) -> None:
         """Delete handler: scoped load, then ``delete`` in the commit bracket.
 
         Final, like :meth:`handle_create`: a soft delete flips a timestamp in
@@ -242,25 +250,21 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
             query_params=query_params,
         )
 
-    def get_one(self, id: IdT, *, scope: ReadScope = None) -> ModelT:
-        pk_cols = sa_inspect(self.model).primary_key
-        if len(pk_cols) != 1:
-            raise NotImplementedError(
-                f"{self.model.__name__} has a composite primary key; "
-                "override get_one to fetch it."
-            )
-        query = self._apply_scope(select(self.model), scope).where(pk_cols[0] == id)
+    def get_one(
+        self, id: IdT | ColumnElement[bool], *, scope: ReadScope = None
+    ) -> ModelT:
+        query = self._apply_scope(select(self.model), scope).where(
+            _identity_criterion(self.model, id)
+        )
         loader_options = self.get_relationship_loader_options()
         if loader_options:
             query = query.options(*loader_options)
-        # unique(): parity with get_many. SQLAlchemy documents unique() as
-        # required for joined eager loads against collections; only .all()
-        # currently enforces it, but the shared loader seam accepts a
-        # joinedload-to-many, so both read paths follow the documented
-        # contract rather than an enforcement detail.
-        obj = self.session.scalars(query).unique().first()
+        # unique(): the public loader-options seam may return a joined eager
+        # load against a collection, and that row fan-out would otherwise
+        # read as several matches for one entity.
+        obj = self.session.scalars(query).unique().one_or_none()
         if obj is None:
-            raise NotFound(f"{self.model.__name__} with id {id!r} was not found")
+            raise NotFound(_not_found_message(self.model, id))
         return cast(ModelT, obj)
 
     def create(self, schema_obj: CreateSchemaT) -> ModelT:

@@ -40,6 +40,7 @@ from ._base import (
     patch,
     post,
     put,
+    resolve_scope,
     route,
 )
 from ._lifecycle import async_run_write_action, run_write_action
@@ -68,6 +69,7 @@ __all__ = [
     "ViewRoute",
     "async_run_write_action",
     "run_write_action",
+    "resolve_scope",
     "delete",
     "get",
     "include_view",

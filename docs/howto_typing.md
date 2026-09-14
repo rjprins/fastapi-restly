@@ -113,7 +113,9 @@ class UserView(
     schema_create = UserCreate
     schema_update = UserUpdate
 
-    async def get_one(self, id: int, *, scope: fr.views.ReadScope = None) -> User:
+    async def get_one(
+        self, id: int | ColumnElement[bool], *, scope: fr.views.ReadScope = None
+    ) -> User:
         return await super().get_one(id, scope=scope)
 
     async def create(self, schema_obj: UserCreate) -> User:
@@ -132,6 +134,10 @@ Note the signatures: `create` takes the create schema and returns the model;
 `update` takes the already-loaded `obj` plus the update schema. Id resolution
 and the 404 happen one tier up, in the final
 {meth}`handle_update <fastapi_restly.views.RestView.handle_update>` handler.
+The `get_one` id parameter is `int | ColumnElement[bool]` (`ColumnElement`
+from `sqlalchemy`) because a SQLAlchemy predicate may take the primary key's
+place, as in [Look a row up by another key](#natural-key-route). Annotating
+it `id: int` narrows the base signature, which the type checker rejects.
 
 This looks heavier because it is more explicit. Use it when that extra
 precision is valuable to you.

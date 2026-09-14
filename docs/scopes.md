@@ -192,6 +192,51 @@ namespace holds model facts (`is_deleted`, `owned_by_tenant`), views
 compose policy from them. The framework applies the declared clause
 itself, on every read; there is no apply-side override point, and a
 non-Clause `scope` is rejected as the view class is defined.
+[Reading the resolved scope](#reading-the-scope) hands a route the
+clause without opening one.
+
+(reading-the-scope)=
+## Reading the resolved scope
+
+{func}`fr.resolve_scope <fastapi_restly.views.resolve_scope>` returns the
+clause a view's reads apply, so a route that builds its own query sees
+the rows `GET /` and `GET /{id}` see. A count route applies the client's
+filters to the scoped select:
+
+```python
+@fr.get("/count")
+async def total(self, query_params) -> int:
+    await self.authorize(fr.Action.GET_MANY)
+    query = fr.apply_clauses(sa.select(Task), fr.resolve_scope(self))
+    return await self.count(self.apply_query_params(query, query_params))
+```
+
+Do not name that route method `count`: it would shadow the
+{meth}`count <fastapi_restly.views.RestView.count>` seam it calls.
+
+Pass another view to follow that view's visibility from a route on this
+one, which is how a nested listing stays in step with the child's own
+endpoint:
+
+```python
+@fr.get("/{id}/tasks", response_model=list[TaskRead])
+async def list_tasks(self, id: int):
+    await self.handle_get_one(id)
+    query = fr.apply_clauses(
+        sa.select(Task).where(Task.project_id == id), fr.resolve_scope(TaskView)
+    )
+    return list(await self.session.scalars(query))
+```
+
+Pass a mapped model class, `fr.resolve_scope(Task)`, for the model rung
+alone: the `default_scope` every reference check applies and every view
+without its own scope inherits. The two answers differ wherever a view
+declares a scope, so code off the request path that wants what the API
+shows passes the view.
+
+The result is a clause or `fr.clauses.UNSCOPED`, never `None`, so it
+drops into `fr.apply_clauses` or a composition without a branch. The
+function resolves the scope; applying it stays with the framework.
 
 (reference-scopes)=
 ## References: overriding per field

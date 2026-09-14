@@ -1,6 +1,7 @@
 from typing import Any
 
 from fastapi import FastAPI
+from sqlalchemy import ColumnElement
 from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
@@ -43,7 +44,11 @@ class WidgetView(fr.RestView[Widget, WidgetRead, WidgetInput, WidgetInput, int])
     ) -> fr.ListingResult[Widget]:
         return super().get_many(query_params, scope=scope)
 
-    def get_one(self, id: int, *, scope: fr.views.ReadScope = None) -> Widget:
+    # ``id`` is the primary key or a predicate that replaces it, so an
+    # override widens the parameter the same way.
+    def get_one(
+        self, id: int | ColumnElement[bool], *, scope: fr.views.ReadScope = None
+    ) -> Widget:
         return super().get_one(id, scope=scope)
 
     def create(self, schema_obj: WidgetInput) -> Widget:
@@ -66,6 +71,12 @@ class WidgetView(fr.RestView[Widget, WidgetRead, WidgetInput, WidgetInput, int])
     def retire(self, id: int) -> dict[str, int]:
         self.handle_delete(id)
         return {"retired": id}
+
+    # A natural-key route: the predicate form keeps the model's type.
+    @fr.get("/by-name/{name}")
+    def get_by_name(self, name: str) -> WidgetRead:
+        widget: Widget = self.handle_get_one(Widget.name == name)
+        return self.to_response_schema(widget)
 
 
 def create_widgets_together(view: WidgetView, items: list[WidgetInput]) -> list[Widget]:
