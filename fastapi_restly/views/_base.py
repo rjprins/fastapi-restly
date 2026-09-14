@@ -1160,7 +1160,12 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     def _apply_scope(self, query: Select[Any], scope: ReadScope) -> Select[Any]:
         # the one path every read takes, so retrieve, list and count cannot
         # disagree about which rows exist; not an override point
-        return apply_clauses(query, resolve_scope(self, scope=scope))
+        if scope is None:
+            scope = resolve_scope(self)
+        else:
+            # a per-read scope replaces the resolution rather than joining it
+            scope = _checked_scope(scope, type(self).__name__, "a per-read scope")
+        return apply_clauses(query, scope)
 
     def get_relationship_loader_options(self) -> list[Any]:
         """Loader options for the relationships the response schema names.
@@ -1442,18 +1447,14 @@ _AnyRestView = BaseRestView[Any, Any, Any, Any, Any]
 
 
 @overload
-def resolve_scope(
-    target: type[DeclarativeBase], *, scope: WhereClause | Unscoped | None = None
-) -> WhereClause | Unscoped: ...
+def resolve_scope(target: type[DeclarativeBase]) -> WhereClause | Unscoped: ...
 
 
 @overload
-def resolve_scope(
-    target: type[_AnyRestView] | _AnyRestView, *, scope: ReadScope = None
-) -> Clause | Unscoped: ...
+def resolve_scope(target: type[_AnyRestView] | _AnyRestView) -> Clause | Unscoped: ...
 
 
-def resolve_scope(target: Any, *, scope: ReadScope = None) -> Clause | Unscoped:
+def resolve_scope(target: Any) -> Clause | Unscoped:
     """The scope a read applies, resolved down the ladder.
 
     Pass a view, class or instance, for the visibility that view's reads
@@ -1481,16 +1482,10 @@ def resolve_scope(target: Any, *, scope: ReadScope = None) -> Clause | Unscoped:
     and there is no apply-side override point.
 
     :param target: a view class or instance, or a mapped model class.
-    :param scope: a per-read scope, the tri-state the handlers take:
-        ``None`` resolves down the ladder, a clause replaces it, and
-        ``fr.clauses.UNSCOPED`` reads unscoped.
-    :raises RestlyConfigurationError: if the declared scope or the
-        per-read scope is not a clause.
+    :raises RestlyConfigurationError: if the declared scope is not a clause.
     :raises TypeError: if ``target`` is neither a view nor a mapped model.
     """
     label = target.__name__ if isinstance(target, type) else type(target).__name__
-    if scope is not None:
-        return _checked_scope(scope, label, "a per-read scope")
     if isinstance(target, type) and issubclass(target, DeclarativeBase):
         return _model_scope(target)
     if not isinstance(target, BaseRestView) and not (

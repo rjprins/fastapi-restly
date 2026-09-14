@@ -297,9 +297,10 @@ def test_a_route_reads_through_its_own_scope(client):
 
 
 def test_the_resolved_scope_and_the_reads_agree_on_the_rows_async(client):
-    """The accessor answers with the rows the reads answer with, on every
-    rung: the model default, a declared view scope, a per-read scope and
-    UNSCOPED. One route reports all four answers for one surface."""
+    """The reads answer with the rows their scope names: the accessor's
+    answer when a read names none (the model default or a declared view
+    scope), and the clause it names instead (a per-read scope or
+    UNSCOPED). One route reports all four answers for one surface."""
 
     class AgreeRow(fr.IDBase):
         tenant_id: Mapped[int]
@@ -335,7 +336,8 @@ def test_the_resolved_scope_and_the_reads_agree_on_the_rows_async(client):
 
     async def agreement(view, scope):
         """The four answers for one scope: accessor, listing, retrieve, count."""
-        query = fr.apply_clauses(select(AgreeRow), fr.resolve_scope(view, scope=scope))
+        resolved = fr.resolve_scope(view) if scope is None else scope
+        query = fr.apply_clauses(select(AgreeRow), resolved)
         listing = await view.handle_get_many({}, scope=scope)
         retrieved = []
         for row_id in (await view.session.scalars(select(AgreeRow.id))).all():
@@ -1168,15 +1170,6 @@ def test_scope_resolution_falls_back_from_view_to_model_to_unscoped():
 
     assert fr.resolve_scope(_PinnedView) is other
 
-    # a per-read scope replaces the view's, the tri-state the handlers take
-    assert (
-        fr.resolve_scope(_PinnedView, scope=SyncRowClauses.default_scope)
-        is SyncRowClauses.default_scope
-    )
-    assert (
-        fr.resolve_scope(_PinnedView, scope=fr.clauses.UNSCOPED) is fr.clauses.UNSCOPED
-    )
-
     class _OptedOutView(_SyncRowView):
         scope = fr.clauses.UNSCOPED
 
@@ -1228,6 +1221,20 @@ def test_resolve_scope_rejects_a_target_that_is_neither_view_nor_model():
         fr.resolve_scope(SyncRowClauses)  # type: ignore[call-overload]
 
 
+def test_a_per_read_scope_that_is_not_a_clause_is_rejected(sync_session):
+    """The handlers forward ``scope=`` as given, so a raw expression is
+    refused at the read instead of being applied as if it were a clause."""
+    view = _SyncRowView()
+    view.session = sync_session
+    raw = SyncRow.tenant_id == 1
+    with pytest.raises(
+        fr.exc.RestlyConfigurationError, match="a per-read scope must be a Clause"
+    ):
+        view.get_one(1, scope=raw)  # type: ignore[arg-type]
+    with pytest.raises(fr.exc.RestlyConfigurationError, match="wrap a raw expression"):
+        view.get_many({}, scope=raw)  # type: ignore[arg-type]
+
+
 def test_the_resolved_scope_and_the_reads_agree_on_the_rows_sync(sync_session):
     """The sync half of the agreement: the accessor, the listing, the
     retrieves that succeed and the count answer with the same rows on
@@ -1237,7 +1244,8 @@ def test_the_resolved_scope_and_the_reads_agree_on_the_rows_sync(sync_session):
         scope = fr.where_clause(SyncRow.id == 2)
 
     def through_the_accessor(view, scope):
-        query = fr.apply_clauses(select(SyncRow), fr.resolve_scope(view, scope=scope))
+        resolved = fr.resolve_scope(view) if scope is None else scope
+        query = fr.apply_clauses(select(SyncRow), resolved)
         return {row.id for row in view.session.scalars(query)}
 
     def through_retrieve(view, scope):
