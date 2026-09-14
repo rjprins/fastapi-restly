@@ -330,7 +330,7 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
 
         Auth-free and commit-free: ``handle_create`` owns both. The usual
         create override point (hash a password, derive a slug), written as
-        ``make_new_object``, the extra step, then ``save_object``.
+        :meth:`make_new_object`, the extra step, then :meth:`save_object`.
         """
         obj = self.make_new_object(schema_obj)
         return self.save_object(obj)
@@ -340,8 +340,8 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
 
         Auth-free and commit-free: ``handle_update`` loads ``obj`` through
         ``get_one``, gates, and commits. The usual update override point,
-        written as ``update_object``, the extra step, then
-        ``save_object``.
+        written as :meth:`update_object`, the extra step, then
+        :meth:`save_object`.
         """
         obj = self.update_object(obj, schema_obj)
         return self.save_object(obj)
