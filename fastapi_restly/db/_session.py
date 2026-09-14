@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 from sqlalchemy.ext.asyncio import AsyncSession as SA_AsyncSession
-from sqlalchemy.orm import DeclarativeBase, sessionmaker
+from sqlalchemy.orm import DeclarativeBase, SessionTransaction, sessionmaker
 from sqlalchemy.orm import Session as SA_Session
 
 from .._exception_handlers import register_default_exception_handlers
@@ -358,12 +358,70 @@ def _should_warn_uncommitted() -> bool:
     return _fr_globals.warn_on_uncommitted
 
 
+_UNCOMMITTED_KEY = "_fr_uncommitted"
+_UNCOMMITTED_TRANSACTIONS_KEY = "_fr_uncommitted_transactions"
+
+
 def _mark_uncommitted(session: SA_Session, flush_context: Any = None) -> None:
-    session.info["_fr_uncommitted"] = True
+    transaction = session.get_nested_transaction() or session.get_transaction()
+    if transaction is not None:
+        transactions = session.info.setdefault(_UNCOMMITTED_TRANSACTIONS_KEY, set())
+        transactions.add(transaction)
+    session.info[_UNCOMMITTED_KEY] = True
 
 
 def _clear_uncommitted(session: SA_Session, *args: Any) -> None:
-    session.info.pop("_fr_uncommitted", None)
+    session.info.pop(_UNCOMMITTED_KEY, None)
+    session.info.pop(_UNCOMMITTED_TRANSACTIONS_KEY, None)
+
+
+def _update_uncommitted_flag(session: SA_Session) -> None:
+    if session.info.get(_UNCOMMITTED_TRANSACTIONS_KEY):
+        session.info[_UNCOMMITTED_KEY] = True
+    else:
+        _clear_uncommitted(session)
+
+
+def _uncommitted_after_commit(session: SA_Session) -> None:
+    nested = session.get_nested_transaction()
+    if nested is None:
+        _clear_uncommitted(session)
+        return
+    transactions: set[SessionTransaction] = session.info.get(
+        _UNCOMMITTED_TRANSACTIONS_KEY, set()
+    )
+    if nested in transactions:
+        transactions.remove(nested)
+        if nested.parent is not None:
+            transactions.add(nested.parent)
+    _update_uncommitted_flag(session)
+
+
+def _uncommitted_after_rollback(session: SA_Session) -> None:
+    nested = session.get_nested_transaction()
+    if nested is None:
+        _clear_uncommitted(session)
+        return
+    transactions: set[SessionTransaction] = session.info.get(
+        _UNCOMMITTED_TRANSACTIONS_KEY, set()
+    )
+    session.info[_UNCOMMITTED_TRANSACTIONS_KEY] = {
+        transaction
+        for transaction in transactions
+        if not _transaction_descends_from(transaction, nested)
+    }
+    _update_uncommitted_flag(session)
+
+
+def _transaction_descends_from(
+    transaction: SessionTransaction, ancestor: SessionTransaction
+) -> bool:
+    current: SessionTransaction | None = transaction
+    while current is not None:
+        if current is ancestor:
+            return True
+        current = current.parent
+    return False
 
 
 def _arm_uncommitted_warning(session: SA_AsyncSession | SA_Session) -> None:
@@ -376,8 +434,8 @@ def _arm_uncommitted_warning(session: SA_AsyncSession | SA_Session) -> None:
     target = getattr(session, "sync_session", session)
     try:
         event.listen(target, "after_flush", _mark_uncommitted)
-        event.listen(target, "after_commit", _clear_uncommitted)
-        event.listen(target, "after_rollback", _clear_uncommitted)
+        event.listen(target, "after_commit", _uncommitted_after_commit)
+        event.listen(target, "after_rollback", _uncommitted_after_rollback)
     except Exception:
         # Best-effort dev aid: unusual sessions (test stubs, or session types
         # without ORM flush events) opt out. Never break a request.

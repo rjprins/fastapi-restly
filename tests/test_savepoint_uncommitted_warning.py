@@ -1,17 +1,17 @@
-"""Regression: RestlyUncommittedChangesWarning must not
-false-positive under the savepoint test fixtures.
+"""Regression coverage for the uncommitted warning around savepoints.
 
-The fixtures use real SQLAlchemy sessions joined to an outer transaction with
-``create_savepoint``. A session commit must still fire ``after_commit`` and
-clear the detector's "flushed but uncommitted" flag even though the outer test
-transaction never commits.
+Releasing a savepoint must keep flushed work marked until the root transaction
+commits. Rolling back a savepoint must discard its mark. The test fixtures also
+use real SQLAlchemy sessions joined to an outer transaction with
+``create_savepoint``. A session commit there must clear the mark even though the
+outer test transaction never commits.
 
-These drive the savepoint fixtures directly (the ``.__wrapped__`` pattern, like
-test_testing_fixtures_coverage.py) and assert both halves of the contract:
+The fixture tests drive the savepoint fixtures directly with the
+``.__wrapped__`` pattern used by test_testing_fixtures_coverage.py. They assert
+both halves of that behavior:
 
-* a write that commits does NOT warn (no false positive);
-* a write that never commits STILL warns (the true positive is preserved -- the
-  whole point of choosing this fix over simply disabling the warning in tests).
+* a write that commits does not warn
+* a write that never commits still warns
 """
 
 from __future__ import annotations
@@ -49,6 +49,46 @@ def _warn_count(check) -> int:
         warnings.simplefilter("always")
         check()
     return sum(issubclass(w.category, RestlyUncommittedChangesWarning) for w in caught)
+
+
+def test_sync_released_savepoint_without_outer_commit_warns():
+    engine = create_engine(
+        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
+    )
+    make_session = sessionmaker(bind=engine, expire_on_commit=False)
+    try:
+        _Base.metadata.create_all(engine)
+        with make_session() as session:
+            _arm_uncommitted_warning(session)
+            with session.begin_nested():
+                session.add(_Row(name="uncommitted"))
+                session.flush()
+
+            with pytest.warns(RestlyUncommittedChangesWarning):
+                _warn_if_uncommitted(session)
+    finally:
+        engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_async_released_savepoint_without_outer_commit_warns():
+    async_engine = create_async_engine(
+        "sqlite+aiosqlite:///:memory:", poolclass=StaticPool
+    )
+    make_session = async_sessionmaker(bind=async_engine, expire_on_commit=False)
+    try:
+        async with async_engine.begin() as conn:
+            await conn.run_sync(_Base.metadata.create_all)
+        async with make_session() as session:
+            _arm_uncommitted_warning(session)
+            async with session.begin_nested():
+                session.add(_Row(name="uncommitted"))
+                await session.flush()
+
+            with pytest.warns(RestlyUncommittedChangesWarning):
+                _warn_if_uncommitted(session)
+    finally:
+        await async_engine.dispose()
 
 
 def test_savepoint_sync_commit_does_not_false_warn():
