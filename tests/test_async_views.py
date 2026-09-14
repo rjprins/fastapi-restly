@@ -592,7 +592,7 @@ def test_async_scope_is_consulted_by_list_and_count():
             assert results.total_count == 2
             assert all(g.active for g in results.objects)
 
-            scoped = view._apply_scope(sqlalchemy.select(Gizmo), None)
+            scoped = fr.apply_clauses(sqlalchemy.select(Gizmo), fr.resolve_scope(view))
             query = fr.query.apply_list_params({}, scoped, Gizmo, GizmoSchema)
             total = await view.count(query)
             assert total == 2

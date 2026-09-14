@@ -68,6 +68,7 @@ from .views import (
     patch,
     post,
     put,
+    resolve_scope,
     route,
 )
 
@@ -133,6 +134,7 @@ __all__ = [
     "View",
     "ViewRoute",
     "include_view",
+    "resolve_scope",
     # Views — route decorators
     "route",
     "get",

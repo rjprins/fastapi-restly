@@ -63,6 +63,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   override declares a `scope` parameter (typed `fr.views.ReadScope`,
   newly exported) and passes it on to `super()`; an override without it
   fails loudly instead of silently serving the wrong rows.
+- `fr.resolve_scope(view_or_model, *, scope=None)` returns the scope a
+  read applies, resolved down the ladder: the per-read `scope=`, the
+  view's `scope`, the model's `default_scope`, then
+  `fr.clauses.UNSCOPED`. It takes a view class or instance, or a mapped
+  model class for the model rung alone (what every reference check
+  applies), and returns `fr.clauses.UNSCOPED` rather than `None`, so the
+  result composes with `fr.apply_clauses` and `fr.all_of` without a
+  branch. Every read resolves through it, so a route that builds its own
+  query, a count endpoint or a nested listing following another view's
+  scope, sees the rows `get_one` and `get_many` see instead of
+  re-spelling the clause and drifting from it. Resolution is public;
+  applying stays with the framework, and there is still no apply-side
+  override point. See the Scopes guide.
 - `fr.apply_clauses` accepts `fr.clauses.UNSCOPED` and applies nothing
   for it, and the sentinel's type is public as `fr.clauses.Unscoped` for
   typing a `scope` declaration or a `get_one` / `get_many` override.

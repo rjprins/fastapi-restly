@@ -296,6 +296,172 @@ def test_a_route_reads_through_its_own_scope(client):
     assert client.get(f"/scope-notes/{gone['id']}", headers=t1).json()["name"] == "gone"
 
 
+def test_the_resolved_scope_and_the_reads_agree_on_the_rows_async(client):
+    """The accessor answers with the rows the reads answer with, on every
+    rung: the model default, a declared view scope, a per-read scope and
+    UNSCOPED. One route reports all four answers for one surface."""
+
+    class AgreeRow(fr.IDBase):
+        tenant_id: Mapped[int]
+        name: Mapped[str]
+        deleted: Mapped[bool] = mapped_column(default=False)
+
+    class Current(fr.ContextNamespace):
+        tenant_id: fr.ContextParam[int]
+
+    class AgreeRowClauses(fr.ClauseNamespace):
+        model = AgreeRow
+
+        is_deleted = fr.where_clause(AgreeRow.deleted.is_(True))
+        owned_by_tenant = fr.where_clause(AgreeRow.tenant_id == Current.tenant_id)
+        visible = fr.all_of(owned_by_tenant, fr.none_of(is_deleted))
+        trashed = fr.all_of(owned_by_tenant, is_deleted)
+        default_scope = visible
+
+    class AgreeRowSchema(fr.IDSchema):
+        tenant_id: int
+        name: str
+        deleted: bool = False
+
+    surfaces = {
+        "view": None,  # the view's own scope, declared or inherited
+        "trash": AgreeRowClauses.trashed,  # a per-read scope
+        "all": fr.clauses.UNSCOPED,  # the explicit escape
+    }
+
+    async def bind_tenant(tenant: Annotated[int, Header(alias="x-tenant-id")]):
+        with Current.tenant_id.bind(tenant_id=tenant):
+            yield
+
+    async def agreement(view, scope):
+        """The four answers for one scope: accessor, listing, retrieve, count."""
+        query = fr.apply_clauses(select(AgreeRow), fr.resolve_scope(view, scope=scope))
+        listing = await view.handle_get_many({}, scope=scope)
+        retrieved = []
+        for row_id in (await view.session.scalars(select(AgreeRow.id))).all():
+            try:
+                retrieved.append((await view.get_one(row_id, scope=scope)).id)
+            except fr.exc.NotFound:
+                pass
+        return {
+            "accessor": sorted(
+                row.id for row in (await view.session.scalars(query)).all()
+            ),
+            "listed": sorted(obj.id for obj in listing.objects),
+            "retrieved": sorted(retrieved),
+            "count": await view.count(query),
+            "total": listing.total_count,
+        }
+
+    @fr.include_view(client.app)
+    class AgreeRowView(fr.AsyncRestView):
+        prefix = "/agree-rows"
+        model = AgreeRow
+        schema = AgreeRowSchema
+        dependencies = [Depends(bind_tenant)]
+
+        @fr.get("/agree")
+        async def agree(self) -> dict:
+            surface = self.request.query_params["surface"]
+            return await agreement(self, surfaces[surface])
+
+    @fr.include_view(client.app)
+    class AgreeTrashView(fr.AsyncRestView):
+        prefix = "/agree-trash"
+        model = AgreeRow
+        schema = AgreeRowSchema
+        dependencies = [Depends(bind_tenant)]
+        scope = AgreeRowClauses.trashed
+
+        @fr.get("/agree")
+        async def agree(self) -> dict:
+            surface = self.request.query_params["surface"]
+            return await agreement(self, surfaces[surface])
+
+    create_tables()
+
+    t1 = {"x-tenant-id": "1"}
+
+    def post(payload, headers=t1):
+        return client.post("/agree-rows/", json=payload, headers=headers).json()["id"]
+
+    live = post({"tenant_id": 1, "name": "live"})
+    gone = post({"tenant_id": 1, "name": "gone", "deleted": True})
+    other = post({"tenant_id": 2, "name": "other"}, {"x-tenant-id": "2"})
+
+    for path, surface, expected in (
+        ("/agree-rows/agree", "view", {live}),  # the model's default_scope
+        ("/agree-trash/agree", "view", {gone}),  # the view's declared scope
+        ("/agree-rows/agree", "trash", {gone}),  # a per-read scope replaces it
+        ("/agree-rows/agree", "all", {live, gone, other}),  # the explicit escape
+    ):
+        payload = client.get(f"{path}?surface={surface}", headers=t1).json()
+        assert set(payload["accessor"]) == expected
+        assert payload["accessor"] == payload["listed"] == payload["retrieved"]
+        assert payload["count"] == payload["total"] == len(expected)
+
+
+def test_a_count_route_counts_the_scoped_select_under_the_listing_grammar(client):
+    """A count route applies the client's filters to the view's scoped
+    select, so it totals the rows the listing pages without fetching them."""
+
+    class CountRow(fr.IDBase):
+        tenant_id: Mapped[int]
+        name: Mapped[str]
+
+    class Current(fr.ContextNamespace):
+        tenant_id: fr.ContextParam[int]
+
+    class CountRowClauses(fr.ClauseNamespace):
+        model = CountRow
+
+        default_scope = fr.where_clause(CountRow.tenant_id == Current.tenant_id)
+
+    class CountRowSchema(fr.IDSchema):
+        tenant_id: int
+        name: str
+
+    async def bind_tenant(tenant: Annotated[int, Header(alias="x-tenant-id")]):
+        with Current.tenant_id.bind(tenant_id=tenant):
+            yield
+
+    @fr.include_view(client.app)
+    class CountRowView(fr.AsyncRestView):
+        prefix = "/count-rows"
+        model = CountRow
+        schema = CountRowSchema
+        dependencies = [Depends(bind_tenant)]
+
+        # deliberately not named `count`: that name is the read seam below
+        @fr.get("/count")
+        async def total(self, query_params) -> int:
+            await self.authorize(fr.Action.GET_MANY)
+            query = fr.apply_clauses(select(CountRow), fr.resolve_scope(self))
+            return await self.count(self.apply_query_params(query, query_params))
+
+    create_tables()
+
+    t1 = {"x-tenant-id": "1"}
+    for name in ("alpha", "beta", "beta"):
+        client.post("/count-rows/", json={"tenant_id": 1, "name": name}, headers=t1)
+    client.post(
+        "/count-rows/",
+        json={"tenant_id": 2, "name": "beta"},
+        headers={"x-tenant-id": "2"},
+    )
+
+    # the scope holds: another tenant's row is outside the total
+    assert client.get("/count-rows/count", headers=t1).json() == 3
+    assert client.get("/count-rows/", headers=t1).json()["total_count"] == 3
+
+    # the client's filter narrows the count; paging does not change it
+    assert client.get("/count-rows/count?name=beta", headers=t1).json() == 2
+    assert client.get("/count-rows/count?page_size=1", headers=t1).json() == 3
+
+    # and the route takes the same unknown-key guard as GET /
+    client.get("/count-rows/count?bogus=1", headers=t1, assert_status_code=422)
+
+
 def test_a_session_rule_holds_under_every_scope_and_reference_check(client):
     """A rule that must hold whatever a view or a route named is not a
     scope: a ``do_orm_execute`` listener adds it with SQLAlchemy's
@@ -989,21 +1155,32 @@ def test_unbound_scope_raises_the_teaching_error(sync_session):
         view.get_one(1)
 
 
-def test_scope_resolution_falls_back_from_view_to_model_to_none():
-    view = _SyncRowView()
-    assert view._resolved_scope() is SyncRowClauses.default_scope
+def test_scope_resolution_falls_back_from_view_to_model_to_unscoped():
+    # a view that declares none reads through the model's default_scope,
+    # and the answer is the same asked of the class or of an instance
+    assert fr.resolve_scope(_SyncRowView) is SyncRowClauses.default_scope
+    assert fr.resolve_scope(_SyncRowView()) is SyncRowClauses.default_scope
 
     other = fr.where_clause(SyncRow.tenant_id == 0)
 
     class _PinnedView(_SyncRowView):
         scope = other
 
-    assert _PinnedView()._resolved_scope() is other
+    assert fr.resolve_scope(_PinnedView) is other
+
+    # a per-read scope replaces the view's, the tri-state the handlers take
+    assert (
+        fr.resolve_scope(_PinnedView, scope=SyncRowClauses.default_scope)
+        is SyncRowClauses.default_scope
+    )
+    assert (
+        fr.resolve_scope(_PinnedView, scope=fr.clauses.UNSCOPED) is fr.clauses.UNSCOPED
+    )
 
     class _OptedOutView(_SyncRowView):
         scope = fr.clauses.UNSCOPED
 
-    assert _OptedOutView()._resolved_scope() is None
+    assert fr.resolve_scope(_OptedOutView) is fr.clauses.UNSCOPED
 
     class _Bare(_SyncBase):
         __tablename__ = "scope_sync_bare"
@@ -1016,7 +1193,54 @@ def test_scope_resolution_falls_back_from_view_to_model_to_none():
         model = _Bare
         schema = fr.IDSchema
 
-    assert _BareView()._resolved_scope() is None
+    assert fr.resolve_scope(_BareView) is fr.clauses.UNSCOPED
+
+    # the model rung on its own: what every reference check applies
+    assert fr.resolve_scope(SyncRow) is SyncRowClauses.default_scope
+    assert fr.resolve_scope(_Bare) is fr.clauses.UNSCOPED
+
+
+def test_resolve_scope_rejects_a_target_that_is_neither_view_nor_model():
+    with pytest.raises(TypeError, match="RestView"):
+        fr.resolve_scope(SyncRowClauses)  # type: ignore[call-overload]
+
+
+def test_the_resolved_scope_and_the_reads_agree_on_the_rows_sync(sync_session):
+    """The sync half of the agreement: the accessor, the listing, the
+    retrieves that succeed and the count answer with the same rows on
+    every rung."""
+
+    class _ScopedView(_SyncRowView):
+        scope = fr.where_clause(SyncRow.id == 2)
+
+    def through_the_accessor(view, scope):
+        query = fr.apply_clauses(select(SyncRow), fr.resolve_scope(view, scope=scope))
+        return {row.id for row in view.session.scalars(query)}
+
+    def through_retrieve(view, scope):
+        found = set()
+        for row_id in (1, 2):
+            try:
+                found.add(view.get_one(row_id, scope=scope).id)
+            except NotFound:
+                pass
+        return found
+
+    per_read = fr.where_clause(SyncRow.tenant_id == 2)
+    with _SyncContext.tenant_id.bind(tenant_id=1):
+        for view_cls, scope, expected in (
+            (_SyncRowView, None, {1}),  # the model's default_scope
+            (_ScopedView, None, {2}),  # the view's declared scope
+            (_SyncRowView, per_read, {2}),  # a per-read scope replaces it
+            (_SyncRowView, fr.clauses.UNSCOPED, {1, 2}),  # the explicit escape
+        ):
+            view = view_cls()
+            view.session = sync_session
+            listing = view.get_many({}, scope=scope)
+            assert through_the_accessor(view, scope) == expected
+            assert {obj.id for obj in listing.objects} == expected
+            assert through_retrieve(view, scope) == expected
+            assert listing.total_count == len(expected)
 
 
 def test_defining_build_query_fails_at_class_definition():

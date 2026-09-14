@@ -49,6 +49,7 @@ fastapi_restly:
   - put
   - pytest_fixtures
   - query
+  - resolve_scope
   - route
   - schemas
   - testing
@@ -165,6 +166,7 @@ fastapi_restly.views:
   - patch
   - post
   - put
+  - resolve_scope
   - route
   - run_write_action
 

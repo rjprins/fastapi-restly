@@ -50,7 +50,7 @@ from starlette.datastructures import QueryParams
 from typing_extensions import TypeVar
 
 from .._exception_handlers import register_default_exception_handlers
-from ..clauses import UNSCOPED, Clause, Unscoped, apply_clauses
+from ..clauses import UNSCOPED, Clause, Unscoped, WhereClause, apply_clauses
 from ..clauses._scopes import _default_scope
 
 #: A per-read scope: ``None`` for the view's own, a clause that replaces it
@@ -1115,42 +1115,10 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
                         "put a per-write side effect in before_action_commit."
                     )
 
-    def _resolved_scope(self) -> Clause | None:
-        """The clause this view's reads apply, or None for unscoped.
-
-        Resolution: :attr:`scope` when declared (``UNSCOPED`` meaning no
-        clause), the model's ``default_scope`` otherwise. A per-request
-        *value* is bound around the request; a per-request *choice* is a
-        clause function branching on a bound value (see the Scopes guide).
-        """
-        scope = self.scope
-        if scope is UNSCOPED:
-            return None
-        if scope is None:
-            return _default_scope(self.model)
-        if not isinstance(scope, Clause):
-            # backstop for a post-definition assignment; the declared form
-            # is validated in __init_subclass__
-            raise RestlyConfigurationError(
-                f"{type(self).__name__}: the scope must be a Clause, got "
-                f"{type(scope).__name__}; wrap a raw expression with "
-                "where_clause()"
-            )
-        return scope
-
     def _apply_scope(self, query: Select[Any], scope: ReadScope) -> Select[Any]:
-        # the scope the read was asked for, else the view's, else the model's
-        # default, with UNSCOPED for none; not an override point
-        if scope is None:
-            resolved = self._resolved_scope()
-            scope = UNSCOPED if resolved is None else resolved
-        elif scope is not UNSCOPED and not isinstance(scope, Clause):
-            raise RestlyConfigurationError(
-                f"{type(self).__name__}: a per-read scope must be a Clause or "
-                f"fr.clauses.UNSCOPED, got {type(scope).__name__}; wrap a raw "
-                "expression with where_clause()"
-            )
-        return apply_clauses(query, scope)
+        # the one path every read takes, so retrieve, list and count cannot
+        # disagree about which rows exist; not an override point
+        return apply_clauses(query, resolve_scope(self, scope=scope))
 
     def get_relationship_loader_options(self) -> list[Any]:
         """Loader options for the relationships the response schema names.
@@ -1425,6 +1393,93 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         if (ep := getattr(cls, "delete_endpoint", None)) is not None:
             _annotate(ep, return_annotation=fastapi.Response, id=cls.id_type)
         _exclude_routes(cls)
+
+
+#: A ``BaseRestView`` at any parameterization, for the signature below.
+_AnyRestView = BaseRestView[Any, Any, Any, Any, Any]
+
+
+@overload
+def resolve_scope(
+    target: type[DeclarativeBase], *, scope: WhereClause | Unscoped | None = None
+) -> WhereClause | Unscoped: ...
+
+
+@overload
+def resolve_scope(
+    target: type[_AnyRestView] | _AnyRestView, *, scope: ReadScope = None
+) -> Clause | Unscoped: ...
+
+
+def resolve_scope(target: Any, *, scope: ReadScope = None) -> Clause | Unscoped:
+    """The scope a read applies, resolved down the ladder.
+
+    Pass a view, class or instance, for the visibility that view's reads
+    apply: its declared
+    :attr:`scope <fastapi_restly.views.BaseRestView.scope>`, the model's
+    ``default_scope`` when the view declares none, and
+    ``fr.clauses.UNSCOPED`` when neither does. Pass a mapped model class
+    for the model rung alone, which is what every reference check applies.
+    The two answers differ wherever a view declares a scope, so code off
+    the request path that wants what the API shows passes the view.
+
+    The result is a clause or ``fr.clauses.UNSCOPED``, never ``None``, so
+    it composes without a branch::
+
+        query = fr.apply_clauses(
+            select(Task).where(Task.project_id == id),
+            fr.resolve_scope(TaskView),
+        )
+
+    Every read resolves here, so a route that applies the result sees the
+    same rows as
+    :meth:`get_one <fastapi_restly.views.RestView.get_one>` and
+    :meth:`get_many <fastapi_restly.views.RestView.get_many>`. It resolves
+    the scope and does not apply it: applying stays with the framework,
+    and there is no apply-side override point.
+
+    :param target: a view class or instance, or a mapped model class.
+    :param scope: a per-read scope, the tri-state the handlers take:
+        ``None`` resolves down the ladder, a clause replaces it, and
+        ``fr.clauses.UNSCOPED`` reads unscoped.
+    :raises RestlyConfigurationError: if the declared scope or the
+        per-read scope is not a clause.
+    :raises TypeError: if ``target`` is neither a view nor a mapped model.
+    """
+    label = target.__name__ if isinstance(target, type) else type(target).__name__
+    if scope is not None:
+        return _checked_scope(scope, label, "a per-read scope")
+    if isinstance(target, type) and issubclass(target, DeclarativeBase):
+        return _model_scope(target)
+    if not isinstance(target, BaseRestView) and not (
+        isinstance(target, type) and issubclass(target, BaseRestView)
+    ):
+        raise TypeError(
+            "resolve_scope() takes a RestView / AsyncRestView class or instance, "
+            f"or a mapped model class, got {label}"
+        )
+    declared = target.scope
+    if declared is None:
+        return _model_scope(target.model)
+    if declared is UNSCOPED:
+        return UNSCOPED
+    # backstop for a post-definition assignment; the declared form is
+    # validated in __init_subclass__
+    return _checked_scope(declared, label, "the scope")
+
+
+def _model_scope(model: type[DeclarativeBase]) -> WhereClause | Unscoped:
+    declared = _default_scope(model)
+    return UNSCOPED if declared is None else declared
+
+
+def _checked_scope(scope: Any, label: str, what: str) -> Clause | Unscoped:
+    if scope is UNSCOPED or isinstance(scope, Clause):
+        return scope
+    raise RestlyConfigurationError(
+        f"{label}: {what} must be a Clause or fr.clauses.UNSCOPED, got "
+        f"{type(scope).__name__}; wrap a raw expression with where_clause()"
+    )
 
 
 def reject_unknown_query_keys(request: fastapi.Request, allowed: set[str]) -> None:
