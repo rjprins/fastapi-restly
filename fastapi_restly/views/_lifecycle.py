@@ -323,6 +323,8 @@ def _join_shared_write_action_commit(
         owner.require_active(asynchronous=asynchronous)
         yield owner
     except BaseException:
+        if owner.pending:
+            session.info["_fr_uncommitted"] = True
         owner.abort()
         raise
     finally:
