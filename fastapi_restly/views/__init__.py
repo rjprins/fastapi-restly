@@ -7,15 +7,16 @@ name the tier that owns your change and override one method:
    signature, ``response_model``, and ``to_response``. Replace only to change
    the HTTP contract.
 2. ``handle_<verb>`` — the handler: runs ``authorize`` and the commit
-   bracket (``before_action_commit`` -> commit -> ``after_action_commit``). Override for
-   orchestration or timing.
+   bracket (``before_action_commit`` -> commit -> ``after_action_commit``).
+   Final: call it from a custom route, never override it.
 3. ``<verb>`` (``get_many``, ``get_one``, ``create``, ``update``, ``delete``)
    — the business method: the domain operation, auth-free and commit-free. The
    usual override point.
 
 Cross-cutting seams: ``scope`` (read visibility), ``authorize`` (policy),
 ``apply_query_params`` (URL grammar), ``to_response`` (wire shape),
-``write_action`` (custom write brackets). Under the verbs sit the final
+``write_action`` (custom write brackets), ``shared_write_action_commit``
+(one commit over several writes). Under the verbs sit the final
 domain utilities (``make_new_object``, ``update_object``, ``save_object``):
 call them from a verb override, never override them; a server-stamped
 field is a column default on the model. ``View`` is the bare class-based

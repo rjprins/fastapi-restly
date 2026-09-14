@@ -55,13 +55,17 @@ class WidgetView(fr.RestView[Widget, WidgetRead, WidgetInput, WidgetInput, int])
     def delete(self, obj: Widget) -> None:
         super().delete(obj)
 
-    # Request handlers (authorize + commit bracket) -- full ops returning the
-    # domain object, reusable from custom actions.
-    def handle_update(self, id: int, schema_obj: WidgetInput) -> Widget:
-        return super().handle_update(id, schema_obj)
+    # Request handlers (authorize + commit bracket) -- final, and typed at
+    # the call site: a custom action reuses the full op and its bracket.
+    @fr.post("/{id}/rename")
+    def rename(self, id: int, schema_obj: WidgetInput) -> WidgetRead:
+        widget: Widget = self.handle_update(id, schema_obj)
+        return self.to_response_schema(widget)
 
-    def handle_delete(self, id: int) -> None:
-        super().handle_delete(id)
+    @fr.post("/{id}/retire")
+    def retire(self, id: int) -> dict[str, int]:
+        self.handle_delete(id)
+        return {"retired": id}
 
 
 def create_widgets_together(view: WidgetView, items: list[WidgetInput]) -> list[Widget]:
