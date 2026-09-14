@@ -285,7 +285,7 @@ It keeps the plain id (`customer_id`) and checks the referenced row exists; decl
 ```python
 class Order(fr.IDBase):
     customer_id: Mapped[int] = mapped_column(ForeignKey("customer.id"))
-    customer: Mapped[Customer] = relationship()
+    customer: Mapped[Customer] = relationship(init=False)
 
 class OrderRead(fr.IDSchema):
     customer_id: fr.MustExist[int, Customer]

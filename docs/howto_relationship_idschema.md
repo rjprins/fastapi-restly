@@ -263,15 +263,23 @@ Restly's create/update helpers are aware of that constructor shape when an
 {class}`IDSchema <fastapi_restly.schemas.IDSchema>` relationship field has been
 resolved to an ORM object.
 
-The common FK-first declaration is still the clearest default:
+For an FK-first dataclass model, keep the relationship out of the generated
+constructor and leave it unset:
 
 ```python
 author_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
-author: Mapped["User"] = relationship(default=None, init=False)
+author: Mapped["User"] = relationship(init=False)
 ```
 
 With that model and `author: fr.IDRef[User]`, Restly passes the scalar FK when
-the constructor needs it and keeps `author` in sync after construction.
+the constructor needs it and assigns `author` after construction. With a
+scalar `author_id: fr.MustExist[int, User]` field, leaving `author` unset keeps
+SQLAlchemy from replacing the supplied foreign key with `NULL` during flush.
+
+Do not add `default=None` to an `init=False` relationship paired with a
+required scalar foreign key. SQLAlchemy assigns that relationship default to
+each new object, and the relationship value takes precedence over the foreign
+key during flush.
 
 If your model is relationship-first, Restly adapts there too:
 

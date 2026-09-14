@@ -26,13 +26,19 @@ from sqlalchemy.orm import (
     ORMExecuteState,
     Session,
     mapped_column,
+    relationship,
     with_loader_criteria,
 )
 
 import fastapi_restly as fr
 from fastapi_restly.exc import RestlyConfigurationError
 from fastapi_restly.objects import async_make_new_object, make_new_object, update_object
-from fastapi_restly.schemas._base import RefExists, _Infer, is_reference_annotation
+from fastapi_restly.schemas._base import (
+    RefExists,
+    _Infer,
+    create_model_without_read_only_fields,
+    is_reference_annotation,
+)
 
 from .conftest import create_tables
 
@@ -541,3 +547,45 @@ def test_mustexist_e2e_flat_wire_and_404(client):
     client.post(
         "/comments/", json={"content": "x", "post_id": 99999}, assert_status_code=404
     )
+
+
+def test_mustexist_with_read_only_relationship_keeps_foreign_key(sync_db):
+    """The dataclass relationship shape documented for nested responses keeps
+    the scalar foreign key written by ``MustExist``."""
+
+    engine, make_session = sync_db
+
+    class Writer(fr.IDBase):
+        name: Mapped[str]
+
+    class Book(fr.IDBase):
+        title: Mapped[str]
+        writer_id: Mapped[int] = mapped_column(ForeignKey("writer.id"))
+        writer: Mapped[Writer] = relationship(init=False)
+
+    class WriterRead(fr.IDSchema):
+        name: str
+
+    class BookRead(fr.IDSchema):
+        title: str
+        writer_id: fr.MustExist[int, Writer]
+        writer: fr.ReadOnly[WriterRead]
+
+    BookCreate = create_model_without_read_only_fields(BookRead)
+
+    fr.DataclassBase.metadata.create_all(engine)
+
+    with make_session() as session:
+        writer = Writer(name="Octavia")
+        session.add(writer)
+        session.flush()
+
+        book = make_new_object(
+            session,
+            Book,
+            BookCreate(title="Kindred", writer_id=writer.id),
+            BookRead,
+        )
+        session.flush()
+
+        assert book.writer_id == writer.id

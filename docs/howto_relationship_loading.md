@@ -23,7 +23,7 @@ eagerly. Take an article with an author and comments:
 class Article(fr.IDBase):
     title: Mapped[str]
     author_id: Mapped[int] = mapped_column(ForeignKey("user.id"), init=False)
-    author: Mapped[User] = relationship(default=None, init=False)
+    author: Mapped[User] = relationship(init=False)
     comments: Mapped[list["Comment"]] = relationship(default_factory=list, init=False)
 ```
 
