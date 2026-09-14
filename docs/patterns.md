@@ -123,10 +123,7 @@ class ItemView(fr.AsyncRestView):
     async def restore(self, id: int):
         # Reads through the complement of the view scope: only a deleted
         # row can be restored, and the bypass is visible on purpose.
-        query = is_deleted.select(self.model).where(self.model.id == id)
-        obj = (await self.session.scalars(query)).one_or_none()
-        if obj is None:
-            raise fr.exc.NotFound(f"Item {id!r} not found")
+        obj = await self.get_one(id, scope=is_deleted)
         async with self.write_action("restore", obj=obj):
             obj.deleted_at = None
         return self.to_response(obj)

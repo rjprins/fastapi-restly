@@ -195,6 +195,52 @@ non-Clause `scope` is rejected as the view class is defined.
 [Reading the resolved scope](#reading-the-scope) hands a route the
 clause without opening one.
 
+(per-read-scope)=
+## A route names its own scope
+
+A custom route that reads another surface of the same model passes a
+clause as `scope=` to the handler, and that clause replaces the resolved
+scope for that one read. The trash listing and the restore action are
+then routes on the view rather than a second view class:
+
+```python
+@fr.include_view(app)
+class ItemView(fr.AsyncRestView):
+    prefix = "/items"
+    model = Item
+    schema = ItemRead
+    # no scope declared: reads apply ItemClauses.default_scope
+
+    @fr.get("/trash", response_model=fr.views.PaginatedEnvelope[ItemRead])
+    async def trash(self, query_params):
+        result = await self.handle_get_many(query_params, scope=ItemClauses.trashed)
+        return self.to_response(result, fr.ResponseShape.LISTING)
+
+    @fr.post("/{id}/restore", response_model=ItemRead)
+    async def restore(self, id: int):
+        item = await self.get_one(id, scope=ItemClauses.trashed)
+        async with self.write_action("restore", obj=item):
+            item.deleted_at = None
+        return item
+```
+
+`handle_get_many` runs `authorize` and forwards `scope=` to `get_many`;
+declaring `query_params` gives the route the listing grammar of `GET /`
+([Filter, Sort, and Paginate Lists](howto_query_modifiers.md)). The restore
+loads with `get_one(id, scope=...)` rather than `handle_get_one`, because
+a write action gates its own action inside
+{meth}`write_action <fastapi_restly.views.RestView.write_action>`; a live
+item is a 404 here, since the trash is the surface this route reads.
+`fr.clauses.UNSCOPED` is the per-read opt-out, in the same spelling as
+everywhere else.
+
+The argument replaces the scope, it does not narrow it, so compose it from
+the namespace's leaves (`trashed` contains `owned_by_tenant`) and the
+tenant rule cannot fall out of a route by omission. A `get_one` or
+`get_many` override declares the `scope` parameter and passes it on to
+`super()`; the handlers always pass it, so an override without the
+parameter fails on its first call instead of serving the wrong rows.
+
 (reading-the-scope)=
 ## Reading the resolved scope
 

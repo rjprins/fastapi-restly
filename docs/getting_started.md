@@ -221,5 +221,9 @@ Use these pages for individual topics:
 - Already have a FastAPI app? [Use Restly in an Existing Project](howto_existing_project.md)
   shows how Restly adopts per resource, beside your current routes.
 - [Filter, Sort, and Paginate Lists](howto_query_modifiers.md)
+- [Scopes](scopes.md): row visibility declared once and applied to every
+  read and reference check.
+- [Query Clauses](clauses.md): reusable query fragments with late-bound
+  request values.
 - [Deploying](deploying.md): production engine config, Alembic, and a `main.py` template.
 - [API Reference](api_reference.md)

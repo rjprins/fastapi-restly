@@ -56,6 +56,10 @@ types; they are omitted for booleans and UUIDs. `__contains` and
 `__isnull`: a query-string value cannot coerce into a collection, so the
 other operators would fail on every request.
 
+A datetime value without a UTC offset is read as UTC when the column is
+timezone-aware, which is the default for `Mapped[datetime]`; a column
+declared `DateTime()` compares the naive value as given.
+
 ### Comma logic on bare equality
 
 Comma-separated values in a plain equality filter are OR-combined:
@@ -321,6 +325,14 @@ which owns translating URL parameters into the query;
 example of a view family overriding it. Reserve overriding `get_many()`
 itself for a genuinely different *result* shape, where you construct the
 query explicitly inside the method.
+
+Any route method that declares a `query_params` parameter takes the same
+listing grammar as `GET /`: Restly annotates it with the view's generated
+{attr}`listing_param_schema <fastapi_restly.views.BaseRestView.listing_param_schema>`,
+so filters, sort and page parse and validate the same way, appear in OpenAPI,
+and an unknown key is rejected with `422`. A custom listing such as a trash
+route passes them on with `self.handle_get_many(query_params, scope=...)`;
+see [A route names its own scope](#per-read-scope).
 
 ## See also
 
