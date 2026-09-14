@@ -46,9 +46,10 @@ The **handler**, `handle_<verb>`, owns the request logic in between. It runs
 {meth}`authorize <fastapi_restly.views.RestView.authorize>`, calls the business method, and, on writes, closes with the
 **commit bracket**: {meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>`, then the commit itself, then
 {meth}`after_action_commit <fastapi_restly.views.RestView.after_action_commit>`. It returns the domain object, so custom routes can
-reuse it; only the delete handler returns nothing. Override it to change
-orchestration or timing without re-declaring the route. The handler normally
-owns the commit. To move it to an outer block, see
+reuse it; only the delete handler returns nothing. The handler is final:
+custom routes call it, and a view class that defines one fails at class
+definition. Every CRUD route therefore runs `authorize` and the commit
+bracket. The handler normally owns the commit. To move it to an outer block, see
 [Commit several writes together](#shared-write-action-commit).
 
 The **business method** is the bare verb: {meth}`create <fastapi_restly.views.RestView.create>`, {meth}`update <fastapi_restly.views.RestView.update>`,
@@ -150,20 +151,20 @@ The table below maps the change you want to make to the method that owns it:
 | I want to change…                       | Override / configure              | Tier / kind            |
 |-----------------------------------------|-----------------------------------|------------------------|
 | Domain logic (hash, derive, compute)    | {meth}`create <fastapi_restly.views.RestView.create>` / {meth}`update <fastapi_restly.views.RestView.update>` / {meth}`delete <fastapi_restly.views.RestView.delete>`    | business method        |
-| Orchestration, timing, transaction      | `handle_<verb>`                   | handler                |
+| One commit over several writes          | {meth}`shared_write_action_commit <fastapi_restly.views.RestView.shared_write_action_commit>` in a custom route | commit bracket         |
 | The HTTP contract (status, signature)   | `<verb>_endpoint`                 | endpoint method        |
 | Read scope / row visibility             | {attr}`scope <fastapi_restly.views.BaseRestView.scope>` ([Scopes](scopes.md))  | read extension point   |
 | Filter / sort / pagination grammar      | {meth}`apply_query_params <fastapi_restly.views.RestView.apply_query_params>`              | read extension point   |
 | The list total                          | {meth}`count <fastapi_restly.views.RestView.count>`                           | read extension point   |
 | Authorization / policy                  | {meth}`authorize <fastapi_restly.views.RestView.authorize>` (override to gate)    | handler hook           |
 | Server-stamped fields (audit/tenant)    | a column default on the model ([below](#server-stamped-fields-column-defaults-on-the-model)) | model layer            |
-| In-transaction side effects             | {meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>`                   | transaction hook       |
-| Post-commit side effects (email/webhook)| {meth}`after_action_commit <fastapi_restly.views.RestView.after_action_commit>`                    | transaction hook       |
+| A side effect inside the commit (outbox/audit) | {meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>`                   | transaction hook       |
+| A side effect after the commit (email/webhook) | {meth}`after_action_commit <fastapi_restly.views.RestView.after_action_commit>`                    | transaction hook       |
 | The response shape                      | {meth}`to_response <fastapi_restly.views.BaseRestView.to_response>`                     | response boundary      |
 
-Start at the business method. Move to `handle_<verb>` only when timing or
-transaction handling must change, and touch the endpoint method only when the
-HTTP contract itself changes.
+Start at the business method. Move a side effect that depends on the commit
+to a transaction hook, and touch the endpoint method only when the HTTP
+contract itself changes.
 
 The sections below give recipes for each of these override points.
 
@@ -315,28 +316,9 @@ class InvoiceView(fr.AsyncRestView):
 
 Visibility belongs in the [scope](scopes.md), not here: raising from `authorize` produces a 403, whereas a row outside the scope produces a 404.
 
-## Override `handle_<verb>` for orchestration
+## Transaction hooks: `before_action_commit` / `after_action_commit`
 
-Use `handle_<verb>` to change orchestration: transaction handling, side-effect timing, or the authorize/load order. The handler owns {meth}`authorize <fastapi_restly.views.RestView.authorize>` and the commit bracket.
-
-For server-controlled field stamps, see [column defaults](#server-stamped-fields-column-defaults-on-the-model) below. Use a handler override when the bracket itself must change:
-
-```python
-    async def handle_delete(self, id):
-        obj = await self.get_one(id)
-        # write_action runs the same bracket the default handle_delete uses:
-        # authorize("delete", obj), snapshot, the body, then the commit bracket.
-        async with self.write_action("delete", obj=obj):
-            obj.status = "pending_deletion"
-            await self.save_object(obj)
-        await enqueue_async_delete(obj.id)  # actual delete happens off-request
-```
-
-The endpoint method stays untouched, while the handler controls the write bracket.
-
-### Transaction hooks: `before_action_commit` / `after_action_commit`
-
-For most timing needs, use the hooks instead of overriding the handler:
+The write handlers call two hooks around the commit:
 
 - {meth}`before_action_commit(action, new, old=None) <fastapi_restly.views.RestView.before_action_commit>` runs inside the transaction and is committed atomically with the write. Use it for outbox rows or audit rows.
 - {meth}`after_action_commit(action, new, old=None) <fastapi_restly.views.RestView.after_action_commit>` runs after the write is durable. Use it for email, webhooks, or cache invalidation.
@@ -349,7 +331,22 @@ For most timing needs, use the hooks instead of overriding the handler:
             await notify_status_change(new.id, new.status)
 ```
 
-### Server-stamped fields: column defaults on the model
+On a delete, `new` is `None` and `old` holds the removed row's columns. A
+delete that finishes off-request marks the row in the
+[`delete` business method](#soft-delete-recipe), then enqueues the real delete
+once the mark is durable:
+
+```python
+    async def delete(self, obj):
+        obj.status = "pending_deletion"
+        await self.session.flush()  # no super(): the row stays
+
+    async def after_action_commit(self, action, new, old=None):
+        if action == "delete":
+            await enqueue_async_delete(old["id"])  # the real delete runs off-request
+```
+
+## Server-stamped fields: column defaults on the model
 
 A field the server owns (an audit id, a tenant id) is a column default that reads a bound {class}`fr.ContextNamespace <fastapi_restly.clauses.ContextNamespace>` slot. It fires on every write path, whichever view or helper built the row, so nothing on the view has to run:
 
@@ -407,7 +404,7 @@ Because none of these commit, the same code works inside a view or worker; only 
 
 ## Replace an endpoint method to change the HTTP contract
 
-Business methods and handlers change behavior while preserving the default CRUD route's HTTP contract. Replace the endpoint method when the HTTP contract itself must change: response shape, headers, status code, or query-parameter semantics.
+Business methods and hooks change behavior while preserving the default CRUD route's HTTP contract. Replace the endpoint method when the HTTP contract itself must change: response shape, headers, status code, or query-parameter semantics.
 
 To replace a route, define the same endpoint-method name and add a route decorator. Usually, delegate to the handler and only reshape the response:
 

@@ -134,7 +134,7 @@ instead of rejecting the request.
 The PUT route delegates to the same {meth}`handle_update <fastapi_restly.views.RestView.handle_update>` handler as PATCH and
 accepts the view's standard {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>` payload. If you need different
 write semantics for the two methods, override the {meth}`update <fastapi_restly.views.RestView.update>` business method (or
-`handle_update`, or replace the PUT route directly);
+replace the PUT route directly);
 [Customizing RestView](customize.md) explains how
 these override points relate.
 

@@ -187,18 +187,18 @@ Views are the routing layer; each class below is a registration entry point:
 
 Each CRUD verb on `RestView` / `AsyncRestView` is split into three tiers: the
 endpoint method (`<verb>_endpoint`), the handler (`handle_<verb>`), and
-the business method (`<verb>`). You override the layer that owns your change;
-the model and the decision table live in
-[Customizing RestView](customize.md).
+the business method (`<verb>`). You override the endpoint method or the
+business method, whichever owns your change; the handler is final. The model
+and the decision table live in [Customizing RestView](customize.md).
 
 Alongside the tiers are the declared read [scope](scopes.md) (the
 `scope` class attribute) and cross-cutting **override points**
 (`apply_query_params`, `count`, `authorize`,
 `before_action_commit` / `after_action_commit`, `to_response`,
-`get_relationship_loader_options`, `snapshot`) and final **domain
-utilities** that you call rather than override (`make_new_object`,
-`update_object`, `save_object`); a view class that defines one fails at
-class definition.
+`get_relationship_loader_options`, `snapshot`). The handlers and the
+**domain utilities** (`make_new_object`, `update_object`, `save_object`) are
+final: you call them rather than override them, and a view class that defines
+one fails at class definition.
 
 On `AsyncRestView`, database operations use `await` and commit bracket context
 managers use `async with`. Argument names are identical between variants.
@@ -210,11 +210,11 @@ managers use `async with`. Argument names are identical between variants.
 | Route shell | {meth}`create_endpoint <fastapi_restly.views.RestView.create_endpoint>` | `(schema_obj)` | response schema | `POST /`; serializes the created object. |
 | Route shell | {meth}`update_endpoint <fastapi_restly.views.RestView.update_endpoint>` | `(id, schema_obj)` | response schema | `PATCH /{id}`; serializes the updated object. |
 | Route shell | {meth}`delete_endpoint <fastapi_restly.views.RestView.delete_endpoint>` | `(id)` | `fastapi.Response` | `DELETE /{id}`; returns `204` by default. |
-| Request handler | {meth}`handle_get_many <fastapi_restly.views.RestView.handle_get_many>` | `(query_params, *, scope=None)` | `ListingResult[Model]` | Run `authorize("get_many")`, then `get_many`, forwarding `scope=`. A route names its own scope here (a trash listing); `fr.clauses.UNSCOPED` reads past the view scope. |
-| Request handler | {meth}`handle_get_one <fastapi_restly.views.RestView.handle_get_one>` | `(id, *, scope=None)` | `Model` | Load through `get_one` (scoped, 404), forwarding `scope=`, then `authorize("get_one", obj=...)`. Reusable from a custom read route as "scoped load + 404 + read-auth"; a write action loads with `get_one` and gates its own action. |
-| Request handler | {meth}`handle_create <fastapi_restly.views.RestView.handle_create>` | `(schema_obj)` | `Model` | Authorize, run `create`, then the commit bracket. Inside `shared_write_action_commit`, return after flush but before commit and the after-hook. |
-| Request handler | {meth}`handle_update <fastapi_restly.views.RestView.handle_update>` | `(id, schema_obj)` | `Model` | Load, authorize, snapshot, run `update`, then the commit bracket. Inside `shared_write_action_commit`, return after flush but before commit and the after-hook. |
-| Request handler | {meth}`handle_delete <fastapi_restly.views.RestView.handle_delete>` | `(id)` | `None` | Load, authorize, snapshot, run `delete`, then the commit bracket. Inside `shared_write_action_commit`, return after flush but before commit and the after-hook. |
+| Request handler | {meth}`handle_get_many <fastapi_restly.views.RestView.handle_get_many>` | `(query_params, *, scope=None)` | `ListingResult[Model]` | Run `authorize("get_many")`, then `get_many`, forwarding `scope=`. A route names its own scope here (a trash listing); `fr.clauses.UNSCOPED` reads past the view scope. Final. |
+| Request handler | {meth}`handle_get_one <fastapi_restly.views.RestView.handle_get_one>` | `(id, *, scope=None)` | `Model` | Load through `get_one` (scoped, 404), forwarding `scope=`, then `authorize("get_one", obj=...)`. Reusable from a custom read route as "scoped load + 404 + read-auth"; a write action loads with `get_one` and gates its own action. Final. |
+| Request handler | {meth}`handle_create <fastapi_restly.views.RestView.handle_create>` | `(schema_obj)` | `Model` | Authorize, run `create`, then the commit bracket. Inside `shared_write_action_commit`, return after flush but before commit and the after-hook. Final. |
+| Request handler | {meth}`handle_update <fastapi_restly.views.RestView.handle_update>` | `(id, schema_obj)` | `Model` | Load, authorize, snapshot, run `update`, then the commit bracket. Inside `shared_write_action_commit`, return after flush but before commit and the after-hook. Final. |
+| Request handler | {meth}`handle_delete <fastapi_restly.views.RestView.handle_delete>` | `(id)` | `None` | Load, authorize, snapshot, run `delete`, then the commit bracket. Inside `shared_write_action_commit`, return after flush but before commit and the after-hook. Final. |
 | Custom-action bracket | {meth}`write_action <fastapi_restly.views.RestView.write_action>` | `(action, *, obj=None, data=None)` | context manager | Entered as `async with self.write_action("publish", obj=...):`, it runs the full bracket around your inline mutation: authorize and snapshot on enter; `before_action_commit`, commit, and `after_action_commit` on exit. Use it for a custom write *action* that is not a plain create/update/delete; deposit a create's new object on the yielded handle's `.obj`. The implementation is shared with the CRUD handlers via the self-free `run_write_action` (in `fastapi_restly.views`). |
 | Commit bracket | {meth}`shared_write_action_commit <fastapi_restly.views.RestView.shared_write_action_commit>` | `()` | context manager | Share one commit across write actions on the session. The outermost block commits, then runs their after-hooks. See [Commit several writes together](#shared-write-action-commit). |
 | Business method | {meth}`get_many <fastapi_restly.views.RestView.get_many>` | `(query_params, *, scope=None)` | `ListingResult[Model]` | Scoped and filtered listing via `scope` when given, else the view scope, + `apply_query_params`. Paginated views return one page plus a total count; unpaginated views return every matching row with `total_count=None` and skip `count`. Auth-free. The handlers always forward `scope=`, so an override declares the parameter and passes it on. |

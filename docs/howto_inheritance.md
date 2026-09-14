@@ -5,7 +5,7 @@ FastAPI-Restly views are plain Python classes. Use base classes for shared CRUD 
 Each CRUD verb is implemented in three tiers (see [Customizing RestView](customize.md) for the full model):
 
 - The **endpoint method** ({meth}`create_endpoint <fastapi_restly.views.RestView.create_endpoint>`, {meth}`get_one_endpoint <fastapi_restly.views.RestView.get_one_endpoint>`, and so on) owns the HTTP contract. It is rarely overridden on a base class.
-- The **handler** ({meth}`handle_create <fastapi_restly.views.RestView.handle_create>`, {meth}`handle_get_one <fastapi_restly.views.RestView.handle_get_one>`, and so on) runs {meth}`authorize <fastapi_restly.views.RestView.authorize>` and the commit bracket.
+- The **handler** ({meth}`handle_create <fastapi_restly.views.RestView.handle_create>`, {meth}`handle_get_one <fastapi_restly.views.RestView.handle_get_one>`, and so on) runs {meth}`authorize <fastapi_restly.views.RestView.authorize>` and the commit bracket. It is final: custom routes call it, and a base class cannot override it.
 - The **business method** ({meth}`create <fastapi_restly.views.RestView.create>`, {meth}`get_one <fastapi_restly.views.RestView.get_one>`, {meth}`update <fastapi_restly.views.RestView.update>`, {meth}`delete <fastapi_restly.views.RestView.delete>`, {meth}`get_many <fastapi_restly.views.RestView.get_many>`) is the auth-free, commit-free domain operation.
 
 The business method is the natural home for shared behaviour, so most of the examples below override it.
@@ -75,8 +75,7 @@ class NotifyBase(fr.RestView):
 Every subclass of `NotifyBase` now fires `notify_created` after the write is
 durable. This remains true when a custom endpoint uses
 {ref}`shared_write_action_commit() <shared-write-action-commit>`, which
-queues the hook until the outermost block commits. The handler is final. A
-custom route can call it, but a subclass cannot override it.
+queues the hook until the outermost block commits.
 
 ## Inherit a shared dependency
 
