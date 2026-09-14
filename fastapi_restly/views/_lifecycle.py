@@ -81,7 +81,7 @@ class WriteHost(Protocol):
 async def async_write_action(
     host: AsyncWriteHost, action: str, *, obj: Any = _UNSET, data: Any = None
 ):
-    """Async write bracket.
+    """Async commit bracket.
 
     ``obj=<row>`` means an in-place write. ``obj=None`` means a no-object write.
     Omitting ``obj`` means create-shaped; the block must set ``handle.obj``.
@@ -139,7 +139,7 @@ async def async_run_write_action(
     data: Any = None,
     mutate: Callable[[], Awaitable[T]],
 ) -> T:
-    """Run ``mutate`` inside the async write bracket and return its result."""
+    """Run ``mutate`` inside the async commit bracket and return its result."""
     async with async_write_action(host, action, obj=obj, data=data) as w:
         w.obj = await mutate()
     return w.obj

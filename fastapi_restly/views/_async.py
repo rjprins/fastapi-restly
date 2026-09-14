@@ -56,7 +56,7 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
       returns the domain object. Final: call it from a custom route to get
       the bracket, never override it.
     * ``<verb>`` (``get_many`` / ``get_one`` / ``create`` / ``update`` /
-      ``delete``): the domain operation. Auth-free, commit-free; the common
+      ``delete``): the business method. Auth-free, commit-free; the common
       override point (hash a password, derive a slug, ...).
     """
 
@@ -108,14 +108,14 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         return self.to_response(None, ResponseShape.EMPTY)
 
     # ====================================================================
-    # Request handlers (final: call from a custom route, never override)
+    # Handlers (final: call from a custom route, never override)
     # ====================================================================
 
     @final
     async def handle_get_many(
         self, query_params: Any, *, scope: ReadScope = None
     ) -> ListingResult[ModelT]:
-        """List handler: ``authorize`` then the ``get_many`` domain op.
+        """List handler: ``authorize`` then the ``get_many`` business method.
 
         Final, like every handler: override ``get_many`` for the query and
         ``authorize`` for the gate. Call it from a custom listing route.
@@ -152,7 +152,7 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         return obj
 
     def write_action(self, action: str, *, obj: Any = _UNSET, data: Any = None):
-        """Run a custom write action through the standard write bracket.
+        """Run a custom write action through the commit bracket.
 
         Use this for non-CRUD actions such as publish or change-password::
 
@@ -199,7 +199,7 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
 
     @final
     async def handle_create(self, schema_obj: CreateSchemaT) -> ModelT:
-        """Create handler: ``authorize``, the ``create`` domain op, commit bracket.
+        """Create handler: ``authorize``, the ``create`` business method, commit bracket.
 
         Final: override ``create`` for the domain change, ``authorize`` for
         the gate, and ``before_action_commit`` / ``after_action_commit`` for
@@ -245,7 +245,7 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         )
 
     # ====================================================================
-    # Domain operations (auth-free, commit-free) -- the common override point
+    # Business methods (auth-free, commit-free): the common override point
     # ====================================================================
 
     async def get_many(

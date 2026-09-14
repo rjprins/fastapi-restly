@@ -123,7 +123,7 @@ class ListingResult(Generic[ModelT]):
 class ViewRoute(str, Enum):
     """Default CRUD route names that can be referenced by view options.
 
-    Values are the route-shell method names so ``exclude_routes`` can drop them.
+    Values are the endpoint method names so ``exclude_routes`` can drop them.
     """
 
     GET_MANY = "get_many_endpoint"
@@ -1712,7 +1712,7 @@ def _init_view_cls_and_add_to_router(
 #: Bare business-method names. A ``@route``-decorated method must not be
 #: named like one of these: it would shadow the verb (which the ``handle_<verb>``
 #: handlers call) and collide with ``<verb>_endpoint`` at the same path.
-#: Override the bare verb *without* a decorator for domain logic; use
+#: Override the business method *without* a decorator for domain logic; use
 #: ``<verb>_endpoint`` or a distinct name for a custom route.
 _BARE_VERB_NAMES = frozenset({"get_many", "get_one", "create", "update", "delete"})
 
@@ -1762,7 +1762,7 @@ def _warn_on_misuse(view_cls: type[View]) -> None:
             warnings.warn(
                 f"{name} overrides the endpoint method '{endpoint}'. Override "
                 f"an endpoint method only to change the HTTP contract. For "
-                f"domain logic override the bare verb '{verb}'; for a gate "
+                f"domain logic override the business method '{verb}'; for a gate "
                 f"'authorize'; for the response shape 'to_response'. Call "
                 f"'handle_{verb}' from the replacement to keep the bracket.",
                 RestlyMisuseWarning,
@@ -1814,7 +1814,7 @@ def _warn_on_misuse(view_cls: type[View]) -> None:
             warnings.warn(
                 f"{name} hand-rolls a CRUD route set on a bare View. RestView / "
                 f"AsyncRestView already define list/create/get/update/delete "
-                f"endpoint methods. Subclass one and override the bare verbs "
+                f"endpoint methods. Subclass one and override the business methods "
                 f"(create/update/delete), declare a scope, or override "
                 f"authorize for custom behavior.",
                 RestlyMisuseWarning,

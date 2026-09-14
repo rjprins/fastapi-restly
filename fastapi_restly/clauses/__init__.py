@@ -7,9 +7,9 @@ TransformClause, combine() -> CombinedClause. The fourth kind, a
 ContextParam value slot, is declared in a ContextNamespace
 (`name: ContextParam[T]`), not constructed. A CombinedClause always
 carries at least one transform. A bundle of only wheres is all_of's
-job. Functions passed to the constructors are wrapped with @contextual
-(see contextargs): parameters the caller does not supply are injected
-from values bound via Clause.bind().
+job. Functions passed to the constructors are wrapped so that
+parameters the caller does not supply are injected from values bound
+via Clause.bind().
 
 A WhereClause is also callable. Calling it, optionally with an
 ephemeral bind as keyword arguments, returns the raw ColumnElement
