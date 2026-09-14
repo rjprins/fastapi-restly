@@ -158,9 +158,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- The uncommitted-changes warning no longer forgets flushed writes when a
-  savepoint is released. If a route omits the outer session commit after
-  per-row savepoints, Restly now warns before the writes are rolled back.
 - Datetime query filters without an offset now use UTC for timezone-aware
   columns. Filters for `DateTime()` columns remain naive.
 - The scalar reference check (`MustExist`, `RefExists`) selects the mapped

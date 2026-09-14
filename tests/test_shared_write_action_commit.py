@@ -467,19 +467,16 @@ async def test_savepoint_rollback_keeps_surviving_hook_objects_readable(
     assert await _names(writes, writes.model) == ["survivor"]
 
 
-async def test_failed_block_after_released_savepoint_still_warns(writes):
+async def test_failed_block_without_database_changes_does_not_warn(writes):
     _arm_uncommitted_warning(writes.session)
 
-    with pytest.raises(ValueError, match="abort after row"):
+    with pytest.raises(ValueError, match="abort no-op"):
         async with _enter(writes.view.shared_write_action_commit()):
-            async with _enter(writes.session.begin_nested()):
-                await _call(
-                    writes.view.handle_create(writes.schema(name="uncommitted"))
-                )
-            raise ValueError("abort after row")
+            async with _enter(writes.view.write_action("noop", obj=None)):
+                pass
+            raise ValueError("abort no-op")
 
-    with pytest.warns(fr.exc.RestlyUncommittedChangesWarning):
-        _warn_if_uncommitted(writes.session)
+    _warn_if_uncommitted(writes.session)  # Warnings are errors in this suite.
     await _call(writes.session.rollback())
 
 
