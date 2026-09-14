@@ -877,7 +877,8 @@ class View:
 
     @classmethod
     def before_include_view(cls):
-        pass
+        """Run by :func:`include_view` once per class, before its routes are
+        registered. A no-op here; override to adjust route methods first."""
 
 
 V = TypeVar("V", bound=type[View])

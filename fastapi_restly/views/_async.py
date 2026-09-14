@@ -192,7 +192,8 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         After-hooks run in queue order and stop on the first exception. ``new``
         is the live object after all writes, while ``old`` is each action's
         snapshot. Direct ``session.commit()`` calls raise ``RuntimeError``.
-        Async actions require an async outermost block.
+        An async write action needs an async outermost block; a sync one
+        joins either.
         """
         return _async_shared_write_action_commit(self.session)
 
@@ -250,15 +251,22 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     async def get_many(
         self, query_params: Any, *, scope: ReadScope = None
     ) -> ListingResult[ModelT]:
-        """Return the scoped, filtered, paginated page plus the total count.
+        """List the rows the scope allows, filtered and paged by ``query_params``.
 
-        Routes through ``scope`` when given, else the view scope
-        (:attr:`~fastapi_restly.views.BaseRestView.scope`),
-        + :meth:`apply_query_params` (filter/sort/page) + :meth:`count`.
-        Auth-free; ``handle_get_many`` adds the ``authorize`` call.
+        Auth-free: ``handle_get_many`` adds ``authorize``. The query is the
+        resolved scope (``fr.resolve_scope(self)``, or ``scope`` when given)
+        plus :meth:`apply_query_params`. A paginated view also runs
+        :meth:`count` for ``total_count``; an unpaginated view returns every
+        matching row with ``total_count=None``. Relationships the response
+        schema names are eager-loaded.
 
-        The handlers always forward ``scope=``, so an override must
-        declare the parameter and pass it on to ``super()``.
+        The handlers always forward ``scope=``, so an override must declare
+        the parameter and pass it on to ``super()``.
+
+        :param query_params: the listing parameters (filter, sort, page) as
+            the endpoint receives them.
+        :param scope: a clause that replaces the resolved scope for this
+            read; ``fr.clauses.UNSCOPED`` reads unscoped.
         """
         query = self._apply_scope(select(self.model), scope)
         query = self.apply_query_params(query, query_params)
@@ -278,24 +286,32 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     async def get_one(
         self, id: IdT | ColumnElement[bool], *, scope: ReadScope = None
     ) -> ModelT:
-        """Load one object through the scope (scope + 404).
+        """Load the one row ``id`` names, through the scope, or raise 404.
 
-        Auth-free: visibility comes from ``scope`` when given, else the
-        view scope, so a row outside it is a clean 404 for every caller.
-        ``handle_get_one`` adds read-auth; a custom action that needs a
-        different auth decision calls this directly with its own scope.
+        Auth-free: ``handle_get_one`` adds ``authorize``; a write action
+        calls this directly and gates its own action. Visibility is the
+        resolved scope (``fr.resolve_scope(self)``, or ``scope`` when
+        given), so a row outside it is a 404 for every caller.
+        Relationships the response schema names are eager-loaded.
 
-        ``id`` is the primary key by default. A SQLAlchemy boolean
-        expression takes its place to load by any other key
-        (``get_one(Item.slug == slug)``), through the same scope, loader
-        options and 404, and to address a composite key at all. A
-        criterion narrows inside the scope; ``scope=`` is what replaces
-        the scope. More than one match raises SQLAlchemy's
-        ``MultipleResultsFound`` rather than serving the first row: an
-        ambiguous key is a bug in the criterion.
+        The handlers always forward ``scope=``, so an override must declare
+        the parameter and pass it on to ``super()``.
 
-        The handlers always forward ``scope=``, so an override must
-        declare the parameter and pass it on to ``super()``.
+        :param id: the primary key, or a SQLAlchemy boolean expression that
+            picks the row instead (``get_one(Item.slug == slug)``), which
+            is also how a composite key is addressed. A criterion narrows
+            inside the scope; only ``scope=`` replaces it.
+        :param scope: a clause that replaces the resolved scope for this
+            read; ``fr.clauses.UNSCOPED`` reads unscoped.
+        :raises fastapi_restly.exc.NotFound: no row matches inside the
+            scope. The message names an id, never a predicate.
+        :raises sqlalchemy.exc.MultipleResultsFound: more than one row
+            matches; an ambiguous key is a bug in the criterion.
+        :raises TypeError: ``id`` is a Python bool (a comparison on a
+            loaded object, which would render as ``WHERE true``) or an
+            uncalled clause (a scope, not a row identity).
+        :raises NotImplementedError: a plain id on a composite primary
+            key; pass a predicate.
         """
         query = self._apply_scope(select(self.model), scope).where(
             _identity_criterion(self.model, id)
@@ -312,14 +328,23 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         return cast(ModelT, obj)
 
     async def create(self, schema_obj: CreateSchemaT) -> ModelT:
-        """Build a new object and save it. Override from scratch for domain
-        logic (e.g. hash a password): never commits, so the bracket can't break.
+        """Build a new object from ``schema_obj`` and save it.
+
+        Auth-free and commit-free: ``handle_create`` owns both. The usual
+        create override point (hash a password, derive a slug), written as
+        ``make_new_object``, the extra step, then ``save_object``.
         """
         obj = await self.make_new_object(schema_obj)
         return await self.save_object(obj)
 
     async def update(self, obj: ModelT, schema_obj: UpdateSchemaT) -> ModelT:
-        """Apply the update payload to ``obj`` and save it."""
+        """Apply ``schema_obj`` to the loaded ``obj`` and save it.
+
+        Auth-free and commit-free: ``handle_update`` loads ``obj`` through
+        ``get_one``, gates, and commits. The usual update override point,
+        written as ``update_object``, the extra step, then
+        ``save_object``.
+        """
         obj = await self.update_object(obj, schema_obj)
         return await self.save_object(obj)
 
@@ -347,10 +372,11 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     async def count(self, query: sqlalchemy.Select[Any]) -> int:
         """Total for the list, ignoring presentation-layer ordering/pagination.
 
-        The stripped query is made ``DISTINCT`` and wrapped as a subquery, so the
-        total is correct across user-provided query shapes -- including a scope
-        that joins a to-many relationship, whose row fan-out would otherwise
-        inflate the count. Override for estimated counts on huge tables.
+        The stripped query is made ``DISTINCT`` and wrapped as a subquery, so
+        the total is correct across user-provided query shapes, including a
+        scope that joins a to-many relationship, whose row fan-out would
+        otherwise inflate the count. Override for estimated counts on huge
+        tables.
         """
         count_source = query.order_by(None).limit(None).offset(None).distinct()
         count_query = select(func.count()).select_from(count_source.subquery())
@@ -363,14 +389,14 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     @final
     async def make_new_object(self, schema_obj: CreateSchemaT) -> ModelT:
         """Construct a new ORM object from ``schema_obj`` and add it to the
-        session. Does not flush -- :meth:`save_object` does.
+        session. Does not flush; :meth:`save_object` does.
 
-        Final: the view-bound spelling of
-        ``fr.objects.async_make_new_object``, passing the view's model and
-        response schema (the schema carries the read-only markers). A
-        server-stamped field (an audit id, a tenant id) is a column default
-        on the model, which covers every write path; a value derived from
-        the payload goes in a ``create`` override, after this call.
+        Final: the view-bound spelling of ``fr.objects.async_make_new_object``,
+        passing the view's model and response schema (the schema carries the
+        read-only markers). A server-stamped field (an audit id, a tenant
+        id) is a column default on the model, which covers every write path;
+        a value derived from the payload goes in a ``create`` override, after
+        this call.
         """
         model_cls = cast(type[ModelT], self.model)
         return await object_async_make_new_object(
@@ -392,7 +418,7 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     @final
     async def save_object(self, obj: ModelT) -> ModelT:
         """Flush the session and refresh ``obj`` from the database, eager-loading
-        the relationships the response schema names. Does not commit --
+        the relationships the response schema names. Does not commit;
         ``handle_<verb>`` owns the commit.
 
         Final: a side effect per write belongs in ``before_action_commit`` /
@@ -400,7 +426,7 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         too), and the reload strategy is ``get_relationship_loader_options``.
 
         The refresh leaves relationships unloaded, so without the eager load the
-        serializer would reach them one lazy query at a time -- which on an async
+        serializer would reach them one lazy query at a time, which on an async
         session is not slow but fatal: a lazy load in the endpoint coroutine has
         no greenlet to suspend into and raises ``MissingGreenlet``. Reads apply
         the same options in ``get_one`` / ``get_many``.
@@ -424,11 +450,11 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         the write for ``create``, and after the scoped load for ``update`` /
         ``delete`` / ``get_one`` (so ``obj`` is available for row-level checks).
 
-        The default is a **no-op** -- override to enforce policy, raising
-        ``fr.exc.Forbidden`` / ``fr.exc.NotFound`` to reject (``action`` says which verb;
-        ``obj`` / ``data`` carry the loaded row and the request payload). Row
-        *visibility* -- hiding a row from every caller -- belongs in the
-        scope, not here.
+        The default is a **no-op**. Override to enforce policy, raising
+        ``fr.exc.Forbidden`` / ``fr.exc.NotFound`` to reject (``action`` says
+        which verb; ``obj`` / ``data`` carry the loaded row and the request
+        payload). Row *visibility*, hiding a row from every caller, belongs in
+        the scope, not here.
         """
 
     async def before_action_commit(
@@ -447,6 +473,6 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         For *external* effects only: the write is already durable, so mutating
         ``new`` or the database here is NOT persisted. A mutation to ``new`` also
         leaks into this request's response (which serializes ``new`` after this
-        hook) while being silently discarded from storage -- do the mutation in
+        hook) while being silently discarded from storage. Do the mutation in
         the business method or ``before_action_commit`` instead.
         """

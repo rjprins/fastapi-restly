@@ -47,10 +47,17 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
             schema = FooRead
             model = Foo
 
-    Each verb is three tiers (see "Customizing RestView" in the docs): the
-    endpoint method ``<verb>_endpoint``, the handler ``handle_<verb>``
-    (authorize + commit bracket; final, call it from a custom route), and the
-    bare verb ``<verb>`` (the domain operation -- the common override point).
+    Each verb is three tiers (see "Customizing RestView" in the docs):
+
+    * ``<verb>_endpoint``: the endpoint method. Owns the HTTP signature,
+      ``response_model``, and ``to_response``. Rarely overridden.
+    * ``handle_<verb>``: the handler. Owns ``authorize`` and the commit
+      bracket (``before_action_commit`` -> commit -> ``after_action_commit``);
+      returns the domain object. Final: call it from a custom route to get
+      the bracket, never override it.
+    * ``<verb>`` (``get_many`` / ``get_one`` / ``create`` / ``update`` /
+      ``delete``): the domain operation. Auth-free, commit-free; the common
+      override point (hash a password, derive a slug, ...).
     """
 
     session: SessionDep
@@ -127,12 +134,11 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
     ) -> ModelT:
         """Retrieve handler: scoped load (404 by visibility) then read-auth.
 
-        Sync counterpart of :meth:`AsyncRestView.handle_get_one`. Final:
-        override ``get_one`` for the load and ``authorize`` for the gate.
-        Call it from a custom read route as "load with scope + 404 +
+        Final: override ``get_one`` for the load and ``authorize`` for the
+        gate. Call it from a custom read route as "load with scope + 404 +
         read-auth". A write action instead loads with ``get_one(id,
-        scope=...)`` and gates only its own action, the way ``handle_update``
-        and ``handle_delete`` do.
+        scope=...)`` and gates only its own action, the way
+        ``handle_update`` and ``handle_delete`` do.
 
         :param id: the primary key, or a SQLAlchemy boolean expression
             that picks the row instead, so a natural-key route is this
@@ -150,10 +156,14 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
 
         Use this for non-CRUD actions such as publish or change-password::
 
-            with self.write_action("publish", obj=article):
+            with self.write_action("publish", obj=article):  # in-place
                 article.status = "published"
 
-        For create-shaped actions, omit ``obj`` and set ``w.obj`` before exit.
+        For create-shaped actions, omit ``obj`` and set ``w.obj`` before exit::
+
+            with self.write_action("create", data=req) as w:
+                w.obj = self.make_new_object(req)
+
         Pass ``obj=None`` for writes with no single object. Exceptions skip the
         commit. Inside :meth:`shared_write_action_commit`, the outermost block
         owns the commit and the after-hooks, so this bracket returns after its
@@ -164,22 +174,26 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
     def shared_write_action_commit(self) -> AbstractContextManager[None]:
         """Share one commit across write actions on this session.
 
-        Sync counterpart of :meth:`AsyncRestView.shared_write_action_commit`::
+        The outermost block commits once, then runs the queued
+        ``after_action_commit`` hooks. ``write_action`` and the write handlers
+        still authorize, snapshot, mutate, run ``before_action_commit``, and
+        flush. They return uncommitted objects inside the block::
 
             with self.shared_write_action_commit():
                 for schema_obj in items:
                     self.handle_create(schema_obj)
 
-        The outermost block commits once, then runs the queued after-hooks.
-        Write handlers return after their flush inside the block, before the
-        commit and after-hooks. Serialize their objects and run code that
-        depends on an after-hook only after the block exits.
+        Serialize returned objects and run code that depends on an after-hook
+        only after the block exits. Nested blocks on the same session share the
+        commit. An exception escaping a deferred-commit block aborts the shared
+        commit, including when an enclosing deferred-commit block catches that
+        exception. Rollback belongs to the session owner.
 
-        Nested blocks on the same session share the commit. An exception
-        escaping a deferred-commit block aborts the shared commit, including
-        when an enclosing deferred-commit block catches it. Rollback belongs
-        to the session owner. Direct ``session.commit()`` calls raise
-        ``RuntimeError``.
+        After-hooks run in queue order and stop on the first exception. ``new``
+        is the live object after all writes, while ``old`` is each action's
+        snapshot. Direct ``session.commit()`` calls raise ``RuntimeError``.
+        An async write action needs an async outermost block; a sync one
+        joins either.
         """
         return _shared_write_action_commit(self.session)
 
@@ -235,6 +249,23 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
     def get_many(
         self, query_params: Any, *, scope: ReadScope = None
     ) -> ListingResult[ModelT]:
+        """List the rows the scope allows, filtered and paged by ``query_params``.
+
+        Auth-free: ``handle_get_many`` adds ``authorize``. The query is the
+        resolved scope (``fr.resolve_scope(self)``, or ``scope`` when given)
+        plus :meth:`apply_query_params`. A paginated view also runs
+        :meth:`count` for ``total_count``; an unpaginated view returns every
+        matching row with ``total_count=None``. Relationships the response
+        schema names are eager-loaded.
+
+        The handlers always forward ``scope=``, so an override must declare
+        the parameter and pass it on to ``super()``.
+
+        :param query_params: the listing parameters (filter, sort, page) as
+            the endpoint receives them.
+        :param scope: a clause that replaces the resolved scope for this
+            read; ``fr.clauses.UNSCOPED`` reads unscoped.
+        """
         query = self._apply_scope(select(self.model), scope)
         query = self.apply_query_params(query, query_params)
         total_count = self.count(query) if self.paginated else None
@@ -253,6 +284,33 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
     def get_one(
         self, id: IdT | ColumnElement[bool], *, scope: ReadScope = None
     ) -> ModelT:
+        """Load the one row ``id`` names, through the scope, or raise 404.
+
+        Auth-free: ``handle_get_one`` adds ``authorize``; a write action
+        calls this directly and gates its own action. Visibility is the
+        resolved scope (``fr.resolve_scope(self)``, or ``scope`` when
+        given), so a row outside it is a 404 for every caller.
+        Relationships the response schema names are eager-loaded.
+
+        The handlers always forward ``scope=``, so an override must declare
+        the parameter and pass it on to ``super()``.
+
+        :param id: the primary key, or a SQLAlchemy boolean expression that
+            picks the row instead (``get_one(Item.slug == slug)``), which
+            is also how a composite key is addressed. A criterion narrows
+            inside the scope; only ``scope=`` replaces it.
+        :param scope: a clause that replaces the resolved scope for this
+            read; ``fr.clauses.UNSCOPED`` reads unscoped.
+        :raises fastapi_restly.exc.NotFound: no row matches inside the
+            scope. The message names an id, never a predicate.
+        :raises sqlalchemy.exc.MultipleResultsFound: more than one row
+            matches; an ambiguous key is a bug in the criterion.
+        :raises TypeError: ``id`` is a Python bool (a comparison on a
+            loaded object, which would render as ``WHERE true``) or an
+            uncalled clause (a scope, not a row identity).
+        :raises NotImplementedError: a plain id on a composite primary
+            key; pass a predicate.
+        """
         query = self._apply_scope(select(self.model), scope).where(
             _identity_criterion(self.model, id)
         )
@@ -268,10 +326,23 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         return cast(ModelT, obj)
 
     def create(self, schema_obj: CreateSchemaT) -> ModelT:
+        """Build a new object from ``schema_obj`` and save it.
+
+        Auth-free and commit-free: ``handle_create`` owns both. The usual
+        create override point (hash a password, derive a slug), written as
+        ``make_new_object``, the extra step, then ``save_object``.
+        """
         obj = self.make_new_object(schema_obj)
         return self.save_object(obj)
 
     def update(self, obj: ModelT, schema_obj: UpdateSchemaT) -> ModelT:
+        """Apply ``schema_obj`` to the loaded ``obj`` and save it.
+
+        Auth-free and commit-free: ``handle_update`` loads ``obj`` through
+        ``get_one``, gates, and commits. The usual update override point,
+        written as ``update_object``, the extra step, then
+        ``save_object``.
+        """
         obj = self.update_object(obj, schema_obj)
         return self.save_object(obj)
 
@@ -291,14 +362,19 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
     def apply_query_params(
         self, query: sqlalchemy.Select[Any], query_params: Any
     ) -> sqlalchemy.Select[Any]:
-        """Apply URL filter/sort/pagination to ``query``."""
+        """Apply URL filter/sort/pagination to ``query``. Override for a
+        non-default URL grammar; the common case is driven by configuration.
+        """
         return apply_list_params(query_params, query, self.model, self.schema)
 
     def count(self, query: sqlalchemy.Select[Any]) -> int:
-        """Total for the list, ignoring presentation ordering/pagination.
+        """Total for the list, ignoring presentation-layer ordering/pagination.
 
-        Made ``DISTINCT`` before counting so a scope that joins a to-many
-        relationship doesn't inflate the total via row fan-out.
+        The stripped query is made ``DISTINCT`` and wrapped as a subquery, so
+        the total is correct across user-provided query shapes, including a
+        scope that joins a to-many relationship, whose row fan-out would
+        otherwise inflate the count. Override for estimated counts on huge
+        tables.
         """
         count_source = query.order_by(None).limit(None).offset(None).distinct()
         count_query = select(func.count()).select_from(count_source.subquery())
@@ -310,7 +386,8 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
 
     @final
     def make_new_object(self, schema_obj: CreateSchemaT) -> ModelT:
-        """Construct a new ORM object and add it to the session (no flush).
+        """Construct a new ORM object from ``schema_obj`` and add it to the
+        session. Does not flush; :meth:`save_object` does.
 
         Final: the view-bound spelling of ``fr.objects.make_new_object``,
         passing the view's model and response schema (the schema carries the
@@ -324,7 +401,7 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
 
     @final
     def update_object(self, obj: ModelT, schema_obj: UpdateSchemaT) -> ModelT:
-        """Apply writable fields to ``obj`` (no flush).
+        """Apply writable fields from ``schema_obj`` to ``obj``. Does not flush.
 
         Final, like :meth:`make_new_object`: an ``updated_by`` stamp is the
         column's ``onupdate`` on the model; payload-derived values go in an
@@ -334,8 +411,9 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
 
     @final
     def save_object(self, obj: ModelT) -> ModelT:
-        """Flush + refresh, eager-loading the relationships the response schema
-        names. Does not commit -- ``handle_<verb>`` owns the commit.
+        """Flush the session and refresh ``obj`` from the database, eager-loading
+        the relationships the response schema names. Does not commit;
+        ``handle_<verb>`` owns the commit.
 
         Final: a side effect per write belongs in ``before_action_commit`` /
         ``after_action_commit`` (or a session event, to see the bulk paths
@@ -360,24 +438,33 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
     def authorize(
         self, action: str, obj: ModelT | None = None, data: Any = None
     ) -> None:
-        """Gate a verb. Sync counterpart of :meth:`AsyncRestView.authorize` -- a
-        **no-op** by default; override to enforce policy and raise
-        ``fr.exc.Forbidden`` / ``fr.exc.NotFound`` to reject. Row *visibility* belongs in
-        the scope.
+        """Gate a verb. Called by ``handle_<verb>`` at the right phase: before
+        the write for ``create``, and after the scoped load for ``update`` /
+        ``delete`` / ``get_one`` (so ``obj`` is available for row-level checks).
+
+        The default is a **no-op**. Override to enforce policy, raising
+        ``fr.exc.Forbidden`` / ``fr.exc.NotFound`` to reject (``action`` says
+        which verb; ``obj`` / ``data`` carry the loaded row and the request
+        payload). Row *visibility*, hiding a row from every caller, belongs in
+        the scope, not here.
         """
 
     def before_action_commit(
         self, action: str, new: ModelT | None, old: dict[str, Any] | None = None
     ) -> None:
-        """In-transaction side effect (outbox/audit), atomic with the write."""
+        """In-transaction side effect (outbox rows, audit rows), committed
+        atomically with the write. ``old`` is the pre-mutation snapshot dict.
+        """
 
     def after_action_commit(
         self, action: str, new: ModelT | None, old: dict[str, Any] | None = None
     ) -> None:
-        """Post-commit side effect (email, webhook, cache).
+        """Post-commit side effect (email, webhook, cache invalidation). ``old``
+        enables dirty detection ("notify only if the status changed").
 
         For *external* effects only: the write is already durable, so mutating
-        ``new`` or the database here is NOT persisted (and a mutation to ``new``
-        leaks into this request's response while being discarded from storage).
-        Do the mutation in the business method or ``before_action_commit`` instead.
+        ``new`` or the database here is NOT persisted. A mutation to ``new`` also
+        leaks into this request's response (which serializes ``new`` after this
+        hook) while being silently discarded from storage. Do the mutation in
+        the business method or ``before_action_commit`` instead.
         """
