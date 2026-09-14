@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fastapi-restly"
-version = "0.9.0"
+version = "0.10.0"
 description = "A REST Framework for FastAPI"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -111,6 +111,9 @@ filterwarnings = [
     # that also set Field(alias=...). The tests intentionally cover that supported
     # schema shape, and Restly preserves aliases in generated request/response models.
     "ignore:The .* attribute with value .* was provided to the `Field\\(\\)` function, which has no effect in the context it was used",
+    # Starlette's TestClient resolves this deprecated AnyIO alias at import time.
+    # Keep every other dependency warning fatal until Starlette removes the alias.
+    "ignore:The anyio\\.abc\\.BlockingPortal alias is deprecated, use anyio\\.from_thread\\.BlockingPortal instead\\.:DeprecationWarning",
 ]
 
 [tool.coverage.run]

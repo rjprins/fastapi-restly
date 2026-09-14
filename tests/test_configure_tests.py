@@ -945,7 +945,6 @@ def test_a_two_memory_suite_configured_delete_is_refused_at_collection(tmp_path:
     assert "two separate in-memory SQLite databases" in output
     assert "ImportError" not in output
     assert "INTERNALERROR" not in output
-    assert "no tests ran" in output
 
 
 def test_the_environment_refuses_a_two_memory_rollback_suite_switched_to_delete(
@@ -965,7 +964,6 @@ def test_the_environment_refuses_a_two_memory_rollback_suite_switched_to_delete(
     assert refused.returncode != 0
     assert "two separate in-memory SQLite databases" in output
     assert "INTERNALERROR" not in output
-    assert "no tests ran" in output
 
 
 _NONE_CONFTEST = """

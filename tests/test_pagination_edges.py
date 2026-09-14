@@ -159,6 +159,31 @@ def test_page_out_of_range_returns_empty_items(client):
     assert payload["total_pages"] == 1
 
 
+def test_page_at_largest_database_offset_returns_empty_items(client):
+    """The largest page whose SQL offset fits a signed 64-bit int is valid."""
+    _setup_view(client)
+    page = (2**63 - 1) // fr.query.DEFAULT_PAGE_SIZE + 1
+
+    response = client.get(f"/widgets/?page={page}")
+
+    assert response.json()["data"] == []
+
+
+def test_page_whose_offset_exceeds_database_integer_returns_422(client):
+    """A page that would overflow a signed 64-bit SQL offset is rejected."""
+    _setup_view(client)
+    page = (2**63 - 1) // fr.query.DEFAULT_PAGE_SIZE + 2
+
+    response = client.get(f"/widgets/?page={page}", assert_status_code=422)
+    body = response.json()
+
+    assert any(
+        err.get("loc") == ["query"]
+        and "page and page_size produce an offset above" in err.get("msg", "")
+        for err in body["detail"]
+    )
+
+
 def test_very_large_page_size_is_capped_at_max(client):
     """``page_size`` is capped at :data:`fr.query.MAX_PAGE_SIZE`. Anything above is 422."""
     _setup_view(client)
