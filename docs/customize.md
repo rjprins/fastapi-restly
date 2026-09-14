@@ -70,10 +70,19 @@ commits after this method returns:
 
 ```python
 import fastapi_restly as fr
+from sqlalchemy.orm import Mapped
 
 from .auth import hash_password
-from .models import User
-from .schemas import UserRead
+
+
+class User(fr.IDBase):
+    email: Mapped[str]
+    password: Mapped[str]  # stores the hash. UserView.create writes it
+
+
+class UserRead(fr.IDSchema):
+    email: str
+    password: fr.WriteOnly[str]  # accepted on input, never serialized
 
 
 @fr.include_view(app)
@@ -84,12 +93,16 @@ class UserView(fr.AsyncRestView):
 
     async def create(self, schema_obj):
         obj = await self.make_new_object(schema_obj)
-        obj.password_hash = hash_password(schema_obj.password)
+        obj.password = hash_password(schema_obj.password)
         return await self.save_object(obj)
 ```
 
 {meth}`handle_create <fastapi_restly.views.RestView.handle_create>` still authorizes and runs the commit bracket. The override only
-changes the domain step.
+changes the domain step. The wire field and the column share a name because
+{meth}`make_new_object <fastapi_restly.views.RestView.make_new_object>` passes every writable schema field to the model constructor:
+the plaintext lands in `password` first, and the override replaces it with
+the hash before the flush. `fr.WriteOnly` keeps the field out of every
+response.
 
 ## Request lifecycle: a write (`create`)
 
@@ -177,8 +190,8 @@ authorization and commit handling around them.
 
 ### `create`: inject server-side fields at creation
 
-The [worked example](#worked-example-hash-a-password-on-create) above stamped
-a `password_hash`; any server-owned field follows the same shape, reading
+The [worked example](#worked-example-hash-a-password-on-create) above hashed
+a `password`. Any server-owned field follows the same shape, reading
 request context through `self`:
 
 ```python
@@ -395,7 +408,7 @@ from fastapi_restly.objects import async_make_new_object, async_save_object
 
 async def import_user(session, payload) -> User:
     user = await async_make_new_object(session, User, payload, UserRead)
-    user.password_hash = hash_password(payload.password)
+    user.password = hash_password(payload.password)
     await async_save_object(session, user)
     await session.commit()
     return user

@@ -149,7 +149,7 @@ welcome there, unlike in `default_scope`:
 ```python
 class ItemView(fr.AsyncRestView):
     ...
-    scope = fr.combine(ItemClauses.visible, ItemClauses.newest_first)
+    scope = fr.combine(ItemClauses.visible, newest_first)
 ```
 
 The explicit opt-out is `fr.clauses.UNSCOPED`: it reads past the model's
@@ -216,7 +216,7 @@ class ItemView(fr.AsyncRestView):
         result = await self.handle_get_many(query_params, scope=ItemClauses.trashed)
         return self.to_response(result, fr.ResponseShape.LISTING)
 
-    @fr.post("/{id}/restore", response_model=ItemRead)
+    @fr.post("/{id}/restore", response_model=ItemRead, status_code=200)
     async def restore(self, id: int):
         item = await self.get_one(id, scope=ItemClauses.trashed)
         async with self.write_action("restore", obj=item):
@@ -365,7 +365,8 @@ your own dependencies, so `app.dependency_overrides` keeps working:
 
 ```python
 app = FastAPI(dependencies=[
-    Current.depends(tenant_id=get_tenant_id, is_admin=get_is_admin),
+    Current.depends(tenant_id=get_tenant_id),
+    RoleContext.depends(is_admin=get_is_admin),
 ])
 ```
 

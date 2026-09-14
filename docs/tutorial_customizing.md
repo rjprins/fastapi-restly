@@ -261,13 +261,17 @@ If a custom action is just a create or update under another URL, call {meth}`han
 
 ```python
     @fr.post("/{id}/repost")
-    async def repost(self, id: int, schema_obj: PostRead):
+    async def repost(self, id: int):
         original = await self.get_one(id)
-        # ... derive a new payload from `original` ...
-        return self.to_response(await self.handle_create(schema_obj))
+        payload = self.schema_create(
+            title=f"Repost: {original.title}",
+            content=original.content,
+            published=False,
+        )
+        return self.to_response(await self.handle_create(payload))
 ```
 
-`handle_create` runs authorization, your {meth}`create <fastapi_restly.views.RestView.create>` override, and the commit bracket.
+{attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` is the view's create schema, generated from `PostRead` when the view declares none, so the derived payload is validated like a `POST /` body. `handle_create` runs authorization, your {meth}`create <fastapi_restly.views.RestView.create>` override, and the commit bracket.
 
 ## Database conflict responses
 
@@ -330,7 +334,7 @@ class PostView(AuthoredBase):
 
     async def create(self, schema_obj):
         # PostView-specific logic before the base class runs
-        schema_obj.slug = slugify(schema_obj.title)
+        schema_obj.title = schema_obj.title.strip()
         return await super().create(schema_obj)
 ```
 

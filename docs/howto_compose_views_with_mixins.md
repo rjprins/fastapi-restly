@@ -54,7 +54,7 @@ function, put it where it is easiest to find, and call it from both:
 
 ```python
 def hash_and_set_password(user: User, raw_password: str) -> None:
-    user.password_hash = bcrypt.hashpw(raw_password.encode(), bcrypt.gensalt())
+    user.password = bcrypt.hashpw(raw_password.encode(), bcrypt.gensalt())
 
 
 class UserView(fr.AsyncRestView):
@@ -159,28 +159,23 @@ its project) registers a second listener with an `EXISTS`.
 (soft-delete-mixin)=
 ### Soft delete: a scope clause plus a delete mixin
 
-The read half is one unconditional predicate in the model's namespace:
-the default scope hides deleted rows for every read and every reference
-check, and the trash is reachable only through an explicit surface, a
-view declaring `scope = ProjectClauses.trashed` (see
-[Scopes](#view-scope)). A query parameter can never widen a scope. The
-write half turns `delete` into a timestamp flip:
+The read half is one unconditional predicate in the model's namespace,
+`is_deleted`, declared with the composed model under
+[Composing on a view](#composing-on-a-view): the default scope hides
+deleted rows for every read and every reference check, and the trash is
+reachable only through an explicit surface, a view declaring
+`scope = ProjectClauses.trashed` (see [Scopes](#view-scope)). A query
+parameter can never widen a scope. The write half turns `delete` into a
+timestamp flip:
 
 ```python
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class SoftDeletable(orm.MappedAsDataclass, kw_only=True):
     deleted_at: orm.Mapped[datetime | None] = orm.mapped_column(default=None)
-
-
-class ProjectClauses(fr.ClauseNamespace):
-    model = Project
-
-    is_deleted = fr.where_clause(Project.deleted_at.is_not(None))
-    default_scope = fr.none_of(is_deleted)  # the tenant rule is the session's
 
 
 class SoftDeleteMixin:
@@ -240,12 +235,20 @@ with Current.bind(org_id=7, user_id=1, is_admin=False):
 
 ## Composing on a view
 
-The model declares what it is, and both halves follow. A view stacks only
-the verb mixin:
+The model declares what it is, the namespace declares the read half
+against it, and a view stacks only the verb mixin:
 
 ```python
 class Project(TenantOwned, AuditStamped, SoftDeletable, fr.TimestampsMixin, fr.IDBase):
     name: orm.Mapped[str]
+
+
+class ProjectClauses(fr.ClauseNamespace):
+    model = Project
+
+    is_deleted = fr.where_clause(Project.deleted_at.is_not(None))
+    default_scope = fr.none_of(is_deleted)  # the tenant rule is the session's
+    trashed = is_deleted
 
 
 @fr.include_view(app)
