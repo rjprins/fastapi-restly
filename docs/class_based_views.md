@@ -209,11 +209,11 @@ The [API reference](api_reference.md#view-method-surface) classifies the public
 method surface. [Customizing RestView](customize.md) explains the three override
 tiers and cross-cutting override points.
 
-## A complete example: a tenant-scoped base view
+## A shared base view for tenant routes
 
-A common situation is that every view in your app needs auth, tenant scoping,
-and a common [error envelope](howto_error_responses.md#change-the-error-envelope-app-wide).
-With a shared base view you express that once and inherit it:
+Tenant routes need the same identity dependency and often share an
+[error envelope](howto_error_responses.md#change-the-error-envelope-app-wide).
+A base view declares the view-level pieces once:
 
 ```python
 import fastapi_restly as fr
@@ -231,7 +231,6 @@ class InvoiceView(TenantBase):
     prefix = "/invoices"
     model = Invoice
     schema = InvoiceRead
-    scope = fr.where_clause(Invoice.tenant_id == Current.tenant_id)
 
 
 @fr.include_view(app)
@@ -239,15 +238,14 @@ class CustomerView(TenantBase):
     prefix = "/customers"
     model = Customer
     schema = CustomerRead
-    scope = fr.where_clause(Customer.tenant_id == Current.tenant_id)
 ```
 
-The result is two views with one shared dependency and a declared filter on
-every read: list, pagination total, and single-row retrieve. Declaring the
-tenant rule as each model's `default_scope` removes even the `scope` lines
-and covers reference checks too; [Scopes](scopes.md) owns that topic. For
-soft delete, audit stamps, and permission scoping, see
-[Composing views with mixins](howto_compose_views_with_mixins.md).
+The dependency binds the current tenant for both views. A session-level
+`with_loader_criteria` rule applies that tenant to every ORM read, including
+reference checks and reads that replace a view scope. Keep `scope` available
+for replaceable surfaces such as soft deletion and role visibility. The
+[tenant row scoping](#tenant-row-scoping) recipe contains the session rule,
+column stamp, and shared view base.
 
 ## Override a single tier
 
@@ -344,7 +342,7 @@ co-located. Do not reach for them just for the sake of structure.
   both request lifecycles, the override decision table, and every override
   recipe.
 - [Share Behaviour with Base Views](howto_inheritance.md): patterns for
-  multi-tenant scoping, role-based filtering, and shared mixins.
+  tenant isolation, role-based filtering, and shared mixins.
 - [API Reference](api_reference.md): full {class}`View <fastapi_restly.views.View>`, {class}`BaseRestView <fastapi_restly.views.BaseRestView>`,
   {class}`RestView <fastapi_restly.views.RestView>`, {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` signatures and class attributes.
 

@@ -262,9 +262,10 @@ class ProjectView(SoftDeleteMixin, fr.AsyncRestView):
 {meth}`get_many <fastapi_restly.views.RestView.get_many>`,
 {meth}`count <fastapi_restly.views.RestView.count>`, and
 {meth}`get_one <fastapi_restly.views.RestView.get_one>` all apply the
-default scope, so tenant and soft-delete filters cover listings, totals,
-single-row reads, updates, and deletes, and every reference to Project
-checks it too; the columns stamp themselves on every write.
+default scope. The session listener also applies the tenant predicate to those
+reads and to every reference check. Together they cover listings, totals,
+single-row reads, updates, and deletes. The columns stamp themselves on every
+write.
 
 ## Two ergonomic gotchas
 

@@ -191,8 +191,7 @@ route](customize.md#add-a-custom-action-route) provides the full walkthrough.
 
 ## Tenant scoping
 
-A tenant clause in the model's [default scope](scopes.md) filters every read,
-and the model stamps its tenant column on every write; the pattern is owned
-by [tenant row scoping in Compose Views with Mixins](#tenant-row-scoping).
-The single-base-class variant is in
-[Share Behaviour with Base Views](howto_inheritance.md).
+A session-level `with_loader_criteria` rule filters every ORM `SELECT`,
+including reads that replace a model's [default scope](scopes.md). The model
+stamps its tenant column on every write. [Tenant row scoping](#tenant-row-scoping)
+owns the complete pattern.

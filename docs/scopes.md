@@ -13,21 +13,16 @@ clause plays, not a kind of clause; the material is a plain
 
 A filter narrows within the scope; it can never widen past it.
 
-The examples below extend the models and the `ItemClauses` namespace from
-[Query Clauses](clauses.md), with a `tenant_id` bound per request:
+The examples below use an `Item` model and an `ItemClauses` namespace for soft
+deletion. [Query Clauses](clauses.md) defines the clause operations:
 
 ```python
-class Current(fr.ContextNamespace):
-    tenant_id: fr.ContextParam[UUID]
-
-
 class ItemClauses(fr.ClauseNamespace):
     model = Item
 
     is_deleted = fr.where_clause(Item.deleted_at.is_not(None))
-    owned_by_tenant = fr.where_clause(Item.tenant_id == Current.tenant_id)
-    visible = fr.all_of(owned_by_tenant, fr.none_of(is_deleted))
-    trashed = fr.all_of(owned_by_tenant, is_deleted)
+    visible = fr.none_of(is_deleted)
+    trashed = is_deleted
 
     default_scope = visible
 ```
@@ -43,14 +38,13 @@ clause under that name is the scope for the model. The one line
 - **Every view read on the model.** List, count, and retrieve apply the
   scope, so a row outside it is absent from pages and totals and returns
   404 from `GET /{id}`. Update and delete load through the same scoped
-  retrieve, so a cross-tenant `PATCH` is a 404, not a write.
+  retrieve, so a deleted row cannot be changed through the live surface.
 - **Every reference to the model.** A
   {class}`fr.MustExist <fastapi_restly.schemas.MustExist>` /
   {class}`fr.IDRef <fastapi_restly.schemas.IDRef>` /
   {class}`fr.IDSchema <fastapi_restly.schemas.IDSchema>` field targeting
-  the model checks existence inside the scope, so referencing another
-  tenant's row on a write is "does not exist" (404), which closes the
-  reference-IDOR hole without leaking that the id exists.
+  the model checks existence inside the scope, so referencing a deleted
+  row on a write returns 404.
 
 Every model namespace has a `default_scope`, and its default is
 `fr.clauses.UNSCOPED`: a model that declares none reads unscoped, and
@@ -94,15 +88,8 @@ replaces it for that subclass, and the opt-out is explicit:
 base scope by omission, and `default_scope = None` is rejected: it
 says nothing.
 
-The tenant value is bound per request, by a generated dependency shared
-by the whole app; see [Binding scope values](#binding-scope-values):
-
-```python
-app = FastAPI(dependencies=[Current.depends(tenant_id=get_tenant_id)])
-```
-
 An unbound scope raises at request time, naming the missing value: a
-scoped model cannot be read silently unfiltered.
+scope with a request-bound value cannot be read silently unfiltered.
 
 (view-scope)=
 ## Views: replacing the scope
@@ -128,20 +115,17 @@ class TrashView(fr.AsyncRestView):
 ```
 
 Declaring a scope **replaces** the default; it does not stack on it.
-`ItemClauses.trashed` is safe as a whole scope because it is composed from
-the same `owned_by_tenant` leaf that `visible` contains; build every
-scope from the namespace's leaves and the tenant rule cannot fall out
-of a view by omission.
+`ItemClauses.trashed` is the complete alternate surface for deleted rows.
 
-A rule that must hold under every scope a view or a route can name is
-better not a scope at all. SQLAlchemy's
+A tenant rule must hold under every scope a view or a route can name, so it
+is not a scope. SQLAlchemy's
 [`with_loader_criteria`](https://docs.sqlalchemy.org/en/20/orm/queryguide/api.html#adding-global-where-on-criteria),
 added from a `do_orm_execute` listener, puts the predicate on every ORM
 `SELECT` that touches the class: view reads under any scope, reference
 checks, lazy loads and hand-written selects alike. Restly's reads and
 reference checks are ORM statements, so the rule reaches them. The
-[SaaS example](examples.md#saas) keeps its tenant rule there, in
-`app/models.py`, next to the column it restricts.
+[tenant row scoping](#tenant-row-scoping) recipe shows the listener and the
+column it restricts. The [SaaS example](examples.md#saas) runs that recipe.
 
 A view scope is the query basis of its endpoints, so transforms are
 welcome there, unlike in `default_scope`:
@@ -154,9 +138,9 @@ class ItemView(fr.AsyncRestView):
 
 The explicit opt-out is `fr.clauses.UNSCOPED`: it reads past the model's
 `default_scope`, where `None` would fall back to it. Reserve it for a
-genuinely all-seeing view behind its own authorization; an "admin"
-view usually stays tenant-bound and widens (`scope =
-ItemClauses.owned_by_tenant` sees the trash too):
+view that needs every model row. `UNSCOPED` removes only the model's default
+scope. It does not disable session-level criteria. The tenant listener decides
+separately whether an admin may cross tenants:
 
 ```python
 @fr.include_view(admin_router)      # router with admin auth
@@ -174,22 +158,29 @@ bound value, which fails loudly when the value is missing and shows
 its decision in `explain()`:
 
 ```python
+from typing import Annotated
+
+from sqlalchemy import ColumnElement, true
+
+
 class RoleContext(fr.ContextNamespace):
-    is_admin: fr.ContextParam[bool]
+    include_deleted: fr.ContextParam[bool]
 
 @fr.where_clause
-def role_visibility(admin: Annotated[bool, RoleContext.is_admin]) -> ColumnElement[bool]:
-    return ItemClauses.owned_by_tenant() if admin else ItemClauses.visible()
+def role_visibility(
+    include_deleted: Annotated[bool, RoleContext.include_deleted],
+) -> ColumnElement[bool]:
+    return true() if include_deleted else Item.deleted_at.is_(None)
 
 class ItemView(fr.AsyncRestView):
     ...
-    scope = role_visibility         # a dependency binds RoleContext.is_admin
+    scope = role_visibility  # a dependency binds RoleContext.include_deleted
 ```
 
 A policy clause like this names a request-boundary value, so it lives
 beside the view that applies it, not in the model's namespace; the
-namespace holds model facts (`is_deleted`, `owned_by_tenant`), views
-compose policy from them. The framework applies the declared clause
+namespace holds model facts such as `is_deleted`, and views compose policy
+from them. The framework applies the declared clause
 itself, on every read; there is no apply-side override point, and a
 non-Clause `scope` is rejected as the view class is defined.
 [Reading the resolved scope](#reading-the-scope) hands a route the
@@ -234,12 +225,11 @@ item is a 404 here, since the trash is the surface this route reads.
 `fr.clauses.UNSCOPED` is the per-read opt-out, in the same spelling as
 everywhere else.
 
-The argument replaces the scope, it does not narrow it, so compose it from
-the namespace's leaves (`trashed` contains `owned_by_tenant`) and the
-tenant rule cannot fall out of a route by omission. A `get_one` or
-`get_many` override declares the `scope` parameter and passes it on to
-`super()`; the handlers always pass it, so an override without the
-parameter fails on its first call instead of serving the wrong rows.
+The argument replaces the scope, it does not narrow it. Put rules that may
+never be replaced, such as tenant isolation, at the session level. A `get_one`
+or `get_many` override declares the `scope` parameter and passes it on to
+`super()`. The handlers always pass it, so an override without the parameter
+fails on its first call instead of serving the wrong rows.
 
 (reading-the-scope)=
 ## Reading the resolved scope
@@ -337,14 +327,12 @@ chains, scopes replace, so a chain of filters becomes one composed clause:
 # before
 class ItemView(fr.AsyncRestView):
     def build_query(self):
-        user = self.request.state.user
-        return super().build_query().where(Item.tenant_id == user.tenant_id)
+        return super().build_query().where(Item.deleted_at.is_(None))
 
-# after: the rule becomes a clause on the model, every view and every
-# reference to Item inherits it, and the override disappears
+# after: the rule becomes a clause on the model, and the override disappears
 class ItemClauses(fr.ClauseNamespace):
     model = Item
-    default_scope = fr.where_clause(Item.tenant_id == Current.tenant_id)
+    default_scope = fr.where_clause(Item.deleted_at.is_(None))
 ```
 
 Read-wide eager loading and other non-visibility `Select` changes that
@@ -364,9 +352,13 @@ request task, where async and `def` endpoints alike read it, and fed by
 your own dependencies, so `app.dependency_overrides` keeps working:
 
 ```python
+class Current(fr.ContextNamespace):
+    tenant_id: fr.ContextParam[UUID]
+
+
 app = FastAPI(dependencies=[
     Current.depends(tenant_id=get_tenant_id),
-    RoleContext.depends(is_admin=get_is_admin),
+    RoleContext.depends(include_deleted=get_include_deleted),
 ])
 ```
 

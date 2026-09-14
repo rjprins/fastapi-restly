@@ -172,6 +172,9 @@ class ItemClauses(fr.ClauseNamespace):
 Helpers and constants are allowed with a leading underscore. A second
 namespace for the same model raises.
 
+A tenant predicate that must survive every replacement scope belongs in the
+session-level rule documented under [tenant row scoping](#tenant-row-scoping).
+
 Name clauses as predicate phrases that read truthfully after WHERE:
 `owned_by_tenant`, `is_deleted`, `has_active_subscription`. Name
 transforms after the change they make: `newest_first`, `paged`. Skip

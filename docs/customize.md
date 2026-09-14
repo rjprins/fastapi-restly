@@ -3,9 +3,9 @@
 {class}`RestView <fastapi_restly.views.RestView>` and {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` define complete CRUD
 endpoints. Because views are class-based, a subclass changes an endpoint's
 behavior by overriding the method that controls it: stamp a field server-side,
-archive instead of delete, or scope every read to the current tenant. This page
-first explains how each view handles a request, then works through the
-override points and recipes that follow from that structure.
+archive instead of delete, or hide soft-deleted rows. This page first explains
+how each view handles a request, then works through the override points and
+recipes that follow from that structure.
 
 [Using RestView](rest_views.md) covers the default CRUD contract
 and its class configuration. This page starts where those defaults stop. A
@@ -142,13 +142,13 @@ GET /{id}
   └─ get_one_endpoint(id)            # endpoint method
        └─ handle_get_one(id)         # handler
             ├─ get_one(id)           # business method
-            │    └─ the view scope   # VISIBILITY: tenant, soft-delete, row-level
+            │    └─ the view scope   # VISIBILITY: soft-delete, role, row-level
             │                        #   a hidden row is a clean 404 for every caller
             └─ authorize("get_one", obj=obj)   # POLICY: read-auth on the loaded row
        └─ to_response(obj)
 ```
 
-Because {meth}`get_one <fastapi_restly.views.RestView.get_one>` applies the view scope ([Scopes](scopes.md)), visibility lives in one
+Because {meth}`get_one <fastapi_restly.views.RestView.get_one>` applies the view scope ([Scopes](scopes.md)), replaceable visibility lives in one
 place across list, count, and single-row reads: a hidden row returns 404 from
 `GET /{id}`. `get_one` itself stays auth-free; {meth}`authorize <fastapi_restly.views.RestView.authorize>` handles policy.
 

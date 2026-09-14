@@ -415,9 +415,10 @@ their wire format is already scalar.
 
 Reference resolution applies the referenced model's `default_scope`, the
 clause declared on its namespace ([Scopes](scopes.md)): a reference to a
-row the scope hides returns 404, so a tenant scope declared once on
-`User` covers every `author_id` on every write. A per-field override
-(check against another clause, or none) is spelled with
+row the scope hides returns 404. A session-level tenant rule also applies to
+the reference lookup because it is an ORM `SELECT`. See
+[tenant row scoping](#tenant-row-scoping) for that invariant. A per-field
+override (check against another clause, or none) is spelled with
 {class}`RefExists <fastapi_restly.schemas.RefExists>`; see
 [References: overriding per field](#reference-scopes).
 

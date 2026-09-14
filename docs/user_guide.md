@@ -89,8 +89,8 @@ deletion, compose them, and bind per-request values where they become known.
 :link: scopes
 :link-type: doc
 
-Impose a clause on every read and every reference to a model: one
-`default_scope` line closes tenant and soft-delete leaks framework-wide.
+Impose a replaceable clause on every read and every reference to a model.
+Use a default scope for row surfaces such as live and deleted records.
 :::
 
 :::{grid-item-card} Shape Error Responses
