@@ -4,7 +4,7 @@ Every write follows the same sequence: authorize, snapshot, mutate,
 before_action_commit, commit, after_action_commit. ``write_action`` exposes
 the commit bracket as a context manager for custom actions. ``run_write_action``
 and ``async_run_write_action`` are the thunk form used by CRUD handlers.
-``defer_write_action_commit`` moves the commit and after-hooks to an outer block.
+``shared_write_action_commit`` moves the commit and after-hooks to an outer block.
 """
 
 import contextlib
@@ -85,7 +85,7 @@ async def async_write_action(
     ``obj=<row>`` means an in-place write. ``obj=None`` means a no-object write.
     Omitting ``obj`` means create-shaped; the block must set ``handle.obj``.
     """
-    owner = _deferred_commit_owner(host.session)
+    owner = _shared_write_action_commit_owner(host.session)
     if owner is not None:
         owner.require_active(asynchronous=True)
     passed = obj is not _UNSET
@@ -95,7 +95,7 @@ async def async_write_action(
     yield handle
     _require_deposited_obj(action, handle)
     await host.before_action_commit(action, new=handle.obj, old=old)
-    owner = _deferred_commit_owner(host.session)
+    owner = _shared_write_action_commit_owner(host.session)
     if owner is None:
         await host.session.commit()
         await host.after_action_commit(action, new=handle.obj, old=old)
@@ -111,7 +111,7 @@ def sync_write_action(
     host: WriteHost, action: str, *, obj: Any = _UNSET, data: Any = None
 ):
     """Sync variant of :func:`async_write_action`."""
-    owner = _deferred_commit_owner(host.session)
+    owner = _shared_write_action_commit_owner(host.session)
     if owner is not None:
         owner.require_active()
     passed = obj is not _UNSET
@@ -121,7 +121,7 @@ def sync_write_action(
     yield handle
     _require_deposited_obj(action, handle)
     host.before_action_commit(action, new=handle.obj, old=old)
-    owner = _deferred_commit_owner(host.session)
+    owner = _shared_write_action_commit_owner(host.session)
     if owner is None:
         host.session.commit()
         host.after_action_commit(action, new=handle.obj, old=old)
@@ -159,12 +159,12 @@ def run_write_action(
 
 
 @contextlib.asynccontextmanager
-async def _async_defer_write_action_commit(
+async def _async_shared_write_action_commit(
     session: AsyncSession,
 ) -> AsyncIterator[None]:
     """Commit once after the outermost block, then await its surviving hooks."""
-    pending: tuple[_DeferredAfterHook, ...] = ()
-    with _join_deferred_write_commit(session.sync_session, asynchronous=True) as owner:
+    pending: tuple[_QueuedAfterHook, ...] = ()
+    with _join_shared_write_action_commit(session.sync_session, asynchronous=True) as owner:
         yield
         if owner.depth == 1:
             owner.require_active()
@@ -182,10 +182,10 @@ async def _async_defer_write_action_commit(
 
 
 @contextlib.contextmanager
-def _defer_write_action_commit(session: Session) -> Iterator[None]:
-    """Sync counterpart of :func:`_async_defer_write_action_commit`."""
-    pending: tuple[_DeferredAfterHook, ...] = ()
-    with _join_deferred_write_commit(session) as owner:
+def _shared_write_action_commit(session: Session) -> Iterator[None]:
+    """Sync counterpart of :func:`_async_shared_write_action_commit`."""
+    pending: tuple[_QueuedAfterHook, ...] = ()
+    with _join_shared_write_action_commit(session) as owner:
         yield
         if owner.depth == 1:
             owner.require_active()
@@ -196,33 +196,33 @@ def _defer_write_action_commit(session: Session) -> Iterator[None]:
         entry.callback()
 
 
-_DEFERRED_COMMIT_KEY = "_fr_deferred_write_commit"
+_SHARED_WRITE_ACTION_COMMIT_KEY = "_fr_shared_write_action_commit"
 
 
 @dataclass
-class _DeferredAfterHook:
+class _QueuedAfterHook:
     callback: Callable[[], Any]
     transaction: SessionTransaction | None
     asynchronous: bool
 
 
 @dataclass
-class _DeferredWriteCommit:
+class _SharedWriteActionCommit:
     asynchronous: bool = False
     depth: int = 0
     aborted: bool = False
-    pending: list[_DeferredAfterHook] = field(default_factory=list)
+    pending: list[_QueuedAfterHook] = field(default_factory=list)
 
     def require_active(self, *, asynchronous: bool = False) -> None:
         if self.aborted:
             raise RuntimeError(
-                "defer_write_action_commit() was aborted. "
+                "shared_write_action_commit() was aborted. "
                 "The session owner must roll back before retrying the operation."
             )
         if asynchronous and not self.asynchronous:
             raise RuntimeError(
                 "Async write actions require an async outermost "
-                "defer_write_action_commit() block."
+                "shared_write_action_commit() block."
             )
 
     def abort(self) -> None:
@@ -241,7 +241,7 @@ class _DeferredWriteCommit:
     ) -> None:
         self.require_active(asynchronous=asynchronous)
         self.pending.append(
-            _DeferredAfterHook(
+            _QueuedAfterHook(
                 partial(host.after_action_commit, action, new=new, old=old),
                 session.get_nested_transaction() or session.get_transaction(),
                 asynchronous,
@@ -249,21 +249,21 @@ class _DeferredWriteCommit:
         )
 
 
-def _deferred_commit_owner(
+def _shared_write_action_commit_owner(
     session: AsyncSession | Session,
-) -> _DeferredWriteCommit | None:
-    return session.info.get(_DEFERRED_COMMIT_KEY)
+) -> _SharedWriteActionCommit | None:
+    return session.info.get(_SHARED_WRITE_ACTION_COMMIT_KEY)
 
 
 @contextlib.contextmanager
-def _join_deferred_write_commit(
+def _join_shared_write_action_commit(
     session: Session, *, asynchronous: bool = False
-) -> Iterator[_DeferredWriteCommit]:
-    owner = _deferred_commit_owner(session)
+) -> Iterator[_SharedWriteActionCommit]:
+    owner = _shared_write_action_commit_owner(session)
     if owner is None:
-        owner = _DeferredWriteCommit(asynchronous=asynchronous)
+        owner = _SharedWriteActionCommit(asynchronous=asynchronous)
         event.listen(session, "after_soft_rollback", _discard_rolled_back_hooks)
-        session.info[_DEFERRED_COMMIT_KEY] = owner
+        session.info[_SHARED_WRITE_ACTION_COMMIT_KEY] = owner
     owner.depth += 1
     try:
         owner.require_active(asynchronous=asynchronous)
@@ -274,7 +274,7 @@ def _join_deferred_write_commit(
     finally:
         owner.depth -= 1
         if owner.depth == 0:
-            session.info.pop(_DEFERRED_COMMIT_KEY, None)
+            session.info.pop(_SHARED_WRITE_ACTION_COMMIT_KEY, None)
             event.remove(session, "after_soft_rollback", _discard_rolled_back_hooks)
             owner.pending.clear()
 
@@ -287,7 +287,7 @@ def _discard_rolled_back_hooks(
     SQLAlchemy reports both nested and root rollbacks through this event:
     https://docs.sqlalchemy.org/en/20/orm/events.html#sqlalchemy.orm.SessionEvents.after_soft_rollback
     """
-    owner = _deferred_commit_owner(session)
+    owner = _shared_write_action_commit_owner(session)
     if owner is None:
         return
     # A failed flush reports an internal marker under the actual rollback.

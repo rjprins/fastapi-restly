@@ -160,7 +160,7 @@ close on exit. They do **not** commit on response. `handle_<verb>` owns the
 commit and runs {meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>`, then the commit itself, then {meth}`after_action_commit <fastapi_restly.views.RestView.after_action_commit>` around domain logic.
 Custom write routes can use the same bracket with
 `async with self.write_action(action, ...)`. Several brackets can share a commit
-with [defer_write_action_commit()](#defer-write-action-commit).
+with [shared_write_action_commit()](#shared-write-action-commit).
 If a request ends with uncommitted
 changes, Restly warns with {class}`RestlyUncommittedChangesWarning <fastapi_restly.exc.RestlyUncommittedChangesWarning>` by default.
 [Custom session generators](howto_existing_project.md#provide-your-own-session-generator)

@@ -216,7 +216,7 @@ managers use `async with`. Argument names are identical between variants.
 | Request handler | {meth}`handle_update <fastapi_restly.views.RestView.handle_update>` | `(id, schema_obj)` | `Model` | Load, authorize, snapshot, run `update`, then the commit bracket. |
 | Request handler | {meth}`handle_delete <fastapi_restly.views.RestView.handle_delete>` | `(id)` | `None` | Load, authorize, snapshot, run `delete`, then the commit bracket. |
 | Custom-action bracket | {meth}`write_action <fastapi_restly.views.RestView.write_action>` | `(action, *, obj=None, data=None)` | context manager | Entered as `async with self.write_action("publish", obj=...):`, it runs the full bracket around your inline mutation: authorize and snapshot on enter; `before_action_commit`, commit, and `after_action_commit` on exit. Use it for a custom write *action* that is not a plain create/update/delete; deposit a create's new object on the yielded handle's `.obj`. The implementation is shared with the CRUD handlers via the self-free `run_write_action` (in `fastapi_restly.views`). |
-| Commit bracket | {meth}`defer_write_action_commit <fastapi_restly.views.RestView.defer_write_action_commit>` | `()` | context manager | Defer write actions' commits and after-hooks until the outermost block succeeds. Nested blocks on the same session share one commit. See [Commit several writes together](#defer-write-action-commit). |
+| Commit bracket | {meth}`shared_write_action_commit <fastapi_restly.views.RestView.shared_write_action_commit>` | `()` | context manager | Defer write actions' commits and after-hooks until the outermost block succeeds. Nested blocks on the same session share one commit. See [Commit several writes together](#shared-write-action-commit). |
 | Business method | {meth}`get_many <fastapi_restly.views.RestView.get_many>` | `(query_params, *, scope=None)` | `ListingResult[Model]` | Scoped and filtered listing via `scope` when given, else the view scope, + `apply_query_params`. Paginated views return one page plus a total count; unpaginated views return every matching row with `total_count=None` and skip `count`. Auth-free. The handlers always forward `scope=`, so an override declares the parameter and passes it on. |
 | Business method | {meth}`get_one <fastapi_restly.views.RestView.get_one>` | `(id, *, scope=None)` | `Model` | Load one row through `scope` when given, else the view scope, or raise `fr.exc.NotFound`. Visibility comes from the scope, so a hidden row is a clean 404 for every caller. Auth-free. The handlers always forward `scope=`, so an override declares the parameter and passes it on. |
 | Business method | {meth}`create <fastapi_restly.views.RestView.create>` | `(schema_obj)` | `Model` | Build a new object and save it. Commit-free: the usual create override point. |
@@ -318,8 +318,8 @@ Restly's write handlers own the commit: each runs `before_action_commit`, then t
 
 A **custom write route** should use `self.write_action(...)` or reuse a
 `handle_<verb>`. To group their writes under one commit, wrap them in
-`self.defer_write_action_commit()`. See
-[Commit several writes together](#defer-write-action-commit).
+`self.shared_write_action_commit()`. See
+[Commit several writes together](#shared-write-action-commit).
 
 Restly warns (`RestlyUncommittedChangesWarning`) when a request finishes with uncommitted session changes; this is the tell of a custom write route that forgot to commit. Fix the missing commit (`write_action(...)` or a `handle_<verb>`), or suppress a deliberate dry run with `session.info["_fr_suppress_uncommitted"] = True`. The global `fr.configure(warn_on_uncommitted=False)` opt-out exists but is rarely the right response to the warning.
 

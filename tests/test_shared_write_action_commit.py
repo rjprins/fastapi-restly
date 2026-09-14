@@ -151,7 +151,7 @@ def _replace_hook(writes, monkeypatch, name, hook):
 
 async def test_handlers_share_one_commit_and_defer_after_hooks(writes):
     view = writes.view
-    async with _enter(view.defer_write_action_commit()):
+    async with _enter(view.shared_write_action_commit()):
         first = await _call(view.handle_create(writes.schema(name="first")))
         await _call(view.handle_create(writes.schema(name="second")))
         assert first.id is not None
@@ -176,9 +176,9 @@ async def test_handlers_share_one_commit_and_defer_after_hooks(writes):
 async def test_nested_views_share_the_session_owner(writes):
     outer = writes.view
     inner = type(outer)(request=None, session=outer.session)
-    async with _enter(outer.defer_write_action_commit()):
+    async with _enter(outer.shared_write_action_commit()):
         await _call(outer.handle_create(writes.schema(name="outer")))
-        async with _enter(inner.defer_write_action_commit()):
+        async with _enter(inner.shared_write_action_commit()):
             await _call(inner.handle_create(writes.schema(name="inner")))
         assert all(phase not in ("commit", "after") for phase, _ in writes.events)
 
@@ -188,7 +188,7 @@ async def test_nested_views_share_the_session_owner(writes):
 
 async def test_other_sessions_do_not_join_the_deferred_commit(writes):
     view = writes.view
-    async with _enter(view.defer_write_action_commit()):
+    async with _enter(view.shared_write_action_commit()):
         async with _enter(writes.make_session()) as other_session:
             other = type(view)(request=None, session=other_session)
             await _call(other.handle_create(writes.schema(name="independent")))
@@ -203,7 +203,7 @@ async def test_other_sessions_do_not_join_the_deferred_commit(writes):
 
 async def test_scope_failure_leaves_rollback_to_the_session_owner(writes):
     with pytest.raises(ValueError, match="abort"):
-        async with _enter(writes.view.defer_write_action_commit()):
+        async with _enter(writes.view.shared_write_action_commit()):
             await _call(writes.view.handle_create(writes.schema(name="pending")))
             raise ValueError("abort")
 
@@ -228,7 +228,7 @@ async def test_scope_failure_leaves_rollback_to_the_session_owner(writes):
 
 async def test_rollback_after_action_returns_discards_its_after_hook(writes):
     view = writes.view
-    async with _enter(view.defer_write_action_commit()):
+    async with _enter(view.shared_write_action_commit()):
         await _call(view.handle_create(writes.schema(name="first")))
         with pytest.raises(ValueError, match="later row step"):
             async with _enter(writes.session.begin_nested()):
@@ -244,7 +244,7 @@ async def test_rollback_after_action_returns_discards_its_after_hook(writes):
 
 async def test_create_update_and_delete_handlers_share_the_commit(writes):
     view = writes.view
-    async with _enter(view.defer_write_action_commit()):
+    async with _enter(view.shared_write_action_commit()):
         obj = await _call(view.handle_create(writes.schema(name="created")))
         updated = await _call(
             view.handle_update(obj.id, view.schema_update(name="updated"))
@@ -268,7 +268,7 @@ async def test_create_update_and_delete_handlers_share_the_commit(writes):
 
 async def test_context_brackets_keep_snapshots_and_live_new_objects(writes):
     view = writes.view
-    async with _enter(view.defer_write_action_commit()):
+    async with _enter(view.shared_write_action_commit()):
         async with _enter(view.write_action("copy")) as handle:
             handle.obj = writes.model(name="first")
             writes.session.add(handle.obj)
@@ -303,7 +303,7 @@ async def test_context_brackets_keep_snapshots_and_live_new_objects(writes):
 
 async def test_missing_create_deposit_still_fails_before_hooks(writes):
     with pytest.raises(RuntimeError, match="create-shaped"):
-        async with _enter(writes.view.defer_write_action_commit()):
+        async with _enter(writes.view.shared_write_action_commit()):
             async with _enter(writes.view.write_action("create")):
                 writes.session.add(writes.model(name="forgotten"))
                 await _call(writes.session.flush())
@@ -315,10 +315,10 @@ async def test_missing_create_deposit_still_fails_before_hooks(writes):
 async def test_caught_nested_block_failure_still_aborts_outer(writes, error_type):
     view = writes.view
     with pytest.raises(RuntimeError, match="was aborted"):
-        async with _enter(view.defer_write_action_commit()):
+        async with _enter(view.shared_write_action_commit()):
             await _call(view.handle_create(writes.schema(name="outer")))
             with pytest.raises(error_type):
-                async with _enter(view.defer_write_action_commit()):
+                async with _enter(view.shared_write_action_commit()):
                     await _call(view.handle_create(writes.schema(name="inner")))
                     raise error_type()
 
@@ -337,7 +337,7 @@ async def test_row_failure_keeps_other_rows_and_their_audits(
     def reject(action, **kwargs):
         raise ValueError("row rejected")
 
-    async with _enter(view.defer_write_action_commit()):
+    async with _enter(view.shared_write_action_commit()):
         await _call(view.handle_create(writes.schema(name="first")))
         if original is not None:
             _replace_hook(writes, monkeypatch, phase, reject)
@@ -364,7 +364,7 @@ async def test_audit_flush_failure_stays_inside_caller_savepoint(writes):
     await _call(writes.session.commit())
     writes.events.clear()
     view = writes.view
-    async with _enter(view.defer_write_action_commit()):
+    async with _enter(view.shared_write_action_commit()):
         with pytest.raises(IntegrityError):
             async with _enter(writes.session.begin_nested()):
                 await _call(view.handle_create(writes.schema(name="duplicate")))
@@ -378,7 +378,7 @@ async def test_audit_flush_failure_stays_inside_caller_savepoint(writes):
 
 async def test_enclosing_savepoint_rollback_discards_released_child_hooks(writes):
     view = writes.view
-    async with _enter(view.defer_write_action_commit()):
+    async with _enter(view.shared_write_action_commit()):
         with pytest.raises(ValueError):
             async with _enter(writes.session.begin_nested()):
                 async with _enter(writes.session.begin_nested()):
@@ -395,14 +395,14 @@ async def test_enclosing_savepoint_rollback_discards_released_child_hooks(writes
 async def test_commit_failure_discards_hooks_and_allows_reuse_after_rollback(writes):
     view = writes.view
     with pytest.raises(IntegrityError):
-        async with _enter(view.defer_write_action_commit()):
+        async with _enter(view.shared_write_action_commit()):
             await _call(view.handle_create(writes.schema(name="duplicate")))
             writes.session.add(writes.model(name="duplicate"))
     assert writes.after_calls == []
     assert ("commit", None) not in writes.events
     assert await _names(writes, writes.model) == []
     await _call(writes.session.rollback())
-    async with _enter(view.defer_write_action_commit()):
+    async with _enter(view.shared_write_action_commit()):
         await _call(view.handle_create(writes.schema(name="later")))
     assert len(writes.after_calls) == 1
     assert await _names(writes, writes.model) == ["later"]
@@ -410,7 +410,7 @@ async def test_commit_failure_discards_hooks_and_allows_reuse_after_rollback(wri
 
 async def test_root_rollback_aborts_the_deferred_commit(writes):
     with pytest.raises(RuntimeError, match="was aborted"):
-        async with _enter(writes.view.defer_write_action_commit()):
+        async with _enter(writes.view.shared_write_action_commit()):
             await _call(writes.view.handle_create(writes.schema(name="discarded")))
             await _call(writes.session.rollback())
 
@@ -432,14 +432,14 @@ async def test_after_hook_failure_leaves_writes_durable_and_stops_queue(
 
     _replace_hook(writes, monkeypatch, "after_action_commit", fail)
     with pytest.raises(ValueError, match="after-hook failed"):
-        async with _enter(view.defer_write_action_commit()):
+        async with _enter(view.shared_write_action_commit()):
             for name in ("first", "second"):
                 await _call(view.handle_create(writes.schema(name=name)))
     assert calls == ["first"]
     assert writes.events.count(("commit", None)) == 1
     assert await _names(writes, writes.model) == ["first", "second"]
     # Reusing the session must not replay either callback.
-    async with _enter(view.defer_write_action_commit()):
+    async with _enter(view.shared_write_action_commit()):
         pass
     assert calls == ["first"]
 
@@ -450,7 +450,7 @@ async def test_block_without_actions_commits_once_and_preserves_session_info(
 ):
     writes.session.info["application_key"] = object()
     original_info = dict(writes.session.info)
-    async with _enter(writes.view.defer_write_action_commit()):
+    async with _enter(writes.view.shared_write_action_commit()):
         if raw_write:
             writes.session.add(writes.model(name="raw"))
     assert writes.events == [("commit", None)]
@@ -462,7 +462,7 @@ async def test_completed_block_does_not_suppress_uncommitted_warnings(
     writes, monkeypatch
 ):
     _arm_uncommitted_warning(writes.session)
-    async with _enter(writes.view.defer_write_action_commit()):
+    async with _enter(writes.view.shared_write_action_commit()):
         await _call(writes.view.handle_create(writes.schema(name="committed")))
     _warn_if_uncommitted(writes.session)  # Warnings are errors in this suite.
 
@@ -470,7 +470,7 @@ async def test_completed_block_does_not_suppress_uncommitted_warnings(
         writes.session.add(writes.model(name="forgotten"))
 
     _replace_hook(writes, monkeypatch, "after_action_commit", stray_write)
-    async with _enter(writes.view.defer_write_action_commit()):
+    async with _enter(writes.view.shared_write_action_commit()):
         await _call(writes.view.handle_create(writes.schema(name="also committed")))
     with pytest.warns(fr.exc.RestlyUncommittedChangesWarning):
         _warn_if_uncommitted(writes.session)
@@ -496,10 +496,10 @@ async def test_async_owner_drains_sync_hooks_through_run_sync(writes):
 
     def sync_create(session):
         view = SyncEntryView(request=None, session=session)
-        with view.defer_write_action_commit():
+        with view.shared_write_action_commit():
             return view.handle_create(view.schema_create(name="sync"))
 
-    async with writes.view.defer_write_action_commit():
+    async with writes.view.shared_write_action_commit():
         await writes.view.handle_create(writes.schema(name="first"))
         await writes.session.run_sync(sync_create)
         await writes.view.handle_create(writes.schema(name="last"))
@@ -518,12 +518,12 @@ async def test_async_owner_drains_sync_hooks_through_run_sync(writes):
 @pytest.mark.parametrize("writes", ["async"], indirect=True)
 @pytest.mark.parametrize("nested_block", [False, True])
 async def test_sync_owner_rejects_async_work_before_mutation(writes, nested_block):
-    from fastapi_restly.views._lifecycle import _defer_write_action_commit
+    from fastapi_restly.views._lifecycle import _shared_write_action_commit
 
     with pytest.raises(RuntimeError, match="async outermost"):
-        with _defer_write_action_commit(writes.target):
+        with _shared_write_action_commit(writes.target):
             if nested_block:
-                async with writes.view.defer_write_action_commit():
+                async with writes.view.shared_write_action_commit():
                     pytest.fail("The async block must not be entered")
             else:
                 await writes.view.handle_create(writes.schema(name="never"))

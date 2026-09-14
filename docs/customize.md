@@ -595,16 +595,16 @@ bracket instead, deposit the new object on the yielded handle:
 
 Internally, `write_action` and the CRUD handlers share {func}`run_write_action <fastapi_restly.views.run_write_action>`.
 
-(defer-write-action-commit)=
+(shared-write-action-commit)=
 ### Commit several writes together
 
-Use {meth}`defer_write_action_commit() <fastapi_restly.views.AsyncRestView.defer_write_action_commit>`
+Use {meth}`shared_write_action_commit() <fastapi_restly.views.AsyncRestView.shared_write_action_commit>`
 when several handlers or custom actions should share one commit:
 
 ```python
     @fr.post("/bulk", status_code=201)
     async def bulk_create(self, items: list[OrderCreate]):
-        async with self.defer_write_action_commit():
+        async with self.shared_write_action_commit():
             orders = [await self.handle_create(item) for item in items]
         return [self.to_response(order) for order in orders]
 ```

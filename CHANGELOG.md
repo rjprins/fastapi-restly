@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `RestView.defer_write_action_commit()` and its async counterpart group write
+- `RestView.shared_write_action_commit()` and its async counterpart group write
   actions under one session commit. Each action keeps its authorization and
   before-hook. After-hooks run after the outermost block commits and are
   discarded for rolled-back work.
