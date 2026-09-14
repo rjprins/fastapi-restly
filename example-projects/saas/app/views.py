@@ -84,8 +84,8 @@ class TenantBase(fr.AsyncRestView):
     ) -> None:
         """Placeholder for an audit row, committed atomically with the write.
 
-        The bulk routes own their commit and skip this bracket; an audit
-        that must see every flush is a session ``after_flush`` listener.
+        Bulk routes share one commit across their handlers. Their per-row
+        savepoints keep this hook's writes atomic with each row.
         """
         # In production: self.session.add(AuditRow(action=action, ...)), or
         # publish to an event bus from after_action_commit once durable.

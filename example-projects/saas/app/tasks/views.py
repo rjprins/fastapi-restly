@@ -267,8 +267,8 @@ class TaskView(SoftDeleteMixin, TenantBase):
     ) -> BulkResult:
         """Parse a CSV of tasks and bulk-create them.
 
-        Each row uses the business ``create`` verb, with per-row savepoints and
-        one final commit for successful rows.
+        Each row uses the create handler inside a savepoint. The outer shared
+        block commits successful rows once and then runs their after-hooks.
         """
         import csv
         import io
@@ -284,91 +284,76 @@ class TaskView(SoftDeleteMixin, TenantBase):
         success = 0
         failed = 0
         errors: list[str] = []
-        for row_no, row in enumerate(reader, start=2):  # row 1 is the header
-            try:
-                schema_obj = TaskCreateSchema(
-                    title=(row.get("title") or "").strip(),
-                    description=row.get("description") or "",
-                    project_id=project_id,
-                )
-                if not schema_obj.title:
-                    raise ValueError("title is required")
-                # The business ``create`` verb is auth-free by design, so a
-                # custom route that calls it directly must gate the action
-                # itself (mirrors ``handle_create``).
-                await self.authorize("create", data=schema_obj)
-                # Per-row SAVEPOINT: a row that fails at flush rolls back just
-                # its savepoint, keeping the outer transaction usable so the
-                # remaining good rows still persist.
-                async with self.session.begin_nested():
-                    await self.create(schema_obj)
-                success += 1
-            except Exception as exc:  # noqa: BLE001 — surface per-row error
-                failed += 1
-                errors.append(f"row {row_no}: {exc}")
-        # The route owns the commit now: persist every successfully-built row.
-        await self.session.commit()
+        async with self.shared_write_action_commit():
+            for row_no, row in enumerate(reader, start=2):  # row 1 is the header
+                try:
+                    schema_obj = TaskCreateSchema(
+                        title=(row.get("title") or "").strip(),
+                        description=row.get("description") or "",
+                        project_id=project_id,
+                    )
+                    if not schema_obj.title:
+                        raise ValueError("title is required")
+                    # The savepoint contains the handler's mutation and
+                    # before-hook writes. A rejected row rolls both back.
+                    async with self.session.begin_nested():
+                        await self.handle_create(schema_obj)
+                    success += 1
+                except Exception as exc:  # noqa: BLE001, surface per-row error
+                    failed += 1
+                    errors.append(f"row {row_no}: {exc}")
         return BulkResult(success=success, failed=failed, errors=errors)
 
     @fr.post("/bulk", response_model=BulkResult)
     async def bulk_create(self, request: BulkCreateRequest) -> BulkResult:
         """Create multiple tasks at once.
 
-        Each item uses the business ``create`` verb. Per-row savepoints allow
-        partial success; one final commit persists successful rows.
+        Each item uses the create handler inside a savepoint. The outer shared
+        block commits successful rows once and then runs their after-hooks.
         """
         success = 0
         failed = 0
         errors: list[str] = []
 
-        for item in request.items:
-            try:
-                # ``create`` is auth-free; gate each row like ``handle_create``.
-                await self.authorize("create", data=item)
-                async with self.session.begin_nested():
-                    await self.create(item)
-                success += 1
-            except Exception as e:  # noqa: BLE001 — surface per-row error
-                failed += 1
-                errors.append(f"Failed to create task '{item.title}': {e!s}")
+        async with self.shared_write_action_commit():
+            for item in request.items:
+                try:
+                    async with self.session.begin_nested():
+                        await self.handle_create(item)
+                    success += 1
+                except Exception as e:  # noqa: BLE001, surface per-row error
+                    failed += 1
+                    errors.append(f"Failed to create task '{item.title}': {e!s}")
 
-        # The route owns the commit now: persist every successfully-built row.
-        await self.session.commit()
         return BulkResult(success=success, failed=failed, errors=errors)
 
     @fr.post("/bulk-delete", response_model=BulkResult)
     async def bulk_delete(self, request: BulkDeleteRequest) -> BulkResult:
         """Delete multiple tasks by IDs.
 
-        Each id uses the business ``delete`` verb, the way ``bulk_create``
-        uses ``create``: the scoped ``get_one`` (404 by visibility) and the
-        ``delete`` gate run first, then the write runs in a savepoint. One
-        final commit persists successful deletes.
+        Each id uses the delete handler inside a savepoint. The outer shared
+        block commits successful deletes once and then runs their after-hooks.
         """
         success = 0
         failed = 0
         errors: list[str] = []
 
-        for task_id in request.ids:
-            try:
-                task = await self.get_one(task_id)
-                # ``delete`` is auth-free; gate each row like ``handle_delete``.
-                await self.authorize("delete", obj=task)
-                async with self.session.begin_nested():
-                    await self.delete(task)
-                success += 1
-            except fr.exc.NotFound:
-                failed += 1
-                errors.append(f"Task {task_id} not found")
-            except HTTPException as exc:
-                failed += 1
-                errors.append(f"Failed to delete task {task_id}: {exc.detail}")
-            except Exception as e:  # noqa: BLE001 — surface per-row error
-                failed += 1
-                errors.append(f"Failed to delete task {task_id}: {e!s}")
+        async with self.shared_write_action_commit():
+            for task_id in request.ids:
+                try:
+                    async with self.session.begin_nested():
+                        await self.handle_delete(task_id)
+                    success += 1
+                except fr.exc.NotFound:
+                    failed += 1
+                    errors.append(f"Task {task_id} not found")
+                except HTTPException as exc:
+                    failed += 1
+                    errors.append(f"Failed to delete task {task_id}: {exc.detail}")
+                except Exception as e:  # noqa: BLE001, surface per-row error
+                    failed += 1
+                    errors.append(f"Failed to delete task {task_id}: {e!s}")
 
-        # The route owns the commit now: persist all successful deletes.
-        await self.session.commit()
         return BulkResult(success=success, failed=failed, errors=errors)
 
     @fr.post("/{id}/start", response_model=TaskSchema)

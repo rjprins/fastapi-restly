@@ -258,6 +258,33 @@ class TestBulkOperations:
         assert result["success"] == 3
         assert result["failed"] == 0
 
+    def test_bulk_create_runs_before_hook_inside_each_savepoint(
+        self, client, monkeypatch
+    ):
+        from app.tasks.views import TaskView
+
+        async def reject_one(self, action, new, old=None):
+            if action == "create" and new.title == "Rejected by hook":
+                raise ValueError("rejected by before_action_commit")
+
+        monkeypatch.setattr(TaskView, "before_action_commit", reject_one)
+        project = client.post("/projects", json={"name": "Hooked bulk"}).json()
+
+        result = client.post(
+            "/tasks/bulk",
+            json={
+                "items": [
+                    {"title": "Accepted", "project_id": project["id"]},
+                    {"title": "Rejected by hook", "project_id": project["id"]},
+                ]
+            },
+        ).json()
+
+        assert result["success"] == 1
+        assert result["failed"] == 1
+        tasks = client.get(f"/tasks?project_id={project['id']}").json()["data"]
+        assert [task["title"] for task in tasks] == ["Accepted"]
+
     def test_bulk_delete_tasks(self, client):
         """Test deleting multiple tasks at once."""
         # Create project and tasks
@@ -303,6 +330,34 @@ class TestBulkOperations:
         assert result["success"] == 1
         assert result["failed"] == 2
         assert len(result["errors"]) == 2
+
+    def test_bulk_delete_runs_before_hook_inside_each_savepoint(
+        self, client, monkeypatch
+    ):
+        from app.tasks.views import TaskView
+
+        async def reject_one(self, action, new, old=None):
+            if action == "delete" and old["title"] == "Keep by hook":
+                raise ValueError("rejected by before_action_commit")
+
+        monkeypatch.setattr(TaskView, "before_action_commit", reject_one)
+        project = client.post("/projects", json={"name": "Hooked delete"}).json()
+        deleted = client.post(
+            "/tasks", json={"title": "Delete", "project_id": project["id"]}
+        ).json()
+        kept = client.post(
+            "/tasks", json={"title": "Keep by hook", "project_id": project["id"]}
+        ).json()
+
+        result = client.post(
+            "/tasks/bulk-delete", json={"ids": [deleted["id"], kept["id"]]}
+        ).json()
+
+        assert result["success"] == 1
+        assert result["failed"] == 1
+        client.get(f"/tasks/{deleted['id']}", assert_status_code=404)
+        response = client.get(f"/tasks/{kept['id']}")
+        assert response.json()["title"] == "Keep by hook"
 
 
 class TestSoftDelete:

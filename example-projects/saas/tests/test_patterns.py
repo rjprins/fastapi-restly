@@ -281,6 +281,30 @@ class TestTaskCSVImport:
         assert result["failed"] == 1
         assert any("title is required" in err for err in result["errors"])
 
+    def test_csv_import_runs_before_hook_inside_each_savepoint(
+        self, client, monkeypatch
+    ):
+        from app.tasks.views import TaskView
+
+        async def reject_one(self, action, new, old=None):
+            if action == "create" and new.title == "Rejected by hook":
+                raise ValueError("rejected by before_action_commit")
+
+        monkeypatch.setattr(TaskView, "before_action_commit", reject_one)
+        project = client.post("/projects", json={"name": "Hooked CSV"}).json()
+        csv_bytes = b"title,description\nAccepted,Hello\nRejected by hook,Nope\n"
+
+        result = client.post(
+            "/tasks/import-csv",
+            data={"project_id": str(project["id"])},
+            files={"file": ("tasks.csv", io.BytesIO(csv_bytes), "text/csv")},
+        ).json()
+
+        assert result["success"] == 1
+        assert result["failed"] == 1
+        tasks = client.get(f"/tasks?project_id={project['id']}").json()["data"]
+        assert [task["title"] for task in tasks] == ["Accepted"]
+
 
 # ---------------------------------------------------------------------------
 # Custom POST with Location header
