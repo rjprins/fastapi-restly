@@ -254,7 +254,8 @@ class ProjectView(SoftDeleteMixin, TenantBase):
         """Clone a project with all its tasks.
 
         ``get_one`` performs the visibility check. A second query eager-loads
-        tasks for copying.
+        tasks for copying. The project, its outbox event, and copied tasks share
+        one commit.
         """
         # Tenant scope + 404 visibility check.
         await self.get_one(id)
@@ -265,36 +266,34 @@ class ProjectView(SoftDeleteMixin, TenantBase):
         result = await self.session.execute(query)
         original = result.scalar_one()
 
-        # Use handle_create for the normal create path and its commit bracket.
         new_schema = ProjectSchema.model_construct(
             name=request.new_name or f"{original.name} (Copy)",
             description=original.description,
             status=ProjectStatus.ACTIVE,
         )
-        new_project = await self.handle_create(new_schema)
+        async with self.shared_write_action_commit():
+            new_project = await self.handle_create(new_schema)
 
-        if request.include_tasks:
-            from fastapi_restly.objects import async_save_object
+            if request.include_tasks:
+                from fastapi_restly.objects import async_save_object
 
-            for task in original.tasks:
-                new_task = Task(
-                    title=task.title,
-                    description=task.description,
-                    status=task.status,
-                    priority=task.priority,
-                    task_type=task.task_type,
-                    project_id=new_project.id,
-                    severity=task.severity,
-                    steps_to_reproduce=task.steps_to_reproduce,
-                    story_points=task.story_points,
-                    acceptance_criteria=task.acceptance_criteria,
-                )
-                self.session.add(new_task)
-                if new_task.story_points:
-                    new_project.total_story_points += new_task.story_points
-            # The copied tasks are a second write, so this route owns this commit.
-            await async_save_object(self.session, new_project)
-            await self.session.commit()
+                for task in original.tasks:
+                    new_task = Task(
+                        title=task.title,
+                        description=task.description,
+                        status=task.status,
+                        priority=task.priority,
+                        task_type=task.task_type,
+                        project_id=new_project.id,
+                        severity=task.severity,
+                        steps_to_reproduce=task.steps_to_reproduce,
+                        story_points=task.story_points,
+                        acceptance_criteria=task.acceptance_criteria,
+                    )
+                    self.session.add(new_task)
+                    if new_task.story_points:
+                        new_project.total_story_points += new_task.story_points
+                await async_save_object(self.session, new_project)
 
         return await self._decorate_project_response(new_project)
 

@@ -1,4 +1,6 @@
-"""CRUD tests for the Project model — basic CRUD, archive/lifecycle, clone, and nested routes."""
+"""CRUD tests for projects, including lifecycle, clone, and nested routes."""
+
+import pytest
 
 
 class TestProjectCRUD:
@@ -91,6 +93,29 @@ class TestProjectClone:
         response = client.get(f"/tasks?project_id={cloned['id']}")
         cloned_tasks = response.json()["data"]
         assert len(cloned_tasks) == 0
+
+    def test_clone_rolls_back_project_when_copying_tasks_fails(
+        self, client, monkeypatch
+    ):
+        import fastapi_restly.objects as objects
+
+        original = client.post("/projects", json={"name": "Clone source"}).json()
+        client.post(
+            "/tasks", json={"title": "Task to copy", "project_id": original["id"]}
+        )
+
+        async def fail_child_save(session, obj):
+            raise RuntimeError("child copy failed")
+
+        monkeypatch.setattr(objects, "async_save_object", fail_child_save)
+        with pytest.raises(RuntimeError, match="child copy failed"):
+            client.post(
+                f"/projects/{original['id']}/clone",
+                json={"new_name": "Rolled back clone"},
+            )
+
+        projects = client.get("/projects?name=Rolled back clone").json()["data"]
+        assert projects == []
 
 
 class TestNestedRoutes:
