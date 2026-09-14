@@ -23,7 +23,7 @@ inward, the tiers are:
                   signature/response_model, and to_response. Rarely overridden.
 handle_<verb>     the handler: runs authorize and the commit bracket
                   (before_action_commit → commit → after_action_commit), returns the domain
-                  object. Override to change orchestration/timing.
+                  object. Final: custom routes call it.
 <verb>            the business method: the domain operation (build/apply/save).
                   Auth-free and commit-free. The usual override point.
 ```
@@ -135,7 +135,7 @@ RestView](customize.md#delete-soft-delete-instead-of-removing-the-row). The
 reusable mixin version is in [Compose Views with
 Mixins](howto_compose_views_with_mixins.md).
 
-## Tier 2: the handler (orchestration and timing)
+## Tier 2: the handler (authorize and the commit bracket)
 
 One tier up from the business method sits the handler. `handle_<verb>` owns {meth}`authorize <fastapi_restly.views.RestView.authorize>` and the commit bracket. The handler is final. Call it from a custom route to reuse that behavior. Put side-effect timing in `before_action_commit` or `after_action_commit`, and use `shared_write_action_commit()` when several writes need one commit. Outside a shared commit block, the defaults look like this:
 
@@ -155,7 +155,7 @@ handle_delete  →  get_one(id)
                →  before_action_commit → commit → after_action_commit
 ```
 
-The transaction hooks are the usual reason to drop to this tier:
+The write handlers call two transaction hooks, which are the override points at this tier:
 
 - {meth}`before_action_commit(action, new, old=None) <fastapi_restly.views.RestView.before_action_commit>` runs an in-transaction side effect (an outbox row, an audit row) that commits atomically with the write.
 - {meth}`after_action_commit(action, new, old=None) <fastapi_restly.views.RestView.after_action_commit>` runs a post-commit side effect (an email, a webhook, a cache invalidation) only after the write is durable.
@@ -167,8 +167,6 @@ Both receive `old`, the pre-mutation snapshot produced by {meth}`snapshot(obj) <
         if action == "update" and old["published"] != new.published:
             await notify_subscribers(new.id)
 ```
-
-The hooks cover most timing needs. Override `handle_<verb>` only when the operation order or transaction must change.
 
 ## Stamping extra fields
 

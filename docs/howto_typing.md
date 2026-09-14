@@ -82,11 +82,6 @@ the business methods, so those benefit most:
 - {meth}`delete <fastapi_restly.views.RestView.delete>`
 - {meth}`get_many <fastapi_restly.views.RestView.get_many>`
 
-It also sharpens the handlers ({meth}`handle_create <fastapi_restly.views.RestView.handle_create>`,
-{meth}`handle_update <fastapi_restly.views.RestView.handle_update>`,
-{meth}`handle_get_one <fastapi_restly.views.RestView.handle_get_one>`, and so
-on) when you override them.
-
 Without view generics, these methods still work, but their types are broader.
 With view generics, your editor can infer the concrete model, schema, and id
 types. Here is a fully parameterized view with typed overrides on the business
@@ -134,14 +129,9 @@ in `create` is a `UserCreate`, `obj` in `update` is a `User`, and the return
 types are checked too.
 
 Note the signatures: `create` takes the create schema and returns the model;
-`update` takes the already-loaded `obj` plus the update schema (id resolution
-and the 404 happen one tier up, in `handle_update`). If you instead override
-at the handler tier, the id-taking signatures live there:
-
-```python
-    async def handle_update(self, id: int, schema_obj: UserUpdate) -> User:
-        return await super().handle_update(id, schema_obj)
-```
+`update` takes the already-loaded `obj` plus the update schema. Id resolution
+and the 404 happen one tier up, in the final
+{meth}`handle_update <fastapi_restly.views.RestView.handle_update>` handler.
 
 This looks heavier because it is more explicit. Use it when that extra
 precision is valuable to you.
