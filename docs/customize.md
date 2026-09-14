@@ -152,6 +152,7 @@ The table below maps the change you want to make to the method that owns it:
 |-----------------------------------------|-----------------------------------|------------------------|
 | Domain logic (hash, derive, compute)    | {meth}`create <fastapi_restly.views.RestView.create>` / {meth}`update <fastapi_restly.views.RestView.update>` / {meth}`delete <fastapi_restly.views.RestView.delete>`    | business method        |
 | One commit over several writes          | {meth}`shared_write_action_commit <fastapi_restly.views.RestView.shared_write_action_commit>` in a custom route | commit bracket         |
+| A lookup by another key (slug, email)   | {meth}`handle_get_one <fastapi_restly.views.RestView.handle_get_one>` with a predicate, in a custom route ([below](#natural-key-route)) | handler                |
 | The HTTP contract (status, signature)   | `<verb>_endpoint`                 | endpoint method        |
 | Read scope / row visibility             | {attr}`scope <fastapi_restly.views.BaseRestView.scope>` ([Scopes](scopes.md))  | read extension point   |
 | Filter / sort / pagination grammar      | {meth}`apply_query_params <fastapi_restly.views.RestView.apply_query_params>`              | read extension point   |

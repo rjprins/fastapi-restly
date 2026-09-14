@@ -88,6 +88,9 @@ types. Here is a fully parameterized view with typed overrides on the business
 verbs:
 
 ```python
+from sqlalchemy import ColumnElement
+
+
 class UserRead(fr.IDSchema[User]):
     name: str
     email: str
