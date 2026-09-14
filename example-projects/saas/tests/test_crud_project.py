@@ -1,5 +1,7 @@
 """CRUD tests for the Project model — basic CRUD, archive/lifecycle, clone, and nested routes."""
 
+from app.users.roles import UserRole
+
 
 class TestProjectCRUD:
     """Test Project CRUD operations."""
@@ -117,6 +119,40 @@ class TestNestedRoutes:
         assert len(tasks) == 2
         assert all(t["project_id"] == project1_id for t in tasks)
 
+    def test_list_project_tasks_follows_the_task_view_scope(self, client, auth_context):
+        """The nested listing and ``GET /tasks`` answer with the same rows.
+
+        ``list_project_tasks`` applies ``fr.resolve_scope(TaskView)``, so a
+        member sees the tasks assigned to them on both routes. Re-spelling
+        the clause here is what would let the two drift apart.
+        """
+        project_id = client.post("/projects", json={"name": "Shared"}).json()["id"]
+        member = client.post(
+            "/users", json={"email": "mem@acme.test", "name": "Mem", "role": "member"}
+        ).json()
+
+        mine = client.post(
+            "/tasks",
+            json={
+                "title": "Mine",
+                "project_id": project_id,
+                "assignee_id": member["id"],
+            },
+        ).json()
+        client.post("/tasks", json={"title": "Theirs", "project_id": project_id})
+
+        # the owner sees the whole project on the nested route
+        nested = client.get(f"/projects/{project_id}/tasks").json()
+        assert {task["title"] for task in nested} == {"Mine", "Theirs"}
+
+        # the member sees their own assignment, and both routes agree
+        with auth_context(user_id=member["id"], role=UserRole.MEMBER):
+            nested = client.get(f"/projects/{project_id}/tasks").json()
+            listed = client.get(f"/tasks?project_id={project_id}").json()["data"]
+
+        assert [task["id"] for task in nested] == [mine["id"]]
+        assert [task["id"] for task in listed] == [mine["id"]]
+
     def test_create_task_via_nested_route(self, client):
         """Test POST /projects/{id}/tasks creates task with correct project_id."""
         # Create project
@@ -135,6 +171,54 @@ class TestNestedRoutes:
     def test_nested_route_with_nonexistent_project(self, client):
         """Test that nested routes return 404 for nonexistent project."""
         client.get("/projects/99999/tasks", assert_status_code=404)
+
+
+class TestNaturalKeyRoutes:
+    """The by-slug routes: retrieve and update under the natural key."""
+
+    def test_get_by_slug(self, client):
+        """``GET /projects/by-slug/{slug}`` is ``GET /{id}`` under the other key."""
+        created = client.post("/projects", json={"name": "Apollo Program"}).json()
+        assert created["slug"] == "apollo-program"
+
+        found = client.get("/projects/by-slug/apollo-program").json()
+        assert found["id"] == created["id"]
+        # the decorated fields come from get_one, as they do on GET /{id}
+        assert found["task_count"] == 0
+
+        client.get("/projects/by-slug/nope", assert_status_code=404)
+
+    def test_by_slug_carries_the_organization(self, client, new_tenant):
+        """A slug is unique inside an organization, so the key holds both."""
+        beta = new_tenant("beta")
+        client.post("/projects", json={"name": "Shared Name"})
+
+        with beta.acting():
+            theirs = client.post("/projects", json={"name": "Shared Name"}).json()
+            found = client.get("/projects/by-slug/shared-name").json()
+            assert found["id"] == theirs["id"]
+
+        ours = client.get("/projects/by-slug/shared-name").json()
+        assert ours["id"] != theirs["id"]
+
+    def test_update_by_slug(self, client):
+        """``PATCH`` by slug runs the same commit bracket as ``PATCH /{id}``."""
+        created = client.post("/projects", json={"name": "Gemini"}).json()
+
+        updated = client.patch(
+            "/projects/by-slug/gemini", json={"description": "Two seats"}
+        ).json()
+        assert updated["id"] == created["id"]
+        assert updated["description"] == "Two seats"
+
+        # the write is committed, not just reflected in the response
+        stored = client.get(f"/projects/{created['id']}").json()
+        assert stored["description"] == "Two seats"
+
+    def test_update_by_slug_on_a_missing_slug_is_404(self, client):
+        client.patch(
+            "/projects/by-slug/nope", json={"description": "x"}, assert_status_code=404
+        )
 
 
 class TestProjectLifecycle:
