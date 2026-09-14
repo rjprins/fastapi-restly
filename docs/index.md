@@ -101,7 +101,7 @@ first test.
 
 - **[Default CRUD routes](api_reference.md#default-crud-routes)**: GET, POST, PATCH, DELETE with minimal boilerplate
 - **[True class-based views](class_based_views.md)**: inheritance, mixins, and method overrides
-- **[Explicit override points](customize.md)**: every CRUD verb split into endpoint method, handler, and business method
+- **[Explicit override points](customize.md)**: every CRUD verb split into an endpoint method and a business method you override, with a final handler between them that custom routes call
 - **[React Admin ready](howto_react_admin.md)**: `AsyncReactAdminView` speaks `ra-data-simple-rest`
 - **[SQLAlchemy 2.0 support](getting_started.md)**: async-first with modern patterns
 - **[Pydantic v2 integration](howto_custom_schema.md)**: validation and serialization for public contracts

@@ -155,11 +155,13 @@ the type checker, which reads a bare `def` in a class body as a method;
 `ItemClauses.trashed`, plain attribute access that any type checker
 follows. Name the namespace after the model, and define it in the
 model's module: importing the model then guarantees the namespace is
-registered.
+registered. `model` is optional: a namespace without one is a plain group
+of clauses, or a base class for namespaces that declare one, and declaring
+`model` is what registers the namespace for its model.
 
-The namespace validates itself at definition time. A class without
-`model` raises. A public attribute that is not a clause raises, which
-catches the bare expression that forgot its wrapper:
+The namespace validates itself at definition time. A public attribute
+that is not a clause raises, which catches the bare expression that
+forgot its wrapper:
 
 ```python
 class ItemClauses(fr.ClauseNamespace):

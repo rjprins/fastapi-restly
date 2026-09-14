@@ -9,8 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `RestView.shared_write_action_commit()` and its async counterpart group write
-  actions under one session commit. Each action keeps its authorization and
+- `shared_write_action_commit()` on `RestView` and `AsyncRestView` groups
+  write actions under one session commit. Each action keeps its authorization and
   before-hook. After-hooks run after the outermost block commits and are
   discarded for rolled-back work. A direct session commit inside the block is
   rejected because the outermost block owns the commit.
@@ -49,7 +49,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `fr.RefExists(Model, scope=...)` overrides per reference field.
   `fr.clauses.UNSCOPED` is the one explicit unscoped spelling everywhere
   a scope can appear (view, namespace, reference), so one grep surfaces
-  every escape; `scope=None` is rejected. `default_scope` and a
+  every escape; a namespace or a reference rejects `scope=None`, and on a
+  view `None` means the model's default. `default_scope` and a
   `RefExists` scope must be a `WhereClause` (a pure predicate), enforced
   in the type and at definition: an existence check cannot honor a
   transform, so ordering and joins belong on the view scope.
@@ -60,8 +61,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   call, and `handle_get_many` / `handle_get_one` take and forward
   `scope=`, so a trash listing or a restore action is a custom route on
   the same view instead of a second view class. A custom write action
-  loads with `get_one(id, scope=...)` and gates its own action, as
-  `handle_update` / `handle_delete` do; `handle_get_one` is the loader
+  loads with `get_one(id, scope=...)` and gates only its own action, the
+  way `handle_update` / `handle_delete` do; `handle_get_one` is the loader
   for custom read routes.
   `fr.clauses.UNSCOPED` is the per-read opt-out, in the same spelling.
   The handlers always forward the argument, so a `get_one` / `get_many`
@@ -192,7 +193,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   statement like every other read: a session-level rule added with
   SQLAlchemy's `with_loader_criteria` now reaches reference checks too.
 - `save_object` no longer expires related objects through the
-  `refresh-expire` cascade; `cascade="all"` is safe under `AsyncSession`.
+  `refresh-expire` cascade: it refreshes by attribute name, so
+  `cascade="all"` is safe on Restly's write paths under `AsyncSession`.
 - Query filter values are validated against the field alone, so a
   cross-field `model_validator` (or a frozen schema) on the view schema no
   longer turns a legal filter into a 400. Field validators, constraints and

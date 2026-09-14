@@ -259,7 +259,7 @@ access into two independent concerns; each has its own override point:
   [Scopes](scopes.md) owns that topic.
 - Policy, meaning whether this caller may perform the action, lives in {meth}`authorize <fastapi_restly.views.RestView.authorize>`, which the handler calls.
 
-(build-query-scope)=
+(read-scope)=
 ### The scope: filter every read at once
 
 The following view scopes every read to rows owned by the requesting user:

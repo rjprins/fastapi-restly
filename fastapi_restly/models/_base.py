@@ -13,11 +13,11 @@ from sqlalchemy.orm import (
     mapped_column,
 )
 
-# Provide an alternative settings for relationship cascade "all" and
-# "all, delete-orphan". The "refresh-expire" cascade will cause
-# issues in an async context. See also:
+# Alternatives to cascade "all" and "all, delete-orphan" without
+# "refresh-expire": a plain session.refresh(obj) on an async session would
+# expire related objects that then lazy-load on access. Restly's own
+# save_object refreshes by attribute name and does not cascade. See:
 # https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html#preventing-implicit-io-when-using-asyncsession
-# `CASCADE_ALL_ASYNC` should be used instead.
 CASCADE_ALL_ASYNC = "save-update, merge, delete, expunge"
 CASCADE_ALL_DELETE_ORPHAN_ASYNC = CASCADE_ALL_ASYNC + ", delete-orphan"
 

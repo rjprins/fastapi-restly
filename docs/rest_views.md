@@ -186,9 +186,11 @@ override decision table, and worked recipes.
 
 The default CRUD contract has these boundaries:
 
-- Resource identity is one scalar primary key. Set `id_type` for UUID or
-  another scalar type. Use {class}`View <fastapi_restly.views.View>` and
-  explicit route paths for composite keys.
+- Resource identity is one scalar primary key on the generated routes. Set
+  `id_type` for UUID or another scalar type. A composite key is reached from
+  a custom route that loads with a predicate
+  ([Look a row up by another key](#natural-key-route)), or from
+  {class}`View <fastapi_restly.views.View>` with explicit route paths.
 - Nested response schemas and relationship filtering are supported. General
   nested create and update payloads are not. Use `MustExist`, `IDRef`, or
   `IDSchema` for model-aware references, or transform the payload in a business

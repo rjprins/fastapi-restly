@@ -58,7 +58,7 @@ method overrides to share behavior across resources.
 - **REST endpoints in minutes**: use `View` for custom endpoint groups, or `AsyncRestView` / `RestView` for default CRUD routes.
 - **Incremental adoption**: use Restly per resource; drop to ordinary FastAPI when needed — see [Existing Project Integration](https://www.fastapi-restly.org/howto_existing_project.html).
 - **Class-level dependencies**: declare shared dependencies once and read their values from `self`.
-- **Explicit override points**: change the route shell, request handler, or business verb.
+- **Explicit override points**: replace the endpoint method for the HTTP contract, override the business method for domain logic, and call the final handler from custom routes.
 - **Filtering, pagination, sorting**: get schema-derived list parameters.
 - **Field control**: `ReadOnly` / `WriteOnly` markers, plus foreign-key validation through `MustExist[...]`.
 - **React Admin ready**: `AsyncReactAdminView` / `ReactAdminView` speak `ra-data-simple-rest`.

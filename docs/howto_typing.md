@@ -227,8 +227,8 @@ gives you the typing help you want:
   `class UserRead(IDSchema[User])`, is a separate, optional choice: the bare
   base is supported, and the parameterized base carries the model type.
 - Use view generics only when you want precise typing on the methods you
-  override; they mainly help on the three tiers (business methods, request
-  handlers, and stamping methods).
+  override; they mainly help on the business methods and the endpoint
+  methods.
 - Custom route methods work well with ordinary Python annotations.
 
 That keeps everyday usage clean while still allowing stricter typing for

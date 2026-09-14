@@ -135,7 +135,7 @@ These base classes and mixins form the declarative foundation for SQLAlchemy mod
 | {class}`fr.IDBase <fastapi_restly.models.IDBase>` | Convenience alias combining `DataclassBase` with an auto-incrementing integer `id` primary key. |
 | {class}`fr.TimestampsMixin <fastapi_restly.models.TimestampsMixin>` | Dataclass mixin adding `created_at` / `updated_at` to any `DataclassBase` subclass. |
 | {class}`fr.models.IDMixin <fastapi_restly.models.IDMixin>` | Dataclass mixin adding integer `id` to a custom `DataclassBase` subclass. |
-| `fastapi_restly.models.CASCADE_ALL_ASYNC` | Cascade string for use with `relationship(cascade=...)` in async SQLAlchemy models. Equivalent to `"save-update, merge, delete, expunge"`. SQLAlchemy's default `"all"` includes `"refresh-expire"` which is incompatible with async sessions. Import from `fastapi_restly.models` (not exposed at the top level). |
+| `fastapi_restly.models.CASCADE_ALL_ASYNC` | Cascade string for use with `relationship(cascade=...)` in async SQLAlchemy models. Equivalent to `"save-update, merge, delete, expunge"`. SQLAlchemy's default `"all"` includes `"refresh-expire"`, which makes a plain `session.refresh(obj)` expire related objects that then lazy-load on access. Restly's own `save_object` refreshes by attribute name and does not cascade, so `"all"` is safe on Restly's write paths; use this constant where your own code refreshes on an async session. Import from `fastapi_restly.models` (not exposed at the top level). |
 | `fastapi_restly.models.CASCADE_ALL_DELETE_ORPHAN_ASYNC` | Like `CASCADE_ALL_ASYNC` but also includes `"delete-orphan"`. |
 
 FastAPI-Restly also works with ordinary SQLAlchemy models that inherit from your own `DeclarativeBase`. Use `fr.IDBase` for Restly's dataclass convenience base; bring your own base for standard constructor semantics or existing model layers.
@@ -149,9 +149,12 @@ wall-clock field out of timezone-aware storage.
 `RestView` and `AsyncRestView` assume one scalar resource identifier at
 `/{id}`. The column can have another name when you provide explicit schemas
 and `id_type`, but the default CRUD routes, `IDSchema`, `IDRef`, React Admin,
-and OpenAPI identity shape all remain scalar-id contracts. For composite keys,
-use `fr.View` and explicit routes such as
-`@fr.get("/{tenant_id}/{slug}")`.
+and OpenAPI identity shape all remain scalar-id contracts. A composite key is
+addressed from a custom route on the view, which loads with a predicate
+(`handle_get_one(sa.and_(Model.a == a, Model.b == b))`, see
+[Look a row up by another key](#natural-key-route)); `fr.View` with explicit
+routes such as `@fr.get("/{tenant_id}/{slug}")` remains the option for a
+hand-written group.
 
 ### Schema Classes and Utilities
 
@@ -416,7 +419,9 @@ The default CRUD contract has these boundaries:
 - Ordinary SQLAlchemy `DeclarativeBase` models work with CRUD views.
 - UUID and other non-`int` scalar primary keys are supported through `id_type`, `fr.MustExist[UUID, Model]`, `IDRef[Model]`, and `IDSchema[Model]`.
 - Composite primary keys are not supported by the default `RestView` /
-  `AsyncRestView` CRUD routes. Use `fr.View` for custom route shapes.
+  `AsyncRestView` CRUD routes; a custom route on the view addresses one with
+  a predicate (`handle_get_one(sa.and_(...))`), or use `fr.View` for a
+  hand-written route shape.
 
 ## Full Python API (Autodoc)
 

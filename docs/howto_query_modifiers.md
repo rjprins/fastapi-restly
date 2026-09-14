@@ -131,9 +131,10 @@ Dotted relation paths sort exactly as they filter:
 `?sort=-city.country.code` orders by the related column, joining each hop
 of the path.
 
-When no `sort` parameter is given and the model has an `id` column, the
-framework automatically applies `ORDER BY id ASC`. Models without an `id`
-column return results in an unspecified order.
+The primary key is always the final `ORDER BY` term, every column of a
+composite key included, so equal-valued rows on a non-unique sort are never
+skipped or repeated across pages. With no `sort` parameter the primary key
+is the whole order.
 
 ## Pagination
 

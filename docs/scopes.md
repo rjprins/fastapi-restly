@@ -298,7 +298,7 @@ class ItemView(fr.AsyncRestView):
 # reference to Item inherits it, and the override disappears
 class ItemClauses(fr.ClauseNamespace):
     model = Item
-    default_scope = fr.where_clause(Item.tenant_id == current_tenant)
+    default_scope = fr.where_clause(Item.tenant_id == Current.tenant_id)
 ```
 
 Read-wide eager loading and other non-visibility `Select` changes that
