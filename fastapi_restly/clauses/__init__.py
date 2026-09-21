@@ -2,32 +2,22 @@
 
 A WhereClause is a named, reusable predicate. where_clause() builds one
 from a SQLAlchemy condition or from a function that returns one, and
-all_of()/any_of()/none_of() compose them. A ContextParam is a value
-slot, declared in a ContextNamespace (`name: ContextParam[T]`), not
-constructed. Functions passed to where_clause() are wrapped so that
-parameters the caller does not supply are injected from values bound
-via bind().
+all_of()/any_of()/none_of() compose them. A clause takes no arguments and
+holds no values.
+
+A value that changes per request or per call is a ContextParam: a member
+of a ContextNamespace (`name: ContextParam[T]`), bound through the
+namespace (`Current.bind(tenant_id=tid)`, or `Current.depends(...)` per
+request). Embedded in a condition (`Item.tenant_id == Current.tenant_id`)
+the member is a placeholder; called in a clause function
+(`Current.tenant_id()`) it returns the value. Both are read when the
+clause is applied, so the statement carries the values with it, and an
+unbound member raises LookupError instead of running unfiltered.
 
 A WhereClause is also callable. Calling it returns the raw
 ColumnElement for use inside plain SQLAlchemy: join conditions, CASE
 expressions, or a hand-built .where(). This bypasses apply_clauses'
 table validation, so raw SQLAlchemy rules apply.
-
-Composites built with all_of/any_of/none_of keep their operands as
-children, and bind() routes each value down the tree to the leaf that
-accepts it. Binding on a composite is therefore equivalent to binding on
-the leaf itself:
-
-    visible = all_of(owned_by_tenant, none_of(is_deleted))
-
-    with visible.bind(tenant_id=tid):          # same as
-    with owned_by_tenant.bind(tenant_id=tid):  # this
-
-Routing is strict. A value nobody accepts raises, and a value accepted
-by more than one distinct contextual instance raises too. That is an
-accidental name collision, and binding on the leaf directly is the
-unambiguous fix. The same leaf reached through several branches is fine
-and binds once.
 
 Statement construction stays plain SQLAlchemy. Build select()/update()/
 delete() as usual and pass the result through apply_clauses(), the
@@ -38,8 +28,9 @@ table the statement does not select from.
 """
 
 from ._composition import all_of, any_of, none_of
-from ._declarations import ContextNamespace, where_clause
-from ._runtime import UNSCOPED, ContextParam, Unscoped, WhereClause, apply_clauses
+from ._context import ContextNamespace, ContextParam
+from ._declarations import where_clause
+from ._runtime import UNSCOPED, Unscoped, WhereClause, apply_clauses
 from ._scopes import ClauseNamespace
 
 __all__ = [

@@ -63,7 +63,7 @@ def test_default_scope_and_view_scope_over_http(client):
         deleted: bool = False
 
     async def bind_tenant(tenant: Annotated[int, Header(alias="x-tenant-id")]):
-        with Current.tenant_id.bind(tenant_id=tenant):
+        with Current.bind(tenant_id=tenant):
             yield
 
     @fr.include_view(client.app)
@@ -139,7 +139,7 @@ def test_unscoped_view_reads_past_the_default_scope(client):
         name: str
 
     async def bind_tenant(tenant: Annotated[int, Header(alias="x-tenant-id")]):
-        with Current.tenant_id.bind(tenant_id=tenant):
+        with Current.bind(tenant_id=tenant):
             yield
 
     @fr.include_view(client.app)
@@ -202,7 +202,7 @@ def test_a_route_reads_through_its_own_scope(client):
         deleted: bool = False
 
     async def bind_tenant(tenant: Annotated[int, Header(alias="x-tenant-id")]):
-        with Current.tenant_id.bind(tenant_id=tenant):
+        with Current.bind(tenant_id=tenant):
             yield
 
     @fr.include_view(client.app)
@@ -328,7 +328,7 @@ def test_a_route_narrows_inside_the_scope_with_where(client):
         deleted: bool = False
 
     async def bind_tenant(tenant: Annotated[int, Header(alias="x-tenant-id")]):
-        with Current.tenant_id.bind(tenant_id=tenant):
+        with Current.bind(tenant_id=tenant):
             yield
 
     @fr.include_view(client.app)
@@ -451,7 +451,7 @@ def test_the_resolved_scope_and_the_reads_agree_on_the_rows_async(client):
     }
 
     async def bind_tenant(tenant: Annotated[int, Header(alias="x-tenant-id")]):
-        with Current.tenant_id.bind(tenant_id=tenant):
+        with Current.bind(tenant_id=tenant):
             yield
 
     async def agreement(view, scope):
@@ -544,7 +544,7 @@ def test_a_count_route_counts_the_scoped_select_under_the_listing_grammar(client
         name: str
 
     async def bind_tenant(tenant: Annotated[int, Header(alias="x-tenant-id")]):
-        with Current.tenant_id.bind(tenant_id=tenant):
+        with Current.bind(tenant_id=tenant):
             yield
 
     @fr.include_view(client.app)
@@ -617,7 +617,7 @@ def test_a_session_rule_holds_under_every_scope_and_reference_check(client):
         note_id: fr.MustExist[int, FloorNote]
 
     async def bind_tenant(tenant: Annotated[int, Header(alias="x-tenant-id")]):
-        with Current.tenant_id.bind(tenant_id=tenant):
+        with Current.bind(tenant_id=tenant):
             yield
 
     def restrict(state: ORMExecuteState) -> None:
@@ -816,7 +816,7 @@ def test_reference_checks_apply_scopes_over_http(client):
         ) = None
 
     async def bind_tenant(tenant: Annotated[int, Header(alias="x-tenant-id")]):
-        with Current.tenant_id.bind(tenant_id=tenant):
+        with Current.bind(tenant_id=tenant):
             yield
 
     @fr.include_view(client.app)
@@ -894,7 +894,7 @@ def test_idref_resolution_applies_default_scope_over_http(client):
         author_id: fr.IDRef[ScopeAuthor]
 
     async def bind_tenant(tenant: Annotated[int, Header(alias="x-tenant-id")]):
-        with Current.tenant_id.bind(tenant_id=tenant):
+        with Current.bind(tenant_id=tenant):
             yield
 
     @fr.include_view(client.app)
@@ -957,7 +957,7 @@ def test_async_bind_dependency_reaches_sync_endpoints(sync_db):
         name: str
 
     async def bind_tenant(tenant: Annotated[int, Header(alias="x-tenant-id")]):
-        with Current.tenant_id.bind(tenant_id=tenant):
+        with Current.bind(tenant_id=tenant):
             yield
 
     client = RestlyTestClient(FastAPI())
@@ -1040,7 +1040,7 @@ def sync_session():
 def test_sync_view_reads_through_default_scope(sync_session):
     view = _SyncRowView()
     view.session = sync_session
-    with _SyncContext.tenant_id.bind(tenant_id=1):
+    with _SyncContext.bind(tenant_id=1):
         assert view.get_one(1).id == 1
         with pytest.raises(NotFound):
             view.get_one(2)
@@ -1049,7 +1049,7 @@ def test_sync_view_reads_through_default_scope(sync_session):
 def test_sync_handlers_take_a_per_read_scope(sync_session):
     view = _SyncRowView()
     view.session = sync_session
-    with _SyncContext.tenant_id.bind(tenant_id=1):
+    with _SyncContext.bind(tenant_id=1):
         # a clause replaces the view scope for that read only
         other = fr.where_clause(SyncRow.tenant_id == 2)
         assert view.handle_get_one(2, scope=other).id == 2
@@ -1083,7 +1083,7 @@ def test_domain_ops_take_a_scope_directly(sync_session):
     of inheriting read-auth from ``handle_get_one``."""
     view = _SyncRowView()
     view.session = sync_session
-    with _SyncContext.tenant_id.bind(tenant_id=1):
+    with _SyncContext.bind(tenant_id=1):
         other = fr.where_clause(SyncRow.tenant_id == 2)
         assert view.get_one(2, scope=other).id == 2
         with pytest.raises(NotFound):
@@ -1105,7 +1105,7 @@ def test_per_read_scope_passes_through_a_get_one_override(sync_session):
 
     view = _Overriding()
     view.session = sync_session
-    with _SyncContext.tenant_id.bind(tenant_id=1):
+    with _SyncContext.bind(tenant_id=1):
         assert view.handle_get_one(2, scope=fr.clauses.UNSCOPED).id == 2
         with pytest.raises(NotFound):
             view.handle_get_one(2)
@@ -1122,7 +1122,7 @@ def test_a_scope_unaware_get_one_override_fails_loudly(sync_session):
 
     view = _ScopeUnaware()
     view.session = sync_session
-    with _SyncContext.tenant_id.bind(tenant_id=1):
+    with _SyncContext.bind(tenant_id=1):
         with pytest.raises(TypeError, match="scope"):
             view.handle_get_one(1)
 
@@ -1138,7 +1138,7 @@ def test_sync_list_handler_narrows_with_where(sync_session):
     def ids(**kwargs):
         return {r.id for r in view.handle_get_many({}, **kwargs).objects}
 
-    with _SyncContext.tenant_id.bind(tenant_id=1):
+    with _SyncContext.bind(tenant_id=1):
         assert ids() == {1, 3}
 
         # a raw expression and a clause narrow inside the default scope
@@ -1175,7 +1175,7 @@ def test_where_counts_the_narrowed_rows(sync_session):
     sync_session.flush()
     view = _SyncRowView()
     view.session = sync_session
-    with _SyncContext.tenant_id.bind(tenant_id=1):
+    with _SyncContext.bind(tenant_id=1):
         listed = view.handle_get_many({"page_size": 1}, where=SyncRow.id > 1)
     assert listed.total_count == 2
     assert len(listed.objects) == 1
@@ -1196,7 +1196,7 @@ def test_where_is_folded_into_the_scope_get_many_receives(sync_session):
     view = _Overriding()
     view.session = sync_session
     narrow = fr.where_clause(SyncRow.id > 1)
-    with _SyncContext.tenant_id.bind(tenant_id=1):
+    with _SyncContext.bind(tenant_id=1):
         assert {r.id for r in view.handle_get_many({}).objects} == {1, 3}
         assert {r.id for r in view.handle_get_many({}, where=narrow).objects} == {3}
         unscoped = view.handle_get_many({}, scope=fr.clauses.UNSCOPED, where=narrow)
@@ -1220,7 +1220,7 @@ def test_where_takes_an_exists_on_a_related_table(sync_session):
     tagged = fr.where_clause(
         exists().where(SyncTag.row_id == SyncRow.id, SyncTag.id == 1)
     )
-    with _SyncContext.tenant_id.bind(tenant_id=1):
+    with _SyncContext.bind(tenant_id=1):
         listed = view.handle_get_many({}, where=tagged)
     assert [r.id for r in listed.objects] == [3]
 
@@ -1230,7 +1230,7 @@ def test_where_fails_loudly_on_a_non_predicate(sync_session):
     view.session = sync_session
     row = sync_session.get(SyncRow, 1)
 
-    with _SyncContext.tenant_id.bind(tenant_id=1):
+    with _SyncContext.bind(tenant_id=1):
         # a comparison on a loaded object is a Python bool: WHERE true
         with pytest.raises(TypeError, match="where= got a bool"):
             view.handle_get_many({}, where=row.tenant_id == 1)  # type: ignore[arg-type]
@@ -1340,7 +1340,7 @@ def test_a_view_scope_replaces_the_default_and_a_per_read_scope_replaces_both(
     class _OptedOut(_SyncRowView):
         scope = fr.clauses.UNSCOPED
 
-    with _SyncContext.tenant_id.bind(tenant_id=1):
+    with _SyncContext.bind(tenant_id=1):
         for view_cls, expected in [
             (_SyncRowView, {1}),  # the model default: the bound tenant
             (_Pinned, {2}),  # the view's own scope replaces it
@@ -1382,7 +1382,7 @@ def test_a_sync_session_rule_holds_under_unscoped_reads_and_references(sync_sess
     view.session = sync_session
     event.listen(Session, "do_orm_execute", restrict)
     try:
-        with _SyncContext.tenant_id.bind(tenant_id=1):
+        with _SyncContext.bind(tenant_id=1):
             # UNSCOPED on the view, UNSCOPED per read: the rule still holds
             assert {r.id for r in view.handle_get_many({}).objects} == {1}
             ids = {
@@ -1404,7 +1404,7 @@ def test_a_sync_session_rule_holds_under_unscoped_reads_and_references(sync_sess
 def test_unbound_scope_raises_the_teaching_error(sync_session):
     view = _SyncRowView()
     view.session = sync_session
-    with pytest.raises(LookupError, match="missing bound values"):
+    with pytest.raises(LookupError, match="_SyncContext.tenant_id is not bound"):
         view.get_one(1)
 
 
@@ -1450,7 +1450,7 @@ def test_a_criterion_narrows_inside_the_scope_and_cannot_widen_it(sync_session):
     sees and never past it; only ``scope=`` changes what that is."""
     view = _SyncRowView()
     view.session = sync_session
-    with _SyncContext.tenant_id.bind(tenant_id=1):
+    with _SyncContext.bind(tenant_id=1):
         # the natural-key shape: another column, the same scope and 404
         assert view.get_one(SyncRow.tenant_id == 1).id == 1
 
@@ -1509,7 +1509,7 @@ def test_the_resolved_scope_and_the_reads_agree_on_the_rows_sync(sync_session):
         return found
 
     per_read = fr.where_clause(SyncRow.tenant_id == 2)
-    with _SyncContext.tenant_id.bind(tenant_id=1):
+    with _SyncContext.bind(tenant_id=1):
         for view_cls, scope, expected in (
             (_SyncRowView, None, {1}),  # the model's default_scope
             (_ScopedView, None, {2}),  # the view's declared scope
@@ -1563,7 +1563,7 @@ def test_idref_resolution_applies_default_scope_sync(sync_session):
     class _RefSchema(fr.BaseSchema):
         rows: list[fr.IDRef[SyncRow]]
 
-    with _SyncContext.tenant_id.bind(tenant_id=1):
+    with _SyncContext.bind(tenant_id=1):
         resolved = _resolve_ids_to_sqlalchemy_objects(
             sync_session, _RefSchema(rows=[1])
         )
@@ -1750,7 +1750,7 @@ def test_a_namespace_base_composes_a_floor_into_default_scope():
 
     scope = _default_scope(FlooredRow)
     assert scope is FlooredRowClauses.default_scope
-    with _SyncContext.tenant_id.bind(tenant_id=1):
+    with _SyncContext.bind(tenant_id=1):
         rendered = str(fr.apply_clauses(select(FlooredRow), scope).whereclause)
     assert "tenant_id = :tenant_id" in rendered
     assert "deleted IS false" in rendered
@@ -1815,11 +1815,11 @@ def test_scoped_resolution_uses_the_mapper_pk(sync_session):
     class _WeirdSchema(fr.BaseSchema):
         thing: fr.IDSchema[SyncWeird]
 
-    with _SyncContext.tenant_id.bind(tenant_id=1):
+    with _SyncContext.bind(tenant_id=1):
         resolved = _resolve_ids_to_sqlalchemy_objects(
             sync_session, _WeirdSchema(thing=7)
         )
         assert resolved["thing"].code == 7
-    with _SyncContext.tenant_id.bind(tenant_id=2):
+    with _SyncContext.bind(tenant_id=2):
         with pytest.raises(NotFound, match="thing"):
             _resolve_ids_to_sqlalchemy_objects(sync_session, _WeirdSchema(thing=7))

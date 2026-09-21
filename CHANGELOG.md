@@ -51,15 +51,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   write actions under one session commit. Authorization and before-hooks still
   run per action. After-hooks run after the outermost commit and are discarded
   after a rollback. Direct session commits inside the block are rejected.
-- Context-bound query clauses are reusable SQLAlchemy query fragments with
-  values supplied per request. Declare them with `fr.where_clause`. Combine
-  them with `fr.all_of`, `fr.any_of`, or `fr.none_of`. Apply them with
-  `fr.apply_clauses`.
+- Query clauses are named, reusable SQLAlchemy predicates. Declare one with
+  `fr.where_clause`, from a condition or from a function without parameters.
+  Combine them with `fr.all_of`, `fr.any_of`, or `fr.none_of`. Apply them to
+  a `select()`, `update()` or `delete()` with `fr.apply_clauses`.
   `fr.ClauseNamespace` groups clauses with or without registering a model.
-  `fr.ContextNamespace` and `fr.ContextParam` supply shared request values
-  through generated `.depends()` dependencies. Missing bindings raise
-  `LookupError`.
   See the Query Clauses guide.
+- `fr.ContextNamespace` declares context members (`name: fr.ContextParam[T]`):
+  values bound around a unit of work and read anywhere. Bind them with
+  `Current.bind(...)`, or per request with the generated `Current.depends(...)`
+  dependency. `Current.user_id()` reads a value, and a member embedded in a
+  clause condition (`Item.user_id == Current.user_id`) is filled when the
+  clause is applied. A missing binding raises `LookupError`. A member used
+  where its value was meant (`==`, `!=`, a truth test) raises `TypeError`.
+  See the Current context guide.
 - Model default scopes apply a clause to every view read and reference check.
   A view's `scope` replaces the model default for its reads. Pass `scope=` to
   replace it for one read. `fr.RefExists` accepts a per-field scope.

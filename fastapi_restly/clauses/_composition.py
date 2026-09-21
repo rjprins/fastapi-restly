@@ -2,18 +2,11 @@
 
 from __future__ import annotations
 
-from typing import cast, overload
+from typing import overload
 
-from sqlalchemy import ColumnElement, and_, false, not_, or_
+from sqlalchemy import and_, false, not_, or_
 
-from ._declarations import where_clause
-from ._runtime import (
-    UNSCOPED,
-    Unscoped,
-    WhereClause,
-    _resolve_carried_where,
-    _without_unscoped,
-)
+from ._runtime import UNSCOPED, Unscoped, WhereClause, _without_unscoped
 
 __all__ = ["all_of", "any_of", "none_of"]
 
@@ -23,11 +16,7 @@ def _require_wheres(
 ) -> tuple[WhereClause, ...]:
     if not clauses:
         raise TypeError(f"{name}() requires at least one clause")
-    given = _without_unscoped(name, clauses)
-    # a ContextParam carries a value, not a predicate
-    if any(not isinstance(c, WhereClause) for c in given):
-        raise TypeError(f"{name} combines only clauses with a where")
-    return cast("tuple[WhereClause, ...]", given)
+    return _without_unscoped(name, clauses)
 
 
 @overload
@@ -67,13 +56,8 @@ def all_of(*clauses: WhereClause | Unscoped) -> WhereClause | Unscoped:
     if len(given) == 1:
         return given[0]
 
-    def fn() -> ColumnElement[bool]:
-        return and_(*(_resolve_carried_where(c) for c in given))
-
-    fn.__name__ = fn.__qualname__ = "all_of"
-    result = where_clause(fn)
-    result._children = given
-    return result
+    # operands resolve unfilled: the composite fills every placeholder once
+    return WhereClause._of(lambda: and_(*(c._build() for c in given)), "all_of")
 
 
 @overload
@@ -98,11 +82,7 @@ def any_of(*clauses: WhereClause | Unscoped) -> WhereClause | Unscoped:
     given = _require_wheres("any_of", clauses)
     if len(given) != len(clauses):
         return UNSCOPED
-    fn = lambda: or_(*(_resolve_carried_where(c) for c in given))  # noqa: E731
-    fn.__name__ = fn.__qualname__ = "any_of"
-    result = where_clause(fn)
-    result._children = given
-    return result
+    return WhereClause._of(lambda: or_(*(c._build() for c in given)), "any_of")
 
 
 def none_of(*clauses: WhereClause | Unscoped) -> WhereClause:
@@ -114,9 +94,5 @@ def none_of(*clauses: WhereClause | Unscoped) -> WhereClause:
     """
     given = _require_wheres("none_of", clauses)
     if len(given) != len(clauses):
-        return where_clause(false())
-    fn = lambda: not_(or_(*(_resolve_carried_where(c) for c in given)))  # noqa: E731
-    fn.__name__ = fn.__qualname__ = "none_of"
-    result = where_clause(fn)
-    result._children = given
-    return result
+        return WhereClause._of(false, "none_of")
+    return WhereClause._of(lambda: not_(or_(*(c._build() for c in given))), "none_of")

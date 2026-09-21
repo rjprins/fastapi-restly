@@ -377,8 +377,8 @@ inflate `total_count`.
 (binding-scope-values)=
 ## Binding scope values
 
-Scopes are clauses, so binding works as described in
-[Query Clauses, Binding values](#binding-values). For request-wide
+Scopes are clauses, so their values come from context members, as
+described in [Query Clauses, Supplying values](#binding-values). For request-wide
 values, {meth}`ContextNamespace.depends <fastapi_restly.clauses.ContextNamespace.depends>`
 generates the dependency: async underneath, so the bind lands in the
 request task, where async and `def` endpoints alike read it, and fed by
@@ -397,10 +397,8 @@ app = FastAPI(dependencies=[
 
 Attach it at the narrowest level that needs it: the app for values in
 every request, a router for a group, a view's `dependencies` list for
-one view;
-{meth}`ContextParam.depends <fastapi_restly.clauses.ContextParam.depends>`
-is the single-slot form. Read `Current.explain()` when a query filters
-unexpectedly; the origin names your `depends()` line. The scope's promise is structural: the framework
-guarantees the clause is applied and its values are bound, or the
-request fails loudly. That the bound value is the *right* tenant is the
+one view. Read `Current.explain()` when a query filters unexpectedly;
+the origin names your `depends()` line. The scope's promise is
+structural: the framework guarantees the clause is applied and its values
+are bound, or the request fails loudly. That the bound value is the *right* tenant is the
 source dependency's job; assert it there.

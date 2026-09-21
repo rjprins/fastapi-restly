@@ -85,9 +85,8 @@ Attach the dependency to the app when every route needs it. Use an
 smaller group of routes. Each source can be a callable, a `Depends(...)`
 object, or an `Annotated` dependency alias.
 
-{meth}`Current.user_id.depends(get_user_id) <fastapi_restly.clauses.ContextParam.depends>`
-binds a single member. `Current.depends(...)` can bind several members
-from their respective dependencies in one declaration.
+`Current.depends(...)` binds one member or several, each from its own
+dependency, in one declaration.
 
 (current-column-defaults)=
 ## Read the current user in a column default

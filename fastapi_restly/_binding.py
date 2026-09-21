@@ -6,7 +6,7 @@ parameter per bound slot, each fed by a source dependency. Async so the
 bind lands in the request's task, where both async and threadpool (def)
 endpoints read it; sources are the caller's own dependencies, so
 ``app.dependency_overrides`` keeps working. Reached through
-``ContextParam.depends()`` and ``ContextNamespace.depends()``.
+``ContextNamespace.depends()``.
 """
 
 from __future__ import annotations
@@ -17,8 +17,6 @@ from typing import TYPE_CHECKING, Any
 
 from fastapi import Depends
 from fastapi.params import Depends as _DependsMarker
-
-from ._contextargs import _origin_override
 
 if TYPE_CHECKING:
     from .clauses import ContextParam
@@ -47,27 +45,22 @@ def _source_parameter(name: str, source: Any) -> inspect.Parameter:
 
 
 def _bind_dependency(
-    entries: list[tuple["ContextParam[Any]", Any]], origin: str | None
+    entries: list[tuple[str, "ContextParam[Any]", Any]], origin: str | None
 ) -> Any:
-    """A Depends whose dependency binds each slot from its source."""
-    named: list[tuple[str, ContextParam[Any], Any]] = []
-    for param, source in entries:
-        fn = param._param_fn
-        assert fn is not None and fn.accepted  # invariant: set at declaration
-        named.append((next(iter(fn.accepted)), param, source))
+    """A Depends whose dependency binds each member from its source.
+
+    ``origin`` is the ``depends()`` call site: the bind happens inside the
+    package, where a frame walk would name the machinery.
+    """
 
     async def _bind(**values: Any):
         with ExitStack() as stack:
-            token = _origin_override.set(origin)
-            try:
-                for name, param, _ in named:
-                    stack.enter_context(param.bind(**{name: values[name]}))
-            finally:
-                _origin_override.reset(token)
+            for name, param, _ in entries:
+                stack.enter_context(param._bind(values[name], origin))
             yield
 
     _bind.__signature__ = inspect.Signature(  # type: ignore[attr-defined]
-        [_source_parameter(name, source) for name, _, source in named]
+        [_source_parameter(name, source) for name, _, source in entries]
     )
-    _bind.__name__ = "bind_" + "_".join(name for name, _, _ in named)
+    _bind.__name__ = "bind_" + "_".join(name for name, _, _ in entries)
     return Depends(_bind)

@@ -23,7 +23,7 @@ from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm.session import Session as SA_Session
 from typing_extensions import TypeAliasType, TypeVar
 
-from ..clauses import ContextParam, Unscoped, WhereClause, apply_clauses
+from ..clauses import Unscoped, WhereClause, apply_clauses
 from ..clauses._scopes import _default_scope
 from ..exc import NotFound, RestlyConfigurationError
 
@@ -197,11 +197,6 @@ class RefExists:
                 "RefExists scope=None says nothing; opt out explicitly with "
                 "scope=fr.clauses.UNSCOPED, so a variable that happens to be "
                 "None can never silently unscope the check"
-            )
-        if isinstance(scope, ContextParam):
-            raise TypeError(
-                "RefExists scope cannot be a ContextParam; it carries a value, "
-                "not a predicate"
             )
         if not isinstance(scope, (WhereClause, Unscoped, _NotGiven)):
             raise TypeError(

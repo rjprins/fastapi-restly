@@ -65,6 +65,12 @@ class Wanted(ContextNamespace):
     tenants: ContextParam[list[int]]
 
 
+class SubscriptionFilter(ContextNamespace):
+    """A local namespace: only the subscription report binds it."""
+
+    status: ContextParam[str]
+
+
 class ItemClauses(ClauseNamespace):
     model = Item
 
@@ -254,6 +260,22 @@ def test_embedded_member_in_list_executes(engine):
         stmt = apply_clauses(select(Item), cond)
     with Session(engine) as s:
         assert ids(s, stmt) == {1, 2, 4}
+
+
+def test_local_member_inside_exists_runs_after_its_bind_ended(engine):
+    subscribed = where_clause(
+        Item.subscriptions.any(Subscription.status == SubscriptionFilter.status)
+    )
+
+    def report_stmt(status: str):
+        # the local shape: bind tightly, hand the statement to the caller
+        with Ctx.bind(tenant_id=T1), SubscriptionFilter.bind(status=status):
+            return apply_clauses(select(Item), ItemClauses.visible, subscribed)
+
+    with Session(engine) as s:
+        assert ids(s, report_stmt("active")) == {1}
+        assert ids(s, report_stmt("cancelled")) == {4}
+        assert ids(s, report_stmt("paused")) == set()
 
 
 def test_bind_resets_after_exception(engine):

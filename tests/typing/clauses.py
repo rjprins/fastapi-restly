@@ -6,10 +6,11 @@ ContextNamespace declaration -> ContextParam[T]), the all_of overloads
 overloads per statement kind, namespace access by class name, and the
 WhereClause call form.
 
-A parameterized clause function inside a class body stacks the clause
-decorator over ``@staticmethod``: a bare ``def`` there is checked as a
-method, with its first parameter reported against the class type. At
-module level no marker is needed.
+A clause function takes no parameters, which the ``where_clause``
+signature states: a checker rejects one that does. Inside a class body it
+stacks the clause decorator over ``@staticmethod``: a bare ``def`` there
+is checked as a method and reported for its missing ``self``. At module
+level no marker is needed.
 """
 
 from datetime import datetime
@@ -31,13 +32,20 @@ class Context(fr.ContextNamespace):
     tenant_id: fr.ContextParam[int]
 
 
+class Report(fr.ContextNamespace):
+    """A local namespace, declared next to the clause that reads it."""
+
+    since: fr.ContextParam[datetime]
+
+
 assert_type(Context.tenant_id, fr.ContextParam[int])
 assert_type(Context.tenant_id(), int)
+assert_type(Report.since(), datetime)
 
 
 @fr.where_clause
-def in_period(start: datetime, end: datetime) -> ColumnElement[bool]:
-    return Ticket.created_at.between(start, end)
+def created_since() -> ColumnElement[bool]:
+    return Ticket.created_at >= Report.since()
 
 
 class TicketClauses(fr.ClauseNamespace):
@@ -45,13 +53,13 @@ class TicketClauses(fr.ClauseNamespace):
 
     is_deleted = fr.where_clause(Ticket.deleted_at.is_not(None))
     owned_by_tenant = fr.where_clause(Ticket.tenant_id == Context.tenant_id)
-    in_period = in_period
+    created_since = created_since
 
     # in-body function clauses: the clause decorator over @staticmethod
     @fr.where_clause
     @staticmethod
-    def since(cutoff: datetime) -> ColumnElement[bool]:
-        return Ticket.created_at >= cutoff
+    def since() -> ColumnElement[bool]:
+        return Ticket.created_at >= Report.since()
 
     visible = fr.all_of(owned_by_tenant, fr.none_of(is_deleted))
 
