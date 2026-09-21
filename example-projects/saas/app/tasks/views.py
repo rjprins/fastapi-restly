@@ -68,8 +68,8 @@ class TaskView(SoftDeleteMixin, TenantBase):
     ``scope = TaskClauses.visible`` replaces the model's ``default_scope``
     on this view's reads, while references to Task keep the default. The
     tenant rule is not repeated here: the ``with_loader_criteria``
-    listener in ``tasks/models.py`` adds it to every read, this scope and
-    the trash route's alike. Retrieve
+    criterion in ``tasks/models.py`` applies to ORM reads of Task, this
+    scope and the trash route's alike. Retrieve
     applies the same scope, so the predicate that filters listing also
     returns 404 from ``GET /tasks/{id}`` for a task a member is not
     assigned to, and cascades through ``handle_update`` and

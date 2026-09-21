@@ -122,11 +122,12 @@ A tenant rule must hold under every scope a view or a route can name, so it
 is not a scope. SQLAlchemy's
 [`with_loader_criteria`](https://docs.sqlalchemy.org/en/20/orm/queryguide/api.html#adding-global-where-on-criteria),
 added from a `do_orm_execute` listener, puts the predicate on every ORM
-`SELECT` that touches the class: view reads under any scope, reference
-checks, lazy loads and hand-written selects alike. Restly's reads and
-reference checks are ORM statements, so the rule reaches them. The
-[tenant row scoping](#tenant-row-scoping) recipe shows the listener and the
-column it restricts. The [SaaS example](examples.md#saas) runs that recipe.
+`SELECT` that selects or joins the class: view reads under any scope,
+reference checks, lazy loads and hand-written selects alike. Restly's reads
+and reference checks are ORM statements, so the rule reaches them. The
+[tenant row scoping](#tenant-row-scoping) recipe shows the listener, the
+column it restricts, and the statements it does not reach. The
+[SaaS example](examples.md#saas) runs that recipe.
 
 A view scope is the query basis of its endpoints, so transforms are
 welcome there, unlike in `default_scope`:

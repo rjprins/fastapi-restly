@@ -9,8 +9,8 @@ and a script binds what it needs with ``Current.bind``.
 once per request, fed by the auth sources themselves so
 ``app.dependency_overrides`` keeps working in tests. The tenant floor
 that reads these values lives next to the tenant column, in
-``app.models``: session listeners restrict ORM entity and relationship loads
-to ``Current.org_id`` unless ``Current.is_admin``.
+``app.models``: a session listener restricts ORM entity and relationship
+loads to ``Current.org_id`` unless ``Current.is_admin``.
 
 Admin flows are conditionals on ``Current.is_admin``, not a separate
 route tree: an admin reads across tenants and writes into one by acting

@@ -125,16 +125,25 @@ tenant_is_admin = sa.bindparam(
 )
 
 
+class TenantCriteria(orm.UserDefinedOption):
+    """Marks a statement that already carries the tenant criteria."""
+
+    propagate_to_loaders = True
+
+
 @sa.event.listens_for(orm.Session, "do_orm_execute")
 def _restrict_tenant_rows(state: orm.ORMExecuteState) -> None:
     if not state.is_select or state.is_column_load:
         return
+    if any(isinstance(o, TenantCriteria) for o in state.user_defined_options):
+        return
     state.statement = state.statement.options(
+        TenantCriteria(),
         orm.with_loader_criteria(
             TenantOwned,
             lambda cls: sa.or_(tenant_is_admin, cls.organization_id == tenant_org_id),
             include_aliases=True,
-        )
+        ),
     )
 
 
@@ -157,6 +166,12 @@ the users. Relationship queries also receive the option, including when
 their parent was inserted rather than loaded by a query. Keep the default
 `propagate_to_loaders=True` so joined eager loads receive the criteria.
 
+A relationship load inherits the options of the statement that loaded its
+parent. Without the `TenantCriteria` marker the listener adds a second copy of
+each criterion to that load, and a chain of loads, such as a task's subtasks,
+gains one more copy at every level. The marker travels with the criteria, so
+the listener skips a statement that has it.
+
 [`bindparam(callable_=...)`](https://docs.sqlalchemy.org/en/20/core/sqlelement.html#sqlalchemy.sql.expression.bindparam)
 reads the identity only when the generated SQL uses that parameter. A plain
 lookup query needs no identity. A protected read without one fails with a
@@ -166,15 +181,23 @@ are needed here because `bindparam` tests the callable's truth value, which
 
 Keep `Current.bind(...)` active for the session's lifetime. Use a new session
 for a different identity: criteria do not remove objects already loaded into
-the session. A model that reaches its tenant through a relationship needs
-its own criterion. The SaaS example covers `Task` through its project and
-`TaskLabel` through both its task and label.
+the session, and `session.get()` returns such an object without a query.
+
+A model that reaches its tenant through a relationship needs its own
+criterion. The SaaS example registers one for `Task` through its project, for
+`TaskLabel` through both its task and its label, and for `UploadLine` through
+its upload. Write each criterion as a lambda. SQLAlchemy analyses a lambda
+once and caches it. It processes a plain expression again for every
+statement, including statements that never read the model.
 
 This is an ORM read filter, not database-level access control. Raw SQL, Core
-table queries, and arbitrary writes need their own checks. Relationship
-predicates built with `.any()` or `.has()` do not automatically receive the
-criteria inside their `EXISTS` subquery. Include the tenant predicate there,
-as the SaaS task and task-label listeners do.
+table queries, and arbitrary writes need their own checks. The criteria reach
+a statement only through an entity it selects or joins.
+`select(func.count()).where(Task.project_id == id)` names `Task` only in its
+`WHERE` clause, so it counts every tenant's tasks. Add `.select_from(Task)`.
+Relationship predicates built with `.any()` or `.has()` do not automatically
+receive the criteria inside their `EXISTS` subquery. Include the tenant
+predicate there, as the SaaS criteria do.
 
 (soft-delete-mixin)=
 ### Soft delete: a scope clause plus a delete mixin

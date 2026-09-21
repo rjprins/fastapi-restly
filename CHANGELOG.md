@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - SaaS example organization deletion now requires a platform admin and binds
   request identity for cascading relationship loads.
+- SaaS example upload lines are restricted to the caller's organization.
+  `GET /uploads/{id}/lines` returns 404 for another organization's upload.
+- SaaS example tenant criteria are added once per statement, from one session
+  listener. Nested relationship loads no longer repeat them, and the project
+  task counts now receive them.
 
 ## [0.10.0] - 2026-09-17
 

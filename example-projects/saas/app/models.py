@@ -16,7 +16,9 @@ probe does.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import datetime
+from typing import Any
 
 import sqlalchemy as sa
 from sqlalchemy import ForeignKey, orm
@@ -51,19 +53,55 @@ tenant_is_admin = sa.bindparam(
 )
 
 
+class TenantCriteria(orm.UserDefinedOption):
+    """Marks a statement that carries the tenant criteria.
+
+    A relationship load inherits the marker together with the criteria, so
+    the listener adds them to a statement once.
+    """
+
+    propagate_to_loaders = True
+
+
+TenantCriterion = Callable[[Any], sa.ColumnElement[bool]]
+_tenant_criteria: list[tuple[type, TenantCriterion]] = []
+
+
+def restrict_to_tenant(entity: type, criterion: TenantCriterion) -> None:
+    """Restrict ORM reads of ``entity`` to the rows ``criterion`` selects.
+
+    ``criterion`` receives the class, or an alias of it. Pass a lambda:
+    SQLAlchemy caches it, and rebuilds a plain expression for every statement.
+    A ``.has()`` inside it names the tenant itself, because loader criteria
+    do not reach into an ``EXISTS``.
+    """
+    # Stored, not built: building the option calls the lambda, and a
+    # relationship in it needs every model imported.
+    _tenant_criteria.append((entity, criterion))
+
+
+restrict_to_tenant(
+    TenantOwned,
+    lambda cls: sa.or_(tenant_is_admin, cls.organization_id == tenant_org_id),
+)
+
+
 @sa.event.listens_for(orm.Session, "do_orm_execute")
 def _restrict_tenant_rows(state: orm.ORMExecuteState) -> None:
     # Include public roots such as Organization: they can load protected rows
-    # through relationships. Apply to relationship queries too, including ones
-    # whose parent was inserted rather than loaded by a SELECT.
+    # through relationships. Include relationship loads: one whose parent was
+    # inserted, not selected, inherits no options.
     if not state.is_select or state.is_column_load:
         return
+    # A load that inherited the options would stack another copy of each.
+    if any(isinstance(o, TenantCriteria) for o in state.user_defined_options):
+        return
     state.statement = state.statement.options(
-        orm.with_loader_criteria(
-            TenantOwned,
-            lambda cls: sa.or_(tenant_is_admin, cls.organization_id == tenant_org_id),
-            include_aliases=True,
-        )
+        TenantCriteria(),
+        *(
+            orm.with_loader_criteria(entity, criterion, include_aliases=True)
+            for entity, criterion in _tenant_criteria
+        ),
     )
 
 

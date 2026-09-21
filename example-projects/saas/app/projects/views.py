@@ -84,17 +84,21 @@ class ProjectView(SoftDeleteMixin, TenantBase):
     async def _decorate_project_response(self, project: Project) -> Project:
         """Populate transient response fields that are not stored on Project."""
         project.can_edit = self._can_edit(project)
+        # select_from(Task): a count that names Task only in WHERE gets no
+        # tenant criterion.
         project.task_count = (
             await self.session.scalar(
-                select(func.count()).where(
-                    Task.project_id == project.id, Task.deleted_at.is_(None)
-                )
+                select(func.count())
+                .select_from(Task)
+                .where(Task.project_id == project.id, Task.deleted_at.is_(None))
             )
             or 0
         )
         project.completed_task_count = (
             await self.session.scalar(
-                select(func.count()).where(
+                select(func.count())
+                .select_from(Task)
+                .where(
                     Task.project_id == project.id,
                     Task.status == TaskStatus.DONE,
                     Task.deleted_at.is_(None),
@@ -350,25 +354,25 @@ class ProjectView(SoftDeleteMixin, TenantBase):
 
         todo = (
             await self.session.scalar(
-                select(func.count()).where(
-                    Task.project_id == id, Task.status == TaskStatus.TODO
-                )
+                select(func.count())
+                .select_from(Task)
+                .where(Task.project_id == id, Task.status == TaskStatus.TODO)
             )
             or 0
         )
         in_progress = (
             await self.session.scalar(
-                select(func.count()).where(
-                    Task.project_id == id, Task.status == TaskStatus.IN_PROGRESS
-                )
+                select(func.count())
+                .select_from(Task)
+                .where(Task.project_id == id, Task.status == TaskStatus.IN_PROGRESS)
             )
             or 0
         )
         done = (
             await self.session.scalar(
-                select(func.count()).where(
-                    Task.project_id == id, Task.status == TaskStatus.DONE
-                )
+                select(func.count())
+                .select_from(Task)
+                .where(Task.project_id == id, Task.status == TaskStatus.DONE)
             )
             or 0
         )
@@ -393,7 +397,7 @@ class ProjectView(SoftDeleteMixin, TenantBase):
         tasks assigned to them on both. Naming ``TaskClauses.visible``
         here instead would copy the rule, and the copy would drift the day
         ``TaskView`` declares a different one. The tenant floor is the
-        listener in ``tasks/models``, and ``handle_get_one`` has already
+        criterion in ``tasks/models``, and ``handle_get_one`` has already
         checked the project itself.
         """
         await self.handle_get_one(id)

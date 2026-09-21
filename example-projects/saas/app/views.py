@@ -9,7 +9,7 @@ take no identity. Structural fields live on
 the models: a subject's ``models.py`` mixes in ``TenantOwned``,
 ``AuditStamped``, or ``SoftDeletable`` from ``app.models``, which stamp
 ``organization_id`` and the audit ids from ``Current`` on every write
-path; a session listener there restricts every read of a tenant-owned
+path; a session listener there restricts ORM reads of a tenant-owned
 class to the same organization, so the namespaces declare only the
 soft-delete rule as ``default_scope``. A view that should see something
 else declares its own ``scope``, and a route names one per read; the

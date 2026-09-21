@@ -32,7 +32,12 @@ class LabelView(TenantBase):
     schema = LabelSchema
 
     async def delete(self, obj):
-        """Remove task-label associations before deleting the label."""
+        """Remove task-label associations before deleting the label.
+
+        A bulk DELETE carries no tenant criteria, so this also removes a
+        link an admin made from another organization's task to this label.
+        The label's foreign key requires that.
+        """
         await self.session.execute(
             sa.delete(TaskLabel).where(TaskLabel.label_id == obj.id)
         )
@@ -42,7 +47,7 @@ class LabelView(TenantBase):
 class TaskLabelView(TenantBase):
     """CRUD for task-label associations.
 
-    The session listener in ``labels.models`` requires both the task and label
+    The tenant criterion in ``labels.models`` requires both the task and label
     to belong to the caller's organization, unless the caller is an admin.
     ``added_by_id`` is stamped by its column's insert default from
     ``Current.user_id`` on every write path; the schema marks it read-only.
@@ -61,7 +66,7 @@ class TaskLabelView(TenantBase):
         The Label lands in the organization the request acts in:
         ``organization_id`` is the model's stamp, not an argument here.
         The Label is flushed first so its id can pass the TaskLabel schema's
-        ``MustExist`` checks. The session listeners restrict those checks to
+        ``MustExist`` checks. The tenant criteria restrict those checks to
         the caller's organization. ``TaskClauses.default_scope`` also excludes
         deleted tasks. A foreign or deleted task returns 404, rolling back
         the flushed Label with the request.

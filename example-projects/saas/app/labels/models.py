@@ -6,7 +6,7 @@ from sqlalchemy import ForeignKey, orm
 import fastapi_restly as fr
 
 from ..current import Current
-from ..models import TenantOwned, tenant_is_admin, tenant_org_id
+from ..models import TenantOwned, restrict_to_tenant, tenant_is_admin, tenant_org_id
 from ..projects.models import Project
 from ..tasks.models import Task
 
@@ -55,22 +55,14 @@ class TaskLabel(fr.TimestampsMixin, fr.IDBase):
     )
 
 
-@sa.event.listens_for(orm.Session, "do_orm_execute")
-def _restrict_task_labels_to_tenant(state: orm.ORMExecuteState) -> None:
-    if not state.is_select or state.is_column_load:
-        return
-    state.statement = state.statement.options(
-        orm.with_loader_criteria(
-            TaskLabel,
-            sa.or_(
-                tenant_is_admin,
-                sa.and_(
-                    TaskLabel.task.has(
-                        Task.project.has(Project.organization_id == tenant_org_id)
-                    ),
-                    TaskLabel.label.has(Label.organization_id == tenant_org_id),
-                ),
-            ),
-            include_aliases=True,
-        )
-    )
+# Both ends: an admin can link a task to another organization's label.
+restrict_to_tenant(
+    TaskLabel,
+    lambda cls: sa.or_(
+        tenant_is_admin,
+        sa.and_(
+            cls.task.has(Task.project.has(Project.organization_id == tenant_org_id)),
+            cls.label.has(Label.organization_id == tenant_org_id),
+        ),
+    ),
+)

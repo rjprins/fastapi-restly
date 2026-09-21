@@ -91,9 +91,15 @@ class UploadView(TenantBase):
 
     @fr.get("/{id}/lines", response_model=list[UploadLineSchema])
     async def list_lines(self, id: int) -> list[UploadLine]:
-        """Return the parsed lines for an upload."""
+        """Return the parsed lines for an upload.
+
+        ``handle_get_one`` answers 404 for an upload the caller cannot see.
+        The lines carry their own tenant criterion in ``uploads.models``, so
+        a read that skips this check is still filtered.
+        """
         import sqlalchemy as sa
 
+        await self.handle_get_one(id)
         result = await self.session.scalars(
             sa.select(UploadLine).where(UploadLine.upload_id == id)
         )

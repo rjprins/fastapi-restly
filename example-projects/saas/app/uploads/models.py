@@ -15,12 +15,13 @@ The flow needs two flush points with mutation in between.
 
 from datetime import datetime
 
+import sqlalchemy as sa
 from sqlalchemy import ForeignKey, orm
 
 import fastapi_restly as fr
 
 from ..current import Current
-from ..models import TenantOwned
+from ..models import TenantOwned, restrict_to_tenant, tenant_is_admin, tenant_org_id
 
 
 class Upload(TenantOwned, fr.TimestampsMixin, fr.IDBase):
@@ -47,3 +48,12 @@ class UploadLine(fr.TimestampsMixin, fr.IDBase):
     amount: orm.Mapped[int] = orm.mapped_column(default=0)
 
     upload: orm.Mapped["Upload"] = orm.relationship(back_populates="lines", init=False)
+
+
+# UploadLine has no organization_id: its tenant is its upload's.
+restrict_to_tenant(
+    UploadLine,
+    lambda cls: sa.or_(
+        tenant_is_admin, cls.upload.has(Upload.organization_id == tenant_org_id)
+    ),
+)
