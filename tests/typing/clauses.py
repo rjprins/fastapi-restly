@@ -88,7 +88,7 @@ def unscoped_composition(
     # The motivating composition remains usable wherever a predicate is needed.
     scoped = fr.all_of(default, pure)
     assert_type(scoped(), ColumnElement[bool])
-    assert_type(scoped.update(Ticket), Update)
+    assert_type(fr.apply_clauses(update(Ticket), scoped), Update)
     assert_type(fr.apply_clauses(delete(Ticket), scoped), Delete)
     fr.RefExists(Ticket, scope=scoped)
 
@@ -110,11 +110,6 @@ expr = TicketClauses.owned_by_tenant()
 assert_type(expr, ColumnElement[bool])
 _stmt = select(Ticket).where(expr, TicketClauses.is_deleted())
 
-# statement methods chain as normal SQLAlchemy statements
-_chained = TicketClauses.visible.select(Ticket).where(Ticket.id == 1).limit(1)
-
-# select() takes any SQLAlchemy entities; exact row typing lives on the
-# apply_clauses path, which keeps the statement type select() produced
-_projected = TicketClauses.visible.select(Ticket.id, Ticket.created_at)
+# apply_clauses keeps the exact statement type select() produced
 _typed = fr.apply_clauses(select(Ticket.id, Ticket.created_at), TicketClauses.visible)
 _typed = _typed.where(Ticket.tenant_id == 1).limit(1)

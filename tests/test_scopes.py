@@ -1751,7 +1751,7 @@ def test_a_namespace_base_composes_a_floor_into_default_scope():
     scope = _default_scope(FlooredRow)
     assert scope is FlooredRowClauses.default_scope
     with _SyncContext.tenant_id.bind(tenant_id=1):
-        rendered = str(scope.select(FlooredRow).whereclause)
+        rendered = str(fr.apply_clauses(select(FlooredRow), scope).whereclause)
     assert "tenant_id = :tenant_id" in rendered
     assert "deleted IS false" in rendered
 

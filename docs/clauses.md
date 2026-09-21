@@ -9,7 +9,7 @@ non-deleted tasks:
 
 ```python
 import fastapi_restly as fr
-from sqlalchemy import ColumnElement, func
+from sqlalchemy import ColumnElement, func, select
 
 
 class TaskClauses(fr.ClauseNamespace):
@@ -27,8 +27,8 @@ class TaskClauses(fr.ClauseNamespace):
 
 
 with TaskClauses.owned_by_user.bind(user_id=42):
-    listing = TaskClauses.visible.select(Task)
-    count = TaskClauses.visible.select(func.count(Task.id))
+    listing = fr.apply_clauses(select(Task), TaskClauses.visible)
+    count = fr.apply_clauses(select(func.count(Task.id)), TaskClauses.visible)
 ```
 
 Both statements select non-deleted tasks belonging to user 42.
@@ -298,32 +298,21 @@ and the query becomes a cartesian product that filters almost nothing.
 Predicates inside EXISTS and `IN (SELECT ...)` subqueries bring their
 own FROM and pass the check.
 
-A clause also carries
-{meth}`select() <fastapi_restly.clauses.WhereClause.select>`,
-{meth}`update() <fastapi_restly.clauses.WhereClause.update>` and
-{meth}`delete() <fastapi_restly.clauses.WhereClause.delete>`.
-`select()` takes the same entities SQLAlchemy's `select()` takes; all
-three are shorthand for `apply_clauses` on a fresh statement:
+The result is a normal `Select`, `Update` or `Delete` of the exact type
+the statement had, so chain onto it freely:
 
 ```python
+from sqlalchemy import update
+
 with ItemClauses.owned_by_user.bind(user_id=42):
-    stmt = ItemClauses.visible.select(Item).where(Item.id == item_id)
+    stmt = fr.apply_clauses(select(Item), ItemClauses.visible).where(Item.id == item_id)
 
-    count = ItemClauses.visible.select(func.count(Item.id))
-
-    stmt = (
-        ItemClauses.trashed.update(Item)
+    restore = (
+        fr.apply_clauses(update(Item), ItemClauses.trashed)
         .where(Item.id == item_id)
         .values(deleted_at=None)
     )
 ```
-
-The result is a normal `Select` or `Update`; chain onto it freely. The
-method form reads clause-first, `apply_clauses` reads statement-first;
-both build the same statement. The method form types as `Select[Any]`;
-for precise row typing, build the statement with plain `select()` and
-pass it through `apply_clauses`, which preserves the statement's exact
-type.
 
 (binding-values)=
 ## Binding values
@@ -335,7 +324,7 @@ equivalent to binding on the leaf itself:
 
 ```python
 with ItemClauses.visible.bind(user_id=42):
-    stmt = ItemClauses.visible.select(Item)
+    stmt = fr.apply_clauses(select(Item), ItemClauses.visible)
 ```
 
 Because routing targets the leaf, one bind reaches every composite that
@@ -405,8 +394,8 @@ owned_item = fr.where_clause(Item.user_id == Current.user_id)
 owned_collection = fr.where_clause(Collection.user_id == Current.user_id)
 
 with Current.bind(user_id=42):
-    items = owned_item.select(Item)
-    collections = owned_collection.select(Collection)
+    items = fr.apply_clauses(select(Item), owned_item)
+    collections = fr.apply_clauses(select(Collection), owned_collection)
 ```
 
 Both clauses use the same member, so one binding supplies both.

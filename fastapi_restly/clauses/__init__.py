@@ -31,12 +31,10 @@ and binds once.
 
 Statement construction stays plain SQLAlchemy. Build select()/update()/
 delete() as usual and pass the result through apply_clauses(), the
-bridge between the two worlds. The WhereClause.select/.update/.delete
-methods are shorthand for the common single-clause path. select()
-takes the same entities SQLAlchemy's select() takes. A clause is a
-predicate and never joins: express a condition on a related table as
-EXISTS (relationship .any()/.has()). apply_clauses rejects a predicate
-that references a table the statement does not select from.
+bridge between the two worlds. A clause is a predicate and never joins:
+express a condition on a related table as EXISTS (relationship
+.any()/.has()). apply_clauses rejects a predicate that references a
+table the statement does not select from.
 """
 
 from ._composition import all_of, any_of, none_of

@@ -5,8 +5,7 @@ from __future__ import annotations
 from contextlib import ExitStack, contextmanager
 from typing import Any, Generic, Iterator, NoReturn, Sequence, TypeVar, final, overload
 
-from sqlalchemy import ColumnElement, Delete, Select, Update, delete, select, update
-from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy import ColumnElement, Delete, Select, Update
 from sqlalchemy.sql.expression import (
     BindParameter,
     ColumnClause,
@@ -143,26 +142,6 @@ class WhereClause(_Clause):
         result = _resolve_where(self)
         assert result is not None  # invariant: a WhereClause always has a where
         return result
-
-    def select(self, /, *entities: Any) -> Select[Any]:
-        """``sqlalchemy.select(*entities)`` with this clause applied.
-
-        The arguments are exactly SQLAlchemy's: mapped classes, columns,
-        functions. Types as Select[Any]; for precise row typing build the
-        statement with plain select() into its own variable and pass that
-        to apply_clauses(), which preserves the statement's exact type.
-        The inline nested call widens to Select[Any] under bidirectional
-        inference.
-        """
-        return apply_clauses(select(*entities), self)
-
-    def update(self, model: type[DeclarativeBase], /) -> Update:
-        """UPDATE on model with this clause applied; see select()."""
-        return apply_clauses(update(model), self)
-
-    def delete(self, model: type[DeclarativeBase], /) -> Delete:
-        """DELETE on model with this clause applied; see select()."""
-        return apply_clauses(delete(model), self)
 
 
 @final

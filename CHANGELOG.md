@@ -54,7 +54,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Context-bound query clauses are reusable SQLAlchemy query fragments with
   values supplied per request. Declare them with `fr.where_clause`. Combine
   them with `fr.all_of`, `fr.any_of`, or `fr.none_of`. Apply them with
-  `fr.apply_clauses` or the statement shorthands.
+  `fr.apply_clauses`.
   `fr.ClauseNamespace` groups clauses with or without registering a model.
   `fr.ContextNamespace` and `fr.ContextParam` supply shared request values
   through generated `.depends()` dependencies. Missing bindings raise

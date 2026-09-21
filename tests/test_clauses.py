@@ -1,7 +1,7 @@
 from datetime import datetime
 
 import pytest
-from sqlalchemy import ColumnElement, ForeignKey, delete, func, select, update
+from sqlalchemy import ColumnElement, ForeignKey, delete, select, update
 from sqlalchemy import false as sql_false
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -196,7 +196,7 @@ def test_body_read_clause_is_ambient_only():
         return Item.tenant_id == slot()
 
     with slot.bind(body_tenant=7):
-        stmt = body_read.select(Item)
+        stmt = apply_clauses(select(Item), body_read)
         assert 7 in params_of(stmt).values()
 
     with pytest.raises(TypeError, match="no clause accepts"):
@@ -244,46 +244,6 @@ def test_delete_with_wheres():
         stmt = apply_clauses(delete(Item), tenant_filter)
     assert str(stmt).startswith("DELETE FROM item")
     assert 5 in params_of(stmt).values()
-
-
-# --- Clause methods --------------------------------------------------------
-
-
-def test_select_method_uses_ambient_bind():
-    q = all_of(tenant_filter, soft_deleted)
-    with q.bind(tenant_id=7):
-        stmt = q.select(Item)
-    assert 7 in params_of(stmt).values()
-
-
-def test_update_method():
-    with Ctx.bind(tenant_id=5):
-        stmt = owned_by_tenant.update(Item).values(collection_id=6)
-    assert str(stmt).startswith("UPDATE item")
-    assert 5 in params_of(stmt).values()
-
-
-def test_delete_method():
-    with Ctx.bind(tenant_id=5):
-        stmt = owned_by_tenant.delete(Item)
-    assert str(stmt).startswith("DELETE FROM item")
-    assert 5 in params_of(stmt).values()
-
-
-def test_select_method_takes_sqlalchemy_entities():
-    with Ctx.bind(tenant_id=7):
-        stmt = owned_by_tenant.select(Item.id, Item.tenant_id)
-        count_stmt = owned_by_tenant.select(func.count(Item.id))
-    assert "item.id" in str(stmt)
-    assert 7 in params_of(stmt).values()
-    assert "count(item.id)" in str(count_stmt)
-
-
-def test_select_method_no_entities_raises():
-    # empty select brings no FROMs, so the table validation catches it
-    with Ctx.bind(tenant_id=7):
-        with pytest.raises(TypeError, match="not in the statement"):
-            owned_by_tenant.select()
 
 
 # --- apply_clauses operands --------------------------------------------------
