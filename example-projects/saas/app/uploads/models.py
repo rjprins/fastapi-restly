@@ -37,6 +37,9 @@ class Upload(TenantOwned, fr.TimestampsMixin, fr.IDBase):
     completed_at: orm.Mapped[datetime | None] = orm.mapped_column(default=None)
     line_count: orm.Mapped[int] = orm.mapped_column(default=0)
 
+    organization: orm.Mapped["Organization"] = orm.relationship(  # noqa: F821
+        back_populates="uploads", init=False
+    )
     lines: orm.Mapped[list["UploadLine"]] = orm.relationship(
         back_populates="upload", default_factory=list, cascade="all, delete-orphan"
     )

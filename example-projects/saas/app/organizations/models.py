@@ -30,3 +30,8 @@ class Organization(fr.TimestampsMixin, fr.IDBase):
         default_factory=list,
         cascade="all, delete-orphan",
     )
+    uploads: orm.Mapped[list["Upload"]] = orm.relationship(  # noqa: F821
+        back_populates="organization",
+        default_factory=list,
+        cascade="all, delete-orphan",
+    )

@@ -193,6 +193,31 @@ async def test_task_label_requires_both_ends_to_belong_to_tenant(
             )
 
 
+async def test_label_delete_removes_links_its_owner_cannot_see(
+    restly_async_client, tenants, as_admin
+):
+    """The database removes the links: an ORM cascade loads only visible ones."""
+    own, foreign = tenants
+    with as_admin(own.identity.org_id):
+        cross = (
+            await restly_async_client.post(
+                "/task-labels", json={"task_id": own.task, "label_id": foreign.label}
+            )
+        ).json()
+    with foreign.identity.acting():
+        await restly_async_client.get(
+            f"/task-labels/{cross['id']}", assert_status_code=404
+        )
+        await restly_async_client.delete(f"/labels/{foreign.label}")
+    with as_admin(own.identity.org_id):
+        for link in (cross["id"], foreign.link):
+            await restly_async_client.get(
+                f"/task-labels/{link}", assert_status_code=404
+            )
+        kept = (await restly_async_client.get(f"/task-labels/{own.link}")).json()
+    assert kept["id"] == own.link
+
+
 @pytest.mark.parametrize("admin", [False, True])
 async def test_upload_lines_route_hides_foreign_uploads(
     restly_async_client, tenants, as_admin, admin

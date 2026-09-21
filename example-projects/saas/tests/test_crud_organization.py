@@ -1,5 +1,6 @@
 """CRUD tests for the Organization model."""
 
+import io
 from dataclasses import asdict
 
 import pytest
@@ -116,14 +117,37 @@ class TestOrganizationCRUD:
                 "/tasks", json={"title": "Delete", "project_id": project["id"]}
             ).json()
             label = client.post("/labels", json={"name": "Delete"}).json()
+            subtask = client.post(
+                "/tasks",
+                json={
+                    "title": "Sub",
+                    "project_id": project["id"],
+                    "parent_id": task["id"],
+                },
+            ).json()
+            link = client.post(
+                "/task-labels", json={"task_id": task["id"], "label_id": label["id"]}
+            ).json()
+            upload = client.post(
+                "/uploads",
+                files={"file": ("rows.csv", io.BytesIO(b"title\nrow\n"), "text/csv")},
+            ).json()
+            second_user = client.post(
+                "/users", json={"email": "second@beta.test", "name": "Second"}
+            ).json()
 
         with as_admin(actor.org_id):
             client.delete(f"/organizations/{beta.org_id}")
             for path in (
                 f"/users/{beta.user_id}",
+                f"/users/{second_user['id']}",
                 f"/projects/{project['id']}",
                 f"/tasks/{task['id']}",
+                f"/tasks/{subtask['id']}",
                 f"/labels/{label['id']}",
+                f"/task-labels/{link['id']}",
+                f"/uploads/{upload['id']}",
+                f"/uploads/{upload['id']}/lines",
             ):
                 client.get(path, assert_status_code=404)
 

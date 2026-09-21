@@ -24,8 +24,13 @@ class Label(TenantOwned, fr.TimestampsMixin, fr.IDBase):
     organization: orm.Mapped["Organization"] = orm.relationship(  # noqa: F821
         back_populates="labels", init=False
     )
+    # passive_deletes: the database removes the links (see TaskLabel).
     task_labels: orm.Mapped[list["TaskLabel"]] = orm.relationship(
-        back_populates="label", init=False, default_factory=list
+        back_populates="label",
+        init=False,
+        default_factory=list,
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 
 
@@ -33,11 +38,20 @@ class TaskLabel(fr.TimestampsMixin, fr.IDBase):
     """
     Association table between Task and Label with extra metadata.
     Tracks who added the label and when.
+
+    A link has no meaning without both ends, so both foreign keys are
+    ``ON DELETE CASCADE``. The database does it, not an ORM cascade: the ORM
+    loads the links through the tenant criteria, and misses a link the caller
+    cannot see, such as one an admin made from another organization's task.
     """
 
     # Foreign keys
-    task_id: orm.Mapped[int] = orm.mapped_column(ForeignKey("task.id"))
-    label_id: orm.Mapped[int] = orm.mapped_column(ForeignKey("label.id"))
+    task_id: orm.Mapped[int] = orm.mapped_column(
+        ForeignKey("task.id", ondelete="CASCADE")
+    )
+    label_id: orm.Mapped[int] = orm.mapped_column(
+        ForeignKey("label.id", ondelete="CASCADE")
+    )
     # Stamped from context like the audit columns: not a constructor argument,
     # and SET NULL, so the link outlives the user who added it.
     added_by_id: orm.Mapped[int | None] = orm.mapped_column(

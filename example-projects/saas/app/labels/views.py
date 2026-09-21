@@ -26,25 +26,14 @@ class LabelView(AuthenticatedView):
     """CRUD for labels (organization-scoped).
 
     The session listener in ``app.models`` filters reads to the organization.
-    ``Label`` stamps ``organization_id`` through ``TenantOwned``.
-    This class only adds the cascade-on-delete.
+    ``Label`` stamps ``organization_id`` through ``TenantOwned``. Deleting a
+    label removes its task links in the database (``ON DELETE CASCADE`` on
+    ``TaskLabel``), so the view adds nothing.
     """
 
     prefix = "/labels"
     model = Label
     schema = LabelSchema
-
-    async def delete(self, obj):
-        """Remove task-label associations before deleting the label.
-
-        A bulk DELETE carries no tenant criteria, so this also removes a
-        link an admin made from another organization's task to this label.
-        The label's foreign key requires that.
-        """
-        await self.session.execute(
-            sa.delete(TaskLabel).where(TaskLabel.label_id == obj.id)
-        )
-        await super().delete(obj)
 
 
 class TaskLabelView(AuthenticatedView):

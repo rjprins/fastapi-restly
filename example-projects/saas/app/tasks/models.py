@@ -125,8 +125,13 @@ class Task(AuditStamped, SoftDeletable, fr.TimestampsMixin, fr.IDBase):
     subtasks: orm.Mapped[list["Task"]] = orm.relationship(
         back_populates="parent", init=False, default_factory=list
     )
+    # passive_deletes: the database removes the links (see TaskLabel).
     task_labels: orm.Mapped[list["TaskLabel"]] = orm.relationship(  # noqa: F821
-        back_populates="task", init=False, default_factory=list
+        back_populates="task",
+        init=False,
+        default_factory=list,
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 
 

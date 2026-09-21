@@ -305,8 +305,8 @@ def upgrade() -> None:
         ),
         sa.Column("id", sa.Integer(), nullable=False),
         sa.ForeignKeyConstraint(["added_by_id"], ["user.id"], ondelete="SET NULL"),
-        sa.ForeignKeyConstraint(["label_id"], ["label.id"]),
-        sa.ForeignKeyConstraint(["task_id"], ["task.id"]),
+        sa.ForeignKeyConstraint(["label_id"], ["label.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(["task_id"], ["task.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
     # ### end Alembic commands ###

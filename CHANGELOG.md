@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - SaaS example stamp columns (`created_by_id`, `updated_by_id`, `added_by_id`,
   `uploaded_by_id`) are `ON DELETE SET NULL`. Deleting an organization failed
   when SQLAlchemy deleted a user before a project that user had stamped.
+- SaaS example organization deletion works for an organization with uploads
+  or labelled tasks. The task-label foreign keys are `ON DELETE CASCADE`, and
+  uploads join the organization's delete cascade. The database removes a
+  label's links, including one its owner cannot see.
 - SaaS example members attach, change, and remove task labels only on a task
   assigned to them. They still read the labels of other tasks in their
   organization.
