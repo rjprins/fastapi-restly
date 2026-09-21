@@ -15,7 +15,7 @@ shared behavior, such as setting a timestamp instead of deleting a row.
   replaces it for that view. Clauses compose with
   {func}`fr.all_of <fastapi_restly.clauses.all_of>`.
 - **Server-stamped fields** are column defaults on the model, reading a
-  `fr.ContextNamespace` slot when the row is written. A default fires on every
+  `fr.ContextNamespace` member when the row is written. A default fires on every
   write path: the view verbs, a custom route that builds the object by hand,
   the free `fr.objects` helpers, a bulk route. Nothing on the view has to run.
 - **Soft delete** is a verb, so it is a view mixin overriding
@@ -154,7 +154,7 @@ class Project(TenantOwned, fr.TimestampsMixin, fr.IDBase):
 The column is the write half. The tenant is not a constructor argument and
 not a payload field: `init=False` keeps it out of the constructor,
 `fr.ReadOnly` on the schema keeps it out of the body, and the insert
-default stamps it at flush from the same slot the listener reads. A row
+default stamps it at flush from the same member the listener reads. A row
 lands in the organization the request acts in, whoever builds it; an admin
 writing into another tenant acts as that tenant, and the stamp follows. A
 verb that needs the value before the flush reads `Current.org_id()`
@@ -264,7 +264,7 @@ changes the row. Keep these fields `fr.ReadOnly` on the schema: with
 `init=False` a body value would otherwise reach the constructor and fail
 loudly there.
 
-The lambdas call the slot: a `ContextParam` resolves when called, and an
+The lambdas call the member: a `ContextParam` resolves when called, and an
 unbound context raises rather than stamping `None`. The columns stay
 nullable for one row: the first user has no creator and comes from a
 migration, which writes through its own table objects and fires no ORM

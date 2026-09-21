@@ -363,7 +363,7 @@ once the mark is durable:
 
 ## Server-stamped fields: column defaults on the model
 
-A field the server owns (an audit id, a tenant id) is a column default that reads a bound {class}`fr.ContextNamespace <fastapi_restly.clauses.ContextNamespace>` slot. It fires on every write path, whichever view or helper built the row, so nothing on the view has to run:
+A field the server owns (an audit id, a tenant id) is a column default that reads a bound {class}`fr.ContextNamespace <fastapi_restly.clauses.ContextNamespace>` member. It fires on every write path, whichever view or helper built the row, so nothing on the view has to run:
 
 ```python
 class Article(fr.TimestampsMixin, fr.IDBase):

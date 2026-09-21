@@ -377,28 +377,20 @@ inflate `total_count`.
 (binding-scope-values)=
 ## Binding scope values
 
-Scopes are clauses, so their values come from context members, as
-described in [Query Clauses, Supplying values](#binding-values). For request-wide
-values, {meth}`ContextNamespace.depends <fastapi_restly.clauses.ContextNamespace.depends>`
-generates the dependency: async underneath, so the bind lands in the
-request task, where async and `def` endpoints alike read it, and fed by
-your own dependencies, so `app.dependency_overrides` keeps working:
+Scopes are clauses, so their values come from context members:
+[Query Clauses, Supplying values](#binding-values). Bind request-wide
+values with a generated dependency, which
+[Current context](#current-request-binding) describes:
 
 ```python
-class Current(fr.ContextNamespace):
-    tenant_id: fr.ContextParam[UUID]
-
-
 app = FastAPI(dependencies=[
-    Current.depends(tenant_id=get_tenant_id),
+    Current.depends(user_id=get_user_id),
     RoleContext.depends(include_deleted=get_include_deleted),
 ])
 ```
 
-Attach it at the narrowest level that needs it: the app for values in
-every request, a router for a group, a view's `dependencies` list for
-one view. Read `Current.explain()` when a query filters unexpectedly;
-the origin names your `depends()` line. The scope's promise is
-structural: the framework guarantees the clause is applied and its values
-are bound, or the request fails loudly. That the bound value is the *right* tenant is the
+Read `Current.explain()` when a query filters unexpectedly; the origin
+names your `depends()` line. The scope's promise is structural: the
+framework guarantees the clause is applied and its values are bound, or
+the request fails loudly. That the bound value is the *right* user is the
 source dependency's job; assert it there.

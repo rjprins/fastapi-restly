@@ -51,7 +51,7 @@ class WhereClause:
         The result drops into any expression position: .where(), a join
         condition, a CASE. This path skips apply_clauses' table validation.
         """
-        return _fill_slots(self._build())
+        return _fill_members(self._build())
 
     def __bool__(self) -> NoReturn:
         # `if item.is_deleted:` would otherwise always be True: a clause
@@ -93,7 +93,7 @@ class Unscoped:
 UNSCOPED = Unscoped()
 
 
-def _fill_slots(expr: ColumnElement[bool]) -> ColumnElement[bool]:
+def _fill_members(expr: ColumnElement[bool]) -> ColumnElement[bool]:
     """Fill every embedded member placeholder with its bound value.
 
     A placeholder is a unique bind, so each use carries its own key and is

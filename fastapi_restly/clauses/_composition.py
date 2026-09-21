@@ -1,4 +1,4 @@
-"""Boolean composition and bundling for query clauses."""
+"""Boolean composition of query clauses."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from ._runtime import UNSCOPED, Unscoped, WhereClause, _without_unscoped
 __all__ = ["all_of", "any_of", "none_of"]
 
 
-def _require_wheres(
+def _operands(
     name: str, clauses: tuple[WhereClause | Unscoped, ...]
 ) -> tuple[WhereClause, ...]:
     if not clauses:
@@ -50,7 +50,7 @@ def all_of(*clauses: WhereClause | Unscoped) -> WhereClause | Unscoped:
     UNSCOPED is a no-op. One remaining operand is returned unchanged, and
     none returns UNSCOPED. Calling with no arguments raises.
     """
-    given = _require_wheres("all_of", clauses)
+    given = _operands("all_of", clauses)
     if not given:
         return UNSCOPED
     if len(given) == 1:
@@ -79,7 +79,7 @@ def any_of(*clauses: WhereClause | Unscoped) -> WhereClause | Unscoped:
     Other operands are validated before this simplification and are not
     resolved if the result is UNSCOPED. Calling with no arguments raises.
     """
-    given = _require_wheres("any_of", clauses)
+    given = _operands("any_of", clauses)
     if len(given) != len(clauses):
         return UNSCOPED
     return WhereClause._of(lambda: or_(*(c._build() for c in given)), "any_of")
@@ -92,7 +92,7 @@ def none_of(*clauses: WhereClause | Unscoped) -> WhereClause:
     WhereClause over SQL false(), matching no rows. Other operands are
     validated but not resolved in that case.
     """
-    given = _require_wheres("none_of", clauses)
+    given = _operands("none_of", clauses)
     if len(given) != len(clauses):
         return WhereClause._of(false, "none_of")
     return WhereClause._of(lambda: not_(or_(*(c._build() for c in given))), "none_of")

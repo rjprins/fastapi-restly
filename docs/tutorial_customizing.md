@@ -170,7 +170,7 @@ Both receive `old`, the pre-mutation snapshot produced by {meth}`snapshot(obj) <
 
 ## Stamping extra fields
 
-The `create` override earlier stamped a field in the verb, which covers that verb only. A field the server owns on every write, created or updated by any view, helper, or script, is a column default on the model, reading a per-request context slot:
+The `create` override earlier stamped a field in the verb, which covers that verb only. A field the server owns on every write, created or updated by any view, helper, or script, is a column default on the model, reading a per-request context member:
 
 ```python
 class Current(fr.ContextNamespace):
@@ -190,7 +190,7 @@ class Post(fr.TimestampsMixin, fr.IDBase):
     )
 ```
 
-A `Current.depends(user_id=...)` entry in the view's `dependencies` binds the slot per request. Mark the fields `fr.ReadOnly` on the schema, so no payload value competes with the default. [Compose Views with Mixins](howto_compose_views_with_mixins.md) has the tenant and soft-delete pieces.
+A `Current.depends(user_id=...)` entry in the view's `dependencies` binds the member per request. Mark the fields `fr.ReadOnly` on the schema, so no payload value competes with the default. [Compose Views with Mixins](howto_compose_views_with_mixins.md) has the tenant and soft-delete pieces.
 
 ## Object utilities
 

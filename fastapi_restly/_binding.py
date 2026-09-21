@@ -2,7 +2,7 @@
 
 Builds the one artifact every bind-dependency spelling generates: an
 async-generator dependency with a synthesized signature, one keyword-only
-parameter per bound slot, each fed by a source dependency. Async so the
+parameter per bound member, each fed by a source dependency. Async so the
 bind lands in the request's task, where both async and threadpool (def)
 endpoints read it; sources are the caller's own dependencies, so
 ``app.dependency_overrides`` keeps working. Reached through
