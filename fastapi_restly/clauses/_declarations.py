@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import functools
 import inspect
 import sys
 from contextlib import ExitStack, contextmanager
@@ -18,9 +17,9 @@ __all__ = ["ContextNamespace", "transform_clause", "where_clause"]
 
 
 def _context_member_type(cls: type, name: str, annotation: Any) -> Any | None:
-    # tolerant per-member resolve, like the parameter markers: a stringified
-    # annotation (PEP 563) that names ContextParam is accepted with the type
-    # unresolved; anything that is not a ContextParam annotation raises
+    # tolerant per-member resolve: a stringified annotation (PEP 563) that
+    # names ContextParam is accepted with the type unresolved; anything that
+    # is not a ContextParam annotation raises
     if isinstance(annotation, str):
         module = sys.modules.get(cls.__module__)
         try:
@@ -174,60 +173,6 @@ def _validate_clause_fn(fn: Callable) -> None:
             )
 
 
-def _marker_slots(fn: Callable) -> tuple[Callable, tuple[ContextParam, ...]]:
-    # parameters annotated with a ContextParam (Annotated[T, slot]) are fed
-    # from the slot instead of the function's own binding namespace. Each
-    # annotation resolves individually and tolerantly: an unresolvable one
-    # (TYPE_CHECKING-only names under PEP 563) simply carries no marker,
-    # instead of get_type_hints() failing the whole function
-    raw = getattr(fn, "__annotations__", {})
-    globalns = getattr(fn, "__globals__", {})
-    localns: dict[str, object] = {}
-    closure = getattr(fn, "__closure__", None)
-    if closure:
-        for cell_name, cell in zip(fn.__code__.co_freevars, closure):
-            try:
-                localns[cell_name] = cell.cell_contents
-            except ValueError:
-                pass
-    markers: dict[str, ContextParam] = {}
-    for pname in inspect.signature(fn).parameters:
-        annotation = raw.get(pname)
-        if isinstance(annotation, str):
-            source = annotation
-            try:
-                annotation = eval(annotation, globalns, localns)  # noqa: S307
-            except Exception:
-                if "Annotated" in source:
-                    label = getattr(fn, "__qualname__", fn)
-                    raise TypeError(
-                        f"cannot resolve the annotation {source!r} on parameter "
-                        f"{pname!r} of {label}; an Annotated marker must be "
-                        "resolvable at declaration time. Define the ContextParam "
-                        "at module scope, or avoid string annotations for this "
-                        "function"
-                    ) from None
-                continue
-        for meta in getattr(annotation, "__metadata__", ()):
-            if isinstance(meta, ContextParam):
-                markers[pname] = meta
-    if not markers:
-        return fn, ()
-
-    @functools.wraps(fn)
-    def filled(*args, **kwargs):
-        for pname, slot in markers.items():
-            if pname not in kwargs:
-                kwargs[pname] = slot()
-        return fn(*args, **kwargs)
-
-    sig = inspect.signature(fn)
-    filled.__signature__ = sig.replace(  # type: ignore[attr-defined]
-        parameters=[p for p in sig.parameters.values() if p.name not in markers]
-    )
-    return filled, tuple(dict.fromkeys(markers.values()))
-
-
 def where_clause(
     condition: ColumnElement[bool] | Callable[..., ColumnElement[bool]],
 ) -> WhereClause:
@@ -236,8 +181,7 @@ def where_clause(
     A ready-made ColumnElement is reused as-is; a ContextParam embedded
     in it is detected and attached, so binding reaches the slot through
     this clause. A function's parameters are filled from values bound
-    via Clause.bind() each time the clause resolves; a parameter marked
-    Annotated[T, slot] is fed from that slot instead.
+    via Clause.bind() each time the clause resolves.
 
     In a ClauseNamespace body, stack this decorator over ``staticmethod``:
     the marker keeps a type checker from reading the def as a method, and
@@ -248,9 +192,7 @@ def where_clause(
     clause = WhereClause()
     if callable(condition):
         _validate_clause_fn(condition)
-        fn, slots = _marker_slots(condition)
-        clause._where_fn = contextual(fn)
-        clause._children = slots
+        clause._where_fn = contextual(condition)
     else:
         clause._where_fn = contextual(lambda: condition)
         clause._children = _embedded_slots(condition)
@@ -262,20 +204,17 @@ def transform_clause(fn: Callable[..., Select[Any]]) -> TransformClause:
     """A TransformClause from a function that reshapes a Select.
 
     The first parameter receives the statement; any further parameters
-    are filled from values bound via Clause.bind(). A parameter marked
-    Annotated[T, slot] is fed from that ContextParam instead. Stacks over
+    are filled from values bound via Clause.bind(). Stacks over
     ``staticmethod`` in a namespace body, like where_clause().
     """
     if isinstance(fn, staticmethod):
         fn = fn.__func__
     _validate_clause_fn(fn)
-    wrapped, slots = _marker_slots(fn)
     clause = TransformClause()
-    clause._transform_fn = contextual(wrapped)
+    clause._transform_fn = contextual(fn)
     if clause._transform_fn.accepted is not None:
-        own_params = list(inspect.signature(wrapped).parameters)
+        own_params = list(inspect.signature(fn).parameters)
         clause._transform_routable = clause._transform_fn.accepted - set(own_params[:1])
-    clause._children = slots
     return clause
 
 

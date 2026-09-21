@@ -107,7 +107,7 @@ def test_direct_construction_is_closed():
         fr.ContextParam()
 
 
-def test_member_works_in_expressions_and_markers():
+def test_member_works_in_expressions():
     visible = fr.where_clause(Thing.tenant_id == Context.tenant_id)
     with Context.bind(tenant_id=4):
         sql = str(visible().compile(compile_kwargs={"literal_binds": True}))
@@ -181,13 +181,6 @@ def test_a_member_still_builds_sql_from_the_column_side(condition, expected):
 def test_a_member_stays_hashable():
     assert {Context.tenant_id: "a", Context.locale: "b"}[Context.tenant_id] == "a"
     assert len({Context.tenant_id, Context.tenant_id, Context.locale}) == 2
-
-
-def test_alias_of_a_member_is_an_independent_slot():
-    aliased = Context.tenant_id.alias("ctxns_alias")
-    with Context.bind(tenant_id=1), aliased.bind(tenant_id=2):
-        assert Context.tenant_id() == 1
-        assert aliased() == 2
 
 
 def test_explain_shows_values_origins_and_unbound_members():

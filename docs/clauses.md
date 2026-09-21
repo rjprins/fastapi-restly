@@ -119,8 +119,7 @@ is_deleted = fr.where_clause(Item.deleted_at.is_not(None))
 
 When the predicate needs a value supplied later, declare a function.
 Its parameters are filled from
-{meth}`Clause.bind <fastapi_restly.clauses.Clause.bind>` or keyword
-arguments to [statement construction](#applying-clauses):
+{meth}`Clause.bind <fastapi_restly.clauses.Clause.bind>`:
 
 ```python
 from sqlalchemy import ColumnElement
@@ -349,15 +348,6 @@ from sqlalchemy import select
 stmt = fr.apply_clauses(select(Item), ItemClauses.visible, with_live_collection)
 ```
 
-Keyword arguments are an ephemeral bind: routed across all the given
-clauses, the values live only while the statement is built and layer
-over any ambient `bind()`. The statement is positional-only, so every
-keyword name stays free for binding:
-
-```python
-stmt = fr.apply_clauses(select(Item), ItemClauses.visible, user_id=42)
-```
-
 Transforms are collected from the whole clause tree and each distinct
 transform is applied once, so a join carried inside an `all_of` or a
 `combine` is never lost, and a join shared by two bundles is never
@@ -385,24 +375,22 @@ Every clause also carries
 {meth}`update() <fastapi_restly.clauses.WhereClause.update>` and
 {meth}`delete() <fastapi_restly.clauses.WhereClause.delete>`.
 `select()` takes the same entities SQLAlchemy's `select()` takes; all
-three are shorthand for `apply_clauses` on a fresh statement, with the
-same ephemeral bind as keyword arguments:
+three are shorthand for `apply_clauses` on a fresh statement:
 
 ```python
-stmt = ItemClauses.visible.select(Item, user_id=42).where(Item.id == item_id)
+with ItemClauses.owned_by_user.bind(user_id=42):
+    stmt = ItemClauses.visible.select(Item).where(Item.id == item_id)
 
-count = ItemClauses.visible.select(func.count(Item.id), user_id=42)
+    count = ItemClauses.visible.select(func.count(Item.id))
 
-stmt = (
-    ItemClauses.trashed.update(Item, user_id=42)
-    .where(Item.id == item_id)
-    .values(deleted_at=None)
-)
+    stmt = (
+        ItemClauses.trashed.update(Item)
+        .where(Item.id == item_id)
+        .values(deleted_at=None)
+    )
 ```
 
-The result is a normal `Select` or `Update`; chain onto it freely.
-`apply_clauses` accepts the same ephemeral bind as keywords, routed
-across all the clauses it is given. The
+The result is a normal `Select` or `Update`; chain onto it freely. The
 method form reads clause-first, `apply_clauses` reads statement-first;
 both build the same statement. The method form types as `Select[Any]`;
 for precise row typing, build the statement with plain `select()` and
@@ -426,31 +414,9 @@ Because routing targets the leaf, one bind reaches every composite that
 shares it: binding `user_id` on `owned_by_user` serves `visible`,
 `trashed`, and anything declared later, without registration.
 
-For one statement, pass the value as a keyword argument instead:
-
-```python
-stmt = ItemClauses.trashed.delete(Item, user_id=42)
-```
-
 For values shared throughout a request, use
 [Current's dependency binding](#current-request-binding) and
 [reference those members from clauses](#shared-params).
-
-Every binding records where it was made.
-{meth}`Clause.explain <fastapi_restly.clauses.Clause.explain>` renders
-the clause tree: node labels are the nodes' reprs, and under each node
-one line per bind name it owns, with the bound value and the file and
-line that bound it, or UNBOUND. A subtree reached through several
-paths renders once and is marked shared after that.
-
-```python
->>> ItemClauses.visible.explain()
-<WhereClause all_of binds: user_id>
-├─ <WhereClause owned_by_user binds: user_id>
-│  └─ user_id = 42   bound at app/reports.py:23 (build_report)
-└─ <WhereClause none_of>
-   └─ <WhereClause item.deleted_at IS NOT NULL>
-```
 
 The system verifies that bindings exist and route to the right slot.
 The application must validate the value before binding it.
@@ -459,8 +425,8 @@ Binding fails loud in each direction. Resolving a clause whose value is
 not bound raises `LookupError` while the statement is built, never a
 silently unfiltered query. Binding a name no clause in the tree accepts
 raises `TypeError: no clause accepts: ...`. Binding a name that two
-distinct leaves accept raises and names the cause, aliases or unrelated
-clauses, with the fix: bind it on each leaf directly.
+distinct leaves accept raises, with the fix: bind it on each leaf
+directly.
 
 (clauses-in-plain-sqlalchemy)=
 ## Using a clause in plain SQLAlchemy
@@ -484,47 +450,10 @@ stmt = stmt.join(
 status = case((ItemClauses.is_deleted(), "trash"), else_="live")
 ```
 
-Keyword arguments are an ephemeral bind: `ItemClauses.owned_by_user(user_id=42)`.
 Only a `WhereClause` is callable; a clause that carries a transform has
 no expression form, and this path skips the table validation that
 `apply_clauses` performs. A clause is never a boolean:
 `if ItemClauses.is_deleted:` raises `TypeError` instead of always passing.
-
-(clause-aliases)=
-## One clause, two values
-
-A clause resolves each bound name to one value, so using the same
-clause twice in one query with different values requires an alias: an
-independent instance with its own binding namespace.
-{meth}`Clause.alias <fastapi_restly.clauses.Clause.alias>` creates one:
-
-```python
-@fr.where_clause
-def in_period(start: datetime, end: datetime) -> ColumnElement[bool]:
-    return Item.created_at.between(start, end)
-
-
-last_month = in_period.alias("last_month")
-
-report = fr.all_of(
-    ItemClauses.owned_by_user,
-    fr.any_of(in_period, last_month),
-)
-
-with (
-    in_period.bind(start=aug_1, end=aug_31),
-    last_month.bind(start=jul_1, end=jul_31),
-):
-    stmt = report.select(Item, user_id=42)
-```
-
-Aliases bind per leaf; binding `start` on the composite would raise as
-ambiguous, since two leaves accept it. Named aliases share one binding
-namespace: every `alias("last_month")` call addresses the same binding,
-so the name is all that is needed. An anonymous `alias()` is always
-fresh. Aliasing a composite raises; which leaves should share bindings
-and which should split cannot be decided automatically, so rebuild the
-composite from aliased leaves.
 
 (shared-params)=
 ## Using Current in clauses
@@ -565,22 +494,7 @@ compile to `WHERE true`. A rule that compares a bound value with a constant
 is a Python branch, so write it as a clause function that reads
 `Current.role()`.
 
-In a clause function, mark a parameter with the slot as `Annotated`
-metadata. The parameter receives that member's value and binds under
-`user_id`, even though its local name is `uid`:
-
-```python
-from typing import Annotated
-
-from sqlalchemy import and_
-
-
-@fr.where_clause
-def visible_to_user(uid: Annotated[int, Current.user_id]) -> ColumnElement[bool]:
-    return and_(Item.user_id == uid, Item.deleted_at.is_(None))
-```
-
-Reading `Current` inside the function also works:
+A clause function reads `Current` in its body:
 
 ```python
 @fr.where_clause
@@ -590,13 +504,13 @@ def owned_by_current_user() -> ColumnElement[bool]:
 
 Clause binding cannot discover reads inside a function body.
 `owned_by_current_user.bind(user_id=42)` therefore raises
-`no clause accepts`, and `explain()` does not list that dependency.
-Bind through `Current` when using this form. A missing value still
-raises when the function runs. A placeholder inside an expression
-returned by a function is also invisible to binding discovery.
+`no clause accepts`. Bind through `Current` when using this form. A
+missing value still raises when the function runs. A placeholder inside
+an expression returned by a function is also invisible to binding
+discovery.
 
-Use the embedded or `Annotated` form when the clause must accept
-`user_id=` itself or show the dependency in `explain()`.
+Use the embedded form when the clause must accept `user_id=` in its own
+`bind()`.
 [Bind Current from FastAPI dependencies](#current-request-binding) for
 values supplied per request.
 

@@ -5,16 +5,7 @@ from __future__ import annotations
 from contextlib import ExitStack, contextmanager
 from typing import Any, Generic, Iterator, NoReturn, Sequence, TypeVar, final, overload
 
-from sqlalchemy import (
-    ColumnElement,
-    Delete,
-    Select,
-    Update,
-    bindparam,
-    delete,
-    select,
-    update,
-)
+from sqlalchemy import ColumnElement, Delete, Select, Update, delete, select, update
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.sql.expression import (
     BindParameter,
@@ -98,9 +89,8 @@ class Clause:
         Each value is routed to the one leaf in this tree whose function
         accepts its name, so binding on a composite is equivalent to
         binding on the leaf. A value nobody accepts raises TypeError; so
-        does a name accepted by two distinct leaves, which happens with
-        aliases or an accidental name collision. Bind those on each leaf
-        directly.
+        does a name accepted by two distinct leaves, an accidental name
+        collision. Bind those on each leaf directly.
         """
         # deduplicate on instance: the same leaf reached through several
         # branches (a shared owned_by_tenant, say) binds once
@@ -120,13 +110,8 @@ class Clause:
             raise TypeError("no clause accepts: " + ", ".join(unclaimed))
         for key, claimants in claims.items():
             if len(claimants) > 1:
-                kind = (
-                    "aliases of the same clause"
-                    if len({fn.family for fn in claimants}) == 1
-                    else "unrelated clauses"
-                )
                 raise TypeError(
-                    f"{key!r} is accepted by multiple {kind}; "
+                    f"{key!r} is accepted by multiple unrelated clauses; "
                     "bind it on each leaf directly"
                 )
 
@@ -137,21 +122,17 @@ class Clause:
                     stack.enter_context(fn.context(**subset))
             yield
 
-    def select(self, /, *entities: Any, **binds: Any) -> Select[Any]:
+    def select(self, /, *entities: Any) -> Select[Any]:
         """``sqlalchemy.select(*entities)`` with this clause applied.
 
-        Positional arguments are exactly SQLAlchemy's: mapped classes,
-        columns, functions. Keyword arguments are an ephemeral bind():
-        the values live only for the duration of building this
-        statement. Without them the ambient bind (a surrounding with
-        ...bind():) applies as usual. Types as Select[Any]; for precise
-        row typing build the statement with plain select() into its own
-        variable and pass that to apply_clauses(), which preserves the
-        statement's exact type. The inline nested call widens to
-        Select[Any] under bidirectional inference.
+        The arguments are exactly SQLAlchemy's: mapped classes, columns,
+        functions. Types as Select[Any]; for precise row typing build the
+        statement with plain select() into its own variable and pass that
+        to apply_clauses(), which preserves the statement's exact type.
+        The inline nested call widens to Select[Any] under bidirectional
+        inference.
         """
-        with self.bind(**binds):
-            return apply_clauses(select(*entities), self)
+        return apply_clauses(select(*entities), self)
 
     def __repr__(self) -> str:
         fn = self._where_fn or self._transform_fn or self._param_fn
@@ -172,108 +153,6 @@ class Clause:
         binds = " binds: " + ", ".join(wanted) if wanted else ""
         return f"<{type(self).__name__}{label}{binds}>"
 
-    def explain(self) -> str:
-        """The clause tree with per-leaf bind names, values, and origins.
-
-        Node labels are the nodes' reprs; under each node, one line per
-        bind name it owns: the bound value (repr, truncated) with the
-        file:line that bound it, or UNBOUND. A subtree reached through
-        several paths renders once and is marked shared after that. The
-        answer to "why is this query filtered the way it is" without
-        leaving the debugger.
-        """
-        lines: list[str] = []
-        seen: set[int] = set()
-
-        def bind_entries(node: Clause, label: str) -> list[str]:
-            entries: list[str] = []
-            for fn, routable in node._own_routing():
-                names = routable if routable is not None else fn.accepted
-                bound = fn.bindings()
-                for bind_name in sorted(names or ()):
-                    if bind_name in bound:
-                        value, origin = bound[bind_name]
-                        try:
-                            shown = repr(value)
-                        except Exception:
-                            shown = f"<unrepresentable {type(value).__name__}>"
-                        if len(shown) > 60:
-                            shown = shown[:57] + "..."
-                        # a ContextParam's label already names its bind site
-                        suffix = (
-                            f"   bound at {origin}"
-                            if origin and origin not in label
-                            else ""
-                        )
-                        entries.append(f"{bind_name} = {shown}{suffix}")
-                    else:
-                        entries.append(f"{bind_name}: UNBOUND")
-            return entries
-
-        def render(node: Clause, prefix: str, connector: str) -> None:
-            label = repr(node)
-            if id(node) in seen:
-                lines.append(prefix + connector + label + "  (shared, shown above)")
-                return
-            seen.add(id(node))
-            lines.append(prefix + connector + label)
-            if connector == "└─ ":
-                child_prefix = prefix + "   "
-            elif connector == "├─ ":
-                child_prefix = prefix + "│  "
-            else:
-                child_prefix = prefix
-            entries: list[tuple[str, object]] = [
-                ("bind", entry) for entry in bind_entries(node, label)
-            ]
-            entries += [("node", child) for child in node._children]
-            for index, (kind, payload) in enumerate(entries):
-                last = index == len(entries) - 1
-                branch = "└─ " if last else "├─ "
-                if kind == "bind":
-                    lines.append(child_prefix + branch + payload)  # type: ignore[operator]
-                else:
-                    render(payload, child_prefix, branch)  # type: ignore[arg-type]
-
-        render(self, "", "")
-        return "\n".join(lines)
-
-    @classmethod
-    def _blank(cls) -> Self:
-        # internal construction path; ContextParam overrides it because its
-        # public __init__ deliberately raises
-        return cls()
-
-    def alias(self, name: str | None = None) -> Self:
-        """An independent instance with its own context namespace.
-
-        Leaf-only: which leaves of a composite should share bindings and
-        which should split cannot be decided automatically. Rebuild the
-        composite from aliased leaves instead. Named aliases are memoized
-        at the contextargs level, so the same name addresses the same
-        namespace anywhere; anonymous aliases are always fresh.
-        """
-        if any(not isinstance(c, ContextParam) for c in self._children):
-            raise TypeError(
-                "alias works on leaf clauses only; "
-                "rebuild composites from aliased leaves"
-            )
-        result = type(self)._blank()
-        result._children = self._children  # embedded slots stay shared by design
-        result._condition = self._condition
-        if self._where_fn is not None:
-            result._where_fn = self._where_fn.alias(name)
-        if self._transform_fn is not None:
-            result._transform_fn = self._transform_fn.alias(name)
-            result._transform_routable = self._transform_routable
-        if self._param_fn is not None:
-            result._param_fn = self._param_fn.alias(name)
-            assert self._placeholder is not None
-            placeholder = bindparam(self._placeholder.key)
-            placeholder._fr_param = result  # type: ignore[attr-defined]
-            result._placeholder = placeholder
-        return result
-
 
 class WhereClause(Clause):
     """A pure predicate: no transforms anywhere in its tree.
@@ -283,27 +162,23 @@ class WhereClause(Clause):
     for use inside plain SQLAlchemy expressions.
     """
 
-    def __call__(self, /, **binds: Any) -> ColumnElement[bool]:
+    def __call__(self) -> ColumnElement[bool]:
         """Resolve to the raw ColumnElement, for plain SQLAlchemy use.
 
-        Keyword arguments are an ephemeral bind(). The result drops into
-        any expression position: .where(), a join condition, a CASE.
-        This path skips apply_clauses' table validation.
+        The result drops into any expression position: .where(), a join
+        condition, a CASE. This path skips apply_clauses' table validation.
         """
-        with self.bind(**binds):
-            result = _resolve_where(self)
+        result = _resolve_where(self)
         assert result is not None  # invariant: a WhereClause always has a where
         return result
 
-    def update(self, model: type[DeclarativeBase], /, **binds: Any) -> Update:
+    def update(self, model: type[DeclarativeBase], /) -> Update:
         """UPDATE on model with this clause applied; see select()."""
-        with self.bind(**binds):
-            return apply_clauses(update(model), self)
+        return apply_clauses(update(model), self)
 
-    def delete(self, model: type[DeclarativeBase], /, **binds: Any) -> Delete:
+    def delete(self, model: type[DeclarativeBase], /) -> Delete:
         """DELETE on model with this clause applied; see select()."""
-        with self.bind(**binds):
-            return apply_clauses(delete(model), self)
+        return apply_clauses(delete(model), self)
 
 
 class TransformClause(Clause):
@@ -351,13 +226,12 @@ class ContextParam(Clause, Generic[_T]):
 
     Declared in a ContextNamespace (``tenant_id: ContextParam[UUID]``),
     never constructed directly: a slot is pure name and identity, and the
-    namespace is its address. One slot, three positions. Embedded in an
+    namespace is its address. One slot, two positions. Embedded in an
     expression (``Item.tenant_id == Current.tenant_id``) it becomes a
     placeholder, filled with the bound value each time the clause
-    resolves. As ``Annotated`` metadata on a clause function's parameter
-    it feeds that parameter from the slot. Called, it returns the bound
-    value for Python-side use. Sharing is by identity: every clause that
-    embeds or marks the same slot is served by a single bind().
+    resolves. Called, it returns the bound value for Python-side use,
+    also inside a clause function. Sharing is by identity: every clause
+    that embeds the same slot is served by a single bind().
 
     A member never stands in for its value: ``==``, ``!=`` and a truth
     test raise. Call the member to read it, and in a SQL expression put
@@ -426,14 +300,10 @@ class ContextParam(Clause, Generic[_T]):
             return f"<ContextParam {names}, bound>"
         return f"<ContextParam {names}>"
 
-    def __call__(self, /, **binds: Any) -> _T:
-        """Resolve to the bound value or raise LookupError if unbound.
-
-        Keyword arguments are an ephemeral bind().
-        """
-        with self.bind(**binds):
-            assert self._param_fn is not None  # invariant: set at declaration
-            return _teaching_call(self._param_fn)
+    def __call__(self) -> _T:
+        """Resolve to the bound value or raise LookupError if unbound."""
+        assert self._param_fn is not None  # invariant: set at declaration
+        return _teaching_call(self._param_fn)
 
     def depends(self, source: Any, /) -> Any:
         """A FastAPI dependency that binds this slot per request.
@@ -458,8 +328,7 @@ def _teaching_call(fn: Contextual, *args):
             + ", ".join(error.names)
             + f"; bind them around this code with .bind({first}=...) on the "
             "shared ContextParam itself, or on the clause or an enclosing "
-            "composite when it routes the name; routable names can also be "
-            "passed as keywords to the statement shorthands or apply_clauses()"
+            "composite when it routes the name"
         ) from None
 
 
@@ -503,12 +372,6 @@ def _fill_slots(
             raise TypeError(
                 f"the ContextParam named {key!r} collides with a hand-written "
                 f"bindparam({key!r}) in the same statement; rename one"
-            )
-        if getattr(existing, "family", None) is getattr(owner, "family", object()):
-            raise TypeError(
-                f"the slot {key!r} appears through two different aliases in "
-                "one statement; aliases share a key, use distinct "
-                "context_param names instead"
             )
         raise TypeError(
             f"two different ContextParams named {key!r} appear in one "
@@ -653,24 +516,13 @@ def _statement_tables(stmt: Select[Any] | Update | Delete) -> set[str]:
 _SelectT = TypeVar("_SelectT", bound=Select[Any])
 
 
-class _Forest(Clause):
-    """Routing-only node over apply_clauses' arguments: one tree, so an
-    ephemeral bind routes across them with Clause.bind()'s rules."""
-
-
 @overload
-def apply_clauses(
-    stmt: _SelectT, /, *clauses: Clause | Unscoped, **binds: Any
-) -> _SelectT: ...
+def apply_clauses(stmt: _SelectT, /, *clauses: Clause | Unscoped) -> _SelectT: ...
 @overload
-def apply_clauses(
-    stmt: Update, /, *clauses: WhereClause | Unscoped, **binds: Any
-) -> Update: ...
+def apply_clauses(stmt: Update, /, *clauses: WhereClause | Unscoped) -> Update: ...
 @overload
-def apply_clauses(
-    stmt: Delete, /, *clauses: WhereClause | Unscoped, **binds: Any
-) -> Delete: ...
-def apply_clauses(stmt, /, *clauses: Clause | Unscoped, **binds: Any):
+def apply_clauses(stmt: Delete, /, *clauses: WhereClause | Unscoped) -> Delete: ...
+def apply_clauses(stmt, /, *clauses: Clause | Unscoped):
     """Apply clauses to a statement built with plain SQLAlchemy.
 
     The bridge between the two worlds: build select()/update()/delete()
@@ -680,18 +532,8 @@ def apply_clauses(stmt, /, *clauses: Clause | Unscoped, **binds: Any):
     statement does not select from is rejected too: the silent
     alternative is a cartesian product. ``UNSCOPED`` among the clauses
     applies nothing: a scope seam passes on what it was given.
-
-    Keyword arguments are an ephemeral bind() routed across all the
-    given clauses, layered over any ambient bind for the duration of
-    the call. The statement is positional-only, so every keyword name
-    stays free for binding.
     """
     given = _without_unscoped("apply_clauses", clauses)
-    if binds:
-        forest = _Forest()
-        forest._children = given
-        with forest.bind(**binds):
-            return apply_clauses(stmt, *given)
     for clause in given:
         if clause._where_fn is None and not _has_transform(clause):
             raise TypeError(

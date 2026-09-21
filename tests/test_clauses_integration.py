@@ -5,13 +5,16 @@ import threading
 from datetime import datetime
 
 import pytest
-from sqlalchemy import ColumnElement, ForeignKey, Select, create_engine, select
+from sqlalchemy import ForeignKey, Select, create_engine, delete, select, update
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, relationship
 from sqlalchemy.pool import StaticPool
 
 from fastapi_restly.clauses import (
     UNSCOPED,
+    Clause,
     ClauseNamespace,
+    ContextNamespace,
+    ContextParam,
     all_of,
     any_of,
     apply_clauses,
@@ -20,7 +23,6 @@ from fastapi_restly.clauses import (
     transform_clause,
     where_clause,
 )
-from fastapi_restly.clauses._declarations import _context_param as context_param
 
 
 class Base(DeclarativeBase):
@@ -56,18 +58,19 @@ class Subscription(Base):
     status: Mapped[str]
 
 
+class Ctx(ContextNamespace):
+    tenant_id: ContextParam[int]
+
+
+class Wanted(ContextNamespace):
+    tenants: ContextParam[list[int]]
+
+
 class ItemClauses(ClauseNamespace):
     model = Item
 
     is_deleted = where_clause(Item.deleted_at.is_not(None))
-
-    @where_clause
-    def owned_by_tenant(tenant_id: int) -> ColumnElement[bool]:
-        return Item.tenant_id == tenant_id
-
-    @where_clause
-    def in_period(start: datetime, end: datetime) -> ColumnElement[bool]:
-        return Item.created_at.between(start, end)
+    owned_by_tenant = where_clause(Item.tenant_id == Ctx.tenant_id)
 
     has_active_subscription = where_clause(
         Item.subscriptions.any(Subscription.status == "active")
@@ -80,10 +83,6 @@ class ItemClauses(ClauseNamespace):
     with_live_collection = combine(
         join_collection, where_clause(Collection.archived_at.is_(None))
     )
-
-    @transform_clause
-    def paged(stmt: Select, limit: int, offset: int) -> Select:
-        return stmt.limit(limit).offset(offset)
 
     visible = all_of(owned_by_tenant, none_of(is_deleted))
     trashed = all_of(owned_by_tenant, is_deleted)
@@ -162,70 +161,52 @@ def ids(session: Session, stmt) -> set[int]:
     return {item.id for item in session.scalars(stmt)}
 
 
+def seen_by(session: Session, tenant_id: int, clause: Clause) -> set[int]:
+    # the statement carries the bound value: it runs after the bind ended
+    with Ctx.bind(tenant_id=tenant_id):
+        stmt = apply_clauses(select(Item), clause)
+    return ids(session, stmt)
+
+
 def test_tenant_isolation(engine):
     with Session(engine) as s:
-        assert ids(s, ItemClauses.visible.select(Item, tenant_id=T1)) == {1, 4}
-        assert ids(s, ItemClauses.visible.select(Item, tenant_id=T2)) == {3}
+        assert seen_by(s, T1, ItemClauses.visible) == {1, 4}
+        assert seen_by(s, T2, ItemClauses.visible) == {3}
 
 
 def test_trash_is_the_complement(engine):
     with Session(engine) as s:
-        assert ids(s, ItemClauses.trashed.select(Item, tenant_id=T1)) == {2}
-        assert ids(s, ItemClauses.trashed.select(Item, tenant_id=T2)) == set()
+        assert seen_by(s, T1, ItemClauses.trashed) == {2}
+        assert seen_by(s, T2, ItemClauses.trashed) == set()
 
 
 def test_restore_respects_tenant_on_update(engine):
-    with Session(engine) as s:
-        wrong_tenant = s.execute(
-            ItemClauses.trashed.update(Item, tenant_id=T2)
-            .where(Item.id == 2)
-            .values(deleted_at=None)
-        )
-        assert wrong_tenant.rowcount == 0
+    def restore_item_2(tenant_id: int):
+        with Ctx.bind(tenant_id=tenant_id):
+            stmt = apply_clauses(update(Item), ItemClauses.trashed)
+        return stmt.where(Item.id == 2).values(deleted_at=None)
 
-        right_tenant = s.execute(
-            ItemClauses.trashed.update(Item, tenant_id=T1)
-            .where(Item.id == 2)
-            .values(deleted_at=None)
-        )
-        assert right_tenant.rowcount == 1
-        assert ids(s, ItemClauses.visible.select(Item, tenant_id=T1)) == {1, 2, 4}
+    with Session(engine) as s:
+        assert s.execute(restore_item_2(T2)).rowcount == 0
+        assert s.execute(restore_item_2(T1)).rowcount == 1
+        assert seen_by(s, T1, ItemClauses.visible) == {1, 2, 4}
         s.rollback()
 
 
 def test_exists_does_not_multiply_rows(engine):
     # item 1 has TWO active subscriptions; a join would return it twice
+    q = all_of(ItemClauses.visible, ItemClauses.has_active_subscription)
+    with Ctx.bind(tenant_id=T1):
+        stmt = apply_clauses(select(Item), q)
     with Session(engine) as s:
-        q = all_of(ItemClauses.visible, ItemClauses.has_active_subscription)
-        rows = [item.id for item in s.scalars(q.select(Item, tenant_id=T1))]
-        assert rows == [1]
+        assert [item.id for item in s.scalars(stmt)] == [1]
 
 
 def test_join_bundle_excludes_archived_collection(engine):
     with Session(engine) as s:
         q = all_of(ItemClauses.visible, ItemClauses.with_live_collection)
-        assert ids(s, q.select(Item, tenant_id=T1)) == {
-            1
-        }  # 4 lives in an archived collection
-
-
-def test_alias_two_periods(engine):
-    august = ItemClauses.in_period.alias("integration_august")
-    july = ItemClauses.in_period.alias("integration_july")
-    q = all_of(ItemClauses.owned_by_tenant, any_of(august, july))
-    with (
-        august.bind(start=datetime(2026, 8, 1), end=datetime(2026, 8, 31)),
-        july.bind(start=datetime(2026, 7, 1), end=datetime(2026, 7, 31)),
-    ):
-        with Session(engine) as s:
-            assert ids(s, q.select(Item, tenant_id=T1)) == {1, 4}
-
-
-def test_ephemeral_transform_binding(engine):
-    q = combine(ItemClauses.visible, ItemClauses.paged)
-    with Session(engine) as s:
-        rows = list(s.scalars(q.select(Item, tenant_id=T1, limit=1, offset=0)))
-        assert len(rows) == 1
+        # 4 lives in an archived collection
+        assert seen_by(s, T1, q) == {1}
 
 
 def test_in_subquery_passes_validation_and_runs(engine):
@@ -236,14 +217,15 @@ def test_in_subquery_passes_validation_and_runs(engine):
     )
     with Session(engine) as s:
         q = all_of(ItemClauses.visible, in_live_collection)
-        assert ids(s, q.select(Item, tenant_id=T1)) == {1}
+        assert seen_by(s, T1, q) == {1}
 
 
 def test_interop_call_in_raw_where(engine):
-    with Session(engine) as s:
+    with Ctx.bind(tenant_id=T1):
         stmt = select(Item).where(
-            ItemClauses.owned_by_tenant(tenant_id=T1), ItemClauses.is_deleted()
+            ItemClauses.owned_by_tenant(), ItemClauses.is_deleted()
         )
+    with Session(engine) as s:
         assert ids(s, stmt) == {2}
 
 
@@ -252,10 +234,11 @@ def test_concurrent_tenant_binds(engine):
     barrier = threading.Barrier(2)
 
     def worker(tenant_id: int):
-        with ItemClauses.visible.bind(tenant_id=tenant_id):
+        with Ctx.bind(tenant_id=tenant_id):
             barrier.wait()  # both binds active at the same time
+            stmt = apply_clauses(select(Item), ItemClauses.visible)
             with Session(engine) as s:
-                results[tenant_id] = ids(s, ItemClauses.visible.select(Item))
+                results[tenant_id] = ids(s, stmt)
 
     threads = [threading.Thread(target=worker, args=(t,)) for t in (T1, T2)]
     for t in threads:
@@ -265,28 +248,25 @@ def test_concurrent_tenant_binds(engine):
     assert results == {T1: {1, 4}, T2: {3}}
 
 
-def test_embedded_shared_slot_returns_tenant_rows(engine):
-    slot = context_param("it_tenant")
-    owned = where_clause(Item.tenant_id == slot)
-    with slot.bind(it_tenant=T1):
-        with Session(engine) as s:
-            assert ids(s, apply_clauses(select(Item), owned)) == {1, 2, 4}
+def test_embedded_member_returns_tenant_rows(engine):
+    with Session(engine) as s:
+        assert seen_by(s, T1, ItemClauses.owned_by_tenant) == {1, 2, 4}
 
 
-def test_embedded_slot_in_list_executes(engine):
-    slot = context_param("wanted_tenants")
-    cond = where_clause(Item.tenant_id.in_(slot))
-    with slot.bind(wanted_tenants=[T1]):
-        with Session(engine) as s:
-            assert ids(s, apply_clauses(select(Item), cond)) == {1, 2, 4}
+def test_embedded_member_in_list_executes(engine):
+    cond = where_clause(Item.tenant_id.in_(Wanted.tenants))
+    with Wanted.bind(tenants=[T1]):
+        stmt = apply_clauses(select(Item), cond)
+    with Session(engine) as s:
+        assert ids(s, stmt) == {1, 2, 4}
 
 
 def test_bind_resets_after_exception(engine):
     with pytest.raises(RuntimeError):
-        with ItemClauses.visible.bind(tenant_id=T1):
+        with Ctx.bind(tenant_id=T1):
             raise RuntimeError("boom")
     with pytest.raises(LookupError):
-        ItemClauses.visible.select(Item)  # unbound again
+        apply_clauses(select(Item), ItemClauses.visible)  # unbound again
 
 
 @pytest.mark.parametrize(
@@ -307,14 +287,16 @@ def test_unscoped_boolean_composition_returns_the_expected_rows(
 def test_unscoped_combine_preserves_join_and_filter(engine):
     scope = combine(UNSCOPED, ItemClauses.with_live_collection)
     with Session(engine) as session:
-        assert ids(session, scope.select(Item)) == {1, 2, 3}
+        assert ids(session, apply_clauses(select(Item), scope)) == {1, 2, 3}
 
 
 def test_negated_unscoped_cannot_update_or_delete_rows(engine):
     scope = none_of(UNSCOPED)
     with Session(engine) as session:
-        updated = session.execute(scope.update(Item).values(name="changed"))
-        deleted = session.execute(scope.delete(Item))
+        updated = session.execute(
+            apply_clauses(update(Item), scope).values(name="changed")
+        )
+        deleted = session.execute(apply_clauses(delete(Item), scope))
         assert updated.rowcount == 0
         assert deleted.rowcount == 0
         assert ids(session, select(Item)) == {1, 2, 3, 4}

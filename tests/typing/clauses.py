@@ -14,7 +14,7 @@ module level no marker is needed.
 """
 
 from datetime import datetime
-from typing import Annotated, Any
+from typing import Any
 
 from sqlalchemy import ColumnElement, Delete, Select, Update, delete, select, update
 from sqlalchemy.orm import Mapped
@@ -42,11 +42,6 @@ def in_period(start: datetime, end: datetime) -> ColumnElement[bool]:
     return Ticket.created_at.between(start, end)
 
 
-@fr.where_clause
-def marked(tid: Annotated[int, Context.tenant_id]) -> ColumnElement[bool]:
-    return Ticket.tenant_id == tid
-
-
 @fr.transform_clause
 def newest_first(stmt: Select[Any]) -> Select[Any]:
     return stmt.order_by(Ticket.created_at.desc())
@@ -58,7 +53,6 @@ class TicketClauses(fr.ClauseNamespace):
     is_deleted = fr.where_clause(Ticket.deleted_at.is_not(None))
     owned_by_tenant = fr.where_clause(Ticket.tenant_id == Context.tenant_id)
     in_period = in_period
-    marked = marked
     newest_first = newest_first
 
     # in-body function clauses: the clause decorator over @staticmethod
@@ -75,9 +69,8 @@ class TicketClauses(fr.ClauseNamespace):
     visible = fr.all_of(owned_by_tenant, fr.none_of(is_deleted))
 
 
-# constructor -> type symmetry; alias() preserves the subtype (Self)
+# constructor -> type symmetry
 assert_type(TicketClauses.is_deleted, fr.WhereClause)
-assert_type(TicketClauses.is_deleted.alias("aliased"), fr.WhereClause)
 assert_type(TicketClauses.newest_first, fr.TransformClause)
 assert_type(TicketClauses.since, fr.WhereClause)
 assert_type(TicketClauses.paged, fr.TransformClause)
@@ -135,31 +128,16 @@ listing = listing.where(Ticket.tenant_id == 1).limit(1)
 assert_type(fr.apply_clauses(update(Ticket), TicketClauses.owned_by_tenant), Update)
 assert_type(fr.apply_clauses(delete(Ticket), TicketClauses.owned_by_tenant), Delete)
 
-# ephemeral binds keep the per-statement-kind dispatch; assign the
-# select() first: the inline nested call widens under bidirectional
-# inference
-_base = select(Ticket)
-bound = fr.apply_clauses(_base, TicketClauses.visible, tenant_id=1)
-bound = bound.limit(1)
-assert_type(
-    fr.apply_clauses(update(Ticket), TicketClauses.owned_by_tenant, tenant_id=1), Update
-)
-assert_type(
-    fr.apply_clauses(delete(Ticket), TicketClauses.owned_by_tenant, tenant_id=1), Delete
-)
-
 # the call form resolves to a ColumnElement usable in plain SQLAlchemy
-expr = TicketClauses.owned_by_tenant(tenant_id=1)
+expr = TicketClauses.owned_by_tenant()
 assert_type(expr, ColumnElement[bool])
 _stmt = select(Ticket).where(expr, TicketClauses.is_deleted())
 
 # statement methods chain as normal SQLAlchemy statements
-_chained = (
-    TicketClauses.visible.select(Ticket, tenant_id=1).where(Ticket.id == 1).limit(1)
-)
+_chained = TicketClauses.visible.select(Ticket).where(Ticket.id == 1).limit(1)
 
 # select() takes any SQLAlchemy entities; exact row typing lives on the
 # apply_clauses path, which keeps the statement type select() produced
-_projected = TicketClauses.visible.select(Ticket.id, Ticket.created_at, tenant_id=1)
+_projected = TicketClauses.visible.select(Ticket.id, Ticket.created_at)
 _typed = fr.apply_clauses(select(Ticket.id, Ticket.created_at), TicketClauses.visible)
 _typed = _typed.where(Ticket.tenant_id == 1).limit(1)

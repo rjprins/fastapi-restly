@@ -58,8 +58,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   statement shorthands.
   `fr.ClauseNamespace` groups clauses with or without registering a model.
   `fr.ContextNamespace` and `fr.ContextParam` supply shared request values
-  through generated `.depends()` dependencies. `Clause.explain()` reports
-  bound values and their bind sites. Missing bindings raise `LookupError`.
+  through generated `.depends()` dependencies. Missing bindings raise
+  `LookupError`.
   See the Query Clauses guide.
 - Model default scopes apply a clause to every view read and reference check.
   A view's `scope` replaces the model default for its reads. Pass `scope=` to

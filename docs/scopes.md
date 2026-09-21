@@ -156,12 +156,9 @@ class AdminItemView(fr.AsyncRestView):
 There is no per-request hook, deliberately: a clause is already a
 function. A per-request *value* (the tenant id) is bound around the
 request; a per-request *choice* is a clause function branching on a
-bound value, which fails loudly when the value is missing and shows
-its decision in `explain()`:
+bound value, which fails loudly when the value is missing:
 
 ```python
-from typing import Annotated
-
 from sqlalchemy import ColumnElement, true
 
 
@@ -169,10 +166,10 @@ class RoleContext(fr.ContextNamespace):
     include_deleted: fr.ContextParam[bool]
 
 @fr.where_clause
-def role_visibility(
-    include_deleted: Annotated[bool, RoleContext.include_deleted],
-) -> ColumnElement[bool]:
-    return true() if include_deleted else Item.deleted_at.is_(None)
+def role_visibility() -> ColumnElement[bool]:
+    if RoleContext.include_deleted():
+        return true()
+    return Item.deleted_at.is_(None)
 
 class ItemView(fr.AsyncRestView):
     ...
@@ -403,9 +400,8 @@ Attach it at the narrowest level that needs it: the app for values in
 every request, a router for a group, a view's `dependencies` list for
 one view;
 {meth}`ContextParam.depends <fastapi_restly.clauses.ContextParam.depends>`
-is the single-slot form. Read `Current.explain()` or
-`Clause.explain()` when a query filters unexpectedly; the origin names
-your `depends()` line. The scope's promise is structural: the framework
+is the single-slot form. Read `Current.explain()` when a query filters
+unexpectedly; the origin names your `depends()` line. The scope's promise is structural: the framework
 guarantees the clause is applied and its values are bound, or the
 request fails loudly. That the bound value is the *right* tenant is the
 source dependency's job; assert it there.

@@ -293,10 +293,10 @@ Reusable query fragments and the visibility rules built from them. [Query Clause
 
 | Symbol | Description |
 |---|---|
-| {func}`fr.where_clause(condition) <fastapi_restly.clauses.where_clause>` | Declare a predicate clause from a SQLAlchemy boolean expression, or from a function returning one whose parameters bind late through a `ContextParam` slot or `Clause.bind(**values)`. |
+| {func}`fr.where_clause(condition) <fastapi_restly.clauses.where_clause>` | Declare a predicate clause from a SQLAlchemy boolean expression, or from a function returning one whose parameters bind late through `Clause.bind(**values)`. |
 | {func}`fr.transform_clause(fn) <fastapi_restly.clauses.transform_clause>` | Declare a clause that reshapes a `Select` (ordering, joins, eager loading) rather than filtering it. |
 | {func}`fr.all_of(*clauses) <fastapi_restly.clauses.all_of>` / {func}`fr.any_of <fastapi_restly.clauses.any_of>` / {func}`fr.none_of <fastapi_restly.clauses.none_of>` / {func}`fr.combine <fastapi_restly.clauses.combine>` | Compose clauses: AND, OR, NOT, and a bundle that carries transforms. `fr.clauses.UNSCOPED` composes as no restriction; the rules per function are in [Query Clauses](clauses.md). |
-| {func}`fr.apply_clauses(stmt, *clauses, **binds) <fastapi_restly.clauses.apply_clauses>` | Apply clauses to a plain SQLAlchemy statement; ephemeral bind values pass as keywords. `fr.clauses.UNSCOPED` applies nothing. |
+| {func}`fr.apply_clauses(stmt, *clauses) <fastapi_restly.clauses.apply_clauses>` | Apply clauses to a plain SQLAlchemy statement. `fr.clauses.UNSCOPED` applies nothing. |
 | {class}`fr.ClauseNamespace <fastapi_restly.clauses.ClauseNamespace>` | Group a model's clauses under one named class. Declaring `model` registers the namespace, and its `default_scope` is the clause every read and reference check on that model applies. |
 | `fr.clauses.UNSCOPED` / {class}`fr.clauses.Unscoped <fastapi_restly.clauses.Unscoped>` | The explicit unscoped sentinel and its type: the one spelling for reading past a scope on a view, a namespace, a reference, or a single read. |
 | `fr.views.ReadScope` | The per-read scope type the handlers take and forward: `None` resolves the view's scope, a clause replaces it, `fr.clauses.UNSCOPED` reads unscoped. Annotate the `scope` parameter of a `get_one` / `get_many` override with it. |

@@ -1583,7 +1583,7 @@ def _identity_criterion(
     if isinstance(id, Clause):
         raise TypeError(
             f"{model_cls.__name__}: a Clause is a scope, not a row identity. "
-            "Call it for its expression (ItemClauses.by_slug(slug=...)), or "
+            "Call it for its expression (ItemClauses.published()), or "
             "pass it as scope= to replace the view scope for this read."
         )
     if type(id) is bool:
