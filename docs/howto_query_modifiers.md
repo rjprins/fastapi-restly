@@ -60,6 +60,14 @@ A datetime value without a UTC offset is read as UTC when the column is
 timezone-aware, which is the default for `Mapped[datetime]`; a column
 declared `DateTime()` compares the naive value as given.
 
+### Filter value validation
+
+Equality, `__ne`, `__in`, and range filters run the field's Pydantic
+validation. They do not run model validators. Field validators receive
+the Python field name in {attr}`pydantic.ValidationInfo.field_name`, even
+when the URL uses an alias. {attr}`pydantic.ValidationInfo.data` is `{}`:
+each filter value is validated independently, without other field values.
+
 ### Comma logic on bare equality
 
 Comma-separated values in a plain equality filter are OR-combined:

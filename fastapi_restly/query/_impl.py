@@ -19,7 +19,7 @@ import pydantic
 import sqlalchemy
 from pydantic import Field
 from pydantic.fields import FieldInfo
-from pydantic_core import SchemaValidator
+from pydantic_core import SchemaValidator, core_schema
 from sqlalchemy import ColumnElement, Select
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm.attributes import InstrumentedAttribute
@@ -667,7 +667,10 @@ def _parse_value(schema_cls: SchemaType, column_name: str, value: str) -> Any:
         raise BadQueryParam(f"Invalid attribute in URL query: {column_name}")
 
     try:
-        result = _field_validator(schema_cls, field_name).validate_python(value)
+        values, _, _ = _field_validator(schema_cls, field_name).validate_python(
+            {field_name: value}
+        )
+        result = values[field_name]
     except Exception:
         raise BadQueryParam(f"Invalid attribute in URL query: {column_name}")
     # An IDRef[T] FK field validates to an IDRef object; the SQL bind value
@@ -679,8 +682,10 @@ def _parse_value(schema_cls: SchemaType, column_name: str, value: str) -> Any:
 
 @functools.cache
 def _field_validator(schema_cls: SchemaType, field_name: str) -> SchemaValidator:
-    """A validator for one field of ``schema_cls``, cut from the model's core
-    schema.
+    """A validator for a one-field mapping, cut from the model's core schema.
+
+    The named field supplies ``ValidationInfo.field_name``. No other fields
+    are validated, so ``ValidationInfo.data`` is empty.
 
     Field validators, constraints and the model config apply; model validators
     do not. A filter value is one column, so a cross-field rule has nothing to
@@ -689,15 +694,24 @@ def _field_validator(schema_cls: SchemaType, field_name: str) -> SchemaValidator
     """
     core: Any = schema_cls.__pydantic_core_schema__
     definitions = core.get("definitions") if core.get("type") == "definitions" else None
+    definitions_by_ref = {
+        definition["ref"]: definition for definition in definitions or ()
+    }
     config = None
     node: Any = core
     while node is not None and node.get("type") != "model-fields":
+        # Recursive models keep their model schema in the definitions.
+        if node.get("type") == "definition-ref":
+            node = definitions_by_ref[node["schema_ref"]]
+            continue
         if node.get("type") == "model" and config is None:
             config = node.get("config")
         node = node.get("schema")
     if node is None:
         raise LookupError(f"{schema_cls.__name__} has no model-fields core schema")
-    field_schema: Any = node["fields"][field_name]["schema"]
+    field_schema: Any = core_schema.model_fields_schema(
+        {field_name: core_schema.model_field(node["fields"][field_name]["schema"])}
+    )
     if definitions:
         # A field typed with a class the schema uses more than once is a
         # definition-ref; it validates only next to the definitions.
