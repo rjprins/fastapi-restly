@@ -296,6 +296,126 @@ def test_a_route_reads_through_its_own_scope(client):
     assert client.get(f"/scope-notes/{gone['id']}", headers=t1).json()["name"] == "gone"
 
 
+def test_a_route_narrows_inside_the_scope_with_where(client):
+    """``where=`` on the list handler narrows inside the scope instead of
+    replacing it: a nested listing keeps the visibility rules, and the page
+    total counts the narrowed rows."""
+
+    class WhereTask(fr.IDBase):
+        tenant_id: Mapped[int]
+        project_id: Mapped[int]
+        name: Mapped[str]
+        urgent: Mapped[bool] = mapped_column(default=False)
+        deleted: Mapped[bool] = mapped_column(default=False)
+
+    class Current(fr.ContextNamespace):
+        tenant_id: fr.ContextParam[int]
+
+    class WhereTaskClauses(fr.ClauseNamespace):
+        model = WhereTask
+
+        is_deleted = fr.where_clause(WhereTask.deleted.is_(True))
+        is_urgent = fr.where_clause(WhereTask.urgent.is_(True))
+        owned_by_tenant = fr.where_clause(WhereTask.tenant_id == Current.tenant_id)
+        trashed = fr.all_of(owned_by_tenant, is_deleted)
+        default_scope = fr.all_of(owned_by_tenant, fr.none_of(is_deleted))
+
+    class WhereTaskSchema(fr.IDSchema):
+        tenant_id: int
+        project_id: int
+        name: str
+        urgent: bool = False
+        deleted: bool = False
+
+    async def bind_tenant(tenant: Annotated[int, Header(alias="x-tenant-id")]):
+        with Current.tenant_id.bind(tenant_id=tenant):
+            yield
+
+    @fr.include_view(client.app)
+    class WhereTaskView(fr.AsyncRestView):
+        prefix = "/where-tasks"
+        model = WhereTask
+        schema = WhereTaskSchema
+        dependencies = [Depends(bind_tenant)]
+
+        # a raw expression, the per-request value baked in
+        @fr.get("/by-project/{project_id}")
+        async def by_project(self, project_id: int, query_params):
+            result = await self.handle_get_many(
+                query_params, where=WhereTask.project_id == project_id
+            )
+            return self.to_response(result, fr.ResponseShape.LISTING)
+
+        # the same filter passed as scope= replaces the visibility rules
+        @fr.get("/replaced/{project_id}")
+        async def replaced(self, project_id: int, query_params):
+            result = await self.handle_get_many(
+                query_params, scope=fr.where_clause(WhereTask.project_id == project_id)
+            )
+            return self.to_response(result, fr.ResponseShape.LISTING)
+
+        # a declared clause narrows the same way, uncalled
+        @fr.get("/urgent")
+        async def urgent(self, query_params):
+            result = await self.handle_get_many(
+                query_params, where=WhereTaskClauses.is_urgent
+            )
+            return self.to_response(result, fr.ResponseShape.LISTING)
+
+        # where= narrows inside a per-read scope too
+        @fr.get("/trash/{project_id}")
+        async def trash(self, project_id: int, query_params):
+            result = await self.handle_get_many(
+                query_params,
+                scope=WhereTaskClauses.trashed,
+                where=WhereTask.project_id == project_id,
+            )
+            return self.to_response(result, fr.ResponseShape.LISTING)
+
+    create_tables()
+
+    t1 = {"x-tenant-id": "1"}
+    t2 = {"x-tenant-id": "2"}
+    rows = [
+        (t1, {"tenant_id": 1, "project_id": 7, "name": "a", "urgent": True}),
+        (t1, {"tenant_id": 1, "project_id": 7, "name": "b"}),
+        (t1, {"tenant_id": 1, "project_id": 7, "name": "gone", "deleted": True}),
+        (t1, {"tenant_id": 1, "project_id": 8, "name": "c", "urgent": True}),
+        (t2, {"tenant_id": 2, "project_id": 7, "name": "theirs", "urgent": True}),
+    ]
+    for headers, payload in rows:
+        client.post("/where-tasks/", json=payload, headers=headers)
+
+    def names(path, headers=t1):
+        body = client.get(path, headers=headers).json()
+        return sorted(r["name"] for r in body["data"]), body["total_count"]
+
+    # narrowed inside the default scope: no deleted row, no other tenant,
+    # and the total counts what the page shows
+    assert names("/where-tasks/by-project/7") == (["a", "b"], 2)
+    assert names("/where-tasks/by-project/8") == (["c"], 1)
+    assert names("/where-tasks/by-project/7", t2) == (["theirs"], 1)
+    assert names("/where-tasks/by-project/9") == ([], 0)
+
+    # the contrast: scope= replaces, so the same filter drops both rules
+    assert names("/where-tasks/replaced/7") == (["a", "b", "gone", "theirs"], 4)
+
+    # a declared clause, and a per-read scope narrowed further
+    assert names("/where-tasks/urgent") == (["a", "c"], 2)
+    assert names("/where-tasks/trash/7") == (["gone"], 1)
+    assert names("/where-tasks/trash/8") == ([], 0)
+
+    # the client's filters, sort and page apply on top of the narrowed read
+    assert names("/where-tasks/by-project/7?urgent=true") == (["a"], 1)
+    ordered = client.get("/where-tasks/by-project/7?sort=-name", headers=t1).json()
+    assert [r["name"] for r in ordered["data"]] == ["b", "a"]
+    paged = client.get("/where-tasks/by-project/7?page_size=1", headers=t1).json()
+    assert paged["total_count"] == 2 and len(paged["data"]) == 1
+
+    # the view's own list is untouched
+    assert names("/where-tasks/") == (["a", "b", "c"], 3)
+
+
 def test_the_resolved_scope_and_the_reads_agree_on_the_rows_async(client):
     """The reads answer with the rows their scope names: the accessor's
     answer when a read names none (the model default or a declared view
@@ -879,6 +999,13 @@ class SyncRow(_SyncBase):
     tenant_id: Mapped[int]
 
 
+class SyncTag(_SyncBase):
+    __tablename__ = "scope_sync_tag"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    row_id: Mapped[int] = mapped_column(ForeignKey("scope_sync_row.id"))
+
+
 class _SyncContext(fr.ContextNamespace):
     tenant_id: fr.ContextParam[int]
 
@@ -998,6 +1125,138 @@ def test_a_scope_unaware_get_one_override_fails_loudly(sync_session):
     with _SyncContext.tenant_id.bind(tenant_id=1):
         with pytest.raises(TypeError, match="scope"):
             view.handle_get_one(1)
+
+
+def test_sync_list_handler_narrows_with_where(sync_session):
+    """``where=`` is one more ``all_of`` operand on whatever scope the read
+    would apply: the resolved one, a per-read one, or none."""
+    sync_session.add_all([SyncRow(id=3, tenant_id=1), SyncRow(id=4, tenant_id=2)])
+    sync_session.flush()
+    view = _SyncRowView()
+    view.session = sync_session
+
+    def ids(**kwargs):
+        return {r.id for r in view.handle_get_many({}, **kwargs).objects}
+
+    with _SyncContext.tenant_id.bind(tenant_id=1):
+        assert ids() == {1, 3}
+
+        # a raw expression and a clause narrow inside the default scope
+        assert ids(where=SyncRow.id > 1) == {3}
+        assert ids(where=fr.where_clause(SyncRow.id > 1)) == {3}
+        # a row outside the scope stays outside, whatever where= names
+        assert ids(where=SyncRow.id == 2) == set()
+
+        # inside a per-read scope, and past the scope altogether
+        other = fr.where_clause(SyncRow.tenant_id == 2)
+        assert ids(scope=other, where=SyncRow.id > 2) == {4}
+        assert ids(scope=fr.clauses.UNSCOPED, where=SyncRow.id > 2) == {3, 4}
+
+        # UNSCOPED narrows nothing, as in all_of
+        assert ids(where=fr.clauses.UNSCOPED) == {1, 3}
+        assert ids(scope=other, where=fr.clauses.UNSCOPED) == {2, 4}
+
+        # a narrowed read is one call's argument; the next read is back
+        assert ids() == {1, 3}
+
+
+def test_where_narrows_a_view_without_any_scope(sync_session):
+    class _Unscoped(_SyncRowView):
+        scope = fr.clauses.UNSCOPED
+
+    view = _Unscoped()
+    view.session = sync_session
+    listed = view.handle_get_many({}, where=SyncRow.tenant_id == 2)
+    assert [r.id for r in listed.objects] == [2]
+
+
+def test_where_counts_the_narrowed_rows(sync_session):
+    sync_session.add_all([SyncRow(id=3, tenant_id=1), SyncRow(id=4, tenant_id=1)])
+    sync_session.flush()
+    view = _SyncRowView()
+    view.session = sync_session
+    with _SyncContext.tenant_id.bind(tenant_id=1):
+        listed = view.handle_get_many({"page_size": 1}, where=SyncRow.id > 1)
+    assert listed.total_count == 2
+    assert len(listed.objects) == 1
+
+
+def test_where_is_folded_into_the_scope_get_many_receives(sync_session):
+    """The handler folds ``where=`` into the ``scope`` it forwards, so a
+    ``get_many`` override keeps the ``scope``-only signature."""
+    seen: list[object] = []
+
+    class _Overriding(_SyncRowView):
+        def get_many(self, query_params, *, scope=None):
+            seen.append(scope)
+            return super().get_many(query_params, scope=scope)
+
+    sync_session.add(SyncRow(id=3, tenant_id=1))
+    sync_session.flush()
+    view = _Overriding()
+    view.session = sync_session
+    narrow = fr.where_clause(SyncRow.id > 1)
+    with _SyncContext.tenant_id.bind(tenant_id=1):
+        assert {r.id for r in view.handle_get_many({}).objects} == {1, 3}
+        assert {r.id for r in view.handle_get_many({}, where=narrow).objects} == {3}
+        unscoped = view.handle_get_many({}, scope=fr.clauses.UNSCOPED, where=narrow)
+        assert {r.id for r in unscoped.objects} == {2, 3}
+
+    # no where=: the scope argument passes through untouched, None included
+    assert seen[0] is None
+    # where= on the resolved scope: one clause carrying both
+    assert isinstance(seen[1], fr.clauses.WhereClause)
+    assert seen[1] is not narrow
+    # nothing left to AND it with: the clause itself, as all_of returns it
+    assert seen[2] is narrow
+
+
+def test_where_takes_a_clause_that_carries_a_join(sync_session):
+    sync_session.add_all([SyncRow(id=3, tenant_id=1), SyncTag(id=1, row_id=3)])
+    sync_session.flush()
+    view = _SyncRowView()
+    view.session = sync_session
+
+    def _join_tags(stmt: Select) -> Select:
+        return stmt.join(SyncTag, SyncTag.row_id == SyncRow.id)
+
+    tagged = fr.combine(
+        fr.transform_clause(_join_tags), fr.where_clause(SyncTag.id == 1)
+    )
+    with _SyncContext.tenant_id.bind(tenant_id=1):
+        listed = view.handle_get_many({}, where=tagged)
+    assert [r.id for r in listed.objects] == [3]
+
+
+def test_where_fails_loudly_on_a_non_predicate(sync_session):
+    view = _SyncRowView()
+    view.session = sync_session
+    row = sync_session.get(SyncRow, 1)
+
+    def _join_tags(stmt: Select) -> Select:
+        return stmt.join(SyncTag, SyncTag.row_id == SyncRow.id)
+
+    with _SyncContext.tenant_id.bind(tenant_id=1):
+        # a comparison on a loaded object is a Python bool: WHERE true
+        with pytest.raises(TypeError, match="where= got a bool"):
+            view.handle_get_many({}, where=row.tenant_id == 1)  # type: ignore[arg-type]
+        with pytest.raises(TypeError, match="where= must be a SQLAlchemy boolean"):
+            view.handle_get_many({}, where="tenant_id = 1")  # type: ignore[arg-type]
+        # a value and a bare join are clauses, but not predicates
+        with pytest.raises(TypeError, match="only clauses with a where"):
+            view.handle_get_many({}, where=_SyncContext.tenant_id)
+        with pytest.raises(TypeError, match="only clauses with a where"):
+            view.handle_get_many({}, where=fr.transform_clause(_join_tags))
+        # a table the statement does not name
+        with pytest.raises(TypeError, match="not in the statement"):
+            view.handle_get_many({}, where=SyncTag.id == 1)
+        # the per-read scope is checked the same with or without where=
+        with pytest.raises(RestlyConfigurationError, match="per-read scope"):
+            view.handle_get_many(
+                {},
+                scope=SyncRow.tenant_id == 2,  # type: ignore[arg-type]
+                where=SyncRow.id > 1,
+            )
 
 
 def test_apply_clauses_accepts_unscoped_as_nothing():

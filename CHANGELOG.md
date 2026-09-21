@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `handle_get_many(query_params, where=...)` narrows a listing inside the
+  scope. `where=` takes a SQLAlchemy boolean expression or a clause and is
+  ANDed into the resolved scope, or into `scope=` when both are given, so a
+  nested listing keeps the visibility rules. The handler folds it into the
+  `scope` it forwards: `get_many` overrides keep their signature.
+
 ### Fixed
 
 - Shared write commits restore loaded related state after a savepoint rollback,

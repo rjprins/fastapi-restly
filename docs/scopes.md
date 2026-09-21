@@ -233,6 +233,40 @@ or `get_many` override declares the `scope` parameter and passes it on to
 `super()`. The handlers always pass it, so an override without the parameter
 fails on its first call instead of serving the wrong rows.
 
+(per-read-where)=
+### Narrowing inside the scope
+
+{meth}`handle_get_many <fastapi_restly.views.RestView.handle_get_many>`
+also takes `where=`, which narrows the read and keeps the scope. A listing
+of one collection's items still hides deleted items:
+
+```python
+@fr.get(
+    "/in-collection/{collection_id}",
+    response_model=fr.views.PaginatedEnvelope[ItemRead],
+)
+async def in_collection(self, collection_id: int, query_params):
+    result = await self.handle_get_many(
+        query_params, where=Item.collection_id == collection_id
+    )
+    return self.to_response(result, fr.ResponseShape.LISTING)
+```
+
+`where=` accepts a SQLAlchemy boolean expression or a clause. It is ANDed
+into the scope the read would apply, as {func}`fr.all_of <fastapi_restly.clauses.all_of>`
+would: the resolved scope by default, or the `scope=` argument when both are
+given. The page and `total_count` both apply it, and the client's filters,
+sort and page apply on top.
+
+Passing the same expression as `scope=fr.where_clause(...)` replaces the
+scope, so that listing would include deleted items.
+
+The handler folds `where=` into the `scope` it forwards. A `get_many`
+override receives one combined clause and declares no `where` parameter.
+`get_many` itself does not take `where=`; a route that calls it directly
+composes `fr.all_of(fr.resolve_scope(self), ...)`. A Python bool, such as a
+comparison on a loaded object, raises `TypeError`.
+
 (reading-the-scope)=
 ## Reading the resolved scope
 

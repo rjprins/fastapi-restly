@@ -24,6 +24,7 @@ from ._base import (
     UpdateSchemaT,
     _identity_criterion,
     _not_found_message,
+    _ReadWhere,
     delete,
     get,
     patch,
@@ -113,7 +114,7 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
 
     @final
     async def handle_get_many(
-        self, query_params: Any, *, scope: ReadScope = None
+        self, query_params: Any, *, scope: ReadScope = None, where: _ReadWhere = None
     ) -> ListingResult[ModelT]:
         """List handler: ``authorize`` then the ``get_many`` business method.
 
@@ -124,9 +125,19 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
             so a custom route can list another surface of the same model
             (a trash listing); ``fr.clauses.UNSCOPED`` reads past it.
             Forwarded to ``get_many``.
+        :param where: a SQLAlchemy boolean expression or a clause that
+            narrows this read inside the scope, so a nested listing
+            keeps the visibility rules (``where=Task.project_id == id``).
+            It is ANDed into the scope as ``fr.all_of`` would, and
+            ``get_many`` receives the result as ``scope``. The page and
+            ``total_count`` both apply it.
+        :raises TypeError: ``where`` is a Python bool (a comparison on a
+            loaded object), or neither an expression nor a clause.
         """
         await self.authorize(Action.GET_MANY)
-        return await self.get_many(query_params, scope=scope)
+        return await self.get_many(
+            query_params, scope=self._narrowed_scope(scope, where)
+        )
 
     @final
     async def handle_get_one(
@@ -262,7 +273,9 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         schema names are eager-loaded.
 
         The handlers always forward ``scope=``, so an override must declare
-        the parameter and pass it on to ``super()``.
+        the parameter and pass it on to ``super()``. A route's ``where=``
+        arrives inside ``scope``: ``handle_get_many`` folds it in, and there
+        is no separate parameter to declare.
 
         :param query_params: the listing parameters (filter, sort, page) as
             the endpoint receives them.

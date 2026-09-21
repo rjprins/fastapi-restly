@@ -50,12 +50,25 @@ from starlette.datastructures import QueryParams
 from typing_extensions import TypeVar
 
 from .._exception_handlers import register_default_exception_handlers
-from ..clauses import UNSCOPED, Clause, Unscoped, WhereClause, apply_clauses
+from ..clauses import (
+    UNSCOPED,
+    Clause,
+    Unscoped,
+    WhereClause,
+    all_of,
+    apply_clauses,
+    where_clause,
+)
 from ..clauses._scopes import _default_scope
 
 #: A per-read scope: ``None`` for the view's own, a clause that replaces it
 #: for that read, or ``fr.clauses.UNSCOPED``.
 ReadScope = Clause | Unscoped | None
+
+# A per-read narrowing filter: a SQLAlchemy boolean expression, or anything
+# all_of takes. Private: only the final list handler accepts one, so no
+# override spells it.
+_ReadWhere = ColumnElement[bool] | Clause | Unscoped | None
 from ..db._globals import _fr_globals
 from ..exc import RestlyConfigurationError, RestlyMisuseWarning
 from ..objects import snapshot as _object_snapshot
@@ -1170,6 +1183,19 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
             scope = _checked_scope(scope, type(self).__name__, "a per-read scope")
         return apply_clauses(query, scope)
 
+    def _narrowed_scope(self, scope: ReadScope, where: _ReadWhere) -> ReadScope:
+        # the list handler is final, so it can fold where= into the scope it
+        # forwards: get_many keeps one visibility input, and an override
+        # keeps its signature
+        if where is None:
+            return scope
+        label = type(self).__name__
+        if scope is None:
+            scope = resolve_scope(self)
+        else:
+            scope = _checked_scope(scope, label, "a per-read scope")
+        return all_of(scope, _checked_where(where, label))
+
     def get_relationship_loader_options(self) -> list[Any]:
         """Loader options for the relationships the response schema names.
 
@@ -1519,6 +1545,25 @@ def _checked_scope(scope: Any, label: str, what: str) -> Clause | Unscoped:
     raise RestlyConfigurationError(
         f"{label}: {what} must be a Clause or fr.clauses.UNSCOPED, got "
         f"{type(scope).__name__}; wrap a raw expression with where_clause()"
+    )
+
+
+def _checked_where(where: Any, label: str) -> Clause | Unscoped:
+    if where is UNSCOPED or isinstance(where, Clause):
+        return where
+    if isinstance(where, ColumnElement):
+        return where_clause(where)
+    if type(where) is bool:
+        # ``obj.slug == slug`` on a loaded object is a Python bool, and
+        # SQLAlchemy renders it as WHERE true, which narrows nothing
+        raise TypeError(
+            f"{label}: where= got a bool, not a SQL expression. A comparison "
+            "on an instance attribute is a bool; compare the column instead "
+            "(Model.slug == slug)."
+        )
+    raise TypeError(
+        f"{label}: where= must be a SQLAlchemy boolean expression or a Clause, "
+        f"got {type(where).__name__}"
     )
 
 

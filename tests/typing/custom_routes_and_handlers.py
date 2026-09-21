@@ -78,6 +78,18 @@ class WidgetView(fr.RestView[Widget, WidgetRead, WidgetInput, WidgetInput, int])
         widget: Widget = self.handle_get_one(Widget.name == name)
         return self.to_response_schema(widget)
 
+    # A narrowed listing: ``where=`` takes a raw expression or a clause, and
+    # the ``scope``-only ``get_many`` override above stays compatible.
+    @fr.get("/named/{name}")
+    def list_named(self, name: str, query_params: Any) -> Any:
+        by_name = self.handle_get_many(query_params, where=Widget.name == name)
+        by_clause: fr.ListingResult[Widget] = self.handle_get_many(
+            query_params,
+            scope=fr.clauses.UNSCOPED,
+            where=fr.where_clause(Widget.name == name),
+        )
+        return self.to_response(by_name or by_clause, fr.ResponseShape.LISTING)
+
 
 def create_widgets_together(view: WidgetView, items: list[WidgetInput]) -> list[Widget]:
     with view.shared_write_action_commit():
