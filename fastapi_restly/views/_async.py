@@ -236,8 +236,9 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
 
         Final, like :meth:`handle_create`: a soft delete flips a timestamp in
         ``delete``, and an off-request follow-up runs in
-        ``after_action_commit``. Inside ``shared_write_action_commit()`` both
-        run when the outermost block exits.
+        ``after_action_commit``. Inside ``shared_write_action_commit()``, the
+        mutation runs immediately. The after-hook waits for the outermost
+        block to commit.
         """
         obj = await self.get_one(id)
         await async_run_write_action(
