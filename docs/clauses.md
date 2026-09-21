@@ -558,6 +558,13 @@ Both clauses use the same member, so one binding supplies both.
 `Current.user_id()` reads the value immediately, which would require
 an active binding at declaration time.
 
+Put the column first. `Item.user_id == Current.user_id` builds SQL because
+the column builds the comparison. `Current.role != "member"` raises
+`TypeError`: Python would compare the member object, and the rule would
+compile to `WHERE true`. A rule that compares a bound value with a constant
+is a Python branch, so write it as a clause function that reads
+`Current.role()`.
+
 In a clause function, mark a parameter with the slot as `Annotated`
 metadata. The parameter receives that member's value and binds under
 `user_id`, even though its local name is `uid`:

@@ -10,7 +10,8 @@ name and identity, and the namespace is its address.
 import inspect
 
 import pytest
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+import sqlalchemy
+from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 
 import fastapi_restly as fr
 
@@ -111,6 +112,75 @@ def test_member_works_in_expressions_and_markers():
     with Context.bind(tenant_id=4):
         sql = str(visible().compile(compile_kwargs={"literal_binds": True}))
     assert "4" in sql
+
+
+@pytest.mark.parametrize(
+    "compare",
+    [
+        lambda: Context.locale == "nl",
+        lambda: Context.locale != "nl",
+        lambda: Context.tenant_id == Context.locale,
+    ],
+    ids=["eq", "ne", "member-to-member"],
+)
+def test_comparing_a_member_raises_instead_of_answering_as_an_object(compare):
+    # object equality would answer False / True whatever is bound
+    with Context.bind(tenant_id=1, locale="nl"):
+        with pytest.raises(TypeError, match=r"locale\(\)|tenant_id\(\)"):
+            compare()
+
+
+def test_a_member_on_the_left_cannot_widen_a_rule_to_where_true():
+    # Python evaluated `Context.locale != "nl"` to True, and SQLAlchemy
+    # rendered or_(True, ...) as WHERE true: every row, no error
+    with pytest.raises(TypeError, match="column first"):
+        fr.where_clause(
+            sqlalchemy.or_(Context.locale != "nl", Thing.tenant_id == Context.tenant_id)
+        )
+
+
+def test_a_member_is_not_a_boolean_and_says_how_to_read_it():
+    with Context.bind(tenant_id=1):
+        with pytest.raises(TypeError, match=r"tenant_id\(\)"):
+            if Context.tenant_id:
+                pass
+
+
+@pytest.mark.parametrize(
+    "condition, expected",
+    [
+        (Thing.tenant_id == Context.tenant_id, {1, 4}),
+        (Thing.id != Context.tenant_id, {1, 9}),
+        (Thing.id.in_([Context.tenant_id, 99]), {4}),
+        (Thing.id.between(Context.tenant_id, Context.tenant_id), {4}),
+    ],
+    ids=["eq", "ne", "in", "between"],
+)
+def test_a_member_still_builds_sql_from_the_column_side(condition, expected):
+    engine = sqlalchemy.create_engine("sqlite://")
+    try:
+        Base.metadata.create_all(engine)
+        with Session(engine) as session:
+            session.add_all(
+                [
+                    Thing(id=1, tenant_id=4),
+                    Thing(id=4, tenant_id=4),
+                    Thing(id=9, tenant_id=5),
+                ]
+            )
+            session.flush()
+            with Context.bind(tenant_id=4):
+                query = fr.apply_clauses(
+                    sqlalchemy.select(Thing.id), fr.where_clause(condition)
+                )
+            assert set(session.scalars(query)) == expected
+    finally:
+        engine.dispose()
+
+
+def test_a_member_stays_hashable():
+    assert {Context.tenant_id: "a", Context.locale: "b"}[Context.tenant_id] == "a"
+    assert len({Context.tenant_id, Context.tenant_id, Context.locale}) == 2
 
 
 def test_alias_of_a_member_is_an_independent_slot():

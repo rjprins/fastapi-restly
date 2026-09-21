@@ -20,6 +20,10 @@ with Current.bind(user_id=42):
 `Current.user_id()` returns the bound value. Reading it without a binding
 raises `LookupError`. A binding lasts until its `with` block exits.
 
+Call the member to read it. `Current.user_id == 42` and `if Current.user_id:`
+raise `TypeError`: without the call they would test the member object, not
+the bound value.
+
 `Current` is a class you define in your application, conventionally in
 `app/current.py`. Its base,
 {class}`fr.ContextNamespace <fastapi_restly.clauses.ContextNamespace>`,

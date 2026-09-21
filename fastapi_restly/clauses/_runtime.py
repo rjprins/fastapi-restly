@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from contextlib import ExitStack, contextmanager
-from typing import Any, Generic, Iterator, Sequence, TypeVar, final, overload
+from typing import Any, Generic, Iterator, NoReturn, Sequence, TypeVar, final, overload
 
 from sqlalchemy import (
     ColumnElement,
@@ -358,6 +358,10 @@ class ContextParam(Clause, Generic[_T]):
     it feeds that parameter from the slot. Called, it returns the bound
     value for Python-side use. Sharing is by identity: every clause that
     embeds or marks the same slot is served by a single bind().
+
+    A member never stands in for its value: ``==``, ``!=`` and a truth
+    test raise. Call the member to read it, and in a SQL expression put
+    the column first (``Item.role == Current.role``).
     """
 
     def __init__(self) -> None:
@@ -379,6 +383,38 @@ class ContextParam(Clause, Generic[_T]):
         # the value at resolve time
         assert self._placeholder is not None  # invariant: set by context_param()
         return self._placeholder
+
+    # object equality answers False / True whatever is bound, and
+    # SQLAlchemy renders that bool as WHERE false / WHERE true
+    def __eq__(self, other: object) -> NoReturn:
+        raise self._not_its_value("==")
+
+    def __ne__(self, other: object) -> NoReturn:
+        raise self._not_its_value("!=")
+
+    # defining __eq__ drops the inherited hash; identity is the right one
+    __hash__ = object.__hash__
+
+    def __bool__(self) -> NoReturn:
+        name = self._name
+        raise TypeError(
+            f"the context member {name!r} is not its value, so it has no "
+            f"truth value; read the value by calling the member: {name}()"
+        )
+
+    @property
+    def _name(self) -> str:
+        assert self._param_fn is not None and self._param_fn.accepted
+        return next(iter(self._param_fn.accepted))
+
+    def _not_its_value(self, op: str) -> TypeError:
+        name = self._name
+        return TypeError(
+            f"the context member {name!r} is not its value, so {op} cannot "
+            f"compare it; read the value by calling the member ({name}() {op} "
+            f"...), or in a SQL expression put the column first "
+            f"(Model.column {op} <member>)"
+        )
 
     def __repr__(self) -> str:
         assert self._param_fn is not None
@@ -434,7 +470,8 @@ def _embedded_slots(expr: object) -> tuple[ContextParam, ...]:
         el = stack.pop()
         slot = getattr(el, "_fr_param", None)
         if slot is not None:
-            if slot not in slots:
+            # by identity: `in` would call the member's raising __eq__
+            if not any(slot is seen for seen in slots):
                 slots.append(slot)
             continue
         stack.extend(el.get_children())
