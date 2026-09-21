@@ -167,6 +167,56 @@ class _PydanticAddress(sqlalchemy.types.TypeDecorator):
         return value
 
 
+class _OpaqueToken:
+    def __init__(self, value: str) -> None:
+        self.value = value
+
+
+class _OpaquePayload(pydantic.BaseModel):
+    model_config = pydantic.ConfigDict(arbitrary_types_allowed=True)
+
+    token: _OpaqueToken
+
+    @pydantic.field_validator("token", mode="before")
+    @classmethod
+    def parse_token(cls, value: Any) -> Any:
+        return _OpaqueToken(value) if isinstance(value, str) else value
+
+
+class _OpaquePayloadType(sqlalchemy.types.TypeDecorator):
+    """A column type that serializes a value that Pydantic cannot dump."""
+
+    impl = sqlalchemy.String
+    cache_ok = True
+
+    def process_bind_param(self, value: Any, dialect: Any) -> Any:
+        if value is None:
+            return None
+        assert isinstance(value, _OpaquePayload)
+        return value.token.value
+
+    def process_result_value(self, value: Any, dialect: Any) -> Any:
+        if value is None:
+            return None
+        return _OpaquePayload(token=_OpaqueToken(value))
+
+
+class _OpaqueSchema(fr.IDSchema):
+    payload: fr.WriteOnly[_OpaquePayload]
+
+
+def _define_opaque_model(name: str, table: str):
+    return type(
+        name,
+        (fr.IDBase,),
+        {
+            "__tablename__": table,
+            "__annotations__": {"payload": Mapped[_OpaquePayload]},
+            "payload": mapped_column(_OpaquePayloadType),
+        },
+    )
+
+
 def test_a_type_decorator_still_receives_the_model(sync_client):
     class Decorated(fr.IDBase):
         __tablename__ = "jcd_decorated"
@@ -188,6 +238,45 @@ def test_a_type_decorator_still_receives_the_model(sync_client):
     ).json()
 
     assert body["address"] == {"street": "Main", "number": 2}
+
+
+def test_create_leaves_pydantic_serialization_to_a_type_decorator(sync_client):
+    Decorated = _define_opaque_model("CreateOpaque", "jcd_create_opaque")
+
+    @fr.include_view(sync_client.app)
+    class DecoratedView(fr.RestView):
+        prefix = "/decorated"
+        model = Decorated
+        schema = _OpaqueSchema
+
+    fr.DataclassBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
+
+    response = sync_client.post("/decorated", json={"payload": {"token": "created"}})
+
+    assert response.status_code == 201
+    with fr.open_session() as session:
+        assert session.get(Decorated, 1).payload.token.value == "created"
+
+
+def test_update_leaves_pydantic_serialization_to_a_type_decorator(sync_client):
+    Decorated = _define_opaque_model("UpdateOpaque", "jcd_update_opaque")
+
+    @fr.include_view(sync_client.app)
+    class DecoratedView(fr.RestView):
+        prefix = "/decorated"
+        model = Decorated
+        schema = _OpaqueSchema
+
+    fr.DataclassBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
+    with fr.open_session() as session:
+        session.add(Decorated(payload=_OpaquePayload(token=_OpaqueToken("old"))))
+        session.commit()
+
+    response = sync_client.patch("/decorated/1", json={"payload": {"token": "updated"}})
+
+    assert response.status_code == 200
+    with fr.open_session() as session:
+        assert session.get(Decorated, 1).payload.token.value == "updated"
 
 
 def test_the_free_object_helpers_dump_too(sync_client):

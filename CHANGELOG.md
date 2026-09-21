@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Custom SQLAlchemy `TypeDecorator` columns receive Pydantic values without
+  Restly serializing them first.
 - Scalar filters on recursive schemas no longer return 400 for valid values.
 - Filter field validators receive the Python field name in
   `ValidationInfo.field_name`. `ValidationInfo.data` is now `{}` instead of

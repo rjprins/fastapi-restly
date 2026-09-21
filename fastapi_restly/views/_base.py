@@ -326,19 +326,21 @@ def _json_ready(model_cls: type[DeclarativeBase], field_name: str, value: Any) -
     letting the driver fail at flush with the model in the bind parameters.
     """
     if isinstance(value, pydantic.BaseModel):
-        dumped: Any = value.model_dump(mode="json")
-    elif isinstance(value, list | tuple) and any(
+        if not _is_json_column(model_cls, field_name):
+            return value
+        return value.model_dump(mode="json")
+    if isinstance(value, list | tuple) and any(
         isinstance(item, pydantic.BaseModel) for item in value
     ):
-        dumped = [
+        if not _is_json_column(model_cls, field_name):
+            return value
+        return [
             item.model_dump(mode="json")
             if isinstance(item, pydantic.BaseModel)
             else item
             for item in value
         ]
-    else:
-        return value
-    return dumped if _is_json_column(model_cls, field_name) else value
+    return value
 
 
 def _add_assignment(target: dict[str, Any], field_name: str | None, value: Any) -> None:
