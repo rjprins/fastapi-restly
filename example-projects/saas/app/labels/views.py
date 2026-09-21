@@ -104,7 +104,7 @@ class TaskLabelView(AuthenticatedView):
             await self.session.flush()  # <-- existence check needs the PK to exist
 
             # 2) Build TaskLabel with plain ids so references are checked,
-            #    each inside its target's default_scope.
+            #    each inside the scope its schema field names.
             link_schema = TaskLabelSchema.model_construct(
                 task_id=request.task_id, label_id=label.id
             )
