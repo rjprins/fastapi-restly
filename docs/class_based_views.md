@@ -221,20 +221,20 @@ import fastapi_restly as fr
 class Current(fr.ContextNamespace):
     tenant_id: fr.ContextParam[int]
 
-class TenantBase(fr.AsyncRestView):
+class AuthenticatedView(fr.AsyncRestView):
     """Internal base, never registered directly."""
     dependencies = [Current.depends(tenant_id=get_current_tenant_id)]
 
 
 @fr.include_view(app)
-class InvoiceView(TenantBase):
+class InvoiceView(AuthenticatedView):
     prefix = "/invoices"
     model = Invoice
     schema = InvoiceRead
 
 
 @fr.include_view(app)
-class CustomerView(TenantBase):
+class CustomerView(AuthenticatedView):
     prefix = "/customers"
     model = Customer
     schema = CustomerRead

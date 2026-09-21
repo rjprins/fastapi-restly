@@ -9,7 +9,7 @@ import fastapi_restly as fr
 from fastapi_restly.objects import async_make_new_object, async_save_object
 
 from ..tasks.models import Task, TaskClauses
-from ..views import TenantBase
+from ..views import AuthenticatedView
 from .models import Label, TaskLabel
 from .schemas import LabelSchema, TaskLabelSchema
 
@@ -22,7 +22,7 @@ class CreateAndAttachLabelRequest(BaseModel):
     color: str = "#808080"
 
 
-class LabelView(TenantBase):
+class LabelView(AuthenticatedView):
     """CRUD for labels (organization-scoped).
 
     The session listener in ``app.models`` filters reads to the organization.
@@ -47,7 +47,7 @@ class LabelView(TenantBase):
         await super().delete(obj)
 
 
-class TaskLabelView(TenantBase):
+class TaskLabelView(AuthenticatedView):
     """CRUD for task-label associations.
 
     The tenant criterion in ``labels.models`` requires both the task and label

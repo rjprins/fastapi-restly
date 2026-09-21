@@ -1,11 +1,11 @@
 """Application-wide view foundation for the SaaS example.
 
-``TenantBase`` provides shared auth-context dependencies and transactional
-outbox emission. A request without an
-authenticated identity does not reach a ``TenantBase`` route (the context
-sources answer 401), so every tenant read and write acts as one user in
-one organization. Organization routes other than DELETE and country routes
-take no identity. Structural fields live on
+``AuthenticatedView`` provides shared auth-context dependencies and
+transactional outbox emission. A request without an authenticated identity
+does not reach an ``AuthenticatedView`` route (the context sources answer
+401), so every tenant read and write acts as one user in one organization.
+Organization routes other than DELETE and country routes take no identity.
+The view binds the identity and does not filter rows. Structural fields live on
 the models: a subject's ``models.py`` mixes in ``TenantOwned``,
 ``AuditStamped``, or ``SoftDeletable`` from ``app.models``, which stamp
 ``organization_id`` and the audit ids from ``Current`` on every write
@@ -22,15 +22,15 @@ this root module. ``Current`` and ``SetCurrentContextDep`` live in
 
 Inheritance and prefix concatenation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-All concrete views inherit from TenantBase instead of AsyncRestView directly.
-Prefixes from each class in the MRO are concatenated, so adding a version
-prefix to TenantBase (e.g. ``prefix = "/api/v1"``) would automatically
-update every route::
+Every view that needs an identity inherits from AuthenticatedView instead of
+AsyncRestView directly. Prefixes from each class in the MRO are concatenated,
+so adding a version prefix to AuthenticatedView (e.g. ``prefix = "/api/v1"``)
+would automatically update each of those routes::
 
-    class TenantBase(fr.AsyncRestView):
+    class AuthenticatedView(fr.AsyncRestView):
         prefix = "/api/v1"          # shared namespace
 
-    class ProjectView(TenantBase):
+    class ProjectView(AuthenticatedView):
         prefix = "/projects"         # → /api/v1/projects
 """
 
@@ -58,13 +58,16 @@ def check_api_key(request: fastapi.Request) -> None:
     ``is_admin`` from it; the sources in ``app.current`` read them and
     answer 401 when they are missing. An admin acting in another tenant
     gets that tenant as ``org_id`` (from an act-as header, say). This
-    dependency runs before every route on every TenantBase subclass.
+    dependency runs before every route on every AuthenticatedView subclass.
     """
     pass  # Always passes in this example; replace with real auth logic
 
 
-class TenantBase(fr.AsyncRestView):
-    """Base view wired with auth and audit logging for every concrete view.
+class AuthenticatedView(fr.AsyncRestView):
+    """Base for every view that needs an identity.
+
+    It binds the identity. It does not restrict rows to the tenant: the
+    session listener in ``app.models`` does that, under every view.
 
     Subclasses inherit:
     - Router-level ``check_api_key`` dependency on every route

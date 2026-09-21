@@ -15,7 +15,7 @@ from .schemas import CountrySchema
 class CountryView(fr.AsyncRestView):
     """Read-only ISO country list — seed-only, no write routes.
 
-    Note this view does *not* inherit ``TenantBase`` — countries are
+    Note this view does *not* inherit ``AuthenticatedView`` — countries are
     global lookup data and don't get scoped by tenant.
     """
 

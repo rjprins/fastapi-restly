@@ -173,13 +173,13 @@ view wants the same behavior, which is why a generated project does not have one
 
 ```python
 # app/users/views.py
-from ..views import TenantBase, SoftDeleteMixin
+from ..views import AuthenticatedView, SoftDeleteMixin
 
 from .models import User
 from .schemas import UserRead
 
 
-class UserView(SoftDeleteMixin, TenantBase):
+class UserView(SoftDeleteMixin, AuthenticatedView):
     prefix = "/users"
     model = User
     schema = UserRead

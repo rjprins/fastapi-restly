@@ -9,7 +9,7 @@ import fastapi_restly as fr
 
 from ..auth import hash_password, verify_password
 from ..current import Current
-from ..views import SoftDeleteMixin, TenantBase
+from ..views import AuthenticatedView, SoftDeleteMixin
 from .models import User, UserRole
 from .schemas import UserFullSchema, UserPublicSchema, UserSchema
 
@@ -34,7 +34,7 @@ class ChangePasswordRequest(BaseModel):
     new_password: str
 
 
-class UserView(SoftDeleteMixin, TenantBase):
+class UserView(SoftDeleteMixin, AuthenticatedView):
     """CRUD endpoints for users.
 
     The session listener restricts reads to the tenant. ``UserClauses`` hides

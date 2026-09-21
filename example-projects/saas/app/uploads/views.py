@@ -21,12 +21,12 @@ import fastapi
 
 import fastapi_restly as fr
 
-from ..views import TenantBase
+from ..views import AuthenticatedView
 from .models import Upload, UploadLine
 from .schemas import UploadLineSchema, UploadSchema
 
 
-class UploadView(TenantBase):
+class UploadView(AuthenticatedView):
     """Read endpoints for uploads + a custom multipart POST.
 
     Generic create is excluded because the wire format is multipart, not

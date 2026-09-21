@@ -16,7 +16,7 @@ from ..current import Current
 from ..tasks.models import Task, TaskPriority, TaskStatus, TaskType
 from ..tasks.schemas import TaskSchema
 from ..tasks.views import TaskView
-from ..views import SoftDeleteMixin, TenantBase
+from ..views import AuthenticatedView, SoftDeleteMixin
 from .models import Project, ProjectClauses, ProjectStatus
 from .schemas import ProjectSchema
 
@@ -56,7 +56,7 @@ class ProjectStats(BaseModel):
     completion_percent: float
 
 
-class ProjectView(SoftDeleteMixin, TenantBase):
+class ProjectView(SoftDeleteMixin, AuthenticatedView):
     """CRUD endpoints for projects.
 
     Read visibility is the model's ``default_scope`` (``ProjectClauses``):
@@ -67,7 +67,7 @@ class ProjectView(SoftDeleteMixin, TenantBase):
     ``TenantOwned``, ``AuditStamped``, and ``SoftDeletable`` (see
     ``app.models``), so ``organization_id`` and the audit ids are stamped
     from ``Current`` on every write path, and ``SoftDeleteMixin`` turns
-    ``delete`` into a ``deleted_at`` flip. ``TenantBase`` adds the auth
+    ``delete`` into a ``deleted_at`` flip. ``AuthenticatedView`` adds the auth
     and context-bind deps and the ``_emit`` outbox helper; the tenant
     floor on reads is the session listener in ``app.models``.
 

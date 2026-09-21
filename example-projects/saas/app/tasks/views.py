@@ -9,7 +9,7 @@ from pydantic import BaseModel
 import fastapi_restly as fr
 from fastapi_restly.views import PaginatedEnvelope
 
-from ..views import SoftDeleteMixin, TenantBase
+from ..views import AuthenticatedView, SoftDeleteMixin
 from .models import Task, TaskClauses, TaskPriority, TaskStatus, TaskType
 from .schemas import TaskSchema
 
@@ -60,7 +60,7 @@ VALID_TRANSITIONS = {
 }
 
 
-class TaskView(SoftDeleteMixin, TenantBase):
+class TaskView(SoftDeleteMixin, AuthenticatedView):
     """CRUD endpoints for tasks.
 
     Task visibility is a row-level permission (a member sees their own
