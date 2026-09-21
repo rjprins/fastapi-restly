@@ -22,7 +22,7 @@ from datetime import datetime, timezone
 
 import pytest
 from fastapi import FastAPI
-from sqlalchemy import DateTime, func, select, text
+from sqlalchemy import DateTime, func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.pool import NullPool
@@ -225,3 +225,33 @@ async def test_explicitly_naive_datetime_filter_stays_naive_with_asyncpg(
     assert response.status_code == 200
     assert [item["text"] for item in response.json()["data"]] == ["known wall time"]
     assert response.json()["data"][0]["local_time"] == "2024-07-01T09:30:00"
+
+
+class _NoteText(fr.ContextNamespace):
+    text: fr.ContextParam[str]
+
+
+class _OtherNoteText(fr.ContextNamespace):
+    """A second namespace that picks the same member name."""
+
+    text: fr.ContextParam[str]
+
+
+# Last in the module on purpose: the count tests above expect exact row counts.
+@pytest.mark.asyncio
+async def test_same_name_members_bind_separately_with_asyncpg(
+    restly_async_session: AsyncSession,
+):
+    """asyncpg prepares statements with $1, $2: each placeholder needs its own."""
+    restly_async_session.add_all(
+        [AsyncpgNote(text=f"member-{letter}") for letter in "abc"]
+    )
+    await restly_async_session.flush()
+    either = fr.where_clause(
+        or_(AsyncpgNote.text == _NoteText.text, AsyncpgNote.text == _OtherNoteText.text)
+    )
+    with _NoteText.bind(text="member-a"), _OtherNoteText.bind(text="member-c"):
+        stmt = fr.apply_clauses(select(AsyncpgNote.text).distinct(), either)
+
+    rows = (await restly_async_session.scalars(stmt)).all()
+    assert sorted(rows) == ["member-a", "member-c"]

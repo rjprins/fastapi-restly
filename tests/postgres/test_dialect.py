@@ -26,7 +26,7 @@ from contextlib import asynccontextmanager
 import httpx
 import pytest
 from fastapi import FastAPI
-from sqlalchemy import CheckConstraint, ForeignKey, create_engine, select
+from sqlalchemy import CheckConstraint, ForeignKey, and_, create_engine, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.orm import Mapped, mapped_column, sessionmaker
@@ -397,3 +397,41 @@ async def test_not_null_violation_detail_from_real_error(restly_async_session):
     assert excinfo.value.orig.sqlstate == "23502"  # type: ignore[union-attr]
     detail = _build_integrity_detail(excinfo.value)
     assert detail == "Not-null constraint violated on column 'name'"
+
+
+# ---------------------------------------------------------------------------
+# Context members embedded in a clause: a placeholder is a numbered bind, and
+# psycopg sends numbered parameters its own way.
+# ---------------------------------------------------------------------------
+
+
+class _PgFloor(fr.ContextNamespace):
+    score: fr.ContextParam[int]
+
+
+class _PgCeiling(fr.ContextNamespace):
+    """A second namespace that picks the same member name."""
+
+    score: fr.ContextParam[int]
+
+
+_in_band = fr.where_clause(
+    and_(PgRanked.score >= _PgFloor.score, PgRanked.score <= _PgCeiling.score)
+)
+
+
+def _band_stmt():
+    # bound tightly: the statement runs after both binds have ended
+    with _PgFloor.bind(score=6), _PgCeiling.bind(score=15):
+        return fr.apply_clauses(select(PgRanked.label), _in_band)
+
+
+def test_same_name_members_bind_separately_on_psycopg():
+    with _make_session() as session:
+        assert session.scalars(_band_stmt()).all() == ["a"]
+
+
+@pytest.mark.asyncio
+async def test_same_name_members_bind_separately_on_async_psycopg():
+    async with _async_make_session() as session:
+        assert (await session.scalars(_band_stmt())).all() == ["a"]

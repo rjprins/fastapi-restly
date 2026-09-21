@@ -348,8 +348,11 @@ with Current.bind(user_id=42), ReportPeriod.bind(start=aug_1, end=aug_31):
     stmt = fr.apply_clauses(select(Item), owned_item, in_period)
 ```
 
-Two distinct members under the same name in one statement raise. Rename
-one, or share one member between the namespaces by assignment.
+Member names are local to their namespace. `ReportPeriod.start` and
+another namespace's `start` can appear in one statement, and neither
+collides with a column or a hand-written `bindparam()` of the same name:
+each placeholder compiles to its own numbered parameter, such as
+`:start_1`.
 
 A placeholder is filled only when a clause is applied. An expression that
 embeds a member and never passes through a clause fails at execution with

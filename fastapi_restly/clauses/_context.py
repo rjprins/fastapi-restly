@@ -174,7 +174,9 @@ class ContextParam(Generic[_T]):
         self._owner = owner
         self._type = type_
         self._var = ContextVar(f"{owner}.{name}", default=None)
-        placeholder = bindparam(name)
+        # unique: every use gets its own key, so two members that share a
+        # name, or a hand-written bindparam(name), cannot collide
+        placeholder = bindparam(name, unique=True)
         # the clause layer finds the member behind a placeholder by this tag
         setattr(placeholder, "_fr_param", self)
         self._placeholder = placeholder

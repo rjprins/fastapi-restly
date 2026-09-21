@@ -70,6 +70,11 @@ def params_of(stmt):
     return stmt.compile().params
 
 
+def values_of(stmt):
+    # a member's placeholder is a unique bind: its name gets a number
+    return sorted(stmt.compile().params.values())
+
+
 # --- basics ---------------------------------------------------------------
 
 
@@ -93,7 +98,7 @@ def test_statement_carries_its_values_past_the_bind():
     with Ctx.bind(tenant_id=7):
         stmt = apply_clauses(select(Item), owned_by_tenant)
     # the bind has ended: the value was read when the clause was applied
-    assert params_of(stmt) == {"tenant_id": 7}
+    assert values_of(stmt) == [7]
 
 
 def test_clause_is_not_a_boolean():
@@ -128,8 +133,8 @@ def test_inner_bind_replaces_the_value_until_it_exits():
         with Ctx.bind(tenant_id=2):
             inner = apply_clauses(select(Item), owned_by_tenant)
         outer = apply_clauses(select(Item), owned_by_tenant)
-    assert params_of(inner) == {"tenant_id": 2}
-    assert params_of(outer) == {"tenant_id": 1}
+    assert values_of(inner) == [2]
+    assert values_of(outer) == [1]
 
 
 # --- clause kinds ---------------------------------------------------------
@@ -481,8 +486,9 @@ def test_one_member_twice_in_one_tree():
     q = all_of(a, b)
     with Ctx.bind(tenant_id=5):
         stmt = apply_clauses(select(Item), q)
-    assert params_of(stmt) == {"tenant_id": 5}
-    assert str(stmt).count(":tenant_id") == 2
+    # one member is one parameter, however often the statement uses it
+    assert values_of(stmt) == [5]
+    assert str(stmt).count(":tenant_id_1") == 2
 
 
 def test_embedded_member_in_exists_subquery():
@@ -496,7 +502,7 @@ def test_embedded_member_in_in_list():
     cond = where_clause(Item.tenant_id.in_(Other.wanted))
     with Other.bind(wanted=[1, 2]):
         stmt = apply_clauses(select(Item), cond)
-    assert params_of(stmt)["wanted"] == [1, 2]
+    assert values_of(stmt) == [[1, 2]]
 
 
 def test_embedded_member_in_an_expression_a_function_returns():
@@ -506,7 +512,7 @@ def test_embedded_member_in_an_expression_a_function_returns():
 
     with Ctx.bind(tenant_id=4):
         stmt = apply_clauses(select(Item), owned)
-    assert params_of(stmt) == {"tenant_id": 4}
+    assert values_of(stmt) == [4]
 
 
 def test_member_rejected_in_boolean_composites():
@@ -515,61 +521,85 @@ def test_member_rejected_in_boolean_composites():
             op(Ctx.tenant_id, soft_deleted)  # type: ignore[arg-type]
 
 
-# --- statement-wide ownership of a bind name ----------------------------------
+# --- member names are local to their namespace ---------------------------------
 
 
-def test_two_members_same_name_in_one_expression_raises():
+def test_two_members_same_name_in_one_expression():
     cond = where_clause(
         (Item.tenant_id == Ctx.tenant_id) | (Item.collection_id == Other.tenant_id)
     )
-    with pytest.raises(TypeError, match="tenant_id"):
-        with Ctx.bind(tenant_id=1), Other.bind(tenant_id=2):
-            apply_clauses(select(Item), cond)
+    with Ctx.bind(tenant_id=1), Other.bind(tenant_id=2):
+        stmt = apply_clauses(select(Item), cond)
+    assert values_of(stmt) == [1, 2]
+    assert "item.tenant_id = :tenant_id_1" in str(stmt)
+    assert "item.collection_id = :tenant_id_2" in str(stmt)
 
 
-def test_cross_clause_same_name_members_raise():
+def test_same_name_members_across_clauses():
     ca = where_clause(Item.tenant_id == Ctx.tenant_id)
     cb = where_clause(Item.collection_id == Other.tenant_id)
     with Ctx.bind(tenant_id=1), Other.bind(tenant_id=0):
-        with pytest.raises(TypeError, match="tenant_id"):
-            apply_clauses(select(Item), ca, cb)
+        stmt = apply_clauses(select(Item), ca, cb)
+    assert values_of(stmt) == [0, 1]
 
 
-def test_cross_clause_shared_member_is_fine():
+def test_one_member_across_clauses():
     ca = where_clause(Item.tenant_id == Ctx.tenant_id)
     cb = where_clause(Item.collection_id == Ctx.tenant_id)
     with Ctx.bind(tenant_id=7):
         stmt = apply_clauses(select(Item), ca, cb)
-    assert params_of(stmt) == {"tenant_id": 7}
+    assert values_of(stmt) == [7]
 
 
-def test_member_colliding_with_handwritten_bindparam_raises():
+def test_member_beside_a_handwritten_bindparam_of_the_same_name():
     cb = where_clause(Item.collection_id == bindparam("tenant_id"))
     with Ctx.bind(tenant_id=1):
-        with pytest.raises(TypeError, match="hand-written"):
-            apply_clauses(select(Item), owned_by_tenant, cb)
+        stmt = apply_clauses(select(Item), owned_by_tenant, cb)
+    # the hand-written bind keeps its name and still waits for its value
+    assert stmt.compile().params == {"tenant_id_1": 1, "tenant_id": None}
+    assert stmt.compile().construct_params({"tenant_id": 99}) == {
+        "tenant_id_1": 1,
+        "tenant_id": 99,
+    }
 
 
-def test_layered_apply_same_name_members_raise():
+def test_layered_apply_with_same_name_members():
     cb = where_clause(Item.collection_id == Other.tenant_id)
     with Ctx.bind(tenant_id=1), Other.bind(tenant_id=2):
-        stmt = apply_clauses(select(Item), owned_by_tenant)
-        with pytest.raises(TypeError, match="tenant_id"):
-            apply_clauses(stmt, cb)
+        stmt = apply_clauses(apply_clauses(select(Item), owned_by_tenant), cb)
+    assert values_of(stmt) == [1, 2]
 
 
-def test_layered_apply_shared_member_is_fine():
+def test_layered_apply_with_one_member():
     cb = where_clause(Item.collection_id == Ctx.tenant_id)
     with Ctx.bind(tenant_id=5):
         stmt = apply_clauses(apply_clauses(select(Item), owned_by_tenant), cb)
-    assert params_of(stmt) == {"tenant_id": 5}
+    assert values_of(stmt) == [5]
 
 
-def test_statement_bindparam_protected_from_member_fill():
+def test_a_bind_the_statement_already_carries_keeps_its_value():
     stmt = select(Item).where(Item.collection_id == bindparam("tenant_id", value=99))
     with Ctx.bind(tenant_id=1):
-        with pytest.raises(TypeError, match="hand-written"):
-            apply_clauses(stmt, owned_by_tenant)
+        stmt = apply_clauses(stmt, owned_by_tenant)
+    assert stmt.compile().params == {"tenant_id": 99, "tenant_id_1": 1}
+
+
+def test_member_named_like_an_updated_column():
+    # a plain bind named tenant_id would collide with the SET tenant_id bind
+    with Ctx.bind(tenant_id=5):
+        stmt = apply_clauses(update(Item), owned_by_tenant).values(tenant_id=6)
+    assert values_of(stmt) == [5, 6]
+    assert "SET tenant_id=" in str(stmt)
+
+
+def test_applying_a_clause_leaves_its_condition_unfilled():
+    # the module-level condition is shared: a fill must not write into it
+    with Ctx.bind(tenant_id=1):
+        first = apply_clauses(select(Item), owned_by_tenant)
+    with Ctx.bind(tenant_id=2):
+        second = apply_clauses(select(Item), owned_by_tenant)
+    assert values_of(first) == [1]
+    assert values_of(second) == [2]
 
 
 # --- self-revealing errors and reprs ---------------------------------------
@@ -589,7 +619,7 @@ def test_unbound_member_error_teaches_bind():
 def test_repr_shows_kind_and_name():
     assert repr(owned_by_tenant_in_body) == "<WhereClause owned_by_tenant_in_body>"
     assert repr(soft_deleted) == "<WhereClause item.deleted_at IS NULL>"
-    assert repr(owned_by_tenant) == "<WhereClause item.tenant_id = :tenant_id>"
+    assert repr(owned_by_tenant) == "<WhereClause item.tenant_id = :tenant_id_1>"
     assert repr(all_of(owned_by_tenant, soft_deleted)) == "<WhereClause all_of>"
 
 
@@ -648,7 +678,7 @@ def test_composite_of_a_composite_resolves():
     outer = all_of(inner, inner)  # the same subtree twice
     with Ctx.bind(tenant_id=2):
         stmt = apply_clauses(select(Item), outer)
-    assert params_of(stmt) == {"tenant_id": 2}
+    assert values_of(stmt) == [2]
 
 
 # --- UNSCOPED composition -------------------------------------------------

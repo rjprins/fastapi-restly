@@ -6,14 +6,12 @@ from typing import Any, Callable, NoReturn, Sequence, TypeVar, final, overload
 
 from sqlalchemy import ColumnElement, Delete, Select, Update
 from sqlalchemy.sql.expression import (
-    BindParameter,
     ColumnClause,
     Join,
     ScalarSelect,
     SelectBase,
     Subquery,
 )
-from sqlalchemy.sql.visitors import ExternallyTraversible, iterate
 
 from ._context import ContextParam
 
@@ -53,10 +51,7 @@ class WhereClause:
         The result drops into any expression position: .where(), a join
         condition, a CASE. This path skips apply_clauses' table validation.
         """
-        return self._resolve(None)
-
-    def _resolve(self, owners: dict[str, object] | None) -> ColumnElement[bool]:
-        return _fill_slots(self._build(), owners)
+        return _fill_slots(self._build())
 
     def __bool__(self) -> NoReturn:
         # `if item.is_deleted:` would otherwise always be True: a clause
@@ -98,50 +93,20 @@ class Unscoped:
 UNSCOPED = Unscoped()
 
 
-_HANDWRITTEN = object()  # owners-entry for a user-written bindparam
+def _fill_slots(expr: ColumnElement[bool]) -> ColumnElement[bool]:
+    """Fill every embedded member placeholder with its bound value.
 
-
-def _fill_slots(
-    expr: ColumnElement[bool], owners: dict[str, object] | None = None
-) -> ColumnElement[bool]:
-    """Replace embedded member placeholders with their bound values.
-
-    `owners` maps bindparam key -> owning member and is shared across all
-    clauses of one apply_clauses call: SQLAlchemy compiles binds by key,
-    so two owners under one key would silently let the last value win.
-    One name, one owner.
+    A placeholder is a unique bind, so each use carries its own key and is
+    addressed by it. Member names therefore stay local to their namespace.
     """
-    if owners is None:
-        owners = {}
     values: dict[str, object] = {}
-
-    def claim(key: str, owner: object) -> None:
-        existing = owners.setdefault(key, owner)
-        if existing is owner:
-            return
-        # by identity: == on a member raises
-        if existing is _HANDWRITTEN or owner is _HANDWRITTEN:
-            raise TypeError(
-                f"the ContextParam named {key!r} collides with a hand-written "
-                f"bindparam({key!r}) in the same statement; rename one"
-            )
-        raise TypeError(
-            f"two different ContextParams named {key!r} appear in one "
-            "statement; share one member or rename one"
-        )
-
     stack: list = [expr]
     while stack:
         el = stack.pop()
         member: ContextParam[Any] | None = getattr(el, "_fr_param", None)
         if member is not None:
-            key = member._placeholder.key
-            claim(key, member)
-            if key not in values:
-                values[key] = member()
+            values[el.key] = member()
             continue
-        if isinstance(el, BindParameter) and not el.unique:
-            claim(el.key, _HANDWRITTEN)
         stack.extend(el.get_children())
     return expr.params(values) if values else expr
 
@@ -162,19 +127,6 @@ def _without_unscoped(
             raise TypeError(f"{name}() accepts only clauses or UNSCOPED{hint}")
         given.append(clause)
     return tuple(given)
-
-
-def _seed_owners(stmt: ExternallyTraversible) -> dict[str, object]:
-    # SQLAlchemy's bind-key space is per statement, so ownership must be
-    # too: binds the statement already carries (earlier apply_clauses
-    # layers, hand-written bindparams) claim their keys before any
-    # clause of this call fills a placeholder
-    owners: dict[str, object] = {}
-    for el in iterate(stmt):
-        if isinstance(el, BindParameter) and not el.unique:
-            member = getattr(el, "_fr_param", None)
-            owners.setdefault(el.key, member if member is not None else _HANDWRITTEN)
-    return owners
 
 
 def _display_table_name(key: str) -> str:
@@ -244,8 +196,7 @@ def apply_clauses(stmt, /, *clauses: WhereClause | Unscoped):
     given.
     """
     given = _without_unscoped("apply_clauses", clauses)
-    owners = _seed_owners(stmt)
-    wheres = [clause._resolve(owners) for clause in given]
+    wheres = [clause() for clause in given]
     _guard_statement_tables(stmt, wheres)
     return stmt.where(*wheres)
 

@@ -5,7 +5,7 @@ import threading
 from datetime import datetime
 
 import pytest
-from sqlalchemy import ForeignKey, create_engine, delete, select, update
+from sqlalchemy import ForeignKey, bindparam, create_engine, delete, select, update
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, relationship
 from sqlalchemy.pool import StaticPool
 
@@ -69,6 +69,18 @@ class SubscriptionFilter(ContextNamespace):
     """A local namespace: only the subscription report binds it."""
 
     status: ContextParam[str]
+
+
+class ThisPeriod(ContextNamespace):
+    start: ContextParam[datetime]
+    end: ContextParam[datetime]
+
+
+class LastPeriod(ContextNamespace):
+    """A second local namespace that picks the same natural names."""
+
+    start: ContextParam[datetime]
+    end: ContextParam[datetime]
 
 
 class ItemClauses(ClauseNamespace):
@@ -276,6 +288,47 @@ def test_local_member_inside_exists_runs_after_its_bind_ended(engine):
         assert ids(s, report_stmt("active")) == {1}
         assert ids(s, report_stmt("cancelled")) == {4}
         assert ids(s, report_stmt("paused")) == set()
+
+
+def test_two_local_namespaces_share_member_names_in_one_statement(engine):
+    in_this = where_clause(Item.created_at.between(ThisPeriod.start, ThisPeriod.end))
+    in_last = where_clause(Item.created_at.between(LastPeriod.start, LastPeriod.end))
+    report = all_of(ItemClauses.owned_by_tenant, any_of(in_this, in_last))
+    with (
+        Ctx.bind(tenant_id=T1),
+        ThisPeriod.bind(start=datetime(2026, 8, 1), end=datetime(2026, 8, 31)),
+        LastPeriod.bind(start=datetime(2026, 7, 1), end=datetime(2026, 7, 31)),
+    ):
+        stmt = apply_clauses(select(Item), report)
+    with Session(engine) as s:
+        assert ids(s, stmt) == {1, 4}  # item 2 is tenant 1 too, but from June
+
+
+def test_handwritten_bind_with_a_member_name_takes_its_value_at_execute(engine):
+    stmt = select(Item).where(Item.collection_id == bindparam("tenant_id"))
+    with Ctx.bind(tenant_id=T1):
+        stmt = apply_clauses(stmt, ItemClauses.owned_by_tenant)
+    with Session(engine) as s:
+        rows = {item.id for item in s.scalars(stmt, {"tenant_id": 2})}
+    assert rows == {4}  # tenant 1 by the member, collection 2 by the hand-written bind
+
+
+def test_fills_share_one_compiled_cache_entry():
+    # a fill changes values, never the statement's shape
+    cache_engine = create_engine("sqlite://")
+    try:
+        Base.metadata.create_all(cache_engine)
+        with cache_engine.connect() as conn:
+            for tenant_id in (T1, T2, 99):
+                with Ctx.bind(tenant_id=tenant_id):
+                    stmt = apply_clauses(select(Item.id), ItemClauses.owned_by_tenant)
+                conn.execute(stmt).all()
+        select_entries = [
+            key for key in cache_engine._compiled_cache if "item" in str(key[1])
+        ]
+        assert len(select_entries) == 1
+    finally:
+        cache_engine.dispose()
 
 
 def test_bind_resets_after_exception(engine):
