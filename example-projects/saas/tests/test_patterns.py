@@ -580,6 +580,8 @@ class TestSiblingCreation:
         carol = client.post(
             "/users", json={"email": "carol@acme.test", "name": "Carol"}
         ).json()
+        # A member labels only a task assigned to them.
+        client.patch(f"/tasks/{task['id']}", json={"assignee_id": carol["id"]})
         with auth_context(user_id=carol["id"], role=UserRole.MEMBER):
             response = client.post(
                 "/task-labels/create-and-attach",
