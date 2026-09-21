@@ -1,7 +1,7 @@
 from datetime import datetime
 
 import pytest
-from sqlalchemy import ColumnElement, ForeignKey, Select, delete, func, select, update
+from sqlalchemy import ColumnElement, ForeignKey, delete, func, select, update
 from sqlalchemy import false as sql_false
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -9,19 +9,14 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 # slots in a ContextNamespace (see test_context_namespace.py).
 from fastapi_restly.clauses import (
     UNSCOPED,
-    Clause,
     ClauseNamespace,
-    CombinedClause,
     ContextNamespace,
     ContextParam,
-    TransformClause,
     WhereClause,
     all_of,
     any_of,
     apply_clauses,
-    combine,
     none_of,
-    transform_clause,
     where_clause,
 )
 from fastapi_restly.clauses._declarations import (  # noqa: E402
@@ -68,11 +63,6 @@ soft_deleted = where_clause(Item.deleted_at.is_(None))
 @where_clause
 def in_period(start: int, end: int) -> ColumnElement[bool]:
     return Item.created_at.between(start, end)
-
-
-@transform_clause
-def join_collection(stmt: Select) -> Select:
-    return stmt.join(Collection, Collection.id == Item.collection_id)
 
 
 collection_active = where_clause(Collection.archived_at.is_(None))
@@ -147,13 +137,6 @@ def test_shared_leaf_in_two_branches_binds_once():
     assert tenant_params and all(v == 7 for v in tenant_params)
 
 
-def test_combine_routes_context():
-    bundle = combine(join_collection, tenant_filter)
-    with bundle.bind(tenant_id=9):
-        stmt = apply_clauses(select(Item), bundle)
-    assert 9 in params_of(stmt).values()
-
-
 def test_unrelated_families_same_name_raises():
     @where_clause
     def f1(limit: int) -> ColumnElement[bool]:
@@ -168,102 +151,17 @@ def test_unrelated_families_same_name_raises():
             pass
 
 
-# --- transforms and combine -----------------------------------------------
-
-
-def test_combine_transform_and_where():
-    bundle = combine(join_collection, collection_active)
-    stmt = apply_clauses(select(Item), bundle)
-    assert "JOIN collection" in str(stmt)
-    assert "archived_at IS NULL" in str(stmt)
-
-
-def test_transform_context_param():
-    @transform_clause
-    def limited(stmt: Select, n: int) -> Select:
-        return stmt.limit(n)
-
-    with limited.bind(n=10):
-        stmt = apply_clauses(select(Item), limited)
-    assert "LIMIT" in str(stmt)
-
-
-def test_transform_only_operand_rejected():
-    with pytest.raises(TypeError, match="where"):
-        all_of(join_collection, soft_deleted)
-    with pytest.raises(TypeError, match="where"):
-        any_of(join_collection, soft_deleted)
-    with pytest.raises(TypeError, match="where"):
-        none_of(join_collection)
-
-
-# --- transforms inside composites -----------------------------------------
-
-
-def test_and_propagates_transform():
-    bundle = combine(join_collection, collection_active)
-    q = all_of(bundle, tenant_filter)
-    with q.bind(tenant_id=5):
-        stmt = apply_clauses(select(Item), q)
-    s = str(stmt)
-    assert "JOIN collection" in s
-    assert "archived_at IS NULL" in s
-    assert 5 in params_of(stmt).values()
-
-
-def test_shared_join_applied_once():
-    bundle_a = combine(join_collection, collection_active)
-    bundle_b = combine(join_collection, tenant_filter)
-    with tenant_filter.bind(tenant_id=5):
-        stmt = apply_clauses(select(Item), bundle_a, bundle_b)
-    assert str(stmt).count("JOIN collection") == 1
-
-
-def test_or_rejects_transform_operand():
-    bundle = combine(join_collection, collection_active)
-    with pytest.raises(TypeError, match="EXISTS"):
-        any_of(bundle, soft_deleted)
-
-
-def test_not_rejects_transform_operand():
-    bundle = combine(join_collection, collection_active)
-    with pytest.raises(TypeError, match="EXISTS"):
-        none_of(bundle)
-
-
-def test_stmt_param_not_routable():
-    @transform_clause
-    def limited(stmt: Select, n: int) -> Select:
-        return stmt.limit(n)
-
-    with pytest.raises(TypeError, match="no clause accepts: stmt"):
-        with limited.bind(stmt=1):
-            pass
-
-
 # --- clause kinds ---------------------------------------------------------
 
 
 def test_constructor_types():
     assert isinstance(tenant_filter, WhereClause)
-    assert isinstance(join_collection, TransformClause)
-    assert isinstance(combine(join_collection, collection_active), CombinedClause)
+    assert isinstance(soft_deleted, WhereClause)
 
 
-def test_all_of_type_follows_operands():
-    assert isinstance(all_of(tenant_filter, soft_deleted), WhereClause)
-    bundle = combine(join_collection, collection_active)
-    assert isinstance(all_of(bundle, tenant_filter), CombinedClause)
-
-
-def test_clause_is_abstract():
-    with pytest.raises(TypeError, match="abstract"):
-        Clause()
-
-
-def test_combine_requires_transform():
-    with pytest.raises(TypeError, match="all_of"):
-        combine(tenant_filter, soft_deleted)
+@pytest.mark.parametrize("op", [all_of, any_of, none_of])
+def test_composites_are_where_clauses(op):
+    assert isinstance(op(tenant_filter, soft_deleted), WhereClause)
 
 
 # --- calling a WhereClause -------------------------------------------------
@@ -306,24 +204,12 @@ def test_body_read_clause_is_ambient_only():
             pass
 
 
-def test_combined_clause_not_callable():
-    bundle = combine(join_collection, collection_active)
-    with pytest.raises(TypeError):
-        bundle()
-
-
 # --- cross-model validation -----------------------------------------------
 
 
 def test_cross_model_clause_rejected():
     with pytest.raises(TypeError, match="collection"):
         apply_clauses(select(Item), collection_active)
-
-
-def test_cross_model_clause_passes_with_join():
-    bundle = combine(join_collection, collection_active)
-    stmt = apply_clauses(select(Item), bundle)
-    assert "JOIN collection" in str(stmt)
 
 
 def test_exists_subquery_not_a_false_positive():
@@ -360,14 +246,6 @@ def test_delete_with_wheres():
     assert 5 in params_of(stmt).values()
 
 
-def test_update_delete_reject_transform():
-    bundle = combine(join_collection, collection_active)
-    with pytest.raises(TypeError, match="join"):
-        apply_clauses(update(Item), bundle)
-    with pytest.raises(TypeError, match="join"):
-        apply_clauses(delete(Item), bundle)
-
-
 # --- Clause methods --------------------------------------------------------
 
 
@@ -376,12 +254,6 @@ def test_select_method_uses_ambient_bind():
     with q.bind(tenant_id=7):
         stmt = q.select(Item)
     assert 7 in params_of(stmt).values()
-
-
-def test_select_method_applies_transforms():
-    bundle = combine(join_collection, collection_active)
-    stmt = bundle.select(Item)
-    assert "JOIN collection" in str(stmt)
 
 
 def test_update_method():
@@ -412,12 +284,6 @@ def test_select_method_no_entities_raises():
     with Ctx.bind(tenant_id=7):
         with pytest.raises(TypeError, match="not in the statement"):
             owned_by_tenant.select()
-
-
-def test_combined_clause_has_no_update_or_delete():
-    bundle = combine(join_collection, collection_active)
-    assert not hasattr(bundle, "update")
-    assert not hasattr(bundle, "delete")
 
 
 # --- apply_clauses operands --------------------------------------------------
@@ -482,20 +348,12 @@ def test_namespace_function_clause_with_staticmethod():
         def owned_by_tenant() -> ColumnElement[bool]:
             return Gear.tenant_id == Ctx.tenant_id()
 
-        @transform_clause
-        @staticmethod
-        def newest_first(stmt: Select) -> Select:
-            return stmt.order_by(Gear.id.desc())
-
         visible = all_of(owned_by_tenant)
 
     assert isinstance(GearClauses.owned_by_tenant, WhereClause)
-    assert isinstance(GearClauses.newest_first, TransformClause)
     with Ctx.bind(tenant_id=7):
         stmt = apply_clauses(select(Gear), GearClauses.owned_by_tenant)
     assert 7 in params_of(stmt).values()
-    ordered = apply_clauses(select(Gear), GearClauses.newest_first)
-    assert "ORDER BY" in str(ordered)
 
 
 def test_namespace_without_model_is_a_plain_group():
@@ -649,8 +507,6 @@ def test_contributing_nothing_is_rejected():
     slot = context_param("xnothing")
     with pytest.raises(TypeError, match="contributes no"):
         apply_clauses(select(Item), slot)
-    with pytest.raises(TypeError, match="contributes no"):
-        slot.select(Item)
 
 
 def test_default_parameter_rejected():
@@ -667,12 +523,6 @@ def test_variadic_parameters_rejected():
         @where_clause
         def f(**kw) -> ColumnElement[bool]:
             return Item.tenant_id == kw["t"]
-
-    with pytest.raises(TypeError, match="variadic"):
-
-        @transform_clause
-        def g(stmt: Select, *rest) -> Select:
-            return stmt
 
 
 def test_async_clause_function_rejected():
@@ -691,16 +541,6 @@ def test_unresolvable_annotation_tolerated():
     with f.bind(tenant_id=3):
         stmt = apply_clauses(select(Item), f)
     assert 3 in params_of(stmt).values()
-
-
-def test_kwargs_transform_cannot_claim_everything():
-    # variadics are rejected outright, so the claims-everything routing
-    # hole cannot be constructed any more
-    with pytest.raises(TypeError, match="variadic"):
-
-        @transform_clause
-        def paged_all(stmt: Select, **kw) -> Select:
-            return stmt
 
 
 def test_dag_composition_binds_fast():
@@ -760,19 +600,9 @@ def test_unbound_param_error_teaches_bind():
         slot()
 
 
-def test_unbound_transform_error_teaches_bind():
-    @transform_clause
-    def limited(stmt: Select, n: int) -> Select:
-        return stmt.limit(n)
-
-    with pytest.raises(LookupError, match=r"\.bind\(n="):
-        apply_clauses(select(Item), limited)
-
-
 def test_repr_shows_kind_name_and_binds():
     assert repr(tenant_filter) == "<WhereClause tenant_filter binds: tenant_id>"
     assert repr(soft_deleted) == "<WhereClause item.deleted_at IS NULL>"
-    assert repr(join_collection) == "<TransformClause join_collection>"
 
 
 def test_repr_of_composite_aggregates_binds():
@@ -856,15 +686,6 @@ def test_empty_composites_rejected():
     for op in (all_of, any_of, none_of):
         with pytest.raises(TypeError, match="at least one"):
             op()
-    with pytest.raises(TypeError, match="transform"):
-        combine()
-
-
-def test_transforms_only_bundle():
-    bundle = combine(join_collection, transform_clause(lambda stmt: stmt.limit(5)))
-    stmt = apply_clauses(select(Item), bundle)
-    assert "JOIN collection" in str(stmt)
-    assert "LIMIT" in str(stmt)
 
 
 def test_nested_composition():
@@ -918,38 +739,11 @@ def test_unscoped_none_alone_is_a_false_where_clause():
     assert clause().compare(sql_false())
 
 
-def test_unscoped_keeps_transforms_and_bindings_in_and_bundles():
-    joined = combine(UNSCOPED, join_collection, owned_by_tenant, collection_active)
-    assert all_of(UNSCOPED, joined) is joined
-    clause = all_of(UNSCOPED, joined, soft_deleted, UNSCOPED)
-    with Ctx.bind(tenant_id=7):
-        stmt = apply_clauses(select(Item), clause)
-    assert str(stmt).count("JOIN collection") == 1
-    assert "archived_at IS NULL" in str(stmt)
-    assert "deleted_at IS NULL" in str(stmt)
-    assert 7 in params_of(stmt).values()
-
-
-def test_unscoped_does_not_supply_a_transform_to_combine():
-    for args in ((UNSCOPED,), (UNSCOPED, soft_deleted)):
-        with pytest.raises(TypeError, match="transform"):
-            combine(*args)
-
-
-@pytest.mark.parametrize("op", [all_of, any_of, none_of, combine])
+@pytest.mark.parametrize("op", [all_of, any_of, none_of])
 def test_unscoped_does_not_hide_invalid_composition_operands(op):
     for invalid in (None, "not a clause", context_param("not_a_predicate")):
         with pytest.raises(TypeError):
             op(UNSCOPED, invalid)
-
-
-@pytest.mark.parametrize("op", [all_of, any_of, none_of])
-def test_unscoped_preserves_boolean_transform_guards(op):
-    with pytest.raises(TypeError, match="where"):
-        op(UNSCOPED, join_collection)
-    if op is not all_of:
-        with pytest.raises(TypeError, match="transform"):
-            op(UNSCOPED, combine(join_collection, collection_active))
 
 
 def test_unscoped_nested_composition_and_existing_statement_filter():

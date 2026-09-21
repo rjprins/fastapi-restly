@@ -14,7 +14,7 @@ from typing import Annotated
 
 import pytest
 from fastapi import Depends, Header
-from sqlalchemy import ForeignKey, Select, create_engine, event, select
+from sqlalchemy import ForeignKey, create_engine, event, exists, select
 from sqlalchemy.orm import (
     DeclarativeBase,
     Mapped,
@@ -1211,17 +1211,14 @@ def test_where_is_folded_into_the_scope_get_many_receives(sync_session):
     assert seen[2] is narrow
 
 
-def test_where_takes_a_clause_that_carries_a_join(sync_session):
+def test_where_takes_an_exists_on_a_related_table(sync_session):
     sync_session.add_all([SyncRow(id=3, tenant_id=1), SyncTag(id=1, row_id=3)])
     sync_session.flush()
     view = _SyncRowView()
     view.session = sync_session
 
-    def _join_tags(stmt: Select) -> Select:
-        return stmt.join(SyncTag, SyncTag.row_id == SyncRow.id)
-
-    tagged = fr.combine(
-        fr.transform_clause(_join_tags), fr.where_clause(SyncTag.id == 1)
+    tagged = fr.where_clause(
+        exists().where(SyncTag.row_id == SyncRow.id, SyncTag.id == 1)
     )
     with _SyncContext.tenant_id.bind(tenant_id=1):
         listed = view.handle_get_many({}, where=tagged)
@@ -1233,20 +1230,15 @@ def test_where_fails_loudly_on_a_non_predicate(sync_session):
     view.session = sync_session
     row = sync_session.get(SyncRow, 1)
 
-    def _join_tags(stmt: Select) -> Select:
-        return stmt.join(SyncTag, SyncTag.row_id == SyncRow.id)
-
     with _SyncContext.tenant_id.bind(tenant_id=1):
         # a comparison on a loaded object is a Python bool: WHERE true
         with pytest.raises(TypeError, match="where= got a bool"):
             view.handle_get_many({}, where=row.tenant_id == 1)  # type: ignore[arg-type]
         with pytest.raises(TypeError, match="where= must be a SQLAlchemy boolean"):
             view.handle_get_many({}, where="tenant_id = 1")  # type: ignore[arg-type]
-        # a value and a bare join are clauses, but not predicates
-        with pytest.raises(TypeError, match="only clauses with a where"):
-            view.handle_get_many({}, where=_SyncContext.tenant_id)
-        with pytest.raises(TypeError, match="only clauses with a where"):
-            view.handle_get_many({}, where=fr.transform_clause(_join_tags))
+        # a context member carries a value, not a predicate
+        with pytest.raises(TypeError, match="where= must be a SQLAlchemy boolean"):
+            view.handle_get_many({}, where=_SyncContext.tenant_id)  # type: ignore[arg-type]
         # a table the statement does not name
         with pytest.raises(TypeError, match="not in the statement"):
             view.handle_get_many({}, where=SyncTag.id == 1)
@@ -1487,7 +1479,7 @@ def test_a_per_read_scope_that_is_not_a_clause_is_rejected(sync_session):
     view.session = sync_session
     raw = SyncRow.tenant_id == 1
     with pytest.raises(
-        fr.exc.RestlyConfigurationError, match="a per-read scope must be a Clause"
+        fr.exc.RestlyConfigurationError, match="a per-read scope must be a WhereClause"
     ):
         view.get_one(1, scope=raw)  # type: ignore[arg-type]
     with pytest.raises(fr.exc.RestlyConfigurationError, match="wrap a raw expression"):
@@ -1601,36 +1593,11 @@ class SyncSide(_SyncBase):
     ranked_id: Mapped[int] = mapped_column(ForeignKey(SyncRanked.id))
 
 
-def _by_rank(stmt: Select) -> Select:
-    return stmt.order_by(SyncRanked.rank)
-
-
 class SyncRankedClauses(fr.ClauseNamespace):
     model = SyncRanked
 
     owned_by_tenant = fr.where_clause(SyncRanked.tenant_id == _SyncContext.tenant_id)
-    by_rank = fr.transform_clause(_by_rank)  # material is fine; a scope is not
     default_scope = owned_by_tenant
-
-
-def test_transform_carrying_default_scope_is_rejected():
-    # an existence probe cannot honor a transform, so a scope carrying one
-    # is refused outright instead of silently half-applied
-    with pytest.raises(TypeError, match="WhereClause"):
-
-        class _OrderedClauses(fr.ClauseNamespace):
-            model = SyncRanked
-            default_scope = fr.combine(
-                SyncRankedClauses.owned_by_tenant, SyncRankedClauses.by_rank
-            )
-
-    with pytest.raises(TypeError, match="WhereClause"):
-        fr.RefExists(
-            SyncRanked,
-            scope=fr.combine(
-                SyncRankedClauses.owned_by_tenant, SyncRankedClauses.by_rank
-            ),
-        )
 
 
 def test_join_dependent_reference_scope_fails_loudly(sync_session):
@@ -1655,8 +1622,6 @@ def test_ref_exists_rejects_a_non_clause_scope():
             x: fr.ContextParam[int]
 
         fr.RefExists(SyncRow, scope=_SlotContext.x)
-    with pytest.raises(TypeError, match="WhereClause"):
-        fr.RefExists(SyncRow, scope=fr.transform_clause(_by_rank))
     # None says nothing: a variable that happens to be None must not
     # silently unscope; the escape is the loud word
     with pytest.raises(TypeError, match="UNSCOPED"):
@@ -1673,12 +1638,6 @@ def test_default_scope_must_be_a_where_clause():
         __tablename__ = "scope_sync_plain"
 
         id: Mapped[int] = mapped_column(primary_key=True)
-
-    with pytest.raises(TypeError, match="WhereClause"):
-
-        class _TransformOnly(fr.ClauseNamespace):
-            model = _Plain
-            default_scope = fr.transform_clause(_by_rank)
 
     class _ZContext(fr.ContextNamespace):
         z: fr.ContextParam[int]
@@ -1756,7 +1715,7 @@ def test_a_namespace_without_a_model_is_a_plain_group():
         positive = fr.where_clause(SyncRow.id > 0)
 
     assert isinstance(Shared.positive, fr.WhereClause)
-    with pytest.raises(TypeError, match="not a Clause"):
+    with pytest.raises(TypeError, match="not a clause"):
 
         class Bad(fr.ClauseNamespace):
             positive = SyncRow.id > 0

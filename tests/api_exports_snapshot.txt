@@ -4,9 +4,7 @@ fastapi_restly:
   - AsyncRestView
   - AsyncSessionDep
   - BaseSchema
-  - Clause
   - ClauseNamespace
-  - CombinedClause
   - ContextNamespace
   - ContextParam
   - DataclassBase
@@ -23,7 +21,6 @@ fastapi_restly:
   - SessionDep
   - TimestampsMixin
   - TimestampsSchemaMixin
-  - TransformClause
   - View
   - ViewRoute
   - WhereClause
@@ -32,7 +29,6 @@ fastapi_restly:
   - any_of
   - apply_clauses
   - clauses
-  - combine
   - configure
   - db
   - delete
@@ -53,26 +49,20 @@ fastapi_restly:
   - route
   - schemas
   - testing
-  - transform_clause
   - utils
   - views
   - where_clause
 fastapi_restly.clauses:
-  - Clause
   - ClauseNamespace
-  - CombinedClause
   - ContextNamespace
   - ContextParam
-  - TransformClause
   - UNSCOPED
   - Unscoped
   - WhereClause
   - all_of
   - any_of
   - apply_clauses
-  - combine
   - none_of
-  - transform_clause
   - where_clause
 fastapi_restly.db:
   - AsyncSessionDep

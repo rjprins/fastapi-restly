@@ -52,7 +52,6 @@ from typing_extensions import TypeVar
 from .._exception_handlers import register_default_exception_handlers
 from ..clauses import (
     UNSCOPED,
-    Clause,
     Unscoped,
     WhereClause,
     all_of,
@@ -63,12 +62,12 @@ from ..clauses._scopes import _default_scope
 
 #: A per-read scope: ``None`` for the view's own, a clause that replaces it
 #: for that read, or ``fr.clauses.UNSCOPED``.
-ReadScope = Clause | Unscoped | None
+ReadScope = WhereClause | Unscoped | None
 
 # A per-read narrowing filter: a SQLAlchemy boolean expression, or anything
 # all_of takes. Private: only the final list handler accepts one, so no
 # override spells it.
-_ReadWhere = ColumnElement[bool] | Clause | Unscoped | None
+_ReadWhere = ColumnElement[bool] | WhereClause | Unscoped | None
 from ..db._globals import _fr_globals
 from ..exc import RestlyConfigurationError, RestlyMisuseWarning
 from ..objects import snapshot as _object_snapshot
@@ -1078,7 +1077,7 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     #: (``ItemClauses.trashed`` containing the tenant clause ``visible``
     #: contains). A rule that must hold under every scope is a session-level
     #: ``with_loader_criteria``, not a view concern. See the Scopes guide.
-    scope: ClassVar[Clause | Unscoped | None] = None
+    scope: ClassVar[WhereClause | Unscoped | None] = None
     id_type: ClassVar[type[Any]] = int
     exclude_routes: ClassVar[Iterable[str | ViewRoute]] = ()
     #: Extra query-parameter keys to allow on listing routes beyond those
@@ -1112,11 +1111,11 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         # validate at class definition, so a raw expression fails at
         # import instead of on the first read
         scope = cls.__dict__.get("scope")
-        if not (scope is None or scope is UNSCOPED or isinstance(scope, Clause)):
+        if not (scope is None or scope is UNSCOPED or isinstance(scope, WhereClause)):
             raise RestlyConfigurationError(
-                f"{cls.__name__}.scope must be a Clause, fr.clauses.UNSCOPED, "
-                f"or None, got {type(scope).__name__}; wrap a raw expression "
-                "with where_clause()"
+                f"{cls.__name__}.scope must be a WhereClause, "
+                f"fr.clauses.UNSCOPED, or None, got {type(scope).__name__}; "
+                "wrap a raw expression with where_clause()"
             )
         # build_query is removed; a definition would be silently dead code,
         # and dead visibility filtering is a security hole
@@ -1126,10 +1125,10 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
                 raise RestlyConfigurationError(
                     f"{cls.__name__} defines build_query{origin}, which is "
                     "removed and no longer called. Declare visibility as a "
-                    "clause: default_scope on the model's ClauseNamespace, or the "
-                    "scope "
-                    "attribute on the view; read-wide reshaping is a "
-                    "transform clause on the view scope. See Migrating from "
+                    "clause: default_scope on the model's ClauseNamespace, or "
+                    "the scope attribute on the view. Reshape a listing in "
+                    "apply_query_params, and relationship loading in "
+                    "get_relationship_loader_options. See Migrating from "
                     "build_query in the Scopes guide."
                 )
         # delete_object is removed; a stale soft-delete override would be
@@ -1475,15 +1474,9 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
 _AnyRestView = BaseRestView[Any, Any, Any, Any, Any]
 
 
-@overload
-def resolve_scope(target: type[DeclarativeBase]) -> WhereClause | Unscoped: ...
-
-
-@overload
-def resolve_scope(target: type[_AnyRestView] | _AnyRestView) -> Clause | Unscoped: ...
-
-
-def resolve_scope(target: Any) -> Clause | Unscoped:
+def resolve_scope(
+    target: type[DeclarativeBase] | type[_AnyRestView] | _AnyRestView,
+) -> WhereClause | Unscoped:
     """The scope a read applies, resolved down the ladder.
 
     Pass a view, class or instance, for the visibility that view's reads
@@ -1539,17 +1532,17 @@ def _model_scope(model: type[DeclarativeBase]) -> WhereClause | Unscoped:
     return UNSCOPED if declared is None else declared
 
 
-def _checked_scope(scope: Any, label: str, what: str) -> Clause | Unscoped:
-    if scope is UNSCOPED or isinstance(scope, Clause):
+def _checked_scope(scope: Any, label: str, what: str) -> WhereClause | Unscoped:
+    if scope is UNSCOPED or isinstance(scope, WhereClause):
         return scope
     raise RestlyConfigurationError(
-        f"{label}: {what} must be a Clause or fr.clauses.UNSCOPED, got "
+        f"{label}: {what} must be a WhereClause or fr.clauses.UNSCOPED, got "
         f"{type(scope).__name__}; wrap a raw expression with where_clause()"
     )
 
 
-def _checked_where(where: Any, label: str) -> Clause | Unscoped:
-    if where is UNSCOPED or isinstance(where, Clause):
+def _checked_where(where: Any, label: str) -> WhereClause | Unscoped:
+    if where is UNSCOPED or isinstance(where, WhereClause):
         return where
     if isinstance(where, ColumnElement):
         return where_clause(where)
@@ -1562,7 +1555,7 @@ def _checked_where(where: Any, label: str) -> Clause | Unscoped:
             "(Model.slug == slug)."
         )
     raise TypeError(
-        f"{label}: where= must be a SQLAlchemy boolean expression or a Clause, "
+        f"{label}: where= must be a SQLAlchemy boolean expression or a clause, "
         f"got {type(where).__name__}"
     )
 
@@ -1580,9 +1573,9 @@ def _identity_criterion(
     """
     if isinstance(id, ColumnElement):
         return id
-    if isinstance(id, Clause):
+    if isinstance(id, WhereClause):
         raise TypeError(
-            f"{model_cls.__name__}: a Clause is a scope, not a row identity. "
+            f"{model_cls.__name__}: a clause is a scope, not a row identity. "
             "Call it for its expression (ItemClauses.published()), or "
             "pass it as scope= to replace the view scope for this read."
         )

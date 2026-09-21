@@ -23,8 +23,7 @@ from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm.session import Session as SA_Session
 from typing_extensions import TypeAliasType, TypeVar
 
-from ..clauses import ContextParam, Unscoped, WhereClause
-from ..clauses._runtime import _apply_where_half
+from ..clauses import ContextParam, Unscoped, WhereClause, apply_clauses
 from ..clauses._scopes import _default_scope
 from ..exc import NotFound, RestlyConfigurationError
 
@@ -205,8 +204,6 @@ class RefExists:
                 "not a predicate"
             )
         if not isinstance(scope, (WhereClause, Unscoped, _NotGiven)):
-            # covers raw expressions and transform-carrying clauses alike:
-            # an existence probe cannot honor a transform
             raise TypeError(
                 f"RefExists scope must be a WhereClause or UNSCOPED, got "
                 f"{type(scope).__name__}; wrap a raw expression with "
@@ -593,7 +590,7 @@ async def _async_resolve_ids_to_sqlalchemy_objects(
             else:
                 # mapper pk, not `.id`: the pk attribute can be named anything
                 pk_col = sql_model.__mapper__.primary_key[0]
-                query = _apply_where_half(
+                query = apply_clauses(
                     select(sql_model).where(pk_col == value.id), scope
                 )
                 sql_model_obj = (await session.scalars(query)).first()
@@ -615,7 +612,7 @@ async def _async_resolve_ids_to_sqlalchemy_objects(
             query = select(sql_model).where(sql_model.id.in_(unique_ids))
             scope = _default_scope(sql_model)
             if scope is not None:
-                query = _apply_where_half(query, scope)
+                query = apply_clauses(query, scope)
             by_id = {o.id: o for o in await session.scalars(query)}
 
             missing = [i for i in unique_ids if i not in by_id]
@@ -666,7 +663,7 @@ def _resolve_ids_to_sqlalchemy_objects(
             else:
                 # mapper pk, not `.id`: the pk attribute can be named anything
                 pk_col = sql_model.__mapper__.primary_key[0]
-                query = _apply_where_half(
+                query = apply_clauses(
                     select(sql_model).where(pk_col == value.id), scope
                 )
                 sql_model_obj = session.scalars(query).first()
@@ -688,7 +685,7 @@ def _resolve_ids_to_sqlalchemy_objects(
             query = select(sql_model).where(sql_model.id.in_(unique_ids))
             scope = _default_scope(sql_model)
             if scope is not None:
-                query = _apply_where_half(query, scope)
+                query = apply_clauses(query, scope)
             by_id = {o.id: o for o in session.scalars(query)}
 
             missing = [i for i in unique_ids if i not in by_id]
@@ -819,7 +816,7 @@ def _ref_exists_query(
     pk = getattr(model, mapper.get_property_by_column(mapper.primary_key[0]).key)
     query = select(pk).where(pk.in_(unique))
     if scope is not None:
-        query = _apply_where_half(query, scope)
+        query = apply_clauses(query, scope)
     return query
 
 

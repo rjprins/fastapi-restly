@@ -13,19 +13,14 @@ from . import exc, objects, query, utils  # noqa: F401
 
 # Clauses — composable, context-aware query fragments
 from .clauses import (
-    Clause,
     ClauseNamespace,
-    CombinedClause,
     ContextNamespace,
     ContextParam,
-    TransformClause,
     WhereClause,
     all_of,
     any_of,
     apply_clauses,
-    combine,
     none_of,
-    transform_clause,
     where_clause,
 )
 
@@ -96,17 +91,12 @@ __all__ = [
     # Database — setup
     "configure",
     # Clauses
-    "Clause",
     "ClauseNamespace",
-    "CombinedClause",
-    "TransformClause",
     "WhereClause",
     "where_clause",
-    "transform_clause",
     "all_of",
     "any_of",
     "none_of",
-    "combine",
     "apply_clauses",
     "ContextNamespace",
     "ContextParam",

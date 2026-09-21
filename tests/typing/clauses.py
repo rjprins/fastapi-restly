@@ -1,11 +1,10 @@
 """Typing fixture: the clauses API stays Pyright-clean for consumers.
 
 Covers the constructor-to-type symmetry (where_clause -> WhereClause,
-transform_clause -> TransformClause, combine -> CombinedClause,
 ContextNamespace declaration -> ContextParam[T]), the all_of overloads
-(pure operands narrow
-to WhereClause), the apply_clauses overloads per statement kind,
-namespace access by class name, and the WhereClause call form.
+(a definite predicate absorbs a possible UNSCOPED), the apply_clauses
+overloads per statement kind, namespace access by class name, and the
+WhereClause call form.
 
 A parameterized clause function inside a class body stacks the clause
 decorator over ``@staticmethod``: a bare ``def`` there is checked as a
@@ -14,9 +13,8 @@ module level no marker is needed.
 """
 
 from datetime import datetime
-from typing import Any
 
-from sqlalchemy import ColumnElement, Delete, Select, Update, delete, select, update
+from sqlalchemy import ColumnElement, Delete, Update, delete, select, update
 from sqlalchemy.orm import Mapped
 from typing_extensions import assert_type
 
@@ -42,18 +40,12 @@ def in_period(start: datetime, end: datetime) -> ColumnElement[bool]:
     return Ticket.created_at.between(start, end)
 
 
-@fr.transform_clause
-def newest_first(stmt: Select[Any]) -> Select[Any]:
-    return stmt.order_by(Ticket.created_at.desc())
-
-
 class TicketClauses(fr.ClauseNamespace):
     model = Ticket
 
     is_deleted = fr.where_clause(Ticket.deleted_at.is_not(None))
     owned_by_tenant = fr.where_clause(Ticket.tenant_id == Context.tenant_id)
     in_period = in_period
-    newest_first = newest_first
 
     # in-body function clauses: the clause decorator over @staticmethod
     @fr.where_clause
@@ -61,30 +53,17 @@ class TicketClauses(fr.ClauseNamespace):
     def since(cutoff: datetime) -> ColumnElement[bool]:
         return Ticket.created_at >= cutoff
 
-    @fr.transform_clause
-    @staticmethod
-    def paged(stmt: Select[Any]) -> Select[Any]:
-        return stmt.limit(10)
-
     visible = fr.all_of(owned_by_tenant, fr.none_of(is_deleted))
 
 
 # constructor -> type symmetry
 assert_type(TicketClauses.is_deleted, fr.WhereClause)
-assert_type(TicketClauses.newest_first, fr.TransformClause)
 assert_type(TicketClauses.since, fr.WhereClause)
-assert_type(TicketClauses.paged, fr.TransformClause)
-assert_type(
-    fr.combine(TicketClauses.newest_first, TicketClauses.is_deleted), fr.CombinedClause
-)
 
-# all_of overloads: pure where operands narrow to WhereClause, so the
-# result composes on into any_of/none_of
+# composites are WhereClauses, so they compose on
 pure = fr.all_of(TicketClauses.owned_by_tenant, TicketClauses.is_deleted)
 assert_type(pure, fr.WhereClause)
 assert_type(fr.any_of(pure, TicketClauses.is_deleted), fr.WhereClause)
-bundle = fr.combine(TicketClauses.newest_first, TicketClauses.is_deleted)
-assert_type(fr.all_of(bundle, TicketClauses.is_deleted), fr.Clause)
 
 
 def unscoped_composition(
@@ -105,8 +84,6 @@ def unscoped_composition(
     assert_type(fr.any_of(pure, default), fr.WhereClause | fr.clauses.Unscoped)
     assert_type(fr.none_of(default, other), fr.WhereClause)
     assert_type(fr.none_of(fr.clauses.UNSCOPED), fr.WhereClause)
-    assert_type(fr.all_of(default, bundle), fr.Clause | fr.clauses.Unscoped)
-    assert_type(fr.combine(default, newest_first), fr.CombinedClause)
 
     # The motivating composition remains usable wherever a predicate is needed.
     scoped = fr.all_of(default, pure)

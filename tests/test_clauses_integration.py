@@ -5,22 +5,20 @@ import threading
 from datetime import datetime
 
 import pytest
-from sqlalchemy import ForeignKey, Select, create_engine, delete, select, update
+from sqlalchemy import ForeignKey, create_engine, delete, select, update
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, relationship
 from sqlalchemy.pool import StaticPool
 
 from fastapi_restly.clauses import (
     UNSCOPED,
-    Clause,
     ClauseNamespace,
     ContextNamespace,
     ContextParam,
+    WhereClause,
     all_of,
     any_of,
     apply_clauses,
-    combine,
     none_of,
-    transform_clause,
     where_clause,
 )
 
@@ -47,6 +45,7 @@ class Item(Base):
     created_at: Mapped[datetime]
     deleted_at: Mapped[datetime | None]
 
+    collection: Mapped[Collection] = relationship()
     subscriptions: Mapped[list["Subscription"]] = relationship()
 
 
@@ -76,12 +75,8 @@ class ItemClauses(ClauseNamespace):
         Item.subscriptions.any(Subscription.status == "active")
     )
 
-    @transform_clause
-    def join_collection(stmt: Select) -> Select:
-        return stmt.join(Collection, Collection.id == Item.collection_id)
-
-    with_live_collection = combine(
-        join_collection, where_clause(Collection.archived_at.is_(None))
+    in_live_collection = where_clause(
+        Item.collection.has(Collection.archived_at.is_(None))
     )
 
     visible = all_of(owned_by_tenant, none_of(is_deleted))
@@ -161,7 +156,7 @@ def ids(session: Session, stmt) -> set[int]:
     return {item.id for item in session.scalars(stmt)}
 
 
-def seen_by(session: Session, tenant_id: int, clause: Clause) -> set[int]:
+def seen_by(session: Session, tenant_id: int, clause: WhereClause) -> set[int]:
     # the statement carries the bound value: it runs after the bind ended
     with Ctx.bind(tenant_id=tenant_id):
         stmt = apply_clauses(select(Item), clause)
@@ -202,9 +197,9 @@ def test_exists_does_not_multiply_rows(engine):
         assert [item.id for item in s.scalars(stmt)] == [1]
 
 
-def test_join_bundle_excludes_archived_collection(engine):
+def test_has_on_a_related_table_excludes_archived_collection(engine):
     with Session(engine) as s:
-        q = all_of(ItemClauses.visible, ItemClauses.with_live_collection)
+        q = all_of(ItemClauses.visible, ItemClauses.in_live_collection)
         # 4 lives in an archived collection
         assert seen_by(s, T1, q) == {1}
 
@@ -282,12 +277,6 @@ def test_unscoped_boolean_composition_returns_the_expected_rows(
     scope = op(*args)
     with Session(engine) as session:
         assert ids(session, apply_clauses(select(Item), scope)) == expected
-
-
-def test_unscoped_combine_preserves_join_and_filter(engine):
-    scope = combine(UNSCOPED, ItemClauses.with_live_collection)
-    with Session(engine) as session:
-        assert ids(session, apply_clauses(select(Item), scope)) == {1, 2, 3}
 
 
 def test_negated_unscoped_cannot_update_or_delete_rows(engine):

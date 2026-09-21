@@ -58,8 +58,8 @@ not identify every resulting unscoped read.
 
 In clause composition, `UNSCOPED` means accepting every row: it is a
 no-op in `all_of`, makes `any_of` unscoped, and makes `none_of` match
-no rows. It contributes nothing to `combine` or `apply_clauses` and
-does not remove other filters on a statement. See the
+no rows. It contributes nothing to `apply_clauses` and does not remove
+other filters on a statement. See the
 {ref}`full composition rules <unscoped-composition>` for object
 identity, return types, and validation.
 
@@ -72,14 +72,10 @@ related table without its scope. Shape the response schema, or override
 {meth}`get_relationship_loader_options <fastapi_restly.views.BaseRestView.get_relationship_loader_options>`,
 where embedded rows must be filtered.
 
-`default_scope` must be a
-{class}`WhereClause <fastapi_restly.clauses.WhereClause>`: a pure
-predicate, with EXISTS (`.any()`/`.has()`) instead of joins. The rule is
-enforced, in the declared attribute type and at class definition,
-because a reference check is an existence probe that cannot honor a
-transform: a scope carrying one would filter view reads while reference
-checks could not see it. Ordering and other reshaping belong on the
-[view scope](#view-scope), which takes any clause.
+`default_scope` is a
+{class}`WhereClause <fastapi_restly.clauses.WhereClause>`: a predicate,
+with EXISTS (`.any()`/`.has()`) for a rule that depends on a related
+table. A raw expression is rejected at class definition.
 
 A model *subclass* inherits the nearest declared `default_scope` along
 its MRO. A namespace on the subclass that says nothing about
@@ -129,15 +125,6 @@ and reference checks are ORM statements, so the rule reaches them. The
 column it restricts, and the statements it does not reach. The
 [SaaS example](examples.md#saas) runs that recipe.
 
-A view scope is the query basis of its endpoints, so transforms are
-welcome there, unlike in `default_scope`:
-
-```python
-class ItemView(fr.AsyncRestView):
-    ...
-    scope = fr.combine(ItemClauses.visible, newest_first)
-```
-
 The explicit opt-out is `fr.clauses.UNSCOPED`: it reads past the model's
 `default_scope`, where `None` would fall back to it. Reserve it for a
 view that needs every model row. `UNSCOPED` removes only the model's default
@@ -181,7 +168,7 @@ beside the view that applies it, not in the model's namespace; the
 namespace holds model facts such as `is_deleted`, and views compose policy
 from them. The framework applies the declared clause
 itself, on every read; there is no apply-side override point, and a
-non-Clause `scope` is rejected as the view class is defined.
+`scope` that is not a clause is rejected as the view class is defined.
 [Reading the resolved scope](#reading-the-scope) hands a route the
 clause without opening one.
 
@@ -326,9 +313,7 @@ class OrderCreate(fr.BaseSchema):
 
 - **Not given**: the target's `default_scope` applies.
 - **`scope=<WhereClause>`**: that predicate applies instead; the restore
-  endpoint above accepts exactly the ids the trash view shows. A
-  `WhereClause`, like `default_scope` and for the same reason: an
-  existence probe cannot honor a transform.
+  endpoint above accepts exactly the ids the trash view shows.
 - **`scope=fr.clauses.UNSCOPED`**: the check is explicitly unscoped, in
   the same loud spelling as everywhere else. `scope=None` is rejected, so
   a variable that happens to be `None` can never silently unscope the
@@ -369,11 +354,25 @@ class ItemClauses(fr.ClauseNamespace):
     default_scope = fr.where_clause(Item.deleted_at.is_(None))
 ```
 
-Read-wide eager loading and other non-visibility `Select` changes that
-lived in `build_query` belong in a transform clause on the view scope,
-or in
-{meth}`get_relationship_loader_options <fastapi_restly.views.BaseRestView.get_relationship_loader_options>`
-for relationship loading.
+Relationship loading that lived in `build_query` belongs in
+{meth}`get_relationship_loader_options <fastapi_restly.views.BaseRestView.get_relationship_loader_options>`.
+Other `Select` changes to a listing, such as a join or a default
+ordering, belong in an
+{meth}`apply_query_params <fastapi_restly.views.RestView.apply_query_params>`
+override:
+
+```python
+class ItemView(fr.AsyncRestView):
+    ...
+
+    def apply_query_params(self, query, query_params):
+        query = query.order_by(Item.created_at.desc())
+        return super().apply_query_params(query, query_params)
+```
+
+An ordering added before `super()` comes first, so a client `?sort=`
+orders rows within it. A to-many join added here does not repeat rows or
+inflate `total_count`.
 
 (binding-scope-values)=
 ## Binding scope values

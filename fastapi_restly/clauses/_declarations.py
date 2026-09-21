@@ -7,13 +7,13 @@ import sys
 from contextlib import ExitStack, contextmanager
 from typing import Any, Callable, ClassVar, Iterator, get_args, get_origin
 
-from sqlalchemy import ColumnElement, Select, bindparam
+from sqlalchemy import ColumnElement, bindparam
 
 from .._binding import _bind_dependency
 from .._contextargs import _caller_origin, contextual
-from ._runtime import ContextParam, TransformClause, WhereClause, _embedded_slots
+from ._runtime import ContextParam, WhereClause, _embedded_slots
 
-__all__ = ["ContextNamespace", "transform_clause", "where_clause"]
+__all__ = ["ContextNamespace", "where_clause"]
 
 
 def _context_member_type(cls: type, name: str, annotation: Any) -> Any | None:
@@ -197,24 +197,6 @@ def where_clause(
         clause._where_fn = contextual(lambda: condition)
         clause._children = _embedded_slots(condition)
         clause._condition = condition
-    return clause
-
-
-def transform_clause(fn: Callable[..., Select[Any]]) -> TransformClause:
-    """A TransformClause from a function that reshapes a Select.
-
-    The first parameter receives the statement; any further parameters
-    are filled from values bound via Clause.bind(). Stacks over
-    ``staticmethod`` in a namespace body, like where_clause().
-    """
-    if isinstance(fn, staticmethod):
-        fn = fn.__func__
-    _validate_clause_fn(fn)
-    clause = TransformClause()
-    clause._transform_fn = contextual(fn)
-    if clause._transform_fn.accepted is not None:
-        own_params = list(inspect.signature(fn).parameters)
-        clause._transform_routable = clause._transform_fn.accepted - set(own_params[:1])
     return clause
 
 

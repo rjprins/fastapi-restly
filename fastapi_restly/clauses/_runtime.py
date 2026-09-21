@@ -24,39 +24,32 @@ from .._contextargs import Contextual, MissingContextValues, _caller_origin
 _T = TypeVar("_T")
 
 
-class Clause:
-    """Abstract base: a predicate and/or a statement transform, plus children.
+class _Clause:
+    """Private base of WhereClause and ContextParam: the binding machinery.
 
-    Build via where_clause(), transform_clause(), all_of()/any_of()/none_of()
-    or combine(); never instantiate or mutate directly.
+    Build a clause with where_clause() or all_of()/any_of()/none_of();
+    never instantiate or mutate directly.
     """
 
     def __init__(self):
-        if type(self) is Clause:
+        if type(self) is _Clause:
             raise TypeError(
-                "Clause is abstract; build via where_clause/transform_clause/"
-                "combine or the composites"
+                "build a clause with where_clause() or all_of()/any_of()/none_of()"
             )
         self._where_fn: Contextual | None = None
-        self._transform_fn: Contextual | None = None
         self._param_fn: Contextual | None = None
         self._placeholder: BindParameter | None = None
         self._condition: ColumnElement[bool] | None = None
-        # context names routable to the transform: its accepted names
-        # minus the statement parameter, which is never a context value
-        self._transform_routable: frozenset[str] | None = None
-        self._children: tuple[Clause, ...] = ()
+        self._children: tuple[_Clause, ...] = ()
 
     def __bool__(self) -> bool:
-        # `if item.is_deleted:` would otherwise always be True: a Clause
+        # `if item.is_deleted:` would otherwise always be True: a clause
         # is a query fragment, not an answer
-        raise TypeError("a Clause is not a boolean; apply it to a query instead")
+        raise TypeError("a clause is not a boolean; apply it to a query instead")
 
     def _own_routing(self) -> Iterator[tuple[Contextual, frozenset[str] | None]]:
         if self._where_fn is not None:
             yield self._where_fn, self._where_fn.accepted
-        if self._transform_fn is not None:
-            yield self._transform_fn, self._transform_routable
         if self._param_fn is not None:
             yield self._param_fn, self._param_fn.accepted
 
@@ -71,16 +64,6 @@ class Clause:
         yield from self._own_routing()
         for child in self._children:
             yield from child._routing(seen)
-
-    def _transforms(self, _seen: set[int] | None = None) -> Iterator[Contextual]:
-        seen = set() if _seen is None else _seen
-        if id(self) in seen:
-            return
-        seen.add(id(self))
-        if self._transform_fn is not None:
-            yield self._transform_fn
-        for child in self._children:
-            yield from child._transforms(seen)
 
     @contextmanager
     def bind(self, /, **values: Any):
@@ -122,20 +105,8 @@ class Clause:
                     stack.enter_context(fn.context(**subset))
             yield
 
-    def select(self, /, *entities: Any) -> Select[Any]:
-        """``sqlalchemy.select(*entities)`` with this clause applied.
-
-        The arguments are exactly SQLAlchemy's: mapped classes, columns,
-        functions. Types as Select[Any]; for precise row typing build the
-        statement with plain select() into its own variable and pass that
-        to apply_clauses(), which preserves the statement's exact type.
-        The inline nested call widens to Select[Any] under bidirectional
-        inference.
-        """
-        return apply_clauses(select(*entities), self)
-
     def __repr__(self) -> str:
-        fn = self._where_fn or self._transform_fn or self._param_fn
+        fn = self._where_fn or self._param_fn
         name = getattr(fn, "__name__", "")
         label = "" if not name or name.startswith("<") else f" {name}"
         if not label and self._condition is not None:
@@ -154,12 +125,13 @@ class Clause:
         return f"<{type(self).__name__}{label}{binds}>"
 
 
-class WhereClause(Clause):
-    """A pure predicate: no transforms anywhere in its tree.
+class WhereClause(_Clause):
+    """A named, reusable predicate.
 
-    The only kind allowed in any_of()/none_of() and on UPDATE/DELETE,
-    and the only callable one: calling it returns the raw ColumnElement
-    for use inside plain SQLAlchemy expressions.
+    Built by where_clause() and by all_of()/any_of()/none_of(). It applies
+    to SELECT, UPDATE and DELETE statements through apply_clauses(), and
+    calling it returns the raw ColumnElement for use inside plain
+    SQLAlchemy expressions.
     """
 
     def __call__(self) -> ColumnElement[bool]:
@@ -172,6 +144,18 @@ class WhereClause(Clause):
         assert result is not None  # invariant: a WhereClause always has a where
         return result
 
+    def select(self, /, *entities: Any) -> Select[Any]:
+        """``sqlalchemy.select(*entities)`` with this clause applied.
+
+        The arguments are exactly SQLAlchemy's: mapped classes, columns,
+        functions. Types as Select[Any]; for precise row typing build the
+        statement with plain select() into its own variable and pass that
+        to apply_clauses(), which preserves the statement's exact type.
+        The inline nested call widens to Select[Any] under bidirectional
+        inference.
+        """
+        return apply_clauses(select(*entities), self)
+
     def update(self, model: type[DeclarativeBase], /) -> Update:
         """UPDATE on model with this clause applied; see select()."""
         return apply_clauses(update(model), self)
@@ -181,17 +165,13 @@ class WhereClause(Clause):
         return apply_clauses(delete(model), self)
 
 
-class TransformClause(Clause):
-    """Only reshapes the statement: joins, ordering, limits."""
-
-
 @final
 class Unscoped:
     """Sentinel scope: explicitly no scope, everywhere a scope can appear.
 
     `UNSCOPED` is the one instance; the class is public so a `scope`
     declaration or a `get_one` / `get_many` override can name the type
-    (`Clause | Unscoped`).
+    (`WhereClause | Unscoped`).
     The explicit spelling for a view's `scope` (where `None` means
     "fall back to the model's default"), a namespace's `default_scope`
     (where undeclared defers to
@@ -202,8 +182,7 @@ class Unscoped:
     Boolean composition treats it as SQL TRUE: all_of ignores it and
     returns the sole remaining clause unchanged, or UNSCOPED when none
     remain. any_of propagates it, and none_of returns a WhereClause over
-    SQL false(). combine ignores it but still requires a transform.
-    Composition validates other operands before simplifying.
+    SQL false(). Composition validates other operands before simplifying.
     Searching for UNSCOPED finds explicit uses. Variables and composition
     can pass the sentinel to other scope declarations and read calls.
     Deliberately not re-exported at the top level: the escape is spelled
@@ -217,12 +196,8 @@ class Unscoped:
 UNSCOPED = Unscoped()
 
 
-class CombinedClause(Clause):
-    """A named bundle of wheres and transforms; always carries a transform."""
-
-
-class ContextParam(Clause, Generic[_T]):
-    """A named value slot: no predicate, no transform, no SQL of its own.
+class ContextParam(_Clause, Generic[_T]):
+    """A named value slot: no predicate and no SQL of its own.
 
     Declared in a ContextNamespace (``tenant_id: ContextParam[UUID]``),
     never constructed directly: a slot is pure name and identity, and the
@@ -248,7 +223,7 @@ class ContextParam(Clause, Generic[_T]):
     def _blank(cls) -> Self:
         # the internal construction path around the teaching __init__
         self = cls.__new__(cls)
-        Clause.__init__(self)
+        _Clause.__init__(self)
         return self
 
     def __clause_element__(self) -> object:
@@ -396,52 +371,31 @@ def _fill_slots(
 
 
 def _resolve_where(
-    clause: Clause, owners: dict[str, object] | None = None
+    clause: _Clause, owners: dict[str, object] | None = None
 ) -> ColumnElement[bool] | None:
     if clause._where_fn is None:
         return None
     return _fill_slots(_teaching_call(clause._where_fn), owners)
 
 
-def _resolve_carried_where(clause: Clause) -> ColumnElement[bool]:
+def _resolve_carried_where(clause: _Clause) -> ColumnElement[bool]:
     # for combinators, which validate every operand carries a where first
     where = _resolve_where(clause)
     assert where is not None
     return where
 
 
-def _has_transform(clause: Clause) -> bool:
-    return any(True for _ in clause._transforms())
-
-
 def _without_unscoped(
-    name: str, clauses: tuple[Clause | Unscoped, ...]
-) -> tuple[Clause, ...]:
-    given: list[Clause] = []
+    name: str, clauses: tuple[_Clause | Unscoped, ...]
+) -> tuple[_Clause, ...]:
+    given: list[_Clause] = []
     for clause in clauses:
         if clause is UNSCOPED:
             continue
-        if not isinstance(clause, Clause):
+        if not isinstance(clause, _Clause):
             raise TypeError(f"{name}() accepts only clauses or UNSCOPED")
         given.append(clause)
     return tuple(given)
-
-
-def _require_no_transforms(name: str, clauses: tuple[Clause, ...], why: str) -> None:
-    if any(_has_transform(c) for c in clauses):
-        raise TypeError(f"{name} cannot include transform clauses; {why}")
-
-
-def _apply_transforms(stmt: Select[Any], clauses: Sequence[Clause]) -> Select[Any]:
-    # whole-tree collection, each distinct transform applied once: a join
-    # carried inside a composite is never lost, a shared join never doubled
-    seen: set[int] = set()
-    for clause in clauses:
-        for fn in clause._transforms():
-            if id(fn) not in seen:
-                seen.add(id(fn))
-                stmt = _teaching_call(fn, stmt)
-    return stmt
 
 
 def _seed_owners(stmt: ExternallyTraversible) -> dict[str, object]:
@@ -460,7 +414,7 @@ def _seed_owners(stmt: ExternallyTraversible) -> dict[str, object]:
 
 
 def _resolved_wheres(
-    clauses: Sequence[Clause], owners: dict[str, object] | None = None
+    clauses: Sequence[_Clause], owners: dict[str, object] | None = None
 ) -> list[ColumnElement[bool]]:
     if owners is None:
         owners = {}
@@ -517,38 +471,29 @@ _SelectT = TypeVar("_SelectT", bound=Select[Any])
 
 
 @overload
-def apply_clauses(stmt: _SelectT, /, *clauses: Clause | Unscoped) -> _SelectT: ...
+def apply_clauses(stmt: _SelectT, /, *clauses: WhereClause | Unscoped) -> _SelectT: ...
 @overload
 def apply_clauses(stmt: Update, /, *clauses: WhereClause | Unscoped) -> Update: ...
 @overload
 def apply_clauses(stmt: Delete, /, *clauses: WhereClause | Unscoped) -> Delete: ...
-def apply_clauses(stmt, /, *clauses: Clause | Unscoped):
+def apply_clauses(stmt, /, *clauses: WhereClause | Unscoped):
     """Apply clauses to a statement built with plain SQLAlchemy.
 
     The bridge between the two worlds: build select()/update()/delete()
-    as usual, then let this add the clauses' wheres and, for a Select,
-    transforms. UPDATE/DELETE cannot join, so a clause carrying a
-    transform is rejected there. A where that references a table the
-    statement does not select from is rejected too: the silent
-    alternative is a cartesian product. ``UNSCOPED`` among the clauses
-    applies nothing: a scope seam passes on what it was given.
+    as usual, then let this add the clauses' predicates to its WHERE. A
+    predicate that references a table the statement does not select from
+    is rejected: the silent alternative is a cartesian product. Express a
+    condition on a related table as EXISTS (.any()/.has()). ``UNSCOPED``
+    among the clauses applies nothing: a scope seam passes on what it was
+    given.
     """
     given = _without_unscoped("apply_clauses", clauses)
     for clause in given:
-        if clause._where_fn is None and not _has_transform(clause):
+        if clause._where_fn is None:
             raise TypeError(
-                f"{clause!r} contributes no predicate and no transform; a "
-                "ContextParam carries a value: embed it in an expression "
-                "instead of applying it"
+                f"{clause!r} contributes no predicate; a ContextParam carries "
+                "a value: embed it in an expression instead of applying it"
             )
-    if isinstance(stmt, Select):
-        stmt = _apply_transforms(stmt, given)
-    else:
-        _require_no_transforms(
-            "apply_clauses",
-            given,
-            f"{type(stmt).__name__.upper()} cannot join; use where-only clauses",
-        )
     wheres = _resolved_wheres(given, _seed_owners(stmt))
     _guard_statement_tables(stmt, wheres)
     return stmt.where(*wheres)
@@ -565,28 +510,5 @@ def _guard_statement_tables(
             raise TypeError(
                 "clause references table(s) not in the statement: "
                 + ", ".join(shown)
-                + "; add the join via a transform_clause, or use EXISTS (.any()/.has())"
+                + "; express the condition as EXISTS (.any()/.has())"
             )
-
-
-def _apply_where_half(stmt: _SelectT, clause: Clause) -> _SelectT:
-    """Apply only the predicate half of `clause`; transforms are dropped.
-
-    Reference existence checks use this, so for a scope used in them the
-    predicate half must be the whole visibility rule: a clause without
-    any predicate is rejected rather than silently checking nothing, and
-    a predicate that depends on a dropped join fails the table
-    validation above. A transform that itself filters rows (a filtering
-    join) is the one shape neither guard can see; express row filtering
-    as a where (EXISTS via .any()/.has()) instead.
-    """
-    wheres = _resolved_wheres([clause], _seed_owners(stmt))
-    if not wheres:
-        raise TypeError(
-            f"{clause!r} carries no predicate; a reference check applies "
-            "only the predicate half of a scope, so its row filtering must "
-            "live in a where (use EXISTS via .any()/.has() instead of a "
-            "filtering join)"
-        )
-    _guard_statement_tables(stmt, wheres)
-    return stmt.where(*wheres)

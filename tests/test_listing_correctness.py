@@ -159,11 +159,11 @@ def test_react_admin_sort_appends_every_column_of_a_composite_key():
 
 
 # ---------------------------------------------------------------------------
-# A to-many JOIN in the scope must not duplicate rows / inflate count
+# A to-many JOIN in the listing query must not duplicate rows / inflate count
 # ---------------------------------------------------------------------------
 
 
-def test_to_many_join_in_scope_does_not_duplicate_or_inflate(client):
+def test_to_many_join_in_listing_query_does_not_duplicate_or_inflate(client):
     class Author(fr.IDBase):
         name: Mapped[str]
 
@@ -178,17 +178,16 @@ def test_to_many_join_in_scope_does_not_duplicate_or_inflate(client):
         title: str
         author_id: int
 
-    @fr.transform_clause
-    def join_books(stmt: sqlalchemy.Select) -> sqlalchemy.Select:
-        # A collection JOIN: one row per book -> fan-out without dedup.
-        return stmt.join(Book, Book.author_id == Author.id)
-
     @fr.include_view(client.app)
     class AuthorView(fr.AsyncRestView):
         prefix = "/authors"
         model = Author
         schema = AuthorSchema
-        scope = join_books
+
+        def apply_query_params(self, query, query_params):
+            # A collection JOIN: one row per book -> fan-out without dedup.
+            query = query.join(Book, Book.author_id == Author.id)
+            return super().apply_query_params(query, query_params)
 
     @fr.include_view(client.app)
     class BookView(fr.AsyncRestView):
@@ -208,3 +207,37 @@ def test_to_many_join_in_scope_does_not_duplicate_or_inflate(client):
     assert payload["total_count"] == 1
     assert len(payload["data"]) == 1
     assert payload["data"][0]["name"] == "A"
+
+
+def test_default_ordering_belongs_in_apply_query_params(client):
+    """The documented home for what build_query / a scope transform did."""
+
+    class RankedNote(fr.IDBase):
+        rank: Mapped[int]
+
+    class RankedNoteSchema(fr.IDSchema):
+        rank: int
+
+    @fr.include_view(client.app)
+    class RankedNoteView(fr.AsyncRestView):
+        prefix = "/ranked-notes"
+        model = RankedNote
+        schema = RankedNoteSchema
+
+        def apply_query_params(self, query, query_params):
+            # before super(): the client's ?sort= then orders within it
+            query = query.order_by(RankedNote.rank.desc())
+            return super().apply_query_params(query, query_params)
+
+    create_tables()
+    for rank in (1, 3, 2, 3):
+        client.post("/ranked-notes/", json={"rank": rank})
+
+    rows = client.get("/ranked-notes/").json()["data"]
+    assert [row["rank"] for row in rows] == [3, 3, 2, 1]
+    # the primary-key tiebreak still makes the page order stable
+    assert rows[0]["id"] < rows[1]["id"]
+
+    within = client.get("/ranked-notes/?sort=-id").json()["data"]
+    assert [row["rank"] for row in within] == [3, 3, 2, 1]
+    assert within[0]["id"] > within[1]["id"]

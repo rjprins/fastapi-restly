@@ -7,7 +7,7 @@ from typing import Any, ClassVar
 
 from sqlalchemy.orm import DeclarativeBase
 
-from ._runtime import UNSCOPED, Clause, Unscoped, WhereClause
+from ._runtime import UNSCOPED, Unscoped, WhereClause
 
 __all__ = ["ClauseNamespace"]
 
@@ -22,7 +22,7 @@ class ClauseNamespace:
 
     Subclass and put the clauses in the class body; earlier names are
     available to later compositions. On definition the namespace
-    validates that every public attribute is a Clause (catching a bare
+    validates that every public attribute is a clause (catching a bare
     SQLAlchemy expression that forgot its where_clause() wrapper). Usage
     is by class name (`ItemClauses.visible`): plain attribute access
     that any type checker follows. A clause needs no model; a namespace
@@ -36,10 +36,8 @@ class ClauseNamespace:
 
     The name `default_scope` is reserved: a clause under that name is
     the scope every view read and every reference check on the model
-    applies unless a view declares its own (see the Scopes guide). It
-    must be a WhereClause: a reference check is an existence probe and
-    cannot honor a transform, so ordering and joins stay on the view
-    scope, and a join-dependent predicate is an EXISTS (.any()/.has()).
+    applies unless a view declares its own (see the Scopes guide). A
+    join-dependent predicate is an EXISTS (.any()/.has()).
     A model subclass inherits the nearest declared `default_scope`
     along its MRO: a namespace that does not declare one leaves an
     inherited scope in force, and `default_scope = UNSCOPED` is the
@@ -64,19 +62,17 @@ class ClauseNamespace:
                         "opt out explicitly with UNSCOPED "
                         "(fr.clauses.UNSCOPED)"
                     )
-            if not isinstance(value, Clause):
+            if not isinstance(value, WhereClause):
+                if name == "default_scope":
+                    raise TypeError(
+                        f"{cls.__name__}.default_scope must be a WhereClause or "
+                        "UNSCOPED; wrap a raw expression with where_clause()"
+                    )
                 raise TypeError(
-                    f"{cls.__name__}.{name} is not a Clause; wrap it with "
-                    "where_clause() or transform_clause(), or prefix it with "
-                    "an underscore if it is a helper"
+                    f"{cls.__name__}.{name} is not a clause; wrap it with "
+                    "where_clause(), or prefix it with an underscore if it "
+                    "is a helper"
                 )
-        scope = vars(cls).get("default_scope")
-        if not (scope is None or scope is UNSCOPED or isinstance(scope, WhereClause)):
-            raise TypeError(
-                f"{cls.__name__}.default_scope must be a WhereClause; "
-                "ordering and joins belong on the view scope, and a "
-                "join-dependent predicate is an EXISTS (.any()/.has())"
-            )
         if model is None:
             return
         existing = _NAMESPACES.get(model)
@@ -128,8 +124,7 @@ def _default_scope(model: type[DeclarativeBase]) -> WhereClause | None:
         if not isinstance(scope, WhereClause):
             raise TypeError(
                 f"{namespace.__name__}.default_scope must be a WhereClause or "
-                "UNSCOPED; wrap a raw expression with where_clause(), and keep "
-                "ordering and joins on the view scope"
+                "UNSCOPED; wrap a raw expression with where_clause()"
             )
         return scope
     return None

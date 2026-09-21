@@ -1,7 +1,7 @@
 # Query Clauses
 
-A query {class}`Clause <fastapi_restly.clauses.Clause>` describes a
-reusable SQLAlchemy predicate or statement transform. Its parameters
+A query clause is a named, reusable SQLAlchemy predicate: a
+{class}`WhereClause <fastapi_restly.clauses.WhereClause>`. Its parameters
 can be bound after the clause is declared.
 
 For example, you could reuse the same rules to list and count a user's
@@ -32,7 +32,7 @@ with TaskClauses.owned_by_user.bind(user_id=42):
 ```
 
 Both statements select non-deleted tasks belonging to user 42.
-{meth}`Clause.bind <fastapi_restly.clauses.Clause.bind>` supplies the value
+`bind()` supplies the value
 to every composition that uses `TaskClauses.owned_by_user`, including
 `TaskClauses.visible`.
 See [Binding values](#binding-values).
@@ -46,16 +46,6 @@ reference checks on `Task`. See [Scopes](#default-scope).
 {class}`WhereClause <fastapi_restly.clauses.WhereClause>`, a reusable WHERE
 predicate. Pass a SQLAlchemy condition or decorate a function that returns
 one. See [Declaring clauses](#declaring-clauses).
-
-{func}`fr.transform_clause <fastapi_restly.clauses.transform_clause>` creates a
-{class}`TransformClause <fastapi_restly.clauses.TransformClause>` from a
-function that reshapes a SQLAlchemy `Select`, for example by adding a join
-or ordering. See [Declaring clauses](#declaring-clauses).
-
-{func}`fr.combine <fastapi_restly.clauses.combine>` bundles statement
-transforms with optional predicates into a
-{class}`CombinedClause <fastapi_restly.clauses.CombinedClause>`.
-See [Composing](#composing-clauses).
 
 [Compose](#composing-clauses) query fragments, then
 [apply them to statements](#applying-clauses) with
@@ -118,8 +108,7 @@ is_deleted = fr.where_clause(Item.deleted_at.is_not(None))
 ```
 
 When the predicate needs a value supplied later, declare a function.
-Its parameters are filled from
-{meth}`Clause.bind <fastapi_restly.clauses.Clause.bind>`:
+Its parameters are filled from `bind()`:
 
 ```python
 from sqlalchemy import ColumnElement
@@ -140,30 +129,10 @@ def recently_created() -> ColumnElement[bool]:
     return Item.created_at > func.now() - timedelta(days=7)
 ```
 
-{func}`fr.transform_clause <fastapi_restly.clauses.transform_clause>`
-builds a clause that reshapes the statement instead of filtering it: a
-join, an ordering, a limit. The first parameter receives the statement;
-further parameters are filled from bound values like a where's:
-
-```python
-from sqlalchemy import Select
-
-
-@fr.transform_clause
-def newest_first(stmt: Select) -> Select:
-    return stmt.order_by(Item.created_at.desc())
-
-
-@fr.transform_clause
-def paged(stmt: Select, limit: int, offset: int) -> Select:
-    return stmt.limit(limit).offset(offset)
-```
-
-Declare a transform only when the statement itself must change. A check
-that a related row exists is a predicate, not a join: express it with
-the relationship's `any()` or `has()`, which generate EXISTS. A join
-used for an existence check multiplies rows on one-to-many
-relationships; EXISTS cannot.
+A clause is a predicate and never joins. Express a condition on a
+related table with the relationship's `any()` or `has()`, which generate
+EXISTS. A join used for an existence check multiplies rows on
+one-to-many relationships; EXISTS cannot.
 
 ```python
 has_active_subscription = fr.where_clause(
@@ -222,8 +191,7 @@ A tenant predicate that must survive every replacement scope belongs in the
 session-level rule documented under [tenant row scoping](#tenant-row-scoping).
 
 Name clauses as predicate phrases that read truthfully after WHERE:
-`owned_by_user`, `is_deleted`, `has_active_subscription`. Name
-transforms after the change they make: `newest_first`, `paged`. Skip
+`owned_by_user`, `is_deleted`, `has_active_subscription`. Skip
 mechanism suffixes such as `_filter` or `_clause`; the namespace and the
 type already say what the attribute is.
 
@@ -246,34 +214,7 @@ active_or_new = fr.any_of(has_active_subscription, recently_created)
 ```
 
 `none_of(a, b)` is NOT over the OR of its operands: true when none
-hold. All three require their clause operands to carry a where, and `any_of`
-and `none_of` additionally reject operands that carry a transform. An
-inner join already removes rows, so OR or NOT over a join-dependent
-predicate changes which rows exist at all; the rejection message points
-to the EXISTS form instead.
-
-{func}`fr.combine <fastapi_restly.clauses.combine>` is not boolean
-logic. It bundles a transform with its related predicates under one
-name:
-
-```python
-@fr.transform_clause
-def join_collection(stmt: Select) -> Select:
-    return stmt.join(Collection, Collection.id == Item.collection_id)
-
-
-with_live_collection = fr.combine(
-    join_collection,
-    fr.where_clause(Collection.archived_at.is_(None)),
-)
-```
-
-The join and the predicate on the joined table belong together; the
-bundle keeps them inseparable. Give such bundles a `with_` prefix: the
-name signals that applying the clause changes the statement, not only
-the row filter. `combine` requires at least one transform-carrying
-operand; a bundle of only wheres is `all_of`'s job, and `combine`
-raises with that message.
+hold.
 
 (unscoped-composition)=
 ### Composing with `UNSCOPED`
@@ -317,51 +258,39 @@ type. `any_of` can return `Unscoped` when any argument may be unscoped.
 `none_of` always returns a `WhereClause`. Use `apply_clauses` for a
 result that may be the sentinel, which has no clause methods.
 
-`combine` ignores `UNSCOPED` and keeps the other predicates and
-transforms. At least one remaining operand must still carry a
-transform, so `combine(UNSCOPED)` raises. `all_of()`, `any_of()`, and
-`none_of()` with no arguments also continue to raise. Passing
-`UNSCOPED` explicitly counts as an argument.
+`all_of()`, `any_of()`, and `none_of()` with no arguments raise.
+Passing `UNSCOPED` explicitly counts as an argument.
 
 Other operands are validated even when `UNSCOPED` determines the whole
-result. A transform in `any_of` or `none_of`, or a raw expression or
-`ContextParam` in a boolean composition, still raises. Once validated,
-clauses discarded by OR or NOT simplification are not evaluated and
-need no bound values.
+result. A raw expression or a `ContextParam` in a boolean composition
+still raises. Once validated, clauses discarded by OR or NOT
+simplification are not evaluated and need no bound values.
 
 `apply_clauses(stmt, UNSCOPED)` adds no restriction. Existing filters
-and transforms on `stmt` stay in place, and other supplied clauses
-still apply. `UNSCOPED` does not clear a statement that was already
-filtered.
+on `stmt` stay in place, and other supplied clauses still apply.
+`UNSCOPED` does not clear a statement that was already filtered.
 
 (applying-clauses)=
 ## Applying clauses to a statement
 
 Statement construction stays plain SQLAlchemy.
 {func}`fr.apply_clauses <fastapi_restly.clauses.apply_clauses>` is the
-bridge: it adds the clauses' predicates to the statement's WHERE and,
-for a `Select`, applies their transforms:
+bridge: it adds the clauses' predicates to the statement's WHERE:
 
 ```python
 from sqlalchemy import select
 
-stmt = fr.apply_clauses(select(Item), ItemClauses.visible, with_live_collection)
+stmt = fr.apply_clauses(select(Item), ItemClauses.visible, has_active_subscription)
 ```
 
-Transforms are collected from the whole clause tree and each distinct
-transform is applied once, so a join carried inside an `all_of` or a
-`combine` is never lost, and a join shared by two bundles is never
-applied twice. `update()` and `delete()` statements accept where-only
-clauses; a transform there raises, because UPDATE and DELETE cannot
-join.
-
-`apply_clauses` also rejects a predicate that references a table the
+`update()` and `delete()` statements take clauses the same way.
+`apply_clauses` rejects a predicate that references a table the
 statement does not select from:
 
 ```python
 fr.apply_clauses(select(Item), fr.where_clause(Collection.archived_at.is_(None)))
 # TypeError: clause references table(s) not in the statement: collection;
-#   add the join via a transform_clause, or use EXISTS (.any()/.has())
+#   express the condition as EXISTS (.any()/.has())
 ```
 
 Without this check SQLAlchemy adds the missing table to the FROM clause
@@ -369,9 +298,8 @@ and the query becomes a cartesian product that filters almost nothing.
 Predicates inside EXISTS and `IN (SELECT ...)` subqueries bring their
 own FROM and pass the check.
 
-Every clause also carries
-{meth}`select() <fastapi_restly.clauses.Clause.select>`, and a
-{class}`WhereClause <fastapi_restly.clauses.WhereClause>` carries
+A clause also carries
+{meth}`select() <fastapi_restly.clauses.WhereClause.select>`,
 {meth}`update() <fastapi_restly.clauses.WhereClause.update>` and
 {meth}`delete() <fastapi_restly.clauses.WhereClause.delete>`.
 `select()` takes the same entities SQLAlchemy's `select()` takes; all
@@ -400,7 +328,7 @@ type.
 (binding-values)=
 ## Binding values
 
-{meth}`Clause.bind <fastapi_restly.clauses.Clause.bind>` binds values
+`bind()` binds values
 for the duration of a `with` block. Each value is routed to the leaf
 clause whose function accepts its name, so binding on a composite is
 equivalent to binding on the leaf itself:
@@ -450,9 +378,8 @@ stmt = stmt.join(
 status = case((ItemClauses.is_deleted(), "trash"), else_="live")
 ```
 
-Only a `WhereClause` is callable; a clause that carries a transform has
-no expression form, and this path skips the table validation that
-`apply_clauses` performs. A clause is never a boolean:
+This path skips the table validation that `apply_clauses` performs. A
+clause is never a boolean:
 `if ItemClauses.is_deleted:` raises `TypeError` instead of always passing.
 
 (shared-params)=
@@ -517,30 +444,6 @@ values supplied per request.
 A {class}`ContextParam <fastapi_restly.clauses.ContextParam>` supplies a
 value, not a predicate. Boolean composition rejects it. Two distinct
 members under the same name in one expression also raise.
-
-(clause-kinds)=
-## The clause kinds
-
-{class}`Clause <fastapi_restly.clauses.Clause>` is abstract; each
-constructor names the kind it builds.
-
-| Kind | Built by | Callable | In `any_of`/`none_of` | On UPDATE/DELETE |
-|---|---|---|---|---|
-| {class}`WhereClause <fastapi_restly.clauses.WhereClause>` | `where_clause`, `any_of`, `none_of`, all-where `all_of` | yes | yes | yes |
-| {class}`TransformClause <fastapi_restly.clauses.TransformClause>` | `transform_clause` | no | no | no |
-| {class}`CombinedClause <fastapi_restly.clauses.CombinedClause>` | `combine`, `all_of` with a transform-carrying operand | no | no | no |
-
-A `WhereClause` guarantees no transform anywhere in its tree, which is
-what makes the yes-column safe: OR, NOT, UPDATE, and DELETE all break
-in the presence of a join. The guarantees are enforced twice, in the
-signatures for type checkers and at runtime for everyone else.
-
-{class}`ContextParam <fastapi_restly.clauses.ContextParam>` shares the
-base class's binding machinery but represents a value, not a query
-fragment. [Current](howto_current.md) covers its declaration and use.
-
-`UNSCOPED` is outside this hierarchy. `all_of` and `any_of` can also
-return that sentinel under the [composition rules](#unscoped-composition).
 
 ```{seealso}
 {doc}`api/clauses` lists every symbol with its signature.

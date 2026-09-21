@@ -52,10 +52,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   run per action. After-hooks run after the outermost commit and are discarded
   after a rollback. Direct session commits inside the block are rejected.
 - Context-bound query clauses are reusable SQLAlchemy query fragments with
-  values supplied per request. Declare them with `fr.where_clause` or
-  `fr.transform_clause`. Combine them with `fr.all_of`, `fr.any_of`,
-  `fr.none_of`, or `fr.combine`. Apply them with `fr.apply_clauses` or the
-  statement shorthands.
+  values supplied per request. Declare them with `fr.where_clause`. Combine
+  them with `fr.all_of`, `fr.any_of`, or `fr.none_of`. Apply them with
+  `fr.apply_clauses` or the statement shorthands.
   `fr.ClauseNamespace` groups clauses with or without registering a model.
   `fr.ContextNamespace` and `fr.ContextParam` supply shared request values
   through generated `.depends()` dependencies. Missing bindings raise
@@ -126,8 +125,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - `build_query`. Move row visibility to `default_scope` on the model's
-  namespace or `scope` on the view. Put read-wide reshaping in a transform
-  clause on the view scope. A remaining override fails at class definition.
+  namespace or `scope` on the view. Put listing changes such as a join or a
+  default ordering in an `apply_query_params` override, and relationship
+  loading in `get_relationship_loader_options`. A remaining override fails
+  at class definition.
   See "Migrating from build_query" in the Scopes guide.
 - `RestView.delete_object` / `AsyncRestView.delete_object`. The `delete`
   business method now removes and flushes the row. Override `delete` for soft
