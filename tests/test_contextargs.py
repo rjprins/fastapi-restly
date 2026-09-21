@@ -40,7 +40,7 @@ def test_nesting_layers_and_exit_restores():
         with greet.context(greeting="Hi"):
             assert greet.context_call() == "Hi, outer!"
         assert greet.context_call() == "Hello, outer!"
-    with pytest.raises(TypeError):
+    with pytest.raises(LookupError, match="name"):
         greet.context_call()
 
 
@@ -62,7 +62,7 @@ def test_alias_is_independent_instance():
             assert greet_b.context_call() == "Hello, aliased!"
         # alias context gone, alias falls back to nothing; original unaffected
         assert greet.context_call() == "Hello, original!"
-        with pytest.raises(TypeError):
+        with pytest.raises(LookupError, match="name"):
             greet_b.context_call()
 
 
@@ -104,6 +104,25 @@ def test_unknown_name_rejected():
     with pytest.raises(TypeError, match="nope"):
         with greet.context(nope=1):
             pass
+
+
+@pytest.mark.parametrize("bound", [False, True])
+def test_context_call_invalid_arguments_still_raise_type_error(bound):
+    with greet.context(**({"name": "World"} if bound else {})):
+        with pytest.raises(TypeError, match="nope"):
+            greet.context_call(nope=1)
+        with pytest.raises(TypeError, match="positional"):
+            greet.context_call("A", "Hi", "extra")
+
+
+def test_context_call_preserves_type_error_from_function_body():
+    @contextual
+    def broken(name):
+        raise TypeError("from function body")
+
+    with broken.context(name="World"):
+        with pytest.raises(TypeError, match="from function body"):
+            broken.context_call()
 
 
 def test_positional_only_not_contextual():

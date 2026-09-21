@@ -1,25 +1,72 @@
 # Query Clauses
 
-A clause is a named, reusable fragment of a query: a WHERE predicate, a
-statement transform such as a join or an ordering, or a bundle of both.
-A fourth kind carries no SQL at all: a value slot shared between clauses.
-Clauses are declared once at module level, composed with boolean
-functions, and applied to plain SQLAlchemy statements. The values a
-clause needs per request, a tenant id or a search term, are not fixed at
-declaration; they are bound where they become known and routed to the
-clause that needs them.
+A query {class}`Clause <fastapi_restly.clauses.Clause>` describes a
+reusable SQLAlchemy predicate or statement transform. Its parameters
+can be bound after the clause is declared.
 
-A plain SQLAlchemy expression cannot do this: `Item.tenant_id == tenant_id`
-requires a `tenant_id` at construction, so it cannot be a module-level
-constant shared across endpoints. A clause defers that value, which makes
-"which conditions apply here" a declaration instead of code that runs in
-every endpoint.
+For example, you could reuse the same rules to list and count a user's
+non-deleted tasks:
 
-The examples on this page share three models:
+```python
+import fastapi_restly as fr
+from sqlalchemy import ColumnElement, func
+
+
+class TaskClauses(fr.ClauseNamespace):
+    model = Task
+
+    is_deleted = fr.where_clause(Task.deleted_at.is_not(None))
+
+    @fr.where_clause
+    @staticmethod
+    def owned_by_user(user_id: int) -> ColumnElement[bool]:
+        return Task.user_id == user_id
+
+    visible = fr.all_of(owned_by_user, fr.none_of(is_deleted))
+    default_scope = visible
+
+
+with TaskClauses.owned_by_user.bind(user_id=42):
+    listing = TaskClauses.visible.select(Task)
+    count = TaskClauses.visible.select(func.count(Task.id))
+```
+
+Both statements select non-deleted tasks belonging to user 42.
+{meth}`Clause.bind <fastapi_restly.clauses.Clause.bind>` supplies the value
+to every composition that uses `TaskClauses.owned_by_user`, including
+`TaskClauses.visible`.
+See [Binding values](#binding-values).
+
+{class}`ClauseNamespace <fastapi_restly.clauses.ClauseNamespace>` groups
+the model's clauses. `default_scope = visible` makes `visible` the default
+scope for {class}`RestView <fastapi_restly.views.RestView>` reads and
+reference checks on `Task`. See [Scopes](#default-scope).
+
+{func}`fr.where_clause <fastapi_restly.clauses.where_clause>` creates a
+{class}`WhereClause <fastapi_restly.clauses.WhereClause>`, a reusable WHERE
+predicate. Pass a SQLAlchemy condition or decorate a function that returns
+one. See [Declaring clauses](#declaring-clauses).
+
+{func}`fr.transform_clause <fastapi_restly.clauses.transform_clause>` creates a
+{class}`TransformClause <fastapi_restly.clauses.TransformClause>` from a
+function that reshapes a SQLAlchemy `Select`, for example by adding a join
+or ordering. See [Declaring clauses](#declaring-clauses).
+
+{func}`fr.combine <fastapi_restly.clauses.combine>` bundles statement
+transforms with optional predicates into a
+{class}`CombinedClause <fastapi_restly.clauses.CombinedClause>`.
+See [Composing](#composing-clauses).
+
+[Compose](#composing-clauses) query fragments, then
+[apply them to statements](#applying-clauses) with
+{func}`fr.apply_clauses <fastapi_restly.clauses.apply_clauses>`.
+[Current](howto_current.md) supplies values shared across application
+code. [Using Current in clauses](#shared-params) covers their integration.
+
+The remaining examples share three models:
 
 ```python
 from datetime import datetime, timedelta
-from uuid import UUID
 
 from sqlalchemy import ForeignKey, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -33,7 +80,7 @@ class Collection(Base):
     __tablename__ = "collection"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    tenant_id: Mapped[UUID]
+    user_id: Mapped[int]
     archived_at: Mapped[datetime | None]
 
 
@@ -41,7 +88,7 @@ class Item(Base):
     __tablename__ = "item"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    tenant_id: Mapped[UUID]
+    user_id: Mapped[int]
     collection_id: Mapped[int] = mapped_column(ForeignKey("collection.id"))
     name: Mapped[str]
     created_at: Mapped[datetime]
@@ -70,18 +117,18 @@ import fastapi_restly as fr
 is_deleted = fr.where_clause(Item.deleted_at.is_not(None))
 ```
 
-When the predicate needs a per-request value, declare a function. Its
-parameters are not passed by callers; they are filled from values bound
-via {meth}`Clause.bind <fastapi_restly.clauses.Clause.bind>` each time
-the clause resolves:
+When the predicate needs a value supplied later, declare a function.
+Its parameters are filled from
+{meth}`Clause.bind <fastapi_restly.clauses.Clause.bind>` or keyword
+arguments to [statement construction](#applying-clauses):
 
 ```python
 from sqlalchemy import ColumnElement
 
 
 @fr.where_clause
-def owned_by_tenant(tenant_id: UUID) -> ColumnElement[bool]:
-    return Item.tenant_id == tenant_id
+def owned_by_user(user_id: int) -> ColumnElement[bool]:
+    return Item.user_id == user_id
 
 
 @fr.where_clause
@@ -141,11 +188,11 @@ class ItemClauses(fr.ClauseNamespace):
 
     @fr.where_clause
     @staticmethod
-    def owned_by_tenant(tenant_id: UUID) -> ColumnElement[bool]:
-        return Item.tenant_id == tenant_id
+    def owned_by_user(user_id: int) -> ColumnElement[bool]:
+        return Item.user_id == user_id
 
-    visible = fr.all_of(owned_by_tenant, fr.none_of(is_deleted))
-    trashed = fr.all_of(owned_by_tenant, is_deleted)
+    visible = fr.all_of(owned_by_user, fr.none_of(is_deleted))
+    trashed = fr.all_of(owned_by_user, is_deleted)
 ```
 
 Earlier names in the class body are in scope for later compositions, as
@@ -176,7 +223,7 @@ A tenant predicate that must survive every replacement scope belongs in the
 session-level rule documented under [tenant row scoping](#tenant-row-scoping).
 
 Name clauses as predicate phrases that read truthfully after WHERE:
-`owned_by_tenant`, `is_deleted`, `has_active_subscription`. Name
+`owned_by_user`, `is_deleted`, `has_active_subscription`. Name
 transforms after the change they make: `newest_first`, `paged`. Skip
 mechanism suffixes such as `_filter` or `_clause`; the namespace and the
 type already say what the attribute is.
@@ -195,7 +242,7 @@ that topic.
 {func}`fr.none_of <fastapi_restly.clauses.none_of>` compose predicates:
 
 ```python
-visible = fr.all_of(owned_by_tenant, fr.none_of(is_deleted))
+visible = fr.all_of(owned_by_user, fr.none_of(is_deleted))
 active_or_new = fr.any_of(has_active_subscription, recently_created)
 ```
 
@@ -308,7 +355,7 @@ over any ambient `bind()`. The statement is positional-only, so every
 keyword name stays free for binding:
 
 ```python
-stmt = fr.apply_clauses(select(Item), ItemClauses.visible, tenant_id=tenant_id)
+stmt = fr.apply_clauses(select(Item), ItemClauses.visible, user_id=42)
 ```
 
 Transforms are collected from the whole clause tree and each distinct
@@ -342,12 +389,12 @@ three are shorthand for `apply_clauses` on a fresh statement, with the
 same ephemeral bind as keyword arguments:
 
 ```python
-stmt = ItemClauses.visible.select(Item, tenant_id=tenant_id).where(Item.id == item_id)
+stmt = ItemClauses.visible.select(Item, user_id=42).where(Item.id == item_id)
 
-count = ItemClauses.visible.select(func.count(Item.id), tenant_id=tenant_id)
+count = ItemClauses.visible.select(func.count(Item.id), user_id=42)
 
 stmt = (
-    ItemClauses.trashed.update(Item, tenant_id=tenant_id)
+    ItemClauses.trashed.update(Item, user_id=42)
     .where(Item.id == item_id)
     .values(deleted_at=None)
 )
@@ -371,43 +418,23 @@ clause whose function accepts its name, so binding on a composite is
 equivalent to binding on the leaf itself:
 
 ```python
-with ItemClauses.visible.bind(tenant_id=tenant_id):
+with ItemClauses.visible.bind(user_id=42):
     stmt = ItemClauses.visible.select(Item)
 ```
 
 Because routing targets the leaf, one bind reaches every composite that
-shares it: binding `tenant_id` on `owned_by_tenant` serves `visible`,
+shares it: binding `user_id` on `owned_by_user` serves `visible`,
 `trashed`, and anything declared later, without registration.
 
-In a FastAPI application, a dependency binds once for the whole
-request (illustrative):
+For one statement, pass the value as a keyword argument instead:
 
 ```python
-async def bind_tenant(tenant_id: TenantIdFromAuth):
-    with ItemClauses.owned_by_tenant.bind(tenant_id=tenant_id):
-        yield
-
-
-app = FastAPI(dependencies=[Depends(bind_tenant)])
-
-
-@app.get("/items")
-async def list_items(session: SessionDep) -> list[ItemOut]:
-    stmt = ItemClauses.visible.select(Item)   # tenant_id comes from the dependency
-    return list((await session.scalars(stmt)).all())
+stmt = ItemClauses.trashed.delete(Item, user_id=42)
 ```
 
-The dependency must be `async def`. FastAPI runs a sync generator
-dependency in a threadpool, and a ContextVar set there never reaches
-the endpoint: every query would raise on the missing `tenant_id`.
-
-Outside a request, in a script or a job, pass the value as an ephemeral
-bind instead:
-
-```python
-for tenant_id in tenant_ids:
-    stmt = ItemClauses.trashed.delete(Item, tenant_id=tenant_id)
-```
+For values shared throughout a request, use
+[Current's dependency binding](#current-request-binding) and
+[reference those members from clauses](#shared-params).
 
 Every binding records where it was made.
 {meth}`Clause.explain <fastapi_restly.clauses.Clause.explain>` renders
@@ -418,20 +445,18 @@ paths renders once and is marked shared after that.
 
 ```python
 >>> ItemClauses.visible.explain()
-<WhereClause all_of binds: tenant_id>
-├─ <WhereClause owned_by_tenant binds: tenant_id>
-│  └─ tenant_id = UUID('7f3a...')   bound at app/deps.py:23 (bind_tenant)
+<WhereClause all_of binds: user_id>
+├─ <WhereClause owned_by_user binds: user_id>
+│  └─ user_id = 42   bound at app/reports.py:23 (build_report)
 └─ <WhereClause none_of>
    └─ <WhereClause item.deleted_at IS NOT NULL>
 ```
 
 The system verifies that bindings exist and route to the right slot.
-Whether the bound value is the right one, the authenticated user's
-tenant and not another, is the application's invariant; assert it where
-the value enters, in the binding dependency.
+The application must validate the value before binding it.
 
 Binding fails loud in each direction. Resolving a clause whose value is
-not bound raises `TypeError` while the statement is built, never a
+not bound raises `LookupError` while the statement is built, never a
 silently unfiltered query. Binding a name no clause in the tree accepts
 raises `TypeError: no clause accepts: ...`. Binding a name that two
 distinct leaves accept raises and names the cause, aliases or unrelated
@@ -459,7 +484,7 @@ stmt = stmt.join(
 status = case((ItemClauses.is_deleted(), "trash"), else_="live")
 ```
 
-Keyword arguments are an ephemeral bind: `ItemClauses.owned_by_tenant(tenant_id=tid)`.
+Keyword arguments are an ephemeral bind: `ItemClauses.owned_by_user(user_id=42)`.
 Only a `WhereClause` is callable; a clause that carries a transform has
 no expression form, and this path skips the table validation that
 `apply_clauses` performs. A clause is never a boolean:
@@ -482,7 +507,7 @@ def in_period(start: datetime, end: datetime) -> ColumnElement[bool]:
 last_month = in_period.alias("last_month")
 
 report = fr.all_of(
-    ItemClauses.owned_by_tenant,
+    ItemClauses.owned_by_user,
     fr.any_of(in_period, last_month),
 )
 
@@ -490,7 +515,7 @@ with (
     in_period.bind(start=aug_1, end=aug_31),
     last_month.bind(start=jul_1, end=jul_31),
 ):
-    stmt = report.select(Item, tenant_id=tenant_id)
+    stmt = report.select(Item, user_id=42)
 ```
 
 Aliases bind per leaf; binding `start` on the composite would raise as
@@ -502,52 +527,40 @@ and which should split cannot be decided automatically, so rebuild the
 composite from aliased leaves.
 
 (shared-params)=
-## Sharing one value between clauses
+## Using Current in clauses
 
 Clauses declared separately do not share bindings, even when their
-functions accept the same parameter name; binding one leaves the other
-unbound, and both in one tree raise as ambiguous. When several clauses
-must follow one value, a tenant id filtering every model, declare the
-value once as a {class}`ContextParam <fastapi_restly.clauses.ContextParam>`
-member of a {class}`ContextNamespace <fastapi_restly.clauses.ContextNamespace>`:
+functions accept the same parameter name. Binding one leaves the other
+unbound. Binding that name on a composition containing both raises as
+ambiguous. To share a value, use a member of [Current](howto_current.md)
+(or another {class}`ContextNamespace <fastapi_restly.clauses.ContextNamespace>`):
 
 ```python
 class Current(fr.ContextNamespace):
-    tenant_id: fr.ContextParam[UUID]
+    user_id: fr.ContextParam[int]
 ```
 
-The annotation is the whole declaration: the attribute name is the bind
-name, so a typo fails at import, and `Current.tenant_id` reads as what
-it is, the current context's tenant id. A ContextParam exists only as a
-namespace member; the conventional app-wide namespace is named
-`Current`, and a value with a smaller audience gets a smaller namespace
-beside its consumers. Declaring says where a value lives, not where it
-is bound.
-
-One slot, three positions. Embedded in an expression it becomes a
-placeholder, filled with the bound value each time the clause resolves;
-{func}`fr.where_clause <fastapi_restly.clauses.where_clause>` detects
-the slot and wires it into binding:
+Embed `Current.user_id` in a condition passed to
+{func}`fr.where_clause <fastapi_restly.clauses.where_clause>`.
+It becomes a placeholder filled when the clause resolves:
 
 ```python
-def tenant_scoped(model) -> fr.WhereClause:
-    return fr.where_clause(model.tenant_id == Current.tenant_id)
+owned_item = fr.where_clause(Item.user_id == Current.user_id)
+owned_collection = fr.where_clause(Collection.user_id == Current.user_id)
 
-
-class ItemClauses(fr.ClauseNamespace):
-    model = Item
-    owned_by_tenant = tenant_scoped(Item)
-
-
-class CollectionClauses(fr.ClauseNamespace):
-    model = Collection
-    owned_by_tenant = tenant_scoped(Collection)
+with Current.bind(user_id=42):
+    items = owned_item.select(Item)
+    collections = owned_collection.select(Collection)
 ```
 
+Both clauses use the same member, so one binding supplies both.
+`Current.user_id` without parentheses is the placeholder.
+`Current.user_id()` reads the value immediately, which would require
+an active binding at declaration time.
+
 In a clause function, mark a parameter with the slot as `Annotated`
-metadata; the parameter is then fed from the slot instead of the
-function's own binding namespace, and binds under the slot's name, not
-the local one:
+metadata. The parameter receives that member's value and binds under
+`user_id`, even though its local name is `uid`:
 
 ```python
 from typing import Annotated
@@ -556,49 +569,33 @@ from sqlalchemy import and_
 
 
 @fr.where_clause
-def visible_to_tenant(tid: Annotated[UUID, Current.tenant_id]) -> ColumnElement[bool]:
-    return and_(Item.tenant_id == tid, Item.deleted_at.is_(None))
+def visible_to_user(uid: Annotated[int, Current.user_id]) -> ColumnElement[bool]:
+    return and_(Item.user_id == uid, Item.deleted_at.is_(None))
 ```
 
-Called, the slot returns the bound value, for branching on it in the
-body and for the cases where Python itself needs it, string formatting
-or arithmetic:
+Reading `Current` inside the function also works:
 
 ```python
-class SearchContext(fr.ContextNamespace):
-    term: fr.ContextParam[str]
-
-
 @fr.where_clause
-def name_matches() -> ColumnElement[bool]:
-    return Item.name.ilike(f"%{SearchContext.term()}%")
+def owned_by_current_user() -> ColumnElement[bool]:
+    return Item.user_id == Current.user_id()
 ```
 
-The calling form keeps the clause's body opaque: routing cannot see a
-read inside a function, so binding through the clause or a tree raises
-`no clause accepts`, `explain()` lists nothing under the clause, and
-only the slot's own binding serves it (an unbound read still raises,
-naming the slot). A slot embedded in the expression a clause function
-returns is opaque the same way. That is the whole trade. An application
-that binds ambiently, one request-wide dependency covering every read,
-loses nothing to the calling form and gains its plainness; a clause
-that should take part in tree binding and ephemeral keywords, or show
-its reads in `explain()`, declares them with the embedded or
-`Annotated` form.
+Clause binding cannot discover reads inside a function body.
+`owned_by_current_user.bind(user_id=42)` therefore raises
+`no clause accepts`, and `explain()` does not list that dependency.
+Bind through `Current` when using this form. A missing value still
+raises when the function runs. A placeholder inside an expression
+returned by a function is also invisible to binding discovery.
 
-Sharing is by identity: every clause that embeds or marks the same slot
-is served by a single bind, wherever it happens; a second namespace can
-adopt a member by assignment (`tenant_id = Current.tenant_id`) and
-addresses the same slot. The namespace binds as a unit
-(`with Current.bind(tenant_id=tid, locale="nl"):`), and one binding
-covers every tenant-scoped model, present and future. In a FastAPI app
-the binding is a generated dependency; the Scopes guide's
-[Binding scope values](#binding-scope-values) section owns that
-integration.
+Use the embedded or `Annotated` form when the clause must accept
+`user_id=` itself or show the dependency in `explain()`.
+[Bind Current from FastAPI dependencies](#current-request-binding) for
+values supplied per request.
 
-A ContextParam is not a predicate; `all_of` and the other boolean
-functions reject it. Two distinct slots under the same name in one
-expression raise: one name, one owner.
+A {class}`ContextParam <fastapi_restly.clauses.ContextParam>` supplies a
+value, not a predicate. Boolean composition rejects it. Two distinct
+members under the same name in one expression also raise.
 
 (clause-kinds)=
 ## The clause kinds
@@ -611,12 +608,15 @@ constructor names the kind it builds.
 | {class}`WhereClause <fastapi_restly.clauses.WhereClause>` | `where_clause`, `any_of`, `none_of`, all-where `all_of` | yes | yes | yes |
 | {class}`TransformClause <fastapi_restly.clauses.TransformClause>` | `transform_clause` | no | no | no |
 | {class}`CombinedClause <fastapi_restly.clauses.CombinedClause>` | `combine`, `all_of` with a transform-carrying operand | no | no | no |
-| {class}`ContextParam <fastapi_restly.clauses.ContextParam>` | a {class}`ContextNamespace <fastapi_restly.clauses.ContextNamespace>` member | yes, to the bound value | no | no |
 
 A `WhereClause` guarantees no transform anywhere in its tree, which is
 what makes the yes-column safe: OR, NOT, UPDATE, and DELETE all break
 in the presence of a join. The guarantees are enforced twice, in the
 signatures for type checkers and at runtime for everyone else.
+
+{class}`ContextParam <fastapi_restly.clauses.ContextParam>` shares the
+base class's binding machinery but represents a value, not a query
+fragment. [Current](howto_current.md) covers its declaration and use.
 
 `UNSCOPED` is outside this hierarchy. `all_of` and `any_of` can also
 return that sentinel under the [composition rules](#unscoped-composition).

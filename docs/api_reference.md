@@ -274,6 +274,19 @@ Every `View` subclass, CRUD or not, honors these class attributes:
 
 The list-tuning attributes (`default_page_size`, `max_page_size`, `paginated`, `extra_query_params`) are tabulated under [List Endpoint Behavior](#list-endpoint-behavior).
 
+### Current Request Values
+
+[Current context](howto_current.md) covers declaration,
+FastAPI integration, and manual binding.
+
+| Symbol | Description |
+|---|---|
+| {class}`fr.ContextNamespace <fastapi_restly.clauses.ContextNamespace>` | Base for the application's `Current` class. Declare each value as a member. |
+| {class}`fr.ContextParam <fastapi_restly.clauses.ContextParam>` | A context value, declared as `user_id: fr.ContextParam[int]`. Read it with `Current.user_id()`. |
+| {meth}`Current.depends(**sources) <fastapi_restly.clauses.ContextNamespace.depends>` | Generate a FastAPI dependency that binds values from existing dependencies per request. |
+| {meth}`Current.bind(**values) <fastapi_restly.clauses.ContextNamespace.bind>` | Bind values for a `with` block, restoring earlier values on exit. |
+| {meth}`Current.explain() <fastapi_restly.clauses.ContextNamespace.explain>` | Show each member's bound value and origin, or `UNBOUND`. |
+
 ### Clauses and Scopes
 
 Reusable query fragments and the visibility rules built from them. [Query Clauses](clauses.md) and [Scopes](scopes.md) own the topics; this table names the symbols.
@@ -285,7 +298,6 @@ Reusable query fragments and the visibility rules built from them. [Query Clause
 | {func}`fr.all_of(*clauses) <fastapi_restly.clauses.all_of>` / {func}`fr.any_of <fastapi_restly.clauses.any_of>` / {func}`fr.none_of <fastapi_restly.clauses.none_of>` / {func}`fr.combine <fastapi_restly.clauses.combine>` | Compose clauses: AND, OR, NOT, and a bundle that carries transforms. `fr.clauses.UNSCOPED` composes as no restriction; the rules per function are in [Query Clauses](clauses.md). |
 | {func}`fr.apply_clauses(stmt, *clauses, **binds) <fastapi_restly.clauses.apply_clauses>` | Apply clauses to a plain SQLAlchemy statement; ephemeral bind values pass as keywords. `fr.clauses.UNSCOPED` applies nothing. |
 | {class}`fr.ClauseNamespace <fastapi_restly.clauses.ClauseNamespace>` | Group a model's clauses under one named class. Declaring `model` registers the namespace, and its `default_scope` is the clause every read and reference check on that model applies. |
-| {class}`fr.ContextNamespace <fastapi_restly.clauses.ContextNamespace>` / {class}`fr.ContextParam <fastapi_restly.clauses.ContextParam>` | Per-request values shared across clauses (`tenant_id: fr.ContextParam[int]`). `Current.depends(tenant_id=get_tenant)` builds the FastAPI dependency that binds them per request; `Current.tenant_id.bind(...)` binds in code. |
 | `fr.clauses.UNSCOPED` / {class}`fr.clauses.Unscoped <fastapi_restly.clauses.Unscoped>` | The explicit unscoped sentinel and its type: the one spelling for reading past a scope on a view, a namespace, a reference, or a single read. |
 | `fr.views.ReadScope` | The per-read scope type the handlers take and forward: `None` resolves the view's scope, a clause replaces it, `fr.clauses.UNSCOPED` reads unscoped. Annotate the `scope` parameter of a `get_one` / `get_many` override with it. |
 

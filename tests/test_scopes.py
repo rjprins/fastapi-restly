@@ -1153,7 +1153,7 @@ def test_a_sync_session_rule_holds_under_unscoped_reads_and_references(sync_sess
 def test_unbound_scope_raises_the_teaching_error(sync_session):
     view = _SyncRowView()
     view.session = sync_session
-    with pytest.raises(TypeError, match="missing bound values"):
+    with pytest.raises(LookupError, match="missing bound values"):
         view.get_one(1)
 
 

@@ -1,9 +1,12 @@
 """Organization view."""
 
+from typing import Any
+
 from fastapi import Response
 
 import fastapi_restly as fr
 
+from ..current import Current, SetCurrentContextDep
 from .models import Organization
 from .schemas import (
     OrganizationCreateSchema,
@@ -14,6 +17,8 @@ from .schemas import (
 
 class OrganizationView(fr.AsyncRestView):
     """CRUD endpoints for organizations.
+
+    Deletion requires a platform admin. The other routes remain public.
 
     Demonstrates using different schemas per operation:
     - schema_create: Stricter validation for POST (slug format, name length)
@@ -46,3 +51,14 @@ class OrganizationView(fr.AsyncRestView):
         org = await self.handle_create(schema_obj)
         response.headers["Location"] = f"{self.prefix}/{org.id}"
         return org
+
+    @fr.delete("/{id}", dependencies=[SetCurrentContextDep])
+    async def delete_endpoint(self, id: int) -> Response:
+        """Bind identity for deletion, including its relationship loads."""
+        return await super().delete_endpoint(id)
+
+    async def authorize(
+        self, action: str, obj: Organization | None = None, data: Any = None
+    ) -> None:
+        if action == "delete" and not Current.is_admin():
+            raise fr.exc.Forbidden("Deleting an organization requires a platform admin")

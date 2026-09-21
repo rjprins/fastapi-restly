@@ -87,8 +87,8 @@ class UserView(fr.AsyncRestView):
 fr.include_view(app, UserView)
 ```
 
-Both registration forms produce the same routes. [Structure a
-Project](howto_project_structure.md) shows where the direct call belongs in a
+Both registration forms produce the same routes.
+[Project structure](howto_project_structure.md) shows where the direct call belongs in a
 multi-package application.
 
 (default-crud-behavior)=

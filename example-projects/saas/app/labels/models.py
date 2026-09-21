@@ -1,11 +1,14 @@
 """Label model and TaskLabel association."""
 
+import sqlalchemy as sa
 from sqlalchemy import ForeignKey, orm
 
 import fastapi_restly as fr
 
-from ..context import Current
-from ..models import TenantOwned
+from ..current import Current
+from ..models import TenantOwned, tenant_is_admin, tenant_org_id
+from ..projects.models import Project
+from ..tasks.models import Task
 
 
 class Label(TenantOwned, fr.TimestampsMixin, fr.IDBase):
@@ -26,16 +29,6 @@ class Label(TenantOwned, fr.TimestampsMixin, fr.IDBase):
     )
 
 
-class LabelClauses(fr.ClauseNamespace):
-    """Label visibility: nothing beyond the tenant restriction (no soft delete).
-
-    The namespace exists so ``label_id`` references on TaskLabel resolve
-    against Label; the tenant listener in ``app.models`` scopes them.
-    """
-
-    model = Label
-
-
 class TaskLabel(fr.TimestampsMixin, fr.IDBase):
     """
     Association table between Task and Label with extra metadata.
@@ -47,7 +40,7 @@ class TaskLabel(fr.TimestampsMixin, fr.IDBase):
     label_id: orm.Mapped[int] = orm.mapped_column(ForeignKey("label.id"))
     # Stamped from context like the audit columns: not a constructor argument.
     added_by_id: orm.Mapped[int | None] = orm.mapped_column(
-        ForeignKey("user.id"), init=False, insert_default=lambda: Current.user_id()
+        ForeignKey("user.id"), init=False, insert_default=Current.user_id
     )
 
     # Relationships
@@ -59,4 +52,25 @@ class TaskLabel(fr.TimestampsMixin, fr.IDBase):
     )
     added_by: orm.Mapped["User | None"] = orm.relationship(  # noqa: F821
         init=False
+    )
+
+
+@sa.event.listens_for(orm.Session, "do_orm_execute")
+def _restrict_task_labels_to_tenant(state: orm.ORMExecuteState) -> None:
+    if not state.is_select or state.is_column_load:
+        return
+    state.statement = state.statement.options(
+        orm.with_loader_criteria(
+            TaskLabel,
+            sa.or_(
+                tenant_is_admin,
+                sa.and_(
+                    TaskLabel.task.has(
+                        Task.project.has(Project.organization_id == tenant_org_id)
+                    ),
+                    TaskLabel.label.has(Label.organization_id == tenant_org_id),
+                ),
+            ),
+            include_aliases=True,
+        )
     )

@@ -46,7 +46,7 @@ def test_namespace_bind_binds_several_members_at_once():
     with Context.bind(tenant_id=1, locale="nl"):
         assert Context.tenant_id() == 1
         assert Context.locale() == "nl"
-    with pytest.raises(TypeError):
+    with pytest.raises(LookupError, match=r"\.bind\(tenant_id="):
         Context.tenant_id()
 
 
@@ -54,6 +54,18 @@ def test_namespace_bind_rejects_an_unknown_member():
     with pytest.raises(TypeError, match="no member"):
         with Context.bind(nope=1):
             pass
+
+
+def test_nullable_member_requires_a_binding_but_accepts_none():
+    class Current(fr.ContextNamespace):
+        user_id: fr.ContextParam[int | None]
+
+    with pytest.raises(LookupError, match="user_id"):
+        Current.user_id()
+    with Current.bind(user_id=None):
+        assert Current.user_id() is None
+    with pytest.raises(LookupError, match="user_id"):
+        Current.user_id()
 
 
 def test_assignment_adopts_the_same_slot():

@@ -90,7 +90,7 @@ def test_leaf_context_binding():
 
 
 def test_unbound_context_param_raises():
-    with pytest.raises(TypeError):
+    with pytest.raises(LookupError):
         apply_clauses(select(Item), tenant_filter)
 
 
@@ -485,7 +485,7 @@ def test_ephemeral_bind_stays_strict():
 
 def test_ephemeral_bind_does_not_leak():
     tenant_filter.select(Item, tenant_id=7)
-    with pytest.raises(TypeError):
+    with pytest.raises(LookupError):
         tenant_filter.select(Item)
 
 
@@ -546,7 +546,7 @@ def test_apply_clauses_bind_layers_over_ambient():
 
 def test_apply_clauses_bind_does_not_leak():
     apply_clauses(select(Item), tenant_filter, tenant_id=7)
-    with pytest.raises(TypeError):
+    with pytest.raises(LookupError):
         apply_clauses(select(Item), tenant_filter)
 
 
@@ -729,7 +729,7 @@ def test_context_param_kind_and_call():
 
 def test_param_unbound_raises_with_name():
     slot = context_param("tenant_id")
-    with pytest.raises(TypeError, match="tenant_id"):
+    with pytest.raises(LookupError, match="tenant_id"):
         slot()
 
 
@@ -739,6 +739,8 @@ def test_embedded_slot_in_bare_condition():
     with slot.bind(embed_tenant=7):
         stmt = apply_clauses(select(Item), owned)
     assert 7 in params_of(stmt).values()
+    with pytest.raises(LookupError, match="embed_tenant"):
+        apply_clauses(select(Item), owned)
 
 
 def test_embedded_slot_visible_in_repr():
@@ -817,6 +819,8 @@ def test_annotated_marker_feeds_from_slot():
     with owned.bind(marker_tenant=4):  # the slot's name, not the local one
         stmt = apply_clauses(select(Item), owned)
     assert 4 in params_of(stmt).values()
+    with pytest.raises(LookupError, match="marker_tenant"):
+        apply_clauses(select(Item), owned)
 
 
 def test_annotated_marker_local_name_not_routable():
@@ -1054,13 +1058,13 @@ def test_namespace_registers_on_restly_idbase():
 
 
 def test_unbound_error_teaches_bind():
-    with pytest.raises(TypeError, match=r"\.bind\(tenant_id="):
+    with pytest.raises(LookupError, match=r"\.bind\(tenant_id="):
         apply_clauses(select(Item), tenant_filter)
 
 
 def test_unbound_param_error_teaches_bind():
     slot = context_param("teach_tenant")
-    with pytest.raises(TypeError, match=r"\.bind\(teach_tenant="):
+    with pytest.raises(LookupError, match=r"\.bind\(teach_tenant="):
         slot()
 
 
@@ -1069,7 +1073,7 @@ def test_unbound_transform_error_teaches_bind():
     def limited(stmt: Select, n: int) -> Select:
         return stmt.limit(n)
 
-    with pytest.raises(TypeError, match=r"\.bind\(n="):
+    with pytest.raises(LookupError, match=r"\.bind\(n="):
         apply_clauses(select(Item), limited)
 
 

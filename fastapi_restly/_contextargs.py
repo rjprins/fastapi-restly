@@ -85,7 +85,7 @@ def _caller_origin() -> str | None:
     return None
 
 
-class MissingContextValues(TypeError):
+class MissingContextValues(LookupError):
     """context_call() lacked values for required parameters.
 
     Carries the function label and the missing names so callers can

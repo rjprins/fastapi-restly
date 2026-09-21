@@ -30,8 +30,8 @@ service needs.
   test database before the suite. The migrations seed the read-only country
   lookup and the platform admin the tests sign in through.
 - **One identity per request.** Every request to a tenant route acts as one
-  user in one organization; `app/context.py` answers 401 without one, and
-  the tenant and audit columns are stamped from that identity on the model.
+  user in one organization. The sources in `app/current.py` answer 401 without one.
+  The tenant and audit columns are stamped from that identity on the model.
   The admin is a conditional on the same context, not a second route tree,
   and the first admin is seeded by a migration because nobody exists yet to
   create it through the API.
@@ -63,7 +63,7 @@ saas/
 │   ├── settings.py          # Validated Pydantic settings
 │   ├── main.py              # create_app() factory: VIEWS, Restly wiring, lifespan
 │   ├── asgi.py              # app = create_app(), the deployment entrypoint
-│   ├── context.py           # Request context (Current) and the scope clause factories
+│   ├── current.py           # Current namespace and SetCurrentContextDep
 │   ├── views.py             # Application-wide view foundation: base view and mixins
 │   ├── outbox.py            # Cross-domain transactional outbox model
 │   ├── organizations/
@@ -117,7 +117,9 @@ migrations.
 
 The auth check in `app/views.py` is a placeholder: nothing sets the identity
 on `request.state`, so the tenant routes answer 401 until you wire real
-authentication. The organization and country routes take no identity.
+authentication. Deleting an organization requires a platform admin
+(`Current.is_admin`). Other organization routes and the country routes take
+no identity.
 
 ## Work with migrations
 

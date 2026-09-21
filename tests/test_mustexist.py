@@ -581,10 +581,7 @@ def test_mustexist_with_read_only_relationship_keeps_foreign_key(sync_db):
         session.flush()
 
         book = make_new_object(
-            session,
-            Book,
-            BookCreate(title="Kindred", writer_id=writer.id),
-            BookRead,
+            session, Book, BookCreate(title="Kindred", writer_id=writer.id), BookRead
         )
         session.flush()
 

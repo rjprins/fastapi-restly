@@ -8,7 +8,7 @@ from pydantic import BaseModel
 import fastapi_restly as fr
 
 from ..auth import hash_password, verify_password
-from ..context import Current
+from ..current import Current
 from ..views import SoftDeleteMixin, TenantBase
 from .models import User, UserRole
 from .schemas import UserFullSchema, UserPublicSchema, UserSchema
@@ -37,8 +37,8 @@ class ChangePasswordRequest(BaseModel):
 class UserView(SoftDeleteMixin, TenantBase):
     """CRUD endpoints for users.
 
-    The model's ``default_scope`` (``UserClauses``) handles tenant +
-    soft-delete visibility; ``User`` stamps its tenant and audit ids
+    The session listener restricts reads to the tenant. ``UserClauses`` hides
+    soft-deleted rows. ``User`` stamps its tenant and audit ids
     itself (``app.models``), and ``SoftDeleteMixin`` flips ``deleted_at``
     on delete. This view keeps user-specific behavior: password hashing,
     field-level permissions, /me routes, and change-password.

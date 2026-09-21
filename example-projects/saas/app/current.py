@@ -5,12 +5,12 @@ the request acts in, the user, the user's role, and the platform-admin
 flag. None of them is ever ``None``. A request without an authenticated
 identity does not reach a tenant route (the sources below answer 401),
 and a script binds what it needs with ``Current.bind``.
-``bind_request_context`` is the generated dependency that binds them
+``SetCurrentContextDep`` is the generated dependency that binds them
 once per request, fed by the auth sources themselves so
 ``app.dependency_overrides`` keeps working in tests. The tenant floor
 that reads these values lives next to the tenant column, in
-``app.models``: a session listener restricts every ORM SELECT over a
-tenant-owned class to ``Current.org_id`` unless ``Current.is_admin``.
+``app.models``: session listeners restrict ORM entity and relationship loads
+to ``Current.org_id`` unless ``Current.is_admin``.
 
 Admin flows are conditionals on ``Current.is_admin``, not a separate
 route tree: an admin reads across tenants and writes into one by acting
@@ -79,7 +79,7 @@ class Current(fr.ContextNamespace):
 # One generated dependency binds every Current member per request. The
 # sources are the auth dependencies themselves, so
 # ``app.dependency_overrides`` keeps working in tests.
-bind_request_context = Current.depends(
+SetCurrentContextDep = Current.depends(
     org_id=get_current_org_id,
     user_id=get_current_user_id,
     role=get_current_role,

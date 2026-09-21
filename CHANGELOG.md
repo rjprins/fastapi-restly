@@ -7,109 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- SaaS example organization deletion now requires a platform admin and binds
+  request identity for cascading relationship loads.
+
+## [0.10.0] - 2026-09-17
+
 ### Added
 
 - `shared_write_action_commit()` on `RestView` and `AsyncRestView` groups
-  write actions under one session commit. Each action keeps its authorization and
-  before-hook. After-hooks run after the outermost block commits and are
-  discarded for rolled-back work. A direct session commit inside the block is
-  rejected because the outermost block owns the commit.
-- Context-bound query clauses: declare reusable query fragments once and
-  compose them with `fr.where_clause` / `fr.transform_clause`,
-  `fr.all_of` / `fr.any_of` / `fr.none_of` / `fr.combine`. Per-request
-  values bind late via `Clause.bind()` or a `ContextParam` slot shared
-  across models, declared in a `fr.ContextNamespace`
-  (`name: ContextParam[T]`; the conventional app-wide subclass is named
-  `Current`, and the namespace binds and explains as a unit).
-  `fr.apply_clauses` applies clauses to plain SQLAlchemy statements, and
-  `fr.ClauseNamespace` groups a model's clauses under one named class
-  (`ItemClauses.visible`); ephemeral values pass as keywords to
-  `fr.apply_clauses` and the
-  `select()`/`update()`/`delete()` shorthands. See the Query Clauses
-  guide.
-- `fr.clauses.UNSCOPED` now composes as no restriction. `all_of` and
-  `combine` ignore it, `any_of` returns it, and `none_of` returns a
-  predicate matching no rows. `all_of` returns the sole remaining clause
-  unchanged, or the sentinel when all arguments are `UNSCOPED`.
-  Other operands still undergo validation. See the Query Clauses guide
-  for the full rules and return types.
-- `ContextNamespace.depends()` and `ContextParam.depends()` generate the
-  FastAPI dependency that binds context per request: async underneath,
-  so the bind reaches async and `def` endpoints alike, and fed by your
-  own dependencies, so `app.dependency_overrides` keeps working.
-- Binding provenance: every bound clause value records the file and line
-  that bound it; `Clause.explain()` renders the clause tree with each
-  node's bind names, values, and origins, and an active `ContextParam`
-  repr names its bind site.
-- Scopes: a clause declared as `default_scope` on a model's
-  `fr.ClauseNamespace` is applied to every view read (list, count,
-  retrieve; a row outside it is 404) and to every reference check on the
-  model. Views replace it with the `scope` class attribute, validated at
-  class definition; `fr.clauses.UNSCOPED` is the explicit opt-out.
-  `fr.RefExists(Model, scope=...)` overrides per reference field.
-  `fr.clauses.UNSCOPED` is the one explicit unscoped spelling everywhere
-  a scope can appear (view, namespace, reference), so one grep surfaces
-  every escape; a namespace or a reference rejects `scope=None`, and on a
-  view `None` means the model's default. `default_scope` and a
-  `RefExists` scope must be a `WhereClause` (a pure predicate), enforced
-  in the type and at definition: an existence check cannot honor a
-  transform, so ordering and joins belong on the view scope.
-  `fr.RefExists` and `fr.clauses.UNSCOPED` are now exported. See the
-  Scopes guide.
-- A route names its own scope per read: `get_one(id, scope=...)` and
-  `get_many(query_params, scope=...)` replace the view scope for that
-  call, and `handle_get_many` / `handle_get_one` take and forward
-  `scope=`, so a trash listing or a restore action is a custom route on
-  the same view instead of a second view class. A custom write action
-  loads with `get_one(id, scope=...)` and gates only its own action, the
-  way `handle_update` / `handle_delete` do; `handle_get_one` is the loader
-  for custom read routes.
-  `fr.clauses.UNSCOPED` is the per-read opt-out, in the same spelling.
-  The handlers always forward the argument, so a `get_one` / `get_many`
-  override declares a `scope` parameter (typed `fr.views.ReadScope`,
-  newly exported) and passes it on to `super()`; an override without it
-  fails loudly instead of silently serving the wrong rows.
-- `fr.resolve_scope(view_or_model)` returns the scope a read applies,
-  resolved down the ladder: the view's `scope`, the model's
-  `default_scope`, then `fr.clauses.UNSCOPED`. It takes a view class or
-  instance, or a mapped model class for the model rung alone (what every
-  reference check applies), and returns `fr.clauses.UNSCOPED` rather than
-  `None`, so the result composes with `fr.apply_clauses` and `fr.all_of`
-  without a branch. Every read resolves through it, so a route that
-  builds its own query, a count endpoint or a nested listing following
-  another view's scope, sees the rows `get_one` and `get_many` see
-  instead of re-spelling the clause and drifting from it. Resolution is
-  public; applying stays with the framework, and there is still no
-  apply-side override point. See the Scopes guide.
-- `get_one` takes a SQLAlchemy boolean expression in place of the primary
-  key, so a natural-key route (`get_one(Item.slug == slug)`) runs the
-  retrieve path under another key, with the same scope, loader options
-  and 404. The criterion narrows inside the scope and cannot widen it,
-  which only `scope=` does, and more than one match raises SQLAlchemy's
-  `MultipleResultsFound` instead of serving the first row. A bool or an
-  uncalled clause is refused: a comparison on a loaded object is a Python
-  bool, which renders as `WHERE true`, and a clause is a scope, not a row
-  identity. `handle_get_one`, `handle_update` and `handle_delete` take
-  the same identity, so an update or a delete by natural key runs the
-  full commit bracket. A model with a composite primary key is
-  addressable this way, `get_one(sqlalchemy.and_(Model.a == a, Model.b ==
-  b))`, where an id raises `NotImplementedError` naming the predicate
-  form. The parameter widens to `IdT | ColumnElement[bool]`, so an
-  override annotating `id: int` widens with it.
-- `fr.apply_clauses` accepts `fr.clauses.UNSCOPED` and applies nothing
-  for it, and the sentinel's type is public as `fr.clauses.Unscoped` for
-  typing a `scope` declaration or a `get_one` / `get_many` override.
-- `model` is optional on `fr.ClauseNamespace`: a namespace without one is
-  a plain group of clauses, or a base class whose `__init_subclass__`
-  shapes the namespaces that extend it. Declaring `model` is what
-  registers the namespace for the model.
+  write actions under one session commit. Authorization and before-hooks still
+  run per action. After-hooks run after the outermost commit and are discarded
+  after a rollback. Direct session commits inside the block are rejected.
+- Context-bound query clauses are reusable SQLAlchemy query fragments with
+  values supplied per request. Declare them with `fr.where_clause` or
+  `fr.transform_clause`. Combine them with `fr.all_of`, `fr.any_of`,
+  `fr.none_of`, or `fr.combine`. Apply them with `fr.apply_clauses` or the
+  statement shorthands.
+  `fr.ClauseNamespace` groups clauses with or without registering a model.
+  `fr.ContextNamespace` and `fr.ContextParam` supply shared request values
+  through generated `.depends()` dependencies. `Clause.explain()` reports
+  bound values and their bind sites. Missing bindings raise `LookupError`.
+  See the Query Clauses guide.
+- Model default scopes apply a clause to every view read and reference check.
+  A view's `scope` replaces the model default for its reads. Pass `scope=` to
+  replace it for one read. `fr.RefExists` accepts a per-field scope.
+  `fr.clauses.UNSCOPED` is the explicit opt-out and composes as no restriction.
+  `fr.resolve_scope()` returns the effective scope. See the Scopes guide.
+- `get_one()`, `handle_get_one()`, `handle_update()`, and `handle_delete()`
+  accept a SQLAlchemy boolean expression or a primary key. Natural and
+  composite keys therefore use the normal scoped retrieve, update, and delete
+  paths.
 - Any route method on a view that declares a `query_params` parameter
-  takes the view's listing grammar: typed as the generated
-  `listing_param_schema` for FastAPI and OpenAPI, and guarded against
-  unknown keys like `GET /`. A custom listing (a trash route naming its
-  own scope) reads filters, sort and page the same way.
+  receives the view's generated listing schema and rejects unknown keys like
+  the built-in collection route.
 - `restly new <name>` scaffolding command to create a project from scratch with
-  optional database and alembic set up.
+  optional database and Alembic setup.
 - Pass `health="/health"` to `fr.configure()` to add a liveness endpoint that
   returns `200` with `{"status": "ok"}`.
 - `fr.utils.CurrentSettingsMixin` adds a lazily initialized
@@ -118,12 +52,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Engines created by `fr.configure()` now share one connection across threads
-  for in-memory SQLite. SQLite foreign-key constraints are now enforced, so
-  invalid references return 409 instead of being stored. Fix callers and tests
-  that write invalid references. PostgreSQL engines now check connections and
-  recycle them after 30 minutes. Pass your own engine or session factory to
-  control these settings.
+- Engines created by `fr.configure()` now share an in-memory SQLite connection
+  across threads and enforce SQLite foreign keys. Invalid references now return
+  409. PostgreSQL engines now check connections and recycle them after 30
+  minutes. Pass an engine or session factory to control these settings.
 - Custom `RestView` collection routes declared at `"/"` now use the path
   without a trailing slash in OpenAPI. The trailing-slash path remains as a
   hidden compatibility alias.
@@ -145,44 +77,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Use `mapped_column(DateTime())` on columns that must retain naive wall-clock
   values.
 - Renamed the `RestView` / `AsyncRestView` transaction hooks `before_commit`
-  and `after_commit` to `before_action_commit` and `after_action_commit`: they
-  bracket a Restly write action, and the old names collided with SQLAlchemy's
-  `before_commit` / `after_commit` session events. Rename your overrides.
-- `make_new_object`, `update_object`, and `save_object` on `RestView` /
-  `AsyncRestView` are final: call them from a verb override, never override
-  them. A view class that defines one, itself or through a mixin, fails at
-  class definition with a migration pointer. The former "cooperative
-  stamping" override point only covered the CRUD verbs; a server-stamped
-  field is a column default on the model (`insert_default=` /
-  `onupdate=` reading a `ContextNamespace` slot), which covers every write
-  path. Docs and the SaaS example follow.
-- `handle_get_many`, `handle_get_one`, `handle_create`, `handle_update`, and
-  `handle_delete` on `RestView` / `AsyncRestView` are final: call them from a
-  custom route, never override them. A view class that defines one, itself or
-  through a mixin, fails at class definition with a message naming the seam
-  that owns the change: domain logic belongs in the business method, a gate in
-  `authorize`, a side effect in `before_action_commit` /
-  `after_action_commit`, the HTTP contract in `<verb>_endpoint`, and several
-  writes under one commit in `shared_write_action_commit()`. Every generated
-  CRUD route therefore runs `authorize` and the commit bracket, and no view
-  can drop either by accident. Docs follow.
+  and `after_commit` to `before_action_commit` and `after_action_commit`.
+  Rename existing overrides.
+- `get_one()`, `get_many()`, `handle_get_one()`, and `handle_get_many()` now
+  accept `scope=`. Existing `get_one()` and `get_many()` overrides must accept
+  and forward it. `get_one()`, `handle_get_one()`, `handle_update()`, and
+  `handle_delete()` also accept SQLAlchemy boolean expressions. Widen a
+  `get_one()` override's `id` annotation to include `ColumnElement[bool]`.
+- The `handle_*`, `make_new_object`, `update_object`, and `save_object` methods
+  on `RestView` and `AsyncRestView` are final. Existing overrides fail at class
+  definition. Call `handle_*` from custom routes and object helpers from verb
+  overrides. Move domain logic to business methods, authorization to
+  `authorize`, HTTP changes to `<verb>_endpoint`, and commit side effects to
+  `before_action_commit` or `after_action_commit`. Define server-stamped fields
+  with SQLAlchemy `insert_default=` or `onupdate=` column defaults.
 
 ### Removed
 
-- `build_query`. Row visibility is declared as a clause instead:
-  `default_scope` on the model's namespace, or `scope` on the view;
-  read-wide reshaping is a transform clause on the view scope. A view
-  class that still defines `build_query`, itself or through a mixin,
-  fails at class definition with a migration pointer, because a dead
-  visibility override must not sit silently. See "Migrating from
-  build_query" in the Scopes guide.
+- `build_query`. Move row visibility to `default_scope` on the model's
+  namespace or `scope` on the view. Put read-wide reshaping in a transform
+  clause on the view scope. A remaining override fails at class definition.
+  See "Migrating from build_query" in the Scopes guide.
 - `RestView.delete_object` / `AsyncRestView.delete_object`. The `delete`
-  business method removes the row and flushes itself; override `delete` for
-  a soft delete, which is what every `delete_object` override was. A view
-  class that still defines `delete_object`, itself or through a mixin, fails
-  at class definition with a migration pointer, because a dead soft-delete
-  override would hard-delete silently. A raw row delete outside the verb is
-  `fr.objects.delete_object` / `fr.objects.async_delete_object`.
+  business method now removes and flushes the row. Override `delete` for soft
+  deletion. A remaining `delete_object` override fails at class definition to
+  prevent an accidental hard delete. Use `fr.objects.delete_object` or
+  `fr.objects.async_delete_object` outside a verb.
 
 ### Fixed
 
@@ -190,27 +110,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `page` values above the SQL offset limit now return `422` instead of `500`.
 - Datetime query filters without an offset now use UTC for timezone-aware
   columns. Filters for `DateTime()` columns remain naive.
-- The scalar reference check (`MustExist`, `RefExists`) selects the mapped
-  primary-key attribute instead of the Core column, so it is an ORM
-  statement like every other read: a session-level rule added with
-  SQLAlchemy's `with_loader_criteria` now reaches reference checks too.
+- `MustExist` and `RefExists` checks now honor session-level SQLAlchemy
+  `with_loader_criteria()` rules.
 - `save_object` no longer expires related objects through the
   `refresh-expire` cascade: it refreshes by attribute name, so
   `cascade="all"` is safe on Restly's write paths under `AsyncSession`.
-- Query filter values are validated against the field alone, so a
-  cross-field `model_validator` (or a frozen schema) on the view schema no
-  longer turns a legal filter into a 400. Field validators, constraints and
-  the model config still apply.
+- Query filters now run only the field's validators and constraints, so
+  cross-field validators and frozen schemas no longer reject valid filters.
 - The listing tiebreak orders by the model's primary key whatever its
-  name, and by every column of a composite key; it was `id` or nothing.
-- React-admin views reject unknown query keys with 422, like every other
-  listing route. `sort`, `range` and `filter` are the whole contract there,
-  so the standard dialect's `page` and per-field filters are unknown keys
-  too; `extra_query_params` widens it.
+  name, and by every column of a composite key. It was `id` or nothing.
+- React-admin views now reject query keys outside `sort`, `range`, `filter`,
+  and configured `extra_query_params` with 422.
 - A schema field typed as a nested Pydantic model now writes to a `JSON`
-  column: the model is dumped to plain JSON instead of reaching the driver
-  as an object and failing at flush. A `TypeDecorator` over `JSON` still
-  receives the model.
+  column as plain JSON. A `TypeDecorator` over `JSON` still receives the model.
 
 ## [0.9.0] - 2026-08-13
 
@@ -693,7 +605,8 @@ First public beta release.
 - Removed duplicate pytest fixture exports from `fastapi_restly.testing`;
   the pytest plugin path is `fastapi_restly.pytest_fixtures`.
 
-[Unreleased]: https://github.com/rjprins/fastapi-restly/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/rjprins/fastapi-restly/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/rjprins/fastapi-restly/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/rjprins/fastapi-restly/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/rjprins/fastapi-restly/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/rjprins/fastapi-restly/compare/v0.6.1...v0.7.0

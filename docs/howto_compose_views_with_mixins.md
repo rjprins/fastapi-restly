@@ -1,18 +1,16 @@
 # Compose Views with Mixins
 
-Some concerns belong on many views: tenant scoping, soft delete, audit stamps,
-permission filters. They are structural, not business logic: they stamp
-server-controlled fields or filter reads. Both halves of a structural field
-hang off the model that declares the column. The read filter is a
-[scope](scopes.md) clause in the model's namespace, and the write stamp is the
-column's default. A view mixin carries the one structural concern that is a
-verb, soft delete. This guide covers where each piece goes, the three pieces
-the SaaS example ships, and two gotchas.
+Model mixins declare shared columns, such as tenant ids and audit stamps.
+SQLAlchemy session listeners restrict tenant reads. Clause namespaces define
+[scopes](scopes.md), such as hiding soft-deleted rows. View mixins override
+shared behavior, such as setting a timestamp instead of deleting a row.
 
 ## Where structural concerns live
 
-- **Read filters** are clauses. The model namespace's
-  [default scope](#default-scope) covers every read and every reference
+- **Tenant filters** belong in SQLAlchemy session listeners. They apply
+  independently of the scope selected by a view or reference check.
+- **Read scopes** are clauses. The model namespace's
+  [default scope](#default-scope) covers RestView reads and reference
   check, and a view {attr}`scope <fastapi_restly.views.BaseRestView.scope>`
   replaces it for that view. Clauses compose with
   {func}`fr.all_of <fastapi_restly.clauses.all_of>`.
@@ -89,8 +87,8 @@ The tenant rule is not a scope. It must hold under every scope a view or a
 route can name, and for every reference check, so it lives at the session
 level, where SQLAlchemy already provides it: a `do_orm_execute` listener
 adds a
-[`with_loader_criteria`](https://docs.sqlalchemy.org/en/20/orm/queryguide/api.html#adding-global-where-on-criteria)
-option to every ORM `SELECT` that touches a tenant-owned class. The values
+[`with_loader_criteria`](https://docs.sqlalchemy.org/en/20/orm/queryguide/api.html#sqlalchemy.orm.with_loader_criteria)
+option to ORM entity and relationship reads. The values
 it reads come from a generated dependency (`Current.depends(...)`, see the
 SaaS example) that binds them once per request, and they are never `None`:
 a request without an authenticated identity is refused by the dependency's
@@ -118,18 +116,24 @@ class TenantOwned(orm.MappedAsDataclass, kw_only=True):
     )
 
 
+# Read identity when the SQL executes, not when the option is attached.
+tenant_org_id = sa.bindparam(
+    "tenant_org_id", callable_=lambda: Current.org_id(), type_=sa.Integer
+)
+tenant_is_admin = sa.bindparam(
+    "tenant_is_admin", callable_=lambda: Current.is_admin(), type_=sa.Boolean
+)
+
+
 @sa.event.listens_for(orm.Session, "do_orm_execute")
 def _restrict_tenant_rows(state: orm.ORMExecuteState) -> None:
-    if not state.is_select or state.is_column_load or state.is_relationship_load:
+    if not state.is_select or state.is_column_load:
         return
-    if not any(issubclass(m.class_, TenantOwned) for m in state.all_mappers):
-        return  # a statement without a tenant-owned class needs no identity
-    if Current.is_admin():
-        return
-    org_id = Current.org_id()
     state.statement = state.statement.options(
         orm.with_loader_criteria(
-            TenantOwned, lambda cls: cls.organization_id == org_id, include_aliases=True
+            TenantOwned,
+            lambda cls: sa.or_(tenant_is_admin, cls.organization_id == tenant_org_id),
+            include_aliases=True,
         )
     )
 
@@ -147,14 +151,30 @@ writing into another tenant acts as that tenant, and the stamp follows. A
 verb that needs the value before the flush reads `Current.org_id()`
 itself, as the example's slug probe does.
 
-The listener's guard matters. Column and relationship loads inherit the
-criteria of the statement that loaded their parent, and a statement that
-touches no tenant-owned class must not read the identity, or a plain
-lookup view would fail unbound. Outside a request nothing is bound and a
-tenant read raises; a script or a test binds an identity with
-`Current.bind(...)` rather than reading unscoped by accident. A model that
-reaches its tenant through a relationship (the example's `Task`, through
-its project) registers a second listener with an `EXISTS`.
+Attach the option even when the query starts from an unrestricted model:
+`select(Organization).options(joinedload(Organization.users))` must filter
+the users. Relationship queries also receive the option, including when
+their parent was inserted rather than loaded by a query. Keep the default
+`propagate_to_loaders=True` so joined eager loads receive the criteria.
+
+[`bindparam(callable_=...)`](https://docs.sqlalchemy.org/en/20/core/sqlelement.html#sqlalchemy.sql.expression.bindparam)
+reads the identity only when the generated SQL uses that parameter. A plain
+lookup query needs no identity. A protected read without one fails with a
+context `LookupError`, wrapped in SQLAlchemy's `StatementError`. The lambdas
+are needed here because `bindparam` tests the callable's truth value, which
+`ContextParam` rejects.
+
+Keep `Current.bind(...)` active for the session's lifetime. Use a new session
+for a different identity: criteria do not remove objects already loaded into
+the session. A model that reaches its tenant through a relationship needs
+its own criterion. The SaaS example covers `Task` through its project and
+`TaskLabel` through both its task and label.
+
+This is an ORM read filter, not database-level access control. Raw SQL, Core
+table queries, and arbitrary writes need their own checks. Relationship
+predicates built with `.any()` or `.has()` do not automatically receive the
+criteria inside their `EXISTS` subquery. Include the tenant predicate there,
+as the SaaS task and task-label listeners do.
 
 (soft-delete-mixin)=
 ### Soft delete: a scope clause plus a delete mixin

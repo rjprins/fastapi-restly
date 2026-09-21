@@ -107,6 +107,7 @@ first test.
 - **[Pydantic v2 integration](howto_custom_schema.md)**: validation and serialization for public contracts
 - **[Automatic schema generation](technical_details.md#auto-generated-schemas)**: read, create, and update schemas generated automatically
 - **[List parameters](howto_query_modifiers.md)**: filter, sort, and paginate from a stable URL dialect generated from the response schema
+- **[Current context](howto_current.md)**: bind the current user once and read it in application code and column defaults
 - **[Scopes](scopes.md)**: row visibility declared once as a clause and applied to every read and reference check
 - **[Relationship support](howto_relationship_idschema.md)**: handle foreign keys and nested objects
 - **[Testing utilities](howto_testing.md)**: built-in test helpers with savepoint isolation

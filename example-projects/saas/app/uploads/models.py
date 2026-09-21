@@ -19,7 +19,7 @@ from sqlalchemy import ForeignKey, orm
 
 import fastapi_restly as fr
 
-from ..context import Current
+from ..current import Current
 from ..models import TenantOwned
 
 
@@ -28,7 +28,7 @@ class Upload(TenantOwned, fr.TimestampsMixin, fr.IDBase):
 
     filename: orm.Mapped[str]
     uploaded_by_id: orm.Mapped[int | None] = orm.mapped_column(
-        ForeignKey("user.id"), init=False, insert_default=lambda: Current.user_id()
+        ForeignKey("user.id"), init=False, insert_default=Current.user_id
     )
     completed_at: orm.Mapped[datetime | None] = orm.mapped_column(default=None)
     line_count: orm.Mapped[int] = orm.mapped_column(default=0)

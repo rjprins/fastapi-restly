@@ -1,13 +1,14 @@
 """Fixtures for the SaaS suite.
 
-Every request in the application acts as one user in one organization, and
-so does every test: ``client`` (and ``async_client``) sign in as Alice, the
-owner of a fresh organization named Acme, before the test body runs; the
-identity is reachable as ``actor``. A test about a second tenant makes one
-with ``new_tenant`` and acts as its user; a test about the platform admin
-acts as the seeded admin with ``as_admin``; a test about anonymous access
-drops the identity with ``anonymous``; ``auth_context`` overrides single
-sources for a block.
+``client`` and ``async_client`` override the auth sources to sign requests
+in as Alice, the owner of a fresh organization named Acme. ``actor`` and
+``async_actor`` expose that identity. ``new_tenant`` creates another identity
+whose ``acting()`` method overrides the sources for a block. ``as_admin``
+selects the seeded admin. ``anonymous`` removes the overrides.
+
+These helpers do not bind ``Current``. A request must run
+``SetCurrentContextDep`` to bind its own identity. Direct database checks
+bind explicitly with ``Current.bind(**asdict(actor))`` around the session.
 
 The admin is seeded by the migration in ``alembic/versions`` and is the
 only user without a creator. Signing in creates the organization and Alice
@@ -24,8 +25,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
-from app.context import (
-    Current,
+from app.current import (
     get_current_org_id,
     get_current_role,
     get_current_user_id,
@@ -105,8 +105,8 @@ class Tenant:
     is_admin: bool = False
 
     def acting(self) -> Iterator[None]:
-        """Act as this identity for a block."""
-        return _bind(
+        """Authenticate requests as this identity without binding Current."""
+        return _override_auth(
             org_id=self.org_id,
             user_id=self.user_id,
             role=self.role,
@@ -115,43 +115,26 @@ class Tenant:
 
 
 @contextmanager
-def _bind(
+def _override_auth(
     *,
     org_id: int | None = None,
     user_id: int | None = None,
     role: UserRole | None = None,
     is_admin: bool | None = None,
 ) -> Iterator[None]:
-    """Act as the named identity facts for a block; the others stay as they are.
-
-    Two bindings: the auth sources, for requests the client makes, and
-    ``Current`` itself, for the test body's own reads. A direct SELECT over
-    a tenant-owned class goes through the same listener a request does,
-    so a test inspects the database as the identity it acts as.
-    """
+    """Override named auth sources without supplying a Current binding."""
     sources = {
         get_current_org_id: org_id,
         get_current_user_id: user_id,
         get_current_role: role,
         get_is_admin: is_admin,
     }
-    values = {
-        name: value
-        for name, value in (
-            ("org_id", org_id),
-            ("user_id", user_id),
-            ("role", role),
-            ("is_admin", is_admin),
-        )
-        if value is not None
-    }
     previous = app.dependency_overrides.copy()
     for source, value in sources.items():
         if value is not None:
             app.dependency_overrides[source] = lambda value=value: value
     try:
-        with Current.bind(**values):
-            yield
+        yield
     finally:
         app.dependency_overrides.clear()
         app.dependency_overrides.update(previous)
@@ -159,7 +142,7 @@ def _bind(
 
 def _as_admin(org_id: int) -> Iterator[None]:
     """Act as the seeded platform admin inside ``org_id``."""
-    return _bind(
+    return _override_auth(
         org_id=org_id, user_id=SYSTEM_ADMIN_ID, role=UserRole.OWNER, is_admin=True
     )
 
@@ -196,12 +179,7 @@ async def _async_identity(restly_async_client: AsyncRestlyTestClient) -> Tenant:
 
 @pytest.fixture
 def async_actor(_async_identity: Tenant) -> Iterator[Tenant]:
-    """``actor`` for tests on the async client.
-
-    Bound from a sync fixture: the test coroutine copies the fixture's
-    context when its task starts, which an async fixture's task would not
-    share.
-    """
+    """Authenticate async-client requests as ``_async_identity``."""
     with _async_identity.acting():
         yield _async_identity
 
@@ -210,7 +188,7 @@ def async_actor(_async_identity: Tenant) -> Iterator[Tenant]:
 async def async_client(
     restly_async_client: AsyncRestlyTestClient, async_actor: Tenant
 ) -> AsyncRestlyTestClient:
-    """The async client for tests that also inspect the async database."""
+    """The isolated async client, signed in as ``async_actor``."""
     return restly_async_client
 
 
@@ -225,7 +203,7 @@ def clear_dependency_overrides() -> Iterator[None]:
 @pytest.fixture
 def auth_context() -> Callable[..., Iterator[None]]:
     """Override the auth sources for a block: org_id, user_id, role, is_admin."""
-    return _bind
+    return _override_auth
 
 
 @pytest.fixture

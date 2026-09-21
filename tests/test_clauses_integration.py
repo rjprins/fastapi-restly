@@ -285,7 +285,7 @@ def test_bind_resets_after_exception(engine):
     with pytest.raises(RuntimeError):
         with ItemClauses.visible.bind(tenant_id=T1):
             raise RuntimeError("boom")
-    with pytest.raises(TypeError):
+    with pytest.raises(LookupError):
         ItemClauses.visible.select(Item)  # unbound again
 
 

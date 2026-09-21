@@ -449,7 +449,7 @@ uv run pytest
 {test_note}
 ## Further reading
 
-- [Structure a project](https://www.fastapi-restly.org/howto_project_structure.html)
+- [Project structure](https://www.fastapi-restly.org/howto_project_structure.html)
 - [Deploying](https://www.fastapi-restly.org/deploying.html)
 - [Testing](https://www.fastapi-restly.org/howto_testing.html)
 """

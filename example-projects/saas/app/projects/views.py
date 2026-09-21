@@ -12,7 +12,7 @@ from sqlalchemy.orm import selectinload
 import fastapi_restly as fr
 from fastapi_restly.views import PaginatedEnvelope
 
-from ..context import Current
+from ..current import Current
 from ..tasks.models import Task, TaskPriority, TaskStatus, TaskType
 from ..tasks.schemas import TaskSchema
 from ..tasks.views import TaskView
@@ -107,7 +107,7 @@ class ProjectView(SoftDeleteMixin, TenantBase):
     async def get_many(
         self, query_params, *, scope: fr.views.ReadScope = None
     ) -> fr.ListingResult[Project]:
-        # The default scope enforces tenant + soft-delete filtering already.
+        # The session enforces tenancy. The default scope hides deleted rows.
         # Here we only do project-specific response decoration on each row
         # in the page.
         result = await super().get_many(query_params, scope=scope)
@@ -123,7 +123,7 @@ class ProjectView(SoftDeleteMixin, TenantBase):
     async def get_one(
         self, id: int | sa.ColumnElement[bool], *, scope: fr.views.ReadScope = None
     ):
-        # The default scope enforces tenant + soft-delete filtering already.
+        # The session enforces tenancy. The default scope hides deleted rows.
         # ``get_one`` is the auth-free load+scope+404 override point; we layer only
         # project-specific response decoration on top. ``handle_get_one``
         # (and therefore every read path) routes through here.

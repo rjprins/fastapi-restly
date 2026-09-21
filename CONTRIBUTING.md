@@ -70,7 +70,9 @@ make docs-serve
 - One page owns each topic; other pages link to it instead of restating.
   The three-tier override model is owned by `customize.md`; the query
   grammar by `howto_query_modifiers.md`; schema bases by
-  `howto_custom_schema.md`.
+  `howto_custom_schema.md`. `howto_current.md` owns request context and
+  dependency binding. `clauses.md` owns query clauses and their integration
+  with `Current`.
 - Link API symbols to their autodoc entry with MyST roles:
   ``{class}`fr.AsyncRestView <fastapi_restly.views.AsyncRestView>` `` —
   prose mentions of Restly objects should be clickable, SQLAlchemy-style.

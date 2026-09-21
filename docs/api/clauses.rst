@@ -12,6 +12,9 @@ statements.
    :show-inheritance:
    :special-members: __call__
 
+.. autodata:: fastapi_restly.clauses.UNSCOPED
+
 .. seealso::
 
-   :doc:`/clauses` explains the full interface with worked examples.
+   :doc:`/howto_current` covers request values and dependency binding.
+   :doc:`/clauses` covers query fragments and composition.

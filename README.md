@@ -187,7 +187,7 @@ restly new myapp
 It asks three questions, each also available as a flag: `--async`/`--sync`,
 `--postgres`/`--sqlite`, and `--alembic`/`--create-all`. Add `--yes` to take
 the defaults. See
-[Structure a Project](https://www.fastapi-restly.org/howto_project_structure.html).
+[Project structure](https://www.fastapi-restly.org/howto_project_structure.html).
 
 ## Main features
 

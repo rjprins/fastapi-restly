@@ -47,7 +47,8 @@ clause under that name is the scope for the model. The one line
   row on a write returns 404.
 
 Every model namespace has a `default_scope`, and its default is
-`fr.clauses.UNSCOPED`: a model that declares none reads unscoped, and
+{data}`fr.clauses.UNSCOPED <fastapi_restly.clauses.UNSCOPED>`:
+a model that declares none reads unscoped, and
 its reference checks are bare primary-key lookups. `UNSCOPED` is the one
 explicit unscoped spelling everywhere a scope can appear. Searching for
 `UNSCOPED` finds where unscoping is requested directly. Follow variables
@@ -308,8 +309,9 @@ only.
 ## Coming from Rails
 
 This is `default_scope` without the parts that earned Rails'
-`default_scope` its reputation. It does not default attribute *values*
-on create; it only filters reads and reference checks. A view escapes it
+`default_scope` its reputation. `default_scope` controls which rows are
+visible to reads and reference checks. It does not set column values
+when creating rows. A view escapes it
 by declaring a replacement or `fr.clauses.UNSCOPED`, both visible in the
 class body, and the reference escape is the same greppable word. Nothing
 escapes it implicitly.

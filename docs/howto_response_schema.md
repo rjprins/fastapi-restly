@@ -67,10 +67,12 @@ guide.
 
 Any other envelope is a change to the HTTP contract, so
 [replace the endpoint method](customize.md#replace-an-endpoint-method-to-change-the-http-contract)
-and set `response_model` on the replacement. Inside the shell, call
+and set `response_model` on the replacement.
+
+In the replacement endpoint method, call
 {meth}`to_response_schema(obj) <fastapi_restly.views.BaseRestView.to_response_schema>`
-so that `WriteOnly` stripping, relationship-id resolution, and
-response-schema validation still run.
+before placing the object in the envelope. This converts the ORM object to
+the view's response schema without requiring write-only input fields.
 
 For a single-object `{"data": ...}` wrapper, replace
 {meth}`get_one_endpoint <fastapi_restly.views.RestView.get_one_endpoint>` and
@@ -151,7 +153,7 @@ class UserView(fr.AsyncRestView):
 
 When the same wrapper applies to more than one route, centralize it in
 {meth}`to_response() <fastapi_restly.views.BaseRestView.to_response>` and have
-each replaced shell delegate to it. `to_response` is the shared runtime
+each replacement endpoint method delegate to it. `to_response` is the shared runtime
 boundary keyed on the wire shape:
 {attr}`SINGLE <fastapi_restly.views.ResponseShape.SINGLE>`,
 {attr}`LISTING <fastapi_restly.views.ResponseShape.LISTING>`, or
@@ -170,7 +172,7 @@ Be aware that overriding `to_response` without also replacing the endpoint
 methods leaves their `response_model` describing the bare object, so
 FastAPI response validation *and* OpenAPI disagree with the enveloped payload
 you return. A new contract therefore needs both pieces: the `to_response`
-override for the runtime shape, and a replaced shell with a matching
+override for the runtime shape, and a replacement endpoint method with a matching
 `response_model`.
 
 ## See also

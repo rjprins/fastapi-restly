@@ -9,8 +9,8 @@ from sqlalchemy.types import TypeDecorator
 
 import fastapi_restly as fr
 
-from ..context import Current
-from ..models import AuditStamped, SoftDeletable, tenant_org_for
+from ..current import Current
+from ..models import AuditStamped, SoftDeletable, tenant_is_admin, tenant_org_id
 from ..projects.models import Project
 from ..users.roles import UserRole
 
@@ -126,17 +126,19 @@ class Task(AuditStamped, SoftDeletable, fr.TimestampsMixin, fr.IDBase):
 
 @sa.event.listens_for(orm.Session, "do_orm_execute")
 def _restrict_tasks_to_tenant(state: orm.ORMExecuteState) -> None:
-    # Task has no organization_id: its tenant is its project's. The same
-    # listener shape as TenantOwned's in app.models, with an EXISTS.
-    org_id = tenant_org_for(state, Task)
-    if org_id is not None:
-        state.statement = state.statement.options(
-            orm.with_loader_criteria(
-                Task,
-                Task.project.has(Project.organization_id == org_id),
-                include_aliases=True,
-            )
+    # Task has no organization_id: its tenant is its project's.
+    if not state.is_select or state.is_column_load:
+        return
+    state.statement = state.statement.options(
+        orm.with_loader_criteria(
+            Task,
+            sa.or_(
+                tenant_is_admin,
+                Task.project.has(Project.organization_id == tenant_org_id),
+            ),
+            include_aliases=True,
         )
+    )
 
 
 class TaskClauses(fr.ClauseNamespace):

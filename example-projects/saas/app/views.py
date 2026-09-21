@@ -4,8 +4,8 @@
 outbox emission. A request without an
 authenticated identity does not reach a ``TenantBase`` route (the context
 sources answer 401), so every tenant read and write acts as one user in
-one organization; the plain views (organizations, countries) take no
-identity. Structural fields live on
+one organization. Organization routes other than DELETE and country routes
+take no identity. Structural fields live on
 the models: a subject's ``models.py`` mixes in ``TenantOwned``,
 ``AuditStamped``, or ``SoftDeletable`` from ``app.models``, which stamp
 ``organization_id`` and the audit ids from ``Current`` on every write
@@ -17,8 +17,8 @@ tenant restriction holds underneath either. The one write-side mixin
 left here is
 ``SoftDeleteMixin``: ``delete`` flips ``deleted_at`` instead of removing
 the row. Concrete subject views import the foundation and the mixin from
-this root module; the context values and the scope factories live in
-``app.context``.
+this root module. ``Current`` and ``SetCurrentContextDep`` live in
+``app.current``.
 
 Inheritance and prefix concatenation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -44,7 +44,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import fastapi_restly as fr
 
-from .context import bind_request_context
+from .current import SetCurrentContextDep
 
 # Module level, not inside _emit(): Alembic reaches models through this graph.
 from .outbox import OutboxEvent
@@ -55,7 +55,7 @@ def check_api_key(request: fastapi.Request) -> None:
 
     In production, validate a JWT or API key from the Authorization header
     and set ``request.state.org_id``, ``user_id``, ``user_role`` and
-    ``is_admin`` from it; the sources in ``app.context`` read them and
+    ``is_admin`` from it; the sources in ``app.current`` read them and
     answer 401 when they are missing. An admin acting in another tenant
     gets that tenant as ``org_id`` (from an act-as header, say). This
     dependency runs before every route on every TenantBase subclass.
@@ -68,7 +68,7 @@ class TenantBase(fr.AsyncRestView):
 
     Subclasses inherit:
     - Router-level ``check_api_key`` dependency on every route
-    - ``bind_request_context``, so ``Current`` reads work in every route and
+    - ``SetCurrentContextDep``, so ``Current`` reads work in every route and
       a request without an identity is a 401
     - ``before_action_commit`` with a placeholder for audit side effects
     """
@@ -76,7 +76,7 @@ class TenantBase(fr.AsyncRestView):
     # Applied to every route registered by this view and all subclasses.
     dependencies: ClassVar[list[Any]] = [
         fastapi.Depends(check_api_key),
-        bind_request_context,
+        SetCurrentContextDep,
     ]
 
     async def before_action_commit(

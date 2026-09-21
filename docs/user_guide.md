@@ -22,7 +22,7 @@ schemas it works from.
 Adopt Restly beside existing FastAPI routes, then wire it into your sessions and models.
 :::
 
-:::{grid-item-card} Structure a Project
+:::{grid-item-card} Project structure
 :link: howto_project_structure
 :link-type: doc
 
@@ -77,12 +77,20 @@ set, and resolve `MissingGreenlet` on async sessions.
 Filter, sort, and paginate list endpoints using URL query parameters.
 :::
 
+:::{grid-item-card} Current context
+:link: howto_current
+:link-type: doc
+
+Bind the current user per request. Read the value in application code,
+column defaults, and tests.
+:::
+
 :::{grid-item-card} Query Clauses
 :link: clauses
 :link-type: doc
 
-Declare reusable query fragments such as tenant ownership or soft
-deletion, compose them, and bind per-request values where they become known.
+Compose reusable predicates and statement transforms. Bind their values
+when building queries.
 :::
 
 :::{grid-item-card} Scopes
@@ -207,6 +215,7 @@ howto_relationship_idschema
 howto_response_schema
 howto_relationship_loading
 howto_query_modifiers
+howto_current
 clauses
 scopes
 howto_error_responses

@@ -22,9 +22,9 @@ class CreateAndAttachLabelRequest(BaseModel):
 class LabelView(TenantBase):
     """CRUD for labels (organization-scoped).
 
-    ``LabelClauses.default_scope`` filters reads to the organization;
-    ``Label`` stamps ``organization_id`` on writes itself (``TenantOwned``
-    in ``app.models``). This class only adds the cascade-on-delete.
+    The session listener in ``app.models`` filters reads to the organization.
+    ``Label`` stamps ``organization_id`` through ``TenantOwned``.
+    This class only adds the cascade-on-delete.
     """
 
     prefix = "/labels"
@@ -42,6 +42,8 @@ class LabelView(TenantBase):
 class TaskLabelView(TenantBase):
     """CRUD for task-label associations.
 
+    The session listener in ``labels.models`` requires both the task and label
+    to belong to the caller's organization, unless the caller is an admin.
     ``added_by_id`` is stamped by its column's insert default from
     ``Current.user_id`` on every write path; the schema marks it read-only.
     """
@@ -59,12 +61,10 @@ class TaskLabelView(TenantBase):
         The Label lands in the organization the request acts in:
         ``organization_id`` is the model's stamp, not an argument here.
         The Label is flushed first so its id can pass the TaskLabel schema's
-        ``MustExist`` checks. Those checks run inside each target model's
-        ``default_scope``, so a ``task_id`` from another organization reads
-        as "does not exist" (404): the tenant EXISTS in
-        ``TaskClauses.default_scope`` replaces the org-join this route used
-        to spell out by hand, and the aborted request rolls the flushed
-        Label back with it.
+        ``MustExist`` checks. The session listeners restrict those checks to
+        the caller's organization. ``TaskClauses.default_scope`` also excludes
+        deleted tasks. A foreign or deleted task returns 404, rolling back
+        the flushed Label with the request.
         """
         # Commit the Label + TaskLabel pair atomically.
         async with self.write_action("create", data=request) as w:

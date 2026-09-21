@@ -391,7 +391,10 @@ class ContextParam(Clause, Generic[_T]):
         return f"<ContextParam {names}>"
 
     def __call__(self, /, **binds: Any) -> _T:
-        """Resolve to the bound value; keyword arguments are an ephemeral bind()."""
+        """Resolve to the bound value or raise LookupError if unbound.
+
+        Keyword arguments are an ephemeral bind().
+        """
         with self.bind(**binds):
             assert self._param_fn is not None  # invariant: set at declaration
             return _teaching_call(self._param_fn)
@@ -414,7 +417,7 @@ def _teaching_call(fn: Contextual, *args):
         return fn.context_call(*args)
     except MissingContextValues as error:
         first = error.names[0]
-        raise TypeError(
+        raise LookupError(
             f"{error.label} is missing bound values for: "
             + ", ".join(error.names)
             + f"; bind them around this code with .bind({first}=...) on the "
