@@ -28,8 +28,11 @@ class Upload(TenantOwned, fr.TimestampsMixin, fr.IDBase):
     """Parent row for a batch of imported lines."""
 
     filename: orm.Mapped[str]
+    # SET NULL like the audit columns: the upload outlives its uploader.
     uploaded_by_id: orm.Mapped[int | None] = orm.mapped_column(
-        ForeignKey("user.id"), init=False, insert_default=Current.user_id
+        ForeignKey("user.id", ondelete="SET NULL"),
+        init=False,
+        insert_default=Current.user_id,
     )
     completed_at: orm.Mapped[datetime | None] = orm.mapped_column(default=None)
     line_count: orm.Mapped[int] = orm.mapped_column(default=0)

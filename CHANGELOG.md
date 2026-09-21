@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - SaaS example tenant criteria are added once per statement, from one session
   listener. Nested relationship loads no longer repeat them, and the project
   task counts now receive them.
+- SaaS example stamp columns (`created_by_id`, `updated_by_id`, `added_by_id`,
+  `uploaded_by_id`) are `ON DELETE SET NULL`. Deleting an organization failed
+  when SQLAlchemy deleted a user before a project that user had stamped.
 - SaaS example members attach, change, and remove task labels only on a task
   assigned to them. They still read the labels of other tasks in their
   organization.

@@ -38,9 +38,12 @@ class TaskLabel(fr.TimestampsMixin, fr.IDBase):
     # Foreign keys
     task_id: orm.Mapped[int] = orm.mapped_column(ForeignKey("task.id"))
     label_id: orm.Mapped[int] = orm.mapped_column(ForeignKey("label.id"))
-    # Stamped from context like the audit columns: not a constructor argument.
+    # Stamped from context like the audit columns: not a constructor argument,
+    # and SET NULL, so the link outlives the user who added it.
     added_by_id: orm.Mapped[int | None] = orm.mapped_column(
-        ForeignKey("user.id"), init=False, insert_default=Current.user_id
+        ForeignKey("user.id", ondelete="SET NULL"),
+        init=False,
+        insert_default=Current.user_id,
     )
 
     # Relationships

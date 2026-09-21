@@ -14,8 +14,9 @@ from dataclasses import asdict
 
 from app.auth import verify_password
 from app.current import Current
+from app.users.models import User
 from app.users.roles import UserRole
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 import fastapi_restly as fr
 
@@ -158,6 +159,34 @@ class TestProjectMeta:
 
         assert updated["created_by_id"] == actor.user_id
         assert updated["updated_by_id"] == bob["id"]
+
+    async def test_stamped_rows_survive_their_user(
+        self, async_client, async_actor, auth_context
+    ):
+        """The stamp columns are ``ON DELETE SET NULL``: a row outlives its user.
+
+        Deleting an organization removes its users and its projects in one
+        flush, and no relationship orders the two. Without the rule, a user
+        deleted before the project they stamped violates the foreign key.
+        """
+        bob = (
+            await async_client.post(
+                "/users", json={"email": "bob@acme.test", "name": "Bob"}
+            )
+        ).json()
+        with auth_context(user_id=bob["id"], role=UserRole.ADMIN):
+            project = (
+                await async_client.post("/projects", json={"name": "By Bob"})
+            ).json()
+        assert project["created_by_id"] == bob["id"]
+
+        async with _async_session(async_actor) as session:
+            await session.execute(delete(User).where(User.id == bob["id"]))
+            await session.commit()
+
+        kept = (await async_client.get(f"/projects/{project['id']}")).json()
+        assert kept["created_by_id"] is None
+        assert kept["updated_by_id"] is None
 
     def test_can_edit_decoration_present_on_get(self, client):
         p = client.post("/projects", json={"name": "Decorate Me"}).json()

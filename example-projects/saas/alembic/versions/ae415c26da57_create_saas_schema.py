@@ -144,9 +144,9 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.Column("id", sa.Integer(), nullable=False),
-        sa.ForeignKeyConstraint(["created_by_id"], ["user.id"]),
+        sa.ForeignKeyConstraint(["created_by_id"], ["user.id"], ondelete="SET NULL"),
         sa.ForeignKeyConstraint(["organization_id"], ["organization.id"]),
-        sa.ForeignKeyConstraint(["updated_by_id"], ["user.id"]),
+        sa.ForeignKeyConstraint(["updated_by_id"], ["user.id"], ondelete="SET NULL"),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("email"),
     )
@@ -180,9 +180,9 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.Column("id", sa.Integer(), nullable=False),
-        sa.ForeignKeyConstraint(["created_by_id"], ["user.id"]),
+        sa.ForeignKeyConstraint(["created_by_id"], ["user.id"], ondelete="SET NULL"),
         sa.ForeignKeyConstraint(["organization_id"], ["organization.id"]),
-        sa.ForeignKeyConstraint(["updated_by_id"], ["user.id"]),
+        sa.ForeignKeyConstraint(["updated_by_id"], ["user.id"], ondelete="SET NULL"),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
@@ -206,7 +206,7 @@ def upgrade() -> None:
         ),
         sa.Column("id", sa.Integer(), nullable=False),
         sa.ForeignKeyConstraint(["organization_id"], ["organization.id"]),
-        sa.ForeignKeyConstraint(["uploaded_by_id"], ["user.id"]),
+        sa.ForeignKeyConstraint(["uploaded_by_id"], ["user.id"], ondelete="SET NULL"),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
@@ -258,10 +258,10 @@ def upgrade() -> None:
         ),
         sa.Column("id", sa.Integer(), nullable=False),
         sa.ForeignKeyConstraint(["assignee_id"], ["user.id"]),
-        sa.ForeignKeyConstraint(["created_by_id"], ["user.id"]),
+        sa.ForeignKeyConstraint(["created_by_id"], ["user.id"], ondelete="SET NULL"),
         sa.ForeignKeyConstraint(["parent_id"], ["task.id"]),
         sa.ForeignKeyConstraint(["project_id"], ["project.id"]),
-        sa.ForeignKeyConstraint(["updated_by_id"], ["user.id"]),
+        sa.ForeignKeyConstraint(["updated_by_id"], ["user.id"], ondelete="SET NULL"),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
@@ -304,7 +304,7 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.Column("id", sa.Integer(), nullable=False),
-        sa.ForeignKeyConstraint(["added_by_id"], ["user.id"]),
+        sa.ForeignKeyConstraint(["added_by_id"], ["user.id"], ondelete="SET NULL"),
         sa.ForeignKeyConstraint(["label_id"], ["label.id"]),
         sa.ForeignKeyConstraint(["task_id"], ["task.id"]),
         sa.PrimaryKeyConstraint("id"),

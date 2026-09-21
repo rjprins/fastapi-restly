@@ -109,16 +109,23 @@ class AuditStamped(orm.MappedAsDataclass, kw_only=True):
     """Who created and last updated the row, from ``Current.user_id``.
 
     ``created_by_id`` is set on insert; ``updated_by_id`` on insert and on
-    every update that changes the row. Nullable for one row only: the
-    first admin is seeded by a migration and has no creator. Every row
-    written through the API has one.
+    every update that changes the row. Every row written through the API
+    has both. They are null in two cases: the first admin is seeded by a
+    migration and has no creator, and a row outlives its user.
+
+    ``ON DELETE SET NULL`` is that second case. A stamp records who acted
+    and does not own the row. No relationship orders a user against the rows
+    they stamped, so SQLAlchemy may delete the user first when an
+    organization goes, and a plain foreign key rejects that.
     """
 
     created_by_id: orm.Mapped[int | None] = orm.mapped_column(
-        ForeignKey("user.id"), init=False, insert_default=Current.user_id
+        ForeignKey("user.id", ondelete="SET NULL"),
+        init=False,
+        insert_default=Current.user_id,
     )
     updated_by_id: orm.Mapped[int | None] = orm.mapped_column(
-        ForeignKey("user.id"),
+        ForeignKey("user.id", ondelete="SET NULL"),
         init=False,
         insert_default=Current.user_id,
         onupdate=Current.user_id,
