@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Shared write commits restore loaded related state after a savepoint rollback,
+  so surviving async responses and after-hooks do not raise `MissingGreenlet`.
 - Custom SQLAlchemy `TypeDecorator` columns receive Pydantic values without
   Restly serializing them first.
 - Scalar filters on recursive schemas no longer return 400 for valid values.

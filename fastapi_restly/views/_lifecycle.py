@@ -17,6 +17,7 @@ from sqlalchemy import event
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session, SessionTransaction
+from sqlalchemy.orm.collections import collection_adapter
 
 T = TypeVar("T")
 
@@ -207,8 +208,7 @@ class _QueuedAfterHook:
     callback: Callable[[], Any]
     transaction: SessionTransaction | None
     asynchronous: bool
-    new: Any
-    loaded_attributes: frozenset[str]
+    loaded_objects: list[tuple[Any, frozenset[str]]]
 
 
 @dataclass
@@ -253,33 +253,16 @@ class _SharedWriteActionCommit:
                     session.get_nested_transaction() or session.get_transaction()
                 ),
                 asynchronous=asynchronous,
-                new=new,
-                loaded_attributes=_loaded_orm_attributes(new),
+                loaded_objects=_loaded_orm_graph(new),
             )
         )
-
-
-def _loaded_orm_attributes(obj: Any) -> frozenset[str]:
-    state = sa_inspect(obj, raiseerr=False)
-    if state is None:
-        return frozenset()
-    return frozenset(state.dict).intersection(state.mapper.attrs.keys())
-
-
-def _expired_hook_attributes(entry: _QueuedAfterHook) -> frozenset[str]:
-    state = sa_inspect(entry.new, raiseerr=False)
-    if state is None or not state.persistent:
-        return frozenset()
-    return entry.loaded_attributes.intersection(state.expired_attributes)
 
 
 async def _async_commit_shared_write_actions(
     session: AsyncSession, owner: _SharedWriteActionCommit
 ) -> None:
-    for entry in owner.pending:
-        expired = _expired_hook_attributes(entry)
-        if expired:
-            await session.refresh(entry.new, attribute_names=expired)
+    for obj, attributes in _objects_to_refresh(owner):
+        await session.refresh(obj, attribute_names=attributes)
     owner.committing = True
     try:
         await session.commit()
@@ -290,15 +273,63 @@ async def _async_commit_shared_write_actions(
 def _commit_shared_write_actions(
     session: Session, owner: _SharedWriteActionCommit
 ) -> None:
-    for entry in owner.pending:
-        expired = _expired_hook_attributes(entry)
-        if expired:
-            session.refresh(entry.new, attribute_names=expired)
+    for obj, attributes in _objects_to_refresh(owner):
+        session.refresh(obj, attribute_names=attributes)
     owner.committing = True
     try:
         session.commit()
     finally:
         owner.committing = False
+
+
+def _objects_to_refresh(
+    owner: _SharedWriteActionCommit,
+) -> Iterator[tuple[Any, set[str]]]:
+    loaded: dict[int, tuple[Any, set[str]]] = {}
+    for entry in owner.pending:
+        for obj, attributes in entry.loaded_objects:
+            loaded.setdefault(id(obj), (obj, set()))[1].update(attributes)
+    for obj, attributes in loaded.values():
+        state = sa_inspect(obj)
+        if state.persistent:
+            # A column refresh can clear expired_attributes while leaving
+            # relationships unloaded. Recover those recorded relationships too.
+            missing = attributes.intersection(state.unloaded)
+            if missing:
+                yield obj, missing
+
+
+def _loaded_orm_graph(obj: Any) -> list[tuple[Any, frozenset[str]]]:
+    """Record loaded attributes without invoking relationship loaders.
+
+    Keep related objects alive: rollback can remove their last relationship
+    reference. Each action owns its record so a rolled-back action drops it.
+    """
+    loaded = []
+    pending = [obj]
+    seen: set[int] = set()
+    while pending:
+        current = pending.pop()
+        if id(current) in seen:
+            continue
+        seen.add(id(current))
+        state = sa_inspect(current, raiseerr=False)
+        if state is None:
+            continue
+        attributes = set(state.dict).intersection(state.mapper.attrs.keys())
+        for relation in state.mapper.relationships:
+            if relation.key not in attributes:
+                continue
+            if relation.lazy in ("dynamic", "write_only"):
+                attributes.remove(relation.key)
+                continue
+            value = state.dict[relation.key]
+            if relation.uselist:
+                pending.extend(collection_adapter(value))
+            elif value is not None:
+                pending.append(value)
+        loaded.append((current, frozenset(attributes)))
+    return loaded
 
 
 def _shared_write_action_commit_owner(
