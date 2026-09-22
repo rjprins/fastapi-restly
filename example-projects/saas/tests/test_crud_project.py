@@ -196,6 +196,16 @@ class TestNestedRoutes:
         """Test that nested routes return 404 for nonexistent project."""
         client.get("/projects/99999/tasks", assert_status_code=404)
 
+    def test_nested_bug_creation_uses_task_validation(self, client):
+        project = client.post("/projects", json={"name": "Bug reports"}).json()
+        url = f"/projects/{project['id']}/tasks"
+        payload = {"title": "Broken", "task_type": "bug"}
+
+        client.post(url, json=payload, assert_status_code=422)
+        created = client.post(url, json={**payload, "severity": 3}).json()
+        assert created["severity"] == 3
+        assert client.get(f"/tasks/{created['id']}").json()["severity"] == 3
+
 
 class TestNaturalKeyRoutes:
     """The by-slug routes: retrieve and update under the natural key."""

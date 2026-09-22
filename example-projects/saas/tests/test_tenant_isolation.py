@@ -98,6 +98,144 @@ async def tenants(restly_async_client, as_admin):
     return rows
 
 
+@pytest.mark.parametrize(
+    "field, reference",
+    [
+        ("project_id", "foreign"),
+        ("assignee_id", "foreign"),
+        ("parent_id", "foreign"),
+        ("parent_id", "missing"),
+        ("parent_id", "deleted"),
+    ],
+)
+async def test_bulk_create_rejects_invalid_references_per_item(
+    restly_async_client, tenants, field, reference
+):
+    own, foreign = tenants
+    valid = {
+        "project_id": own.project,
+        "assignee_id": own.identity.user_id,
+        "parent_id": own.task,
+    }
+    rejected = {"title": "Rejected", **valid}
+    with own.identity.acting():
+        if reference == "foreign":
+            rejected[field] = {
+                "project_id": foreign.project,
+                "assignee_id": foreign.identity.user_id,
+                "parent_id": foreign.task,
+            }[field]
+        elif reference == "missing":
+            rejected[field] = 999999
+        else:
+            parent = (
+                await restly_async_client.post(
+                    "/tasks", json={"title": "Deleted parent", **valid}
+                )
+            ).json()
+            await restly_async_client.delete(f"/tasks/{parent['id']}")
+            rejected[field] = parent["id"]
+
+        result = (
+            await restly_async_client.post(
+                "/tasks/bulk",
+                json={
+                    "items": [
+                        {"title": "Before", **valid},
+                        rejected,
+                        {"title": "After", **valid},
+                    ]
+                },
+            )
+        ).json()
+        assert (result["success"], result["failed"]) == (2, 1)
+        assert len(result["errors"]) == 1
+
+    for tenant, titles in ((own, {"alpha", "Before", "After"}), (foreign, {"beta"})):
+        with tenant.identity.acting():
+            page = (await restly_async_client.get("/tasks")).json()
+        assert {task["title"] for task in page["data"]} == titles
+        assert page["total_count"] == len(titles)
+        assert all(task["project_id"] == tenant.project for task in page["data"])
+
+
+@pytest.mark.parametrize("reference", ["foreign", "missing", "deleted"])
+async def test_csv_import_rejects_invalid_project_references(
+    restly_async_client, tenants, reference
+):
+    own, foreign = tenants
+    with own.identity.acting():
+        project_id = foreign.project if reference == "foreign" else 999999
+        if reference == "deleted":
+            project = (
+                await restly_async_client.post(
+                    "/projects", json={"name": "Deleted import target"}
+                )
+            ).json()
+            project_id = project["id"]
+            await restly_async_client.delete(
+                f"/projects/{project_id}", assert_status_code=200
+            )
+
+        result = (
+            await restly_async_client.post(
+                "/tasks/import-csv",
+                data={"project_id": str(project_id)},
+                files={
+                    "file": (
+                        "tasks.csv",
+                        b"title\nRejected 1\nRejected 2\n",
+                        "text/csv",
+                    )
+                },
+            )
+        ).json()
+        assert (result["success"], result["failed"]) == (0, 2)
+        assert len(result["errors"]) == 2
+
+        accepted = (
+            await restly_async_client.post(
+                "/tasks/import-csv",
+                data={"project_id": str(own.project)},
+                files={"file": ("tasks.csv", b"title\nImported\n", "text/csv")},
+            )
+        ).json()
+        assert accepted == {"success": 1, "failed": 0, "errors": []}
+
+    for tenant, titles in ((own, {"alpha", "Imported"}), (foreign, {"beta"})):
+        with tenant.identity.acting():
+            page = (await restly_async_client.get("/tasks")).json()
+        assert {task["title"] for task in page["data"]} == titles
+        assert page["total_count"] == len(titles)
+
+
+@pytest.mark.parametrize("admin", [False, True])
+async def test_nested_task_creation_rejects_foreign_assignees(
+    restly_async_client, tenants, as_admin, admin
+):
+    own, foreign = tenants
+    with as_admin(own.identity.org_id) if admin else own.identity.acting():
+        accepted = (
+            await restly_async_client.post(
+                f"/projects/{own.project}/tasks",
+                json={"title": "Assigned", "assignee_id": own.identity.user_id},
+            )
+        ).json()
+        assert accepted["project_id"] == own.project
+        assert accepted["assignee_id"] == own.identity.user_id
+        await restly_async_client.post(
+            f"/projects/{own.project}/tasks",
+            json={"title": "Rejected", "assignee_id": foreign.identity.user_id},
+            assert_status_code=422 if admin else 404,
+        )
+
+    for tenant, titles in ((own, {"alpha", "Assigned"}), (foreign, {"beta"})):
+        with tenant.identity.acting():
+            page = (await restly_async_client.get("/tasks")).json()
+        assert {task["title"] for task in page["data"]} == titles
+        assert page["total_count"] == len(titles)
+
+
 async def test_task_label_list_and_count_are_tenant_scoped(
     restly_async_client, tenants
 ):

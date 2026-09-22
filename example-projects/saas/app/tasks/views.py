@@ -22,9 +22,9 @@ class TaskCreateSchema(BaseModel):
     status: TaskStatus = TaskStatus.TODO
     priority: TaskPriority = TaskPriority.MEDIUM
     task_type: TaskType = TaskType.TASK
-    project_id: int
-    assignee_id: int | None = None
-    parent_id: int | None = None
+    project_id: fr.MustExist[int]
+    assignee_id: fr.MustExist[int] | None = None
+    parent_id: fr.MustExist[int] | None = None
     severity: int | None = None
     steps_to_reproduce: str | None = None
     story_points: int | None = None
