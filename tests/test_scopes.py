@@ -5,7 +5,7 @@ retrieve, count)
 and every reference check on the model. A view's ``scope`` attribute
 replaces that default; ``fr.clauses.UNSCOPED`` opts out explicitly. Reference
 checks (``MustExist`` / ``RefExists`` / ``IDRef`` / ``IDSchema``) apply
-only the predicate half of the clause, and ``RefExists(scope=...)``
+the scope's predicate, and ``RefExists(scope=...)``
 overrides per field, with ``fr.clauses.UNSCOPED`` the one explicit
 unscoped spelling, system-wide.
 """
@@ -1574,7 +1574,7 @@ def test_idref_resolution_applies_default_scope_sync(sync_session):
 
 
 # ---------------------------------------------------------------------------
-# the predicate half: transforms are dropped, join-dependent wheres are loud
+# reference scopes reject predicates on tables outside the query
 # ---------------------------------------------------------------------------
 
 

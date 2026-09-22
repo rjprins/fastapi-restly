@@ -681,7 +681,7 @@ def test_a_natural_key_route_is_handle_get_one_with_a_predicate(sync_db):
 
 
 def test_get_one_rejects_an_identity_that_is_neither_id_nor_expression(sync_db):
-    """A Python bool renders as ``WHERE true`` and a Clause is a scope, so
+    """A Python bool renders as ``WHERE true`` and a clause is a scope, so
     both are refused rather than quietly matching the wrong row."""
     engine, make_session = sync_db
 

@@ -384,7 +384,7 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
 
         The stripped query is made ``DISTINCT`` and wrapped as a subquery, so
         the total is correct across user-provided query shapes, including a
-        scope that joins a to-many relationship, whose row fan-out would
+        query that joins a to-many relationship, whose row fan-out would
         otherwise inflate the count. Override for estimated counts on huge
         tables.
         """

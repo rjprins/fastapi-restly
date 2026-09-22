@@ -1,6 +1,6 @@
 """Typing fixture: view scopes and scoped reference markers.
 
-Covers the ``scope`` class attribute (a ``Clause`` or ``fr.clauses.UNSCOPED``),
+Covers the ``scope`` class attribute (a ``WhereClause`` or ``fr.clauses.UNSCOPED``),
 namespace clauses feeding a view scope, and the
 three ``RefExists`` states on a schema field (defaulted,
 ``scope=<WhereClause>``, ``scope=UNSCOPED``) leaving the field a plain

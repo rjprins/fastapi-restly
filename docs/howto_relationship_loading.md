@@ -87,11 +87,9 @@ create and update responses alike, because the write path reloads by primary
 key through the same options. Return a fresh list to replace the strategy
 entirely, for example to swap `selectinload` for `joinedload`.
 
-For a load you only ever read and never serialize, such as a join you filter
-or sort on, a transform clause on the view [scope](scopes.md) adding
-`.options(...)` is the lighter place to put it. It shapes the read query only,
-so an eager load added there is absent from create and update responses; use
-it only when that difference does not matter.
+For an extra load needed only by a listing, add `.options(...)` in
+{meth}`apply_query_params <fastapi_restly.views.RestView.apply_query_params>`.
+This does not affect `get_one` or create and update responses.
 
 ## Reach a relationship the schema does not name
 
@@ -135,8 +133,9 @@ in a nested model. For that case, work through these in order:
 2. **Is a hook or property reaching it?** Load it explicitly with
    `await obj.awaitable_attrs.<name>`, or add it to
    `get_relationship_loader_options` if every request needs it.
-3. **Did you add the load only in a scope transform?** That covers reads but
-   not write responses; move it to `get_relationship_loader_options`.
+3. **Did you add the load only in `get_one`, `get_many`, or `apply_query_params`?**
+   Write responses do not call those methods. Move the load to
+   `get_relationship_loader_options`.
 
 Restly already sets `expire_on_commit=False` on its session factories so a
 committed object stays readable during serialization. If you build your own

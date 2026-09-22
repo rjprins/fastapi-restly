@@ -89,8 +89,8 @@ column defaults, and tests.
 :link: clauses
 :link-type: doc
 
-Compose reusable predicates and statement transforms. Bind their values
-when building queries.
+Compose reusable SQLAlchemy predicates. Supply values through context
+members when applying the clauses to a statement.
 :::
 
 :::{grid-item-card} Scopes

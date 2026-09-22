@@ -10,12 +10,12 @@ Covers two list-endpoint bugs:
   the PK). These are asserted on the compiled SQL, so they hold regardless of a
   given backend's incidental tie ordering.
 
-* **to-many JOIN fan-out** — a view scope that JOINs a to-many relationship
+* **to-many JOIN fan-out**: a listing query that JOINs a to-many relationship
   fans out (one row per child), which duplicated entities in the page and
   inflated the total. ``get_many`` now de-duplicates via ``.unique()`` and
   ``count`` counts a ``DISTINCT`` subquery. (Not reachable through the public
   URL grammar -- dotted filters/sorts only traverse to-one relations -- so the
-  trigger is a collection JOIN in a scope transform, as exercised here.)
+  trigger is a collection JOIN in ``apply_query_params``, as exercised here.)
 """
 
 import pydantic
@@ -210,7 +210,7 @@ def test_to_many_join_in_listing_query_does_not_duplicate_or_inflate(client):
 
 
 def test_default_ordering_belongs_in_apply_query_params(client):
-    """The documented home for what build_query / a scope transform did."""
+    """A listing's default ordering precedes the client's sort order."""
 
     class RankedNote(fr.IDBase):
         rank: Mapped[int]

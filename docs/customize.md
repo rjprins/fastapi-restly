@@ -251,7 +251,12 @@ instead; see [Relationship Loading and Async](howto_relationship_loading.md).
 
 ### `get_many`: decorate results after the query
 
-For post-query decoration, override {meth}`get_many <fastapi_restly.views.RestView.get_many>` and delegate to `super()`. For filters, joins, or eager loading that apply to every read, prefer a clause on the view [scope](scopes.md).
+For post-query decoration, override {meth}`get_many <fastapi_restly.views.RestView.get_many>` and delegate to `super()`.
+Use a [scope](scopes.md) for row visibility.
+Put listing joins and ordering in
+{meth}`apply_query_params <fastapi_restly.views.RestView.apply_query_params>`.
+Put eager loading in
+{meth}`get_relationship_loader_options <fastapi_restly.views.BaseRestView.get_relationship_loader_options>`.
 
 ```python
     async def get_many(self, query_params, *, scope=None):
@@ -301,10 +306,9 @@ so one declaration covers:
 
 Because {meth}`handle_update <fastapi_restly.views.RestView.handle_update>` and {meth}`handle_delete <fastapi_restly.views.RestView.handle_delete>` load through `get_one` first, they inherit the same visibility check. `get_one` stays auth-free even though it 404s on hidden rows: visibility comes from the query, and custom routes that call `get_one(id)` get the same scope.
 
-[Scopes](scopes.md) owns the full topic: composing clauses, the model-wide
-`default_scope` (which also covers reference checks), and transforms for
-read-wide joins or eager loading. Restly's earlier seam, overriding
-``build_query()``, is removed; a view that still defines it fails at class
+[Scopes](scopes.md) covers composing clauses, the model-wide
+`default_scope`, and per-read scope replacement. Overriding
+``build_query()`` is removed. A view that still defines it fails at class
 definition with a pointer to
 [Migrating from build_query](#migrating-build-query).
 
