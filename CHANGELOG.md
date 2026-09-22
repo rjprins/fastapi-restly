@@ -7,103 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-
-- `handle_get_many(query_params, where=...)` narrows a listing inside the
-  scope. `where=` takes a SQLAlchemy boolean expression or a clause and is
-  ANDed into the resolved scope, or into `scope=` when both are given, so a
-  nested listing keeps the visibility rules. The handler folds it into the
-  `scope` it forwards: `get_many` overrides keep their signature.
-
-### Fixed
-
-- Context binding rejects two names for the same member in one `bind()` or
-  `depends()` call, so one supplied value cannot silently replace another.
-- Shared write commits restore loaded related state after a savepoint rollback,
-  so surviving async responses and after-hooks do not raise `MissingGreenlet`.
-- Custom SQLAlchemy `TypeDecorator` columns receive Pydantic values without
-  Restly serializing them first.
-- Scalar filters on recursive schemas no longer return 400 for valid values.
-- Filter field validators receive the Python field name in
-  `ValidationInfo.field_name`. `ValidationInfo.data` is now `{}` instead of
-  `None`, since each filter value is validated independently.
-- SaaS example organization deletion now requires a platform admin and binds
-  request identity for cascading relationship loads.
-- SaaS example upload lines are restricted to the caller's organization.
-  `GET /uploads/{id}/lines` returns 404 for another organization's upload.
-- SaaS example tenant criteria are added once per statement, from one session
-  listener. Nested relationship loads no longer repeat them, and the project
-  task counts now receive them.
-- SaaS example stamp columns (`created_by_id`, `updated_by_id`, `added_by_id`,
-  `uploaded_by_id`) are `ON DELETE SET NULL`. Deleting an organization failed
-  when SQLAlchemy deleted a user before a project that user had stamped.
-- SaaS example organization deletion works for an organization with uploads
-  or labelled tasks. The task-label foreign keys are `ON DELETE CASCADE`, and
-  uploads join the organization's delete cascade. The database removes a
-  label's links, including one its owner cannot see.
-- SaaS example members attach, change, and remove task labels only on a task
-  assigned to them. They still read the labels of other tasks in their
-  organization.
-
-## [0.10.0] - 2026-09-17
+## [0.10.0] - 2026-09-22
 
 ### Added
 
-- `shared_write_action_commit()` on `RestView` and `AsyncRestView` groups
-  write actions under one session commit. Authorization and before-hooks still
-  run per action. After-hooks run after the outermost commit and are discarded
-  after a rollback. Direct session commits inside the block are rejected.
-- Query clauses are named, reusable SQLAlchemy predicates. Declare one with
-  `fr.where_clause`, from a condition or from a function without parameters.
-  Combine them with `fr.all_of`, `fr.any_of`, or `fr.none_of`. Apply them to
-  a `select()`, `update()` or `delete()` with `fr.apply_clauses`.
-  `fr.ClauseNamespace` groups clauses with or without registering a model.
-  See the Query Clauses guide.
-- `fr.ContextNamespace` declares context members (`name: fr.ContextParam[T]`):
-  values bound around a unit of work and read anywhere. Bind them with
-  `Current.bind(...)`, or per request with the generated `Current.depends(...)`
-  dependency. `Current.user_id()` reads a value, and a member embedded in a
-  clause condition (`Item.user_id == Current.user_id`) is filled when the
-  clause is applied. A missing binding raises `LookupError`. A member used
-  where its value was meant (`==`, `!=`, a truth test) raises `TypeError`.
-  See the Current context guide.
-- Model default scopes apply a clause to every view read and reference check.
-  A view's `scope` replaces the model default for its reads. Pass `scope=` to
-  replace it for one read. `fr.RefExists` accepts a per-field scope.
-  `fr.clauses.UNSCOPED` is the explicit opt-out and composes as no restriction.
-  `fr.resolve_scope()` returns the effective scope. See the Scopes guide.
-- `get_one()`, `handle_get_one()`, `handle_update()`, and `handle_delete()`
-  accept a SQLAlchemy boolean expression or a primary key. Natural and
-  composite keys therefore use the normal scoped retrieve, update, and delete
-  paths.
-- Any route method on a view that declares a `query_params` parameter
-  receives the view's generated listing schema and rejects unknown keys like
-  the built-in collection route.
-- `restly new <name>` scaffolding command to create a project from scratch with
-  optional database and Alembic setup.
-- Pass `health="/health"` to `fr.configure()` to add a liveness endpoint that
-  returns `200` with `{"status": "ok"}`.
-- `fr.utils.CurrentSettingsMixin` adds a lazily initialized
-  `Settings.current` instance to a Pydantic settings class. Call
-  `Settings.use(...)` to install explicit settings.
+- `fr.ContextNamespace` and `fr.ContextParam` support an application-defined
+  `Current` context, with manual and FastAPI dependency binding.
+- Reusable query predicates through `fr.where_clause`, boolean composition,
+  and `fr.apply_clauses`. Group them with `fr.ClauseNamespace`.
+- Model default scopes filter view reads and reference checks. Views and
+  individual reads can replace the scope or opt out with `fr.clauses.UNSCOPED`.
+- `shared_write_action_commit()` groups several write actions in one
+  transaction. After-hooks run only after a successful commit.
+- Retrieve, update, and delete handlers accept SQLAlchemy expressions to
+  identify rows by natural or composite keys.
+- Custom view routes can use generated `query_params`. Pass `where=` to
+  `handle_get_many()` to narrow a listing without replacing its scope.
+- `restly new <name>` generates a project with optional database and Alembic setup.
+- `fr.configure(health="/health")` adds a liveness endpoint.
+- `fr.utils.CurrentSettingsMixin` provides a shared `Settings.current` instance.
 
 ### Changed
 
-- Engines created by `fr.configure()` now share an in-memory SQLite connection
-  across threads and enforce SQLite foreign keys. Invalid references now return
-  409. PostgreSQL engines now check connections and recycle them after 30
-  minutes. Pass an engine or session factory to control these settings.
-- Custom `RestView` collection routes declared at `"/"` now use the path
-  without a trailing slash in OpenAPI. The trailing-slash path remains as a
-  hidden compatibility alias.
-- Plain `Mapped[datetime]` annotations and `TimestampsMixin` now use
-  `DateTime(timezone=True)`. PostgreSQL responses include the UTC offset.
+- `Mapped[datetime]` and `TimestampsMixin` now use `DateTime(timezone=True)`.
+  Datetime filters without an offset use UTC for these columns.
 
-  Existing PostgreSQL databases must migrate every affected
-  `timestamp without time zone` column. Review generated Alembic migrations
-  before applying them. A bare type change interprets existing values in the
-  server's timezone and can shift them. If existing naive values represent UTC,
-  convert them explicitly:
+  Migrate affected PostgreSQL columns, preserving the timezone of existing
+  values. A bare type change can shift stored timestamps. For values stored
+  as naive UTC:
 
   ```sql
   ALTER TABLE example
@@ -111,57 +42,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     USING created_at AT TIME ZONE 'UTC';
   ```
 
-  Use `mapped_column(DateTime())` on columns that must retain naive wall-clock
-  values.
-- Renamed the `RestView` / `AsyncRestView` transaction hooks `before_commit`
-  and `after_commit` to `before_action_commit` and `after_action_commit`.
-  Rename existing overrides.
-- `get_one()`, `get_many()`, `handle_get_one()`, and `handle_get_many()` now
-  accept `scope=`. Existing `get_one()` and `get_many()` overrides must accept
-  and forward it. `get_one()`, `handle_get_one()`, `handle_update()`, and
-  `handle_delete()` also accept SQLAlchemy boolean expressions. Widen a
-  `get_one()` override's `id` annotation to include `ColumnElement[bool]`.
-- The `handle_*`, `make_new_object`, `update_object`, and `save_object` methods
-  on `RestView` and `AsyncRestView` are final. Existing overrides fail at class
-  definition. Call `handle_*` from custom routes and object helpers from verb
-  overrides. Move domain logic to business methods, authorization to
-  `authorize`, HTTP changes to `<verb>_endpoint`, and commit side effects to
-  `before_action_commit` or `after_action_commit`. Define server-stamped fields
-  with SQLAlchemy `insert_default=` or `onupdate=` column defaults.
+  Use `mapped_column(DateTime())` to keep naive wall-clock values.
+- Rename `before_commit` and `after_commit` overrides to
+  `before_action_commit` and `after_action_commit`.
+- `get_one()` and `get_many()` overrides must accept and forward `scope=`.
+  Include `ColumnElement[bool]` in a `get_one()` override's `id` annotation.
+- `handle_*`, `make_new_object`, `update_object`, and `save_object` on
+  `RestView` and `AsyncRestView` can no longer be overridden. Move custom logic
+  to business methods, `authorize`, endpoint methods, or action hooks.
+  Use SQLAlchemy column defaults for server-stamped fields.
+- Engines created by `fr.configure()` enforce SQLite foreign keys and share
+  in-memory databases across threads. Invalid references return 409.
+- React-admin listings reject unknown query parameters with 422.
+  Allow custom keys with `extra_query_params`.
 
 ### Removed
 
-- `build_query`. Move row visibility to `default_scope` on the model's
-  namespace or `scope` on the view. Put listing changes such as a join or a
-  default ordering in an `apply_query_params` override, and relationship
-  loading in `get_relationship_loader_options`. A remaining override fails
-  at class definition.
-  See "Migrating from build_query" in the Scopes guide.
-- `RestView.delete_object` / `AsyncRestView.delete_object`. The `delete`
-  business method now removes and flushes the row. Override `delete` for soft
-  deletion. A remaining `delete_object` override fails at class definition to
-  prevent an accidental hard delete. Use `fr.objects.delete_object` or
-  `fr.objects.async_delete_object` outside a verb.
+- `build_query`. Move visibility rules to `default_scope` or the view's
+  `scope`, listing joins and ordering to `apply_query_params`, and eager loading
+  to `get_relationship_loader_options`.
+- `RestView.delete_object` and `AsyncRestView.delete_object`. Override `delete`
+  for soft deletion. The `fr.objects` deletion helpers remain available.
 
 ### Fixed
 
-- Generated projects now require the release that provides the scaffolded APIs.
-- `page` values above the SQL offset limit now return `422` instead of `500`.
-- Datetime query filters without an offset now use UTC for timezone-aware
-  columns. Filters for `DateTime()` columns remain naive.
-- `MustExist` and `RefExists` checks now honor session-level SQLAlchemy
-  `with_loader_criteria()` rules.
-- `save_object` no longer expires related objects through the
-  `refresh-expire` cascade: it refreshes by attribute name, so
-  `cascade="all"` is safe on Restly's write paths under `AsyncSession`.
-- Query filters now run only the field's validators and constraints, so
-  cross-field validators and frozen schemas no longer reject valid filters.
-- The listing tiebreak orders by the model's primary key whatever its
-  name, and by every column of a composite key. It was `id` or nothing.
-- React-admin views now reject query keys outside `sort`, `range`, `filter`,
-  and configured `extra_query_params` with 422.
-- A schema field typed as a nested Pydantic model now writes to a `JSON`
-  column as plain JSON. A `TypeDecorator` over `JSON` still receives the model.
+- Query filters support recursive and frozen schemas without running
+  cross-field validators. Field validators receive the correct field name.
+- Nested Pydantic values serialize into JSON columns. Excluded fields and other
+  unsupported document shapes require an explicit `TypeDecorator`.
+- `MustExist` and `RefExists` honor session-level SQLAlchemy visibility rules.
+- `save_object` no longer expires related objects during async writes.
+- Stable listing order supports renamed and composite primary keys.
+- SaaS example fixes for tenant isolation, authorization, and organization deletion.
 
 ## [0.9.0] - 2026-08-13
 
