@@ -11,8 +11,10 @@ A ``TypeDecorator`` over ``JSON`` is left alone: it has its own bind
 processor, and may well want the object as it stands.
 """
 
+import dataclasses
 import json
-from collections.abc import Iterator
+from collections import deque
+from collections.abc import Iterable, Iterator
 from typing import Any
 
 import pydantic
@@ -60,6 +62,133 @@ class DocSchema(fr.IDSchema):
     title: str
     address: Address
     history: list[Address] = []
+
+
+class _PrivateDocument(pydantic.BaseModel):
+    label: str = "visible"
+    secret: fr.WriteOnly[str] = "default-secret"
+
+
+class _ExcludedDocument(pydantic.BaseModel):
+    secret: str = pydantic.Field(default="default-secret", exclude=True)
+
+
+class _RequiredPrivateDocument(pydantic.BaseModel):
+    secret: fr.WriteOnly[str]
+
+
+class _ExtraDocument(pydantic.BaseModel):
+    model_config = pydantic.ConfigDict(extra="allow")
+
+
+class _DocumentTree(pydantic.BaseModel):
+    documents: dict[str, list[_PrivateDocument]]
+
+
+class _DocumentQueue(pydantic.BaseModel):
+    documents: deque[_PrivateDocument]
+
+
+@dataclasses.dataclass
+class _DataclassDocument:
+    label: str = "visible"
+
+
+class _DataclassTree(pydantic.BaseModel):
+    document: _DataclassDocument
+
+
+class _DocumentIterator(pydantic.BaseModel):
+    documents: Iterable[_PrivateDocument]
+
+
+class _PrivateKey(_PrivateDocument):
+    model_config = pydantic.ConfigDict(frozen=True)
+
+
+@dataclasses.dataclass(frozen=True)
+class _DataclassKey:
+    label: str = "key"
+
+
+class _DocumentKeys(pydantic.BaseModel):
+    documents: dict[_PrivateKey | _DataclassKey, str]
+
+
+@pytest.mark.parametrize("operation", ["create", "update"])
+@pytest.mark.parametrize(
+    "document_type, document",
+    [
+        (_PrivateDocument, _PrivateDocument()),
+        (_RequiredPrivateDocument, _RequiredPrivateDocument(secret="required-secret")),
+        (_ExcludedDocument, _ExcludedDocument()),
+        (list[_PrivateDocument], [_PrivateDocument(secret="list-secret")]),
+        (tuple[_PrivateDocument, ...], (_PrivateDocument(),)),
+        (_ExtraDocument, _ExtraDocument(nested=_PrivateDocument())),
+        (_DocumentTree, _DocumentTree(documents={"nested": [_PrivateDocument()]})),
+        (_DocumentQueue, _DocumentQueue(documents=deque([_PrivateDocument()]))),
+        (_DataclassTree, _DataclassTree(document=_DataclassDocument())),
+        (_DocumentIterator, _DocumentIterator(documents=[_PrivateDocument()])),
+        (_DocumentKeys, _DocumentKeys(documents={_PrivateKey(): "value"})),
+        (_DocumentKeys, _DocumentKeys(documents={_DataclassKey(): "value"})),
+        (
+            pydantic.RootModel[list[_PrivateDocument]],
+            pydantic.RootModel[list[_PrivateDocument]]([_PrivateDocument()]),
+        ),
+    ],
+)
+def test_unsupported_documents_are_rejected_before_writing(
+    sync_db, operation, document_type, document
+):
+    class Document(fr.IDBase):
+        payload: Mapped[dict] = mapped_column(sqlalchemy.JSON)
+
+    schema = pydantic.create_model("DocumentInput", payload=(document_type, ...))
+    engine, make_session = sync_db
+    fr.DataclassBase.metadata.create_all(engine)
+    original = {"label": "original", "secret": "stored-secret"}
+    with make_session() as session:
+        if operation == "update":
+            row = Document(payload=original.copy())
+            session.add(row)
+            session.commit()
+
+        with pytest.raises(fr.exc.RestlyConfigurationError, match="TypeDecorator"):
+            if operation == "create":
+                fr.objects.make_new_object(session, Document, schema(payload=document))
+            else:
+                fr.objects.update_object(session, row, schema(payload=document))
+
+        session.commit()
+        rows = session.scalars(sqlalchemy.select(Document)).all()
+        assert [row.payload for row in rows] == (
+            [] if operation == "create" else [original]
+        )
+
+
+@pytest.mark.parametrize("asynchronous", [False, True])
+def test_http_create_rejects_writeonly_json_without_committing(request, asynchronous):
+    client = request.getfixturevalue("client" if asynchronous else "sync_client")
+
+    class Document(fr.IDBase):
+        payload: Mapped[dict] = mapped_column(sqlalchemy.JSON)
+
+    class DocumentSchema(fr.IDSchema):
+        payload: _PrivateDocument
+
+    @fr.include_view(client.app)
+    class DocumentView(fr.AsyncRestView if asynchronous else fr.RestView):
+        prefix = "/private-documents"
+        model = Document
+        schema = DocumentSchema
+
+    if asynchronous:
+        create_tables()
+    else:
+        fr.DataclassBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
+    with pytest.raises(fr.exc.RestlyConfigurationError, match="Document.payload"):
+        client.post("/private-documents", json={"payload": {"secret": "input-secret"}})
+    assert client.get("/private-documents").json()["total_count"] == 0
 
 
 def test_create_stores_a_nested_model_as_plain_json(client):
@@ -290,3 +419,79 @@ def test_the_free_object_helpers_dump_too(sync_client):
             session, Doc, DocSchema(id=1, title="t", address=Address(street="Main"))
         )
         assert isinstance(obj.address, dict)
+
+
+class _PrivateDocumentType(sqlalchemy.types.TypeDecorator):
+    impl = sqlalchemy.JSON
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        assert isinstance(value, _PrivateDocument)
+        return {"label": value.label, "secret": value.secret}
+
+
+def test_type_decorator_owns_storage_of_excluded_document_fields(sync_client):
+    class Decorated(fr.IDBase):
+        payload: Mapped[dict] = mapped_column(_PrivateDocumentType)
+
+    class DocumentSchema(fr.IDSchema):
+        payload: _PrivateDocument
+
+    @fr.include_view(sync_client.app)
+    class DocumentView(fr.RestView):
+        prefix = "/private-documents"
+        model = Decorated
+        schema = DocumentSchema
+
+    fr.DataclassBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
+    for method, url, secret in (
+        (sync_client.post, "/private-documents", "created-secret"),
+        (sync_client.patch, "/private-documents/1", "updated-secret"),
+    ):
+        body = method(url, json={"payload": {"secret": secret}}).json()
+        assert body["payload"] == {"label": "visible"}
+        with fr.open_session() as session:
+            assert session.get(Decorated, body["id"]).payload == {
+                "label": "visible",
+                "secret": secret,
+            }
+
+
+def test_writeonly_marker_on_whole_json_column_is_supported(sync_client):
+    class Document(fr.IDBase):
+        payload: Mapped[dict] = mapped_column(sqlalchemy.JSON)
+
+    class DocumentSchema(fr.IDSchema):
+        payload: fr.WriteOnly[Address]
+
+    @fr.include_view(sync_client.app)
+    class DocumentView(fr.RestView):
+        prefix = "/private-documents"
+        model = Document
+        schema = DocumentSchema
+
+    fr.DataclassBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
+    body = sync_client.post(
+        "/private-documents", json={"payload": {"street": "Main", "number": 4}}
+    ).json()
+    assert "payload" not in body
+    with fr.open_session() as session:
+        assert session.get(Document, body["id"]).payload == {
+            "street": "Main",
+            "number": 4,
+        }
+
+
+def test_constructed_document_keeps_pydantic_serialization(sync_db):
+    class Document(fr.IDBase):
+        payload: Mapped[dict] = mapped_column(sqlalchemy.JSON)
+
+    schema = pydantic.create_model("DocumentInput", payload=(Address, ...))
+    engine, make_session = sync_db
+    fr.DataclassBase.metadata.create_all(engine)
+    address = Address.model_construct(number=4)
+    with make_session() as session:
+        obj = fr.objects.make_new_object(session, Document, schema(payload=address))
+        session.add(obj)
+        session.commit()
+        assert session.get(Document, obj.id).payload == address.model_dump(mode="json")

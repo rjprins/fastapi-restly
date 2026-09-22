@@ -129,13 +129,27 @@ already understood by Pydantic) are returned unchanged:
 
 Any type not in this table raises `TypeError` at schema-generation time. For
 custom column types, declare an explicit schema and bypass auto-generation.
-A `JSON` column maps to a bare `dict`, which validates nothing. To give the
-document a shape, declare an explicit schema and type the field as a nested
-Pydantic model. Restly dumps that model to plain JSON on the way into the
-column and the response schema validates it back on the way out, so the shape
-is checked at both ends and the column still holds ordinary JSON. A
-`TypeDecorator` of your own receives the model itself, as its bind processor
-expects.
+
+(json-document-columns)=
+### JSON document columns
+
+A `JSON` column maps to a bare `dict`, which does not validate the document's
+fields. To validate its shape, declare an explicit schema with a nested
+Pydantic model. Restly calls `model_dump(mode="json")` before assigning the
+document to the column. The response schema validates the stored document
+when reading it back.
+
+Documents containing {data}`WriteOnly <fastapi_restly.schemas.WriteOnly>` or
+`Field(exclude=True)` fields raise
+{class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`
+before assignment, including exclusions inside nested models. Those fields
+would otherwise be omitted from storage. Documents containing dataclasses or
+iterators are also unsupported. Use a SQLAlchemy
+{class}`~sqlalchemy.types.TypeDecorator` to define their storage representation.
+Its bind processor receives the original Pydantic model instead of a dump.
+
+Marking the whole JSON column as `WriteOnly` remains supported. It hides the
+column in responses without excluding fields from the stored document.
 
 ## View Classes and Registration
 

@@ -128,6 +128,9 @@ container (`Optional[WriteOnly[str]]`, `WriteOnly[str] | None`,
 rejects such a field with a `RestlyConfigurationError`. For an optional
 write-only field, write `WriteOnly[Optional[str]]`.
 
+For `WriteOnly` fields inside a JSON document, use an explicit column type.
+See [JSON document columns](#json-document-columns).
+
 ## Aliases
 
 Use normal Pydantic aliases when the API field name differs from the Python or

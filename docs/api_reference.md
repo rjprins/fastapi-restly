@@ -170,7 +170,7 @@ These classes and markers define how model data crosses the wire; the reference-
 | {class}`fr.IDSchema[Model] <fastapi_restly.schemas.IDSchema>` | Nested relationship-object field type. Wire format is `{"id": 5}` on request and response. Use this when a client expects relationship objects instead of flat scalar ids. |
 | {class}`fr.TimestampsSchemaMixin <fastapi_restly.schemas.TimestampsSchemaMixin>` | Pydantic mixin adding read-only `created_at` / `updated_at` fields to a schema. |
 | `fr.ReadOnly[T]` | Type annotation marker. Fields annotated `ReadOnly[T]` are excluded from create/update inputs. |
-| `fr.WriteOnly[T]` | Type annotation marker. Fields annotated `WriteOnly[T]` are stripped by `self.to_response_schema(obj)`, which the inherited CRUD and React Admin endpoint methods use. Direct FastAPI/Pydantic serialization treats it as schema metadata only. |
+| {data}`fr.WriteOnly[T] <fastapi_restly.schemas.WriteOnly>` | Type annotation marker. Fields are accepted on input and excluded from Pydantic serialization, including CRUD responses and direct `model_dump()` calls. |
 | {func}`fastapi_restly.schemas.create_schema_from_model(model) <fastapi_restly.schemas.create_schema_from_model>` | Auto-generate a Pydantic schema from a SQLAlchemy model. Useful for scaffolding, prototypes, and internal tools; prefer explicit schemas for stable public API contracts. Import from `fastapi_restly.schemas`; it is intentionally not exported at the top level. |
 
 ### View Classes

@@ -18,6 +18,7 @@ import functools
 import inspect
 import types
 import warnings
+from collections.abc import Mapping, Set
 from enum import Enum
 from math import ceil
 from typing import (
@@ -340,12 +341,14 @@ def _json_ready(model_cls: type[DeclarativeBase], field_name: str, value: Any) -
     if isinstance(value, pydantic.BaseModel):
         if not _is_json_column(model_cls, field_name):
             return value
+        _reject_excluded_json_fields(value, f"{model_cls.__name__}.{field_name}")
         return value.model_dump(mode="json")
     if isinstance(value, list | tuple) and any(
         isinstance(item, pydantic.BaseModel) for item in value
     ):
         if not _is_json_column(model_cls, field_name):
             return value
+        _reject_excluded_json_fields(value, f"{model_cls.__name__}.{field_name}")
         return [
             item.model_dump(mode="json")
             if isinstance(item, pydantic.BaseModel)
@@ -353,6 +356,45 @@ def _json_ready(model_cls: type[DeclarativeBase], field_name: str, value: Any) -
             for item in value
         ]
     return value
+
+
+def _reject_excluded_json_fields(value: Any, column: str) -> None:
+    """Reject exclusions and document values that cannot be inspected safely."""
+    pending = [value]
+    seen: set[int] = set()
+    while pending:
+        item = pending.pop()
+        if dataclasses.is_dataclass(item) or isinstance(item, Iterator):
+            raise RestlyConfigurationError(
+                f"{column}: documents containing dataclasses or iterators cannot "
+                "be stored automatically in a plain JSON column. Use a SQLAlchemy "
+                "TypeDecorator to define their storage representation."
+            )
+        if isinstance(item, str | bytes | bytearray) or not isinstance(
+            item, (pydantic.BaseModel, Mapping, Sequence, Set)
+        ):
+            continue
+        if id(item) in seen:
+            continue
+        seen.add(id(item))
+        if isinstance(item, pydantic.BaseModel):
+            for name, field in type(item).model_fields.items():
+                if field.exclude:
+                    raise RestlyConfigurationError(
+                        f"{column}: {type(item).__name__}.{name} is excluded from "
+                        "serialization. Documents with WriteOnly or "
+                        "Field(exclude=True) fields cannot be stored automatically "
+                        "in a plain JSON column. Use a SQLAlchemy TypeDecorator "
+                        "to define their storage representation."
+                    )
+                pending.append(getattr(item, name, None))
+            if item.model_extra:
+                pending.extend(item.model_extra.values())
+        elif isinstance(item, Mapping):
+            pending.extend(item.keys())
+            pending.extend(item.values())
+        else:
+            pending.extend(item)
 
 
 def _add_assignment(target: dict[str, Any], field_name: str | None, value: Any) -> None:
