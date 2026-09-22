@@ -233,15 +233,11 @@ jobs:
           uv --directory example-projects/saas run alembic downgrade base
           uv --directory example-projects/saas run alembic upgrade head
 
+      # SaaS fixtures depend on the migration-seeded admin surviving each test.
+      # Delete cleanup is covered by the async-only PostgreSQL tests above.
       - name: Run migration-backed SaaS rollback tests
         env:
           RESTLY_TEST_DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5433/saas_test
-        run: uv --directory example-projects/saas run pytest tests/ -q
-
-      - name: Run migration-backed SaaS delete tests
-        env:
-          RESTLY_TEST_DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5433/saas_test
-          RESTLY_DB_CLEANUP: delete
         run: uv --directory example-projects/saas run pytest tests/ -q
 
   saas-python-floor:
