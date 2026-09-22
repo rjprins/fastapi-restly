@@ -87,6 +87,11 @@ The list endpoint reads react-admin's three JSON-encoded query parameters:
 | `range` | JSON `[start, end]` (inclusive) | `range=[0,24]` |
 | `filter` | JSON object | `filter={"name":"foo"}` or `filter={"id":[1,2,3]}` |
 
+Those three are the whole contract. Any other query key is rejected with a
+422, so a typo cannot widen the result set unnoticed; the standard dialect's
+`page`, `page_size` and per-field filters are unknown keys here too. Declare
+`extra_query_params` on the view for a key it reads itself.
+
 The response body is a plain JSON array, and the `Content-Range` header
 carries the total:
 
@@ -127,11 +132,31 @@ fields included; the update schema drops the fields it does not accept
 instead of rejecting the request.
 
 The PUT route delegates to the same {meth}`handle_update <fastapi_restly.views.RestView.handle_update>` handler as PATCH and
-accepts the view's standard {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>` payload. If you need different
-write semantics for the two methods, override the {meth}`update <fastapi_restly.views.RestView.update>` business method (or
-`handle_update`, or replace the PUT route directly);
-[Customizing RestView](customize.md) explains how
-these override points relate.
+accepts the view's standard {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>` payload, so an
+{meth}`update <fastapi_restly.views.RestView.update>` business-method override changes both methods. To give PUT
+its own semantics, replace the `put` endpoint method. This version requires the
+complete record, while PATCH still accepts a partial one:
+
+```python
+class ProductReplace(fr.BaseSchema):
+    name: str
+    price: float
+
+@fr.include_view(app)
+class ProductView(fr.AsyncReactAdminView):
+    prefix = "/products"
+    model = Product
+
+    @fr.put("/{id}")
+    async def put(self, id: int, payload: ProductReplace):
+        obj = await self.handle_update(id, payload)
+        return self.to_response(obj)
+```
+
+A PUT with a missing field returns 422. Keys the schema does not declare, such
+as the `id` react-admin sends, are ignored. Do not name the body parameter
+`schema_obj`: registration annotates a `schema_obj` parameter on `put` with
+`schema_update`, which silently replaces `ProductReplace`.
 
 ## Serialize related lists as scalar id arrays with `IDRef`
 

@@ -1,4 +1,4 @@
-# Structure a Project
+# Project structure
 
 Restly does not impose a project layout. Views are ordinary Python classes and
 {func}`include_view() <fastapi_restly.views.include_view>` is an ordinary function call, so any arrangement of
@@ -10,7 +10,7 @@ and explains what each part of it buys you.
 
 ## Generate it
 
-`restly new` writes the layout below, with a `users` resource, a test suite,
+`restly new` creates a project with a `users` resource, a test suite,
 and the settings and schema wiring:
 
 ```bash
@@ -51,6 +51,7 @@ app/
 ├── main.py                 # Application factory, VIEWS, and lifespan
 ├── asgi.py                 # app = create_app(), the deployment entrypoint
 ├── settings.py             # Pydantic settings
+├── current.py              # Current namespace (optional)
 ├── views.py                # Shared base view and mixins
 ├── users/
 │   ├── __init__.py
@@ -79,6 +80,24 @@ Nothing in a subject package should register itself as a side effect of being
 imported. Keep `__init__.py` empty or limited to a docstring, and import
 concrete modules rather than building re-export modules that pull in a whole
 subject to reach one class.
+
+(project-current)=
+## Share Current from the package root
+
+Declare [Current](howto_current.md) in `app/current.py` when multiple modules need
+request-bound values. Import that declaration wherever it is used:
+
+```python
+from app.current import Current
+```
+
+The module can also expose `SetCurrentContextDep`, created with
+{meth}`Current.depends <fastapi_restly.clauses.ContextNamespace.depends>`.
+Attach this dependency in `main.py` or the shared `views.py`.
+
+Keep `current.py` independent of view modules and the application factory.
+Models and scripts must be able to import it without constructing an application.
+`restly new` does not generate this module.
 
 (compose-in-one-place)=
 
@@ -154,13 +173,13 @@ view wants the same behavior, which is why a generated project does not have one
 
 ```python
 # app/users/views.py
-from ..views import TenantBase, SoftDeleteMixin
+from ..views import AuthenticatedView, SoftDeleteMixin
 
 from .models import User
 from .schemas import UserRead
 
 
-class UserView(SoftDeleteMixin, TenantBase):
+class UserView(SoftDeleteMixin, AuthenticatedView):
     prefix = "/users"
     model = User
     schema = UserRead

@@ -130,6 +130,27 @@ already understood by Pydantic) are returned unchanged:
 Any type not in this table raises `TypeError` at schema-generation time. For
 custom column types, declare an explicit schema and bypass auto-generation.
 
+(json-document-columns)=
+### JSON document columns
+
+A `JSON` column maps to a bare `dict`, which does not validate the document's
+fields. To validate its shape, declare an explicit schema with a nested
+Pydantic model. Restly calls `model_dump(mode="json")` before assigning the
+document to the column. The response schema validates the stored document
+when reading it back.
+
+Documents containing {data}`WriteOnly <fastapi_restly.schemas.WriteOnly>` or
+`Field(exclude=True)` fields raise
+{class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`
+before assignment, including exclusions inside nested models. Those fields
+would otherwise be omitted from storage. Documents containing dataclasses or
+iterators are also unsupported. Use a SQLAlchemy
+{class}`~sqlalchemy.types.TypeDecorator` to define their storage representation.
+Its bind processor receives the original Pydantic model instead of a dump.
+
+Marking the whole JSON column as `WriteOnly` remains supported. It hides the
+column in responses without excluding fields from the stored document.
+
 ## View Classes and Registration
 
 The generated schemas feed the view layer, which turns a model and a schema
@@ -149,10 +170,18 @@ difference is that the async variant uses `await` in its process methods.
 
 `AsyncSessionDep` and `SessionDep` use Restly's built-in session generators.
 Those generators yield a SQLAlchemy session and manage lifecycle: rollback and
-close on exit. They do **not** commit on response. `handle_<verb>` owns the
-commit and runs {meth}`before_commit <fastapi_restly.views.RestView.before_commit>`, then the commit itself, then {meth}`after_commit <fastapi_restly.views.RestView.after_commit>` around domain logic.
+close on exit. They do **not** commit on response. `handle_<verb>` normally owns
+the commit and runs
+{meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>`,
+then the commit itself, then
+{meth}`after_action_commit <fastapi_restly.views.RestView.after_action_commit>`
+around domain logic. Inside `shared_write_action_commit`, the outermost block
+owns the commit and handlers return after flush, before the commit and
+after-hook.
 Custom write routes can use the same bracket with
-`async with self.write_action(action, ...)`. If a request ends with uncommitted
+`async with self.write_action(action, ...)`. Several brackets can share a commit
+with [shared_write_action_commit()](#shared-write-action-commit).
+If a request ends with uncommitted
 changes, Restly warns with {class}`RestlyUncommittedChangesWarning <fastapi_restly.exc.RestlyUncommittedChangesWarning>` by default.
 [Custom session generators](howto_existing_project.md#provide-your-own-session-generator)
 control construction and cleanup, not commit ownership.
@@ -178,7 +207,7 @@ fr.include_view(app, MyView)
 
 This keeps imports predictable: importing `app.users.views` defines
 `UserView`, while `app.main` decides which app or router receives it. See
-[Structure a Project](howto_project_structure.md) for the layout this assumes.
+[Project structure](howto_project_structure.md) for the layout this assumes.
 For small apps and examples, `include_view()` also works as a decorator:
 
 ```python
@@ -220,7 +249,7 @@ Nested schemas serve two different roles in Restly today:
   its value.
 
   Loader options follow relationships the schema *names*. Code that reaches
-  past that set -- an `after_commit` hook, a custom business method, a
+  past that set -- an `after_action_commit` hook, a custom business method, a
   `@property` walking a relationship nothing else loads -- runs in plain async
   context, where a bare attribute access raises `MissingGreenlet`. Restly's
   declarative base mixes in SQLAlchemy's `AsyncAttrs` for exactly that case, so
@@ -426,7 +455,7 @@ sets a few SQLAlchemy session options intentionally:
 `expire_on_commit=False` is used for both sync and async sessions so ORM
 objects remain readable after a route commits. Restly's write handlers commit
 inside the request, and the response-schema conversion reads attributes from the
-committed object afterwards (as does an `after_commit` hook that inspects it).
+committed object afterwards (as does an `after_action_commit` hook that inspects it).
 With `expire_on_commit=True` the commit expires those attributes, so each such
 read becomes an implicit database read: in async code it raises
 `MissingGreenlet`, because the serializer -- and any such hook -- runs in plain

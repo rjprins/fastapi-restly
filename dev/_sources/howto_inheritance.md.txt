@@ -5,7 +5,7 @@ FastAPI-Restly views are plain Python classes. Use base classes for shared CRUD 
 Each CRUD verb is implemented in three tiers (see [Customizing RestView](customize.md) for the full model):
 
 - The **endpoint method** ({meth}`create_endpoint <fastapi_restly.views.RestView.create_endpoint>`, {meth}`get_one_endpoint <fastapi_restly.views.RestView.get_one_endpoint>`, and so on) owns the HTTP contract. It is rarely overridden on a base class.
-- The **handler** ({meth}`handle_create <fastapi_restly.views.RestView.handle_create>`, {meth}`handle_get_one <fastapi_restly.views.RestView.handle_get_one>`, and so on) runs {meth}`authorize <fastapi_restly.views.RestView.authorize>` and the commit bracket.
+- The **handler** ({meth}`handle_create <fastapi_restly.views.RestView.handle_create>`, {meth}`handle_get_one <fastapi_restly.views.RestView.handle_get_one>`, and so on) runs {meth}`authorize <fastapi_restly.views.RestView.authorize>` and the commit bracket. It is final: custom routes call it, and a base class cannot override it.
 - The **business method** ({meth}`create <fastapi_restly.views.RestView.create>`, {meth}`get_one <fastapi_restly.views.RestView.get_one>`, {meth}`update <fastapi_restly.views.RestView.update>`, {meth}`delete <fastapi_restly.views.RestView.delete>`, {meth}`get_many <fastapi_restly.views.RestView.get_many>`) is the auth-free, commit-free domain operation.
 
 The business method is the natural home for shared behaviour, so most of the examples below override it.
@@ -60,20 +60,22 @@ class OrderView(AuditBase):
 
 `OrderView.create` runs first and delegates to `AuditBase.create`, which in turn delegates to {meth}`RestView.create <fastapi_restly.views.RestView.create>`; all three layers run in order.
 
-## Share an orchestration override
+## Share post-commit behavior
 
-When shared behaviour is about *timing*, override the handler instead of the business method. This keeps the endpoint method unchanged:
+When shared behaviour should happen only after a durable write, override the
+after-hook on the base class:
 
 ```python
 class NotifyBase(fr.RestView):
-    def handle_create(self, schema_obj):
-        obj = super().handle_create(schema_obj)
-        # super().handle_create has already committed, so the row is durable.
-        notify_created(obj)
-        return obj
+    def after_action_commit(self, action, new, old=None):
+        if action == "create":
+            notify_created(new)
 ```
 
-Every subclass of `NotifyBase` now fires `notify_created` after commit. For most post-commit side effects, prefer {meth}`after_commit <fastapi_restly.views.RestView.after_commit>` (see [transaction hooks](customize.md#transaction-hooks-before_commit--after_commit)); use a handler override when control flow must change.
+Every subclass of `NotifyBase` now fires `notify_created` after the write is
+durable. This remains true when a custom endpoint uses
+{ref}`shared_write_action_commit() <shared-write-action-commit>`, which
+queues the hook until the outermost block commits.
 
 ## Inherit a shared dependency
 
@@ -212,4 +214,4 @@ Mixins](howto_compose_views_with_mixins.md).
 The patterns above build on two neighbouring pages:
 
 - [Customizing RestView](customize.md) covers the three-tier model and the call chain.
-- [Compose Views with Mixins](howto_compose_views_with_mixins.md) covers layering structural concerns cooperatively; it is the richer cousin to single-base inheritance.
+- [Compose Views with Mixins](howto_compose_views_with_mixins.md) covers structural concerns on the model and verb mixins on the view; it is the richer cousin to single-base inheritance.

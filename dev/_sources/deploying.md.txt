@@ -162,7 +162,7 @@ Note four details in this template:
   [Test APIs with RestlyTestClient and Fixtures](howto_testing.md).
 - The `VIEWS` tuple keeps view definitions free of registration side effects
   and makes `main.py` the one application composition boundary; see
-  [Structure a Project](howto_project_structure.md).
+  [Project structure](howto_project_structure.md).
 - {func}`fr.configure(app, ...) <fastapi_restly.db.configure>` installs the default exception handlers
   (currently the translator that turns `IntegrityError` into a 409 response;
   see [Database conflicts](howto_error_responses.md#database-conflicts-integrityerror-to-409)).

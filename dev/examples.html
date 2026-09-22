@@ -553,7 +553,7 @@ engine. Compose provides separate development and test databases, and the
 Restly test fixtures build their schema from the checked-in migrations. It also
 builds a substantial non-CRUD surface on the same views. Each view lives beside
 its model and schemas in a subject package under <code class="docutils literal notranslate"><span class="pre">example-projects/saas/app/</span></code>,
-the layout <a class="reference internal" href="howto_project_structure.html"><span class="std std-doc">Structure a Project</span></a> describes.
+the layout <a class="reference internal" href="howto_project_structure.html"><span class="std std-doc">Project structure</span></a> describes.
 The routes below highlight the patterns involved:</p>
 <div class="pst-scrollable-table-container"><table class="table">
 <thead>
@@ -566,15 +566,18 @@ The routes below highlight the patterns involved:</p>
 <td><p>State transitions via <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.write_action" title="fastapi_restly.views.RestView.write_action"><code class="xref py py-meth docutils literal notranslate"><span class="pre">write_action</span></code></a> on a <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/tasks/bulk</span></code>, <code class="docutils literal notranslate"><span class="pre">/tasks/bulk-delete</span></code>, <code class="docutils literal notranslate"><span class="pre">/tasks/import-csv</span></code></p></td>
-<td><p>Bulk endpoints beside the default CRUD routes</p></td>
+<td><p>Per-row savepoints inside one <code class="docutils literal notranslate"><span class="pre">shared_write_action_commit()</span></code> block</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/uploads</span></code> + <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/uploads/{id}/lines</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/projects/{id}/clone</span></code></p></td>
+<td><p>A project, its outbox event, and copied tasks committed together</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/uploads</span></code> + <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/uploads/{id}/lines</span></code></p></td>
 <td><p>A file-upload flow with a custom create bracket</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/task-labels/create-and-attach</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/task-labels/create-and-attach</span></code></p></td>
 <td><p>Two rows committed through one <code class="docutils literal notranslate"><span class="pre">write_action</span></code> block</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/users/{id}/change-password</span></code>, <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/users/me</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/users/{id}/change-password</span></code>, <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/users/me</span></code></p></td>
 <td><p>Account actions and a non-resource read</p></td>
 </tr>
 </tbody>

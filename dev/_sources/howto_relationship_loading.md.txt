@@ -23,7 +23,7 @@ eagerly. Take an article with an author and comments:
 class Article(fr.IDBase):
     title: Mapped[str]
     author_id: Mapped[int] = mapped_column(ForeignKey("user.id"), init=False)
-    author: Mapped[User] = relationship(default=None, init=False)
+    author: Mapped[User] = relationship(init=False)
     comments: Mapped[list["Comment"]] = relationship(default_factory=list, init=False)
 ```
 
@@ -60,7 +60,7 @@ extra query (slower, but it works), while async sessions raise
 ## Eager-load something the schema does not name
 
 Sometimes you want a relationship loaded that is not part of the response, to
-feed a `@property`, an `after_commit` hook, or just to avoid an N+1 in a custom
+feed a `@property`, an `after_action_commit` hook, or just to avoid an N+1 in a custom
 read. Override
 {meth}`get_relationship_loader_options() <fastapi_restly.views.BaseRestView.get_relationship_loader_options>`
 and append to it:
@@ -87,24 +87,22 @@ create and update responses alike, because the write path reloads by primary
 key through the same options. Return a fresh list to replace the strategy
 entirely, for example to swap `selectinload` for `joinedload`.
 
-For a load you only ever read and never serialize, such as a join you filter or
-sort on, {meth}`build_query() <fastapi_restly.views.RestView.build_query>` with
-`.options(...)` is the lighter place to put it. It shapes the read query only,
-so an eager load added there is absent from create and update responses; reach
-for it only when that difference does not matter.
+For an extra load needed only by a listing, add `.options(...)` in
+{meth}`apply_query_params <fastapi_restly.views.RestView.apply_query_params>`.
+This does not affect `get_one` or create and update responses.
 
 ## Reach a relationship the schema does not name
 
 Loader options follow the relationships a schema *names*. Code that reaches
 past that set runs in plain async context and hits the same wall: an
-`after_commit` hook, a custom business method, or a `@property` that walks a
+`after_action_commit` hook, a custom business method, or a `@property` that walks a
 relationship nothing else loads. Restly's declarative base
 ({class}`fr.DataclassBase <fastapi_restly.models.DataclassBase>`) mixes in
 SQLAlchemy's [`AsyncAttrs`](https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html#sqlalchemy.ext.asyncio.AsyncAttrs),
 so any such attribute can be awaited explicitly:
 
 ```python
-async def after_commit(self, action, new, old=None):
+async def after_action_commit(self, action, new, old=None):
     for comment in await new.awaitable_attrs.comments:
         notify(comment)
 ```
@@ -135,8 +133,9 @@ in a nested model. For that case, work through these in order:
 2. **Is a hook or property reaching it?** Load it explicitly with
    `await obj.awaitable_attrs.<name>`, or add it to
    `get_relationship_loader_options` if every request needs it.
-3. **Did you add the load only in `build_query`?** That covers reads but not
-   write responses; move it to `get_relationship_loader_options`.
+3. **Did you add the load only in `get_one`, `get_many`, or `apply_query_params`?**
+   Write responses do not call those methods. Move the load to
+   `get_relationship_loader_options`.
 
 Restly already sets `expire_on_commit=False` on its session factories so a
 committed object stays readable during serialization. If you build your own
@@ -164,5 +163,5 @@ so it lazy-loads and raises `MissingGreenlet` on async.
 
 - [How Restly serializes nested responses](technical_details.md#nested-response-schemas-vs-write-payloads): the loader mechanism in depth.
 - [Work with Foreign Keys and Relationships](howto_relationship_idschema.md): declaring reference fields (`MustExist`, `IDRef`, `IDSchema`).
-- {ref}`Customizing RestView <eager-load-extra-relationships>`: read-scoped `build_query` and `get_one` recipes.
+- {ref}`Customizing RestView <eager-load-extra-relationships>`: read-side eager-loading and `get_one` recipes.
 - [Session Factory Defaults](technical_details.md#session-factory-defaults): why Restly uses `expire_on_commit=False`.

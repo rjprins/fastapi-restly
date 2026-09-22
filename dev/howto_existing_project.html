@@ -62,7 +62,7 @@
     <link rel="author" title="About these documents" href="about.html" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Structure a Project" href="howto_project_structure.html" />
+    <link rel="next" title="Project structure" href="howto_project_structure.html" />
     <link rel="prev" title="How-To Guides" href="user_guide.html" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -454,12 +454,15 @@
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Use Restly in an Existing Project</a></li>
-<li class="toctree-l1"><a class="reference internal" href="howto_project_structure.html">Structure a Project</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_project_structure.html">Project structure</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_custom_schema.html">Custom Schemas and Field Types</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys and Relationships</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_response_schema.html">Response Envelopes and List Metadata</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_relationship_loading.html">Relationship Loading and Async</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_query_modifiers.html">Filter, Sort, and Paginate Lists</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_current.html">Current context</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clauses.html">Query Clauses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_error_responses.html">Shape Error Responses</a></li>
 <li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_inheritance.html">Share Behaviour with Base Views</a></li>
@@ -531,14 +534,14 @@
                   
   <section id="use-restly-in-an-existing-project">
 <h1>Use Restly in an Existing Project<a class="headerlink" href="#use-restly-in-an-existing-project" title="Link to this heading">#</a></h1>
-<p>FastAPI-Restly registers ordinary FastAPI path operations. You can mount Restly
-views on the same <code class="docutils literal notranslate"><span class="pre">FastAPI</span></code> app or <code class="docutils literal notranslate"><span class="pre">APIRouter</span></code> as your existing routes, adopt it
-one resource at a time, and move individual endpoints back to plain FastAPI when
-that is the clearer shape.</p>
-<section id="add-restly-next-to-existing-routes">
-<h2>Add Restly Next to Existing Routes<a class="headerlink" href="#add-restly-next-to-existing-routes" title="Link to this heading">#</a></h2>
+<p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a> provides CRUD endpoints for
+a model. Register a view on the same <code class="docutils literal notranslate"><span class="pre">FastAPI</span></code> app or <code class="docutils literal notranslate"><span class="pre">APIRouter</span></code> as your
+existing routes. Add one resource at a time. Individual endpoints can remain
+plain FastAPI routes.</p>
+<section id="add-a-restview-next-to-existing-routes">
+<h2>Add a RestView Next to Existing Routes<a class="headerlink" href="#add-a-restview-next-to-existing-routes" title="Link to this heading">#</a></h2>
 <p>Use <a class="reference internal" href="api/views.html#fastapi_restly.views.include_view" title="fastapi_restly.views.include_view"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.include_view(...)</span></code></a> wherever you already compose routes. Existing routers
-and Restly views can share the same parent app or router:</p>
+and views can share the same parent app or router:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">APIRouter</span><span class="p">,</span> <span class="n">FastAPI</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
 
@@ -568,9 +571,9 @@ and Restly views can share the same parent app or router:</p>
 above) or as a class decorator (<code class="docutils literal notranslate"><span class="pre">&#64;fr.include_view(app)</span></code>, used later in this
 guide); both register the same routes.</p>
 <p>Adoption is per resource. In the example above, orders stay hand-written while
-users use Restly. Adding a <code class="docutils literal notranslate"><span class="pre">ProductView</span></code> later does not require changing the
+users use <code class="docutils literal notranslate"><span class="pre">UserView</span></code>. Adding a <code class="docutils literal notranslate"><span class="pre">ProductView</span></code> later does not require changing the
 orders router.</p>
-<p>You can also keep plain FastAPI routes beside a Restly resource for endpoints
+<p>You can also keep plain FastAPI routes beside a view for endpoints
 that are not part of the CRUD surface:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/users/</span><span class="si">{id}</span><span class="s2">/export&quot;</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">export_user</span><span class="p">(</span><span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
@@ -597,10 +600,10 @@ add the FastAPI route yourself:</p>
     <span class="o">...</span>
 </pre></div>
 </div>
-<p>That leaves Restly responsible for list, create, read, and update while DELETE
+<p>That leaves <code class="docutils literal notranslate"><span class="pre">UserView</span></code> responsible for list, create, read, and update while DELETE
 uses your ordinary FastAPI implementation. For smaller changes that keep the
 same HTTP contract, prefer overriding the business method (<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many" title="fastapi_restly.views.RestView.get_many"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one</span></code></a>,
-<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create" title="fastapi_restly.views.RestView.create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.update" title="fastapi_restly.views.RestView.update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">update</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.delete" title="fastapi_restly.views.RestView.delete"><code class="xref py py-meth docutils literal notranslate"><span class="pre">delete</span></code></a>) or its <code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code> handler; for a
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create" title="fastapi_restly.views.RestView.create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.update" title="fastapi_restly.views.RestView.update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">update</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.delete" title="fastapi_restly.views.RestView.delete"><code class="xref py py-meth docutils literal notranslate"><span class="pre">delete</span></code></a>); for a
 different status code, response shape, or query interface, see
 <a class="reference internal" href="customize.html"><span class="std std-doc">Customizing RestView</span></a>.</p>
 </section>
@@ -615,11 +618,11 @@ modules.</p>
 </section>
 <section id="replace-an-existing-hand-written-router">
 <h2>Replace an Existing Hand-Written Router<a class="headerlink" href="#replace-an-existing-hand-written-router" title="Link to this heading">#</a></h2>
-<p>The previous sections stepped out of Restly. Going the other direction means
-retiring a hand-written CRUD router in favor of a CRUD view. Map the existing
-contract before replacing it:</p>
+<p>To replace a hand-written CRUD router with a
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a>, map the existing HTTP
+contract first:</p>
 <ol class="arabic simple">
-<li><p>Map your routes to Restly’s default CRUD contract. <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code>, <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/</span></code>, and
+<li><p>Map your routes to the view’s default CRUD contract. <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code>, <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/</span></code>, and
 <code class="docutils literal notranslate"><span class="pre">GET</span></code>/<code class="docutils literal notranslate"><span class="pre">PATCH</span></code>/<code class="docutils literal notranslate"><span class="pre">DELETE</span></code> on <code class="docutils literal notranslate"><span class="pre">/{id}</span></code> are covered (<a class="reference internal" href="api_reference.html#id1"><span class="std std-ref">the exact
 contract</span></a>). Anything else on the
 router (exports, actions) stays as custom routes on the view or as plain
@@ -660,10 +663,11 @@ that object to <a class="reference internal" href="api/db.html#fastapi_restly.db
 <span class="c1">#   fr.configure(async_make_session=ExistingAsyncSession)</span>
 </pre></div>
 </div>
-<p>Restly builds its session factory on top and owns the commit on its views;
-nothing about the engine changes hands. Reach for a session <em>generator</em> (next
-section) only when sessions must be constructed in a custom way, such as scoped
-sessions, multi-tenant routing, or instrumentation.</p>
+<p><a class="reference internal" href="api/db.html#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.configure()</span></code></a> builds the session
+factory on top. <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a> commits
+its write actions. Your application still controls the engine. Use a session
+<em>generator</em> (next section) only when sessions must be constructed in a custom
+way, such as scoped sessions, multi-tenant routing, or instrumentation.</p>
 </section>
 <section id="provide-your-own-session-generator">
 <h2>Provide Your Own Session Generator<a class="headerlink" href="#provide-your-own-session-generator" title="Link to this heading">#</a></h2>
@@ -675,9 +679,8 @@ factories intentionally use different autoflush defaults for sync and async
 sessions and keep <code class="docutils literal notranslate"><span class="pre">expire_on_commit=False</span></code> for both; see
 <a class="reference internal" href="technical_details.html#session-factory-defaults"><span class="std std-ref">Session Factory Defaults</span></a>.
 A custom generator constructs sessions your way but does <em>not</em> own the
-commit: it should construct, yield, and clean up (close or roll back on the way
-out); Restly commits. Customizing how a session is built never takes the commit
-away from Restly.</p>
+commit. It should construct, yield, and clean up (close or roll back on the way
+out). <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a> commits its write actions.</p>
 <p>For async views (<a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a>), pass an async generator to
 <a class="reference internal" href="api/db.html#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.configure()</span></code></a>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncIterator</span>
@@ -732,8 +735,8 @@ the view’s <code class="docutils literal notranslate"><span class="pre">sessio
 
 
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_reporting_db</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">AsyncIterator</span><span class="p">[</span><span class="n">AsyncSession</span><span class="p">]:</span>
-    <span class="c1"># Construct, yield, and clean up; do NOT commit. Restly owns the commit,</span>
-    <span class="c1"># and the ``async with`` rolls back and closes the session on the way out.</span>
+    <span class="c1"># Construct, yield, and clean up. RestView owns the commit.</span>
+    <span class="c1"># The context manager rolls back and closes the session on the way out.</span>
     <span class="k">async</span> <span class="k">with</span> <span class="n">ReportingSession</span><span class="p">()</span> <span class="k">as</span> <span class="n">session</span><span class="p">:</span>
         <span class="k">yield</span> <span class="n">session</span>
 
@@ -749,9 +752,9 @@ the view’s <code class="docutils literal notranslate"><span class="pre">sessio
     <span class="n">session</span><span class="p">:</span> <span class="n">ReportingSessionDep</span>
 </pre></div>
 </div>
-<p>The custom dependency owns session construction and cleanup. Restly still owns
-the commit. Use this for read replicas, reporting databases, or other per-view
-session wiring.</p>
+<p>The custom dependency owns session construction and cleanup.
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a> still owns the commit.
+Use this for read replicas, reporting databases, or other per-view session wiring.</p>
 </section>
 <section id="use-the-configured-session-off-request">
 <h2>Use the Configured Session Off-Request<a class="headerlink" href="#use-the-configured-session-off-request" title="Link to this heading">#</a></h2>
@@ -774,7 +777,8 @@ session from FastAPI-Restly’s configured factory directly with
 <section id="use-your-own-declarativebase-models">
 <h2>Use Your Own DeclarativeBase Models<a class="headerlink" href="#use-your-own-declarativebase-models" title="Link to this heading">#</a></h2>
 <p>If your project already has SQLAlchemy models on a custom <code class="docutils literal notranslate"><span class="pre">DeclarativeBase</span></code>,
-you can use those models directly in FastAPI-Restly views:</p>
+you can use those models directly in a
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.orm</span><span class="w"> </span><span class="kn">import</span> <span class="n">DeclarativeBase</span><span class="p">,</span> <span class="n">Mapped</span><span class="p">,</span> <span class="n">mapped_column</span>
 
@@ -795,7 +799,8 @@ you can use those models directly in FastAPI-Restly views:</p>
     <span class="n">model</span> <span class="o">=</span> <span class="n">World</span>
 </pre></div>
 </div>
-<p>FastAPI-Restly supports these models for default CRUD routes and
+<p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a> supports these models for
+default CRUD routes and
 <a class="reference internal" href="technical_details.html#id1"><span class="std std-ref">auto-generated schemas</span></a>. When
 creating tables, use your own base metadata (for example
 <code class="docutils literal notranslate"><span class="pre">AppBase.metadata.create_all(...)</span></code>).</p>
@@ -837,7 +842,7 @@ webhooks, and other shapes your existing app probably has.</p></li>
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Structure a Project</p>
+        <p class="prev-next-title">Project structure</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -860,7 +865,7 @@ webhooks, and other shapes your existing app probably has.</p></li>
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#add-restly-next-to-existing-routes">Add Restly Next to Existing Routes</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#add-a-restview-next-to-existing-routes">Add a RestView Next to Existing Routes</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#step-out-for-one-endpoint">Step Out for One Endpoint</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#step-out-for-a-whole-resource">Step Out for a Whole Resource</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#replace-an-existing-hand-written-router">Replace an Existing Hand-Written Router</a></li>

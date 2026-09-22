@@ -454,12 +454,15 @@
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="howto_existing_project.html">Use Restly in an Existing Project</a></li>
-<li class="toctree-l1"><a class="reference internal" href="howto_project_structure.html">Structure a Project</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_project_structure.html">Project structure</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_custom_schema.html">Custom Schemas and Field Types</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Work with Foreign Keys and Relationships</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_response_schema.html">Response Envelopes and List Metadata</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_relationship_loading.html">Relationship Loading and Async</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_query_modifiers.html">Filter, Sort, and Paginate Lists</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_current.html">Current context</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clauses.html">Query Clauses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_error_responses.html">Shape Error Responses</a></li>
 <li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_inheritance.html">Share Behaviour with Base Views</a></li>
@@ -669,9 +672,9 @@ the schema:</p>
 </pre></div>
 </div>
 <p>On create and update, Restly looks up the <code class="docutils literal notranslate"><span class="pre">User</span></code> with <code class="docutils literal notranslate"><span class="pre">id=1</span></code>. If it does not
-exist, the request returns <code class="docutils literal notranslate"><span class="pre">404</span></code>. That lookup is an <em>unscoped</em> existence check;
-see <a class="reference internal" href="#visibility-and-multi-tenancy">Visibility and multi-tenancy</a> below. In
-hooks, <code class="docutils literal notranslate"><span class="pre">data.author_id</span></code> is the plain integer.</p>
+exist, or falls outside the model’s <code class="docutils literal notranslate"><span class="pre">default_scope</span></code>, the request returns
+<code class="docutils literal notranslate"><span class="pre">404</span></code>; see <a class="reference internal" href="#visibility-and-multi-tenancy">Visibility and multi-tenancy</a>
+below. In hooks, <code class="docutils literal notranslate"><span class="pre">data.author_id</span></code> is the plain integer.</p>
 </section>
 <section id="list-filtering">
 <h2>List filtering<a class="headerlink" href="#list-filtering" title="Link to this heading">#</a></h2>
@@ -802,13 +805,20 @@ Restly’s create/update helpers are aware of that constructor shape when an
 <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDRef</span></code></a> /
 <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDSchema</span></code></a> relationship field has been
 resolved to an ORM object.</p>
-<p>The common FK-first declaration is still the clearest default:</p>
+<p>For an FK-first dataclass model, keep the relationship out of the generated
+constructor and leave it unset:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">author_id</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span><span class="n">ForeignKey</span><span class="p">(</span><span class="s2">&quot;user.id&quot;</span><span class="p">))</span>
-<span class="n">author</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="s2">&quot;User&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">relationship</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">author</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="s2">&quot;User&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">relationship</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>With that model and <code class="docutils literal notranslate"><span class="pre">author:</span> <span class="pre">fr.IDRef[User]</span></code>, Restly passes the scalar FK when
-the constructor needs it and keeps <code class="docutils literal notranslate"><span class="pre">author</span></code> in sync after construction.</p>
+the constructor needs it and assigns <code class="docutils literal notranslate"><span class="pre">author</span></code> after construction. With a
+scalar <code class="docutils literal notranslate"><span class="pre">author_id:</span> <span class="pre">fr.MustExist[int,</span> <span class="pre">User]</span></code> field, leaving <code class="docutils literal notranslate"><span class="pre">author</span></code> unset keeps
+SQLAlchemy from replacing the supplied foreign key with <code class="docutils literal notranslate"><span class="pre">NULL</span></code> during flush.</p>
+<p>Do not add <code class="docutils literal notranslate"><span class="pre">default=None</span></code> to an <code class="docutils literal notranslate"><span class="pre">init=False</span></code> relationship paired with a
+required scalar foreign key. SQLAlchemy assigns that relationship default to
+each new object, and the relationship value takes precedence over the foreign
+key during flush.</p>
 <p>If your model is relationship-first, Restly adapts there too:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">author_id</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span><span class="n">ForeignKey</span><span class="p">(</span><span class="s2">&quot;user.id&quot;</span><span class="p">),</span> <span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 <span class="n">author</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="s2">&quot;User&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">relationship</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
@@ -923,14 +933,19 @@ their wire format is already scalar.</p>
 </section>
 <section id="visibility-and-multi-tenancy">
 <h2>Visibility and multi-tenancy<a class="headerlink" href="#visibility-and-multi-tenancy" title="Link to this heading">#</a></h2>
-<p>Reference resolution is an <strong>unscoped existence check</strong>. Restly fetches the
-referenced row by primary key only (<code class="docutils literal notranslate"><span class="pre">session.get(User,</span> <span class="pre">id)</span></code>). View
-<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.build_query" title="fastapi_restly.views.RestView.build_query"><code class="xref py py-meth docutils literal notranslate"><span class="pre">build_query</span></code></a> scoping is not applied, so tenant, soft-delete, and row-level
-visibility checks are your responsibility.</p>
-<p>The resolver only knows the referenced <em>model</em> from the field type, not which
-view governs it. References are a <em>policy</em> concern, and they are gated in
+<p>Reference resolution applies the referenced model’s <code class="docutils literal notranslate"><span class="pre">default_scope</span></code>, the
+clause declared on its namespace (<a class="reference internal" href="scopes.html"><span class="std std-doc">Scopes</span></a>): a reference to a
+row the scope hides returns 404. A session-level tenant rule also applies to
+the reference lookup because it is an ORM <code class="docutils literal notranslate"><span class="pre">SELECT</span></code>. See
+<a class="reference internal" href="howto_compose_views_with_mixins.html#tenant-row-scoping"><span class="std std-ref">tenant row scoping</span></a> for that invariant. A per-field
+override (check against another clause, or none) is spelled with
+<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.RefExists" title="fastapi_restly.schemas.RefExists"><code class="xref py py-class docutils literal notranslate"><span class="pre">RefExists</span></code></a>; see
+<a class="reference internal" href="scopes.html#reference-scopes"><span class="std std-ref">References: overriding per field</span></a>.</p>
+<p>A model <strong>without</strong> a <code class="docutils literal notranslate"><span class="pre">default_scope</span></code> resolves by bare primary key
+(<code class="docutils literal notranslate"><span class="pre">session.get(User,</span> <span class="pre">id)</span></code>): tenant, soft-delete, and row-level visibility
+checks are then your responsibility. Gate them in
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.authorize" title="fastapi_restly.views.RestView.authorize"><code class="xref py py-meth docutils literal notranslate"><span class="pre">authorize</span></code></a> /
-<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.before_commit" title="fastapi_restly.views.RestView.before_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">before_commit</span></code></a> like any
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.before_action_commit" title="fastapi_restly.views.RestView.before_action_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">before_action_commit</span></code></a> like any
 other write-path authorization; both hooks are described in
 <a class="reference internal" href="customize.html#authorize-gate-the-action"><span class="std std-ref">Customizing RestView</span></a>.</p>
 <p>Gate in <code class="docutils literal notranslate"><span class="pre">authorize</span></code>, where <code class="docutils literal notranslate"><span class="pre">data</span></code> carries the write-side value before
@@ -953,7 +968,7 @@ requested id (and a list field is a list of references):</p>
 </pre></div>
 </div>
 <p>The resolved ORM object is not available in <code class="docutils literal notranslate"><span class="pre">authorize</span></code>; resolution runs later
-in the business method. If you need the resolved row, check in <code class="docutils literal notranslate"><span class="pre">before_commit</span></code>,
+in the business method. If you need the resolved row, check in <code class="docutils literal notranslate"><span class="pre">before_action_commit</span></code>,
 where the built object carries it (for example <code class="docutils literal notranslate"><span class="pre">new.author.org_id</span></code>). Prefer
 <code class="docutils literal notranslate"><span class="pre">authorize</span></code> when the requested id is enough: it rejects before the unscoped
 fetch and is the standard policy seam.</p>

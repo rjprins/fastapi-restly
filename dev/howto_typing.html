@@ -454,12 +454,15 @@
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="howto_existing_project.html">Use Restly in an Existing Project</a></li>
-<li class="toctree-l1"><a class="reference internal" href="howto_project_structure.html">Structure a Project</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_project_structure.html">Project structure</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_custom_schema.html">Custom Schemas and Field Types</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys and Relationships</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_response_schema.html">Response Envelopes and List Metadata</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_relationship_loading.html">Relationship Loading and Async</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_query_modifiers.html">Filter, Sort, and Paginate Lists</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_current.html">Current context</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clauses.html">Query Clauses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_error_responses.html">Shape Error Responses</a></li>
 <li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_inheritance.html">Share Behaviour with Base Views</a></li>
@@ -605,16 +608,14 @@ the business methods, so those benefit most:</p>
 <li><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.delete" title="fastapi_restly.views.RestView.delete"><code class="xref py py-meth docutils literal notranslate"><span class="pre">delete</span></code></a></p></li>
 <li><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many" title="fastapi_restly.views.RestView.get_many"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many</span></code></a></p></li>
 </ul>
-<p>It also sharpens the handlers (<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_create" title="fastapi_restly.views.RestView.handle_create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_create</span></code></a>,
-<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_update" title="fastapi_restly.views.RestView.handle_update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_update</span></code></a>,
-<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_get_one" title="fastapi_restly.views.RestView.handle_get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_get_one</span></code></a>, and so
-on) and the cooperative stamping methods (<code class="docutils literal notranslate"><span class="pre">make_new_object</span></code>, <code class="docutils literal notranslate"><span class="pre">update_object</span></code>)
-when you override them.</p>
 <p>Without view generics, these methods still work, but their types are broader.
 With view generics, your editor can infer the concrete model, schema, and id
 types. Here is a fully parameterized view with typed overrides on the business
 verbs:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">[</span><span class="n">User</span><span class="p">]):</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColumnElement</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">UserRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">[</span><span class="n">User</span><span class="p">]):</span>
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">email</span><span class="p">:</span> <span class="nb">str</span>
 
@@ -639,8 +640,10 @@ verbs:</p>
     <span class="n">schema_create</span> <span class="o">=</span> <span class="n">UserCreate</span>
     <span class="n">schema_update</span> <span class="o">=</span> <span class="n">UserUpdate</span>
 
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_one</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">User</span><span class="p">:</span>
-        <span class="k">return</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">get_one</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_one</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="n">ColumnElement</span><span class="p">[</span><span class="nb">bool</span><span class="p">],</span> <span class="o">*</span><span class="p">,</span> <span class="n">scope</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">views</span><span class="o">.</span><span class="n">ReadScope</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">User</span><span class="p">:</span>
+        <span class="k">return</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">get_one</span><span class="p">(</span><span class="nb">id</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="n">scope</span><span class="p">)</span>
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">schema_obj</span><span class="p">:</span> <span class="n">UserCreate</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">User</span><span class="p">:</span>
         <span class="k">return</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">schema_obj</span><span class="p">)</span>
@@ -654,13 +657,13 @@ schema, the update schema, and the id type. With them in place, <code class="doc
 in <code class="docutils literal notranslate"><span class="pre">create</span></code> is a <code class="docutils literal notranslate"><span class="pre">UserCreate</span></code>, <code class="docutils literal notranslate"><span class="pre">obj</span></code> in <code class="docutils literal notranslate"><span class="pre">update</span></code> is a <code class="docutils literal notranslate"><span class="pre">User</span></code>, and the return
 types are checked too.</p>
 <p>Note the signatures: <code class="docutils literal notranslate"><span class="pre">create</span></code> takes the create schema and returns the model;
-<code class="docutils literal notranslate"><span class="pre">update</span></code> takes the already-loaded <code class="docutils literal notranslate"><span class="pre">obj</span></code> plus the update schema (id resolution
-and the 404 happen one tier up, in <code class="docutils literal notranslate"><span class="pre">handle_update</span></code>). If you instead override
-at the handler tier, the id-taking signatures live there:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">handle_update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">schema_obj</span><span class="p">:</span> <span class="n">UserUpdate</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">User</span><span class="p">:</span>
-        <span class="k">return</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">handle_update</span><span class="p">(</span><span class="nb">id</span><span class="p">,</span> <span class="n">schema_obj</span><span class="p">)</span>
-</pre></div>
-</div>
+<code class="docutils literal notranslate"><span class="pre">update</span></code> takes the already-loaded <code class="docutils literal notranslate"><span class="pre">obj</span></code> plus the update schema. Id resolution
+and the 404 happen one tier up, in the final
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_update" title="fastapi_restly.views.RestView.handle_update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_update</span></code></a> handler.
+The <code class="docutils literal notranslate"><span class="pre">get_one</span></code> id parameter is <code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">|</span> <span class="pre">ColumnElement[bool]</span></code> (<code class="docutils literal notranslate"><span class="pre">ColumnElement</span></code>
+from <code class="docutils literal notranslate"><span class="pre">sqlalchemy</span></code>) because a SQLAlchemy predicate may take the primary key’s
+place, as in <a class="reference internal" href="customize.html#natural-key-route"><span class="std std-ref">Look a row up by another key</span></a>. Annotating
+it <code class="docutils literal notranslate"><span class="pre">id:</span> <span class="pre">int</span></code> narrows the base signature, which the type checker rejects.</p>
 <p>This looks heavier because it is more explicit. Use it when that extra
 precision is valuable to you.</p>
 <p><a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.BaseSchema" title="fastapi_restly.schemas.BaseSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.BaseSchema</span></code></a> is a convenient
@@ -741,8 +744,8 @@ field. Parameterizing your top-level schema’s <em>base class</em>, as in
 <code class="docutils literal notranslate"><span class="pre">class</span> <span class="pre">UserRead(IDSchema[User])</span></code>, is a separate, optional choice: the bare
 base is supported, and the parameterized base carries the model type.</p></li>
 <li><p>Use view generics only when you want precise typing on the methods you
-override; they mainly help on the three tiers (business methods, request
-handlers, and stamping methods).</p></li>
+override; they mainly help on the business methods and the endpoint
+methods.</p></li>
 <li><p>Custom route methods work well with ordinary Python annotations.</p></li>
 </ul>
 <p>That keeps everyday usage clean while still allowing stricter typing for

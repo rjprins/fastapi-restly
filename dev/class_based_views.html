@@ -717,47 +717,41 @@ default contract, configuration, and limits.</p></li>
 method surface. <a class="reference internal" href="customize.html"><span class="std std-doc">Customizing RestView</span></a> explains the three override
 tiers and cross-cutting override points.</p>
 </section>
-<section id="a-complete-example-a-tenant-scoped-base-view">
-<h2>A complete example: a tenant-scoped base view<a class="headerlink" href="#a-complete-example-a-tenant-scoped-base-view" title="Link to this heading">#</a></h2>
-<p>A common situation is that every view in your app needs auth, tenant scoping,
-and a common <a class="reference internal" href="howto_error_responses.html#change-the-error-envelope-app-wide"><span class="std std-ref">error envelope</span></a>.
-With a shared base view you express that once and inherit it:</p>
+<section id="a-shared-base-view-for-tenant-routes">
+<h2>A shared base view for tenant routes<a class="headerlink" href="#a-shared-base-view-for-tenant-routes" title="Link to this heading">#</a></h2>
+<p>Tenant routes need the same identity dependency and often share an
+<a class="reference internal" href="howto_error_responses.html#change-the-error-envelope-app-wide"><span class="std std-ref">error envelope</span></a>.
+A base view declares the view-level pieces once:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">Depends</span>
 
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">require_logged_in</span><span class="p">(</span><span class="n">user_id</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_current_user_id</span><span class="p">))</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-    <span class="k">return</span> <span class="n">user_id</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Current</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">ContextNamespace</span><span class="p">):</span>
+    <span class="n">tenant_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">ContextParam</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
 
-<span class="k">class</span><span class="w"> </span><span class="nc">TenantScopedView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">AuthenticatedView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Internal base, never registered directly.&quot;&quot;&quot;</span>
-    <span class="n">dependencies</span> <span class="o">=</span> <span class="p">[</span><span class="n">Depends</span><span class="p">(</span><span class="n">require_logged_in</span><span class="p">)]</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">build_query</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="c1"># Automatic tenant filtering for every read: list, pagination</span>
-        <span class="c1"># total, and single-row retrieve all route through this method.</span>
-        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">build_query</span><span class="p">()</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">tenant_id</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">tenant_id</span>
-        <span class="p">)</span>
+    <span class="n">dependencies</span> <span class="o">=</span> <span class="p">[</span><span class="n">Current</span><span class="o">.</span><span class="n">depends</span><span class="p">(</span><span class="n">tenant_id</span><span class="o">=</span><span class="n">get_current_tenant_id</span><span class="p">)]</span>
 
 
 <span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">InvoiceView</span><span class="p">(</span><span class="n">TenantScopedView</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">InvoiceView</span><span class="p">(</span><span class="n">AuthenticatedView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/invoices&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Invoice</span>
     <span class="n">schema</span> <span class="o">=</span> <span class="n">InvoiceRead</span>
 
 
 <span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">CustomerView</span><span class="p">(</span><span class="n">TenantScopedView</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">CustomerView</span><span class="p">(</span><span class="n">AuthenticatedView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/customers&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Customer</span>
     <span class="n">schema</span> <span class="o">=</span> <span class="n">CustomerRead</span>
 </pre></div>
 </div>
-<p>The result is two views with one shared dependency and one shared filter. Add
-a new tenant-scoped resource and it inherits the same auth and scoping
-behavior. For soft delete, audit stamps, and permission scoping, see
-<a class="reference internal" href="howto_compose_views_with_mixins.html"><span class="std std-doc">Composing views with mixins</span></a>.</p>
+<p>The dependency binds the current tenant for both views. A session-level
+<code class="docutils literal notranslate"><span class="pre">with_loader_criteria</span></code> rule applies that tenant to every ORM read, including
+reference checks and reads that replace a view scope. Keep <code class="docutils literal notranslate"><span class="pre">scope</span></code> available
+for replaceable surfaces such as soft deletion and role visibility. The
+<a class="reference internal" href="howto_compose_views_with_mixins.html#tenant-row-scoping"><span class="std std-ref">tenant row scoping</span></a> recipe contains the session rule,
+column stamp, and shared view base.</p>
 </section>
 <section id="override-a-single-tier">
 <h2>Override a single tier<a class="headerlink" href="#override-a-single-tier" title="Link to this heading">#</a></h2>
@@ -848,7 +842,7 @@ configuration.</p></li>
 both request lifecycles, the override decision table, and every override
 recipe.</p></li>
 <li><p><a class="reference internal" href="howto_inheritance.html"><span class="std std-doc">Share Behaviour with Base Views</span></a>: patterns for
-multi-tenant scoping, role-based filtering, and shared mixins.</p></li>
+tenant isolation, role-based filtering, and shared mixins.</p></li>
 <li><p><a class="reference internal" href="api_reference.html"><span class="std std-doc">API Reference</span></a>: full <a class="reference internal" href="api/views.html#fastapi_restly.views.View" title="fastapi_restly.views.View"><code class="xref py py-class docutils literal notranslate"><span class="pre">View</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView" title="fastapi_restly.views.BaseRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseRestView</span></code></a>,
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a> signatures and class attributes.</p></li>
 </ul>
@@ -910,7 +904,7 @@ multi-tenant scoping, role-based filtering, and shared mixins.</p></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#declaration-and-registration">Declaration and registration</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#one-base-view-for-the-whole-app">One base view for the whole app</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#the-view-hierarchy">The view hierarchy</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#a-complete-example-a-tenant-scoped-base-view">A complete example: a tenant-scoped base view</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#a-shared-base-view-for-tenant-routes">A shared base view for tenant routes</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#override-a-single-tier">Override a single tier</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#dependency-injection-on-class-attributes">Dependency injection on class attributes</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#when-to-use-view-directly">When to use <code class="docutils literal notranslate"><span class="pre">View</span></code> directly</a></li>

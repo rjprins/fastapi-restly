@@ -82,18 +82,15 @@ the business methods, so those benefit most:
 - {meth}`delete <fastapi_restly.views.RestView.delete>`
 - {meth}`get_many <fastapi_restly.views.RestView.get_many>`
 
-It also sharpens the handlers ({meth}`handle_create <fastapi_restly.views.RestView.handle_create>`,
-{meth}`handle_update <fastapi_restly.views.RestView.handle_update>`,
-{meth}`handle_get_one <fastapi_restly.views.RestView.handle_get_one>`, and so
-on) and the cooperative stamping methods (`make_new_object`, `update_object`)
-when you override them.
-
 Without view generics, these methods still work, but their types are broader.
 With view generics, your editor can infer the concrete model, schema, and id
 types. Here is a fully parameterized view with typed overrides on the business
 verbs:
 
 ```python
+from sqlalchemy import ColumnElement
+
+
 class UserRead(fr.IDSchema[User]):
     name: str
     email: str
@@ -119,8 +116,10 @@ class UserView(
     schema_create = UserCreate
     schema_update = UserUpdate
 
-    async def get_one(self, id: int) -> User:
-        return await super().get_one(id)
+    async def get_one(
+        self, id: int | ColumnElement[bool], *, scope: fr.views.ReadScope = None
+    ) -> User:
+        return await super().get_one(id, scope=scope)
 
     async def create(self, schema_obj: UserCreate) -> User:
         return await super().create(schema_obj)
@@ -135,14 +134,13 @@ in `create` is a `UserCreate`, `obj` in `update` is a `User`, and the return
 types are checked too.
 
 Note the signatures: `create` takes the create schema and returns the model;
-`update` takes the already-loaded `obj` plus the update schema (id resolution
-and the 404 happen one tier up, in `handle_update`). If you instead override
-at the handler tier, the id-taking signatures live there:
-
-```python
-    async def handle_update(self, id: int, schema_obj: UserUpdate) -> User:
-        return await super().handle_update(id, schema_obj)
-```
+`update` takes the already-loaded `obj` plus the update schema. Id resolution
+and the 404 happen one tier up, in the final
+{meth}`handle_update <fastapi_restly.views.RestView.handle_update>` handler.
+The `get_one` id parameter is `int | ColumnElement[bool]` (`ColumnElement`
+from `sqlalchemy`) because a SQLAlchemy predicate may take the primary key's
+place, as in [Look a row up by another key](#natural-key-route). Annotating
+it `id: int` narrows the base signature, which the type checker rejects.
 
 This looks heavier because it is more explicit. Use it when that extra
 precision is valuable to you.
@@ -229,8 +227,8 @@ gives you the typing help you want:
   `class UserRead(IDSchema[User])`, is a separate, optional choice: the bare
   base is supported, and the parameterized base carries the model type.
 - Use view generics only when you want precise typing on the methods you
-  override; they mainly help on the three tiers (business methods, request
-  handlers, and stamping methods).
+  override; they mainly help on the business methods and the endpoint
+  methods.
 - Custom route methods work well with ordinary Python annotations.
 
 That keeps everyday usage clean while still allowing stricter typing for

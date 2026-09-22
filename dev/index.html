@@ -568,12 +568,14 @@ first test.</p>
 <ul class="simple">
 <li><p><strong><a class="reference internal" href="api_reference.html#id1"><span class="std std-ref">Default CRUD routes</span></a></strong>: GET, POST, PATCH, DELETE with minimal boilerplate</p></li>
 <li><p><strong><a class="reference internal" href="class_based_views.html"><span class="std std-doc">True class-based views</span></a></strong>: inheritance, mixins, and method overrides</p></li>
-<li><p><strong><a class="reference internal" href="customize.html"><span class="std std-doc">Explicit override points</span></a></strong>: every CRUD verb split into endpoint method, handler, and business method</p></li>
+<li><p><strong><a class="reference internal" href="customize.html"><span class="std std-doc">Explicit override points</span></a></strong>: every CRUD verb split into an endpoint method and a business method you override, with a final handler between them that custom routes call</p></li>
 <li><p><strong><a class="reference internal" href="howto_react_admin.html"><span class="std std-doc">React Admin ready</span></a></strong>: <code class="docutils literal notranslate"><span class="pre">AsyncReactAdminView</span></code> speaks <code class="docutils literal notranslate"><span class="pre">ra-data-simple-rest</span></code></p></li>
 <li><p><strong><a class="reference internal" href="getting_started.html"><span class="std std-doc">SQLAlchemy 2.0 support</span></a></strong>: async-first with modern patterns</p></li>
 <li><p><strong><a class="reference internal" href="howto_custom_schema.html"><span class="std std-doc">Pydantic v2 integration</span></a></strong>: validation and serialization for public contracts</p></li>
 <li><p><strong><a class="reference internal" href="technical_details.html#id1"><span class="std std-ref">Automatic schema generation</span></a></strong>: read, create, and update schemas generated automatically</p></li>
 <li><p><strong><a class="reference internal" href="howto_query_modifiers.html"><span class="std std-doc">List parameters</span></a></strong>: filter, sort, and paginate from a stable URL dialect generated from the response schema</p></li>
+<li><p><strong><a class="reference internal" href="howto_current.html"><span class="std std-doc">Current context</span></a></strong>: bind the current user once and read it in application code and column defaults</p></li>
+<li><p><strong><a class="reference internal" href="scopes.html"><span class="std std-doc">Scopes</span></a></strong>: row visibility declared once as a clause and applied to every read and reference check</p></li>
 <li><p><strong><a class="reference internal" href="howto_relationship_idschema.html"><span class="std std-doc">Relationship support</span></a></strong>: handle foreign keys and nested objects</p></li>
 <li><p><strong><a class="reference internal" href="howto_testing.html"><span class="std std-doc">Testing utilities</span></a></strong>: built-in test helpers with savepoint isolation</p></li>
 </ul>

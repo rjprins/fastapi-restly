@@ -390,7 +390,8 @@ class CommentView(fr.AsyncRestView):
 ## Next steps
 
 Continue with [Customize the Blog API](tutorial_customizing.md), which
-overrides handlers, adds custom routes, and shares behaviour with base classes.
+overrides business methods, adds custom routes, and shares behaviour with
+base classes.
 These pages cover the topics from this tutorial in more detail:
 
 - [Using RestView](rest_views.md): the default CRUD contract and

@@ -12,6 +12,11 @@ reference types, and schema generation from SQLAlchemy models.
    :doc:`/howto_custom_schema` describes schema bases, field markers, and
    aliases in prose.
 
+.. py:data:: fastapi_restly.schemas.WriteOnly
+
+   Marks a field as input-only by setting Pydantic's serialization exclusion.
+   See :ref:`json-document-columns` for restrictions inside JSON documents.
+
 .. automodule:: fastapi_restly.schemas
    :members:
    :undoc-members:

@@ -454,12 +454,15 @@
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="howto_existing_project.html">Use Restly in an Existing Project</a></li>
-<li class="toctree-l1"><a class="reference internal" href="howto_project_structure.html">Structure a Project</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_project_structure.html">Project structure</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_custom_schema.html">Custom Schemas and Field Types</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys and Relationships</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_response_schema.html">Response Envelopes and List Metadata</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_relationship_loading.html">Relationship Loading and Async</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_query_modifiers.html">Filter, Sort, and Paginate Lists</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_current.html">Current context</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clauses.html">Query Clauses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_error_responses.html">Shape Error Responses</a></li>
 <li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_inheritance.html">Share Behaviour with Base Views</a></li>
@@ -628,6 +631,10 @@ and returns responses the provider expects.</p>
 </tbody>
 </table>
 </div>
+<p>Those three are the whole contract. Any other query key is rejected with a
+422, so a typo cannot widen the result set unnoticed; the standard dialect’s
+<code class="docutils literal notranslate"><span class="pre">page</span></code>, <code class="docutils literal notranslate"><span class="pre">page_size</span></code> and per-field filters are unknown keys here too. Declare
+<code class="docutils literal notranslate"><span class="pre">extra_query_params</span></code> on the view for a key it reads itself.</p>
 <p>The response body is a plain JSON array, and the <code class="docutils literal notranslate"><span class="pre">Content-Range</span></code> header
 carries the total:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Content</span><span class="o">-</span><span class="n">Range</span><span class="p">:</span> <span class="n">items</span> <span class="mi">0</span><span class="o">-</span><span class="mi">24</span><span class="o">/</span><span class="mi">315</span>
@@ -692,11 +699,29 @@ that react-admin sends the complete record on update, <code class="docutils lite
 fields included; the update schema drops the fields it does not accept
 instead of rejecting the request.</p>
 <p>The PUT route delegates to the same <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_update" title="fastapi_restly.views.RestView.handle_update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_update</span></code></a> handler as PATCH and
-accepts the view’s standard <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_update" title="fastapi_restly.views.BaseRestView.schema_update"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_update</span></code></a> payload. If you need different
-write semantics for the two methods, override the <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.update" title="fastapi_restly.views.RestView.update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">update</span></code></a> business method (or
-<code class="docutils literal notranslate"><span class="pre">handle_update</span></code>, or replace the PUT route directly);
-<a class="reference internal" href="customize.html"><span class="std std-doc">Customizing RestView</span></a> explains how
-these override points relate.</p>
+accepts the view’s standard <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_update" title="fastapi_restly.views.BaseRestView.schema_update"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_update</span></code></a> payload, so an
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.update" title="fastapi_restly.views.RestView.update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">update</span></code></a> business-method override changes both methods. To give PUT
+its own semantics, replace the <code class="docutils literal notranslate"><span class="pre">put</span></code> endpoint method. This version requires the
+complete record, while PATCH still accepts a partial one:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ProductReplace</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">BaseSchema</span><span class="p">):</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">price</span><span class="p">:</span> <span class="nb">float</span>
+
+<span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ProductView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncReactAdminView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/products&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Product</span>
+
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">put</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">payload</span><span class="p">:</span> <span class="n">ProductReplace</span><span class="p">):</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_update</span><span class="p">(</span><span class="nb">id</span><span class="p">,</span> <span class="n">payload</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_response</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>A PUT with a missing field returns 422. Keys the schema does not declare, such
+as the <code class="docutils literal notranslate"><span class="pre">id</span></code> react-admin sends, are ignored. Do not name the body parameter
+<code class="docutils literal notranslate"><span class="pre">schema_obj</span></code>: registration annotates a <code class="docutils literal notranslate"><span class="pre">schema_obj</span></code> parameter on <code class="docutils literal notranslate"><span class="pre">put</span></code> with
+<code class="docutils literal notranslate"><span class="pre">schema_update</span></code>, which silently replaces <code class="docutils literal notranslate"><span class="pre">ProductReplace</span></code>.</p>
 </section>
 </section>
 <section id="serialize-related-lists-as-scalar-id-arrays-with-idref">

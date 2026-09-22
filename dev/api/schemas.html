@@ -454,6 +454,7 @@
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
 <li class="toctree-l1 current active has-children"><a class="reference internal" href="index.html">API Modules</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="clauses.html">Clauses API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="db.html">Database API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="exc.html">Exceptions API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="models.html">Models API</a></li>
@@ -544,6 +545,13 @@ keys and the <code class="docutils literal notranslate"><span class="pre">IDRef<
 <a class="reference internal" href="../howto_custom_schema.html"><span class="doc">Custom Schemas and Field Types</span></a> describes schema bases, field markers, and
 aliases in prose.</p>
 </div>
+<dl class="py data">
+<dt class="sig sig-object py" id="fastapi_restly.schemas.WriteOnly">
+<span class="sig-prename descclassname"><span class="pre">fastapi_restly.schemas.</span></span><span class="sig-name descname"><span class="pre">WriteOnly</span></span><a class="headerlink" href="#fastapi_restly.schemas.WriteOnly" title="Link to this definition">#</a></dt>
+<dd><p>Marks a field as input-only by setting Pydantic’s serialization exclusion.
+See <a class="reference internal" href="../technical_details.html#json-document-columns"><span class="std std-ref">JSON document columns</span></a> for restrictions inside JSON documents.</p>
+</dd></dl>
+
 <dl class="py class" id="module-fastapi_restly.schemas">
 <dt class="sig sig-object py" id="fastapi_restly.schemas.BaseSchema">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.schemas.</span></span><span class="sig-name descname"><span class="pre">BaseSchema</span></span><a class="headerlink" href="#fastapi_restly.schemas.BaseSchema" title="Link to this definition">#</a></dt>
@@ -585,13 +593,14 @@ wrapper. For nested <code class="docutils literal notranslate"><span class="pre"
 <div><p>author: IDRef[User]             # to-one relationship, flat id
 products: list[IDRef[Product]]  # serializes as [1, 2, 3]</p>
 </div></blockquote>
-<p>Resolution is an UNSCOPED existence check: the row is fetched by primary key
-only, with no view <code class="docutils literal notranslate"><span class="pre">build_query</span></code> scoping (tenant, soft-delete, row-level
-visibility), so a reference to a row the caller cannot otherwise see still
-resolves. Gate visibility in <code class="docutils literal notranslate"><span class="pre">authorize</span></code> (<code class="docutils literal notranslate"><span class="pre">data.&lt;field&gt;.id</span></code> is the
-requested id, before resolution) or <code class="docutils literal notranslate"><span class="pre">before_commit</span></code> (the resolved row is
-on the built object). See the Foreign Keys and Relationships how-to,
-“Visibility and Multi-Tenancy”.</p>
+<p>Resolution applies the referenced model’s <code class="docutils literal notranslate"><span class="pre">default_scope</span></code>: a
+reference to a row the scope hides raises <code class="docutils literal notranslate"><span class="pre">NotFound</span></code>, so a
+tenant scope declared once covers every reference to the model. A model
+without a <code class="docutils literal notranslate"><span class="pre">default_scope</span></code> resolves by bare primary key; gate visibility
+there in <code class="docutils literal notranslate"><span class="pre">authorize</span></code> (<code class="docutils literal notranslate"><span class="pre">data.&lt;field&gt;.id</span></code> is the requested id, before
+resolution) or <code class="docutils literal notranslate"><span class="pre">before_action_commit</span></code> (the resolved row is on the built
+object). See the Foreign Keys and Relationships how-to, “Visibility and
+Multi-Tenancy”.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.schemas.IDRef.model_config">
 <span class="sig-name descname"><span class="pre">model_config</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ClassVar</span><span class="p"><span class="pre">[</span></span><span class="pre">ConfigDict</span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'from_attributes':</span> <span class="pre">True}</span></em><a class="headerlink" href="#fastapi_restly.schemas.IDRef.model_config" title="Link to this definition">#</a></dt>
@@ -619,7 +628,7 @@ rather than <code class="docutils literal notranslate"><span class="pre">IDSchem
 instead of turning a <code class="docutils literal notranslate"><span class="pre">*_id</span></code> field into an object wrapper.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="fastapi_restly.schemas.IDSchema.get_sql_model_annotation">
-<span class="sig-name descname"><span class="pre">get_sql_model_annotation</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><span class="pre">SQLAlchemyModel</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#fastapi_restly.schemas.IDSchema.get_sql_model_annotation" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">get_sql_model_annotation</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><span class="pre">SQLAlchemyModel</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#fastapi_restly.schemas.IDSchema.get_sql_model_annotation" title="Link to this definition">#</a></dt>
 <dd><p>Return the annotation on IDSchema when used as:</p>
 <p>foo: IDSchema[Foo]</p>
 <p>This property will return “Foo”.</p>
@@ -641,7 +650,7 @@ instead of turning a <code class="docutils literal notranslate"><span class="pre
 <dl class="py class">
 <dt class="sig sig-object py" id="fastapi_restly.schemas.MustExist">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.schemas.</span></span><span class="sig-name descname"><span class="pre">MustExist</span></span><a class="headerlink" href="#fastapi_restly.schemas.MustExist" title="Link to this definition">#</a></dt>
-<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>Existence-checked scalar foreign key.</p>
 <p><code class="docutils literal notranslate"><span class="pre">MustExist[int]</span></code> is a checked <code class="docutils literal notranslate"><span class="pre">int</span></code> foreign key; the target model is
 inferred from the column’s <code class="docutils literal notranslate"><span class="pre">ForeignKey</span></code>. Spell the model out with a
@@ -649,8 +658,31 @@ second argument when you want it explicit (<code class="docutils literal notrans
 use the first for a non-int primary key (<code class="docutils literal notranslate"><span class="pre">MustExist[UUID,</span> <span class="pre">Account]</span></code>).</p>
 <p>Unlike <code class="docutils literal notranslate"><span class="pre">IDRef</span></code>/<code class="docutils literal notranslate"><span class="pre">IDSchema</span></code> this is <strong>not</strong> a wrapper: the field stays
 the pk scalar everywhere (wire, column, <code class="docutils literal notranslate"><span class="pre">data.&lt;field&gt;</span></code>), plus a batched
-existence check on write (404 on a miss). It is exactly the marker form
-<code class="docutils literal notranslate"><span class="pre">Annotated[&lt;pk&gt;,</span> <span class="pre">RefExists(Model)]</span></code> – use that directly if you prefer.</p>
+existence check on write (404 on a miss). The check applies the target
+model’s <code class="docutils literal notranslate"><span class="pre">default_scope</span></code>; check against another clause, or none, by
+writing the marker form <code class="docutils literal notranslate"><span class="pre">Annotated[&lt;pk&gt;,</span> <span class="pre">RefExists(Model,</span> <span class="pre">scope=...)]</span></code>
+directly (see <a class="reference internal" href="#fastapi_restly.schemas.RefExists" title="fastapi_restly.schemas.RefExists"><code class="xref py py-class docutils literal notranslate"><span class="pre">RefExists</span></code></a>).</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="fastapi_restly.schemas.RefExists">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.schemas.</span></span><span class="sig-name descname"><span class="pre">RefExists</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">model:</span> <span class="pre">type[~sqlalchemy.orm.decl_api.DeclarativeBase]</span> <span class="pre">|</span> <span class="pre">type[~fastapi_restly.schemas._base._Infer],</span> <span class="pre">scope:</span> <span class="pre">~fastapi_restly.clauses._runtime.WhereClause</span> <span class="pre">|</span> <span class="pre">~fastapi_restly.clauses._runtime.Unscoped</span> <span class="pre">|</span> <span class="pre">~fastapi_restly.schemas._base._NotGiven</span> <span class="pre">=</span> <span class="pre">&lt;fastapi_restly.schemas._base._NotGiven</span> <span class="pre">object&gt;</span></em><span class="sig-paren">)</span><a class="headerlink" href="#fastapi_restly.schemas.RefExists" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Marker for an existence-checked scalar foreign key.</p>
+<p>Built by <code class="docutils literal notranslate"><span class="pre">MustExist[pk]</span></code> / <code class="docutils literal notranslate"><span class="pre">MustExist[pk,</span> <span class="pre">Model]</span></code> (or written directly as
+<code class="docutils literal notranslate"><span class="pre">Annotated[pk,</span> <span class="pre">RefExists(Model)]</span></code>). On write, Restly batch-checks that each
+marked id exists in the target table and raises <code class="docutils literal notranslate"><span class="pre">NotFound</span></code> (404) on a miss.
+The field stays a plain scalar – this only adds the check; it does not wrap
+the value or do any relationship routing.</p>
+<p>The check applies the target model’s <code class="docutils literal notranslate"><span class="pre">default_scope</span></code>, like
+<code class="docutils literal notranslate"><span class="pre">IDRef</span></code>/<code class="docutils literal notranslate"><span class="pre">IDSchema</span></code> resolution: a reference to a row the scope hides
+is a miss. <code class="docutils literal notranslate"><span class="pre">scope</span></code> overrides that per field: a <code class="docutils literal notranslate"><span class="pre">WhereClause</span></code> checks
+against that clause instead (<code class="docutils literal notranslate"><span class="pre">RefExists(Item,</span> <span class="pre">scope=ItemClauses.trashed)</span></code>
+for a restore target), and <code class="docutils literal notranslate"><span class="pre">scope=fr.clauses.UNSCOPED</span></code> checks
+unscoped, greppably; <code class="docutils literal notranslate"><span class="pre">None</span></code> is rejected. A model without a
+<code class="docutils literal notranslate"><span class="pre">default_scope</span></code> is checked unscoped, as before.</p>
+<p><code class="docutils literal notranslate"><span class="pre">model</span></code> is the target ORM model, or <code class="docutils literal notranslate"><span class="pre">_Infer</span></code> when it should be resolved
+from the marked column’s <code class="docutils literal notranslate"><span class="pre">ForeignKey</span></code> (the <code class="docutils literal notranslate"><span class="pre">MustExist[pk]</span></code> form).</p>
 </dd></dl>
 
 <dl class="py class">
@@ -677,7 +709,7 @@ existence check on write (404 on a miss). It is exactly the marker form
 
 <dl class="py function">
 <dt class="sig sig-object py" id="fastapi_restly.schemas.create_schema_from_model">
-<span class="sig-prename descclassname"><span class="pre">fastapi_restly.schemas.</span></span><span class="sig-name descname"><span class="pre">create_schema_from_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_cls</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/mapping_api.html#sqlalchemy.orm.DeclarativeBase" title="(in SQLAlchemy v2.0)"><span class="pre">DeclarativeBase</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">schema_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_relationships</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_readonly_fields</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#fastapi_restly.schemas.BaseSchema" title="fastapi_restly.schemas._base.BaseSchema"><span class="pre">BaseSchema</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#fastapi_restly.schemas.create_schema_from_model" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">fastapi_restly.schemas.</span></span><span class="sig-name descname"><span class="pre">create_schema_from_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_cls</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/mapping_api.html#sqlalchemy.orm.DeclarativeBase" title="(in SQLAlchemy v2.0)"><span class="pre">DeclarativeBase</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">schema_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_relationships</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_readonly_fields</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#fastapi_restly.schemas.BaseSchema" title="fastapi_restly.schemas._base.BaseSchema"><span class="pre">BaseSchema</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#fastapi_restly.schemas.create_schema_from_model" title="Link to this definition">#</a></dt>
 <dd><p>Auto-generate a Pydantic schema from a SQLAlchemy model.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -745,6 +777,7 @@ model name suffixed with <code class="docutils literal notranslate"><span class=
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.schemas.WriteOnly"><code class="docutils literal notranslate"><span class="pre">fastapi_restly.schemas.WriteOnly</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.schemas.BaseSchema"><code class="docutils literal notranslate"><span class="pre">BaseSchema</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.schemas.BaseSchema.model_config"><code class="docutils literal notranslate"><span class="pre">BaseSchema.model_config</span></code></a></li>
 </ul>
@@ -760,6 +793,7 @@ model name suffixed with <code class="docutils literal notranslate"><span class=
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.schemas.MustExist"><code class="docutils literal notranslate"><span class="pre">MustExist</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.schemas.RefExists"><code class="docutils literal notranslate"><span class="pre">RefExists</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.schemas.TimestampsSchemaMixin"><code class="docutils literal notranslate"><span class="pre">TimestampsSchemaMixin</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.schemas.TimestampsSchemaMixin.created_at"><code class="docutils literal notranslate"><span class="pre">TimestampsSchemaMixin.created_at</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.schemas.TimestampsSchemaMixin.model_config"><code class="docutils literal notranslate"><span class="pre">TimestampsSchemaMixin.model_config</span></code></a></li>

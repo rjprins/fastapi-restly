@@ -454,6 +454,7 @@
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
 <li class="toctree-l1 current active has-children"><a class="reference internal" href="index.html">API Modules</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="clauses.html">Clauses API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="db.html">Database API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="exc.html">Exceptions API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="models.html">Models API</a></li>
@@ -540,7 +541,7 @@ subsystem.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="fastapi_restly.utils.CurrentSettingsMixin">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.utils.</span></span><span class="sig-name descname"><span class="pre">CurrentSettingsMixin</span></span><a class="headerlink" href="#fastapi_restly.utils.CurrentSettingsMixin" title="Link to this definition">#</a></dt>
-<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>Give a settings class one shared instance, built the first time it is read.</p>
 <p>Mixed into a <code class="docutils literal notranslate"><span class="pre">pydantic_settings.BaseSettings</span></code> subclass, it replaces the
 module-level instance that would otherwise make importing your application
@@ -576,7 +577,7 @@ may not use either.</p>
 
 <div class="admonition seealso">
 <p class="admonition-title">See also</p>
-<p><a class="reference internal" href="../howto_project_structure.html"><span class="doc">Structure a Project</span></a> covers where settings live in an
+<p><a class="reference internal" href="../howto_project_structure.html"><span class="doc">Project structure</span></a> covers where settings live in an
 application, and why importing your <code class="docutils literal notranslate"><span class="pre">main</span></code> module must not require a
 configured environment.</p>
 </div>

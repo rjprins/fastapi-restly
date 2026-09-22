@@ -454,6 +454,7 @@
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
 <li class="toctree-l1 current active has-children"><a class="reference internal" href="index.html">API Modules</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="clauses.html">Clauses API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="db.html">Database API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="exc.html">Exceptions API</a></li>
 <li class="toctree-l2 current active"><a class="current reference internal" href="#">Models API</a></li>
@@ -546,7 +547,7 @@ Restly models are declared against.</p>
 reached from plain async code – <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">obj.awaitable_attrs.items</span></code> –
 where a bare <code class="docutils literal notranslate"><span class="pre">obj.items</span></code> would raise <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code>. Views eager-load
 what the response schema names, so this is for the code that runs outside
-that: an <code class="docutils literal notranslate"><span class="pre">after_commit</span></code> hook, a custom business method.</p>
+that: an <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code> hook, a custom business method.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.models.DataclassBase.registry">
 <span class="sig-name descname"><span class="pre">registry</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ClassVar</span><span class="p"><span class="pre">[</span></span><span class="pre">_RegistryType</span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;sqlalchemy.orm.decl_api.registry</span> <span class="pre">object&gt;</span></em><a class="headerlink" href="#fastapi_restly.models.DataclassBase.registry" title="Link to this definition">#</a></dt>
@@ -575,7 +576,7 @@ that: an <code class="docutils literal notranslate"><span class="pre">after_comm
 <p>Dataclass mixin adding an auto-incrementing integer <cite>id</cite> primary key.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.models.IDMixin.id">
-<span class="sig-name descname"><span class="pre">id</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/internals.html#sqlalchemy.orm.Mapped" title="(in SQLAlchemy v2.0)"><span class="pre">Mapped</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;sqlalchemy.orm.properties.MappedColumn</span> <span class="pre">object&gt;</span></em><a class="headerlink" href="#fastapi_restly.models.IDMixin.id" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">id</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/internals.html#sqlalchemy.orm.Mapped" title="(in SQLAlchemy v2.0)"><span class="pre">Mapped</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;sqlalchemy.orm.properties.MappedColumn</span> <span class="pre">object&gt;</span></em><a class="headerlink" href="#fastapi_restly.models.IDMixin.id" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 </dd></dl>

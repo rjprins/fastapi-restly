@@ -677,7 +677,7 @@ compares the two.</p>
 <p>Keep the one-file layout while the application is small. Once it holds several
 resources, give each one a package with its own <code class="docutils literal notranslate"><span class="pre">models.py</span></code>, <code class="docutils literal notranslate"><span class="pre">schemas.py</span></code>, and
 <code class="docutils literal notranslate"><span class="pre">views.py</span></code>, and register them all from a <code class="docutils literal notranslate"><span class="pre">VIEWS</span></code> tuple in <code class="docutils literal notranslate"><span class="pre">main.py</span></code>.
-<a class="reference internal" href="howto_project_structure.html"><span class="std std-doc">Structure a Project</span></a> covers the full layout, the
+<a class="reference internal" href="howto_project_structure.html"><span class="std std-doc">Project structure</span></a> covers the full layout, the
 import direction it depends on, and which modules to add only once they earn
 their place. Generating a project with <code class="docutils literal notranslate"><span class="pre">restly</span> <span class="pre">new</span></code> and moving this code into it
 is a reasonable way to make the move.</p>
@@ -712,6 +712,12 @@ view registration and inheritance work.</p></li>
 <li><p>Already have a FastAPI app? <a class="reference internal" href="howto_existing_project.html"><span class="std std-doc">Use Restly in an Existing Project</span></a>
 shows how Restly adopts per resource, beside your current routes.</p></li>
 <li><p><a class="reference internal" href="howto_query_modifiers.html"><span class="std std-doc">Filter, Sort, and Paginate Lists</span></a></p></li>
+<li><p><a class="reference internal" href="howto_current.html"><span class="std std-doc">Current context</span></a>: bind the current
+user for application code and column defaults.</p></li>
+<li><p><a class="reference internal" href="scopes.html"><span class="std std-doc">Scopes</span></a>: row visibility declared once and applied to every
+read and reference check.</p></li>
+<li><p><a class="reference internal" href="clauses.html"><span class="std std-doc">Query Clauses</span></a>: reusable query fragments with late-bound
+request values.</p></li>
 <li><p><a class="reference internal" href="deploying.html"><span class="std std-doc">Deploying</span></a>: production engine config, Alembic, and a <code class="docutils literal notranslate"><span class="pre">main.py</span></code> template.</p></li>
 <li><p><a class="reference internal" href="api_reference.html"><span class="std std-doc">API Reference</span></a></p></li>
 </ul>

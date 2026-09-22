@@ -9,7 +9,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="noindex, follow">
 
-    <title>Structure a Project &#8212; FastAPI-Restly 0.10.0 documentation</title>
+    <title>Project structure &#8212; FastAPI-Restly 0.10.0 documentation</title>
   
   
   
@@ -454,12 +454,15 @@
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="howto_existing_project.html">Use Restly in an Existing Project</a></li>
-<li class="toctree-l1 current active"><a class="current reference internal" href="#">Structure a Project</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Project structure</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_custom_schema.html">Custom Schemas and Field Types</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys and Relationships</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_response_schema.html">Response Envelopes and List Metadata</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_relationship_loading.html">Relationship Loading and Async</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_query_modifiers.html">Filter, Sort, and Paginate Lists</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_current.html">Current context</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clauses.html">Query Clauses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_error_responses.html">Shape Error Responses</a></li>
 <li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_inheritance.html">Share Behaviour with Base Views</a></li>
@@ -512,7 +515,7 @@
     
     <li class="breadcrumb-item"><a href="user_guide.html" class="nav-link">How-To Guides</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Structure a Project</span></li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Project structure</span></li>
   </ul>
 </nav>
 </div>
@@ -529,8 +532,8 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="structure-a-project">
-<h1>Structure a Project<a class="headerlink" href="#structure-a-project" title="Link to this heading">#</a></h1>
+  <section id="project-structure">
+<h1>Project structure<a class="headerlink" href="#project-structure" title="Link to this heading">#</a></h1>
 <p>Restly does not impose a project layout. Views are ordinary Python classes and
 <a class="reference internal" href="api/views.html#fastapi_restly.views.include_view" title="fastapi_restly.views.include_view"><code class="xref py py-func docutils literal notranslate"><span class="pre">include_view()</span></code></a> is an ordinary function call, so any arrangement of
 modules that Python can import will work. This page describes the layout we
@@ -538,7 +541,7 @@ recommend anyway, so that a growing application does not have to invent one,
 and explains what each part of it buys you.</p>
 <section id="generate-it">
 <span id="restly-new"></span><h2>Generate it<a class="headerlink" href="#generate-it" title="Link to this heading">#</a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">restly</span> <span class="pre">new</span></code> writes the layout below, with a <code class="docutils literal notranslate"><span class="pre">users</span></code> resource, a test suite,
+<p><code class="docutils literal notranslate"><span class="pre">restly</span> <span class="pre">new</span></code> creates a project with a <code class="docutils literal notranslate"><span class="pre">users</span></code> resource, a test suite,
 and the settings and schema wiring:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>fastapi-restly
 restly<span class="w"> </span>new<span class="w"> </span>myapp
@@ -590,6 +593,7 @@ code they hold:</p>
 ├── main.py                 # Application factory, VIEWS, and lifespan
 ├── asgi.py                 # app = create_app(), the deployment entrypoint
 ├── settings.py             # Pydantic settings
+├── current.py              # Current namespace (optional)
 ├── views.py                # Shared base view and mixins
 ├── users/
 │   ├── __init__.py
@@ -617,6 +621,20 @@ without the rest of the app.</p>
 imported. Keep <code class="docutils literal notranslate"><span class="pre">__init__.py</span></code> empty or limited to a docstring, and import
 concrete modules rather than building re-export modules that pull in a whole
 subject to reach one class.</p>
+</section>
+<section id="share-current-from-the-package-root">
+<span id="project-current"></span><h2>Share Current from the package root<a class="headerlink" href="#share-current-from-the-package-root" title="Link to this heading">#</a></h2>
+<p>Declare <a class="reference internal" href="howto_current.html"><span class="std std-doc">Current</span></a> in <code class="docutils literal notranslate"><span class="pre">app/current.py</span></code> when multiple modules need
+request-bound values. Import that declaration wherever it is used:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">app.current</span><span class="w"> </span><span class="kn">import</span> <span class="n">Current</span>
+</pre></div>
+</div>
+<p>The module can also expose <code class="docutils literal notranslate"><span class="pre">SetCurrentContextDep</span></code>, created with
+<a class="reference internal" href="api/clauses.html#fastapi_restly.clauses.ContextNamespace.depends" title="fastapi_restly.clauses.ContextNamespace.depends"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Current.depends</span></code></a>.
+Attach this dependency in <code class="docutils literal notranslate"><span class="pre">main.py</span></code> or the shared <code class="docutils literal notranslate"><span class="pre">views.py</span></code>.</p>
+<p>Keep <code class="docutils literal notranslate"><span class="pre">current.py</span></code> independent of view modules and the application factory.
+Models and scripts must be able to import it without constructing an application.
+<code class="docutils literal notranslate"><span class="pre">restly</span> <span class="pre">new</span></code> does not generate this module.</p>
 </section>
 <section id="compose-in-one-place">
 <span id="id1"></span><h2>Compose in one place<a class="headerlink" href="#compose-in-one-place" title="Link to this heading">#</a></h2>
@@ -681,13 +699,13 @@ views inherit from, plus any mixins. The subject packages hold concrete views,
 and the root module holds the foundation they are built on. Add it once a second
 view wants the same behavior, which is why a generated project does not have one.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># app/users/views.py</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">..views</span><span class="w"> </span><span class="kn">import</span> <span class="n">TenantBase</span><span class="p">,</span> <span class="n">SoftDeleteMixin</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..views</span><span class="w"> </span><span class="kn">import</span> <span class="n">AuthenticatedView</span><span class="p">,</span> <span class="n">SoftDeleteMixin</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">User</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.schemas</span><span class="w"> </span><span class="kn">import</span> <span class="n">UserRead</span>
 
 
-<span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">SoftDeleteMixin</span><span class="p">,</span> <span class="n">TenantBase</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">SoftDeleteMixin</span><span class="p">,</span> <span class="n">AuthenticatedView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
     <span class="n">schema</span> <span class="o">=</span> <span class="n">UserRead</span>
@@ -780,6 +798,7 @@ layout is already decided</p></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#start-with-one-file">Start with one file</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#organize-by-subject-then-by-type">Organize by subject, then by type</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#keep-imports-pointing-one-way">Keep imports pointing one way</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#share-current-from-the-package-root">Share Current from the package root</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#compose-in-one-place">Compose in one place</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#share-view-behavior-from-the-package-root">Share view behavior from the package root</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#add-modules-when-they-earn-them">Add modules when they earn them</a></li>

@@ -454,6 +454,7 @@
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="nav bd-sidenav">
 <li class="toctree-l1 has-children"><a class="reference internal" href="api/index.html">API Modules</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/clauses.html">Clauses API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/db.html">Database API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/exc.html">Exceptions API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/models.html">Models API</a></li>
@@ -720,7 +721,7 @@ uses <code class="docutils literal notranslate"><span class="pre">PATCH</span></
 </pre></div>
 </div>
 <p>The valid route values for exclusion are <code class="docutils literal notranslate"><span class="pre">fr.ViewRoute.GET_MANY</span></code>, <code class="docutils literal notranslate"><span class="pre">fr.ViewRoute.GET_ONE</span></code>, <code class="docutils literal notranslate"><span class="pre">fr.ViewRoute.CREATE</span></code>, <code class="docutils literal notranslate"><span class="pre">fr.ViewRoute.UPDATE</span></code>, and <code class="docutils literal notranslate"><span class="pre">fr.ViewRoute.DELETE</span></code>.</p>
-<p><code class="docutils literal notranslate"><span class="pre">exclude_routes</span></code> accepts <code class="docutils literal notranslate"><span class="pre">ViewRoute</span></code> values or the equivalent route-shell method names, such as <code class="docutils literal notranslate"><span class="pre">&quot;delete_endpoint&quot;</span></code>. Worked examples are in <a class="reference internal" href="customize.html#exclude-crud-routes"><span class="std std-ref">Exclude CRUD routes</span></a>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">exclude_routes</span></code> accepts <code class="docutils literal notranslate"><span class="pre">ViewRoute</span></code> values or the equivalent endpoint method names, such as <code class="docutils literal notranslate"><span class="pre">&quot;delete_endpoint&quot;</span></code>. Worked examples are in <a class="reference internal" href="customize.html#exclude-crud-routes"><span class="std std-ref">Exclude CRUD routes</span></a>.</p>
 </section>
 <section id="response-modeling">
 <h2>Response Modeling<a class="headerlink" href="#response-modeling" title="Link to this heading">#</a></h2>
@@ -760,7 +761,7 @@ from the view’s configuration:</p>
 <td><p>Dataclass mixin adding integer <code class="docutils literal notranslate"><span class="pre">id</span></code> to a custom <code class="docutils literal notranslate"><span class="pre">DataclassBase</span></code> subclass.</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">fastapi_restly.models.CASCADE_ALL_ASYNC</span></code></p></td>
-<td><p>Cascade string for use with <code class="docutils literal notranslate"><span class="pre">relationship(cascade=...)</span></code> in async SQLAlchemy models. Equivalent to <code class="docutils literal notranslate"><span class="pre">&quot;save-update,</span> <span class="pre">merge,</span> <span class="pre">delete,</span> <span class="pre">expunge&quot;</span></code>. SQLAlchemy’s default <code class="docutils literal notranslate"><span class="pre">&quot;all&quot;</span></code> includes <code class="docutils literal notranslate"><span class="pre">&quot;refresh-expire&quot;</span></code> which is incompatible with async sessions. Import from <code class="docutils literal notranslate"><span class="pre">fastapi_restly.models</span></code> (not exposed at the top level).</p></td>
+<td><p>Cascade string for use with <code class="docutils literal notranslate"><span class="pre">relationship(cascade=...)</span></code> in async SQLAlchemy models. Equivalent to <code class="docutils literal notranslate"><span class="pre">&quot;save-update,</span> <span class="pre">merge,</span> <span class="pre">delete,</span> <span class="pre">expunge&quot;</span></code>. SQLAlchemy’s default <code class="docutils literal notranslate"><span class="pre">&quot;all&quot;</span></code> includes <code class="docutils literal notranslate"><span class="pre">&quot;refresh-expire&quot;</span></code>, which makes a plain <code class="docutils literal notranslate"><span class="pre">session.refresh(obj)</span></code> expire related objects that then lazy-load on access. Restly’s own <code class="docutils literal notranslate"><span class="pre">save_object</span></code> refreshes by attribute name and does not cascade, so <code class="docutils literal notranslate"><span class="pre">&quot;all&quot;</span></code> is safe on Restly’s write paths; use this constant where your own code refreshes on an async session. Import from <code class="docutils literal notranslate"><span class="pre">fastapi_restly.models</span></code> (not exposed at the top level).</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">fastapi_restly.models.CASCADE_ALL_DELETE_ORPHAN_ASYNC</span></code></p></td>
 <td><p>Like <code class="docutils literal notranslate"><span class="pre">CASCADE_ALL_ASYNC</span></code> but also includes <code class="docutils literal notranslate"><span class="pre">&quot;delete-orphan&quot;</span></code>.</p></td>
@@ -777,9 +778,12 @@ wall-clock field out of timezone-aware storage.</p>
 <p><code class="docutils literal notranslate"><span class="pre">RestView</span></code> and <code class="docutils literal notranslate"><span class="pre">AsyncRestView</span></code> assume one scalar resource identifier at
 <code class="docutils literal notranslate"><span class="pre">/{id}</span></code>. The column can have another name when you provide explicit schemas
 and <code class="docutils literal notranslate"><span class="pre">id_type</span></code>, but the default CRUD routes, <code class="docutils literal notranslate"><span class="pre">IDSchema</span></code>, <code class="docutils literal notranslate"><span class="pre">IDRef</span></code>, React Admin,
-and OpenAPI identity shape all remain scalar-id contracts. For composite keys,
-use <code class="docutils literal notranslate"><span class="pre">fr.View</span></code> and explicit routes such as
-<code class="docutils literal notranslate"><span class="pre">&#64;fr.get(&quot;/{tenant_id}/{slug}&quot;)</span></code>.</p>
+and OpenAPI identity shape all remain scalar-id contracts. A composite key is
+addressed from a custom route on the view, which loads with a predicate
+(<code class="docutils literal notranslate"><span class="pre">handle_get_one(sa.and_(Model.a</span> <span class="pre">==</span> <span class="pre">a,</span> <span class="pre">Model.b</span> <span class="pre">==</span> <span class="pre">b))</span></code>, see
+<a class="reference internal" href="customize.html#natural-key-route"><span class="std std-ref">Look a row up by another key</span></a>); <code class="docutils literal notranslate"><span class="pre">fr.View</span></code> with explicit
+routes such as <code class="docutils literal notranslate"><span class="pre">&#64;fr.get(&quot;/{tenant_id}/{slug}&quot;)</span></code> remains the option for a
+hand-written group.</p>
 </section>
 <section id="schema-classes-and-utilities">
 <h3>Schema Classes and Utilities<a class="headerlink" href="#schema-classes-and-utilities" title="Link to this heading">#</a></h3>
@@ -800,22 +804,25 @@ use <code class="docutils literal notranslate"><span class="pre">fr.View</span><
 <tr class="row-even"><td><p><a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.MustExist[int,</span> <span class="pre">Model]</span></code></a></p></td>
 <td><p>Existence-checked scalar FK type for a <code class="docutils literal notranslate"><span class="pre">*_id</span></code> column. Primary-key type first, target model second (<code class="docutils literal notranslate"><span class="pre">fr.MustExist[UUID,</span> <span class="pre">Account]</span></code> for a UUID key; drop the model to infer it from a single <code class="docutils literal notranslate"><span class="pre">ForeignKey</span></code>). The value stays a plain id on request and response, and Restly validates the referenced row exists.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDRef[Model]</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.RefExists" title="fastapi_restly.schemas.RefExists"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.RefExists(Model,</span> <span class="pre">scope=...)</span></code></a></p></td>
+<td><p>Existence check with the target named explicitly and a per-field scope: <code class="docutils literal notranslate"><span class="pre">Annotated[int,</span> <span class="pre">fr.RefExists(Item,</span> <span class="pre">scope=ItemClauses.trashed)]</span></code> checks against that predicate instead of the model’s <code class="docutils literal notranslate"><span class="pre">default_scope</span></code>, and <code class="docutils literal notranslate"><span class="pre">scope=fr.clauses.UNSCOPED</span></code> checks unscoped. See <a class="reference internal" href="scopes.html#reference-scopes"><span class="std std-ref">References: overriding per field</span></a>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDRef[Model]</span></code></a></p></td>
 <td><p>Relationship reference with a flat-id wire; resolves the id to the related object. Wire format is the raw id (<code class="docutils literal notranslate"><span class="pre">5</span></code>) on request and response; dict input (<code class="docutils literal notranslate"><span class="pre">{&quot;id&quot;:</span> <span class="pre">5}</span></code>) is also accepted. Use this for a relationship field and React Admin scalar id arrays.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDSchema[Model]</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDSchema[Model]</span></code></a></p></td>
 <td><p>Nested relationship-object field type. Wire format is <code class="docutils literal notranslate"><span class="pre">{&quot;id&quot;:</span> <span class="pre">5}</span></code> on request and response. Use this when a client expects relationship objects instead of flat scalar ids.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.TimestampsSchemaMixin" title="fastapi_restly.schemas.TimestampsSchemaMixin"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.TimestampsSchemaMixin</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.TimestampsSchemaMixin" title="fastapi_restly.schemas.TimestampsSchemaMixin"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.TimestampsSchemaMixin</span></code></a></p></td>
 <td><p>Pydantic mixin adding read-only <code class="docutils literal notranslate"><span class="pre">created_at</span></code> / <code class="docutils literal notranslate"><span class="pre">updated_at</span></code> fields to a schema.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">fr.ReadOnly[T]</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">fr.ReadOnly[T]</span></code></p></td>
 <td><p>Type annotation marker. Fields annotated <code class="docutils literal notranslate"><span class="pre">ReadOnly[T]</span></code> are excluded from create/update inputs.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">fr.WriteOnly[T]</span></code></p></td>
-<td><p>Type annotation marker. Fields annotated <code class="docutils literal notranslate"><span class="pre">WriteOnly[T]</span></code> are stripped by <code class="docutils literal notranslate"><span class="pre">self.to_response_schema(obj)</span></code>, which the inherited CRUD and React Admin endpoint methods use. Direct FastAPI/Pydantic serialization treats it as schema metadata only.</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.WriteOnly" title="fastapi_restly.schemas.WriteOnly"><code class="xref py py-data docutils literal notranslate"><span class="pre">fr.WriteOnly[T]</span></code></a></p></td>
+<td><p>Type annotation marker. Fields are accepted on input and excluded from Pydantic serialization, including CRUD responses and direct <code class="docutils literal notranslate"><span class="pre">model_dump()</span></code> calls.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.create_schema_from_model" title="fastapi_restly.schemas.create_schema_from_model"><code class="xref py py-func docutils literal notranslate"><span class="pre">fastapi_restly.schemas.create_schema_from_model(model)</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.create_schema_from_model" title="fastapi_restly.schemas.create_schema_from_model"><code class="xref py py-func docutils literal notranslate"><span class="pre">fastapi_restly.schemas.create_schema_from_model(model)</span></code></a></p></td>
 <td><p>Auto-generate a Pydantic schema from a SQLAlchemy model. Useful for scaffolding, prototypes, and internal tools; prefer explicit schemas for stable public API contracts. Import from <code class="docutils literal notranslate"><span class="pre">fastapi_restly.schemas</span></code>; it is intentionally not exported at the top level.</p></td>
 </tr>
 </tbody>
@@ -861,17 +868,22 @@ use <code class="docutils literal notranslate"><span class="pre">fr.View</span><
 <h3>View Method Surface<a class="headerlink" href="#view-method-surface" title="Link to this heading">#</a></h3>
 <p>Each CRUD verb on <code class="docutils literal notranslate"><span class="pre">RestView</span></code> / <code class="docutils literal notranslate"><span class="pre">AsyncRestView</span></code> is split into three tiers: the
 endpoint method (<code class="docutils literal notranslate"><span class="pre">&lt;verb&gt;_endpoint</span></code>), the handler (<code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code>), and
-the business method (<code class="docutils literal notranslate"><span class="pre">&lt;verb&gt;</span></code>). You override the layer that owns your change;
-the model and the decision table live in
-<a class="reference internal" href="customize.html"><span class="std std-doc">Customizing RestView</span></a>.</p>
-<p>Alongside the tiers are cross-cutting <strong>override points</strong> (<code class="docutils literal notranslate"><span class="pre">build_query</span></code>,
-<code class="docutils literal notranslate"><span class="pre">apply_query_params</span></code>, <code class="docutils literal notranslate"><span class="pre">count</span></code>, <code class="docutils literal notranslate"><span class="pre">authorize</span></code>,
-<code class="docutils literal notranslate"><span class="pre">before_commit</span></code> / <code class="docutils literal notranslate"><span class="pre">after_commit</span></code>, <code class="docutils literal notranslate"><span class="pre">to_response</span></code>,
-<code class="docutils literal notranslate"><span class="pre">get_relationship_loader_options</span></code>, <code class="docutils literal notranslate"><span class="pre">snapshot</span></code>) and <strong>domain
-utilities</strong> that you call rather than override (<code class="docutils literal notranslate"><span class="pre">make_new_object</span></code>,
-<code class="docutils literal notranslate"><span class="pre">update_object</span></code>, <code class="docutils literal notranslate"><span class="pre">save_object</span></code>, <code class="docutils literal notranslate"><span class="pre">delete_object</span></code>). <code class="docutils literal notranslate"><span class="pre">make_new_object</span></code> /
-<code class="docutils literal notranslate"><span class="pre">update_object</span></code> are also the cooperative override point for field stamps.</p>
-<p>On <code class="docutils literal notranslate"><span class="pre">AsyncRestView</span></code> every method below is <code class="docutils literal notranslate"><span class="pre">async</span></code>; the signatures are otherwise identical.</p>
+the business method (<code class="docutils literal notranslate"><span class="pre">&lt;verb&gt;</span></code>). You override the endpoint method or the
+business method, whichever owns your change; the handler is final. The model
+and the decision table live in <a class="reference internal" href="customize.html"><span class="std std-doc">Customizing RestView</span></a>.</p>
+<p>Alongside the tiers are the declared read <a class="reference internal" href="scopes.html"><span class="std std-doc">scope</span></a> (the
+<code class="docutils literal notranslate"><span class="pre">scope</span></code> class attribute) and cross-cutting <strong>override points</strong>
+(<code class="docutils literal notranslate"><span class="pre">apply_query_params</span></code>, <code class="docutils literal notranslate"><span class="pre">count</span></code>, <code class="docutils literal notranslate"><span class="pre">authorize</span></code>,
+<code class="docutils literal notranslate"><span class="pre">before_action_commit</span></code> / <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code>, <code class="docutils literal notranslate"><span class="pre">to_response</span></code>,
+<code class="docutils literal notranslate"><span class="pre">get_relationship_loader_options</span></code>, <code class="docutils literal notranslate"><span class="pre">snapshot</span></code>). The handlers and the
+<strong>domain utilities</strong> (<code class="docutils literal notranslate"><span class="pre">make_new_object</span></code>, <code class="docutils literal notranslate"><span class="pre">update_object</span></code>, <code class="docutils literal notranslate"><span class="pre">save_object</span></code>) are
+final: you call them rather than override them, and a view class that defines
+one fails at class definition.</p>
+<p>On <code class="docutils literal notranslate"><span class="pre">AsyncRestView</span></code>, the handlers, the business methods, the domain utilities,
+<code class="docutils literal notranslate"><span class="pre">count</span></code>, <code class="docutils literal notranslate"><span class="pre">authorize</span></code> and the transaction hooks are <code class="docutils literal notranslate"><span class="pre">async</span> <span class="pre">def</span></code>; the response
+methods, <code class="docutils literal notranslate"><span class="pre">apply_query_params</span></code>, <code class="docutils literal notranslate"><span class="pre">snapshot</span></code> and <code class="docutils literal notranslate"><span class="pre">get_relationship_loader_options</span></code>
+are plain <code class="docutils literal notranslate"><span class="pre">def</span></code>, and the two brackets are entered with <code class="docutils literal notranslate"><span class="pre">async</span> <span class="pre">with</span></code>. Argument
+names are identical between variants.</p>
 <div class="pst-scrollable-table-container"><table class="table">
 <thead>
 <tr class="row-odd"><th class="head"><p>Tier / kind</p></th>
@@ -882,107 +894,119 @@ utilities</strong> that you call rather than override (<code class="docutils lit
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p>Route shell</p></td>
+<tr class="row-even"><td><p>Endpoint method</p></td>
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many_endpoint" title="fastapi_restly.views.RestView.get_many_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many_endpoint</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">(query_params)</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">PaginatedEnvelope[Schema]</span></code> or <code class="docutils literal notranslate"><span class="pre">Envelope[Schema]</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code>; validates query parameters and serializes the listing result via <code class="docutils literal notranslate"><span class="pre">to_response</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p>Route shell</p></td>
+<tr class="row-odd"><td><p>Endpoint method</p></td>
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one_endpoint" title="fastapi_restly.views.RestView.get_one_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one_endpoint</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">(id)</span></code></p></td>
 <td><p>response schema</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/{id}</span></code>; serializes one retrieved object.</p></td>
 </tr>
-<tr class="row-even"><td><p>Route shell</p></td>
+<tr class="row-even"><td><p>Endpoint method</p></td>
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create_endpoint" title="fastapi_restly.views.RestView.create_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create_endpoint</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">(schema_obj)</span></code></p></td>
 <td><p>response schema</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/</span></code>; serializes the created object.</p></td>
 </tr>
-<tr class="row-odd"><td><p>Route shell</p></td>
+<tr class="row-odd"><td><p>Endpoint method</p></td>
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.update_endpoint" title="fastapi_restly.views.RestView.update_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">update_endpoint</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">(id,</span> <span class="pre">schema_obj)</span></code></p></td>
 <td><p>response schema</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">PATCH</span> <span class="pre">/{id}</span></code>; serializes the updated object.</p></td>
 </tr>
-<tr class="row-even"><td><p>Route shell</p></td>
+<tr class="row-even"><td><p>Endpoint method</p></td>
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.delete_endpoint" title="fastapi_restly.views.RestView.delete_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">delete_endpoint</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">(id)</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">fastapi.Response</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">DELETE</span> <span class="pre">/{id}</span></code>; returns <code class="docutils literal notranslate"><span class="pre">204</span></code> by default.</p></td>
 </tr>
-<tr class="row-odd"><td><p>Request handler</p></td>
+<tr class="row-odd"><td><p>Handler</p></td>
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_get_many" title="fastapi_restly.views.RestView.handle_get_many"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_get_many</span></code></a></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">(query_params)</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">(query_params,</span> <span class="pre">*,</span> <span class="pre">scope=None,</span> <span class="pre">where=None)</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">ListingResult[Model]</span></code></p></td>
-<td><p>Run <code class="docutils literal notranslate"><span class="pre">authorize(&quot;get_many&quot;)</span></code>, then <code class="docutils literal notranslate"><span class="pre">get_many</span></code>.</p></td>
+<td><p>Run <code class="docutils literal notranslate"><span class="pre">authorize(&quot;get_many&quot;)</span></code>, then <code class="docutils literal notranslate"><span class="pre">get_many</span></code>, forwarding <code class="docutils literal notranslate"><span class="pre">scope=</span></code>. A route names its own scope here (a trash listing); <code class="docutils literal notranslate"><span class="pre">fr.clauses.UNSCOPED</span></code> reads past the view scope. <code class="docutils literal notranslate"><span class="pre">where=</span></code> takes an expression or a clause and <a class="reference internal" href="scopes.html#per-read-where"><span class="std std-ref">narrows inside the scope</span></a>; it reaches <code class="docutils literal notranslate"><span class="pre">get_many</span></code> folded into <code class="docutils literal notranslate"><span class="pre">scope</span></code>. Final.</p></td>
 </tr>
-<tr class="row-even"><td><p>Request handler</p></td>
+<tr class="row-even"><td><p>Handler</p></td>
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_get_one" title="fastapi_restly.views.RestView.handle_get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_get_one</span></code></a></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">(id)</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">(id,</span> <span class="pre">*,</span> <span class="pre">scope=None)</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">Model</span></code></p></td>
-<td><p>Load through <code class="docutils literal notranslate"><span class="pre">get_one</span></code> (scoped, 404), then <code class="docutils literal notranslate"><span class="pre">authorize(&quot;get_one&quot;,</span> <span class="pre">obj=...)</span></code>. Reusable from a custom action as “scoped load + 404 + read-auth”.</p></td>
+<td><p>Load through <code class="docutils literal notranslate"><span class="pre">get_one</span></code> (scoped, 404), forwarding <code class="docutils literal notranslate"><span class="pre">scope=</span></code>, then <code class="docutils literal notranslate"><span class="pre">authorize(&quot;get_one&quot;,</span> <span class="pre">obj=...)</span></code>. Reusable from a custom read route as “scoped load + 404 + read-auth”; a write action loads with <code class="docutils literal notranslate"><span class="pre">get_one</span></code> and gates its own action. <code class="docutils literal notranslate"><span class="pre">id</span></code> takes a predicate the way <code class="docutils literal notranslate"><span class="pre">get_one</span></code> does, so a <a class="reference internal" href="customize.html#natural-key-route"><span class="std std-ref">natural-key route</span></a> is this handler with <code class="docutils literal notranslate"><span class="pre">Item.slug</span> <span class="pre">==</span> <span class="pre">slug</span></code>. Final.</p></td>
 </tr>
-<tr class="row-odd"><td><p>Request handler</p></td>
+<tr class="row-odd"><td><p>Handler</p></td>
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_create" title="fastapi_restly.views.RestView.handle_create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_create</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">(schema_obj)</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">Model</span></code></p></td>
-<td><p>Authorize, run <code class="docutils literal notranslate"><span class="pre">create</span></code>, then the commit bracket.</p></td>
+<td><p>Authorize, run <code class="docutils literal notranslate"><span class="pre">create</span></code>, then the commit bracket. Inside <code class="docutils literal notranslate"><span class="pre">shared_write_action_commit</span></code>, return after flush but before commit and the after-hook. Final.</p></td>
 </tr>
-<tr class="row-even"><td><p>Request handler</p></td>
+<tr class="row-even"><td><p>Handler</p></td>
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_update" title="fastapi_restly.views.RestView.handle_update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_update</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">(id,</span> <span class="pre">schema_obj)</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">Model</span></code></p></td>
-<td><p>Load, authorize, snapshot, run <code class="docutils literal notranslate"><span class="pre">update</span></code>, then the commit bracket.</p></td>
+<td><p>Load, authorize, snapshot, run <code class="docutils literal notranslate"><span class="pre">update</span></code>, then the commit bracket. <code class="docutils literal notranslate"><span class="pre">id</span></code> also takes a predicate, so an update by natural key runs the same bracket. Inside <code class="docutils literal notranslate"><span class="pre">shared_write_action_commit</span></code>, return after flush but before commit and the after-hook. Final.</p></td>
 </tr>
-<tr class="row-odd"><td><p>Request handler</p></td>
+<tr class="row-odd"><td><p>Handler</p></td>
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_delete" title="fastapi_restly.views.RestView.handle_delete"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_delete</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">(id)</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Load, authorize, snapshot, run <code class="docutils literal notranslate"><span class="pre">delete</span></code>, then the commit bracket.</p></td>
+<td><p>Load, authorize, snapshot, run <code class="docutils literal notranslate"><span class="pre">delete</span></code>, then the commit bracket. <code class="docutils literal notranslate"><span class="pre">id</span></code> also takes a predicate. Inside <code class="docutils literal notranslate"><span class="pre">shared_write_action_commit</span></code>, return after flush but before commit and the after-hook. Final.</p></td>
 </tr>
 <tr class="row-even"><td><p>Custom-action bracket</p></td>
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.write_action" title="fastapi_restly.views.RestView.write_action"><code class="xref py py-meth docutils literal notranslate"><span class="pre">write_action</span></code></a></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">(action,</span> <span class="pre">*,</span> <span class="pre">obj=None,</span> <span class="pre">data=None)</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">(action,</span> <span class="pre">*,</span> <span class="pre">obj=...,</span> <span class="pre">data=None)</span></code></p></td>
 <td><p>context manager</p></td>
-<td><p>Entered as <code class="docutils literal notranslate"><span class="pre">async</span> <span class="pre">with</span> <span class="pre">self.write_action(&quot;publish&quot;,</span> <span class="pre">obj=...):</span></code>, it runs the full bracket around your inline mutation: authorize and snapshot on enter; <code class="docutils literal notranslate"><span class="pre">before_commit</span></code>, commit, and <code class="docutils literal notranslate"><span class="pre">after_commit</span></code> on exit. Use it for a custom write <em>action</em> that is not a plain create/update/delete; deposit a create’s new object on the yielded handle’s <code class="docutils literal notranslate"><span class="pre">.obj</span></code>. The implementation is shared with the CRUD handlers via the self-free <code class="docutils literal notranslate"><span class="pre">run_write_action</span></code> (in <code class="docutils literal notranslate"><span class="pre">fastapi_restly.views</span></code>).</p></td>
+<td><p>Entered as <code class="docutils literal notranslate"><span class="pre">async</span> <span class="pre">with</span> <span class="pre">self.write_action(&quot;publish&quot;,</span> <span class="pre">obj=...):</span></code>, it runs the full bracket around your inline mutation: authorize and snapshot on enter; <code class="docutils literal notranslate"><span class="pre">before_action_commit</span></code>, commit, and <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code> on exit. Use it for a custom write <em>action</em> that is not a plain create/update/delete; deposit a create’s new object on the yielded handle’s <code class="docutils literal notranslate"><span class="pre">.obj</span></code>; omit <code class="docutils literal notranslate"><span class="pre">obj</span></code> for that create-shaped form, and pass <code class="docutils literal notranslate"><span class="pre">obj=None</span></code> for a write with no single object. The implementation is shared with the CRUD handlers via the self-free <code class="docutils literal notranslate"><span class="pre">run_write_action</span></code> (in <code class="docutils literal notranslate"><span class="pre">fastapi_restly.views</span></code>).</p></td>
 </tr>
-<tr class="row-odd"><td><p>Business method</p></td>
-<td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many" title="fastapi_restly.views.RestView.get_many"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many</span></code></a></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">(query_params)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">ListingResult[Model]</span></code></p></td>
-<td><p>Scoped and filtered listing via <code class="docutils literal notranslate"><span class="pre">build_query</span></code> + <code class="docutils literal notranslate"><span class="pre">apply_query_params</span></code>. Paginated views return one page plus a total count; unpaginated views return every matching row with <code class="docutils literal notranslate"><span class="pre">total_count=None</span></code> and skip <code class="docutils literal notranslate"><span class="pre">count</span></code>. Auth-free.</p></td>
+<tr class="row-odd"><td><p>Commit bracket</p></td>
+<td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.shared_write_action_commit" title="fastapi_restly.views.RestView.shared_write_action_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">shared_write_action_commit</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">()</span></code></p></td>
+<td><p>context manager</p></td>
+<td><p>Share one commit across write actions on the session. The outermost block commits, then runs their after-hooks. See <a class="reference internal" href="customize.html#shared-write-action-commit"><span class="std std-ref">Commit several writes together</span></a>.</p></td>
 </tr>
 <tr class="row-even"><td><p>Business method</p></td>
-<td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one</span></code></a></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">(id)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">Model</span></code></p></td>
-<td><p>Load one row through <code class="docutils literal notranslate"><span class="pre">build_query</span></code> or raise <code class="docutils literal notranslate"><span class="pre">fr.exc.NotFound</span></code>. Visibility comes from <code class="docutils literal notranslate"><span class="pre">build_query</span></code>, so a hidden row is a clean 404 for every caller. Auth-free.</p></td>
+<td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many" title="fastapi_restly.views.RestView.get_many"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">(query_params,</span> <span class="pre">*,</span> <span class="pre">scope=None)</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ListingResult[Model]</span></code></p></td>
+<td><p>Scoped and filtered listing via <code class="docutils literal notranslate"><span class="pre">scope</span></code> when given, else the view scope, + <code class="docutils literal notranslate"><span class="pre">apply_query_params</span></code>. Paginated views return one page plus a total count; unpaginated views return every matching row with <code class="docutils literal notranslate"><span class="pre">total_count=None</span></code> and skip <code class="docutils literal notranslate"><span class="pre">count</span></code>. Auth-free. The handlers always forward <code class="docutils literal notranslate"><span class="pre">scope=</span></code>, so an override declares the parameter and passes it on.</p></td>
 </tr>
 <tr class="row-odd"><td><p>Business method</p></td>
+<td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">(id,</span> <span class="pre">*,</span> <span class="pre">scope=None)</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Model</span></code></p></td>
+<td><p>Load one row through <code class="docutils literal notranslate"><span class="pre">scope</span></code> when given, else the view scope, or raise <code class="docutils literal notranslate"><span class="pre">fr.exc.NotFound</span></code>. Visibility comes from the scope, so a hidden row is a clean 404 for every caller. Auth-free. The handlers always forward <code class="docutils literal notranslate"><span class="pre">scope=</span></code>, so an override declares the parameter and passes it on. <code class="docutils literal notranslate"><span class="pre">id</span></code> is the primary key by default; a SQLAlchemy boolean expression replaces that criterion (<code class="docutils literal notranslate"><span class="pre">get_one(Item.slug</span> <span class="pre">==</span> <span class="pre">slug)</span></code>), which is also how a composite key is addressed. A criterion narrows inside the scope, and more than one match raises <code class="docutils literal notranslate"><span class="pre">MultipleResultsFound</span></code>. See <a class="reference internal" href="customize.html#natural-key-route"><span class="std std-ref">Look a row up by another key</span></a>.</p></td>
+</tr>
+<tr class="row-even"><td><p>Business method</p></td>
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create" title="fastapi_restly.views.RestView.create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">(schema_obj)</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">Model</span></code></p></td>
 <td><p>Build a new object and save it. Commit-free: the usual create override point.</p></td>
 </tr>
-<tr class="row-even"><td><p>Business method</p></td>
+<tr class="row-odd"><td><p>Business method</p></td>
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.update" title="fastapi_restly.views.RestView.update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">update</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">(obj,</span> <span class="pre">schema_obj)</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">Model</span></code></p></td>
 <td><p>Apply the update payload to <code class="docutils literal notranslate"><span class="pre">obj</span></code> and save it. Commit-free.</p></td>
 </tr>
-<tr class="row-odd"><td><p>Business method</p></td>
+<tr class="row-even"><td><p>Business method</p></td>
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.delete" title="fastapi_restly.views.RestView.delete"><code class="xref py py-meth docutils literal notranslate"><span class="pre">delete</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">(obj)</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Delete <code class="docutils literal notranslate"><span class="pre">obj</span></code>. Override (e.g. on a soft-delete mixin) to flip a timestamp instead.</p></td>
+<td><p>Remove <code class="docutils literal notranslate"><span class="pre">obj</span></code> and flush. Override (e.g. on a soft-delete mixin) to flip a timestamp instead.</p></td>
 </tr>
-<tr class="row-even"><td><p>Override point</p></td>
-<td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.build_query" title="fastapi_restly.views.RestView.build_query"><code class="xref py py-meth docutils literal notranslate"><span class="pre">build_query</span></code></a></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">()</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">sqlalchemy.Select</span></code></p></td>
-<td><p>Base read query shared by <code class="docutils literal notranslate"><span class="pre">get_many</span></code>, <code class="docutils literal notranslate"><span class="pre">count</span></code>, and <code class="docutils literal notranslate"><span class="pre">get_one</span></code>; add <code class="docutils literal notranslate"><span class="pre">WHERE</span></code> clauses here for scope/soft-delete/visibility.</p></td>
+<tr class="row-odd"><td><p>Configuration</p></td>
+<td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.scope" title="fastapi_restly.views.BaseRestView.scope"><code class="xref py py-attr docutils literal notranslate"><span class="pre">scope</span></code></a></p></td>
+<td><p>class attribute</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">WhereClause</span> <span class="pre">|</span> <span class="pre">Unscoped</span> <span class="pre">|</span> <span class="pre">None</span></code></p></td>
+<td><p>The clause every read applies, shared by <code class="docutils literal notranslate"><span class="pre">get_many</span></code>, <code class="docutils literal notranslate"><span class="pre">count</span></code>, and <code class="docutils literal notranslate"><span class="pre">get_one</span></code>. <code class="docutils literal notranslate"><span class="pre">None</span></code> falls back to the model’s declared <code class="docutils literal notranslate"><span class="pre">default_scope</span></code>; <code class="docutils literal notranslate"><span class="pre">fr.clauses.UNSCOPED</span></code> reads unscoped. See <a class="reference internal" href="scopes.html"><span class="std std-doc">Scopes</span></a>.</p></td>
+</tr>
+<tr class="row-even"><td><p>Function</p></td>
+<td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.resolve_scope" title="fastapi_restly.views.resolve_scope"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.resolve_scope(view_or_model)</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">(view_or_model)</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">WhereClause</span> <span class="pre">|</span> <span class="pre">Unscoped</span></code></p></td>
+<td><p>The scope a read applies, resolved down the ladder: the view’s <code class="docutils literal notranslate"><span class="pre">scope</span></code>, the model’s <code class="docutils literal notranslate"><span class="pre">default_scope</span></code>, then <code class="docutils literal notranslate"><span class="pre">fr.clauses.UNSCOPED</span></code>. Takes a view class or instance, or a mapped model class for the model rung alone. Apply it with <code class="docutils literal notranslate"><span class="pre">fr.apply_clauses</span></code> in a route that builds its own query (a count, a nested listing) and the route sees the rows <code class="docutils literal notranslate"><span class="pre">get_one</span></code> and <code class="docutils literal notranslate"><span class="pre">get_many</span></code> see. See <a class="reference internal" href="scopes.html#reading-the-scope"><span class="std std-ref">Reading the resolved scope</span></a>.</p></td>
 </tr>
 <tr class="row-odd"><td><p>Override point</p></td>
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.apply_query_params" title="fastapi_restly.views.RestView.apply_query_params"><code class="xref py py-meth docutils literal notranslate"><span class="pre">apply_query_params</span></code></a></p></td>
@@ -994,22 +1018,22 @@ utilities</strong> that you call rather than override (<code class="docutils lit
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.count" title="fastapi_restly.views.RestView.count"><code class="xref py py-meth docutils literal notranslate"><span class="pre">count</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">(query)</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">int</span></code></p></td>
-<td><p>Total for a paginated list: receives the same params-applied query and strips <code class="docutils literal notranslate"><span class="pre">ORDER</span> <span class="pre">BY</span></code>, <code class="docutils literal notranslate"><span class="pre">LIMIT</span></code>, and <code class="docutils literal notranslate"><span class="pre">OFFSET</span></code> before counting. Unpaginated views skip it. Override for estimated counts on huge tables.</p></td>
+<td><p>Total for a paginated list: receives the same params-applied query, strips <code class="docutils literal notranslate"><span class="pre">ORDER</span> <span class="pre">BY</span></code>, <code class="docutils literal notranslate"><span class="pre">LIMIT</span></code>, and <code class="docutils literal notranslate"><span class="pre">OFFSET</span></code>, and counts it <code class="docutils literal notranslate"><span class="pre">DISTINCT</span></code> through a subquery, so a query that joins a to-many relationship does not inflate the total. Unpaginated views skip it. Override for estimated counts on huge tables.</p></td>
 </tr>
 <tr class="row-odd"><td><p>Override point</p></td>
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.authorize" title="fastapi_restly.views.RestView.authorize"><code class="xref py py-meth docutils literal notranslate"><span class="pre">authorize</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">(action,</span> <span class="pre">obj=None,</span> <span class="pre">data=None)</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Gate a verb. A no-op by default; override to enforce policy and raise <code class="docutils literal notranslate"><span class="pre">fr.exc.Forbidden</span></code> / <code class="docutils literal notranslate"><span class="pre">fr.exc.NotFound</span></code> to reject. Row <em>visibility</em> belongs in <code class="docutils literal notranslate"><span class="pre">build_query</span></code>.</p></td>
+<td><p>Gate a verb. A no-op by default; override to enforce policy and raise <code class="docutils literal notranslate"><span class="pre">fr.exc.Forbidden</span></code> / <code class="docutils literal notranslate"><span class="pre">fr.exc.NotFound</span></code> to reject. Row <em>visibility</em> belongs in the scope.</p></td>
 </tr>
 <tr class="row-even"><td><p>Override point</p></td>
-<td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.before_commit" title="fastapi_restly.views.RestView.before_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">before_commit</span></code></a></p></td>
+<td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.before_action_commit" title="fastapi_restly.views.RestView.before_action_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">before_action_commit</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">(action,</span> <span class="pre">new,</span> <span class="pre">old=None)</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
 <td><p>In-transaction side effect (outbox/audit rows), atomic with the write. <code class="docutils literal notranslate"><span class="pre">old</span></code> is the pre-mutation snapshot dict.</p></td>
 </tr>
 <tr class="row-odd"><td><p>Override point</p></td>
-<td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.after_commit" title="fastapi_restly.views.RestView.after_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">after_commit</span></code></a></p></td>
+<td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.after_action_commit" title="fastapi_restly.views.RestView.after_action_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">after_action_commit</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">(action,</span> <span class="pre">new,</span> <span class="pre">old=None)</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
 <td><p>Post-commit side effect (email, webhook, cache invalidation). <code class="docutils literal notranslate"><span class="pre">old</span></code> enables dirty detection.</p></td>
@@ -1024,7 +1048,7 @@ utilities</strong> that you call rather than override (<code class="docutils lit
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.snapshot" title="fastapi_restly.views.BaseRestView.snapshot"><code class="xref py py-meth docutils literal notranslate"><span class="pre">snapshot</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">(obj)</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">dict[str,</span> <span class="pre">Any]</span></code></p></td>
-<td><p>Frozen capture of an object’s column values at load time, passed as <code class="docutils literal notranslate"><span class="pre">old</span></code> to the commit hooks.</p></td>
+<td><p>Frozen capture of an object’s already-loaded column values, taken after <code class="docutils literal notranslate"><span class="pre">authorize</span></code> and before the mutation, passed as <code class="docutils literal notranslate"><span class="pre">old</span></code> to the commit hooks.</p></td>
 </tr>
 <tr class="row-even"><td><p>Override point</p></td>
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.get_relationship_loader_options" title="fastapi_restly.views.BaseRestView.get_relationship_loader_options"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_relationship_loader_options</span></code></a></p></td>
@@ -1045,28 +1069,22 @@ utilities</strong> that you call rather than override (<code class="docutils lit
 <td><p>Serialize a <code class="docutils literal notranslate"><span class="pre">ListingResult</span></code> into the list HTTP response body: the <code class="docutils literal notranslate"><span class="pre">data</span></code> envelope, with pagination metadata when <code class="docutils literal notranslate"><span class="pre">paginated</span></code>. Overriding this reshapes the body only; a non-envelope shape (bare array) also needs <code class="docutils literal notranslate"><span class="pre">get_many_endpoint</span></code> replaced with a matching <code class="docutils literal notranslate"><span class="pre">response_model</span></code>.</p></td>
 </tr>
 <tr class="row-odd"><td><p>Domain utility</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">make_new_object</span></code></p></td>
+<td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.make_new_object" title="fastapi_restly.views.RestView.make_new_object"><code class="xref py py-meth docutils literal notranslate"><span class="pre">make_new_object</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">(schema_obj)</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">Model</span></code></p></td>
-<td><p>Build and stage a new object without flushing. The cooperative override point for stamping extra fields on create: call <code class="docutils literal notranslate"><span class="pre">super()</span></code>, then mutate the returned object.</p></td>
+<td><p>Build and stage a new object without flushing, resolving references and skipping read-only fields. Final.</p></td>
 </tr>
 <tr class="row-even"><td><p>Domain utility</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">update_object</span></code></p></td>
+<td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.update_object" title="fastapi_restly.views.RestView.update_object"><code class="xref py py-meth docutils literal notranslate"><span class="pre">update_object</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">(obj,</span> <span class="pre">schema_obj)</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">Model</span></code></p></td>
-<td><p>Apply writable fields without flushing. The cooperative override point for stamping extra fields on update: call <code class="docutils literal notranslate"><span class="pre">super()</span></code>, then mutate the returned object.</p></td>
+<td><p>Apply writable fields without flushing, resolving references. Final.</p></td>
 </tr>
 <tr class="row-odd"><td><p>Domain utility</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">save_object</span></code></p></td>
+<td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.save_object" title="fastapi_restly.views.RestView.save_object"><code class="xref py py-meth docutils literal notranslate"><span class="pre">save_object</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">(obj)</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">Model</span></code></p></td>
-<td><p>Flush and refresh a staged object, then eager-load the relationships the response schema names (via <code class="docutils literal notranslate"><span class="pre">get_relationship_loader_options</span></code>). Does not commit; <code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code> owns the commit.</p></td>
-</tr>
-<tr class="row-even"><td><p>Domain utility</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">delete_object</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">(obj)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Delete and flush an existing object. Does not commit.</p></td>
+<td><p>Flush and refresh a staged object, then eager-load the relationships the response schema names (via <code class="docutils literal notranslate"><span class="pre">get_relationship_loader_options</span></code>). Does not commit; <code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code> owns the commit. Final.</p></td>
 </tr>
 </tbody>
 </table>
@@ -1137,10 +1155,79 @@ utilities</strong> that you call rather than override (<code class="docutils lit
 <td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[Iterable[str</span> <span class="pre">|</span> <span class="pre">ViewRoute]]</span></code></p></td>
 <td><p>Route names to suppress.</p></td>
 </tr>
+<tr class="row-even"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.listing_param_schema" title="fastapi_restly.views.BaseRestView.listing_param_schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">listing_param_schema</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[type[pydantic.BaseModel]]</span></code></p></td>
+<td><p>The generated listing grammar (filter, sort, page). Any route method that declares a <code class="docutils literal notranslate"><span class="pre">query_params</span></code> parameter is annotated with it, so a custom listing takes the same parameters as <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code>.</p></td>
+</tr>
 </tbody>
 </table>
 </div>
 <p>The list-tuning attributes (<code class="docutils literal notranslate"><span class="pre">default_page_size</span></code>, <code class="docutils literal notranslate"><span class="pre">max_page_size</span></code>, <code class="docutils literal notranslate"><span class="pre">paginated</span></code>, <code class="docutils literal notranslate"><span class="pre">extra_query_params</span></code>) are tabulated under <a class="reference internal" href="#list-endpoint-behavior">List Endpoint Behavior</a>.</p>
+</section>
+<section id="current-request-values">
+<h3>Current Request Values<a class="headerlink" href="#current-request-values" title="Link to this heading">#</a></h3>
+<p><a class="reference internal" href="howto_current.html"><span class="std std-doc">Current context</span></a> covers declaration,
+FastAPI integration, and manual binding.</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Symbol</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="api/clauses.html#fastapi_restly.clauses.ContextNamespace" title="fastapi_restly.clauses.ContextNamespace"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.ContextNamespace</span></code></a></p></td>
+<td><p>Base for the application’s <code class="docutils literal notranslate"><span class="pre">Current</span></code> class. Declare each value as a member.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/clauses.html#fastapi_restly.clauses.ContextParam" title="fastapi_restly.clauses.ContextParam"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.ContextParam</span></code></a></p></td>
+<td><p>A context value, declared as <code class="docutils literal notranslate"><span class="pre">user_id:</span> <span class="pre">fr.ContextParam[int]</span></code>. Read it with <code class="docutils literal notranslate"><span class="pre">Current.user_id()</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="api/clauses.html#fastapi_restly.clauses.ContextNamespace.depends" title="fastapi_restly.clauses.ContextNamespace.depends"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Current.depends(**sources)</span></code></a></p></td>
+<td><p>Generate a FastAPI dependency that binds values from existing dependencies per request.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/clauses.html#fastapi_restly.clauses.ContextNamespace.bind" title="fastapi_restly.clauses.ContextNamespace.bind"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Current.bind(**values)</span></code></a></p></td>
+<td><p>Bind values for a <code class="docutils literal notranslate"><span class="pre">with</span></code> block, restoring earlier values on exit.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="api/clauses.html#fastapi_restly.clauses.ContextNamespace.explain" title="fastapi_restly.clauses.ContextNamespace.explain"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Current.explain()</span></code></a></p></td>
+<td><p>Show each member’s bound value and origin, or <code class="docutils literal notranslate"><span class="pre">UNBOUND</span></code>.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="clauses-and-scopes">
+<h3>Clauses and Scopes<a class="headerlink" href="#clauses-and-scopes" title="Link to this heading">#</a></h3>
+<p>Reusable query fragments and the visibility rules built from them. <a class="reference internal" href="clauses.html"><span class="std std-doc">Query Clauses</span></a> and <a class="reference internal" href="scopes.html"><span class="std std-doc">Scopes</span></a> own the topics; this table names the symbols.</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Symbol</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="api/clauses.html#fastapi_restly.clauses.where_clause" title="fastapi_restly.clauses.where_clause"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.where_clause(condition)</span></code></a></p></td>
+<td><p>Declare a predicate clause from a SQLAlchemy boolean expression, or from a function without parameters that returns one. Values come from context members.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/clauses.html#fastapi_restly.clauses.WhereClause" title="fastapi_restly.clauses.WhereClause"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.WhereClause</span></code></a></p></td>
+<td><p>The type of every clause. Annotate a <code class="docutils literal notranslate"><span class="pre">scope</span></code> with it. Calling a clause returns its SQLAlchemy expression.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="api/clauses.html#fastapi_restly.clauses.all_of" title="fastapi_restly.clauses.all_of"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.all_of(*clauses)</span></code></a> / <a class="reference internal" href="api/clauses.html#fastapi_restly.clauses.any_of" title="fastapi_restly.clauses.any_of"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.any_of</span></code></a> / <a class="reference internal" href="api/clauses.html#fastapi_restly.clauses.none_of" title="fastapi_restly.clauses.none_of"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.none_of</span></code></a></p></td>
+<td><p>Compose clauses: AND, OR, NOT. <code class="docutils literal notranslate"><span class="pre">fr.clauses.UNSCOPED</span></code> composes as no restriction; the rules per function are in <a class="reference internal" href="clauses.html"><span class="std std-doc">Query Clauses</span></a>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/clauses.html#fastapi_restly.clauses.apply_clauses" title="fastapi_restly.clauses.apply_clauses"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.apply_clauses(stmt,</span> <span class="pre">*clauses)</span></code></a></p></td>
+<td><p>Apply clauses to a plain SQLAlchemy statement. <code class="docutils literal notranslate"><span class="pre">fr.clauses.UNSCOPED</span></code> applies nothing.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="api/clauses.html#fastapi_restly.clauses.ClauseNamespace" title="fastapi_restly.clauses.ClauseNamespace"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.ClauseNamespace</span></code></a></p></td>
+<td><p>Group a model’s clauses under one named class. Declaring <code class="docutils literal notranslate"><span class="pre">model</span></code> registers the namespace, and its <code class="docutils literal notranslate"><span class="pre">default_scope</span></code> is the clause every read and reference check on that model applies.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">fr.clauses.UNSCOPED</span></code> / <a class="reference internal" href="api/clauses.html#fastapi_restly.clauses.Unscoped" title="fastapi_restly.clauses.Unscoped"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.clauses.Unscoped</span></code></a></p></td>
+<td><p>The explicit unscoped sentinel and its type: the one spelling for reading past a scope on a view, a namespace, a reference, or a single read.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">fr.views.ReadScope</span></code></p></td>
+<td><p>The per-read scope type the handlers take and forward: <code class="docutils literal notranslate"><span class="pre">None</span></code> resolves the view’s scope, a clause replaces it, <code class="docutils literal notranslate"><span class="pre">fr.clauses.UNSCOPED</span></code> reads unscoped. Annotate the <code class="docutils literal notranslate"><span class="pre">scope</span></code> parameter of a <code class="docutils literal notranslate"><span class="pre">get_one</span></code> / <code class="docutils literal notranslate"><span class="pre">get_many</span></code> override with it.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
 </section>
 <section id="advanced-object-helpers">
 <h3>Advanced Object Helpers<a class="headerlink" href="#advanced-object-helpers" title="Link to this heading">#</a></h3>
@@ -1208,7 +1295,7 @@ services, workers, or tests.</p>
 <td><p>Open a sync SQLAlchemy session context manager for use outside request handling, for example in background jobs or scripts.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="api/db.html#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.configure(async_database_url=...,</span> <span class="pre">...)</span></code></a></p></td>
-<td><p>Configure the framework. Accepts async/sync URLs, engines, session makers, custom session generators, and the <code class="docutils literal notranslate"><span class="pre">warn_on_uncommitted</span></code> / <code class="docutils literal notranslate"><span class="pre">warn_on_misuse</span></code> settings.</p></td>
+<td><p>Configure the framework. Accepts async/sync URLs, engines, session makers, custom session generators, a <code class="docutils literal notranslate"><span class="pre">health=</span></code> liveness route, and the <code class="docutils literal notranslate"><span class="pre">warn_on_uncommitted</span></code> / <code class="docutils literal notranslate"><span class="pre">warn_on_misuse</span></code> settings.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="api/db.html#fastapi_restly.db.get_async_engine" title="fastapi_restly.db.get_async_engine"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.db.get_async_engine()</span></code></a></p></td>
 <td><p>Return the configured <code class="docutils literal notranslate"><span class="pre">AsyncEngine</span></code> instance.</p></td>
@@ -1225,14 +1312,14 @@ Configure it once during application startup:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">async_database_url</span><span class="o">=</span><span class="s2">&quot;sqlite+aiosqlite:///app.db&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">fr.configure(...)</span></code> must receive at least one setup option: an app, database URL, engine, session maker, custom session generator, or a <code class="docutils literal notranslate"><span class="pre">warn_on_uncommitted</span></code> / <code class="docutils literal notranslate"><span class="pre">warn_on_misuse</span></code> setting. A bare <code class="docutils literal notranslate"><span class="pre">fr.configure()</span></code> raises <code class="docutils literal notranslate"><span class="pre">TypeError</span></code>.</p>
-<p>Pass <code class="docutils literal notranslate"><span class="pre">warn_on_misuse=True</span></code> to enable opt-in registration-time misuse warnings (<code class="docutils literal notranslate"><span class="pre">fr.exc.RestlyMisuseWarning</span></code>): <code class="docutils literal notranslate"><span class="pre">include_view</span></code> then flags route-shell overrides, direct <code class="docutils literal notranslate"><span class="pre">session.commit()</span></code> calls in view methods, and CRUD route sets hand-rolled on a bare <code class="docutils literal notranslate"><span class="pre">View</span></code>, each with the idiomatic fix named. It is off by default and intended for development, project templates, and CI.</p>
+<p><code class="docutils literal notranslate"><span class="pre">fr.configure(...)</span></code> must receive at least one setup option: an app, database URL, engine, session maker, custom session generator, <code class="docutils literal notranslate"><span class="pre">health=</span></code>, or a <code class="docutils literal notranslate"><span class="pre">warn_on_uncommitted</span></code> / <code class="docutils literal notranslate"><span class="pre">warn_on_misuse</span></code> setting. A bare <code class="docutils literal notranslate"><span class="pre">fr.configure()</span></code> raises <code class="docutils literal notranslate"><span class="pre">TypeError</span></code>.</p>
+<p>Pass <code class="docutils literal notranslate"><span class="pre">warn_on_misuse=True</span></code> to enable opt-in registration-time misuse warnings (<code class="docutils literal notranslate"><span class="pre">fr.exc.RestlyMisuseWarning</span></code>): <code class="docutils literal notranslate"><span class="pre">include_view</span></code> then flags endpoint method overrides, direct <code class="docutils literal notranslate"><span class="pre">session.commit()</span></code> calls in view methods, CRUD route sets hand-rolled on a bare <code class="docutils literal notranslate"><span class="pre">View</span></code>, and an <code class="docutils literal notranslate"><span class="pre">IDRef</span></code> / <code class="docutils literal notranslate"><span class="pre">IDSchema</span></code> field named like a scalar foreign-key column, each with the idiomatic fix named. It is off by default and intended for development, project templates, and CI.</p>
 <p>For multiple databases, use FastAPI and SQLAlchemy directly: add a custom dependency on a view, or pass a custom session generator to <code class="docutils literal notranslate"><span class="pre">fr.configure(...)</span></code>. Restly does not provide a public multi-context or multi-engine API. See <a class="reference internal" href="howto_existing_project.html#use-a-custom-session-dependency-on-one-view"><span class="std std-ref">Use a custom session dependency on one view</span></a>.</p>
-<p>Restly’s write handlers own the commit: each runs <code class="docutils literal notranslate"><span class="pre">before_commit</span></code>, then the commit, then <code class="docutils literal notranslate"><span class="pre">after_commit</span></code> around domain logic. Session dependencies do <strong>not</strong> commit on response; they roll back and close on exit.</p>
+<p>Restly’s write handlers normally own the commit: each runs <code class="docutils literal notranslate"><span class="pre">before_action_commit</span></code>, then the commit, then <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code> around domain logic. Inside <code class="docutils literal notranslate"><span class="pre">shared_write_action_commit</span></code>, the outermost block owns that commit and the handlers return before it. Session dependencies do <strong>not</strong> commit on response; they roll back and close on exit.</p>
 <p>A <strong>custom write route</strong> should use <code class="docutils literal notranslate"><span class="pre">self.write_action(...)</span></code> or reuse a
-<code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code>. See <a class="reference internal" href="customize.html"><span class="std std-doc">Customizing RestView</span></a>. Commit manually only
-for shapes the bracket does not model, such as a batch write with one final
-commit.</p>
+<code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code>. To group their writes under one commit, wrap them in
+<code class="docutils literal notranslate"><span class="pre">self.shared_write_action_commit()</span></code>. See
+<a class="reference internal" href="customize.html#shared-write-action-commit"><span class="std std-ref">Commit several writes together</span></a>.</p>
 <p>Restly warns (<code class="docutils literal notranslate"><span class="pre">RestlyUncommittedChangesWarning</span></code>) when a request finishes with uncommitted session changes; this is the tell of a custom write route that forgot to commit. Fix the missing commit (<code class="docutils literal notranslate"><span class="pre">write_action(...)</span></code> or a <code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code>), or suppress a deliberate dry run with <code class="docutils literal notranslate"><span class="pre">session.info[&quot;_fr_suppress_uncommitted&quot;]</span> <span class="pre">=</span> <span class="pre">True</span></code>. The global <code class="docutils literal notranslate"><span class="pre">fr.configure(warn_on_uncommitted=False)</span></code> opt-out exists but is rarely the right response to the warning.</p>
 </section>
 <section id="exceptions">
@@ -1255,7 +1342,7 @@ commit.</p>
 <td><p>Base for Restly’s request-time HTTP errors. Subclass of <code class="docutils literal notranslate"><span class="pre">fastapi.HTTPException</span></code>; each subclass sets a status code.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="api/exc.html#fastapi_restly.exc.NotFound" title="fastapi_restly.exc.NotFound"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.exc.NotFound</span></code></a></p></td>
-<td><p>HTTP <code class="docutils literal notranslate"><span class="pre">404</span></code>. Raised by <code class="docutils literal notranslate"><span class="pre">get_one</span></code> when a row does not exist or is hidden by <code class="docutils literal notranslate"><span class="pre">build_query</span></code>; also raisable from <code class="docutils literal notranslate"><span class="pre">authorize</span></code> to hide a row’s existence.</p></td>
+<td><p>HTTP <code class="docutils literal notranslate"><span class="pre">404</span></code>. Raised by <code class="docutils literal notranslate"><span class="pre">get_one</span></code> when a row does not exist or is outside the scope; also raisable from <code class="docutils literal notranslate"><span class="pre">authorize</span></code> to hide a row’s existence.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="api/exc.html#fastapi_restly.exc.Forbidden" title="fastapi_restly.exc.Forbidden"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.exc.Forbidden</span></code></a></p></td>
 <td><p>HTTP <code class="docutils literal notranslate"><span class="pre">403</span></code>. Raise from an <code class="docutils literal notranslate"><span class="pre">authorize</span></code> override to reject a verb.</p></td>
@@ -1380,7 +1467,9 @@ This fallback covers apps that configure database sessions separately.</p></li>
 <li><p>Ordinary SQLAlchemy <code class="docutils literal notranslate"><span class="pre">DeclarativeBase</span></code> models work with CRUD views.</p></li>
 <li><p>UUID and other non-<code class="docutils literal notranslate"><span class="pre">int</span></code> scalar primary keys are supported through <code class="docutils literal notranslate"><span class="pre">id_type</span></code>, <code class="docutils literal notranslate"><span class="pre">fr.MustExist[UUID,</span> <span class="pre">Model]</span></code>, <code class="docutils literal notranslate"><span class="pre">IDRef[Model]</span></code>, and <code class="docutils literal notranslate"><span class="pre">IDSchema[Model]</span></code>.</p></li>
 <li><p>Composite primary keys are not supported by the default <code class="docutils literal notranslate"><span class="pre">RestView</span></code> /
-<code class="docutils literal notranslate"><span class="pre">AsyncRestView</span></code> CRUD routes. Use <code class="docutils literal notranslate"><span class="pre">fr.View</span></code> for custom route shapes.</p></li>
+<code class="docutils literal notranslate"><span class="pre">AsyncRestView</span></code> CRUD routes; a custom route on the view addresses one with
+a predicate (<code class="docutils literal notranslate"><span class="pre">handle_get_one(sa.and_(...))</span></code>), or use <code class="docutils literal notranslate"><span class="pre">fr.View</span></code> for a
+hand-written route shape.</p></li>
 </ul>
 </section>
 <section id="full-python-api-autodoc">
@@ -1389,6 +1478,7 @@ This fallback covers apps that configure database sessions separately.</p></li>
 <div class="toctree-wrapper compound">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="api/index.html">API Modules</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/clauses.html">Clauses API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/db.html">Database API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/exc.html">Exceptions API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/models.html">Models API</a></li>
@@ -1465,6 +1555,8 @@ This fallback covers apps that configure database sessions separately.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#view-classes">View Classes</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#view-method-surface">View Method Surface</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#view-class-attributes">View Class Attributes</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#current-request-values">Current Request Values</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#clauses-and-scopes">Clauses and Scopes</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#advanced-object-helpers">Advanced Object Helpers</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#database">Database</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#exceptions">Exceptions</a></li>
