@@ -15,6 +15,7 @@ import dataclasses
 import json
 from collections import deque
 from collections.abc import Iterable, Iterator
+from enum import Enum, IntEnum
 from typing import Any
 
 import pydantic
@@ -115,6 +116,16 @@ class _DocumentKeys(pydantic.BaseModel):
     documents: dict[_PrivateKey | _DataclassKey, str]
 
 
+class _DocumentChoice(Enum):
+    PRIVATE = _PrivateDocument()
+    EXCLUDED = _ExcludedDocument()
+    DATACLASS = _DataclassDocument()
+
+
+class _DocumentEnumTree(pydantic.BaseModel):
+    choice: _DocumentChoice
+
+
 @pytest.mark.parametrize("operation", ["create", "update"])
 @pytest.mark.parametrize(
     "document_type, document",
@@ -131,6 +142,9 @@ class _DocumentKeys(pydantic.BaseModel):
         (_DocumentIterator, _DocumentIterator(documents=[_PrivateDocument()])),
         (_DocumentKeys, _DocumentKeys(documents={_PrivateKey(): "value"})),
         (_DocumentKeys, _DocumentKeys(documents={_DataclassKey(): "value"})),
+        (_DocumentEnumTree, _DocumentEnumTree(choice=_DocumentChoice.PRIVATE)),
+        (_DocumentEnumTree, _DocumentEnumTree(choice=_DocumentChoice.EXCLUDED)),
+        (_DocumentEnumTree, _DocumentEnumTree(choice=_DocumentChoice.DATACLASS)),
         (
             pydantic.RootModel[list[_PrivateDocument]],
             pydantic.RootModel[list[_PrivateDocument]]([_PrivateDocument()]),
@@ -495,3 +509,44 @@ def test_constructed_document_keeps_pydantic_serialization(sync_db):
         session.add(obj)
         session.commit()
         assert session.get(Document, obj.id).payload == address.model_dump(mode="json")
+
+
+def test_scalar_enums_in_documents_keep_pydantic_serialization(sync_db):
+    class Status(Enum):
+        OPEN = "open"
+        CLOSED = "closed"
+
+    class Label(str, Enum):
+        PUBLIC = "public"
+
+    class Priority(IntEnum):
+        HIGH = 1
+
+    class Payload(pydantic.BaseModel):
+        status: Status
+        label: Label = Label.PUBLIC
+        priority: Priority = Priority.HIGH
+
+    class Document(fr.IDBase):
+        payload: Mapped[dict] = mapped_column(sqlalchemy.JSON)
+
+    schema = pydantic.create_model("DocumentInput", payload=(Payload, ...))
+    engine, make_session = sync_db
+    fr.DataclassBase.metadata.create_all(engine)
+    with make_session() as session:
+        row = fr.objects.make_new_object(
+            session, Document, schema(payload=Payload(status=Status.OPEN))
+        )
+        session.add(row)
+        for status in (Status.OPEN, Status.CLOSED):
+            if status is Status.CLOSED:
+                fr.objects.update_object(
+                    session, row, schema(payload=Payload(status=status))
+                )
+            session.commit()
+            session.expire_all()
+            assert session.get(Document, row.id).payload == {
+                "status": status.value,
+                "label": "public",
+                "priority": 1,
+            }

@@ -371,7 +371,7 @@ def _reject_excluded_json_fields(value: Any, column: str) -> None:
                 "TypeDecorator to define their storage representation."
             )
         if isinstance(item, str | bytes | bytearray) or not isinstance(
-            item, (pydantic.BaseModel, Mapping, Sequence, Set)
+            item, (pydantic.BaseModel, Mapping, Sequence, Set, Enum)
         ):
             continue
         if id(item) in seen:
@@ -393,6 +393,8 @@ def _reject_excluded_json_fields(value: Any, column: str) -> None:
         elif isinstance(item, Mapping):
             pending.extend(item.keys())
             pending.extend(item.values())
+        elif isinstance(item, Enum):
+            pending.append(item.value)
         else:
             pending.extend(item)
 
