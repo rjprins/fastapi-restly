@@ -88,6 +88,87 @@ def _setup_sync_item_view(client):
     fr.DataclassBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
 
 
+@pytest.fixture(params=["sync", "async"])
+def custom_listing_client(request):
+    asynchronous = request.param == "async"
+    client = request.getfixturevalue("client" if asynchronous else "sync_client")
+
+    class CustomItem(fr.IDBase):
+        name: Mapped[str]
+
+    base = fr.AsyncReactAdminView if asynchronous else fr.ReactAdminView
+
+    @fr.include_view(client.app)
+    class CustomItemView(base):
+        prefix = "/custom-items"
+        model = CustomItem
+        extra_query_params = {"trace"}
+
+        if asynchronous:
+
+            @fr.get("/custom")
+            async def custom(self, query_params):
+                result = await self.handle_get_many(query_params)
+                return self.to_response(result, fr.ResponseShape.LISTING)
+
+        else:
+
+            @fr.get("/custom")
+            def custom(self, query_params):
+                result = self.handle_get_many(query_params)
+                return self.to_response(result, fr.ResponseShape.LISTING)
+
+    if asynchronous:
+        create_tables()
+    else:
+        fr.DataclassBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
+    for name in ("a", "b", "c"):
+        client.post("/custom-items", json={"name": name})
+    return client
+
+
+@pytest.mark.parametrize(
+    "params, names, content_range",
+    [
+        ({"filter": '{"name":"b"}', "range": "[0,0]"}, ["b"], "items 0-0/1"),
+        ({"sort": '["name","DESC"]', "range": "[1,1]"}, ["b"], "items 1-1/3"),
+        ({"trace": "yes"}, ["a", "b", "c"], "items 0-2/3"),
+    ],
+)
+def test_custom_react_admin_listing_uses_its_dialect(
+    custom_listing_client, params, names, content_range
+):
+    response = custom_listing_client.get("/custom-items/custom", params=params)
+    assert [item["name"] for item in response.json()] == names
+    assert response.headers["content-range"] == content_range
+
+
+@pytest.mark.parametrize("parameter", ["filter", "sort", "range"])
+def test_custom_react_admin_listing_rejects_invalid_json(
+    custom_listing_client, parameter
+):
+    custom_listing_client.get(
+        "/custom-items/custom", params={parameter: "bad-json"}, assert_status_code=400
+    )
+
+
+def test_custom_react_admin_listing_keeps_unknown_key_guard(custom_listing_client):
+    custom_listing_client.get(
+        "/custom-items/custom", params={"page": "2"}, assert_status_code=422
+    )
+
+
+def test_custom_react_admin_listing_openapi_uses_its_dialect(custom_listing_client):
+    operation = custom_listing_client.app.openapi()["paths"]["/custom-items/custom"][
+        "get"
+    ]
+    assert {p["name"] for p in operation["parameters"] if p["in"] == "query"} == {
+        "sort",
+        "range",
+        "filter",
+    }
+
+
 # ===========================================================================
 # Async variant tests
 # ===========================================================================

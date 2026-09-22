@@ -45,6 +45,14 @@ class _ReactAdminListParams:
     filters: dict
 
 
+class _ReactAdminQueryParams(pydantic.BaseModel):
+    """Raw query strings for generated custom listing parameters."""
+
+    sort: str | None = None
+    range: str | None = None
+    filter: str | None = None
+
+
 # ---------------------------------------------------------------------------
 # Query parsing helpers (standalone, analogous to query/_impl.py)
 # ---------------------------------------------------------------------------
@@ -244,6 +252,7 @@ class _ReactAdminViewProtocol(Protocol):
     model: ClassVar[type[DeclarativeBase]]
     schema: ClassVar[type[pydantic.BaseModel]]
     schema_update: ClassVar[type[pydantic.BaseModel]]
+    listing_param_schema: ClassVar[type[pydantic.BaseModel]]
     id_type: ClassVar[type[Any]]
     default_page_size: ClassVar[int]
     paginated: ClassVar[bool]
@@ -318,6 +327,8 @@ class _ReactAdminMixin:
     def _coerce_react_admin_params(self, params: Any) -> _ReactAdminListParams:
         if isinstance(params, _ReactAdminListParams):
             return params
+        if isinstance(params, pydantic.BaseModel):
+            params = params.model_dump()
 
         view = cast(_ReactAdminViewProtocol, self)
         # ``paginated`` is forced True on react-admin and ``default_page_size`` is
@@ -418,6 +429,8 @@ class _ReactAdminMixin:
                 f"{cls.__name__}: a react-admin view cannot disable pagination; "
                 "'paginated' must stay True so the Content-Range total is counted."
             )
+        if "listing_param_schema" not in cls.__dict__:
+            view_cls.listing_param_schema = _ReactAdminQueryParams
         cast(Any, super()).before_include_view()
         # Override the list return annotation set by BaseRestView to Response,
         # since we return a raw Response with Content-Range header.
