@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Context binding rejects two names for the same member in one `bind()` or
+  `depends()` call, so one supplied value cannot silently replace another.
 - Shared write commits restore loaded related state after a savepoint rollback,
   so surviving async responses and after-hooks do not raise `MissingGreenlet`.
 - Custom SQLAlchemy `TypeDecorator` columns receive Pydantic values without

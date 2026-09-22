@@ -237,6 +237,9 @@ Declaring a new `user_id: fr.ContextParam[int]` instead would create an
 independent member. Subclasses inherit their parent's members. Prefix
 helper methods with `_`, since public members must be context values.
 
+Use only one name per member in a `bind()` or `depends()` call. Two names
+for the same member raise `TypeError`, even if their values are equal.
+
 A nullable annotation such as `fr.ContextParam[int | None]` does not
 provide a default. Bind `None` explicitly when absence is a valid value.
 An unbound read still raises `LookupError`.

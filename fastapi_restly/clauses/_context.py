@@ -77,7 +77,17 @@ class ContextNamespace:
         unknown = sorted(set(names) - set(members))
         if unknown:
             raise TypeError(f"{cls.__name__} has no member(s): " + ", ".join(unknown))
-        return {name: members[name] for name in names}
+        named = {name: members[name] for name in names}
+        seen: dict[int, str] = {}
+        for name, member in named.items():
+            previous = seen.get(id(member))
+            if previous is not None:
+                raise TypeError(
+                    f"{cls.__name__}.{previous} and {cls.__name__}.{name} refer "
+                    "to the same context member. Bind it under one name per call."
+                )
+            seen[id(member)] = name
+        return named
 
     @classmethod
     @contextmanager
@@ -86,6 +96,8 @@ class ContextNamespace:
 
         Keys are member names; a name this namespace does not declare
         raises. An inner bind replaces the value until its block exits.
+        Two names for the same member raise TypeError before binding any
+        values, even if the supplied values are equal.
         """
         members = cls._named(values)
         origin = _caller_origin()
@@ -105,6 +117,7 @@ class ContextNamespace:
         app, router, or view level. It is an async dependency underneath:
         the bind lands in the request task, where async and def endpoints
         alike read it.
+        Two names for the same member raise TypeError at declaration.
         """
         # FastAPI is imported only by an app that binds per request
         from .._binding import _bind_dependency

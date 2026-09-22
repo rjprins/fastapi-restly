@@ -286,6 +286,62 @@ def test_a_member_adopted_under_another_name_binds_by_that_name():
             pass
 
 
+@pytest.mark.parametrize("alias_value", [7, 8])
+@pytest.mark.parametrize("reverse", [False, True])
+def test_bind_rejects_two_names_for_one_member(alias_value, reverse):
+    class Report(Context):
+        tenant = Context.tenant_id
+
+    values = {"locale": "en", "tenant_id": 7, "tenant": alias_value}
+    if reverse:
+        values = dict(reversed(list(values.items())))
+
+    with Context.bind(tenant_id=1, locale="nl"):
+        with pytest.raises(TypeError, match="same context member") as error:
+            with Report.bind(**values):
+                pytest.fail("a duplicate binding must not enter the block")
+        assert "Report.tenant_id" in str(error.value)
+        assert "Report.tenant" in str(error.value)
+        assert Context.tenant_id() == 1
+        assert Context.locale() == "nl"
+
+
+@pytest.mark.parametrize("reverse", [False, True])
+def test_depends_rejects_two_names_for_one_member_at_declaration(reverse):
+    class Report(Context):
+        tenant = Context.tenant_id
+
+    sources = {"tenant_id": lambda: 7, "tenant": lambda: 8}
+    if reverse:
+        sources = dict(reversed(list(sources.items())))
+
+    with pytest.raises(TypeError, match="same context member") as error:
+        Report.depends(**sources)
+    assert "Report.tenant_id" in str(error.value)
+    assert "Report.tenant" in str(error.value)
+
+
+@pytest.mark.parametrize("name", ["tenant_id", "tenant"])
+def test_either_name_for_a_shared_member_can_bind_alone(client, name):
+    class Report(Context):
+        tenant = Context.tenant_id
+
+    with Report.bind(**{name: 3}):
+        assert Report.tenant_id() == Report.tenant() == 3
+
+    @client.app.get(
+        "/adopted-member", dependencies=[Report.depends(**{name: lambda: 9})]
+    )
+    def read_member():
+        return {"tenant_id": Report.tenant_id(), "tenant": Report.tenant()}
+
+    response = client.get("/adopted-member")
+    assert response.status_code == 200
+    assert response.json() == {"tenant_id": 9, "tenant": 9}
+    with pytest.raises(LookupError):
+        Context.tenant_id()
+
+
 def test_an_inner_bind_restores_the_outer_value_also_after_an_error():
     with Context.bind(tenant_id=1):
         with pytest.raises(RuntimeError):
