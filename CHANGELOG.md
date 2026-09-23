@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Context members work as `mapped_column(default=Current.user_id)` on
+  non-dataclass models.
+
 ## [0.10.0] - 2026-09-23
 
 ### Added

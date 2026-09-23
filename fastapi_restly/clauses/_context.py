@@ -20,6 +20,7 @@ from typing import (
 )
 
 from sqlalchemy import bindparam
+from sqlalchemy.sql.base import _NoArg
 from sqlalchemy.sql.expression import BindParameter
 from sqlalchemy.sql.operators import ColumnOperators
 
@@ -173,8 +174,8 @@ class ContextParam(Generic[_T], ColumnOperators):
     filled with the bound value each time a clause that carries it is
     applied.
 
-    A member never stands in for its value: ``==``, ``!=`` and a truth
-    test raise. Call the member to read it, and in a SQL expression put
+    A member never stands in for its value: comparisons with values and
+    truth tests raise. Call the member to read it, and in a SQL expression put
     the column first (``Item.role == Current.role``).
     """
 
@@ -236,12 +237,20 @@ class ContextParam(Generic[_T], ColumnOperators):
         # tagged placeholder, filled when a clause that carries it resolves
         return self._placeholder
 
-    # object equality answers False / True whatever is bound, and
-    # SQLAlchemy renders that bool as WHERE false / WHERE true
-    def __eq__(self, other: object) -> NoReturn:
+    # Value comparisons must not become constant WHERE true/false filters.
+    # SQLAlchemy's MappedColumn compares its option tuple against defaults:
+    # default=Current.user_id reaches _NoArg.NO_ARG even without dataclasses.
+    # Exempt only that private sentinel by identity, leaving other comparisons
+    # guarded. Its result is a bool, not ColumnOperators' SQL expression.
+    # https://github.com/sqlalchemy/sqlalchemy/blob/rel_2_0_41/lib/sqlalchemy/orm/properties.py#L561-L568
+    def __eq__(self, other: object) -> bool:  # type: ignore[override]
+        if other is _NoArg.NO_ARG:
+            return False
         raise self._not_its_value("==")
 
-    def __ne__(self, other: object) -> NoReturn:
+    def __ne__(self, other: object) -> bool:  # type: ignore[override]
+        if other is _NoArg.NO_ARG:
+            return True
         raise self._not_its_value("!=")
 
     # defining __eq__ drops the inherited hash; identity is the right one

@@ -8,10 +8,12 @@ member's address.
 """
 
 import asyncio
+import operator
 
 import pytest
 import sqlalchemy
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
+from sqlalchemy.sql.base import _NoArg
 
 import fastapi_restly as fr
 
@@ -115,14 +117,46 @@ def test_member_works_in_expressions():
         lambda: Context.locale == "nl",
         lambda: Context.locale != "nl",
         lambda: Context.tenant_id == Context.locale,
+        lambda: Context.tenant_id == 1,
+        lambda: Context.tenant_id != 1,
+        lambda: Context.tenant_id == None,
+        lambda: Context.tenant_id != None,
+        lambda: Context.tenant_id == object(),
+        lambda: Context.tenant_id != object(),
     ],
-    ids=["eq", "ne", "member-to-member"],
+    ids=[
+        "eq",
+        "ne",
+        "member-to-member",
+        "int-eq",
+        "int-ne",
+        "none-eq",
+        "none-ne",
+        "object-eq",
+        "object-ne",
+    ],
 )
 def test_comparing_a_member_raises_instead_of_answering_as_an_object(compare):
     # object equality would answer False / True whatever is bound
     with Context.bind(tenant_id=1, locale="nl"):
         with pytest.raises(TypeError, match=r"locale\(\)|tenant_id\(\)"):
             compare()
+
+
+@pytest.mark.parametrize(
+    "compare, expected", [(operator.eq, False), (operator.ne, True)]
+)
+@pytest.mark.parametrize("reverse", [False, True])
+def test_member_comparison_allows_only_sqlalchemy_no_argument_sentinel(
+    compare, expected, reverse
+):
+    operands = (Context.tenant_id, _NoArg.NO_ARG)
+    if reverse:
+        operands = operands[::-1]
+
+    assert compare(*operands) is expected
+    with Context.bind(tenant_id=1):
+        assert compare(*operands) is expected
 
 
 def test_a_member_on_the_left_cannot_widen_a_rule_to_where_true():

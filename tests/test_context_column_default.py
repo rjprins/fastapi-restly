@@ -13,11 +13,43 @@ from typing import Any
 
 import pytest
 from fastapi import FastAPI
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import select
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 import fastapi_restly as fr
 from fastapi_restly.db._globals import _fr_globals
 from fastapi_restly.testing._client import RestlyTestClient
+
+
+@pytest.mark.parametrize("default_keyword", ["default", "insert_default"])
+def test_plain_model_column_default_reads_each_flush_binding(sync_db, default_keyword):
+    class Current(fr.ContextNamespace):
+        user_id: fr.ContextParam[int]
+
+    class Base(DeclarativeBase):
+        pass
+
+    class Note(Base):
+        __tablename__ = "note"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+        created_by_id: Mapped[int] = mapped_column(**{default_keyword: Current.user_id})
+
+    engine, make_session = sync_db
+    Base.metadata.create_all(engine)
+    with make_session() as session:
+        for user_id in (7, 9):
+            note = Note()
+            assert note.created_by_id is None
+            with Current.bind(user_id=user_id):
+                session.add(note)
+                session.flush()
+            assert note.created_by_id == user_id
+
+        assert list(session.scalars(select(Note.created_by_id).order_by(Note.id))) == [
+            7,
+            9,
+        ]
 
 
 @pytest.fixture
