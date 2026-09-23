@@ -7,13 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
-
-- API Reference lists the package exports and Python API modules with links
-  to their documentation.
-  Detailed behavior and configuration tables have their own page.
-
-## [0.10.0] - 2026-09-22
+## [0.10.0] - 2026-09-23
 
 ### Added
 
@@ -61,6 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   in-memory databases across threads. Invalid references return 409.
 - React-admin listings reject unknown query parameters with 422.
   Allow custom keys with `extra_query_params`.
+- Pydantic 2.11.7 or newer is required.
 
 ### Removed
 
